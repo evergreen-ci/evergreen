@@ -276,10 +276,8 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, errors.Wrap(err, "error setting up buildlogger sender")
 			}
 
-			if c.cedarGRPCClient == nil {
-				if err = c.createCedarGRPCConn(ctx); err != nil {
-					return nil, errors.Wrap(err, "error setting up cedar grpc connection")
-				}
+			if err = c.createCedarGRPCConn(ctx); err != nil {
+				return nil, errors.Wrap(err, "error setting up cedar grpc connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
@@ -316,6 +314,9 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 }
 
 func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
+	if c.cedarGRPCClient != nil {
+		return nil
+	}
 	bi, err := c.GetBuildloggerInfo(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error setting up buildlogger sender")
