@@ -122,6 +122,8 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
   - name: github.com/shirou/gopsutil
     version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
+  - name: github.com/StackExchange/wmi
+    version: cbe66965904dbe8a6cd589e2298e5d8b986bd7dd
 
     # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
