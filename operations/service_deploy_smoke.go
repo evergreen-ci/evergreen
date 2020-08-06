@@ -166,7 +166,7 @@ func smokeStartEvergreen() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "error setting up monitor client directory")
 				}
-				if err := clientFile.Close(); err != nil {
+				if err = clientFile.Close(); err != nil {
 					return errors.Wrap(err, "closing evergreen client binary")
 				}
 
