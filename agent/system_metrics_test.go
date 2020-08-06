@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/mongodb/ftdc"
@@ -66,7 +67,9 @@ func TestCollectUptime(t *testing.T) {
 
 func TestCollectProcesses(t *testing.T) {
 	assert := assert.New(t)
-	t.Skip("TODO (EVG-12736): fix (*Process).CreateTime - Process() does not work on MacOS with old version of gopsutil")
+	if runtime.GOOS == "darwin" {
+		t.Skip("TODO (EVG-12736): fix (*Process).CreateTime - Process() does not work on MacOS with old version of gopsutil")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -77,7 +80,9 @@ func TestCollectProcesses(t *testing.T) {
 	assert.NotEmpty(output)
 
 	var processes ProcessesWrapper
-	json.Unmarshal(output, &processes)
+	err = json.Unmarshal(output, &processes)
+	assert.NoError(err)
+	assert.NotEmpty(processes)
 
 	for _, process := range processes.Processes {
 		assert.NotEmpty(process.PID)
