@@ -91,15 +91,15 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	dialOpts, err := getDialOpts(ctx, a.comm)
+	conn, err := a.comm.GetCedarGRPCConn(ctx)
 	if err != nil {
-		tc.logger.System().Error(errors.Wrap(err, "error getting dial options for cedar"))
+		tc.logger.System().Error(errors.Wrap(err, "error getting cedar client connection"))
 	} else {
 		tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
 			Task:       tc.taskModel,
 			Interval:   defaultStatsInterval,
 			Collectors: []metricCollector{},
-			DialOpts:   dialOpts,
+			Conn:       conn,
 		})
 		if err != nil {
 			tc.logger.System().Error(errors.Wrap(err, "error initializing system metrics collector"))

@@ -42,10 +42,8 @@ func (f dataFormat) validate() error {
 type metricCollector interface {
 	// Name returns a string indicating the type of metric collected, such as "uptime".
 	Name() string
-
 	// Format returns the format of the collected data.
 	Format() dataFormat
-
 	// Collect returns the value of the collected metric when the function is called.
 	Collect() ([]byte, error)
 }
@@ -68,7 +66,7 @@ type systemMetricsCollector struct {
 }
 
 // systemMetricsCollectorOptions are the required values for creating a new
-// systemMetricsCollector. Only one of DialOpts or Conn should be set.
+// systemMetricsCollector. At least one of DialOpts or Conn should be set.
 type systemMetricsCollectorOptions struct {
 	Task       *task.Task
 	Interval   time.Duration
@@ -96,10 +94,10 @@ func (s *systemMetricsCollectorOptions) validate() error {
 	}
 
 	if len(s.Collectors) == 0 {
-		return errors.New("must provide at least one metricCollector")
+		return errors.New("must provide at least one metric collector")
 	}
 
-	if (s.DialOpts == nil && s.Conn == nil) || (s.DialOpts != nil && s.Conn != nil) {
+	if s.DialOpts == nil && s.Conn == nil {
 		return errors.New("must provide either options to dial cedar or an existing client connection")
 	}
 
@@ -115,8 +113,8 @@ func (s *systemMetricsCollectorOptions) validate() error {
 }
 
 // newSystemMetricsCollector returns a systemMetricsCollector ready to start
-// collecting from the provided set of MetricCollectors at the provided interval
-// and streaming to cedar.
+// collecting from the provided slice of metric collector objects at the
+// provided interval and streaming to cedar.
 func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollectorOptions) (*systemMetricsCollector, error) {
 	err := opts.validate()
 	if err != nil {
@@ -133,10 +131,10 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	if opts.DialOpts != nil {
-		s.client, err = dialCedar(ctx, opts.DialOpts)
-	} else {
+	if opts.Conn != nil {
 		s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.Conn)
+	} else {
+		s.client, err = dialCedar(ctx, opts.DialOpts)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
@@ -144,8 +142,8 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 	return s, nil
 }
 
-// Start commences collecting metrics using each of the provided MetricCollectors.
-// Regardless of if Start returns an error, Close should still be called
+// Start commences collecting metrics using each of the provided MetricCollector
+// objects. Regardless of if Start returns an error, Close should still be called
 // to close any opened connections, set the exit code, and handle any returned
 // errors. This can also be handled by cancelling the provided context, but
 // any errors will only be logged to the global error logs in this case.

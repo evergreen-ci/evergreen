@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
@@ -332,6 +333,17 @@ func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.B
 	}
 
 	return bi, nil
+}
+
+// GetCedarGRPCConn returns the client connection to cedar if it exists, or
+// creates it if it doesn't exist.
+func (c *communicatorImpl) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
+	if c.cedarGRPCClient == nil {
+		if err := c.createCedarGRPCConn(ctx); err != nil {
+			return nil, errors.Wrap(err, "error setting up cedar grpc connection")
+		}
+	}
+	return c.cedarGRPCClient, nil
 }
 
 // SendLogMessages posts a group of log messages for a task.
