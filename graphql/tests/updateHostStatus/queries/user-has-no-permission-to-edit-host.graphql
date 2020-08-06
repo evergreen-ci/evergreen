@@ -1,3 +1,3 @@
 mutation {
-  restartJasper(hostIds: ["i-0fb9fe0592ea38150"])
+  updateHostStatus(hostIds: ["i-0d0ae8b83366d22be"], status: "running")
 }
