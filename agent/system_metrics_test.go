@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/timber"
 	metrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/pkg/errors"
@@ -122,56 +120,6 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 	s.Assert().NotNil(s.server.Close)
 	s.Assert().NotNil(c.catcher)
 
-}
-
-// TestNewSystemMetricsCollectorWithDialOpts tests that newSystemMetricsCollector
-// properly sets all values and sets up a connection to the server when given
-// options to dial into Cedar.
-func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithDialOpts() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
-	}, &mockMetricCollector{
-		name: "second",
-	}}
-
-	var comm *client.Mock
-	comm = client.NewMock("url")
-	_, err := comm.GetBuildloggerInfo(ctx)
-	s.Require().NoError(err)
-
-	dialOpts := timber.DialCedarOptions{
-		BaseAddress: "localhost",
-		RPCPort:     "3000",
-	}
-	dialServer, err := testutil.NewMockMetricsServerWithDialOpts(ctx, dialOpts)
-	s.Require().NoError(err)
-
-	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		Task:       s.task,
-		Collectors: collectors,
-		DialOpts:   &dialOpts,
-	})
-	s.Require().NoError(err)
-	s.Require().NotNil(c)
-	s.Assert().Equal(collectors, c.collectors)
-	s.Assert().Equal(metrics.SystemMetricsOptions{
-		Project:     "Project",
-		Version:     "Version",
-		Variant:     "Variant",
-		TaskName:    "TaskName",
-		TaskId:      "Id",
-		Execution:   0,
-		Mainline:    !s.task.IsPatchRequest(),
-		Compression: metrics.CompressionTypeNone,
-		Schema:      metrics.SchemaTypeRawEvents,
-	}, *c.taskOpts)
-	s.Assert().Equal(time.Minute, c.interval)
-	s.Require().NotNil(c.client)
-	s.Require().NoError(c.client.CloseSystemMetrics(ctx, "ID", true))
-	s.Assert().NotNil(dialServer.Close)
-	s.Assert().NotNil(c.catcher)
 }
 
 // TestNewSystemMetricsCollectorWithInvalidOpts tests that newSystemMetricsCollector

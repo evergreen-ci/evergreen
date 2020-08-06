@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/timber"
 	metrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -66,12 +64,11 @@ type systemMetricsCollector struct {
 }
 
 // systemMetricsCollectorOptions are the required values for creating a new
-// systemMetricsCollector. At least one of DialOpts or Conn should be set.
+// systemMetricsCollector.
 type systemMetricsCollectorOptions struct {
 	Task       *task.Task
 	Interval   time.Duration
 	Collectors []metricCollector
-	DialOpts   *timber.DialCedarOptions
 	Conn       *grpc.ClientConn
 
 	// These options configure the timber stream buffer, and can be left empty
@@ -97,8 +94,8 @@ func (s *systemMetricsCollectorOptions) validate() error {
 		return errors.New("must provide at least one metric collector")
 	}
 
-	if s.DialOpts == nil && s.Conn == nil {
-		return errors.New("must provide either options to dial cedar or an existing client connection")
+	if s.Conn == nil {
+		return errors.New("must provide an existing client connection to cedar")
 	}
 
 	if s.BufferTimedFlushInterval < 0 {
@@ -131,11 +128,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	if opts.Conn != nil {
-		s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.Conn)
-	} else {
-		s.client, err = dialCedar(ctx, opts.DialOpts)
-	}
+	s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.Conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}
@@ -271,31 +264,4 @@ func getSystemMetricsInfo(t *task.Task) *metrics.SystemMetricsOptions {
 		Compression: metrics.CompressionTypeNone,
 		Schema:      metrics.SchemaTypeRawEvents,
 	}
-}
-
-func getDialOpts(ctx context.Context, c client.Communicator) (*timber.DialCedarOptions, error) {
-	bi, err := c.GetBuildloggerInfo(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting cedar dial options")
-	}
-	dialOpts := timber.DialCedarOptions{
-		BaseAddress: bi.BaseURL,
-		RPCPort:     bi.RPCPort,
-		Username:    bi.Username,
-		Password:    bi.Password,
-		APIKey:      bi.APIKey,
-		Retries:     10,
-	}
-	return &dialOpts, nil
-}
-
-func dialCedar(ctx context.Context, dialOpts *timber.DialCedarOptions) (*metrics.SystemMetricsClient, error) {
-	connOpts := metrics.ConnectionOptions{
-		DialOpts: *dialOpts,
-	}
-	mc, err := metrics.NewSystemMetricsClient(ctx, connOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem creating new system metrics client")
-	}
-	return mc, nil
 }
