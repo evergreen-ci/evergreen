@@ -4,6 +4,7 @@
     hostUrl
     distroId
     startedBy
+    provider
     user
     status
     runningTask {

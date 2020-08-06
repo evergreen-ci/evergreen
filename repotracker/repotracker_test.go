@@ -602,7 +602,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection))
+	s.NoError(db.ClearCollections(model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
@@ -778,6 +778,58 @@ tasks:
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Len(tasks, 0)
+}
+
+func (s *CreateVersionFromConfigSuite) TestVersionWithDependencies() {
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+  depends_on: 
+  - name: task2
+- name: task2
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	alias := model.ProjectAlias{
+		Alias:     evergreen.GithubAlias,
+		ProjectID: s.ref.Identifier,
+		Task:      "task1",
+		Variant:   ".*",
+	}
+	s.NoError(alias.Upsert())
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubAlias}, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := model.VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.Require().NotNil(dbVersion)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Equal(evergreen.VersionCreated, dbVersion.Status)
+	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
+
+	s.Require().Len(v.BuildIds, 1)
+	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	s.NoError(err)
+	s.Equal(v.Id, dbBuild.Version)
+	s.Len(dbBuild.Tasks, 2)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 2)
 }
 
 func TestCreateManifest(t *testing.T) {

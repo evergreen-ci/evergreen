@@ -558,7 +558,7 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
 	}
 
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild, syncAtEndOpts, distroAliases, createTime)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, createTime)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -597,6 +597,10 @@ type BuildCreateArgs struct {
 // from the corresponding version and project and a list of tasks. Note that the caller
 // is responsible for inserting the created build and task documents
 func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Tasks, error) {
+	// avoid adding all tasks in the case of no tasks matching aliases
+	if len(args.Aliases) > 0 && len(args.TaskNames) == 0 {
+		return nil, nil, nil
+	}
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
@@ -654,7 +658,8 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames,
+		args.DisplayNames, args.GeneratedBy, nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -718,7 +723,7 @@ type displayTaskInfo struct {
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
-	aliases ProjectAliases, tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
+	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -737,21 +742,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, task := range buildVariant.Tasks {
-		if aliases != nil {
-			match, err := aliases.HasMatchingTask(buildVariant.Name, buildVariant.Tags, project.FindProjectTask(task.Name))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error creating tasks with alias filter",
-					"task":    task.Name,
-					"project": project.Identifier,
-					"alias":   aliases,
-				}))
-				continue
-			}
-			if !match {
-				continue
-			}
-		}
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
 		// sanity check that the config isn't malformed
@@ -834,7 +824,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
-
 		// set the new task's dependencies
 		if len(t.DependsOn) == 1 &&
 			t.DependsOn[0].Name == AllDependencies &&

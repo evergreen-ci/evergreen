@@ -83,7 +83,12 @@ type Mutation {
   restartJasper(hostIds: [String!]!): Int!
   updateStatus(hostIds: [String!]!, status: String!, notes: String!): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
+  updatePublicKey(
+    targetKeyName: String!
+    updateInfo: PublicKeyInput!
+  ): [PublicKey!]!
 }
 
 enum TaskSortCategory {
@@ -175,6 +180,19 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+input SpawnHostInput {
+  distroId: String!
+  region: String!
+  savePublicKey: Boolean!
+  publicKey: PublicKeyInput!
+  userDataScript: String
+  expiration: Time 
+  noExpiration: Boolean!
+  setUpScript: String
+  isVirtualWorkStation: Boolean!
+  homeVolumeSize: Int 
+}
+
 type Host {
   id: ID!
   hostUrl: String!
@@ -209,6 +227,7 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
 }
+
 type TaskInfo {
   id: ID
   name: String
