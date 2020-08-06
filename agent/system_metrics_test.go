@@ -16,7 +16,7 @@ func TestCollectDiskUsage(t *testing.T) {
 	ctx := context.TODO()
 	diskUsageCollector := &diskUsageCollector{}
 
-	user, _ := user.Current()
+	user, err := user.Current()
 	output, err := diskUsageCollector.Collect(ctx, user.HomeDir)
 	assert.NoError(err)
 
