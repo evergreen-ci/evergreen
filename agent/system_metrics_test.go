@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os/user"
+	"os"
 	"testing"
 
 	"github.com/mongodb/ftdc"
@@ -16,8 +16,8 @@ func TestCollectDiskUsage(t *testing.T) {
 	ctx := context.TODO()
 	diskUsageCollector := &diskUsageCollector{}
 
-	user, err := user.Current()
-	output, err := diskUsageCollector.Collect(ctx, user.HomeDir)
+	dir, _ := os.Getwd()
+	output, err := diskUsageCollector.Collect(ctx, dir)
 	assert.NoError(err)
 
 	iter := ftdc.ReadMetrics(ctx, bytes.NewReader(output))
