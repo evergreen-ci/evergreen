@@ -60,6 +60,8 @@ import:
   - package: github.com/evergreen-ci/certdepot
   - package: github.com/shirou/gopsutil
   - package: github.com/StackExchange/wmi
+  - package: github.com/go-ole/go-ole
+  - package: github.com/shirou/w32
 
   # git library and its dependencies
   - package: gopkg.in/src-d/go-git.v4
