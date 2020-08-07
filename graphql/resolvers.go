@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -1432,6 +1433,40 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
 	}
 	return true, nil
+}
+
+func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
+	user := route.MustHaveUser(ctx)
+
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+	}
+
+	return hostsUpdated, nil
+}
+
+func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
+	user := route.MustHaveUser(ctx)
+
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+
+	rq := evergreen.GetEnvironment().RemoteQueue()
+
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, status, *notes, user))
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+
+	return hostsUpdated, nil
 }
 
 func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*restModel.APIPubKey, error) {
