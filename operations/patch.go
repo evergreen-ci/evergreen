@@ -137,6 +137,9 @@ func Patch() cli.Command {
 				}
 			}
 
+			if err = params.validateSubmission(diffData); err != nil {
+				return err
+			}
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
 				return err
@@ -217,6 +220,9 @@ func PatchFile() cli.Command {
 				}
 			}
 
+			if err = params.validateSubmission(diffData); err != nil {
+				return err
+			}
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
 				return err

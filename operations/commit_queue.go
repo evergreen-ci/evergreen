@@ -296,6 +296,8 @@ func backport() cli.Command {
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
+			requireStringFlag(existingPatchFlag),
+			requireStringSliceFlagMinLength(projectFlagName, 1),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -329,7 +331,7 @@ func backport() cli.Command {
 			for _, project := range projects {
 				patchParams.Project = project
 				var p *patch.Patch
-				p, err = patchParams.createPatch(ac, nil)
+				p, err = patchParams.createPatch(ac, &localDiff{}) //TODO: fix base to be on the right branch
 				if err != nil {
 					results[project] = result{Err: err}
 					continue
@@ -547,6 +549,9 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	}
 	patchParams.Description = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
 
+	if err = patchParams.validateSubmission(diffData); err != nil {
+		return err
+	}
 	patch, err := patchParams.createPatch(ac, diffData)
 	if err != nil {
 		return err

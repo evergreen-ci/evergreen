@@ -116,6 +116,15 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+func requireStringSliceFlagMinLength(name string, minLen int) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		if len(c.StringSlice(name)) < minLen {
+			return errors.Errorf("flag '--%s' must be specified at least '%d' times", name, minLen)
+		}
+		return nil
+	}
+}
+
 // nolint: unused, deadcode
 func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {

@@ -90,24 +90,6 @@ type patchSubmission struct {
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
-	if err := validatePatchSize(diffData, p.Large); err != nil {
-		return nil, err
-	}
-	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
-			return nil, errors.New("patch aborted")
-		}
-	} else if !p.SkipConfirm && diffData.patchSummary != "" {
-		grip.Info(diffData.patchSummary)
-		if diffData.log != "" {
-			grip.Info(diffData.log)
-		}
-
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil, errors.New("patch aborted")
-		}
-	}
-
 	patchSub := patchSubmission{
 		projectId:         p.Project,
 		patchData:         diffData.fullPatch,
@@ -130,6 +112,28 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 	}
 
 	return newPatch, nil
+}
+
+func (p *patchParams) validateSubmission(diffData *localDiff) error {
+	if err := validatePatchSize(diffData, p.Large); err != nil {
+		return err
+	}
+	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
+		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
+			return errors.New("patch aborted")
+		}
+	} else if !p.SkipConfirm && diffData.patchSummary != "" {
+		grip.Info(diffData.patchSummary)
+		if diffData.log != "" {
+			grip.Info(diffData.log)
+		}
+
+		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+			return errors.New("patch aborted")
+		}
+	}
+
+	return nil
 }
 
 func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {

@@ -234,6 +234,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Finalize:      params.Finalize,
 		Module:        params.Module,
 		Alias:         params.Alias,
+		Backport:      params.Backport,
 	}, nil
 }
 
