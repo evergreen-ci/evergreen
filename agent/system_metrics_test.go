@@ -14,7 +14,8 @@ import (
 
 func TestCollectDiskUsage(t *testing.T) {
 	assert := assert.New(t)
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	diskUsageCollector := &diskUsageCollector{}
 
 	dir, _ := os.Getwd()
@@ -42,7 +43,8 @@ func TestCollectDiskUsage(t *testing.T) {
 
 func TestCollectUptime(t *testing.T) {
 	assert := assert.New(t)
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	uptimeCollector := &uptimeCollector{}
 	output, err := uptimeCollector.Collect(ctx)
 	assert.NoError(err)

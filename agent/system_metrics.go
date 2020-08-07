@@ -64,11 +64,11 @@ func NewDiskUsageCollector() *diskUsageCollector {
 	return new(diskUsageCollector)
 }
 
-func (collector *diskUsageCollector) Name() string { return "disk_usage" }
+func (c *diskUsageCollector) Name() string { return "disk_usage" }
 
-func (collector *diskUsageCollector) Format() DataFormat { return DataFormatFTDC }
+func (c *diskUsageCollector) Format() DataFormat { return DataFormatFTDC }
 
-func (collector *diskUsageCollector) Collect(ctx context.Context, dir string) ([]byte, error) {
+func (c *diskUsageCollector) Collect(ctx context.Context, dir string) ([]byte, error) {
 	usage, err := disk.Usage(dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
@@ -86,7 +86,7 @@ func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) 
 	opts := metrics.CollectJSONOptions{
 		InputSource:   bytes.NewReader(jsonMetrics),
 		SampleCount:   1,
-		FlushInterval: 1 * time.Second,
+		FlushInterval: time.Second,
 	}
 
 	output, err := metrics.CollectJSONStream(ctx, opts)
@@ -104,14 +104,14 @@ func NewUptimeCollector() *uptimeCollector {
 }
 
 type uptimeWrapper struct {
-	Uptime uint64 `json:"uptime"`
+	Uptime uint64 `json:"uptime,omitempty"`
 }
 
-func (collector *uptimeCollector) Name() string { return "uptime" }
+func (c *uptimeCollector) Name() string { return "uptime" }
 
-func (collector *uptimeCollector) Format() DataFormat { return DataFormatFTDC }
+func (c *uptimeCollector) Format() DataFormat { return DataFormatFTDC }
 
-func (collector *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
+func (c *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
 	uptime, err := host.Uptime()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
@@ -129,28 +129,28 @@ func NewProcessCollector() *processCollector {
 }
 
 type processesWrapper struct {
-	Processes []ProcessData `json:"processes"`
+	Processes []processData `json:"processes,omitempty"`
 }
 
-type ProcessData struct {
-	PID               int32   `json:"pid"`
-	CPUPercent        float64 `json:"%cpu"`
-	MemoryPercent     float32 `json:"%mem"`
-	VirtualMemorySize uint64  `json:"vsz"`
-	ResidentSetSize   uint64  `json:"rss"`
-	Terminal          string  `json:"tt"`
-	Stat              string  `json:"stat"`
+type processData struct {
+	PID               int32   `json:"pid,omitempty"`
+	CPUPercent        float64 `json:"percent_cpu,omitempty"`
+	MemoryPercent     float32 `json:"percent_mem,omitempty"`
+	VirtualMemorySize uint64  `json:"vsz,omitempty"`
+	ResidentSetSize   uint64  `json:"rss,omitempty"`
+	Terminal          string  `json:"tt,omitempty"`
+	Stat              string  `json:"stat,omitempty"`
 	// TODO (EVG-12736): fix (*Process).CreateTime
 	// Started           int64          `json:"started"`
-	Time    *cpu.TimesStat `json:"time"`
-	Command string         `json:"command"`
+	Time    *cpu.TimesStat `json:"time,omitempty"`
+	Command string         `json:"command,omitempty"`
 }
 
-func (collector *processCollector) Name() string { return "process" }
+func (c *processCollector) Name() string { return "process" }
 
-func (collector *processCollector) Format() DataFormat { return DataFormatJSON }
+func (c *processCollector) Format() DataFormat { return DataFormatJSON }
 
-func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) {
+func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
 	// TODO (EVG-12736): fix (*Process).CreateTime
 	if runtime.GOOS == "darwin" {
 		return []byte{}, nil
@@ -169,8 +169,8 @@ func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) 
 	return results, errors.Wrap(err, "problem marshaling processes into JSON")
 }
 
-func createProcMetrics(procs []*process.Process) []ProcessData {
-	procMetrics := make([]ProcessData, len(procs))
+func createProcMetrics(procs []*process.Process) []processData {
+	procMetrics := make([]processData, len(procs))
 
 	for i, process := range procs {
 		cpuPercent, err := process.CPUPercent()
@@ -208,7 +208,7 @@ func createProcMetrics(procs []*process.Process) []ProcessData {
 			name = ""
 		}
 
-		processWrapper := ProcessData{
+		processWrapper := processData{
 			PID:               process.Pid,
 			CPUPercent:        cpuPercent,
 			MemoryPercent:     memoryPercent,
