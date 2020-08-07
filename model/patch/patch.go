@@ -137,6 +137,7 @@ type Patch struct {
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	Backport        string           `bson:"backport"`
+	MergePatch      string           `bson:merge_patch`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
@@ -191,6 +192,18 @@ func (p *Patch) SetDescription(desc string) error {
 		bson.M{
 			"$set": bson.M{
 				DescriptionKey: desc,
+			},
+		},
+	)
+}
+
+func (p *Patch) SetEnqueued(newPatchID string) error {
+	p.MergePatch = newPatchID
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				MergePatchKey: newPatchID,
 			},
 		},
 	)

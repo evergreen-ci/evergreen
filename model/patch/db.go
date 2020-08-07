@@ -40,6 +40,7 @@ var (
 	PatchedConfigKey    = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
 	AliasKey            = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey  = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
+	MergePatchKey       = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 
 	// BSON fields for sync at end struct
 	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")

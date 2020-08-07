@@ -541,6 +541,11 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no patch '%s' found", e.PatchID)
 	}
 
+	// only enqueue once
+	if len(existingPatch.MergePatch) != 0 {
+		return nil
+	}
+
 	mergePatch, err := MakeMergePatchFromExisting(existingPatch)
 	if err != nil {
 		return errors.Wrap(err, "problem making merge patch")
@@ -616,6 +621,14 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")
+	}
+
+	if err = existingPatch.SetEnqueued(patchDoc.Id.Hex()); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "can't mark patch enqueued",
+			"existing_patch": existingPatch.Id.Hex(),
+			"merge_patch":    patchDoc.Id.Hex(),
+		}))
 	}
 
 	return patchDoc, nil
