@@ -79,7 +79,7 @@ func TestCollectProcesses(t *testing.T) {
 	assert.NoError(err)
 	assert.NotEmpty(output)
 
-	var processes ProcessesWrapper
+	var processes processesWrapper
 	err = json.Unmarshal(output, &processes)
 	assert.NoError(err)
 	assert.NotEmpty(processes)

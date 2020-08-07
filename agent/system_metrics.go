@@ -59,6 +59,7 @@ const (
 
 type diskUsageCollector struct{}
 
+// NewDiskUsageCollector creates a diskUsageCollector object.
 func NewDiskUsageCollector() *diskUsageCollector {
 	return new(diskUsageCollector)
 }
@@ -97,7 +98,12 @@ func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) 
 
 type uptimeCollector struct{}
 
-type UptimeWrapper struct {
+// NewUptimeCollector creates an uptimeCollector object.
+func NewUptimeCollector() *uptimeCollector {
+	return new(uptimeCollector)
+}
+
+type uptimeWrapper struct {
 	Uptime uint64 `json:"uptime"`
 }
 
@@ -111,13 +117,18 @@ func (collector *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	uptimeWrapper := UptimeWrapper{uptime}
-	return convertJSONToFTDC(ctx, uptimeWrapper)
+	uptimeWrap := uptimeWrapper{uptime}
+	return convertJSONToFTDC(ctx, uptimeWrap)
 }
 
 type processCollector struct{}
 
-type ProcessesWrapper struct {
+// NewProcessCollector creates a processCollector object.
+func NewProcessCollector() *processCollector {
+	return new(processCollector)
+}
+
+type processesWrapper struct {
 	Processes []ProcessData `json:"processes"`
 }
 
@@ -152,9 +163,9 @@ func (collector *processCollector) Collect(ctx context.Context) ([]byte, error) 
 	}
 
 	procMetrics := createProcMetrics(procs)
-	processesWrapper := ProcessesWrapper{procMetrics}
+	procWrapper := processesWrapper{procMetrics}
 
-	results, err := json.Marshal(processesWrapper)
+	results, err := json.Marshal(procWrapper)
 	return results, errors.Wrap(err, "problem marshaling processes into JSON")
 }
 
