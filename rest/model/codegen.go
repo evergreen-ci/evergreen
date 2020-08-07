@@ -464,10 +464,16 @@ func generateArrayConversions(modelName string, modelType types.Type, restName, 
 		TypeConversionFunc: convertFuncs.converter,
 	}
 	bfsCode, err := output(lineTemplate, bfsData)
+	if err != nil {
+		return "", errors.Wrap(err, "error generating line code")
+	}
 	tsData := conversionLine{
 		TypeConversionFunc: convertFuncs.inverter,
 	}
 	tsCode, err := output(lineTemplate, tsData)
+	if err != nil {
+		return "", errors.Wrap(err, "error generating line code")
+	}
 	modelTypeStr := fmt.Sprintf("[]%s", (*arrayElem).String())
 	serviceData := arrayConversionInfo{
 		FromType:       shortenPackage(modelTypeStr),
