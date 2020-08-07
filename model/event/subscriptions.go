@@ -515,6 +515,12 @@ func NewExpiringPatchOutcomeSubscription(id string, sub Subscriber) Subscription
 	return subscription
 }
 
+func NewExpiringPatchSuccessSubscription(id string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerSuccess, id, sub)
+	subscription.LastUpdated = time.Now()
+	return subscription
+}
+
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerOutcome)
 }

@@ -148,9 +148,6 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	case event.GithubPullRequestSubscriberType:
 		return checkFlag(j.flags.GithubStatusAPIDisabled)
 
-	case event.GithubMergeSubscriberType:
-		return checkFlag(j.flags.CommitQueueDisabled)
-
 	case event.SlackSubscriberType:
 		return checkFlag(j.flags.SlackNotificationsDisabled)
 
@@ -166,7 +163,7 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	case event.EmailSubscriberType:
 		return checkFlag(j.flags.EmailNotificationsDisabled)
 
-	case event.CommitQueueDequeueSubscriberType:
+	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 		return checkFlag(j.flags.CommitQueueDisabled)
 
 	default:

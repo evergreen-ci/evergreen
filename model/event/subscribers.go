@@ -192,6 +192,13 @@ func NewCommitQueueDequeueSubscriber() Subscriber {
 	}
 }
 
+func NewEnqueuePatchSubscriber() Subscriber {
+	return Subscriber{
+		Type:   EnqueuePatchSubscriberType,
+		Target: nil,
+	}
+}
+
 func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubPullRequestSubscriberType,

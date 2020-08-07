@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
@@ -81,7 +82,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType:
+	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 		return evergreen.SenderGeneric, nil
 
 	default:
@@ -211,6 +212,14 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 
 		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
+	case event.EnqueuePatchSubscriberType:
+		payload, ok := n.Payload.(*model.EnqueuePatch)
+		if !ok || payload == nil {
+			return nil, errors.New("commit-queue-dequeue payload is invalid")
+		}
+
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
+
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
@@ -279,6 +288,7 @@ type NotificationStats struct {
 	Slack              int `json:"slack" bson:"slack" yaml:"slack"`
 	GithubMerge        int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 	CommitQueueDequeue int `json:"commit_queue_dequeue" bson:"commit_queue_dequeue" yaml:"commit_queue_dequeue"`
+	EnqueuePatch       int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -337,6 +347,9 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.CommitQueueDequeueSubscriberType:
 			nStats.CommitQueueDequeue = data.Count
+
+		case event.EnqueuePatchSubscriberType:
+			nStats.EnqueuePatch = data.Count
 
 		default:
 			grip.Error(message.Fields{

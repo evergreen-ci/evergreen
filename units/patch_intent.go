@@ -341,7 +341,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if patchDoc.IsBackport() {
-		// TODO: add subscriber
+		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
+		if err = backportSubscription.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert backport subscription"))
+		}
 	}
 
 	if catcher.HasErrors() {

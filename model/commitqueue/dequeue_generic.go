@@ -15,7 +15,7 @@ type DequeueItem struct {
 }
 
 func (d *DequeueItem) String() string {
-	return fmt.Sprintf("commit queue '%s' item '%s'", d.ProjectID, d.Item)
+	return fmt.Sprintf("dequeue commit queue '%s' item '%s'", d.ProjectID, d.Item)
 }
 
 func (d *DequeueItem) Send() error {
