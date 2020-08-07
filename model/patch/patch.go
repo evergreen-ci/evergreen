@@ -137,7 +137,7 @@ type Patch struct {
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	Backport        string           `bson:"backport"`
-	MergePatch      string           `bson:merge_patch`
+	MergePatch      string           `bson:"merge_patch"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`

@@ -19,6 +19,8 @@ const (
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
 	tasksFlagName             = "tasks"
+	patchAliasFlagName        = "alias"
+	patchFinalizeFlagName     = "finalize"
 	syncBuildVariantsFlagName = "sync_variants"
 	syncTasksFlagName         = "sync_tasks"
 	syncTimeoutFlagName       = "sync_timeout"
@@ -98,6 +100,20 @@ func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(tasksFlagName, "t"),
 		Usage: "task names",
+	})
+}
+
+func addPatchAliasFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(patchAliasFlagName, "a"),
+		Usage: "patch alias (set by project admin)",
+	})
+}
+
+func addPatchFinalizeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  joinFlagNames(patchFinalizeFlagName, "f"),
+		Usage: "schedule tasks immediately",
 	})
 }
 

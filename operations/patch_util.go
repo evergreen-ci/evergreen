@@ -70,6 +70,7 @@ type patchParams struct {
 	Uncommitted       bool
 	PreserveCommits   bool
 	Ref               string
+	Backport          string
 }
 
 type patchSubmission struct {
@@ -85,9 +86,10 @@ type patchSubmission struct {
 	syncStatuses      []string
 	syncTimeout       time.Duration
 	finalize          bool
+	backport          string
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
+func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
 		return nil, err
 	}
@@ -119,15 +121,21 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		syncStatuses:      p.SyncStatuses,
 		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
+		backport:          p.Backport,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
 		return nil, err
 	}
+
+	return newPatch, nil
+}
+
+func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	grip.Info("Patch successfully created.")
@@ -137,15 +145,15 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		browserCmd, err := findBrowserCommand()
 		if err != nil || len(browserCmd) == 0 {
 			grip.Warningf("cannot find browser command: %s", err)
-			return newPatch, nil
+			return nil
 		}
 
 		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return newPatch, cmd.Run()
+		return cmd.Run()
 	}
 
-	return newPatch, nil
+	return nil
 }
 
 func findBrowserCommand() ([]string, error) {
