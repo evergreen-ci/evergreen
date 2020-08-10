@@ -692,8 +692,13 @@ func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, er
 
 // GetRecentVersions retrieves a list of recent versions for a project,
 // regardless of their success
-func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
-	resp, err := ac.get(fmt.Sprintf("projects/%s/versions", projectID), nil)
+func (ac *legacyClient) GetRecentVersions(projectID, requester string, limit int) ([]restModel.APIVersion, error) {
+	path := fmt.Sprintf("projects/%s/versions?limit=%d", projectID, limit)
+	if len(requester) > 0 {
+		path = fmt.Sprintf("%s&requester=%s", path, requester)
+	}
+
+	resp, err := ac.get(path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -706,23 +711,12 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 		return nil, NewAPIError(resp)
 	}
 
-	v := struct {
-		Versions []struct {
-			Id string `json:"version_id"`
-		} `json:"versions"`
-	}{}
-
-	err = utility.ReadJSON(resp.Body, &v)
+	versions := []restModel.APIVersion{}
+	err = utility.ReadJSON(resp.Body, &versions)
 	if err != nil {
 		return nil, err
 	}
-
-	out := []string{}
-	for _, v := range v.Versions {
-		out = append(out, v.Id)
-	}
-
-	return out, nil
+	return versions, nil
 }
 
 func (ac *legacyClient) UpdateRole(role *gimlet.Role) error {

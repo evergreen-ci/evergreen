@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -65,7 +66,7 @@ func fetchAllProjectConfigs() cli.Command {
 // and writes it to "project_name.yml" locally.
 func fetchAndWriteConfig(c *legacyClient, project string) error {
 	grip.Infof("Downloading configuration for %s", project)
-	versions, err := c.GetRecentVersions(project)
+	versions, err := c.GetRecentVersions(project, "", 1)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch recent versions for %s", project)
 	}
@@ -73,9 +74,10 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 		return errors.Errorf("WARNING: project %s has no versions", project)
 	}
 
-	config, err := c.GetConfig(versions[0])
+	versionID := restModel.FromStringPtr(versions[0].Id)
+	config, err := c.GetConfig(versionID)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
+		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versionID)
 	}
 
 	err = ioutil.WriteFile(project+".yml", config, 0644)

@@ -327,11 +327,16 @@ func backport() cli.Command {
 				return errors.Errorf("Patch '%s' is not a commit queue patch", patchParams.Backport)
 			}
 
+			latestVersions, err := ac.GetRecentVersions(existingPatch.Project, evergreen.RepotrackerVersionRequester, 1)
+			if err != nil {
+				return errors.Errorf("can't get latest repotracker version for project '%s'", existingPatch.Project)
+			}
+
 			results := make(map[string]result)
 			for _, project := range projects {
 				patchParams.Project = project
 				var p *patch.Patch
-				p, err = patchParams.createPatch(ac, &localDiff{}) //TODO: fix base to be on the right branch
+				p, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})
 				if err != nil {
 					results[project] = result{Err: err}
 					continue
