@@ -246,7 +246,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
-func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostID string, action string) (*restModel.APIHost, error) {
+func (r *mutationResolver) UpdateHostStatus2(ctx context.Context, hostID string, action string) (*restModel.APIHost, error) {
 	host, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
