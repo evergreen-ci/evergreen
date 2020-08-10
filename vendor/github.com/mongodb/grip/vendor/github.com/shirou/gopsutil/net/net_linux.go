@@ -50,7 +50,7 @@ func IOCounters(pernic bool) ([]IOCountersStat, error) {
 
 func IOCountersWithContext(ctx context.Context, pernic bool) ([]IOCountersStat, error) {
 	filename := common.HostProc("net/dev")
-	return IOCountersByFile(pernic, filename)
+	return IOCountersByFileWithContext(ctx, pernic, filename)
 }
 
 func IOCountersByFile(pernic bool, filename string) ([]IOCountersStat, error) {
@@ -618,7 +618,7 @@ func PidsWithContext(ctx context.Context) ([]int32, error) {
 // FIXME: Import process occures import cycle.
 // see remarks on pids()
 type process struct {
-	Pid  int32 `json:"pid" bson:"pid,omitempty"`
+	Pid  int32 `json:"pid"`
 	uids []int32
 }
 

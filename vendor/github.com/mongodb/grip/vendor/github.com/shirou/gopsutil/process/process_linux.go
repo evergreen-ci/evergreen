@@ -30,13 +30,13 @@ const (
 
 // MemoryInfoExStat is different between OSes
 type MemoryInfoExStat struct {
-	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
-	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
-	Shared uint64 `json:"shared" bson:"shared,omitempty"` // bytes
-	Text   uint64 `json:"text" bson:"text,omitempty"`     // bytes
-	Lib    uint64 `json:"lib" bson:"lib,omitempty"`       // bytes
-	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
-	Dirty  uint64 `json:"dirty" bson:"dirty,omitempty"`   // bytes
+	RSS    uint64 `json:"rss"`    // bytes
+	VMS    uint64 `json:"vms"`    // bytes
+	Shared uint64 `json:"shared"` // bytes
+	Text   uint64 `json:"text"`   // bytes
+	Lib    uint64 `json:"lib"`    // bytes
+	Data   uint64 `json:"data"`   // bytes
+	Dirty  uint64 `json:"dirty"`  // bytes
 }
 
 func (m MemoryInfoExStat) String() string {
@@ -45,17 +45,17 @@ func (m MemoryInfoExStat) String() string {
 }
 
 type MemoryMapsStat struct {
-	Path         string `json:"path" bson:"path,omitempty"`
-	Rss          uint64 `json:"rss" bson:"rss,omitempty"`
-	Size         uint64 `json:"size" bson:"size,omitempty"`
-	Pss          uint64 `json:"pss" bson:"pss,omitempty"`
-	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean,omitempty"`
-	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty,omitempty"`
-	PrivateClean uint64 `json:"privateClean" bson:"privateClean,omitempty"`
-	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty,omitempty"`
-	Referenced   uint64 `json:"referenced" bson:"referenced,omitempty"`
-	Anonymous    uint64 `json:"anonymous" bson:"anonymous,omitempty"`
-	Swap         uint64 `json:"swap" bson:"swap,omitempty"`
+	Path         string `json:"path"`
+	Rss          uint64 `json:"rss"`
+	Size         uint64 `json:"size"`
+	Pss          uint64 `json:"pss"`
+	SharedClean  uint64 `json:"sharedClean"`
+	SharedDirty  uint64 `json:"sharedDirty"`
+	PrivateClean uint64 `json:"privateClean"`
+	PrivateDirty uint64 `json:"privateDirty"`
+	Referenced   uint64 `json:"referenced"`
+	Anonymous    uint64 `json:"anonymous"`
+	Swap         uint64 `json:"swap"`
 }
 
 // String returns JSON value of the process.
@@ -226,6 +226,14 @@ func (p *Process) GidsWithContext(ctx context.Context) ([]int32, error) {
 		return []int32{}, err
 	}
 	return p.gids, nil
+}
+
+func (p *Process) GroupsWithContext(ctx context.Context) ([]int32, error) {
+	err := p.fillFromStatusWithContext(ctx)
+	if err != nil {
+		return []int32{}, err
+	}
+	return p.groups, nil
 }
 
 // Terminal returns a terminal which is associated with the process.
@@ -576,7 +584,8 @@ func (p *Process) MemoryMapsWithContext(ctx context.Context, grouped bool) (*[]M
 			if len(field) < 2 {
 				continue
 			}
-			v := strings.Trim(field[1], " kB") // remove last "kB"
+			v := strings.Trim(field[1], "kB") // remove last "kB"
+			v = strings.TrimSpace(v)
 			t, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
 				return m, err
@@ -610,11 +619,11 @@ func (p *Process) MemoryMapsWithContext(ctx context.Context, grouped bool) (*[]M
 
 	blocks := make([]string, 16)
 	for _, line := range lines {
-		field := strings.Split(line, " ")
-		if strings.HasSuffix(field[0], ":") == false {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && !strings.HasSuffix(fields[0], ":") {
 			// new block section
 			if len(blocks) > 0 {
-				g, err := getBlock(field, blocks)
+				g, err := getBlock(fields, blocks)
 				if err != nil {
 					return &ret, err
 				}
@@ -1014,6 +1023,16 @@ func (p *Process) fillFromStatusWithContext(ctx context.Context) error {
 				}
 				p.gids = append(p.gids, int32(v))
 			}
+		case "Groups":
+			groups := strings.Fields(value)
+			p.groups = make([]int32, 0, len(groups))
+			for _, i := range groups {
+				v, err := strconv.ParseInt(i, 10, 32)
+				if err != nil {
+					return err
+				}
+				p.groups = append(p.groups, int32(v))
+			}
 		case "Threads":
 			v, err := strconv.ParseInt(value, 10, 32)
 			if err != nil {
@@ -1157,10 +1176,19 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 		return 0, 0, nil, 0, 0, 0, nil, err
 	}
 
+	// There is no such thing as iotime in stat file.  As an approximation, we
+	// will use delayacct_blkio_ticks (aggregated block I/O delays, as per Linux
+	// docs).  Note: I am assuming at least Linux 2.6.18
+	iotime, err := strconv.ParseFloat(fields[i+40], 64)
+	if err != nil {
+		iotime = 0 // Ancient linux version, most likely
+	}
+
 	cpuTimes := &cpu.TimesStat{
 		CPU:    "cpu",
 		User:   float64(utime / ClockTicks),
 		System: float64(stime / ClockTicks),
+		Iowait: float64(iotime / ClockTicks),
 	}
 
 	bootTime, _ := common.BootTimeWithContext(ctx)

@@ -3,11 +3,7 @@ package net
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
-	"strconv"
-	"strings"
-	"syscall"
 
 	"github.com/shirou/gopsutil/internal/common"
 )
@@ -15,81 +11,81 @@ import (
 var invoke common.Invoker = common.Invoke{}
 
 type IOCountersStat struct {
-	Name        string `json:"name" bson:"name,omitempty"`               // interface name
-	BytesSent   uint64 `json:"bytesSent" bson:"bytesSent,omitempty"`     // number of bytes sent
-	BytesRecv   uint64 `json:"bytesRecv" bson:"bytesRecv,omitempty"`     // number of bytes received
-	PacketsSent uint64 `json:"packetsSent" bson:"packetsSent,omitempty"` // number of packets sent
-	PacketsRecv uint64 `json:"packetsRecv" bson:"packetsRecv,omitempty"` // number of packets received
-	Errin       uint64 `json:"errin" bson:"errin,omitempty"`             // total number of errors while receiving
-	Errout      uint64 `json:"errout" bson:"errout,omitempty"`           // total number of errors while sending
-	Dropin      uint64 `json:"dropin" bson:"dropin,omitempty"`           // total number of incoming packets which were dropped
-	Dropout     uint64 `json:"dropout" bson:"dropout,omitempty"`         // total number of outgoing packets which were dropped (always 0 on OSX and BSD)
-	Fifoin      uint64 `json:"fifoin" bson:"fifoin,omitempty"`           // total number of FIFO buffers errors while receiving
-	Fifoout     uint64 `json:"fifoout" bson:"fifoout,omitempty"`         // total number of FIFO buffers errors while sending
+	Name        string `json:"name"`        // interface name
+	BytesSent   uint64 `json:"bytesSent"`   // number of bytes sent
+	BytesRecv   uint64 `json:"bytesRecv"`   // number of bytes received
+	PacketsSent uint64 `json:"packetsSent"` // number of packets sent
+	PacketsRecv uint64 `json:"packetsRecv"` // number of packets received
+	Errin       uint64 `json:"errin"`       // total number of errors while receiving
+	Errout      uint64 `json:"errout"`      // total number of errors while sending
+	Dropin      uint64 `json:"dropin"`      // total number of incoming packets which were dropped
+	Dropout     uint64 `json:"dropout"`     // total number of outgoing packets which were dropped (always 0 on OSX and BSD)
+	Fifoin      uint64 `json:"fifoin"`      // total number of FIFO buffers errors while receiving
+	Fifoout     uint64 `json:"fifoout"`     // total number of FIFO buffers errors while sending
 
 }
 
 // Addr is implemented compatibility to psutil
 type Addr struct {
-	IP   string `json:"ip" bson:"ip,omitempty"`
-	Port uint32 `json:"port" bson:"port,omitempty"`
+	IP   string `json:"ip"`
+	Port uint32 `json:"port"`
 }
 
 type ConnectionStat struct {
-	Fd     uint32  `json:"fd" bson:"fd,omitempty"`
-	Family uint32  `json:"family" bson:"family,omitempty"`
-	Type   uint32  `json:"type" bson:"type,omitempty"`
-	Laddr  Addr    `json:"localaddr" bson:"localaddr,omitempty"`
-	Raddr  Addr    `json:"remoteaddr" bson:"remoteaddr,omitempty"`
-	Status string  `json:"status" bson:"status,omitempty"`
-	Uids   []int32 `json:"uids" bson:"uids,omitempty"`
-	Pid    int32   `json:"pid" bson:"pid,omitempty"`
+	Fd     uint32  `json:"fd"`
+	Family uint32  `json:"family"`
+	Type   uint32  `json:"type"`
+	Laddr  Addr    `json:"localaddr"`
+	Raddr  Addr    `json:"remoteaddr"`
+	Status string  `json:"status"`
+	Uids   []int32 `json:"uids"`
+	Pid    int32   `json:"pid"`
 }
 
 // System wide stats about different network protocols
 type ProtoCountersStat struct {
-	Protocol string           `json:"protocol" bson:"protocol,omitempty"`
-	Stats    map[string]int64 `json:"stats" bson:"stats,omitempty"`
+	Protocol string           `json:"protocol"`
+	Stats    map[string]int64 `json:"stats"`
 }
 
 // NetInterfaceAddr is designed for represent interface addresses
 type InterfaceAddr struct {
-	Addr string `json:"addr" bson:"addr,omitempty"`
+	Addr string `json:"addr"`
 }
 
 type InterfaceStat struct {
-	Index        int             `json:"index" bson:"index,omitempty"`
-	MTU          int             `json:"mtu" bson:"mtu,omitempty"`                   // maximum transmission unit
-	Name         string          `json:"name"`                                       // e.g., "en0", "lo0", "eth0.100" bson:"name"`         // e.g., "en0", "lo0", "eth0.100,omitempty"
-	HardwareAddr string          `json:"hardwareaddr" bson:"hardwareaddr,omitempty"` // IEEE MAC-48, EUI-48 and EUI-64 form
-	Flags        []string        `json:"flags" bson:"flags,omitempty"`               // e.g., FlagUp, FlagLoopback, FlagMulticast
-	Addrs        []InterfaceAddr `json:"addrs" bson:"addrs,omitempty"`
+	Index        int             `json:"index"`
+	MTU          int             `json:"mtu"`          // maximum transmission unit
+	Name         string          `json:"name"`         // e.g., "en0", "lo0", "eth0.100"
+	HardwareAddr string          `json:"hardwareaddr"` // IEEE MAC-48, EUI-48 and EUI-64 form
+	Flags        []string        `json:"flags"`        // e.g., FlagUp, FlagLoopback, FlagMulticast
+	Addrs        []InterfaceAddr `json:"addrs"`
 }
 
 type FilterStat struct {
-	ConnTrackCount int64 `json:"conntrackCount" bson:"conntrackCount,omitempty"`
-	ConnTrackMax   int64 `json:"conntrackMax" bson:"conntrackMax,omitempty"`
+	ConnTrackCount int64 `json:"conntrackCount"`
+	ConnTrackMax   int64 `json:"conntrackMax"`
 }
 
 // ConntrackStat has conntrack summary info
 type ConntrackStat struct {
-	Entries       uint32 `json:"entries" bson:"entries,omitempty"`               // Number of entries in the conntrack table
-	Searched      uint32 `json:"searched" bson:"searched,omitempty"`             // Number of conntrack table lookups performed
-	Found         uint32 `json:"found" bson:"found,omitempty"`                   // Number of searched entries which were successful
-	New           uint32 `json:"new" bson:"new,omitempty"`                       // Number of entries added which were not expected before
-	Invalid       uint32 `json:"invalid" bson:"invalid,omitempty"`               // Number of packets seen which can not be tracked
-	Ignore        uint32 `json:"ignore" bson:"ignore,omitempty"`                 // Packets seen which are already connected to an entry
-	Delete        uint32 `json:"delete" bson:"delete,omitempty"`                 // Number of entries which were removed
-	DeleteList    uint32 `json:"delete_list" bson:"delete_list,omitempty"`       // Number of entries which were put to dying list
-	Insert        uint32 `json:"insert" bson:"insert,omitempty"`                 // Number of entries inserted into the list
-	InsertFailed  uint32 `json:"insert_failed" bson:"insert_failed,omitempty"`   // # insertion attempted but failed (same entry exists)
-	Drop          uint32 `json:"drop" bson:"drop,omitempty"`                     // Number of packets dropped due to conntrack failure.
-	EarlyDrop     uint32 `json:"early_drop" bson:"early_drop,omitempty"`         // Dropped entries to make room for new ones, if maxsize reached
-	IcmpError     uint32 `json:"icmp_error" bson:"icmp_error,omitempty"`         // Subset of invalid. Packets that can't be tracked d/t error
-	ExpectNew     uint32 `json:"expect_new" bson:"expect_new,omitempty"`         // Entries added after an expectation was already present
-	ExpectCreate  uint32 `json:"expect_create" bson:"expect_create,omitempty"`   // Expectations added
-	ExpectDelete  uint32 `json:"expect_delete" bson:"expect_delete,omitempty"`   // Expectations deleted
-	SearchRestart uint32 `json:"search_restart" bson:"search_restart,omitempty"` // Conntrack table lookups restarted due to hashtable resizes
+	Entries       uint32 `json:"entries"`        // Number of entries in the conntrack table
+	Searched      uint32 `json:"searched"`       // Number of conntrack table lookups performed
+	Found         uint32 `json:"found"`          // Number of searched entries which were successful
+	New           uint32 `json:"new"`            // Number of entries added which were not expected before
+	Invalid       uint32 `json:"invalid"`        // Number of packets seen which can not be tracked
+	Ignore        uint32 `json:"ignore"`         // Packets seen which are already connected to an entry
+	Delete        uint32 `json:"delete"`         // Number of entries which were removed
+	DeleteList    uint32 `json:"delete_list"`    // Number of entries which were put to dying list
+	Insert        uint32 `json:"insert"`         // Number of entries inserted into the list
+	InsertFailed  uint32 `json:"insert_failed"`  // # insertion attempted but failed (same entry exists)
+	Drop          uint32 `json:"drop"`           // Number of packets dropped due to conntrack failure.
+	EarlyDrop     uint32 `json:"early_drop"`     // Dropped entries to make room for new ones, if maxsize reached
+	IcmpError     uint32 `json:"icmp_error"`     // Subset of invalid. Packets that can't be tracked d/t error
+	ExpectNew     uint32 `json:"expect_new"`     // Entries added after an expectation was already present
+	ExpectCreate  uint32 `json:"expect_create"`  // Expectations added
+	ExpectDelete  uint32 `json:"expect_delete"`  // Expectations deleted
+	SearchRestart uint32 `json:"search_restart"` // Conntrack table lookups restarted due to hashtable resizes
 }
 
 func NewConntrackStat(e uint32, s uint32, f uint32, n uint32, inv uint32, ign uint32, del uint32, dlst uint32, ins uint32, insfail uint32, drop uint32, edrop uint32, ie uint32, en uint32, ec uint32, ed uint32, sr uint32) *ConntrackStat {
@@ -159,14 +155,6 @@ func (l *ConntrackStatList) Summary() []ConntrackStat {
 		summary.SearchRestart += cs.SearchRestart
 	}
 	return []ConntrackStat{*summary}
-}
-
-var constMap = map[string]int{
-	"unix": syscall.AF_UNIX,
-	"TCP":  syscall.SOCK_STREAM,
-	"UDP":  syscall.SOCK_DGRAM,
-	"IPv4": syscall.AF_INET,
-	"IPv6": syscall.AF_INET6,
 }
 
 func (n IOCountersStat) String() string {
@@ -272,85 +260,4 @@ func getIOCountersAll(n []IOCountersStat) ([]IOCountersStat, error) {
 	}
 
 	return []IOCountersStat{r}, nil
-}
-
-func parseNetLine(line string) (ConnectionStat, error) {
-	f := strings.Fields(line)
-	if len(f) < 8 {
-		return ConnectionStat{}, fmt.Errorf("wrong line,%s", line)
-	}
-
-	if len(f) == 8 {
-		f = append(f, f[7])
-		f[7] = "unix"
-	}
-
-	pid, err := strconv.Atoi(f[1])
-	if err != nil {
-		return ConnectionStat{}, err
-	}
-	fd, err := strconv.Atoi(strings.Trim(f[3], "u"))
-	if err != nil {
-		return ConnectionStat{}, fmt.Errorf("unknown fd, %s", f[3])
-	}
-	netFamily, ok := constMap[f[4]]
-	if !ok {
-		return ConnectionStat{}, fmt.Errorf("unknown family, %s", f[4])
-	}
-	netType, ok := constMap[f[7]]
-	if !ok {
-		return ConnectionStat{}, fmt.Errorf("unknown type, %s", f[7])
-	}
-
-	var laddr, raddr Addr
-	if f[7] == "unix" {
-		laddr.IP = f[8]
-	} else {
-		laddr, raddr, err = parseNetAddr(f[8])
-		if err != nil {
-			return ConnectionStat{}, fmt.Errorf("failed to parse netaddr, %s", f[8])
-		}
-	}
-
-	n := ConnectionStat{
-		Fd:     uint32(fd),
-		Family: uint32(netFamily),
-		Type:   uint32(netType),
-		Laddr:  laddr,
-		Raddr:  raddr,
-		Pid:    int32(pid),
-	}
-	if len(f) == 10 {
-		n.Status = strings.Trim(f[9], "()")
-	}
-
-	return n, nil
-}
-
-func parseNetAddr(line string) (laddr Addr, raddr Addr, err error) {
-	parse := func(l string) (Addr, error) {
-		host, port, err := net.SplitHostPort(l)
-		if err != nil {
-			return Addr{}, fmt.Errorf("wrong addr, %s", l)
-		}
-		lport, err := strconv.Atoi(port)
-		if err != nil {
-			return Addr{}, err
-		}
-		return Addr{IP: host, Port: uint32(lport)}, nil
-	}
-
-	addrs := strings.Split(line, "->")
-	if len(addrs) == 0 {
-		return laddr, raddr, fmt.Errorf("wrong netaddr, %s", line)
-	}
-	laddr, err = parse(addrs[0])
-	if len(addrs) == 2 { // remote addr exists
-		raddr, err = parse(addrs[1])
-		if err != nil {
-			return laddr, raddr, err
-		}
-	}
-
-	return laddr, raddr, err
 }

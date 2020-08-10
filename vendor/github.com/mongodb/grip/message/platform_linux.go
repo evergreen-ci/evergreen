@@ -2,4 +2,4 @@ package message
 
 import "github.com/shirou/gopsutil/cpu"
 
-var cpuTicks = cpu.CPUTick
+var cpuTicks = cpu.ClocksPerSec
