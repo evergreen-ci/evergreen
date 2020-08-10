@@ -604,8 +604,7 @@ func diffToMbox(diffData *localDiff, subject string) (string, error) {
 
 	metadata, err := getGitConfigMetadata()
 	if err != nil {
-		grip.Error(errors.Wrap(err, "Problem getting git metadata. Patch will be ineligible to be enqueued on the commit queue."))
-		return diffData.fullPatch, nil
+		return "", errors.Wrap(err, "problem getting git metadata")
 	}
 	metadata.Subject = subject
 
@@ -686,9 +685,9 @@ func getGitConfigMetadata() (GitMetadata, error) {
 func parseGitVersion(version string) (string, error) {
 	matches := regexp.MustCompile(`^git version ` +
 		// capture the version major.minor(.patch(.build(.etc...)))
-		`(\w+(?:\.\w+)+)` +
+		`(\d+(?:\.\d+)+)` +
 		// match and discard Apple git's addition to the version string
-		`(?: \(Apple Git-[\w\.]+\))?$`,
+		`(?: \(Apple Git-[\d\.]+\))?$`,
 	).FindStringSubmatch(version)
 	if len(matches) != 2 {
 		return "", errors.Errorf("can't parse git version number from version string '%s'", version)

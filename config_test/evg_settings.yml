@@ -138,3 +138,8 @@ expansions:
     api_httpscert_path: "/data/api_httpscert_path.pem"
 
 github_pr_creator_org: "10gen"
+
+spawnhost:
+    unexpirable_hosts_per_user: 2
+    unexpirable_volumes_per_user: 2
+    spawn_hosts_per_user: 6

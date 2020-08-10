@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +64,7 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 		Id:          apiUser,
 		APIKey:      apiKey,
 		Settings:    user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
-		SystemRoles: []string{"unrestrictedTaskAccess", "modify_host"},
+		SystemRoles: []string{"unrestrictedTaskAccess"},
 		PubKeys: []user.PubKey{
 			user.PubKey{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
 			user.PubKey{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
@@ -74,25 +73,6 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 			user.PubKey{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 		}}
 	require.NoError(t, testUser.Insert())
-
-	modifyHostRole := gimlet.Role{
-		ID:          "modify_host",
-		Name:        "modify host",
-		Scope:       "modify_host_scope",
-		Permissions: map[string]int{"distro_hosts": 20},
-	}
-	_, err = env.DB().Collection("roles").InsertOne(ctx, modifyHostRole)
-	require.NoError(t, err)
-
-	modifyHostScope := gimlet.Scope{
-		ID:        "modify_host_scope",
-		Name:      "modify host scope",
-		Type:      "distro",
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large"},
-	}
-	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
-	require.NoError(t, err)
-
 	state.url = server.URL
 	state.apiKey = apiKey
 	state.apiUser = apiUser

@@ -1,5 +1,20 @@
 package agent
 
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"runtime"
+	"time"
+
+	"github.com/mongodb/ftdc/metrics"
+	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/process"
+)
+
 // DataFormat describes how the time series data is stored.
 type DataFormat int32
 
@@ -179,4 +194,3 @@ func createProcMetrics(procs []*process.Process) []processData {
 	}
 	return procMetrics
 }
-
