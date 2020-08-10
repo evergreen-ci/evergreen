@@ -24,6 +24,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addVariantsFlag(),
 		addTasksFlag(),
 		addPatchAliasFlag(),
+		addPatchBrowseFlag(),
 		addSyncBuildVariantsFlag(),
 		addSyncTasksFlag(),
 		addSyncStatusesFlag(),
@@ -36,10 +37,6 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 				Usage: "description for the patch",
-			},
-			cli.BoolFlag{
-				Name:  joinFlagNames(patchBrowseFlagName),
-				Usage: "open patch url in browser",
 			},
 			cli.BoolFlag{
 				Name:  patchVerboseFlagName,

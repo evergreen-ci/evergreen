@@ -280,14 +280,20 @@ func enqueuePatch() cli.Command {
 
 func backport() cli.Command {
 	return cli.Command{
-		Name:  "backport-commit",
+		Name:  "backport",
 		Usage: "automatically backport low-risk commits",
-		Flags: mergeFlagSlices(addPatchFinalizeFlag(), addVariantsFlag(), addTasksFlag(), addProjectFlag(), addPatchAliasFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(existingPatchFlag, "e"),
-				Usage: "existing commit queue patch",
-			},
-		)),
+		Flags: mergeFlagSlices(
+			addPatchFinalizeFlag(),
+			addVariantsFlag(),
+			addTasksFlag(),
+			addProjectFlag(),
+			addPatchAliasFlag(),
+			addPatchBrowseFlag(
+				cli.StringFlag{
+					Name:  joinFlagNames(existingPatchFlag, "e"),
+					Usage: "existing commit queue patch",
+				},
+			)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireProjectFlag,
@@ -318,6 +324,10 @@ func backport() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
+			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {
+				return err
+			}
+
 			existingPatch, err := ac.GetPatch(patchParams.Backport)
 			if err != nil {
 				return errors.Wrapf(err, "Error getting existing patch '%s'", patchParams.Backport)
@@ -325,13 +335,10 @@ func backport() cli.Command {
 			if !existingPatch.IsCommitQueuePatch() {
 				return errors.Errorf("Patch '%s' is not a commit queue patch", patchParams.Backport)
 			}
-			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {
-				return err
-			}
 
-			latestVersions, err := ac.GetRecentVersions(existingPatch.Project, evergreen.RepotrackerVersionRequester, 1)
+			latestVersions, err := client.GetRecentVersionsForProject(ctx, existingPatch.Project, evergreen.RepotrackerVersionRequester)
 			if err != nil {
-				return errors.Errorf("can't get latest repotracker version for project '%s'", existingPatch.Project)
+				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", existingPatch.Project)
 			}
 			var backportPatch *patch.Patch
 			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})

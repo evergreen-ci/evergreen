@@ -1305,6 +1305,37 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]model.APIVersion, error) {
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("projects/%s/versions", projectID),
+		version: apiVersion2,
+	}
+	if requester != "" {
+		info.path = fmt.Sprintf("%s?requester=%s", info.path, requester)
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get versions")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "problem getting versions for project '%s'", projectID)
+	}
+
+	getVersionsResp := []model.APIVersion{}
+	if err = utility.ReadJSON(resp.Body, &getVersionsResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return getVersionsResp, nil
+}
+
 func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
 		method:  http.MethodGet,

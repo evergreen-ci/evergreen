@@ -117,6 +117,13 @@ func addPatchFinalizeFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
+func addPatchBrowseFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  joinFlagNames(patchBrowseFlagName),
+		Usage: "open patch url in browser",
+	})
+}
+
 func addSyncBuildVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  syncBuildVariantsFlagName,
