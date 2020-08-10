@@ -7,20 +7,32 @@ def main():
     '''takes a json file as input and destructively hashes all string values in it'''
     args = argparse.ArgumentParser()
     args.add_argument("file")
+    args.add_argument("--multi", type=bool, nargs="?", const=True, default=False)
     flags = args.parse_args()
 
-    with open(flags.file, "r") as f:
-        data = json.load(f)
-
-    traverse(data)
-    
-    with open(flags.file, "w") as f:
-        json.dump(data, f)
+    if flags.multi:
+        processed = []
+        with open(flags.file, "r") as f:
+            for line in f:
+                line_data = line.strip()
+                data = json.loads(line_data)
+                traverse(data)
+                processed.append(data)
+        with open(flags.file, "w") as f:
+            for line in processed:
+                json.dump(line, f)
+                f.write("\n")
+    else:
+        with open(flags.file, "r") as f:
+            data = json.load(f)
+        traverse(data)
+        with open(flags.file, "w") as f:
+            json.dump(data, f)
 
 def traverse(obj):
     if isinstance(obj, dict):
         for key, value in obj.items():
-            if isExtJson(key):
+            if should_skip_key(key):
                 continue
             if isinstance(value, dict):
                 traverse(value)
@@ -50,8 +62,8 @@ def is_numeric(s):
         pass
     return False
 
-def isExtJson(key):
-    specialKeys = [
+def should_skip_key(key):
+    special_keys = [
         "$binary",
         "$date",
         "$numberDecimal",
@@ -64,7 +76,7 @@ def isExtJson(key):
         "$regularExpression",
         "$timestamp"
     ]
-    return key in specialKeys
+    return key in special_keys
 
 if __name__ == "__main__":
     main()

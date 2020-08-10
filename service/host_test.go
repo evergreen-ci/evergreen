@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -33,9 +34,10 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
 	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
-	result, err := modifyHostStatus(env.LocalQueue(), &h1, &opts1, &user1)
+	result, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h1, opts1.Status, opts1.Notes, &user1)
 	assert.NoError(err)
-	assert.Equal(result, fmt.Sprintf(HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
+	assert.Equal(httpStatus, 0)
+	assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 	assert.Equal(h1.Status, evergreen.HostQuarantined)
 	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", "", 1))
 	assert.NoError(err2)
@@ -48,17 +50,17 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 	opts2 := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
-	_, err = modifyHostStatus(env.LocalQueue(), &h2, &opts2, &user2)
+	_, _, err = api.ModifyHostStatus(env.LocalQueue(), &h2, opts2.Status, opts2.Notes, &user2)
 	assert.Error(err)
-	assert.Contains(err.Error(), DecommissionStaticHostError)
+	assert.Contains(err.Error(), api.DecommissionStaticHostError)
 
 	user3 := user.DBUser{Id: "user3"}
 	h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 	opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
 
-	_, err = modifyHostStatus(env.LocalQueue(), &h3, &opts3, &user3)
+	_, _, err = api.ModifyHostStatus(env.LocalQueue(), &h3, opts3.Status, opts3.Notes, &user3)
 	assert.Error(err)
-	assert.Contains(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
+	assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
 }
 
 func TestGetHostFromCache(t *testing.T) {

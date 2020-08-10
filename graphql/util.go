@@ -530,12 +530,12 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 }
 
 func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneId(*at.Id)
+	t, err := task.FindOneIdNewOrOld(*at.Id)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
 	}
 	isBlocked := t.Blocked()
 	return &isBlocked, nil
@@ -601,21 +601,6 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 		return "", "", InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
 	return idType, id, nil
-}
-
-func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
-	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
-		return InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
-	}
-	err := verifyPublicKey(ctx, publicKeyInput)
-	if err != nil {
-		return err
-	}
-	err = route.MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
-	if err != nil {
-		return InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
-	}
-	return nil
 }
 
 func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {

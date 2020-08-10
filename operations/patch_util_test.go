@@ -182,6 +182,7 @@ func (s *PatchUtilTestSuite) TestParseGitVersionString() {
 		"git version 2.19.1":                   "2.19.1",
 		"git version 2.24.3 (Apple Git-128)":   "2.24.3",
 		"git version 2.21.1 (Apple Git-122.3)": "2.21.1",
+		"git version 2.16.2.windows.1":         "2.16.2.windows.1",
 	}
 
 	for versionString, version := range versionStrings {

@@ -37,7 +37,6 @@ type SpawnOptions struct {
 	IsCluster            bool
 	HomeVolumeSize       int
 	HomeVolumeID         string
-	Expiration           *time.Time
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -160,9 +159,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 	// spawn the host
 	expiration := evergreen.DefaultSpawnHostExpiration
-	if so.Expiration != nil {
-		expiration = time.Until(*so.Expiration)
-	}
 	if so.NoExpiration {
 		expiration = evergreen.SpawnHostNoExpirationDuration
 	}

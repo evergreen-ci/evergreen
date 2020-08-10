@@ -486,8 +486,11 @@ gqlgen:
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
+ifneq (,$(multi))
+multiarg = --multi
+endif
 scramble:
-	python cmd/scrambled-eggs/scramble.py $(file)
+	python cmd/scrambled-eggs/scramble.py $(file) $(multiarg)
 
 # mongodb utility targets
 mongodb/.get-mongodb:

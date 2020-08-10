@@ -105,7 +105,7 @@ waitForHosts:
 			hosts, err = comm.ListHosts(ctx, td)
 
 			if c.Wait {
-				if err == nil && numHosts == len(hosts) {
+				if err == nil && numHosts <= len(hosts) {
 					break waitForHosts
 				} else if err != nil {
 					// pass
