@@ -51,7 +51,7 @@ type HostRequestOptions struct {
 	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
 	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
 	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
-	Expiration           time.Time  `json:"expiration" yaml:"expiration"`
+	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 }
 
 type DistroInfo struct {

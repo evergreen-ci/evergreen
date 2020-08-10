@@ -225,7 +225,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
 	}
 	if spawnHostInput.Expiration != nil {
-		options.Expiration = *spawnHostInput.Expiration
+		options.Expiration = spawnHostInput.Expiration
 	}
 
 	hc := &data.DBConnector{}
