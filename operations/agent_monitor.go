@@ -335,8 +335,6 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).
 			Add([]string{m.shellPath, "-l", "-c", strings.Join(agentCmdArgs, " ")}).
-			SetOutputSender(level.Info, grip.GetSender()).
-			SetErrorSender(level.Error, grip.GetSender()).
 			Environment(env).
 			Background(true)
 		if err = cmd.Run(ctx); err != nil {

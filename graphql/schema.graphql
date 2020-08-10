@@ -80,6 +80,12 @@ type Mutation {
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
+  restartJasper(hostIds: [String!]!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   updateHostStatus(hostId: String!, action: String!): Host!
@@ -185,16 +191,17 @@ input SpawnHostInput {
   savePublicKey: Boolean!
   publicKey: PublicKeyInput!
   userDataScript: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean!
   setUpScript: String
   isVirtualWorkStation: Boolean!
-  homeVolumeSize: Int 
+  homeVolumeSize: Int
 }
 
 type Host {
   id: ID!
   hostUrl: String!
+  tag: String!
   distroId: String
   status: String!
   runningTask: TaskInfo
