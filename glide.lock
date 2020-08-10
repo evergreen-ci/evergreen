@@ -121,7 +121,6 @@ imports:
   - name: github.com/Masterminds/glide
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
-    # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
     version: 0c6d5f1374e2a07a8ce72cfd765bea028aa6b7ec
   - name: github.com/mongodb/amboy
@@ -194,3 +193,14 @@ imports:
 
   - name: github.com/robbiet480/go.sns
     version: ca087b49e1da69fa4f163521cc98b1eaf7b66ffd
+
+  # gopsutil and its dependencies
+  - name: github.com/shirou/gopsutil
+    version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
+  - name: github.com/StackExchange/wmi
+    version: cbe66965904dbe8a6cd589e2298e5d8b986bd7dd
+  - name: github.com/go-ole/go-ole
+    version: 14974a1cf6477f616180232977d8ab4791ea8820
+  - name: github.com/shirou/w32
+    version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
+
