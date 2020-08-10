@@ -303,6 +303,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if patchDoc.IsCommitQueuePatch() {
 		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
 	}
+	if patchDoc.IsBackport() {
+		patchDoc.Description, err = patchDoc.MakeBackportDescription()
+		if err != nil {
+			return errors.Wrap(err, "can't make backport patch description")
+		}
+	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {

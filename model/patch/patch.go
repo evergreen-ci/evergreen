@@ -25,6 +25,7 @@ import (
 
 // SizeLimit is a hard limit on patch size.
 const SizeLimit = 1024 * 1024 * 100
+const backportFmtString = "Backport: %s (%s)"
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
 type VariantTasks struct {
@@ -620,6 +621,18 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 	}
 
 	return true
+}
+
+func (p *Patch) MakeBackportDescription() (string, error) {
+	commitQueuePatch, err := FindOneId(p.Backport)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get patch being backported")
+	}
+	if commitQueuePatch == nil {
+		return "", errors.Wrapf(err, "patch '%s' being backported doesn't exist", p.Backport)
+	}
+
+	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.Backport), nil
 }
 
 // IsMailbox checks if the first line of a patch file
