@@ -1,12 +1,10 @@
 package operations
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -284,30 +282,29 @@ func backport() cli.Command {
 	return cli.Command{
 		Name:  "backport-commit",
 		Usage: "automatically backport low-risk commits",
-		Flags: mergeFlagSlices(addPatchFinalizeFlag(), addVariantsFlag(), addTasksFlag(), addPatchAliasFlag(
+		Flags: mergeFlagSlices(addPatchFinalizeFlag(), addVariantsFlag(), addTasksFlag(), addProjectFlag(), addPatchAliasFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(existingPatchFlag, "e"),
 				Usage: "existing commit queue patch",
 			},
-			cli.StringSliceFlag{
-				Name:  joinFlagNames(projectFlagName, "p"),
-				Usage: "project to backport to",
-			},
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
+			requireProjectFlag,
 			requireStringFlag(existingPatchFlag),
-			requireStringSliceFlagMinLength(projectFlagName, 1),
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().Parent().String(confFlagName)
-			projects := c.StringSlice(projectFlagName)
 			patchParams := &patchParams{
 				Tasks:    c.StringSlice(tasksFlagName),
 				Variants: c.StringSlice(variantsFlagName),
 				Alias:    c.String(patchAliasFlagName),
 				Finalize: c.Bool(patchFinalizeFlagName),
 				Backport: c.String(existingPatchFlag),
+				Project:  c.String(projectFlagName),
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -318,6 +315,8 @@ func backport() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
 
 			existingPatch, err := ac.GetPatch(patchParams.Backport)
 			if err != nil {
@@ -326,62 +325,27 @@ func backport() cli.Command {
 			if !existingPatch.IsCommitQueuePatch() {
 				return errors.Errorf("Patch '%s' is not a commit queue patch", patchParams.Backport)
 			}
+			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {
+				return err
+			}
 
 			latestVersions, err := ac.GetRecentVersions(existingPatch.Project, evergreen.RepotrackerVersionRequester, 1)
 			if err != nil {
 				return errors.Errorf("can't get latest repotracker version for project '%s'", existingPatch.Project)
 			}
-
-			results := make(map[string]result)
-			for _, project := range projects {
-				patchParams.Project = project
-				var p *patch.Patch
-				p, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})
-				if err != nil {
-					results[project] = result{Err: err}
-					continue
-				}
-				results[project] = result{Patch: p}
+			var backportPatch *patch.Patch
+			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})
+			if err != nil {
+				return errors.Wrap(err, "can't upload backport patch")
 			}
 
-			resultdisplay, err := getBackportResults(results, conf.UIServerHost)
-			if err != nil {
+			if err = patchParams.displayPatch(conf, backportPatch); err != nil {
 				return errors.Wrap(err, "problem getting result display")
 			}
-			grip.Info(resultdisplay)
 
 			return nil
 		},
 	}
-}
-
-type result struct {
-	Patch *patch.Patch
-	Err   error
-}
-
-func getBackportResults(results map[string]result, uiHost string) (string, error) {
-	template := template.Must(template.New("patch").Parse(`Backport patches created
-{{ $uiHost := .UiHost }}{{range $project, $result := .ResultMap}}{{ $project }}:
-{{if not $result.Err}}	ID: {{$result.Patch.Id.Hex}}
-	Build: {{$result.Patch.GetURL $uiHost}}
-{{else}}	Error: {{$result.Err}}
-{{end}}{{end}}`))
-
-	out := &bytes.Buffer{}
-
-	err := template.Execute(out, struct {
-		ResultMap map[string]result
-		UiHost    string
-	}{
-		ResultMap: results,
-		UiHost:    uiHost,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return out.String(), nil
 }
 
 func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {

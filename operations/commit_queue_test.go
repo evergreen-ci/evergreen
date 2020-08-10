@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -336,32 +335,4 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Item '123' deleted")
-}
-
-func (s *CommitQueueSuite) TestGetBackportResults() {
-	results := map[string]result{
-		"project0": {
-			Patch: &patch.Patch{Id: patch.NewId("aaaaaaaaaaaaaaaaaaaaaaaa")},
-		},
-		"project1": {
-			Patch: &patch.Patch{Id: patch.NewId("bbbbbbbbbbbbbbbbbbbbbbbb")},
-		},
-		"project2": {
-			Err: errors.New("couldn't create backport patch"),
-		},
-	}
-	uiHost := "https://evergreen.mongodb.com"
-
-	display, err := getBackportResults(results, uiHost)
-	s.NoError(err)
-	s.Equal(`Backport patches created
-project0:
-	ID: aaaaaaaaaaaaaaaaaaaaaaaa
-	Build: https://evergreen.mongodb.com/patch/aaaaaaaaaaaaaaaaaaaaaaaa
-project1:
-	ID: bbbbbbbbbbbbbbbbbbbbbbbb
-	Build: https://evergreen.mongodb.com/patch/bbbbbbbbbbbbbbbbbbbbbbbb
-project2:
-	Error: couldn't create backport patch
-`, display)
 }

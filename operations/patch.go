@@ -118,13 +118,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-
-			if params.Description == "" {
-				params.Description, err = getDefaultDescription()
-				if err != nil {
-					grip.Error(err)
-				}
-			}
+			params.Description = params.getDescription()
 
 			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
 			if err != nil {
@@ -205,6 +199,7 @@ func PatchFile() cli.Command {
 			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
 			}
+			params.Description = params.getDescription()
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
@@ -212,13 +207,6 @@ func PatchFile() cli.Command {
 			}
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
-
-			if params.Description == "" {
-				params.Description, err = getDefaultDescription()
-				if err != nil {
-					grip.Error(err)
-				}
-			}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err

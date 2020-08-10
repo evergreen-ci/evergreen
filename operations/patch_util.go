@@ -238,10 +238,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
 	}
 
-	if p.Description == "" && !p.SkipConfirm {
-		p.Description = prompt("Enter a description for this patch (optional):")
-	}
-
 	return ref, nil
 }
 
@@ -324,6 +320,27 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 	}
 
 	return nil
+}
+
+func (p *patchParams) getDescription() string {
+	if p.Description != "" {
+		return p.Description
+	}
+
+	description := ""
+	if !p.SkipConfirm {
+		description = prompt("Enter a description for this patch (optional):")
+	}
+
+	if description == "" {
+		var err error
+		description, err = getDefaultDescription()
+		if err != nil {
+			grip.Error(err)
+		}
+	}
+
+	return description
 }
 
 // Returns an error if the diff is greater than the system limit, or if it's above the large
