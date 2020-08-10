@@ -2015,3 +2015,18 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
 }
+
+func TestGetLatestExecution(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	sample := Task{
+		Id:        "task_id_some_other_stuff",
+		Execution: 55,
+	}
+	assert.NoError(t, sample.Insert())
+	execution, err := GetLatestExecution(sample.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, sample.Execution, execution)
+	execution, err = GetLatestExecution(fmt.Sprintf("%s_3", sample.Id))
+	assert.NoError(t, err)
+	assert.Equal(t, sample.Execution, execution)
+}
