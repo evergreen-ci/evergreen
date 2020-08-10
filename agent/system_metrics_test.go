@@ -1,15 +1,22 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	metrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/evergreen-ci/timber/testutil"
+	"github.com/mongodb/ftdc"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -28,7 +35,7 @@ func (m *mockMetricCollector) Format() dataFormat {
 	return dataFormatText
 }
 
-func (m *mockMetricCollector) Collect() ([]byte, error) {
+func (m *mockMetricCollector) Collect(context.Context) ([]byte, error) {
 	if m.collectErr {
 		return nil, errors.New("Error collecting metrics")
 	} else {
@@ -297,4 +304,80 @@ func (s *SystemMetricsSuite) TestCloseSystemMetricsCollector() {
 	s.Require().NoError(c.Start(ctx))
 
 	s.Require().Error(c.Close())
+}
+
+func TestSystemMetricsCollectors(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		makeCollector func(t *testing.T) metricCollector
+		expectedKeys  []string
+	}{
+		"DiskUsage": {
+			makeCollector: func(t *testing.T) metricCollector {
+				dir, err := os.Getwd()
+				require.NoError(t, err)
+				return newDiskUsageCollector(dir)
+			},
+			expectedKeys: []string{
+				"total",
+				"free",
+				"used",
+				"used_percent",
+				"inodes_total",
+				"inodes_used",
+				"inodes_free",
+				"inodes_used_percent",
+			},
+		},
+		"Uptime": {
+			makeCollector: func(t *testing.T) metricCollector {
+				return newUptimeCollector()
+			},
+			expectedKeys: []string{"uptime"},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			coll := testCase.makeCollector(t)
+
+			output, err := coll.Collect(ctx)
+			require.NoError(t, err)
+
+			iter := ftdc.ReadMetrics(ctx, bytes.NewReader(output))
+			require.True(t, iter.Next())
+
+			doc := iter.Document()
+			for _, key := range testCase.expectedKeys {
+				val := doc.Lookup(key)
+				assert.NotNil(t, val, "key '%s' missing", key)
+			}
+		})
+	}
+}
+
+func TestCollectProcesses(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("TODO (EVG-12736): fix (*Process).CreateTime - Process() does not work on MacOS with old version of gopsutil")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO: Processes aren't returning on Windows - need to fix")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	coll := &processCollector{}
+	output, err := coll.Collect(ctx)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, output)
+
+	var procs processesWrapper
+	require.NoError(t, json.Unmarshal(output, &procs))
+	assert.NotEmpty(t, procs)
+
+	for _, proc := range procs.Processes {
+		assert.NotEmpty(t, proc.PID)
+	}
 }

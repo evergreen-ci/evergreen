@@ -1,16 +1,24 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	metrics "github.com/evergreen-ci/timber/system_metrics"
+	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
+	"github.com/mongodb/ftdc/metrics"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/process"
 	"google.golang.org/grpc"
 )
 
@@ -43,7 +51,7 @@ type metricCollector interface {
 	// Format returns the format of the collected data.
 	Format() dataFormat
 	// Collect returns the value of the collected metric when the function is called.
-	Collect() ([]byte, error)
+	Collect(context.Context) ([]byte, error)
 }
 
 // systemMetricsCollector handles collecting an arbitrary set of system
@@ -53,11 +61,11 @@ type systemMetricsCollector struct {
 	stream          sync.WaitGroup
 	close           sync.WaitGroup
 	streamingCancel context.CancelFunc
-	taskOpts        *metrics.SystemMetricsOptions
-	streamOpts      *metrics.StreamOpts
+	taskOpts        *sysmetrics.SystemMetricsOptions
+	streamOpts      *sysmetrics.StreamOpts
 	interval        time.Duration
 	collectors      []metricCollector
-	client          *metrics.SystemMetricsClient
+	client          *sysmetrics.SystemMetricsClient
 	catcher         grip.Catcher
 	id              string
 	closed          bool
@@ -121,14 +129,14 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		interval:   opts.interval,
 		collectors: opts.collectors,
 		taskOpts:   getSystemMetricsInfo(opts.task),
-		streamOpts: &metrics.StreamOpts{
+		streamOpts: &sysmetrics.StreamOpts{
 			FlushInterval: opts.bufferTimedFlushInterval,
 			NoTimedFlush:  opts.noBufferTimedFlush,
 			MaxBufferSize: opts.maxBufferSize,
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	s.client, err = metrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
+	s.client, err = sysmetrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}
@@ -151,10 +159,10 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	streamingCtx, s.streamingCancel = context.WithCancel(ctx)
 
 	for _, collector := range s.collectors {
-		stream, err := s.client.StreamSystemMetrics(ctx, metrics.MetricDataOpts{
+		stream, err := s.client.StreamSystemMetrics(ctx, sysmetrics.MetricDataOpts{
 			Id:         s.id,
 			MetricType: collector.Name(),
-			Format:     metrics.DataFormat(collector.Format()),
+			Format:     sysmetrics.DataFormat(collector.Format()),
 		}, *s.streamOpts)
 		if err != nil {
 			s.streamingCancel()
@@ -171,7 +179,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream *metrics.SystemMetricsWriteCloser) {
+func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream *sysmetrics.SystemMetricsWriteCloser) {
 	timer := time.NewTimer(0)
 	defer func() {
 		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name())), ""))
@@ -185,7 +193,7 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			data, err := mc.Collect()
+			data, err := mc.Collect(ctx)
 			if err != nil {
 				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name()))
 				return
@@ -252,8 +260,8 @@ func (s *systemMetricsCollector) Close() error {
 	return s.catcher.Resolve()
 }
 
-func getSystemMetricsInfo(t *task.Task) *metrics.SystemMetricsOptions {
-	return &metrics.SystemMetricsOptions{
+func getSystemMetricsInfo(t *task.Task) *sysmetrics.SystemMetricsOptions {
+	return &sysmetrics.SystemMetricsOptions{
 		Project:     t.Project,
 		Version:     t.Version,
 		Variant:     t.BuildVariant,
@@ -261,7 +269,206 @@ func getSystemMetricsInfo(t *task.Task) *metrics.SystemMetricsOptions {
 		TaskId:      t.Id,
 		Execution:   int32(t.Execution),
 		Mainline:    !t.IsPatchRequest(),
-		Compression: metrics.CompressionTypeNone,
-		Schema:      metrics.SchemaTypeRawEvents,
+		Compression: sysmetrics.CompressionTypeNone,
+		Schema:      sysmetrics.SchemaTypeRawEvents,
 	}
+}
+
+type diskUsageCollector struct {
+	dir string
+}
+
+// newDiskusageCollector creates a collector that gathers disk usage information
+// for the given directory.
+func newDiskUsageCollector(dir string) *diskUsageCollector {
+	return &diskUsageCollector{
+		dir: dir,
+	}
+}
+
+type diskUsageWrapper struct {
+	Path              string  `json:"path,omitempty"`
+	Fstype            string  `json:"fstype,omitempty"`
+	Total             uint64  `json:"total,omitempty"`
+	Free              uint64  `json:"free,omitempty"`
+	Used              uint64  `json:"used,omitempty"`
+	UsedPercent       float64 `json:"used_percent,omitempty"`
+	InodesTotal       uint64  `json:"inodes_total,omitempty"`
+	InodesUsed        uint64  `json:"inodes_used,omitempty"`
+	InodesFree        uint64  `json:"inodes_free,omitempty"`
+	InodesUsedPercent float64 `json:"inodes_used_percent,omitempty"`
+}
+
+func (c *diskUsageCollector) Name() string { return "disk_usage" }
+
+func (c *diskUsageCollector) Format() dataFormat { return dataFormatFTDC }
+
+func (c *diskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
+	usage, err := disk.Usage(c.dir)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+	wrapper := diskUsageWrapper{
+		Path:              usage.Path,
+		Fstype:            usage.Fstype,
+		Total:             usage.Total,
+		Free:              usage.Free,
+		Used:              usage.Used,
+		UsedPercent:       usage.UsedPercent,
+		InodesTotal:       usage.InodesTotal,
+		InodesUsed:        usage.InodesUsed,
+		InodesFree:        usage.InodesFree,
+		InodesUsedPercent: usage.InodesUsedPercent,
+	}
+
+	return convertJSONToFTDC(ctx, wrapper)
+}
+
+type uptimeCollector struct{}
+
+// newUptimeCollector creates a collector that gathers host uptime information.
+func newUptimeCollector() *uptimeCollector {
+	return new(uptimeCollector)
+}
+
+type uptimeWrapper struct {
+	Uptime uint64 `json:"uptime,omitempty"`
+}
+
+func (c *uptimeCollector) Name() string { return "uptime" }
+
+func (c *uptimeCollector) Format() dataFormat { return dataFormatFTDC }
+
+func (c *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
+	uptime, err := host.Uptime()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+
+	uptimeWrap := uptimeWrapper{uptime}
+	return convertJSONToFTDC(ctx, uptimeWrap)
+}
+
+type processCollector struct{}
+
+// newProcessCollector creates a collector that collects information on the
+// processes currently running on the host.
+func newProcessCollector() *processCollector {
+	return new(processCollector)
+}
+
+type processesWrapper struct {
+	Processes []processData `json:"processes,omitempty"`
+}
+
+type processData struct {
+	PID               int32   `json:"pid,omitempty"`
+	CPUPercent        float64 `json:"percent_cpu,omitempty"`
+	MemoryPercent     float32 `json:"percent_mem,omitempty"`
+	VirtualMemorySize uint64  `json:"vsz,omitempty"`
+	ResidentSetSize   uint64  `json:"rss,omitempty"`
+	Terminal          string  `json:"tt,omitempty"`
+	Stat              string  `json:"stat,omitempty"`
+	// TODO (EVG-12736): fix (*Process).CreateTime
+	// Started           int64          `json:"started"`
+	Time    *cpu.TimesStat `json:"time,omitempty"`
+	Command string         `json:"command,omitempty"`
+}
+
+func (c *processCollector) Name() string { return "process" }
+
+func (c *processCollector) Format() dataFormat { return dataFormatJSON }
+
+func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
+	// TODO (EVG-12736): fix (*Process).CreateTime
+	if runtime.GOOS == "darwin" {
+		return []byte{}, errors.Errorf("process collector does not work on MacOS")
+	}
+
+	var err error
+	procs, err := process.Processes()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+	}
+
+	procMetrics := createProcMetrics(procs)
+	procWrapper := processesWrapper{procMetrics}
+
+	results, err := json.Marshal(procWrapper)
+	return results, errors.Wrap(err, "problem marshaling processes into JSON")
+}
+
+func createProcMetrics(procs []*process.Process) []processData {
+	procMetrics := make([]processData, len(procs))
+
+	for i, proc := range procs {
+		cpuPercent, err := proc.CPUPercent()
+		if err != nil {
+			cpuPercent = 0
+		}
+		memoryPercent, err := proc.MemoryPercent()
+		if err != nil {
+			memoryPercent = 0
+		}
+		memInfo, err := proc.MemoryInfo()
+		var vms, rss uint64
+		if err == nil {
+			vms = memInfo.VMS
+			rss = memInfo.RSS
+		}
+		terminal, err := proc.Terminal()
+		if err != nil {
+			terminal = ""
+		}
+		status, err := proc.Status()
+		if err != nil {
+			status = ""
+		}
+		// createTime, err := proc.CreateTime()
+		// if err != nil {
+		// 	createTime = 0
+		// }
+		times, err := proc.Times()
+		if err != nil {
+			times = nil
+		}
+		name, err := proc.Name()
+		if err != nil {
+			name = ""
+		}
+
+		procWrapper := processData{
+			PID:               proc.Pid,
+			CPUPercent:        cpuPercent,
+			MemoryPercent:     memoryPercent,
+			VirtualMemorySize: vms,
+			ResidentSetSize:   rss,
+			Terminal:          terminal,
+			Stat:              status,
+			// Started:           createTime,
+			Time:    times,
+			Command: name,
+		}
+		procMetrics[i] = procWrapper
+	}
+	return procMetrics
+}
+
+func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
+	jsonMetrics, err := json.Marshal(metric)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting metrics to JSON")
+	}
+
+	opts := metrics.CollectJSONOptions{
+		InputSource:   bytes.NewReader(jsonMetrics),
+		SampleCount:   1,
+		FlushInterval: time.Second,
+	}
+
+	output, err := metrics.CollectJSONStream(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting FTDC to JSON")
+	}
+	return output, nil
 }
