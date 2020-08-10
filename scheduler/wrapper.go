@@ -136,11 +136,10 @@ func UpdateStaticDistro(d distro.Distro) error {
 		return errors.WithStack(err)
 	}
 
-	if d.Id == "" {
+	if d.Id == "" && len(d.Aliases) == 0 {
 		return nil
 	}
-
-	return host.MarkInactiveStaticHosts(hosts, d.Id)
+	return host.MarkInactiveStaticHosts(hosts, d.Id, d.Aliases)
 }
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {

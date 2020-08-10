@@ -63,7 +63,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
 
 			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
-			So(MarkInactiveStaticHosts(activeStaticHosts, ""), ShouldBeNil)
+			So(MarkInactiveStaticHosts(activeStaticHosts, "", nil), ShouldBeNil)
 
 			found, err := Find(IsTerminated)
 			So(err, ShouldBeNil)
@@ -123,12 +123,58 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 	found, err := Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 0)
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d1"))
+	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d1", nil))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
-	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d2"))
+	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d2", nil))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)
+}
+
+func TestTerminateStaticHostsForDistroAliases(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:     "h1",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id: "d1",
+			},
+			Provider: evergreen.HostTypeStatic,
+		},
+		{
+			Id:     "h2",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id: "d1",
+			},
+			Provider: evergreen.HostTypeStatic,
+		},
+		{
+			Id:     "h3",
+			Status: evergreen.HostQuarantined,
+			Distro: distro.Distro{
+				Id: "dAlias",
+			},
+			Provider: evergreen.HostTypeStatic,
+		},
+		{
+			Id:     "h4",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id: "dAlias",
+			},
+			Provider: evergreen.HostTypeStatic,
+		},
+	}
+
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert())
+	}
+	assert.NoError(t, MarkInactiveStaticHosts([]string{"h1"}, "d1", []string{"dAlias"}))
+	found, err := Find(IsTerminated)
+	assert.NoError(t, err)
+	assert.Len(t, found, 3)
 }
