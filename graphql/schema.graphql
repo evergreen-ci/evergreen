@@ -87,6 +87,7 @@ type Mutation {
     notes: String = ""
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
     targetKeyName: String!
@@ -231,6 +232,7 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
 }
+
 type TaskInfo {
   id: ID
   name: String
