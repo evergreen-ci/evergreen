@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -22,6 +23,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/units"
 
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
@@ -241,6 +244,65 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 	}
 	return &apiHost, nil
+}
+
+func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostID string, action string) (*string, error) {
+	host, err := host.FindOneByIdOrTag(hostID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+	usr := route.MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
+
+	if usr.Username() != h.StartedBy {
+		if !usr.HasPermission(gimlet.PermissionOpts{
+			Resource:      host.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
+			return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
+		}
+	}
+	evergreen.HostTerminated
+	switch status {
+	case service.HostStart:
+		if host.Status == evergreen.HostStarting || host.Status == evergreen.HostRunning {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already starting or running", hostID))
+		}
+		// Start the host
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+		startJob := units.NewSpawnhostStartJob(host, usr.Id, ts)
+		if err = queue.Put(ctx, startJob); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to start a host : %s", err))
+		}
+		return host, nil
+	case service.HostStop:
+		if host.Status == evergreen.HostStopped {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already Stopped", hostID))
+		}
+
+		// Stop the host
+		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+		stopJob := units.NewSpawnhostStopJob(host, usr.Id, ts)
+		if err = queue.Put(ctx, stopJob); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while stopping a host : %s", err))
+		}
+		return host, nil
+	case service.HostTerminate:
+		if host.Status == evergreen.HostTerminated {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already terminated", hostID))
+		}
+		err = cloud.TerminateSpawnHost(ctx, env, host, usr.Id, fmt.Sprintf("terminated via UI by %s", usr.Username()))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while terminating host : %s", err))
+		}
+		return host, nil
+	default:
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find matching status for action : %s", status))
+	}
+
 }
 
 type queryResolver struct{ *Resolver }
