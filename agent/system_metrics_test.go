@@ -318,14 +318,10 @@ func TestSystemMetricsCollectors(t *testing.T) {
 				return newDiskUsageCollector(dir)
 			},
 			expectedKeys: []string{
+				"path",
 				"total",
 				"free",
 				"used",
-				"used_percent",
-				"inodes_total",
-				"inodes_used",
-				"inodes_free",
-				"inodes_used_percent",
 			},
 		},
 		"Uptime": {
