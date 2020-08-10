@@ -318,7 +318,6 @@ func TestSystemMetricsCollectors(t *testing.T) {
 				return newDiskUsageCollector(dir)
 			},
 			expectedKeys: []string{
-				"path",
 				"total",
 				"free",
 				"used",
