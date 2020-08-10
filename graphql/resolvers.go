@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -63,14 +64,6 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
-}
-
-func (r *hostResolver) Expiration(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
-	if !obj.NoExpiration {
-		expirationTime := obj.CreationTime.Add(evergreen.DefaultSpawnHostExpiration)
-		return &expirationTime, nil
-	}
-	return nil, nil
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
@@ -197,6 +190,58 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		Repo:        p.Repo,
 		Owner:       p.Owner,
 	}, nil
+}
+
+func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
+	usr := route.MustHaveUser(ctx)
+	if spawnHostInput.SavePublicKey {
+		err := savePublicKey(ctx, *spawnHostInput.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	dist, err := distro.FindByID(spawnHostInput.DistroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
+	}
+	if dist == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find Distro with id: %s", spawnHostInput.DistroID))
+	}
+
+	options := &restModel.HostRequestOptions{
+		DistroID:             spawnHostInput.DistroID,
+		Region:               spawnHostInput.Region,
+		KeyName:              spawnHostInput.PublicKey.Key,
+		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
+		NoExpiration:         spawnHostInput.NoExpiration,
+	}
+	if spawnHostInput.SetUpScript != nil {
+		options.SetupScript = *spawnHostInput.SetUpScript
+	}
+	if spawnHostInput.UserDataScript != nil {
+		options.UserData = *spawnHostInput.UserDataScript
+	}
+	if spawnHostInput.HomeVolumeSize != nil {
+		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
+	}
+	if spawnHostInput.Expiration != nil {
+		options.Expiration = *spawnHostInput.Expiration
+	}
+
+	hc := &data.DBConnector{}
+	spawnHost, err := hc.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment().Settings())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
+	}
+	if spawnHost == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occured Spawn host is nil"))
+	}
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(spawnHost)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+	}
+	return &apiHost, nil
 }
 
 type queryResolver struct{ *Resolver }
@@ -1425,16 +1470,9 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 }
 
 func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*restModel.APIPubKey, error) {
-	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
-	}
-	err := verifyPublicKey(ctx, publicKeyInput)
+	err := savePublicKey(ctx, publicKeyInput)
 	if err != nil {
 		return nil, err
-	}
-	err = route.MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
