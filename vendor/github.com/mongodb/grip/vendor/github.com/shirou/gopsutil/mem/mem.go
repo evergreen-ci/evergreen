@@ -14,80 +14,84 @@ var invoke common.Invoker = common.Invoke{}
 // The other fields in this struct contain kernel specific values.
 type VirtualMemoryStat struct {
 	// Total amount of RAM on this system
-	Total uint64 `json:"total" bson:"total,omitempty"`
+	Total uint64 `json:"total"`
 
 	// RAM available for programs to allocate
 	//
 	// This value is computed from the kernel specific values.
-	Available uint64 `json:"available" bson:"available,omitempty"`
+	Available uint64 `json:"available"`
 
 	// RAM used by programs
 	//
 	// This value is computed from the kernel specific values.
-	Used uint64 `json:"used" bson:"used,omitempty"`
+	Used uint64 `json:"used"`
 
 	// Percentage of RAM used by programs
 	//
 	// This value is computed from the kernel specific values.
-	UsedPercent float64 `json:"usedPercent" bson:"usedPercent,omitempty"`
+	UsedPercent float64 `json:"usedPercent"`
 
 	// This is the kernel's notion of free memory; RAM chips whose bits nobody
 	// cares about the value of right now. For a human consumable number,
 	// Available is what you really want.
-	Free uint64 `json:"free" bson:"free,omitempty"`
+	Free uint64 `json:"free"`
 
 	// OS X / BSD specific numbers:
 	// http://www.macyourself.com/2010/02/17/what-is-free-wired-active-and-inactive-system-memory-ram/
-	Active   uint64 `json:"active" bson:"active,omitempty"`
-	Inactive uint64 `json:"inactive" bson:"inactive,omitempty"`
-	Wired    uint64 `json:"wired" bson:"wired,omitempty"`
+	Active   uint64 `json:"active"`
+	Inactive uint64 `json:"inactive"`
+	Wired    uint64 `json:"wired"`
 
 	// FreeBSD specific numbers:
 	// https://reviews.freebsd.org/D8467
-	Laundry uint64 `json:"laundry" bson:"laundry,omitempty"`
+	Laundry uint64 `json:"laundry"`
 
 	// Linux specific numbers
 	// https://www.centos.org/docs/5/html/5.1/Deployment_Guide/s2-proc-meminfo.html
 	// https://www.kernel.org/doc/Documentation/filesystems/proc.txt
 	// https://www.kernel.org/doc/Documentation/vm/overcommit-accounting
-	Buffers        uint64 `json:"buffers" bson:"buffers,omitempty"`
-	Cached         uint64 `json:"cached" bson:"cached,omitempty"`
-	Writeback      uint64 `json:"writeback" bson:"writeback,omitempty"`
-	Dirty          uint64 `json:"dirty" bson:"dirty,omitempty"`
-	WritebackTmp   uint64 `json:"writebacktmp" bson:"writebacktmp,omitempty"`
-	Shared         uint64 `json:"shared" bson:"shared,omitempty"`
-	Slab           uint64 `json:"slab" bson:"slab,omitempty"`
-	SReclaimable   uint64 `json:"sreclaimable" bson:"sreclaimable,omitempty"`
-	SUnreclaim     uint64 `json:"sunreclaim" bson:"sunreclaim,omitempty"`
-	PageTables     uint64 `json:"pagetables" bson:"pagetables,omitempty"`
-	SwapCached     uint64 `json:"swapcached" bson:"swapcached,omitempty"`
-	CommitLimit    uint64 `json:"commitlimit" bson:"commitlimit,omitempty"`
-	CommittedAS    uint64 `json:"committedas" bson:"committedas,omitempty"`
-	HighTotal      uint64 `json:"hightotal" bson:"hightotal,omitempty"`
-	HighFree       uint64 `json:"highfree" bson:"highfree,omitempty"`
-	LowTotal       uint64 `json:"lowtotal" bson:"lowtotal,omitempty"`
-	LowFree        uint64 `json:"lowfree" bson:"lowfree,omitempty"`
-	SwapTotal      uint64 `json:"swaptotal" bson:"swaptotal,omitempty"`
-	SwapFree       uint64 `json:"swapfree" bson:"swapfree,omitempty"`
-	Mapped         uint64 `json:"mapped" bson:"mapped,omitempty"`
-	VMallocTotal   uint64 `json:"vmalloctotal" bson:"vmalloctotal,omitempty"`
-	VMallocUsed    uint64 `json:"vmallocused" bson:"vmallocused,omitempty"`
-	VMallocChunk   uint64 `json:"vmallocchunk" bson:"vmallocchunk,omitempty"`
-	HugePagesTotal uint64 `json:"hugepagestotal" bson:"hugepagestotal,omitempty"`
-	HugePagesFree  uint64 `json:"hugepagesfree" bson:"hugepagesfree,omitempty"`
-	HugePageSize   uint64 `json:"hugepagesize" bson:"hugepagesize,omitempty"`
+	Buffers        uint64 `json:"buffers"`
+	Cached         uint64 `json:"cached"`
+	Writeback      uint64 `json:"writeback"`
+	Dirty          uint64 `json:"dirty"`
+	WritebackTmp   uint64 `json:"writebacktmp"`
+	Shared         uint64 `json:"shared"`
+	Slab           uint64 `json:"slab"`
+	SReclaimable   uint64 `json:"sreclaimable"`
+	SUnreclaim     uint64 `json:"sunreclaim"`
+	PageTables     uint64 `json:"pagetables"`
+	SwapCached     uint64 `json:"swapcached"`
+	CommitLimit    uint64 `json:"commitlimit"`
+	CommittedAS    uint64 `json:"committedas"`
+	HighTotal      uint64 `json:"hightotal"`
+	HighFree       uint64 `json:"highfree"`
+	LowTotal       uint64 `json:"lowtotal"`
+	LowFree        uint64 `json:"lowfree"`
+	SwapTotal      uint64 `json:"swaptotal"`
+	SwapFree       uint64 `json:"swapfree"`
+	Mapped         uint64 `json:"mapped"`
+	VMallocTotal   uint64 `json:"vmalloctotal"`
+	VMallocUsed    uint64 `json:"vmallocused"`
+	VMallocChunk   uint64 `json:"vmallocchunk"`
+	HugePagesTotal uint64 `json:"hugepagestotal"`
+	HugePagesFree  uint64 `json:"hugepagesfree"`
+	HugePageSize   uint64 `json:"hugepagesize"`
 }
 
 type SwapMemoryStat struct {
-	Total       uint64  `json:"total" bson:"total,omitempty"`
-	Used        uint64  `json:"used" bson:"used,omitempty"`
-	Free        uint64  `json:"free" bson:"free,omitempty"`
-	UsedPercent float64 `json:"usedPercent" bson:"usedPercent,omitempty"`
-	Sin         uint64  `json:"sin" bson:"sin,omitempty"`
-	Sout        uint64  `json:"sout" bson:"sout,omitempty"`
-	PgIn        uint64  `json:"pgin" bson:"pgin,omitempty"`
-	PgOut       uint64  `json:"pgout" bson:"pgout,omitempty"`
-	PgFault     uint64  `json:"pgfault" bson:"pgfault,omitempty"`
+	Total       uint64  `json:"total"`
+	Used        uint64  `json:"used"`
+	Free        uint64  `json:"free"`
+	UsedPercent float64 `json:"usedPercent"`
+	Sin         uint64  `json:"sin"`
+	Sout        uint64  `json:"sout"`
+	PgIn        uint64  `json:"pgin"`
+	PgOut       uint64  `json:"pgout"`
+	PgFault     uint64  `json:"pgfault"`
+
+	// Linux specific numbers
+	// https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+	PgMajFault uint64 `json:"pgmajfault"`
 }
 
 func (m VirtualMemoryStat) String() string {
