@@ -336,9 +336,12 @@ func backport() cli.Command {
 				return errors.Errorf("Patch '%s' is not a commit queue patch", patchParams.Backport)
 			}
 
-			latestVersions, err := client.GetRecentVersionsForProject(ctx, existingPatch.Project, evergreen.RepotrackerVersionRequester)
+			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
 			if err != nil {
-				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", existingPatch.Project)
+				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", patchParams.Project)
+			}
+			if len(latestVersions) == 0 {
+				return errors.Errorf("no repotracker versions exist in project '%s'", patchParams.Project)
 			}
 			var backportPatch *patch.Patch
 			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})

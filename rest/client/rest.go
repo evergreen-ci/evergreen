@@ -1308,11 +1308,8 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method:  get,
-		path:    fmt.Sprintf("projects/%s/versions", projectID),
+		path:    fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
 		version: apiVersion2,
-	}
-	if requester != "" {
-		info.path = fmt.Sprintf("%s?requester=%s", info.path, requester)
 	}
 
 	resp, err := c.request(ctx, info, "")
