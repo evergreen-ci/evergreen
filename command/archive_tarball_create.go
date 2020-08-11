@@ -38,7 +38,10 @@ type tarballCreate struct {
 	base
 }
 
-var retryErrors = []string{"out of range", "index > windowEnd"}
+const (
+	retryError = "index > windowEnd"
+	maxRetries = 1
+)
 
 func tarballCreateFactory() Command   { return &tarballCreate{} }
 func (c *tarballCreate) Name() string { return "archive.targz_pack" }
@@ -97,16 +100,14 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	select {
 	case err := <-errChan:
 		if err != nil {
-			// this is only our first attempt, so we should retry if we've hit a relevant error
-			if c.Attempt == 0 {
-				for _, retryError := range retryErrors {
-					// if error contains our issue, we should retry the command
-					if strings.Contains(err.Error(), retryError) {
-						c.Attempt += 1
-						logger.Execution().Infof("retrying targz pack command due to error: %s", err.Error())
-						return c.Execute(ctx, client, logger, conf)
-					}
+			// we should retry if we've hit this go error
+			if c.Attempt < maxRetries {
+				if strings.Contains(err.Error(), retryError) {
+					c.Attempt += 1
+					logger.Execution().Infof("retrying targz pack command due to error: %s", err.Error())
+					return c.Execute(ctx, client, logger, conf)
 				}
+
 			}
 			return errors.WithStack(err)
 		}
