@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -352,13 +351,6 @@ func TestSystemMetricsCollectors(t *testing.T) {
 }
 
 func TestCollectProcesses(t *testing.T) {
-	if runtime.GOOS == "darwin" {
-		t.Skip("TODO (EVG-12736): fix (*Process).CreateTime - Process() does not work on MacOS with old version of gopsutil")
-	}
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO: Processes aren't returning on Windows - need to fix")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
