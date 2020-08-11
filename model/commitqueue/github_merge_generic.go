@@ -92,9 +92,9 @@ func (s *GitHubMergePR) Send() error {
 
 		if !res.GetMerged() {
 			catcher := grip.NewBasicCatcher()
-			catcher.Add(s.sendMergeFailedStatus(res.GetMessage(), pr))
+			s.sendMergeFailedStatus(res.GetMessage(), pr)
 			for j := i + 1; j < len(s.PRs); j++ {
-				catcher.Add(s.sendMergeFailedStatus("aborted", s.PRs[j]))
+				s.sendMergeFailedStatus("aborted", s.PRs[j])
 			}
 			event.LogCommitQueueConcludeTest(s.PatchID, evergreen.MergeTestFailed)
 			catcher.Add(s.dequeueFromCommitQueue())
@@ -127,7 +127,7 @@ func (s *GitHubMergePR) Valid() bool {
 	return true
 }
 
-func (s *GitHubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) error {
+func (s *GitHubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) {
 	state := message.GithubStateFailure
 	description := fmt.Sprintf("merge failed: %s", githubMessage)
 
@@ -142,18 +142,14 @@ func (s *GitHubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRI
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
 
 	s.statusSender.Send(c)
-	return nil
 }
 
 func (s *GitHubMergePR) sendPatchResult(pr event.PRInfo) {
-	var state message.GithubState
-	var description string
+	state := message.GithubStateFailure
+	description := "merge test failed"
 	if s.Status == evergreen.PatchSucceeded {
 		state = message.GithubStateSuccess
 		description = "merge test succeeded"
-	} else {
-		state = message.GithubStateFailure
-		description = "merge test failed"
 	}
 
 	status := message.GithubStatus{

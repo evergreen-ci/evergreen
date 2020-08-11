@@ -311,6 +311,7 @@ func backport() cli.Command {
 				Finalize: c.Bool(patchFinalizeFlagName),
 				Backport: c.String(existingPatchFlag),
 				Project:  c.String(projectFlagName),
+				Browse:   c.Bool(patchBrowseFlagName),
 			}
 
 			conf, err := NewClientSettings(confPath)

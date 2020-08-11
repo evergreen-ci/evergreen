@@ -629,7 +629,7 @@ func (p *Patch) MakeBackportDescription() (string, error) {
 		return "", errors.Wrap(err, "can't get patch being backported")
 	}
 	if commitQueuePatch == nil {
-		return "", errors.Wrapf(err, "patch '%s' being backported doesn't exist", p.Backport)
+		return "", errors.Errorf("patch '%s' being backported doesn't exist", p.Backport)
 	}
 
 	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.Backport), nil

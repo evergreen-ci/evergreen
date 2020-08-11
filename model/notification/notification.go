@@ -215,7 +215,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 	case event.EnqueuePatchSubscriberType:
 		payload, ok := n.Payload.(*model.EnqueuePatch)
 		if !ok || payload == nil {
-			return nil, errors.New("commit-queue-dequeue payload is invalid")
+			return nil, errors.New("enqueue-patch payload is invalid")
 		}
 
 		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
