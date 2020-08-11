@@ -420,9 +420,12 @@ func createProcMetrics(ctx context.Context, procs []*process.Process) []processD
 		if err != nil {
 			createTime = 0
 		}
+		var cpuTime string
 		times, err := proc.TimesWithContext(ctx)
 		if err != nil {
 			times = nil
+		} else {
+			cpuTime = times.CPU
 		}
 		name, err := proc.NameWithContext(ctx)
 		if err != nil {
@@ -438,7 +441,7 @@ func createProcMetrics(ctx context.Context, procs []*process.Process) []processD
 			Terminal:          terminal,
 			Stat:              status,
 			Started:           createTime,
-			Time:              times.CPU,
+			Time:              cpuTime,
 			Command:           name,
 		}
 		procMetrics[i] = procWrapper
