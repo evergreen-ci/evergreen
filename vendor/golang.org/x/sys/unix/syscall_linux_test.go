@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -70,6 +71,22 @@ func TestIoctlGetRTCTime(t *testing.T) {
 	}
 
 	t.Logf("RTC time: %04d-%02d-%02d %02d:%02d:%02d", v.Year+1900, v.Mon+1, v.Mday, v.Hour, v.Min, v.Sec)
+}
+
+func TestIoctlGetRTCWkAlrm(t *testing.T) {
+	f, err := os.Open("/dev/rtc0")
+	if err != nil {
+		t.Skipf("skipping test, %v", err)
+	}
+	defer f.Close()
+
+	v, err := unix.IoctlGetRTCWkAlrm(int(f.Fd()))
+	if err != nil {
+		t.Fatalf("failed to perform ioctl: %v", err)
+	}
+
+	t.Logf("RTC wake alarm enabled '%d'; time: %04d-%02d-%02d %02d:%02d:%02d",
+		v.Enabled, v.Time.Year+1900, v.Time.Mon+1, v.Time.Mday, v.Time.Hour, v.Time.Min, v.Time.Sec)
 }
 
 func TestPpoll(t *testing.T) {
@@ -155,43 +172,6 @@ func TestUtime(t *testing.T) {
 
 	if fi.ModTime().Unix() != 12345 {
 		t.Errorf("Utime: failed to change modtime: expected %v, got %v", 12345, fi.ModTime().Unix())
-	}
-}
-
-func TestUtimesNanoAt(t *testing.T) {
-	defer chtmpdir(t)()
-
-	symlink := "symlink1"
-	os.Remove(symlink)
-	err := os.Symlink("nonexisting", symlink)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ts := []unix.Timespec{
-		{Sec: 1111, Nsec: 2222},
-		{Sec: 3333, Nsec: 4444},
-	}
-	err = unix.UtimesNanoAt(unix.AT_FDCWD, symlink, ts, unix.AT_SYMLINK_NOFOLLOW)
-	if err != nil {
-		t.Fatalf("UtimesNanoAt: %v", err)
-	}
-
-	var st unix.Stat_t
-	err = unix.Lstat(symlink, &st)
-	if err != nil {
-		t.Fatalf("Lstat: %v", err)
-	}
-
-	// Only check Mtim, Atim might not be supported by the underlying filesystem
-	expected := ts[1]
-	if st.Mtim.Nsec == 0 {
-		// Some filesystems only support 1-second time stamp resolution
-		// and will always set Nsec to 0.
-		expected.Nsec = 0
-	}
-	if st.Mtim != expected {
-		t.Errorf("UtimesNanoAt: wrong mtime: expected %v, got %v", expected, st.Mtim)
 	}
 }
 
@@ -684,5 +664,69 @@ func TestEpoll(t *testing.T) {
 	got := int(events[0].Fd)
 	if got != fd {
 		t.Errorf("EpollWait: wrong Fd in event: got %v, expected %v", got, fd)
+	}
+}
+
+func TestPrctlRetInt(t *testing.T) {
+	err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
+	if err != nil {
+		t.Skipf("Prctl: %v, skipping test", err)
+	}
+	v, err := unix.PrctlRetInt(unix.PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0)
+	if err != nil {
+		t.Fatalf("failed to perform prctl: %v", err)
+	}
+	if v != 1 {
+		t.Fatalf("unexpected return from prctl; got %v, expected %v", v, 1)
+	}
+}
+
+func TestTimerfd(t *testing.T) {
+	var now unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_REALTIME, &now); err != nil {
+		t.Fatalf("ClockGettime: %v", err)
+	}
+
+	tfd, err := unix.TimerfdCreate(unix.CLOCK_REALTIME, 0)
+	if err == unix.ENOSYS {
+		t.Skip("timerfd_create system call not implemented")
+	} else if err != nil {
+		t.Fatalf("TimerfdCreate: %v", err)
+	}
+	defer unix.Close(tfd)
+
+	var timeSpec unix.ItimerSpec
+	if err := unix.TimerfdGettime(tfd, &timeSpec); err != nil {
+		t.Fatalf("TimerfdGettime: %v", err)
+	}
+
+	if timeSpec.Value.Nsec != 0 || timeSpec.Value.Sec != 0 {
+		t.Fatalf("TimerfdGettime: timer is already set, but shouldn't be")
+	}
+
+	timeSpec = unix.ItimerSpec{
+		Interval: unix.NsecToTimespec(int64(time.Millisecond)),
+		Value:    now,
+	}
+
+	if err := unix.TimerfdSettime(tfd, unix.TFD_TIMER_ABSTIME, &timeSpec, nil); err != nil {
+		t.Fatalf("TimerfdSettime: %v", err)
+	}
+
+	const totalTicks = 10
+	const bufferLength = 8
+
+	buffer := make([]byte, bufferLength)
+
+	var count uint64 = 0
+	for count < totalTicks {
+		n, err := unix.Read(tfd, buffer)
+		if err != nil {
+			t.Fatalf("Timerfd: %v", err)
+		} else if n != bufferLength {
+			t.Fatalf("Timerfd: got %d bytes from timerfd, expected %d bytes", n, bufferLength)
+		}
+
+		count += *(*uint64)(unsafe.Pointer(&buffer))
 	}
 }

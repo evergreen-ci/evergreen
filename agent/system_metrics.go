@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
@@ -362,17 +361,16 @@ type processesWrapper struct {
 }
 
 type processData struct {
-	PID               int32   `json:"pid,omitempty"`
-	CPUPercent        float64 `json:"percent_cpu,omitempty"`
-	MemoryPercent     float32 `json:"percent_mem,omitempty"`
-	VirtualMemorySize uint64  `json:"vsz,omitempty"`
-	ResidentSetSize   uint64  `json:"rss,omitempty"`
-	Terminal          string  `json:"tt,omitempty"`
-	Stat              string  `json:"stat,omitempty"`
-	// TODO (EVG-12736): fix (*Process).CreateTime
-	// Started           int64          `json:"started"`
-	Time    *cpu.TimesStat `json:"time,omitempty"`
-	Command string         `json:"command,omitempty"`
+	PID               int32          `json:"pid,omitempty"`
+	CPUPercent        float64        `json:"percent_cpu,omitempty"`
+	MemoryPercent     float32        `json:"percent_mem,omitempty"`
+	VirtualMemorySize uint64         `json:"vsz,omitempty"`
+	ResidentSetSize   uint64         `json:"rss,omitempty"`
+	Terminal          string         `json:"tt,omitempty"`
+	Stat              string         `json:"stat,omitempty"`
+	Started           int64          `json:"started"`
+	Time              *cpu.TimesStat `json:"time,omitempty"`
+	Command           string         `json:"command,omitempty"`
 }
 
 func (c *processCollector) Name() string { return "process" }
@@ -380,11 +378,6 @@ func (c *processCollector) Name() string { return "process" }
 func (c *processCollector) Format() dataFormat { return dataFormatJSON }
 
 func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
-	// TODO (EVG-12736): fix (*Process).CreateTime
-	if runtime.GOOS == "darwin" {
-		return []byte{}, errors.Errorf("process collector does not work on MacOS")
-	}
-
 	var err error
 	procs, err := process.Processes()
 	if err != nil {
@@ -424,11 +417,10 @@ func createProcMetrics(procs []*process.Process) []processData {
 		if err != nil {
 			status = ""
 		}
-		// TODO (EVG-12736): fix (*Process).CreateTime
-		// createTime, err := proc.CreateTime()
-		// if err != nil {
-		// 	createTime = 0
-		// }
+		createTime, err := proc.CreateTime()
+		if err != nil {
+			createTime = 0
+		}
 		times, err := proc.Times()
 		if err != nil {
 			times = nil
@@ -446,10 +438,9 @@ func createProcMetrics(procs []*process.Process) []processData {
 			ResidentSetSize:   rss,
 			Terminal:          terminal,
 			Stat:              status,
-			// TODO (EVG-12736): fix (*Process).CreateTime
-			// Started:           createTime,
-			Time:    times,
-			Command: name,
+			Started:           createTime,
+			Time:              times,
+			Command:           name,
 		}
 		procMetrics[i] = procWrapper
 	}

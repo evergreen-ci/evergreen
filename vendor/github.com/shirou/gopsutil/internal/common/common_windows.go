@@ -69,7 +69,6 @@ var (
 	ProcNtWow64QueryInformationProcess64 = ModNt.NewProc("NtWow64QueryInformationProcess64")
 	ProcNtWow64ReadVirtualMemory64       = ModNt.NewProc("NtWow64ReadVirtualMemory64")
 
-<<<<<<< HEAD:vendor/github.com/shirou/gopsutil/internal/common/common_windows.go
 	PdhOpenQuery                         = ModPdh.NewProc("PdhOpenQuery")
 	PdhAddCounter                        = ModPdh.NewProc("PdhAddCounterW")
 	PdhCollectQueryData                  = ModPdh.NewProc("PdhCollectQueryData")
@@ -77,15 +76,6 @@ var (
 	PdhCloseQuery                        = ModPdh.NewProc("PdhCloseQuery")
 
 	procQueryDosDeviceW                  = Modkernel32.NewProc("QueryDosDeviceW")
-=======
-	PdhOpenQuery                = ModPdh.NewProc("PdhOpenQuery")
-	PdhAddCounter               = ModPdh.NewProc("PdhAddCounterW")
-	PdhCollectQueryData         = ModPdh.NewProc("PdhCollectQueryData")
-	PdhGetFormattedCounterValue = ModPdh.NewProc("PdhGetFormattedCounterValue")
-	PdhCloseQuery               = ModPdh.NewProc("PdhCloseQuery")
-
-	procQueryDosDeviceW = Modkernel32.NewProc("QueryDosDeviceW")
->>>>>>> d2795faca79624ff0f1562eefe81595676d0298d:vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/internal/common/common_windows.go
 )
 
 type FILETIME struct {
