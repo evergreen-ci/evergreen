@@ -111,7 +111,7 @@ imports:
   - name: golang.org/x/oauth2
     version: f047394b6d14284165300fd82dad67edb3a4d7f6
   - name: golang.org/x/sys
-    version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
+    version: 1b9f1253b3ed7b65abba1a5ee3f58da72dae0ab7
   - name: github.com/google/go-github
     version: 9686ff0746200cf521ce225525b421e13b4eac1a
   - name: github.com/google/go-querystring
@@ -122,7 +122,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 0c6d5f1374e2a07a8ce72cfd765bea028aa6b7ec
+    version: 18fee9db9096d39bddf6720db6ced11534b8ab3c
   - name: github.com/mongodb/amboy
     version: 07fdffff5b8c8491ee70e9e25b1f89fe29c168de
   - name: github.com/evergreen-ci/gimlet
@@ -196,11 +196,10 @@ imports:
 
   # gopsutil and its dependencies
   - name: github.com/shirou/gopsutil
-    version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
+    version: 7e94bb8bcde053b6d6c98bda5145e9742c913c39
   - name: github.com/StackExchange/wmi
     version: cbe66965904dbe8a6cd589e2298e5d8b986bd7dd
   - name: github.com/go-ole/go-ole
     version: 14974a1cf6477f616180232977d8ab4791ea8820
   - name: github.com/shirou/w32
     version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
-

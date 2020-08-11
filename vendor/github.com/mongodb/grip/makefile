@@ -7,13 +7,10 @@ projectPath := $(orgPath)/$(name)
 # end project configuration
 
 # lint setup targets
-lintDeps := $(buildDir)/golangci-lint $(buildDir)/.lintSetup $(buildDir)/run-linter
-$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@mkdir -p $(buildDir)
-	@touch $@
+lintDeps := $(buildDir)/golangci-lint $(buildDir)/run-linter
 $(buildDir)/golangci-lint:$(buildDir)
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
-$(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup
+	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
+$(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/golangci-lint
 	@mkdir -p $(buildDir)
 	go build -o $@ $<
 # end lint setup targets
@@ -134,7 +131,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mattn/go-xmpp/_example/
 	rm -rf vendor/github.com/bluele/slack/examples/
 	sed -ri 's%(\tlog.*)%// \1%g' `find vendor/github.com/nutmegdevelopment/sumologic/upload/upload.go`
-	sed -ri 's/json:"(.*)"/json:"\1" bson:"\1,omitempty"/' `grep -R -l 'json:\".*\" [^bson]' vendor/github.com/shirou/gopsutil/*` || true
 	find vendor/ -name "*.go" | xargs gofmt -w -r '"golang.org/x/net/context" -> "context"'
 	find vendor/github.com/shirou/gopsutil/ -name "*.go" | xargs -n 1 gofmt -w || true
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -fr
