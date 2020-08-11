@@ -130,13 +130,15 @@ func copyFile(dst, src string) error {
 	}
 	// no need to check errors on read only file, we already got everything
 	// we need from the filesystem, so nothing can go wrong now.
-	defer s.Close()
+	defer func() {
+		grip.Error(s.Close())
+	}()
 	d, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(d, s); err != nil {
-		_ = d.Close()
+		grip.Error(d.Close())
 		return err
 	}
 	return d.Close()
