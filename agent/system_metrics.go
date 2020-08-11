@@ -424,6 +424,7 @@ func createProcMetrics(procs []*process.Process) []processData {
 		if err != nil {
 			status = ""
 		}
+		// TODO (EVG-12736): fix (*Process).CreateTime
 		// createTime, err := proc.CreateTime()
 		// if err != nil {
 		// 	createTime = 0
@@ -445,6 +446,7 @@ func createProcMetrics(procs []*process.Process) []processData {
 			ResidentSetSize:   rss,
 			Terminal:          terminal,
 			Stat:              status,
+			// TODO (EVG-12736): fix (*Process).CreateTime
 			// Started:           createTime,
 			Time:    times,
 			Command: name,
