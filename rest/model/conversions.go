@@ -84,7 +84,15 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 			return convertFuncs{}, errors.New("non-empty interfaces not implemented yet")
 		}
 	case *types.Slice:
-		inName := cleanName(shortenPackage(opts.in.String()), containsPtr(opts.in.String()))
+		// no conversion code is generated here for arrays because it's done in generateArrayConversions
+		inName := cleanName(shortenPackage(in.String()), containsPtr(in.String()))
+		outName := cleanName(shortenPackage(opts.outType), containsPtr(opts.outType))
+		return convertFuncs{
+			converter: fmt.Sprintf("%s%s", inName, outName),
+			inverter:  fmt.Sprintf("%s%s", outName, inName),
+		}, nil
+	case *types.Array:
+		inName := cleanName(shortenPackage(in.String()), containsPtr(in.String()))
 		outName := cleanName(shortenPackage(opts.outType), containsPtr(opts.outType))
 		return convertFuncs{
 			converter: fmt.Sprintf("%s%s", inName, outName),
@@ -93,6 +101,84 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 	default:
 		return convertFuncs{}, errors.Errorf("converting type %s is not supported", opts.in.String())
 	}
+}
+
+// generateArrayConversions does a similar task to generateServiceConversions, but specifically
+// generates code which will convert arrays whose elements are arbitrary types. The approach
+// here has logical similarities to generating conversion code for both a struct and a scalar
+func generateArrayConversions(modelName string, modelType types.Type, restName, restType string, outIsPtr bool, generatedConversions map[typeInfo]string) (string, error) {
+	arrayElem := findArrayElem(modelType)
+	if arrayElem == nil {
+		return "", errors.Errorf("unexpected error: '%s' is not an array", modelName)
+	}
+	conversionInfo := typeInfo{
+		InType: modelType.String(),
+	}
+	if generatedConversions[conversionInfo] != "" {
+		return "", nil
+	}
+
+	arrayTemplate, err := getTemplate(arrayMethodsTemplatePath)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting service methods template")
+	}
+	lineTemplate, err := getTemplate(funcTemplatePath)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting line template")
+	}
+	opts := convertFnOpts{
+		in:       modelType,
+		outIsPtr: outIsPtr,
+		outType:  restType,
+	}
+	convertFuncs, err := arrayConversionFn(opts, generatedConversions)
+	if err != nil {
+		return "", err
+	}
+	bfsData := conversionLine{
+		TypeConversionFunc: convertFuncs.converter,
+	}
+	bfsCode, err := output(lineTemplate, bfsData)
+	if err != nil {
+		return "", errors.Wrap(err, "error generating line code")
+	}
+	modelTypeStr := fmt.Sprintf("[]%s", (*arrayElem).String())
+	serviceData := arrayConversionInfo{
+		FromType:       shortenPackage(modelTypeStr),
+		FromHasPtr:     containsPtr(modelTypeStr),
+		ToType:         shortenPackage(restType),
+		ToHasPtr:       containsPtr(restType),
+		ConversionCode: bfsCode,
+	}
+	code, err := output(arrayTemplate, serviceData)
+	if err != nil {
+		return "", err
+	}
+	if modelTypeStr != restType {
+		tsData := conversionLine{
+			TypeConversionFunc: convertFuncs.inverter,
+		}
+		tsCode, err := output(lineTemplate, tsData)
+		if err != nil {
+			return "", errors.Wrap(err, "error generating line code")
+		}
+		serviceData = arrayConversionInfo{
+			FromType:       shortenPackage(restType),
+			FromHasPtr:     containsPtr(restType),
+			ToType:         shortenPackage(modelTypeStr),
+			ToHasPtr:       containsPtr(modelTypeStr),
+			ConversionCode: tsCode,
+		}
+		reverseCode, err := output(arrayTemplate, serviceData)
+		if err != nil {
+			return "", err
+		}
+		code += "\n"
+		code += reverseCode
+	}
+	generatedConversions[conversionInfo] = code
+
+	return code, nil
 }
 
 // arrayConversionFn is similar to conversionFn above, but specifically takes an array
@@ -215,7 +301,7 @@ func stripPackage(pkg string) string {
 }
 
 // stripArray takes a type name and strips the array symbol, returning
-// whether the type was an array as well as the array element's type
+// whether the type was an array as well as the array element's type.
 // for example: []myPackage.myStruct returns true, myPackage.myStruct
 func stripArray(typeName string) (bool, string) {
 	isArray := strings.HasPrefix(typeName, "[]")

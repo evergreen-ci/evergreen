@@ -52,3 +52,17 @@ func TestWords(t *testing.T) {
 	s := "thisIsAFieldName"
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
 }
+
+func TestGqlTypeToGoType(t *testing.T) {
+	cases := map[string]string{
+		"String":  "string",
+		"String!": "string",
+		"Map":     "map[string]interface{}",
+		"[Int!]!": "[]int",
+	}
+	for input, output := range cases {
+		assert.Equalf(t, output, gqlTypeToGoType(input, false), "case: %s; expected: %s", input, output)
+	}
+
+	assert.Equal(t, "*float64", gqlTypeToGoType("Float", true))
+}

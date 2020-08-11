@@ -301,7 +301,7 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 		if isArray {
 			matches := re.FindStringSubmatch(gqlType)
 			if len(matches) != 2 {
-				grip.Errorf("type '%s' may be a nested array, which is not supported")
+				grip.Errorf("type '%s' may be a nested array, which is not supported", gqlType)
 				return ""
 			}
 			elem := matches[1]
@@ -427,91 +427,15 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	return output(serviceTemplate, data)
 }
 
-// generateArrayConversions does a similar task to generateServiceConversions above, but specifically
-// generates code which will convert arrays whose elements are arbitrary types. The approach
-// here has logical similarities to generating conversion code for both a struct and a scalar
-func generateArrayConversions(modelName string, modelType types.Type, restName, restType string, outIsPtr bool, generatedConversions map[typeInfo]string) (string, error) {
-	arrayElem := findArrayElem(modelType)
-	if arrayElem == nil {
-		return "", errors.Errorf("unexpected error: %s is not an array", modelName)
-	}
-	conversionInfo := typeInfo{
-		InType:  modelType.String(),
-		OutType: "temp",
-	}
-	if generatedConversions[conversionInfo] != "" {
-		return "", nil
-	}
-
-	arrayTemplate, err := getTemplate(arrayMethodsTemplatePath)
-	if err != nil {
-		return "", errors.Wrap(err, "error getting service methods template")
-	}
-	lineTemplate, err := getTemplate(funcTemplatePath)
-	if err != nil {
-		return "", errors.Wrap(err, "error getting line template")
-	}
-	opts := convertFnOpts{
-		in:       modelType,
-		outIsPtr: outIsPtr,
-		outType:  restType,
-	}
-	convertFuncs, err := arrayConversionFn(opts, generatedConversions)
-	if err != nil {
-		return "", err
-	}
-	bfsData := conversionLine{
-		TypeConversionFunc: convertFuncs.converter,
-	}
-	bfsCode, err := output(lineTemplate, bfsData)
-	if err != nil {
-		return "", errors.Wrap(err, "error generating line code")
-	}
-	tsData := conversionLine{
-		TypeConversionFunc: convertFuncs.inverter,
-	}
-	tsCode, err := output(lineTemplate, tsData)
-	if err != nil {
-		return "", errors.Wrap(err, "error generating line code")
-	}
-	modelTypeStr := fmt.Sprintf("[]%s", (*arrayElem).String())
-	serviceData := arrayConversionInfo{
-		FromType:       shortenPackage(modelTypeStr),
-		FromHasPtr:     containsPtr(modelTypeStr),
-		ToType:         shortenPackage(restType),
-		ToHasPtr:       containsPtr(restType),
-		ConversionCode: bfsCode,
-	}
-	code, err := output(arrayTemplate, serviceData)
-	if err != nil {
-		return "", err
-	}
-	if modelTypeStr != restType {
-		serviceData = arrayConversionInfo{
-			FromType:       shortenPackage(restType),
-			FromHasPtr:     containsPtr(restType),
-			ToType:         shortenPackage(modelTypeStr),
-			ToHasPtr:       containsPtr(modelTypeStr),
-			ConversionCode: tsCode,
-		}
-		reverseCode, err := output(arrayTemplate, serviceData)
-		if err != nil {
-			return "", err
-		}
-		code += "\n"
-		code += reverseCode
-	}
-	generatedConversions[conversionInfo] = code
-
-	return code, nil
-}
-
 // findArrayElem is a utility function to return the type of element of an array,
 // or nil if it is not an array
 func findArrayElem(arrayType types.Type) *types.Type {
 	switch v := arrayType.(type) {
 	case *types.Slice:
 		elem := v.Elem()
+		// TODO: throwing away the pointer makes this unable to handle converting
+		// a model type that is a slice of pointers to a rest type that is a slice
+		// of non-pointers
 		if value, isPtr := elem.(*types.Pointer); isPtr {
 			underlying := value.Underlying()
 			return &underlying
