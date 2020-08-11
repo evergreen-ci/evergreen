@@ -365,6 +365,6 @@ func TestCollectProcesses(t *testing.T) {
 	assert.NotEmpty(t, procs)
 
 	for _, proc := range procs.Processes {
-		assert.NotEmpty(t, proc.PID)
+		assert.NotZero(t, proc.Command)
 	}
 }

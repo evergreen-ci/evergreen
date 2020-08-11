@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/process"
@@ -303,7 +302,7 @@ func (c *diskUsageCollector) Name() string { return "disk_usage" }
 func (c *diskUsageCollector) Format() dataFormat { return dataFormatFTDC }
 
 func (c *diskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
-	usage, err := disk.Usage(c.dir)
+	usage, err := disk.UsageWithContext(ctx, c.dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
@@ -339,7 +338,7 @@ func (c *uptimeCollector) Name() string { return "uptime" }
 func (c *uptimeCollector) Format() dataFormat { return dataFormatFTDC }
 
 func (c *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
-	uptime, err := host.Uptime()
+	uptime, err := host.UptimeWithContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
@@ -361,16 +360,16 @@ type processesWrapper struct {
 }
 
 type processData struct {
-	PID               int32          `json:"pid,omitempty"`
-	CPUPercent        float64        `json:"percent_cpu,omitempty"`
-	MemoryPercent     float32        `json:"percent_mem,omitempty"`
-	VirtualMemorySize uint64         `json:"vsz,omitempty"`
-	ResidentSetSize   uint64         `json:"rss,omitempty"`
-	Terminal          string         `json:"tt,omitempty"`
-	Stat              string         `json:"stat,omitempty"`
-	Started           int64          `json:"started"`
-	Time              *cpu.TimesStat `json:"time,omitempty"`
-	Command           string         `json:"command,omitempty"`
+	PID               int32   `json:"pid,omitempty"`
+	CPUPercent        float64 `json:"percent_cpu,omitempty"`
+	MemoryPercent     float32 `json:"percent_mem,omitempty"`
+	VirtualMemorySize uint64  `json:"vsz,omitempty"`
+	ResidentSetSize   uint64  `json:"rss,omitempty"`
+	Terminal          string  `json:"tt,omitempty"`
+	Stat              string  `json:"stat,omitempty"`
+	Started           int64   `json:"started"`
+	Time              string  `json:"time,omitempty"`
+	Command           string  `json:"command,omitempty"`
 }
 
 func (c *processCollector) Name() string { return "process" }
@@ -379,53 +378,53 @@ func (c *processCollector) Format() dataFormat { return dataFormatJSON }
 
 func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
 	var err error
-	procs, err := process.Processes()
+	procs, err := process.ProcessesWithContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	procMetrics := createProcMetrics(procs)
+	procMetrics := createProcMetrics(ctx, procs)
 	procWrapper := processesWrapper{procMetrics}
 
 	results, err := json.Marshal(procWrapper)
 	return results, errors.Wrap(err, "problem marshaling processes into JSON")
 }
 
-func createProcMetrics(procs []*process.Process) []processData {
+func createProcMetrics(ctx context.Context, procs []*process.Process) []processData {
 	procMetrics := make([]processData, len(procs))
 
 	for i, proc := range procs {
-		cpuPercent, err := proc.CPUPercent()
+		cpuPercent, err := proc.CPUPercentWithContext(ctx)
 		if err != nil {
 			cpuPercent = 0
 		}
-		memoryPercent, err := proc.MemoryPercent()
+		memoryPercent, err := proc.MemoryPercentWithContext(ctx)
 		if err != nil {
 			memoryPercent = 0
 		}
-		memInfo, err := proc.MemoryInfo()
+		memInfo, err := proc.MemoryInfoWithContext(ctx)
 		var vms, rss uint64
 		if err == nil {
 			vms = memInfo.VMS
 			rss = memInfo.RSS
 		}
-		terminal, err := proc.Terminal()
+		terminal, err := proc.TerminalWithContext(ctx)
 		if err != nil {
 			terminal = ""
 		}
-		status, err := proc.Status()
+		status, err := proc.StatusWithContext(ctx)
 		if err != nil {
 			status = ""
 		}
-		createTime, err := proc.CreateTime()
+		createTime, err := proc.CreateTimeWithContext(ctx)
 		if err != nil {
 			createTime = 0
 		}
-		times, err := proc.Times()
+		times, err := proc.TimesWithContext(ctx)
 		if err != nil {
 			times = nil
 		}
-		name, err := proc.Name()
+		name, err := proc.NameWithContext(ctx)
 		if err != nil {
 			name = ""
 		}
@@ -439,7 +438,7 @@ func createProcMetrics(procs []*process.Process) []processData {
 			Terminal:          terminal,
 			Stat:              status,
 			Started:           createTime,
-			Time:              times,
+			Time:              times.CPU,
 			Command:           name,
 		}
 		procMetrics[i] = procWrapper
