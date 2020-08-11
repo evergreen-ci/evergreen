@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -23,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/rest/route"
@@ -253,28 +251,16 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	}
 	usr := route.MustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
-	queue := env.RemoteQueue()
 
-	if usr.Username() != host.StartedBy {
-		if !usr.HasPermission(gimlet.PermissionOpts{
-			Resource:      host.Distro.Id,
-			ResourceType:  evergreen.DistroResourceType,
-			Permission:    evergreen.PermissionHosts,
-			RequiredLevel: evergreen.HostsEdit.Value,
-		}) {
-			return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
-		}
+	if !api.CanUpdateSpawnHost(host, usr) {
+		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
+
 	switch action {
 	case SpawnHostStatusActionsStart:
-		if host.Status == evergreen.HostStarting || host.Status == evergreen.HostRunning {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already starting or running", hostID))
-		}
-		// Start the host
-		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-		startJob := units.NewSpawnhostStartJob(host, usr.Id, ts)
-		if err = queue.Put(ctx, startJob); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to start a host : %s", err))
+		host, httpStatus, err := api.StartSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
 		err = apiHost.BuildFromService(host)
@@ -283,15 +269,9 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsStop:
-		if host.Status == evergreen.HostStopped {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already Stopped", hostID))
-		}
-
-		// Stop the host
-		ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-		stopJob := units.NewSpawnhostStopJob(host, usr.Id, ts)
-		if err = queue.Put(ctx, stopJob); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while stopping a host : %s", err))
+		host, httpStatus, err := api.StopSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
 		err = apiHost.BuildFromService(host)
@@ -300,12 +280,9 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsTerminate:
-		if host.Status == evergreen.HostTerminated {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already terminated", hostID))
-		}
-		err = cloud.TerminateSpawnHost(ctx, env, host, usr.Id, fmt.Sprintf("terminated via UI by %s", usr.Username()))
+		host, httpStatus, err := api.TerminateSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while terminating host : %s", err))
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
 		err = apiHost.BuildFromService(host)
