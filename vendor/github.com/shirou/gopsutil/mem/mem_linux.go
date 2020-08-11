@@ -75,7 +75,11 @@ func fillFromMeminfoWithContext(ctx context.Context) (*VirtualMemoryStat, *Virtu
 
 		t, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
+<<<<<<< HEAD:vendor/github.com/shirou/gopsutil/mem/mem_linux.go
 			return ret, retEx,err
+=======
+			return ret, retEx, err
+>>>>>>> d2795faca79624ff0f1562eefe81595676d0298d:vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/mem/mem_linux.go
 		}
 		switch key {
 		case "MemTotal":

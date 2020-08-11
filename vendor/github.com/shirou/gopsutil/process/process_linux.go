@@ -1181,7 +1181,11 @@ func (p *Process) fillFromTIDStatWithContext(ctx context.Context, tid int32) (ui
 	// docs).  Note: I am assuming at least Linux 2.6.18
 	iotime, err := strconv.ParseFloat(fields[i+40], 64)
 	if err != nil {
+<<<<<<< HEAD:vendor/github.com/shirou/gopsutil/process/process_linux.go
 		iotime = 0  // Ancient linux version, most likely
+=======
+		iotime = 0 // Ancient linux version, most likely
+>>>>>>> d2795faca79624ff0f1562eefe81595676d0298d:vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/process/process_linux.go
 	}
 
 	cpuTimes := &cpu.TimesStat{

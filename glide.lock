@@ -122,7 +122,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 0c6d5f1374e2a07a8ce72cfd765bea028aa6b7ec
+    version: 18fee9db9096d39bddf6720db6ced11534b8ab3c
   - name: github.com/mongodb/amboy
     version: 07fdffff5b8c8491ee70e9e25b1f89fe29c168de
   - name: github.com/evergreen-ci/gimlet

@@ -316,5 +316,9 @@ func (p *Process) CPUPercentWithContext(ctx context.Context) (float64, error) {
 
 // Groups returns all group IDs(include supplementary groups) of the process as a slice of the int
 func (p *Process) Groups() ([]int32, error) {
+<<<<<<< HEAD:vendor/github.com/shirou/gopsutil/process/process.go
        return p.GroupsWithContext(context.Background())
+=======
+	return p.GroupsWithContext(context.Background())
+>>>>>>> d2795faca79624ff0f1562eefe81595676d0298d:vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/process/process.go
 }
