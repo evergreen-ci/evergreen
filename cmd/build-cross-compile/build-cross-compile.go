@@ -15,7 +15,7 @@ func supportsRaceDetector(arch, system string) bool {
 		return false
 	}
 
-	for _, platform := range []string{"freebsd", "linux", "darwin", "windows"} {
+	for _, platform := range []string{"linux", "darwin", "windows"} {
 		if runtime.GOOS == platform && system == platform {
 			return true
 		}
