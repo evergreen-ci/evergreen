@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -375,6 +376,17 @@ func (s *notificationSuite) TestGithubPayload() {
 	s.Equal(s.n, *n)
 
 	c, err := n.Composer(s.env)
+	s.NoError(err)
+	s.Require().NotNil(c)
+	s.True(c.Loggable())
+}
+
+func (s *notificationSuite) TestEnqueuePatchPayload() {
+	s.n.Subscriber.Type = event.EnqueuePatchSubscriberType
+	s.n.Payload = &model.EnqueuePatch{
+		PatchID: "1234567890987654321abcde",
+	}
+	c, err := s.n.Composer(s.env)
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
