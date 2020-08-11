@@ -21,6 +21,7 @@ const (
 	tasksFlagName             = "tasks"
 	patchAliasFlagName        = "alias"
 	patchFinalizeFlagName     = "finalize"
+	patchBrowseFlagName       = "browse"
 	syncBuildVariantsFlagName = "sync_variants"
 	syncTasksFlagName         = "sync_tasks"
 	syncTimeoutFlagName       = "sync_timeout"

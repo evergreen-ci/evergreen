@@ -14,7 +14,6 @@ import (
 const (
 	patchDescriptionFlagName = "description"
 	patchVerboseFlagName     = "verbose"
-	patchBrowseFlagName      = "browse"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
