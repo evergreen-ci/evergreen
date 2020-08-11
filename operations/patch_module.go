@@ -60,7 +60,7 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
 			if !keepGoing {
-				return nil
+				return errors.New("patch aborted")
 			}
 
 			proj, err := rc.GetPatchedConfig(patchID)
