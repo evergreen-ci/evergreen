@@ -196,7 +196,7 @@ imports:
 
   # gopsutil and its dependencies
   - name: github.com/shirou/gopsutil
-    version: c9a2a69ca76b46342953793afe41e42b6cef0ce3
+    version: 7e94bb8bcde053b6d6c98bda5145e9742c913c39
   - name: github.com/StackExchange/wmi
     version: cbe66965904dbe8a6cd589e2298e5d8b986bd7dd
   - name: github.com/go-ole/go-ole

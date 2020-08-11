@@ -2,10 +2,12 @@ package process
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -242,6 +244,20 @@ func Test_Process_Nice(t *testing.T) {
 		t.Errorf("invalid nice: %d", n)
 	}
 }
+
+func Test_Process_Groups(t *testing.T) {
+	p := testGetProcess()
+
+	v, err := p.Groups()
+	skipIfNotImplementedErr(t, err)
+	if err != nil {
+		t.Errorf("getting groups error %v", err)
+	}
+	if len(v) <= 0 || v[0] < 0 {
+		t.Errorf("invalid Groups: %v", v)
+	}
+}
+
 func Test_Process_NumThread(t *testing.T) {
 	p := testGetProcess()
 
@@ -288,6 +304,51 @@ func Test_Process_Name(t *testing.T) {
 	if !strings.Contains(n, "process.test") {
 		t.Errorf("invalid Exe %s", n)
 	}
+}
+func Test_Process_Long_Name(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("unable to create temp dir %v", err)
+	}
+	defer os.RemoveAll(tmpdir) // clean up
+	tmpfilepath := filepath.Join(tmpdir, "looooooooooooooooooooong.go")
+	tmpfile, err := os.Create(tmpfilepath)
+	if err != nil {
+		t.Fatalf("unable to create temp file %v", err)
+	}
+
+	tmpfilecontent := []byte("package main\nimport(\n\"time\"\n)\nfunc main(){\nfor range time.Tick(time.Second) {}\n}")
+	if _, err := tmpfile.Write(tmpfilecontent); err != nil {
+		tmpfile.Close()
+		t.Fatalf("unable to write temp file %v", err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatalf("unable to close temp file %v", err)
+	}
+
+	err = exec.Command("go", "build", "-o", tmpfile.Name()+".exe", tmpfile.Name()).Run()
+	if err != nil {
+		t.Fatalf("unable to build temp file %v", err)
+	}
+
+	cmd := exec.Command(tmpfile.Name() + ".exe")
+
+	assert.Nil(t, cmd.Start())
+	time.Sleep(100 * time.Millisecond)
+	p, err := NewProcess(int32(cmd.Process.Pid))
+	skipIfNotImplementedErr(t, err)
+	assert.Nil(t, err)
+
+	n, err := p.Name()
+	skipIfNotImplementedErr(t, err)
+	if err != nil {
+		t.Fatalf("getting name error %v", err)
+	}
+	basename := filepath.Base(tmpfile.Name() + ".exe")
+	if basename != n {
+		t.Fatalf("%s != %s", basename, n)
+	}
+	cmd.Process.Kill()
 }
 func Test_Process_Exe(t *testing.T) {
 	p := testGetProcess()
@@ -456,7 +517,14 @@ func Test_Children(t *testing.T) {
 	if len(c) == 0 {
 		t.Fatalf("children is empty")
 	}
-	if c[0].Pid != int32(cmd.Process.Pid) {
+	found := false
+	for _, child := range c {
+		if child.Pid == int32(cmd.Process.Pid) {
+			found = true
+			break
+		}
+	}
+	if !found {
 		t.Errorf("could not find child %d", cmd.Process.Pid)
 	}
 }
@@ -549,8 +617,10 @@ func Test_IsRunning(t *testing.T) {
 	}
 	cmd.Start()
 	p, err := NewProcess(int32(cmd.Process.Pid))
+	skipIfNotImplementedErr(t, err)
 	assert.Nil(t, err)
 	running, err := p.IsRunning()
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Fatalf("IsRunning error: %v", err)
 	}
@@ -559,10 +629,29 @@ func Test_IsRunning(t *testing.T) {
 	}
 	cmd.Wait()
 	running, err = p.IsRunning()
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Fatalf("IsRunning error: %v", err)
 	}
 	if running {
 		t.Fatalf("process should NOT be found running")
+	}
+}
+
+func Test_AllProcesses_cmdLine(t *testing.T) {
+	procs, err := Processes()
+	if err == nil {
+		for _, proc := range procs {
+			var exeName string
+			var cmdLine string
+
+			exeName, _ = proc.Exe()
+			cmdLine, err = proc.Cmdline()
+			if err != nil {
+				cmdLine = "Error: " + err.Error()
+			}
+
+			t.Logf("Process #%v: Name: %v / CmdLine: %v\n", proc.Pid, exeName, cmdLine)
+		}
 	}
 }
