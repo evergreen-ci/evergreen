@@ -246,7 +246,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action string) (*restModel.APIHost, error) {
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
 	host, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
@@ -265,13 +265,8 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 			return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 		}
 	}
-	var (
-		hostTerminate = "terminate"
-		hostStop      = "stop"
-		hostStart     = "start"
-	)
 	switch action {
-	case hostStart:
+	case SpawnHostStatusActionsStart:
 		if host.Status == evergreen.HostStarting || host.Status == evergreen.HostRunning {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already starting or running", hostID))
 		}
@@ -287,7 +282,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 		}
 		return &apiHost, nil
-	case hostStop:
+	case SpawnHostStatusActionsStop:
 		if host.Status == evergreen.HostStopped {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already Stopped", hostID))
 		}
@@ -304,7 +299,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 		}
 		return &apiHost, nil
-	case hostTerminate:
+	case SpawnHostStatusActionsTerminate:
 		if host.Status == evergreen.HostTerminated {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Host %v is already terminated", hostID))
 		}

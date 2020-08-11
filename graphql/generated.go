@@ -240,7 +240,7 @@ type ComplexityRoot struct {
 		UnscheduleTask             func(childComplexity int, taskID string) int
 		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus      func(childComplexity int, hostID string, action string) int
+		UpdateSpawnHostStatus      func(childComplexity int, hostID string, action SpawnHostStatusActions) int
 		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
 	}
 
@@ -569,7 +569,7 @@ type MutationResolver interface {
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
-	UpdateSpawnHostStatus(ctx context.Context, hostID string, action string) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 }
@@ -1625,7 +1625,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(string)), true
+		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions)), true
 
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
@@ -3244,7 +3244,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
-  updateSpawnHostStatus(hostId: String!, action: String!): Host!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
     targetKeyName: String!
@@ -3252,6 +3252,11 @@ type Mutation {
   ): [PublicKey!]!
 }
 
+enum SpawnHostStatusActions {
+ START 
+ STOP 
+ TERMINATE
+}
 enum TaskSortCategory {
   NAME
   STATUS
@@ -4205,9 +4210,9 @@ func (ec *executionContext) field_Mutation_updateSpawnHostStatus_args(ctx contex
 		}
 	}
 	args["hostId"] = arg0
-	var arg1 string
+	var arg1 SpawnHostStatusActions
 	if tmp, ok := rawArgs["action"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -8913,7 +8918,7 @@ func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context,
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, args["hostId"].(string), args["action"].(string))
+		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, args["hostId"].(string), args["action"].(SpawnHostStatusActions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21228,6 +21233,15 @@ func (ec *executionContext) marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._SiteBanner(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, v interface{}) (SpawnHostStatusActions, error) {
+	var res SpawnHostStatusActions
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, sel ast.SelectionSet, v SpawnHostStatusActions) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
