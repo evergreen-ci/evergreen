@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -31,8 +32,13 @@ type tarballCreate struct {
 	// e.g. "*.zip", "results.out", "ignore/**"
 	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
 
+	// This is only incremented in the case of a panic.
+	Attempt int
+
 	base
 }
+
+var retryErrors = []string{"out of range", "index > windowEnd"}
 
 func tarballCreateFactory() Command   { return &tarballCreate{} }
 func (c *tarballCreate) Name() string { return "archive.targz_pack" }
@@ -85,14 +91,23 @@ func (c *tarballCreate) Execute(ctx context.Context,
 		}()
 		var err error
 		filesArchived, err = c.makeArchive(ctx, logger.Execution())
-		logger.Execution().Debugln("Finished making archive")
-
 		errChan <- errors.WithStack(err)
 	}()
 
 	select {
 	case err := <-errChan:
 		if err != nil {
+			// this is only our first attempt, so we should retry if we've hit a relevant error
+			if c.Attempt == 0 {
+				for _, retryError := range retryErrors {
+					// if error contains our issue, we should retry the command
+					if strings.Contains(err.Error(), retryError) {
+						c.Attempt += 1
+						logger.Execution().Infof("retrying targz pack command due to error: %s", err.Error())
+						return c.Execute(ctx, client, logger, conf)
+					}
+				}
+			}
 			return errors.WithStack(err)
 		}
 		if filesArchived == 0 {
@@ -128,7 +143,6 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	// Build the archive
 	out, err := util.BuildArchive(ctx, tarWriter, c.SourceDir, c.Include,
 		c.ExcludeFiles, logger)
-	logger.Infof("finished building archive")
 
 	return out, errors.WithStack(err)
 }
