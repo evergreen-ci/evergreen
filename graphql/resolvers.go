@@ -258,34 +258,34 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 
 	switch action {
 	case SpawnHostStatusActionsStart:
-		host, httpStatus, err := api.StartSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := api.StartSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(host)
+		err = apiHost.BuildFromService(h)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsStop:
-		host, httpStatus, err := api.StopSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := api.StopSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(host)
+		err = apiHost.BuildFromService(h)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsTerminate:
-		host, httpStatus, err := api.TerminateSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := api.TerminateSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
 		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(host)
+		err = apiHost.BuildFromService(h)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 		}
