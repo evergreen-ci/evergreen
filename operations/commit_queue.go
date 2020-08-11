@@ -142,7 +142,7 @@ func mergeCommand() cli.Command {
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
-			if params.force && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
+			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
 				return errors.New("Merge aborted.")
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -202,10 +202,10 @@ func enqueuePatch() cli.Command {
 	return cli.Command{
 		Name:  "enqueue-patch",
 		Usage: "enqueue an existing patch on the commit queue",
-		Flags: addPatchIDFlag(cli.BoolFlag{
+		Flags: mergeFlagSlices(addYesFlag(), addPatchIDFlag(cli.BoolFlag{
 			Name:  forceFlagName,
 			Usage: "force item to front of queue",
-		}),
+		})),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			setPlainLogger,
@@ -214,6 +214,7 @@ func enqueuePatch() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)
 			force := c.Bool(forceFlagName)
+			skipConfirm := c.Bool(yesFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -245,10 +246,8 @@ func enqueuePatch() cli.Command {
 					multipleCommits = true
 				}
 			}
-			if multipleCommits {
-				if !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
-					return errors.New("enqueue aborted")
-				}
+			if multipleCommits && !skipConfirm && !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
+				return errors.New("enqueue aborted")
 			}
 
 			// create the new merge patch
@@ -421,7 +420,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount > 1 && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+	if commitCount > 1 && !p.skipConfirm && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
 		return errors.New("patch aborted")
 	}
 
@@ -485,7 +484,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if commitCount == 0 {
 		return errors.New("No commits for module")
 	}
-	if commitCount > 1 && !confirm("Commit queue module patch has multiple commits. Continue? (y/n):", false) {
+	if commitCount > 1 && !p.skipConfirm && !confirm("Commit queue module patch has multiple commits. Continue? (y/n):", false) {
 		return errors.New("module patch aborted")
 	}
 
