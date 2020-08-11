@@ -70,6 +70,11 @@ func Update() cli.Command {
 			if err != nil {
 				return err
 			}
+			defer func() {
+				if doInstall {
+					grip.Error(os.Remove(updatedBin))
+				}
+			}()
 
 			if doInstall {
 				grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
@@ -146,7 +151,6 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 	defer func() {
 		grip.Error(tempFile.Close())
-		grip.Error(os.Remove(tempFile.Name()))
 	}()
 
 	response, err := http.Get(url)
@@ -160,10 +164,6 @@ func prepareUpdate(url, newVersion string) (string, error) {
 
 	defer response.Body.Close()
 	_, err = io.Copy(tempFile, response.Body)
-	if err != nil {
-		return "", err
-	}
-	err = tempFile.Close()
 	if err != nil {
 		return "", err
 	}
