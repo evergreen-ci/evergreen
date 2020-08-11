@@ -28,13 +28,13 @@ const (
 var validMergeMethods = []string{githubMergeMethodMerge, githubMergeMethodSquash, githubMergeMethodRebase}
 
 type GitHubMergePR struct {
-	Status      string
-	PatchID     string
-	URL         string
-	ProjectID   string
-	MergeMethod string
-	Item        string
-	PRs         []event.PRInfo
+	Status      string         `bson:"status"`
+	PatchID     string         `bson:"patch_id"`
+	URL         string         `bson:"url"`
+	ProjectID   string         `bson:"project_id"`
+	MergeMethod string         `bson:"merge_method"`
+	Item        string         `bson:"item"`
+	PRs         []event.PRInfo `bson:"prs"`
 
 	statusSender send.Sender
 	gitHubToken  string
