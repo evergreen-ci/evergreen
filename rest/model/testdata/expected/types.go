@@ -21,34 +21,34 @@ type APIMockTypes struct {
 
 func APIMockTypesBuildFromService(t model.MockTypes) *APIMockTypes {
 	m := APIMockTypes{}
-	m.BoolPtrType = BoolPtrBoolPtr(t.BoolPtrType)
 	m.BoolType = BoolBool(t.BoolType)
-	m.Float64PtrType = Float64PtrFloat64Ptr(t.Float64PtrType)
-	m.Float64Type = Float64Float64(t.Float64Type)
-	m.IntPtrType = IntPtrIntPtr(t.IntPtrType)
+	m.BoolPtrType = BoolPtrBoolPtr(t.BoolPtrType)
 	m.IntType = IntInt(t.IntType)
-	m.RunePtrType = RunePtrIntPtr(t.RunePtrType)
-	m.RuneType = RuneInt(t.RuneType)
-	m.StringPtrType = StringPtrStringPtr(t.StringPtrType)
+	m.IntPtrType = IntPtrIntPtr(t.IntPtrType)
 	m.StringType = StringString(t.StringType)
-	m.Uint64PtrType = Uint64PtrIntPtr(t.Uint64PtrType)
+	m.StringPtrType = StringPtrStringPtr(t.StringPtrType)
 	m.Uint64Type = Uint64Int(t.Uint64Type)
+	m.Uint64PtrType = Uint64PtrIntPtr(t.Uint64PtrType)
+	m.Float64Type = Float64Float64(t.Float64Type)
+	m.Float64PtrType = Float64PtrFloat64Ptr(t.Float64PtrType)
+	m.RuneType = RuneInt(t.RuneType)
+	m.RunePtrType = RunePtrIntPtr(t.RunePtrType)
 	return &m
 }
 
 func APIMockTypesToService(m APIMockTypes) *model.MockTypes {
 	out := &model.MockTypes{}
-	out.BoolPtrType = BoolPtrBoolPtr(m.BoolPtrType)
 	out.BoolType = BoolBool(m.BoolType)
-	out.Float64PtrType = Float64PtrFloat64Ptr(m.Float64PtrType)
-	out.Float64Type = Float64Float64(m.Float64Type)
-	out.IntPtrType = IntPtrIntPtr(m.IntPtrType)
+	out.BoolPtrType = BoolPtrBoolPtr(m.BoolPtrType)
 	out.IntType = IntInt(m.IntType)
-	out.RunePtrType = IntPtrRunePtr(m.RunePtrType)
-	out.RuneType = IntRune(m.RuneType)
-	out.StringPtrType = StringPtrStringPtr(m.StringPtrType)
+	out.IntPtrType = IntPtrIntPtr(m.IntPtrType)
 	out.StringType = StringString(m.StringType)
-	out.Uint64PtrType = IntPtrUint64Ptr(m.Uint64PtrType)
+	out.StringPtrType = StringPtrStringPtr(m.StringPtrType)
 	out.Uint64Type = IntUint64(m.Uint64Type)
+	out.Uint64PtrType = IntPtrUint64Ptr(m.Uint64PtrType)
+	out.Float64Type = Float64Float64(m.Float64Type)
+	out.Float64PtrType = Float64PtrFloat64Ptr(m.Float64PtrType)
+	out.RuneType = IntRune(m.RuneType)
+	out.RunePtrType = IntPtrRunePtr(m.RunePtrType)
 	return out
 }

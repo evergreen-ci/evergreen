@@ -23,8 +23,10 @@ const (
 	structTemplatePath         = "templates/struct.gotmpl"
 	fieldTemplatePath          = "templates/field.gotmpl"
 	serviceMethodsTemplatePath = "templates/service_methods.gotmpl"
+	arrayMethodsTemplatePath   = "templates/array_methods.gotmpl"
 	bfsConvertTemplatePath     = "templates/buildfromservice_conversion.gotmpl"
 	tsConvertTemplatePath      = "templates/toservice_conversion.gotmpl"
+	funcTemplatePath           = "templates/func_call.gotmpl"
 )
 
 const (
@@ -64,6 +66,14 @@ type modelConversionInfo struct {
 	ModelType      string
 	BfsConversions string
 	TsConversions  string
+}
+
+type arrayConversionInfo struct {
+	FromType       string
+	FromHasPtr     bool
+	ToType         string
+	ToHasPtr       bool
+	ConversionCode string
 }
 
 // ModelMapping maps schema type names to their respective DB model
@@ -208,6 +218,7 @@ func getTemplate(filepath string) (*template.Template, error) {
 		"cleanName":      cleanName,
 		"mustBePtr":      mustBePtr,
 		"mustBeValue":    mustBeValue,
+		"containsPtr":    containsPtr,
 	}).Parse(string(f))
 }
 
@@ -251,7 +262,7 @@ func output(t *template.Template, data interface{}) (string, error) {
 // getFieldInfo is a utility function to translate the data structure used by the third-party
 // AST parser into a structure that the rest of the code here can understand
 func getFieldInfo(f *ast.FieldDefinition) extractedField {
-	outputType := gqlTypeToGoType(f.Type.Name(), !f.Type.NonNull)
+	outputType := gqlTypeToGoType(f.Type.String(), !f.Type.NonNull)
 	return extractedField{
 		OutputFieldName: f.Name,
 		OutputFieldType: outputType,
@@ -263,6 +274,7 @@ func getFieldInfo(f *ast.FieldDefinition) extractedField {
 // gqlTypeToGoType is a very important function that will take a built-in GraphQL type and return
 // the corresponding Go type. This is used to determine the type of the field in the REST model
 func gqlTypeToGoType(gqlType string, nullable bool) string {
+	gqlType = strings.ReplaceAll(gqlType, "!", "")
 	returntype := ""
 	if nullable {
 		returntype = "*"
@@ -284,6 +296,17 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	case "Any":
 		return returntype + "interface{}"
 	default:
+		re := regexp.MustCompile("^\\[([0-z]+)\\]$")
+		isArray := re.MatchString(gqlType)
+		if isArray {
+			matches := re.FindStringSubmatch(gqlType)
+			if len(matches) != 2 {
+				grip.Errorf("type '%s' may be a nested array, which is not supported", gqlType)
+				return ""
+			}
+			elem := matches[1]
+			return "[]" + gqlTypeToGoType(elem, nullable)
+		}
 		return "API" + gqlType
 	}
 }
@@ -382,6 +405,15 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 				return "", errors.Wrap(err, "error generating ToService code")
 			}
 			tsCode = append(tsCode, lineData)
+			_, isArray := field.Type().(*types.Array)
+			_, isSlice := field.Type().(*types.Slice)
+			if !isArray && !isSlice {
+				continue
+			}
+			_, err = generateArrayConversions(fieldName, field.Type(), fieldInfo.OutputFieldName, fieldInfo.OutputFieldType, fieldInfo.Nullable, generatedConversions)
+			if err != nil {
+				return "", errors.Wrap(err, "error generating array conversion code")
+			}
 		}
 		sort.Strings(bfsCode)
 		sort.Strings(tsCode)
@@ -395,10 +427,40 @@ func generateServiceConversions(structVal *types.Struct, packageName, structName
 	return output(serviceTemplate, data)
 }
 
+// findArrayElem is a utility function to return the type of element of an array,
+// or nil if it is not an array
+func findArrayElem(arrayType types.Type) *types.Type {
+	switch v := arrayType.(type) {
+	case *types.Slice:
+		elem := v.Elem()
+		// TODO: throwing away the pointer makes this unable to handle converting
+		// a model type that is a slice of pointers to a rest type that is a slice
+		// of non-pointers
+		if value, isPtr := elem.(*types.Pointer); isPtr {
+			underlying := value.Underlying()
+			return &underlying
+		}
+		return &elem
+	case *types.Array:
+		elem := v.Elem()
+		if value, isPtr := elem.(*types.Pointer); isPtr {
+			underlying := value.Underlying()
+			return &underlying
+		}
+		return &elem
+	}
+	return nil
+}
+
 // validateFieldTypes is currently just a method to compare the names of the types of two fields, and
 // potentially generate a warning if the type names are not sufficiently close to each other. Should
 // ideally be replaced with a more robust validation function
 func validateFieldTypes(fieldName, inputType, outputType string) string {
+	inputIsArray, inputType := stripArray(inputType)
+	outputIsArray, outputType := stripArray(outputType)
+	if inputIsArray != outputIsArray {
+		return fmt.Sprintf("Only one of field '%s' or its counterpart is an array", fieldName)
+	}
 	inputType = stripPackage(inputType)
 	outputType = stripPackage(outputType)
 	if !strings.Contains(outputType, inputType) && !strings.Contains(inputType, outputType) {
