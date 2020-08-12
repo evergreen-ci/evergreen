@@ -62,6 +62,7 @@ command/testdata/target.tgz
 creds.yml
 
 fabfile.py
+fab_common.py
 *.pyc
 .idea
 test-endpoints.pid
