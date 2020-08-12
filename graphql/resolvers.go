@@ -1118,7 +1118,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	apiDistros := []*restModel.APIDistro{}
 
 	var distros []distro.Distro
-	if onlySpawnable == true {
+	if onlySpawnable {
 		d, err := distro.Find(distro.BySpawnAllowed())
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
