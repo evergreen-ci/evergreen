@@ -274,7 +274,7 @@ func getFieldInfo(f *ast.FieldDefinition) extractedField {
 // gqlTypeToGoType is a very important function that will take a built-in GraphQL type and return
 // the corresponding Go type. This is used to determine the type of the field in the REST model
 func gqlTypeToGoType(gqlType string, nullable bool) string {
-	gqlType = strings.ReplaceAll(gqlType, "!", "")
+	gqlType = strings.Replace(gqlType, "!", "", -1)
 	returntype := ""
 	if nullable {
 		returntype = "*"

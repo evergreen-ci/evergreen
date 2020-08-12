@@ -115,6 +115,11 @@ func (n *Notification) Composer() (message.Composer, error) {
 			payload.Headers.Add(header.Key, header.Value)
 		}
 
+		grip.Debug(message.Fields{
+			"notification": n.ID,
+			"ticket":       "EVG-12471",
+			"headers":      payload.Headers,
+		})
 		return util.NewWebhookMessageWithStruct(*payload), nil
 
 	case event.EmailSubscriberType:
