@@ -56,6 +56,17 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	opts := gimlet.PermissionOpts{
+		Resource:      data.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	}
+	if !dbUser.HasPermission(opts) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch this project"))
+		return
+	}
+
 	patchString := string(data.PatchBytes)
 	if len(patchString) > patch.SizeLimit {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
