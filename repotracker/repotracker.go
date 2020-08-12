@@ -637,6 +637,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		if err != nil {
 			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
 		}
+		grip.Debug(message.Fields{
+			"message": "aliases for creating version",
+			"tag":     metadata.GitTag.Tag,
+			"project": projectInfo.Ref.Identifier,
+			"aliases": aliases,
+		})
 	} else if metadata.Alias != "" {
 		aliases, err = model.FindAliasInProject(projectInfo.Ref.Identifier, metadata.Alias)
 		if err != nil {
@@ -769,7 +775,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	buildsToCreate := []interface{}{}
 	tasksToCreate := task.Tasks{}
 	pairsToCreate := model.TVPairSet{}
-	// build all pairsToCreate before creating builds, to handle dependencies (if applicaable)
+	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
@@ -783,11 +789,21 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error checking project aliases",
+					"project": projectInfo.Project.Identifier,
 					"version": v.Id,
 				}))
 				continue
 			}
 			if !match {
+				if metadata.GitTag.Tag != "" {
+					grip.Debug(message.Fields{
+						"message":           "variant not a match",
+						"tag":               metadata.GitTag.Tag,
+						"buildvariant_name": buildvariant.Name,
+						"buildvariant_tags": buildvariant.Tags,
+						"project":           projectInfo.Ref.Identifier,
+					})
+				}
 				continue
 			}
 			for _, t := range buildvariant.Tasks {
@@ -797,20 +813,38 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 						"message": "error finding tasks with alias filter",
 						"task":    t.Name,
 						"project": projectInfo.Project.Identifier,
-						"alias":   aliases,
+						"aliases": aliases,
 					}))
 					continue
 				}
 				if match {
 					pairsToCreate = append(pairsToCreate, model.TVPair{Variant: buildvariant.Name, TaskName: t.Name})
+				} else if metadata.GitTag.Tag != "" {
+					grip.Debug(message.Fields{
+						"message":           "task not a match",
+						"tag":               metadata.GitTag.Tag,
+						"buildvariant_name": buildvariant.Name,
+						"buildvariant_tags": buildvariant.Tags,
+						"project":           projectInfo.Ref.Identifier,
+					})
 				}
 			}
-			pairsToCreate = model.IncludePatchDependencies(projectInfo.Project, pairsToCreate)
 		}
 	}
 
+	var pairsWithDependencies model.TVPairSet
+	pairsWithDependencies = model.IncludePatchDependencies(projectInfo.Project, pairsToCreate)
+	if metadata.GitTag.Tag != "" {
+		grip.Debug(message.Fields{
+			"message":                 "created pairs to build tasks/variants",
+			"pairs_to_create":         pairsToCreate,
+			"pairs_with_dependencies": pairsWithDependencies,
+			"tag":                     metadata.GitTag.Tag,
+			"project":                 projectInfo.Ref.Identifier,
+		})
+	}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
-		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
+		taskNames := pairsWithDependencies.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
 			Project:        *projectInfo.Project,
 			Version:        *v,
@@ -828,9 +862,20 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error creating build",
+				"project": projectInfo.Ref.Identifier,
 				"version": v.Id,
 			}))
 			continue
+		}
+		if metadata.GitTag.Tag != "" {
+			grip.Debug(message.Fields{
+				"message":    "creating build for version",
+				"task_names": taskNames,
+				"num_tasks":  len(tasks),
+				"variant":    buildvariant.Name,
+				"tag":        metadata.GitTag.Tag,
+				"project":    projectInfo.Ref.Identifier,
+			})
 		}
 		if len(tasks) == 0 {
 			continue
