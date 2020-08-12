@@ -61,6 +61,7 @@ type Query {
   ): HostsResponse!
   myHosts: [Host!]
   myPublicKeys: [PublicKey!]!
+  distros(onlySpawnable: Boolean!): [Distro]!
 }
 
 type Mutation {
@@ -232,6 +233,13 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
 }
+
+type Distro {
+  name: String 
+  userSpawnAllowed: Boolean
+  workDir: String 
+  user: String 
+  isVirtualWorkStation: Boolean!
 
 type TaskInfo {
   id: ID

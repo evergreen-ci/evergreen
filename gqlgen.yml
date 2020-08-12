@@ -108,3 +108,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
   DistroInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  Distro:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
