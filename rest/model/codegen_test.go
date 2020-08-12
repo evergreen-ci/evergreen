@@ -2,6 +2,7 @@ package model
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
