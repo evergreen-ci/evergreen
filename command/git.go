@@ -29,6 +29,8 @@ import (
 )
 
 const GitFetchProjectRetries = 5
+const defaultUserName = "Evergreen Agent"
+const defaultUserEmail = "no-reply@evergreen.mongodb.com"
 
 // gitFetchProject is a command that fetches source code from git for the project
 // associated with the current task
@@ -46,6 +48,10 @@ type gitFetchProject struct {
 	ShallowClone bool `mapstructure:"shallow_clone"`
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
+
+	// set git config user.name and user.email on the repo
+	UserName  string `mapstructure:"user_name"`
+	UserEmail string `mapstructure:"user_email"`
 
 	base
 }
@@ -264,7 +270,25 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 		}
 	}
 
+	gitCommands = append(gitCommands, c.getConfigCommands()...)
+
 	return gitCommands, nil
+}
+
+func (c *gitFetchProject) getConfigCommands() []string {
+	userName := defaultUserName
+	if len(c.UserName) > 0 {
+		userName = c.UserName
+	}
+	userEmail := defaultUserEmail
+	if len(c.UserEmail) > 0 {
+		userEmail = c.UserEmail
+	}
+
+	return []string{
+		fmt.Sprintf("git config --local user.name %s", userName),
+		fmt.Sprintf("git config --local user.email %s", userEmail),
+	}
 }
 
 func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
@@ -607,7 +631,7 @@ func getApplyCommand(patchFile string) (string, error) {
 	}
 
 	if isMBP {
-		return fmt.Sprintf(`git -c "user.name=Evergreen Agent" -c "user.email=no-reply@evergreen.mongodb.com" am --keep-cr < '%s'`, patchFile), nil
+		return fmt.Sprintf(`git am --keep-cr < '%s'`, patchFile), nil
 	}
 
 	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil

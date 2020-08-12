@@ -624,15 +624,15 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 				Command: "git.get_project",
 				Type:    evergreen.CommandTypeSetup,
 				Params: map[string]interface{}{
-					"directory": "src",
+					"directory":  "src",
+					"user_name":  settings.CommitQueue.CommitterName,
+					"user_email": settings.CommitQueue.CommitterEmail,
 				},
 			},
 			{
 				Command: "git.push",
 				Params: map[string]interface{}{
-					"directory":       "src",
-					"committer_name":  settings.CommitQueue.CommitterName,
-					"committer_email": settings.CommitQueue.CommitterEmail,
+					"directory": "src",
 				},
 			},
 		},
