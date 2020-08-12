@@ -252,13 +252,13 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	usr := route.MustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	if !api.CanUpdateSpawnHost(host, usr) {
+	if !CanUpdateSpawnHost(host, usr) {
 		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
 
 	switch action {
 	case SpawnHostStatusActionsStart:
-		h, httpStatus, err := api.StartSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := StartSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
@@ -269,7 +269,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsStop:
-		h, httpStatus, err := api.StopSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := StopSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}
@@ -280,7 +280,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 		}
 		return &apiHost, nil
 	case SpawnHostStatusActionsTerminate:
-		h, httpStatus, err := api.TerminateSpawnHost(ctx, env, host, usr, nil)
+		h, httpStatus, err := TerminateSpawnHost(ctx, env, host, usr, nil)
 		if err != nil {
 			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 		}

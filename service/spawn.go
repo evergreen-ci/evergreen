@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/cloud"
+	graphql "github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -299,7 +299,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !api.CanUpdateSpawnHost(h, u) {
+	if !graphql.CanUpdateSpawnHost(h, u) {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
 		return
 	}
@@ -314,7 +314,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		var cancel func()
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
-		_, _, err := api.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err := graphql.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -323,7 +323,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStop:
-		_, _, err := api.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err := graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -332,7 +332,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStart:
-		_, _, err := api.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err := graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
