@@ -395,7 +395,8 @@ func (s *notificationSuite) TestEnqueuePatchPayload() {
 func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
-		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType, event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType}
+		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType,
+		event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType}
 
 	n := []Notification{}
 	// add one of every notification, unsent
