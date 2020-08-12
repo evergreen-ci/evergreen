@@ -139,7 +139,7 @@ func UpdateStaticDistro(d distro.Distro) error {
 	if d.Id == "" && len(d.Aliases) == 0 {
 		return nil
 	}
-	return host.MarkInactiveStaticHosts(hosts, d.Id, d.Aliases)
+	return host.MarkInactiveStaticHosts(hosts, &d)
 }
 
 func doStaticHostUpdate(d distro.Distro) ([]string, error) {

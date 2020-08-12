@@ -21,18 +21,18 @@ import (
 //
 // If the distro is the empty string ("") then this operation affects all distros.
 // If distro aliases are included, then this operation affects also hosts with the alias.
-func MarkInactiveStaticHosts(activeStaticHosts []string, distroID string, distroAliases []string) error {
+func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error {
 	query := bson.M{
 		IdKey:       bson.M{"$nin": activeStaticHosts},
 		ProviderKey: evergreen.HostTypeStatic,
 	}
-	if len(distroAliases) == 0 {
-		if distroID != "" {
-			query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	if d != nil {
+		if len(d.Aliases) > 0 {
+			ids := append(d.Aliases, d.Id)
+			query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = bson.M{"$in": ids}
+		} else {
+			query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = d.Id
 		}
-	} else {
-		ids := append(distroAliases, distroID)
-		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = bson.M{"$in": ids}
 	}
 
 	toTerminate, err := Find(db.Query(query))

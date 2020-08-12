@@ -102,7 +102,7 @@ func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 			Message:    fmt.Sprintf("distro '%s' doesn't exist", distroId),
 		}
 	}
-	if err = host.MarkInactiveStaticHosts([]string{}, distroId, d.Aliases); err != nil {
+	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("hosts for distro with id '%s' were not terminated", distroId),

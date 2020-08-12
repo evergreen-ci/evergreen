@@ -225,15 +225,21 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindOne(distro.ById(id))
+	d, err := distro.FindByID(id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	if d == nil {
+		message := fmt.Sprintf("distro '%s' doesn't exist", id)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusBadRequest)
+		return
+	}
 
-	if err = host.MarkInactiveStaticHosts([]string{}, id, d.Aliases); err != nil {
+	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
 		message := fmt.Sprintf("error removing hosts for distro '%s': %s", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
