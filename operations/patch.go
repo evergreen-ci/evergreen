@@ -98,7 +98,7 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
 			if !keepGoing {
-				return nil
+				return errors.New("patch aborted")
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
