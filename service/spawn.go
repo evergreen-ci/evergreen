@@ -314,7 +314,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		var cancel func()
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
-		_, _, err := graphql.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err = graphql.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -323,7 +323,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStop:
-		_, _, err := graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err = graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -332,7 +332,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStart:
-		_, _, err := graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err = graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
