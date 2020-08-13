@@ -643,7 +643,8 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	}
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
-		dbTask, err := task.FindByIdExecution(taskID, &i)
+		var dbTask *task.Task
+		dbTask, err = task.FindByIdExecution(taskID, &i)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
