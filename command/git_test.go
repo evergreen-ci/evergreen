@@ -458,13 +458,15 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 6)
+	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
+	s.Equal(`git config --local user.name "Evergreen Agent"`, cmds[6])
+	s.Equal(`git config --local user.email "no-reply@evergreen.mongodb.com"`, cmds[7])
 
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
@@ -474,7 +476,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Require().NoError(err)
 	cmds, err = c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 9)
+	s.Require().Len(cmds, 11)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
@@ -484,6 +486,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
+	s.Equal(`git config --local user.name "Evergreen Agent"`, cmds[9])
+	s.Equal(`git config --local user.email "no-reply@evergreen.mongodb.com"`, cmds[10])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
@@ -503,10 +507,12 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 8)
+	s.Require().Len(cmds, 10)
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
+	s.Equal(`git config --local user.name "Evergreen Agent"`, cmds[8])
+	s.Equal(`git config --local user.email "no-reply@evergreen.mongodb.com"`, cmds[9])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
@@ -525,10 +531,12 @@ func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 8)
+	s.Require().Len(cmds, 10)
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-merge-test-"))
 	s.Equal("git reset --hard abcdef", cmds[7])
+	s.Equal(`git config --local user.name "Evergreen Agent"`, cmds[8])
+	s.Equal(`git config --local user.email "no-reply@evergreen.mongodb.com"`, cmds[9])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
@@ -552,7 +560,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 8)
+	s.Len(cmds, 10)
 	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
 }
 
