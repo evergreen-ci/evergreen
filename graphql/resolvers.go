@@ -1166,6 +1166,34 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	return &hostevents, nil
 }
 
+func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
+	apiDistros := []*restModel.APIDistro{}
+
+	var distros []distro.Distro
+	if onlySpawnable {
+		d, err := distro.Find(distro.BySpawnAllowed())
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
+		}
+		distros = d
+	} else {
+		d, err := distro.FindAll()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
+		}
+		distros = d
+	}
+	for _, d := range distros {
+		apiDistro := restModel.APIDistro{}
+		err := apiDistro.BuildFromService(d)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIDistro from distro: %s", err.Error()))
+		}
+		apiDistros = append(apiDistros, &apiDistro)
+	}
+	return apiDistros, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
