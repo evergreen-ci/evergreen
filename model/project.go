@@ -1316,7 +1316,7 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, alias string, includeDeps
 	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
 
 	if includeDeps {
-		tvPairs.ExecTasks = IncludePatchDependencies(p, tvPairs.ExecTasks)
+		tvPairs.ExecTasks = IncludeDependencies(p, tvPairs.ExecTasks, patch.GetRequesterFromAlias(alias))
 	}
 
 	vts = tvPairs.TVPairsToVariantTasks()

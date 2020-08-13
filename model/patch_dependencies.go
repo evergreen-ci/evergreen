@@ -13,13 +13,13 @@ type dependencyIncluder struct {
 // add or removes tasks based on the dependency graph. Dependent tasks
 // are added; tasks that depend on unpatchable tasks are pruned. New slices
 // of variants and tasks are returned.
-func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
+func (di *dependencyIncluder) Include(initialDeps []TVPair, requester string) []TVPair {
 	di.included = map[TVPair]bool{}
 
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
 	for _, d := range initialDeps {
-		di.handle(d)
+		di.handle(d, requester)
 	}
 
 	outPairs := []TVPair{}
@@ -34,7 +34,7 @@ func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 // handle finds and includes all tasks that the given task/variant pair depends
 // on. Returns true if the task and all of its dependent tasks are patchable,
 // false if they are not.
-func (di *dependencyIncluder) handle(pair TVPair) bool {
+func (di *dependencyIncluder) handle(pair TVPair, requester string) bool {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
 		return included
@@ -43,7 +43,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	// if the given task is a task group, recurse on each task
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		for _, t := range tg.Tasks {
-			if ok := di.handle(TVPair{TaskName: t, Variant: pair.Variant}); !ok {
+			if ok := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, requester); !ok {
 				di.included[pair] = false
 				return false // task depends on an unpatchable task, so skip it
 			}
@@ -61,7 +61,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		return false // task not found in project--skip it.
 	}
 
-	if bvt.SkipOnPatchBuild() || bvt.SkipOnNonGitTagBuild() {
+	if bvt.SkipOnRequester(requester) {
 		di.included[pair] = false
 		return false // task cannot be patched, so skip it
 	}
@@ -70,7 +70,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	// queue up all dependencies for recursive inclusion
 	deps := di.expandDependencies(pair, bvt.DependsOn)
 	for _, dep := range deps {
-		if ok := di.handle(dep); !ok {
+		if ok := di.handle(dep, requester); !ok {
 			di.included[pair] = false
 			return false // task depends on an unpatchable or non-existent task, so skip it
 		}

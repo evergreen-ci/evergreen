@@ -795,15 +795,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				continue
 			}
 			if !match {
-				if metadata.GitTag.Tag != "" {
-					grip.Debug(message.Fields{
-						"message":           "variant not a match",
-						"tag":               metadata.GitTag.Tag,
-						"buildvariant_name": buildvariant.Name,
-						"buildvariant_tags": buildvariant.Tags,
-						"project":           projectInfo.Ref.Identifier,
-					})
-				}
 				continue
 			}
 			for _, t := range buildvariant.Tasks {
@@ -819,32 +810,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}
 				if match {
 					pairsToCreate = append(pairsToCreate, model.TVPair{Variant: buildvariant.Name, TaskName: t.Name})
-				} else if metadata.GitTag.Tag != "" {
-					grip.Debug(message.Fields{
-						"message":           "task not a match",
-						"tag":               metadata.GitTag.Tag,
-						"buildvariant_name": buildvariant.Name,
-						"buildvariant_tags": buildvariant.Tags,
-						"project":           projectInfo.Ref.Identifier,
-					})
 				}
 			}
 		}
 	}
 
-	var pairsWithDependencies model.TVPairSet
-	pairsWithDependencies = model.IncludePatchDependencies(projectInfo.Project, pairsToCreate)
-	if metadata.GitTag.Tag != "" {
-		grip.Debug(message.Fields{
-			"message":                 "created pairs to build tasks/variants",
-			"pairs_to_create":         pairsToCreate,
-			"pairs_with_dependencies": pairsWithDependencies,
-			"tag":                     metadata.GitTag.Tag,
-			"project":                 projectInfo.Ref.Identifier,
-		})
-	}
+	pairsToCreate = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
-		taskNames := pairsWithDependencies.TaskNames(buildvariant.Name)
+		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
 			Project:        *projectInfo.Project,
 			Version:        *v,
@@ -866,16 +839,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			continue
-		}
-		if metadata.GitTag.Tag != "" {
-			grip.Debug(message.Fields{
-				"message":    "creating build for version",
-				"task_names": taskNames,
-				"num_tasks":  len(tasks),
-				"variant":    buildvariant.Name,
-				"tag":        metadata.GitTag.Tag,
-				"project":    projectInfo.Ref.Identifier,
-			})
 		}
 		if len(tasks) == 0 {
 			continue

@@ -107,13 +107,16 @@ func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Vers
 	return errors.Wrap(err, "can't add new tasks")
 }
 
-// IncludePatchDependencies takes a project and a slice of variant/task pairs names
+// IncludeDependencies takes a project and a slice of variant/task pairs names
 // and returns the expanded set of variant/task pairs to include all the dependencies/requirements
 // for the given set of tasks.
 // If any dependency is cross-variant, it will include the variant and task for that dependency.
-func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester string) []TVPair {
 	di := &dependencyIncluder{Project: project}
-	return di.Include(tvpairs)
+	if requester == "" {
+		requester = evergreen.PatchVersionRequester
+	}
+	return di.Include(tvpairs, requester)
 }
 
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub

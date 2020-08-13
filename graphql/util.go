@@ -194,7 +194,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		}
 	}
 
-	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
+	tasks.ExecTasks = model.IncludeDependencies(project, tasks.ExecTasks, p.GetRequester())
 
 	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
 		return err, http.StatusBadRequest, "", ""
