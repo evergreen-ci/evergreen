@@ -476,7 +476,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Require().NoError(err)
 	cmds, err = c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Require().Len(cmds, 9)
+	s.Require().Len(cmds, 11)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
@@ -486,6 +486,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
+	s.Equal(`git config --local user.name "Evergreen Agent"`, cmds[9])
+	s.Equal(`git config --local user.email "no-reply@evergreen.mongodb.com"`, cmds[10])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
