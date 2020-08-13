@@ -651,7 +651,8 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		if dbTask == nil {
 			return nil, errors.Errorf("unable to find task %s", taskID)
 		}
-		apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+		var apiTask *restModel.APITask
+		apiTask, err = GetAPITaskFromTask(ctx, r.sc, *dbTask)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "error converting task")
 		}
