@@ -590,19 +590,6 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
-func GetRequesterFromAlias(alias string) string {
-	if alias == evergreen.GithubAlias {
-		return evergreen.GithubPRRequester
-	}
-	if alias == evergreen.GitTagAlias {
-		return evergreen.GitTagRequester
-	}
-	if alias == evergreen.CommitQueueAlias {
-		return evergreen.MergeTestRequester
-	}
-	return evergreen.PatchVersionRequester
-}
-
 func (p *Patch) CanEnqueueToCommitQueue() bool {
 	for _, modulePatch := range p.Patches {
 		if !modulePatch.IsMbox {
