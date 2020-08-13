@@ -20,6 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -681,10 +682,24 @@ func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
 	return writeconcern.New().WithOptions(opts...)
 }
 
+type ReadConcern struct {
+	level string `yaml:"level"`
+}
+
+func (wc ReadConcern) Resolve() *readconcern.ReadConcern {
+
+	if wc.level == "majority" {
+		return readconcern.Majority()
+	} else {
+		return readconcern.Available()
+	}
+}
+
 type DBSettings struct {
 	Url                  string       `yaml:"url"`
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
+	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 }
 
 // supported banner themes in Evergreen

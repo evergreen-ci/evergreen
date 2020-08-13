@@ -50,6 +50,7 @@ const (
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
+	dbRmodeFlagName    = "rmode"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -249,6 +250,11 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  dbWmodeFlagName,
 			Usage: "Write mode. Only valid values are blank or 'majority'",
 			Value: evergreen.DefaultDatabaseWriteMode,
+		},
+		cli.StringFlag{
+			Name:  dbRmodeFlagName,
+			Usage: "Read mode. Only valid values are blank or 'majority'",
+			Value: evergreen.DefaultDatabaseReadMode,
 		},
 	)
 }

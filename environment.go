@@ -279,6 +279,7 @@ func (e *envState) initSettings(path string) error {
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
+		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
 	var err error
