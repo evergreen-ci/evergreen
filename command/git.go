@@ -286,8 +286,8 @@ func (c *gitFetchProject) getConfigCommands() []string {
 	}
 
 	return []string{
-		fmt.Sprintf("git config --local user.name %s", userName),
-		fmt.Sprintf("git config --local user.email %s", userEmail),
+		fmt.Sprintf(`git config --local user.name "%s"`, userName),
+		fmt.Sprintf(`git config --local user.email "%s"`, userEmail),
 	}
 }
 
