@@ -151,22 +151,26 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		grip.Error(tempFile.Close())
-	}()
 
 	response, err := http.Get(url)
 	if err != nil {
+		grip.Error(tempFile.Close())
 		return "", err
 	}
 
 	if response == nil {
+		grip.Error(tempFile.Close())
 		return "", errors.Errorf("empty response from URL: %s", url)
 	}
 
 	defer response.Body.Close()
 	_, err = io.Copy(tempFile, response.Body)
 	if err != nil {
+		grip.Error(tempFile.Close())
+		return "", err
+	}
+
+	if err = tempFile.Close(); err != nil {
 		return "", err
 	}
 
