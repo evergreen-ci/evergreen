@@ -2320,6 +2320,9 @@ func GetLatestExecution(taskId string) (int, error) {
 	var t *Task
 	var err error
 	t, err = FindOneId(taskId)
+	if err != nil {
+		return err
+	}
 	if t == nil {
 		pieces := strings.Split(taskId, "_")
 		pieces = pieces[:len(pieces)-1]
