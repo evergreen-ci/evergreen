@@ -59,7 +59,7 @@ type Query {
     page: Int = 0
     limit: Int = 10
   ): HostsResponse!
-  myHosts: [Host!]
+  myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
 }
