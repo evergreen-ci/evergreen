@@ -691,7 +691,7 @@ func (wc ReadConcern) Resolve() *readconcern.ReadConcern {
 	if wc.Level == "majority" {
 		return readconcern.Majority()
 	} else {
-		return readconcern.Available()
+		return readconcern.New()
 	}
 }
 
