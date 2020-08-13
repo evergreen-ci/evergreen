@@ -683,12 +683,12 @@ func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
 }
 
 type ReadConcern struct {
-	level string `yaml:"level"`
+	Level string `yaml:"level"`
 }
 
 func (wc ReadConcern) Resolve() *readconcern.ReadConcern {
 
-	if wc.level == "majority" {
+	if wc.Level == "majority" {
 		return readconcern.Majority()
 	} else {
 		return readconcern.Available()
