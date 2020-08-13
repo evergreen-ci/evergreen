@@ -16,19 +16,23 @@ import (
 // This is called in the scheduler, and marks any static host in the system that
 // was removed from the distro as "terminated".
 //
-// Previously this oepration marked these hosts as "decommissioned,"
+// Previously this operation marked these hosts as "decommissioned,"
 // which is not a state that makes sense for static hosts.
 //
-// If the distro is the empty string ("") then this operation affects
-// all distros.
-func MarkInactiveStaticHosts(activeStaticHosts []string, distroID string) error {
+// If the distro is the empty string ("") then this operation affects all distros.
+// If distro aliases are included, then this operation affects also hosts with the alias.
+func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error {
 	query := bson.M{
 		IdKey:       bson.M{"$nin": activeStaticHosts},
 		ProviderKey: evergreen.HostTypeStatic,
 	}
-
-	if distroID != "" {
-		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	if d != nil {
+		if len(d.Aliases) > 0 {
+			ids := append(d.Aliases, d.Id)
+			query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = bson.M{"$in": ids}
+		} else {
+			query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = d.Id
+		}
 	}
 
 	toTerminate, err := Find(db.Query(query))
