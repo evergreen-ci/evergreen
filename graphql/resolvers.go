@@ -244,6 +244,58 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
+	host, err := host.FindOneByIdOrTag(hostID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+	usr := route.MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+
+	if !CanUpdateSpawnHost(host, usr) {
+		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
+	}
+
+	switch action {
+	case SpawnHostStatusActionsStart:
+		h, httpStatus, err := StartSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	case SpawnHostStatusActionsStop:
+		h, httpStatus, err := StopSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	case SpawnHostStatusActionsTerminate:
+		h, httpStatus, err := TerminateSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	default:
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find matching status for action : %s", action))
+	}
+
+}
+
 type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {

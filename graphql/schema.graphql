@@ -88,6 +88,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
     targetKeyName: String!
@@ -95,6 +96,11 @@ type Mutation {
   ): [PublicKey!]!
 }
 
+enum SpawnHostStatusActions {
+ START 
+ STOP 
+ TERMINATE
+}
 enum TaskSortCategory {
   NAME
   STATUS

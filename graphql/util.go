@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -651,4 +654,93 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 		return *publicKeys[i].Name < *publicKeys[j].Name
 	})
 	return publicKeys
+}
+
+// To be moved to a better home when we restructure the resolvers.go file
+// TerminateSpawnHost is a shared utility function to terminate a spawn host
+func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
+	if h.Status == evergreen.HostTerminated {
+		err := errors.New(fmt.Sprintf("Host %v is already terminated", h.Id))
+		return nil, http.StatusBadRequest, err
+	}
+
+	if err := cloud.TerminateSpawnHost(ctx, env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+		logError(ctx, err, r)
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
+}
+
+// StopSpawnHost is a shared utility function to Stop a running spawn host
+func StopSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
+	if h.Status == evergreen.HostStopped || h.Status == evergreen.HostStopping {
+		err := errors.New(fmt.Sprintf("Host %v is already stopping or stopped", h.Id))
+		return nil, http.StatusBadRequest, err
+
+	}
+	if h.Status != evergreen.HostRunning {
+		err := errors.New(fmt.Sprintf("Host %v is not running", h.Id))
+		return nil, http.StatusBadRequest, err
+	}
+
+	// Stop the host
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+		logError(ctx, err, r)
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
+
+}
+
+// StartSpawnHost is a shared utility function to Start a stopped spawn host
+func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
+	if h.Status == evergreen.HostStarting || h.Status == evergreen.HostRunning {
+		err := errors.New(fmt.Sprintf("Host %v is already starting or running", h.Id))
+		return nil, http.StatusBadRequest, err
+
+	}
+	// Start the host
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+		logError(ctx, err, r)
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
+
+}
+
+func logError(ctx context.Context, err error, r *http.Request) {
+	var method = "POST"
+	var url, _ = url.Parse("/graphql/query")
+	if r != nil {
+		method = r.Method
+		url = r.URL
+	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"method":  method,
+		"url":     url,
+		"code":    http.StatusInternalServerError,
+		"request": gimlet.GetRequestID(ctx),
+		"stack":   string(debug.Stack()),
+	}))
+}
+
+// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+func CanUpdateSpawnHost(host *host.Host, usr *user.DBUser) bool {
+	if usr.Username() != host.StartedBy {
+		if !usr.HasPermission(gimlet.PermissionOpts{
+			Resource:      host.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
+			return false
+		}
+		return true
+	}
+	return true
+
 }
