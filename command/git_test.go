@@ -628,6 +628,27 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git reset --hard 1234abcd", cmds[6])
 }
 
+func (s *GitGetProjectSuite) TestGetApplyCommand() {
+	c := &gitFetchProject{
+		Directory:      "dir",
+		Token:          projectGitHubToken,
+		CommitterName:  "octocat",
+		CommitterEmail: "octocat@github.com",
+	}
+
+	// regular patch
+	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
+	applyCommand, err := c.getApplyCommand(patchPath)
+	s.NoError(err)
+	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
+
+	// mbox patch
+	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
+	applyCommand, err = c.getApplyCommand(patchPath)
+	s.NoError(err)
+	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr < '%s'`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
+}
+
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
 	conf := s.modelData2.TaskConfig

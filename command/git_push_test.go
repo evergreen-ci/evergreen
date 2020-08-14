@@ -27,10 +27,8 @@ import (
 func TestGitPush(t *testing.T) {
 	token := "0123456789"
 	c := gitPush{
-		Directory:      "src",
-		CommitterName:  "octocat",
-		CommitterEmail: "octocat@github.com",
-		Token:          token,
+		Directory: "src",
+		Token:     token,
 	}
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{
