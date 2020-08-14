@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -686,12 +687,19 @@ type ReadConcern struct {
 	Level string `yaml:"level"`
 }
 
-func (wc ReadConcern) Resolve() *readconcern.ReadConcern {
+func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 
-	if wc.Level == "majority" {
+	if rc.Level == "majority" {
+		return readconcern.Majority()
+	} else if rc.Level == "local" {
+		return readconcern.Local()
+	} else if rc.Level == "" {
 		return readconcern.Majority()
 	} else {
-		return readconcern.New()
+		grip.Error(message.Fields{
+			"error":   "ReadConcern Level is not majority or local, setting to majority",
+			"rcLevel": rc.Level})
+		return readconcern.Majority()
 	}
 }
 
