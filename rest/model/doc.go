@@ -9,7 +9,7 @@
 
 	Guidelines for Creating Models
 
-	Include as much data as a user is likely to want when inspecting this resource.
+	include as much data as a user is likely to want when inspecting this resource.
 	This is likely to be more information than seems directly needed, but there is
 	little penalty to its inclusion.
 
