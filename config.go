@@ -15,11 +15,13 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -681,10 +683,31 @@ func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
 	return writeconcern.New().WithOptions(opts...)
 }
 
+type ReadConcern struct {
+	Level string `yaml:"level"`
+}
+
+func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
+
+	if rc.Level == "majority" {
+		return readconcern.Majority()
+	} else if rc.Level == "local" {
+		return readconcern.Local()
+	} else if rc.Level == "" {
+		return readconcern.Majority()
+	} else {
+		grip.Error(message.Fields{
+			"error":   "ReadConcern Level is not majority or local, setting to majority",
+			"rcLevel": rc.Level})
+		return readconcern.Majority()
+	}
+}
+
 type DBSettings struct {
 	Url                  string       `yaml:"url"`
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
+	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 }
 
 // supported banner themes in Evergreen
