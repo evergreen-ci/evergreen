@@ -91,10 +91,7 @@ type Scheduler struct {
 	FindRunnableTasks TaskFinder
 }
 
-const (
-	RunnerName               = "scheduler"
-	underwaterPruningEnabled = true
-)
+const RunnerName = "scheduler"
 
 type distroScheduler struct {
 	startedAt time.Time
@@ -304,20 +301,19 @@ func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.H
 	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }
 
-// pass 'allDistros' or the empty string to unchedule all distros.
+// pass the empty string to unschedule all distros.
 func underwaterUnschedule(distroID string) error {
-	if underwaterPruningEnabled {
-		num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.InfoWhen(num > 0, message.Fields{
-			"message": "unscheduled stale tasks",
-			"runner":  RunnerName,
-			"count":   num,
-		})
+	num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
+	if err != nil {
+		return errors.WithStack(err)
 	}
+
+	grip.InfoWhen(num > 0, message.Fields{
+		"message": "unscheduled stale tasks",
+		"distro":  distroID,
+		"runner":  RunnerName,
+		"count":   num,
+	})
 
 	return nil
 }
