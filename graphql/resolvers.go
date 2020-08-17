@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -22,8 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-
-	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -623,12 +622,48 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
 	start, err := model.GetEstimatedStartTime(*dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
 	}
 	apiTask.EstimatedStart = restModel.NewAPIDuration(start)
 	return apiTask, err
+}
+
+func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
+	latestTask, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if latestTask == nil {
+		return nil, errors.Errorf("unable to find task %s", taskID)
+	}
+	allTasks := []*restModel.APITask{}
+	for i := 0; i < latestTask.Execution; i++ {
+		var dbTask *task.Task
+		dbTask, err = task.FindByIdExecution(taskID, &i)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, err.Error())
+		}
+		if dbTask == nil {
+			return nil, errors.Errorf("unable to find task %s", taskID)
+		}
+		var apiTask *restModel.APITask
+		apiTask, err = GetAPITaskFromTask(ctx, r.sc, *dbTask)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "error converting task")
+		}
+		allTasks = append(allTasks, apiTask)
+	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *latestTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
+	allTasks = append(allTasks, apiTask)
+	return allTasks, nil
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
@@ -1711,6 +1746,10 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 
 func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
 	return *obj.DisplayStatus, nil
+}
+
+func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
+	return task.GetLatestExecution(*obj.Id)
 }
 
 // New injects resources into the resolvers, such as the data connector
