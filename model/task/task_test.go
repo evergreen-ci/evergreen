@@ -1255,6 +1255,31 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	require.NoError(t, t1.Insert())
 
 	d := distro.Distro{
+		Id: "d0",
+	}
+	require.NoError(t, d.Insert())
+
+	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	assert.NoError(t, err)
+	dbTask, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.False(t, dbTask.Activated)
+	assert.EqualValues(t, -1, dbTask.Priority)
+}
+
+func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	t1 := Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+		DistroId:      "d0.0",
+	}
+	require.NoError(t, t1.Insert())
+
+	d := distro.Distro{
 		Id:      "d0",
 		Aliases: []string{"d0.0", "d0.1"},
 	}
