@@ -1448,7 +1448,6 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 					if _, err = t.ActivateTask(evergreen.User); err != nil {
 						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", taskname)
 					}
-					existingTasksIndex[taskname] = t
 				}
 				continue
 			}
@@ -1462,7 +1461,6 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 					if _, err = t.ActivateTask(evergreen.User); err != nil {
 						return nil, errors.Wrapf(err, "problem updating active state for existing display task '%s'", taskname)
 					}
-					existingTasksIndex[taskname] = t
 				}
 				continue
 			}
