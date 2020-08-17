@@ -470,12 +470,12 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 }
 
 func (j *patchIntentProcessor) buildBackportPatchDoc(patchDoc *patch.Patch) error {
-	existingMergePatch, err := patch.FindOneId(patchDoc.Backport)
+	existingMergePatch, err := patch.FindOneId(patchDoc.BackportOf)
 	if err != nil {
 		return errors.Wrap(err, "can't get existing merge patch")
 	}
 	if existingMergePatch == nil {
-		return errors.Errorf("patch '%s' does not exist", patchDoc.Backport)
+		return errors.Errorf("patch '%s' does not exist", patchDoc.BackportOf)
 	}
 	if !existingMergePatch.IsCommitQueuePatch() {
 		return errors.Errorf("can only backport commit queue patches")
