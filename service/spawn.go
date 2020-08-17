@@ -332,7 +332,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStart:
-		_, _, err = graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, _, err = graphql.StartSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
