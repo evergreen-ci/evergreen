@@ -712,11 +712,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	return tasks
 }
 
-type displayTaskInfo struct {
-	task          *task.Task
-	dependencyIds map[string]bool
-}
-
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
@@ -777,49 +772,12 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	// create and insert all of the actual tasks
-	tasks := task.Tasks{}
-	displayTasks := make(map[string]displayTaskInfo)
-
-	// Create display tasks
-	for _, dt := range buildVariant.DisplayTasks {
-		id := displayTable.GetId(b.BuildVariant, dt.Name)
-		if id == "" {
-			continue
-		}
-		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
-			continue
-		}
-		execTaskIds := []string{}
-		for _, et := range dt.ExecutionTasks {
-			execTaskId := execTable.GetId(b.BuildVariant, et)
-			if execTaskId == "" {
-				grip.Error(message.Fields{
-					"message":         "execution task not found",
-					"variant":         b.BuildVariant,
-					"exec_task":       et,
-					"available_tasks": execTable,
-					"project":         project.Identifier,
-				})
-				continue
-			}
-			execTaskIds = append(execTaskIds, execTaskId)
-		}
-		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime)
-		if err != nil {
-			return tasks, errors.Wrapf(err, "Failed to create display task %s", id)
-		}
-		t.GeneratedBy = generatedBy
-		tasks = append(tasks, t)
-		for _, et := range dt.ExecutionTasks {
-			displayTasks[et] = displayTaskInfo{task: t, dependencyIds: map[string]bool{}}
-		}
-	}
-
+	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
 		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime)
 		if err != nil {
-			return tasks, errors.Wrapf(err, "Failed to create task %s", id)
+			return nil, errors.Wrapf(err, "Failed to create task %s", id)
 		}
 
 		// set Tags based on the spec
@@ -890,18 +848,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
 			}
 		}
-
-		//  Display tasks depend on all exec task dependencies, without duplicates
-		if dtInfo, ok := displayTasks[newTask.DisplayName]; ok {
-			for _, dependency := range newTask.DependsOn {
-				if !dtInfo.dependencyIds[dependency.TaskId] {
-					dtInfo.dependencyIds[dependency.TaskId] = true
-					dtInfo.task.DependsOn = append(dtInfo.task.DependsOn, dependency)
-				}
-			}
-			newTask.DisplayTask = dtInfo.task
-		}
-
 		newTask.GeneratedBy = generatedBy
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
@@ -921,8 +867,61 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 		}
 
-		// append the task to the list of the created tasks
-		tasks = append(tasks, newTask)
+		taskMap[newTask.Id] = newTask
+	}
+
+	// Create display tasks
+	tasks := task.Tasks{}
+	for _, dt := range buildVariant.DisplayTasks {
+		id := displayTable.GetId(b.BuildVariant, dt.Name)
+		if id == "" {
+			continue
+		}
+		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
+			continue
+		}
+		execTaskIds := []string{}
+		for _, et := range dt.ExecutionTasks {
+			execTaskId := execTable.GetId(b.BuildVariant, et)
+			if execTaskId == "" {
+				grip.Error(message.Fields{
+					"message":         "execution task not found",
+					"variant":         b.BuildVariant,
+					"exec_task":       et,
+					"available_tasks": execTable,
+					"project":         project.Identifier,
+				})
+				continue
+			}
+			execTaskIds = append(execTaskIds, execTaskId)
+		}
+		newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to create display task %s", id)
+		}
+		newDisplayTask.GeneratedBy = generatedBy
+
+		// add every execution task dependency onto the display task, without duplicates
+		depMap := make(map[string]bool)
+		for _, etID := range newDisplayTask.ExecutionTasks {
+			if _, ok := taskMap[etID]; !ok {
+				return nil, errors.Errorf("display task '%s' references non-existent execution task '%s'", newDisplayTask.Id, etID)
+			}
+			taskMap[etID].DisplayTask = newDisplayTask
+			for _, dep := range taskMap[etID].DependsOn {
+				if !depMap[dep.TaskId] {
+					depMap[dep.TaskId] = true
+					newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
+				}
+			}
+
+		}
+
+		tasks = append(tasks, newDisplayTask)
+	}
+
+	for _, t := range taskMap {
+		tasks = append(tasks, t)
 	}
 
 	// Set the NumDependents field
