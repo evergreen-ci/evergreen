@@ -532,3 +532,11 @@ func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) (
 	}))
 	return users, errors.Wrap(err, "could not find users who need reauthorization")
 }
+
+// FindServiceUsers scans the entire user collection and returns only-api users
+func FindServiceUsers() ([]DBUser, error) {
+	query := bson.M{
+		OnlyAPIKey: true,
+	}
+	return Find(db.Query(query))
+}

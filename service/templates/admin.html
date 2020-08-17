@@ -66,7 +66,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
 						<li class="link" ng-click="scrollTo('okta')">Okta</li>
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
-						<li class="link" ng-click="scrollTo('only_api')">API-Only</li>
 						<li class="link" ng-click="scrollTo('github')">Github</li>
 						<li class="link" ng-click="scrollTo('multi')">Multi</li>
 						<div>External Communication</div>
@@ -739,7 +738,6 @@ Admin Settings
 										<md-radio-button value="okta">Okta</md-radio-button>
 										<md-radio-button value="naive">Naive</md-radio-button>
 										<md-radio-button value="github">Github</md-radio-button>
-										<md-radio-button value="only_api">API-only</md-radio-button>
 										<md-radio-button value="multi">Multi</md-radio-button>
 										<md-radio-button value="">None</md-radio-button>
 									</md-radio-group>
@@ -856,28 +854,6 @@ Admin Settings
 									</md-chips>
 								</md-card-content>
 							</md-card>
-
-							<md-card flex=50 id="only_api" style="max-width:49%">
-								<md-card-title>
-									<md-card-title-text>
-										<span>API-Only Authentication</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('auth','only_api')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-chips md-transform-chip="chipToUserJSON($chip)"
-										ng-model="tempOnlyAPIUsers" ng-change="onAPIOnlyUsersChanged()" placeholder="Enter a user in json format (specify username, key, and roles)">
-										<md-chip-template>
-											username:[[$chip.username]], key:[[$chip.key]], roles:[[$chip.roles]]
-										</md-chip-template>
-									</md-chips>
-                  <label class="icon fa fa-warning distro-error"
-                    ng-show="apiOnlyUserMissingKey"> Missing API keys will be auto-generated on save<br></label>
-								</md-card-content>
-							</md-card>
-
 						</section>
 
 						<section layout="row" flex>

@@ -1657,7 +1657,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	return myPublicKeys, nil
 }
 
-func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
+func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIDBUser, error) {
 	usr := route.MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
@@ -1668,7 +1668,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
-	user := restModel.APIUser{
+	user := restModel.APIDBUser{
 		DisplayName: &displayName,
 		UserID:      &userID,
 	}

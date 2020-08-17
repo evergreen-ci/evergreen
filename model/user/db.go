@@ -1,7 +1,9 @@
 package user
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -78,6 +80,47 @@ func FindByGithubName(name string) (*DBUser, error) {
 	}
 
 	return &u, nil
+}
+
+func AddOrUpdateServiceUser(u DBUser) error {
+	if !u.OnlyAPI {
+		return errors.New("cannot update a non-service user")
+	}
+	query := bson.M{
+		IdKey: u.Id,
+	}
+	apiKey := u.APIKey
+	if apiKey == "" {
+		apiKey = utility.RandomString()
+	}
+	update := bson.M{
+		"$set": bson.M{
+			DispNameKey: u.DispName,
+			RolesKey:    u.SystemRoles,
+			OnlyAPIKey:  true,
+			APIKeyKey:   apiKey,
+		},
+	}
+	_, err := UpsertOne(query, update)
+	return err
+}
+
+func DeleteServiceUser(id string) error {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	query := bson.M{
+		IdKey:      id,
+		OnlyAPIKey: true,
+	}
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	result, err := coll.DeleteOne(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete service user")
+	}
+	if result.DeletedCount < 1 {
+		return errors.Errorf("service user '%s' not found", id)
+	}
+	return nil
 }
 
 func ById(userId string) db.Q {

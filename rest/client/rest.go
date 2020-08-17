@@ -734,6 +734,81 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	return result.HostIDs, nil
 }
 
+func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "/admin/service_users",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting service users")
+	}
+	var result []model.APIDBUser
+	if err = utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "problem reading response")
+	}
+
+	return result, nil
+}
+
+func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, displayName string, roles []string) error {
+	info := requestInfo{
+		method:  http.MethodPost,
+		version: apiVersion2,
+		path:    "/admin/service_users",
+	}
+	body := model.APIDBUser{
+		UserID:      &username,
+		DisplayName: &displayName,
+		Roles:       roles,
+	}
+
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "updating service user")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username string) error {
+	info := requestInfo{
+		method:  http.MethodDelete,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/admin/service_users?id=%s", username),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "deleting service user")
+	}
+
+	return nil
+}
+
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
 		method:  get,

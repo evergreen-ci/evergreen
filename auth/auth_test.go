@@ -22,7 +22,6 @@ func TestLoadUserManager(t *testing.T) {
 		ClientSecret: "client_secret",
 	}
 	naive := evergreen.NaiveAuthConfig{}
-	onlyAPI := evergreen.OnlyAPIAuthConfig{}
 	okta := evergreen.OktaConfig{
 		ClientID:     "client_id",
 		ClientSecret: "client_secret",
@@ -35,7 +34,7 @@ func TestLoadUserManager(t *testing.T) {
 	}
 	multiNoInfo := evergreen.MultiAuthConfig{
 		ReadWrite: []string{evergreen.AuthGithubKey},
-		ReadOnly:  []string{evergreen.AuthOnlyAPIKey},
+		ReadOnly:  []string{},
 	}
 
 	a := evergreen.AuthConfig{}
@@ -73,7 +72,7 @@ func TestLoadUserManager(t *testing.T) {
 	assert.False(t, info.CanReauthorize)
 	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Naive")
 
-	a = evergreen.AuthConfig{OnlyAPI: &onlyAPI}
+	a = evergreen.AuthConfig{AllowServiceUsers: true}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is OnlyAPI")
 	assert.False(t, info.CanClearTokens)
@@ -101,7 +100,7 @@ func TestLoadUserManager(t *testing.T) {
 	assert.True(t, info.CanReauthorize, "should be able to reauthorize if the underlying manager is able")
 	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is Multi")
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multiNoInfo, Github: &github, OnlyAPI: &onlyAPI}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multiNoInfo, Github: &github, AllowServiceUsers: true}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Multi")
 	assert.False(t, info.CanClearTokens, "should not be able to clear tokens if the underlying user managers is unable")

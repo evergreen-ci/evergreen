@@ -44,6 +44,7 @@ func Admin() cli.Command {
 			toMdbForLocal(),
 			updateRoleCmd(),
 			adminDistroExecute(),
+			updateServiceUser(),
 		},
 	}
 }
@@ -642,6 +643,117 @@ func adminDistroExecute() cli.Command {
 			}
 
 			return nil
+		},
+	}
+}
+
+func getServiceUsers() cli.Command {
+	return cli.Command{
+		Name:  "get-service-users",
+		Usage: "prints all service users",
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+		),
+		Action: func(c *cli.Context) error {
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			users, err := client.GetServiceUsers(ctx)
+			if err != nil {
+				return err
+			}
+			for _, u := range users {
+				grip.Info(u)
+			}
+			return nil
+		},
+	}
+}
+
+func updateServiceUser() cli.Command {
+	const (
+		idFlag          = "id"
+		displayNameFlag = "name"
+		rolesFlag       = "roles"
+	)
+	return cli.Command{
+		Name:  "update-service-user",
+		Usage: "adds or updates a service user",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlag,
+				Usage: "the username of the service user",
+			},
+			cli.StringFlag{
+				Name:  displayNameFlag,
+				Usage: "the display name of the service user",
+			},
+			cli.StringSliceFlag{
+				Name:  rolesFlag,
+				Usage: "The roles for the user. Must be the entire list of roles to set",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(idFlag),
+		),
+		Action: func(c *cli.Context) error {
+			id := c.String(idFlag)
+			displayName := c.String(displayNameFlag)
+			roles := c.StringSlice(rolesFlag)
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			return client.UpdateServiceUser(ctx, id, displayName, roles)
+		},
+	}
+}
+
+func deleteServiceUser() cli.Command {
+	const (
+		idFlag = "id"
+	)
+	return cli.Command{
+		Name:  "delete-service-user",
+		Usage: "deletes a service user",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  idFlag,
+				Usage: "the username of the service user",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(idFlag),
+		),
+		Action: func(c *cli.Context) error {
+			id := c.String(idFlag)
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			return client.DeleteServiceUser(ctx, id)
 		},
 	}
 }
