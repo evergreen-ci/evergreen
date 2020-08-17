@@ -22,7 +22,7 @@ const (
 	githubMergeMethodSquash = "squash"
 	githubMergeMethodRebase = "rebase"
 
-	GitHubContext = "evergreen/commitqueue"
+	GithubContext = "evergreen/commitqueue"
 )
 
 var validMergeMethods = []string{githubMergeMethodMerge, githubMergeMethodSquash, githubMergeMethodRebase}
@@ -135,7 +135,7 @@ func (s *GithubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRI
 		Owner:       pr.Owner,
 		Repo:        pr.Repo,
 		Ref:         pr.Ref,
-		Context:     GitHubContext,
+		Context:     GithubContext,
 		State:       state,
 		Description: description,
 	}
@@ -156,7 +156,7 @@ func (s *GithubMergePR) sendPatchResult(pr event.PRInfo) {
 		Owner:       pr.Owner,
 		Repo:        pr.Repo,
 		Ref:         pr.Ref,
-		Context:     GitHubContext,
+		Context:     GithubContext,
 		State:       state,
 		Description: description,
 		URL:         s.URL,

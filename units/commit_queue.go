@@ -265,7 +265,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
-			commitqueue.GitHubContext,
+			commitqueue.GithubContext,
 			pr.Base.User.GetLogin(),
 			pr.Base.Repo.GetName(),
 			pr.Head.GetRef(),
@@ -522,7 +522,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 		Owner:       *pr.Base.Repo.Owner.Login,
 		Repo:        *pr.Base.Repo.Name,
 		Ref:         *pr.Head.SHA,
-		Context:     commitqueue.GitHubContext,
+		Context:     commitqueue.GithubContext,
 		State:       state,
 		Description: description,
 		URL:         url,

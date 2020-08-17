@@ -60,7 +60,7 @@ type githubStatusUpdateJob struct {
 	Owner         string `bson:"owner" json:"owner" yaml:"owner"`
 	Repo          string `bson:"repo" json:"repo" yaml:"repo"`
 	Ref           string `bson:"ref" json:"ref" yaml:"ref"`
-	GitHubContext string `bson:"github_context" json:"github_context" yaml:"github_context"`
+	GithubContext string `bson:"github_context" json:"github_context" yaml:"github_context"`
 	Description   string `bson:"description" json:"description" yaml:"description"`
 }
 
@@ -132,7 +132,7 @@ func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref,
 	job.Repo = repo
 	job.Ref = ref
 	job.UpdateType = githubUpdateTypeProcessingError
-	job.GitHubContext = githubContext
+	job.GithubContext = githubContext
 	job.Description = description
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, description, time.Now().String()))
@@ -181,7 +181,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	status := message.GithubStatus{}
 
 	if j.UpdateType == githubUpdateTypeProcessingError {
-		status.Context = j.GitHubContext
+		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
 		status.Description = j.Description
 
@@ -204,7 +204,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = commitqueue.GitHubContext
+		status.Context = commitqueue.GithubContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 
@@ -215,7 +215,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		// Since there is no patch document, we return early.
 		return &status, nil
 	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
-		status.Context = commitqueue.GitHubContext
+		status.Context = commitqueue.GithubContext
 		status.Description = "removed from queue"
 		status.State = message.GithubStateSuccess
 
