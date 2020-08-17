@@ -1426,14 +1426,14 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 	taskIds := []string{}
 	for _, b := range builds {
 		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey))
+		tasksInBuild, err := task.Find(task.ByBuildId(b.Id))
 		if err != nil {
 			return nil, err
 		}
 		// build an index to keep track of which tasks already exist
-		existingTasksIndex := map[string]bool{}
+		existingTasksIndex := map[string]task.Task{}
 		for _, t := range tasksInBuild {
-			existingTasksIndex[t.DisplayName] = true
+			existingTasksIndex[t.DisplayName] = t
 		}
 		// if the patch is activated, treat the build as activated
 		b.Activated = activated
@@ -1442,14 +1442,28 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
+			if t, ok := existingTasksIndex[taskname]; ok {
+				if !t.Activated && activated {
+					// update task activation
+					if _, err = t.ActivateTask(evergreen.User); err != nil {
+						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", taskname)
+					}
+					existingTasksIndex[taskname] = t
+				}
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskname)
 		}
 		displayTasksToAdd := []string{}
 		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
+			if t, ok := existingTasksIndex[taskname]; ok {
+				if !t.Activated && activated {
+					// update task activation
+					if _, err = t.ActivateTask(evergreen.User); err != nil {
+						return nil, errors.Wrapf(err, "problem updating active state for existing display task '%s'", taskname)
+					}
+					existingTasksIndex[taskname] = t
+				}
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskname)
