@@ -190,7 +190,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		if !ok {
 			return nil, errors.New("github-merge subscriber is invalid")
 		}
-		payload, ok := n.Payload.(*commitqueue.GitHubMergePR)
+		payload, ok := n.Payload.(*commitqueue.GithubMergePR)
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
@@ -199,7 +199,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.Item = sub.Item
 
 		if err := payload.Initialize(env); err != nil {
-			return nil, errors.Wrap(err, "problem initializing GitHubMergePR")
+			return nil, errors.Wrap(err, "problem initializing GithubMergePR")
 		}
 
 		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGitHubMergePRValid(t *testing.T) {
-	validMessage := GitHubMergePR{
+func TestGithubMergePRValid(t *testing.T) {
+	validMessage := GithubMergePR{
 		ProjectID: "evergreen",
 		Item:      "12345",
 		Status:    evergreen.PatchSucceeded,
@@ -50,7 +50,7 @@ func TestDequeueFromCommitQueue(t *testing.T) {
 	}
 	require.NoError(t, insert(queue))
 
-	sender := GitHubMergePR{
+	sender := GithubMergePR{
 		ProjectID: projectID,
 		Item:      itemID,
 	}

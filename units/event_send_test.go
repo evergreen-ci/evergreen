@@ -145,7 +145,7 @@ func (s *eventNotificationSuite) SetupTest() {
 					MergeMethod: "squash",
 				},
 			},
-			Payload: commitqueue.GitHubMergePR{},
+			Payload: commitqueue.GithubMergePR{},
 		},
 	}
 	s.webhook = &s.notifications[0]

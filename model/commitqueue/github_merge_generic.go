@@ -27,7 +27,7 @@ const (
 
 var validMergeMethods = []string{githubMergeMethodMerge, githubMergeMethodSquash, githubMergeMethodRebase}
 
-type GitHubMergePR struct {
+type GithubMergePR struct {
 	Status      string         `bson:"status"`
 	PatchID     string         `bson:"patch_id"`
 	URL         string         `bson:"url"`
@@ -40,7 +40,7 @@ type GitHubMergePR struct {
 	gitHubToken  string
 }
 
-func (s *GitHubMergePR) Initialize(env evergreen.Environment) error {
+func (s *GithubMergePR) Initialize(env evergreen.Environment) error {
 	githubToken, err := env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "can't get github token from settings")
@@ -57,7 +57,7 @@ func (s *GitHubMergePR) Initialize(env evergreen.Environment) error {
 	return nil
 }
 
-func (s *GitHubMergePR) Send() error {
+func (s *GithubMergePR) Send() error {
 	tc := utility.GetOAuth2HTTPClient(s.gitHubToken)
 	defer utility.PutHTTPClient(tc)
 	githubClient := github.NewClient(tc)
@@ -106,11 +106,11 @@ func (s *GitHubMergePR) Send() error {
 	return s.dequeueFromCommitQueue()
 }
 
-func (s *GitHubMergePR) String() string {
+func (s *GithubMergePR) String() string {
 	return fmt.Sprintf("GitHub commit queue merge '%s'", s.Item)
 }
 
-func (s *GitHubMergePR) Valid() bool {
+func (s *GithubMergePR) Valid() bool {
 	if len(s.ProjectID) == 0 || len(s.Item) == 0 || len(s.Status) == 0 {
 		return false
 	}
@@ -127,7 +127,7 @@ func (s *GitHubMergePR) Valid() bool {
 	return true
 }
 
-func (s *GitHubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) {
+func (s *GithubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) {
 	state := message.GithubStateFailure
 	description := fmt.Sprintf("merge failed: %s", githubMessage)
 
@@ -144,7 +144,7 @@ func (s *GitHubMergePR) sendMergeFailedStatus(githubMessage string, pr event.PRI
 	s.statusSender.Send(c)
 }
 
-func (s *GitHubMergePR) sendPatchResult(pr event.PRInfo) {
+func (s *GithubMergePR) sendPatchResult(pr event.PRInfo) {
 	state := message.GithubStateFailure
 	description := "merge test failed"
 	if s.Status == evergreen.PatchSucceeded {
@@ -166,7 +166,7 @@ func (s *GitHubMergePR) sendPatchResult(pr event.PRInfo) {
 	s.statusSender.Send(c)
 }
 
-func (s *GitHubMergePR) dequeueFromCommitQueue() error {
+func (s *GithubMergePR) dequeueFromCommitQueue() error {
 	cq, err := FindOneId(s.ProjectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't find commit queue for '%s'", s.ProjectID)
