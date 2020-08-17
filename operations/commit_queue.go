@@ -20,11 +20,12 @@ import (
 )
 
 const (
-	itemFlagName      = "item"
-	pauseFlagName     = "pause"
-	resumeFlagName    = "resume"
-	commitsFlagName   = "commits"
-	existingPatchFlag = "existing-patch"
+	itemFlagName        = "item"
+	pauseFlagName       = "pause"
+	resumeFlagName      = "resume"
+	commitsFlagName     = "commits"
+	existingPatchFlag   = "existing-patch"
+	backportProjectFlag = "backport-project"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
@@ -286,17 +287,20 @@ func backport() cli.Command {
 			addPatchFinalizeFlag(),
 			addVariantsFlag(),
 			addTasksFlag(),
-			addProjectFlag(),
 			addPatchAliasFlag(),
 			addPatchBrowseFlag(
 				cli.StringFlag{
 					Name:  joinFlagNames(existingPatchFlag, "e"),
 					Usage: "existing commit queue patch",
 				},
+				cli.StringFlag{
+					Name:  joinFlagNames(backportProjectFlag, "b"),
+					Usage: "project to backport onto",
+				},
 			)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
-			requireProjectFlag,
+			requireStringFlag(backportProjectFlag),
 			requireStringFlag(existingPatchFlag),
 		),
 		Action: func(c *cli.Context) error {
@@ -305,13 +309,13 @@ func backport() cli.Command {
 
 			confPath := c.Parent().Parent().String(confFlagName)
 			patchParams := &patchParams{
-				Tasks:    c.StringSlice(tasksFlagName),
-				Variants: c.StringSlice(variantsFlagName),
-				Alias:    c.String(patchAliasFlagName),
-				Finalize: c.Bool(patchFinalizeFlagName),
-				Backport: c.String(existingPatchFlag),
-				Project:  c.String(projectFlagName),
-				Browse:   c.Bool(patchBrowseFlagName),
+				Tasks:      c.StringSlice(tasksFlagName),
+				Variants:   c.StringSlice(variantsFlagName),
+				Alias:      c.String(patchAliasFlagName),
+				Finalize:   c.Bool(patchFinalizeFlagName),
+				BackportOf: c.String(existingPatchFlag),
+				Project:    c.String(backportProjectFlag),
+				Browse:     c.Bool(patchBrowseFlagName),
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -329,12 +333,12 @@ func backport() cli.Command {
 				return err
 			}
 
-			existingPatch, err := ac.GetPatch(patchParams.Backport)
+			existingPatch, err := ac.GetPatch(patchParams.BackportOf)
 			if err != nil {
-				return errors.Wrapf(err, "Error getting existing patch '%s'", patchParams.Backport)
+				return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf)
 			}
 			if !existingPatch.IsCommitQueuePatch() {
-				return errors.Errorf("Patch '%s' is not a commit queue patch", patchParams.Backport)
+				return errors.Errorf("patch '%s' is not a commit queue patch", patchParams.BackportOf)
 			}
 
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
@@ -537,7 +541,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return err
 	}
 	if err = patchParams.displayPatch(conf, patch); err != nil {
-		grip.Error("problem printing patch information")
+		grip.Error("Patch information cannot be displayed.")
 	}
 
 	p.id = patch.Id.Hex()

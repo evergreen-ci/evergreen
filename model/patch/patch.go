@@ -137,7 +137,7 @@ type Patch struct {
 	Activated       bool             `bson:"activated"`
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
-	Backport        string           `bson:"backport"`
+	BackportOf      string           `bson:"backport_of"`
 	MergePatch      string           `bson:"merge_patch"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
@@ -600,7 +600,7 @@ func (p *Patch) IsCommitQueuePatch() bool {
 }
 
 func (p *Patch) IsBackport() bool {
-	return len(p.Backport) > 0
+	return len(p.BackportOf) > 0
 }
 
 func (p *Patch) GetRequester() string {
@@ -624,15 +624,15 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
-	commitQueuePatch, err := FindOneId(p.Backport)
+	commitQueuePatch, err := FindOneId(p.BackportOf)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get patch being backported")
 	}
 	if commitQueuePatch == nil {
-		return "", errors.Errorf("patch '%s' being backported doesn't exist", p.Backport)
+		return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf)
 	}
 
-	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.Backport), nil
+	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.BackportOf), nil
 }
 
 // IsMailbox checks if the first line of a patch file

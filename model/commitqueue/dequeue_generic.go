@@ -23,6 +23,9 @@ func (d *DequeueItem) Send() error {
 	if err != nil {
 		return errors.Wrapf(err, "no matching commit queue for project '%s'", d.ProjectID)
 	}
+	if queue == nil {
+		return errors.Errorf("no queue found for project '%s'", d.ProjectID)
+	}
 
 	found, err := queue.Remove(d.Item)
 	if err != nil {

@@ -546,18 +546,19 @@ func (e *EnqueuePatch) Send() error {
 		return nil
 	}
 
+	cq, err := commitqueue.FindOneId(existingPatch.Project)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit queue")
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
+	}
+
 	mergePatch, err := MakeMergePatchFromExisting(existingPatch)
 	if err != nil {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	cq, err := commitqueue.FindOneId(mergePatch.Project)
-	if err != nil {
-		return errors.Wrap(err, "can't get commit queue")
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue for project '%s'", mergePatch.Project)
-	}
 	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex()})
 
 	return errors.Wrap(err, "can't enqueue item")
@@ -581,8 +582,8 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 	if projectRef == nil {
 		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
 	}
-	if !projectRef.CommitQueueIsOn() {
-		return nil, errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
+	if err = projectRef.CommitQueueIsOn(); err != nil {
+		return nil, errors.Wrapf(err, "commit queue is disabled for project '%s'", existingPatch.Project)
 	}
 
 	project := &Project{}

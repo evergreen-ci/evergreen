@@ -40,7 +40,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description       string        `json:"desc"`
 		Project           string        `json:"project"`
-		Backport          string        `json:"backport"`
+		BackportOf        string        `json:"backport_of"`
 		PatchBytes        []byte        `json:"patch_bytes"`
 		Githash           string        `json:"githash"`
 		Variants          []string      `json:"buildvariants_new"`

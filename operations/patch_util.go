@@ -70,7 +70,7 @@ type patchParams struct {
 	Uncommitted       bool
 	PreserveCommits   bool
 	Ref               string
-	Backport          string
+	BackportOf        string
 }
 
 type patchSubmission struct {
@@ -86,7 +86,7 @@ type patchSubmission struct {
 	syncStatuses      []string
 	syncTimeout       time.Duration
 	finalize          bool
-	backport          string
+	backportOf        string
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -103,7 +103,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		syncStatuses:      p.SyncStatuses,
 		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
-		backport:          p.Backport,
+		backportOf:        p.BackportOf,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
