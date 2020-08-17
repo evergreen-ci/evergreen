@@ -567,11 +567,6 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
-	// update the build to hold the new tasks
-	if err := RefreshTasksCache(b.Id); err != nil {
-		return nil, nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
-	}
-
 	return b, tasks, nil
 }
 
@@ -1441,11 +1436,13 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		// build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
+		madeChanges := false
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if t, ok := existingTasksIndex[taskname]; ok {
 				if !t.Activated && activated {
-					// update task activation
-					if _, err = t.ActivateTask(evergreen.User); err != nil {
+					madeChanges = true
+					// update task activation for dependencies that already exist
+					if err = SetActiveState(&t, evergreen.User, true); err != nil {
 						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", taskname)
 					}
 				}
@@ -1455,28 +1452,28 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		}
 		displayTasksToAdd := []string{}
 		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if t, ok := existingTasksIndex[taskname]; ok {
-				if !t.Activated && activated {
-					// update task activation
-					if _, err = t.ActivateTask(evergreen.User); err != nil {
-						return nil, errors.Wrapf(err, "problem updating active state for existing display task '%s'", taskname)
-					}
-				}
+			if _, ok := existingTasksIndex[taskname]; ok {
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskname)
 		}
-		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
-			continue
-		}
-		// Add the new set of tasks to the build.
-		_, tasks, err := AddTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases)
-		if err != nil {
-			return nil, err
+		if len(tasksToAdd) != 0 || len(displayTasksToAdd) != 0 {
+			madeChanges = true
+			// Add the new set of tasks to the build.
+			_, tasks, err := AddTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases)
+			if err != nil {
+				return nil, err
+			}
+			for _, t := range tasks {
+				taskIds = append(taskIds, t.Id)
+			}
 		}
 
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
+		if madeChanges {
+			// update the build to hold the new tasks
+			if err := RefreshTasksCache(b.Id); err != nil {
+				return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
+			}
 		}
 	}
 	return taskIds, nil
