@@ -221,7 +221,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Repo                  string                         `json:"repo_name"`
 		Admins                []string                       `json:"admins"`
 		GitTagAuthorizedUsers []string                       `json:"git_tag_authorized_users"`
-		TracksPushEvents      bool                           `json:"tracks_push_events"`
 		PRTestingEnabled      bool                           `json:"pr_testing_enabled"`
 		GitTagVersionsEnabled bool                           `json:"git_tag_versions_enabled"`
 		CommitQueue           restModel.APICommitQueueParams `json:"commit_queue"`
@@ -317,7 +316,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			projectRef.TracksPushEvents = true
 		} else {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",
@@ -329,7 +327,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			// don't return here:
 			// sometimes people change a project to track a personal
 			// branch we don't have access to
-			projectRef.TracksPushEvents = false
 		}
 	}
 	var aliasesDefined bool
@@ -471,7 +468,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.Identifier = id
-	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
@@ -483,6 +479,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	projectRef.TracksPushEvents = hook != nil
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}
