@@ -904,17 +904,29 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		// add every execution task dependency onto the display task, without duplicates
 		depMap := make(map[string]bool)
 		for _, etID := range newDisplayTask.ExecutionTasks {
-			if _, ok := taskMap[etID]; !ok {
-				return nil, errors.Errorf("display task '%s' references non-existent execution task '%s'", newDisplayTask.Id, etID)
-			}
-			taskMap[etID].DisplayTask = newDisplayTask
-			for _, dep := range taskMap[etID].DependsOn {
-				if !depMap[dep.TaskId] {
-					depMap[dep.TaskId] = true
-					newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
+			if _, ok := taskMap[etID]; ok {
+				taskMap[etID].DisplayTask = newDisplayTask
+				for _, dep := range taskMap[etID].DependsOn {
+					if !depMap[dep.TaskId] {
+						depMap[dep.TaskId] = true
+						newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
+					}
+				}
+			} else {
+				execTask, err := task.FindOneId(etID)
+				if err != nil {
+					return nil, errors.Wrapf(err, "can't get existing execution task for display task '%s'", newDisplayTask.Id)
+				}
+				if execTask == nil {
+					return nil, errors.Wrapf(err, "no existing execution task '%s' found for display task '%s'", etID, newDisplayTask.Id)
+				}
+				for _, dep := range execTask.DependsOn {
+					if !depMap[dep.TaskId] {
+						depMap[dep.TaskId] = true
+						newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
+					}
 				}
 			}
-
 		}
 
 		tasks = append(tasks, newDisplayTask)
