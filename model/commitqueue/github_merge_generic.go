@@ -57,7 +57,20 @@ func (s *GithubMergePR) Initialize(env evergreen.Environment) error {
 	return nil
 }
 
-func (s *GithubMergePR) Send() error {
+func (s *GithubMergePR) Send() (err error) {
+	defer func() {
+		status := evergreen.MergeTestSucceeded
+		if err != nil {
+			status = evergreen.MergeTestFailed
+		}
+		event.LogCommitQueueConcludeTest(s.PatchID, status)
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(err)
+		catcher.Add(s.dequeueFromCommitQueue())
+		err = catcher.Resolve()
+	}()
+
 	tc := utility.GetOAuth2HTTPClient(s.gitHubToken)
 	defer utility.PutHTTPClient(tc)
 	githubClient := github.NewClient(tc)
@@ -67,11 +80,7 @@ func (s *GithubMergePR) Send() error {
 	}
 
 	if s.Status != evergreen.PatchSucceeded {
-		event.LogCommitQueueConcludeTest(s.PatchID, evergreen.MergeTestFailed)
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(s.dequeueFromCommitQueue())
-		catcher.Add(errors.New("not proceeding with merge for failed patch"))
-		return catcher.Resolve()
+		return errors.New("not proceeding with merge for failed patch")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(s.PRs)*10)*time.Second)
@@ -87,23 +96,18 @@ func (s *GithubMergePR) Send() error {
 		res, _, err := githubClient.PullRequests.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, "", mergeOpts)
 		if err != nil {
 			return errors.Wrap(err, "can't access GitHub merge API")
-			// don't send status to GitHub since we can't access their API anyway...
 		}
 
 		if !res.GetMerged() {
-			catcher := grip.NewBasicCatcher()
 			s.sendMergeFailedStatus(res.GetMessage(), pr)
 			for j := i + 1; j < len(s.PRs); j++ {
 				s.sendMergeFailedStatus("aborted", s.PRs[j])
 			}
-			event.LogCommitQueueConcludeTest(s.PatchID, evergreen.MergeTestFailed)
-			catcher.Add(s.dequeueFromCommitQueue())
-			return catcher.Resolve()
+			return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", pr.Owner, pr.Repo, pr.PRNum, res.GetMessage())
 		}
 	}
 
-	event.LogCommitQueueConcludeTest(s.PatchID, evergreen.MergeTestSucceeded)
-	return s.dequeueFromCommitQueue()
+	return nil
 }
 
 func (s *GithubMergePR) String() string {

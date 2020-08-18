@@ -1020,13 +1020,13 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 func (p *ProjectRef) CommitQueueIsOn() error {
 	catcher := grip.NewBasicCatcher()
 	if !p.Enabled {
-		catcher.Add(errors.New("project is disabled"))
+		catcher.Add(errors.Errorf("project '%s' is disabled", p.Identifier))
 	}
 	if p.PatchingDisabled {
-		catcher.Add(errors.New("patching is disabled for project"))
+		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Identifier))
 	}
 	if !p.CommitQueue.Enabled {
-		catcher.Add(errors.New("commit queue is disabled"))
+		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Identifier))
 	}
 
 	return catcher.Resolve()

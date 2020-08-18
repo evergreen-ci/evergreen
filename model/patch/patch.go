@@ -198,7 +198,7 @@ func (p *Patch) SetDescription(desc string) error {
 	)
 }
 
-func (p *Patch) SetEnqueued(newPatchID string) error {
+func (p *Patch) SetMergePatch(newPatchID string) error {
 	p.MergePatch = newPatchID
 	return UpdateOne(
 		bson.M{IdKey: p.Id},

@@ -583,7 +583,7 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
 	}
 	if err = projectRef.CommitQueueIsOn(); err != nil {
-		return nil, errors.Wrapf(err, "commit queue is disabled for project '%s'", existingPatch.Project)
+		return nil, errors.WithStack(err)
 	}
 
 	project := &Project{}
@@ -624,7 +624,7 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		return nil, errors.Wrap(err, "can't insert patch")
 	}
 
-	if err = existingPatch.SetEnqueued(patchDoc.Id.Hex()); err != nil {
+	if err = existingPatch.SetMergePatch(patchDoc.Id.Hex()); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":        "can't mark patch enqueued",
 			"existing_patch": existingPatch.Id.Hex(),
