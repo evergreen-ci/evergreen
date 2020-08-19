@@ -1425,19 +1425,17 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 
 	taskIds := []string{}
 	for _, b := range builds {
-		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		// Find the set of tasks that already exist for the set we want to add
+		taskNames := append(pairs.ExecTasks.TaskNames(b.Id), pairs.DisplayTasks.TaskNames(b.Id)...)
+		tasksInBuild, err := task.Find(task.ByBuildIdAndTaskNames(b.Id, taskNames))
 		if err != nil {
 			return nil, err
 		}
-		// build an index to keep track of which tasks already exist, and their activation
-		type taskInfo struct {
-			id        string
-			activated bool
-		}
-		existingTasksIndex := map[string]taskInfo{}
+
+		// build an index to keep track of tasks that already exist
+		existingTasksIndex := map[string]task.Task{}
 		for _, t := range tasksInBuild {
-			existingTasksIndex[t.DisplayName] = taskInfo{id: t.Id, activated: t.Activated}
+			existingTasksIndex[t.DisplayName] = t
 		}
 		// if the patch is activated, treat the build as activated
 		b.Activated = activated
@@ -1446,18 +1444,10 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if info, ok := existingTasksIndex[taskname]; ok {
-				if !info.activated && activated { // update task activation for dependencies that already exist
-					var fullTask *task.Task
-					fullTask, err = task.FindOneId(info.id)
-					if err != nil {
-						return nil, err
-					}
-					if fullTask == nil {
-						return nil, errors.Errorf("task '%s' not found", info.id)
-					}
-					if err = SetActiveState(fullTask, evergreen.User, true); err != nil {
-						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", info.id)
+			if t, ok := existingTasksIndex[taskname]; ok {
+				if !t.Activated && activated { // update task activation for tasks that already exist
+					if err = SetActiveState(&t, evergreen.User, true); err != nil {
+						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", t.Id)
 					}
 				}
 				continue

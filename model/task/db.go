@@ -208,21 +208,30 @@ func ByBuildId(buildId string) db.Q {
 	})
 }
 
-// ByAborted creates a query to return tasks with an aborted state
+// ByBuildIdAndTasksNames creates a query to return tasks for the build
+// with the given task display names.
+func ByBuildIdAndTaskNames(buildId string, taskNames []string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey:     buildId,
+		DisplayNameKey: bson.M{"$in": taskNames},
+	})
+}
+
+// ByAborted creates a query to return tasks with an aborted state.
 func ByAborted(aborted bool) db.Q {
 	return db.Query(bson.M{
 		AbortedKey: aborted,
 	})
 }
 
-// ByAborted creates a query to return tasks with an aborted state
+// ByAborted creates a query to return activated tasks.
 func ByActivation(active bool) db.Q {
 	return db.Query(bson.M{
 		ActivatedKey: active,
 	})
 }
 
-// ByVersion creates a query to return tasks with a certain build id
+// ByVersion creates a query to return tasks with a certain version id.
 func ByVersion(version string) db.Q {
 	return db.Query(bson.M{
 		VersionKey: version,
