@@ -8,7 +8,6 @@ type Query {
     includeCommitQueue: Boolean = false
   ): UserPatches!
   task(taskId: String!, execution: Int): Task
-  taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -63,6 +62,7 @@ type Query {
   myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
+  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 }
 
 type Mutation {
@@ -99,9 +99,9 @@ type Mutation {
 }
 
 enum SpawnHostStatusActions {
- START 
- STOP 
- TERMINATE
+  START
+  STOP
+  TERMINATE
 }
 enum TaskSortCategory {
   NAME
@@ -142,6 +142,11 @@ enum HostSortBy {
   UPTIME
   IDLE_TIME
   OWNER
+}
+
+enum TaskQueueItemType {
+  COMMIT
+  PATCH
 }
 
 input PatchReconfigure {
@@ -205,6 +210,17 @@ input SpawnHostInput {
   homeVolumeSize: Int
 }
 
+type TaskQueueItem {
+  id: ID!
+  displayName: String!
+  project: String!
+  buildVariant: String!
+  expectedDuration: Duration!
+  priority: Int!
+  revision: String!
+  requester: TaskQueueItemType!
+}
+
 type Host {
   id: ID!
   hostUrl: String!
@@ -242,10 +258,10 @@ type DistroInfo {
 }
 
 type Distro {
-  name: String 
+  name: String
   userSpawnAllowed: Boolean
-  workDir: String 
-  user: String 
+  workDir: String
+  user: String
   isVirtualWorkStation: Boolean!
 }
 
@@ -462,7 +478,6 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
-  latestExecution: Int!
   patchNumber: Int
   requester: String!
   status: String!
