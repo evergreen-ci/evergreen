@@ -18,7 +18,7 @@ import (
 )
 
 // ui version of a task queue item
-type UiTaskQueueItem struct {
+type uiTaskQueueItem struct {
 	Id                  string        `json:"_id"`
 	DisplayName         string        `json:"display_name"`
 	BuildVariant        string        `json:"build_variant"`
@@ -39,7 +39,7 @@ type UiTaskQueueItem struct {
 // items
 type uiTaskQueue struct {
 	Distro string            `json:"distro"`
-	Queue  []UiTaskQueueItem `json:"queue"`
+	Queue  []uiTaskQueueItem `json:"queue"`
 }
 
 // top-level ui struct for holding information on task
@@ -101,7 +101,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	for _, tQ := range taskQueues {
 		asUI := uiTaskQueue{
 			Distro: tQ.Distro,
-			Queue:  []UiTaskQueueItem{},
+			Queue:  []uiTaskQueueItem{},
 		}
 
 		if len(tQ.Queue) == 0 {
@@ -116,7 +116,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 			// cache the ids, for fetching the tasks from the db
 			taskIds = append(taskIds, item.Id)
 
-			queueItemAsUI := UiTaskQueueItem{
+			queueItemAsUI := uiTaskQueueItem{
 				Id:                  item.Id,
 				DisplayName:         item.DisplayName,
 				BuildVariant:        item.BuildVariant,
