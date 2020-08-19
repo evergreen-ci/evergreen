@@ -64,7 +64,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		foundTests, err := serviceContext.FindTestsByTaskId(taskId, "", "", "", 0, 0)
+		foundTests, err = serviceContext.FindTestsByTaskId(taskId, "", "", "", 0, 0)
 		assert.NoError(err)
 		assert.Len(foundTests, numTests)
 
@@ -79,7 +79,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		}
 
 		for _, status := range []string{"pass", "fail"} {
-			foundTests, err := serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", "", status, 0, 0)
+			foundTests, err = serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", "", status, 0, 0)
 			assert.NoError(err)
 			assert.Equal(numTests/2, len(foundTests))
 			for _, t := range foundTests {
