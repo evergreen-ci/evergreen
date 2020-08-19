@@ -395,7 +395,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdWithTask(hostID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
 	if host == nil {
 		return nil, errors.Errorf("unable to find host %s", hostID)
