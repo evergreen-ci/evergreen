@@ -8,6 +8,7 @@ type Query {
     includeCommitQueue: Boolean = false
   ): UserPatches!
   task(taskId: String!, execution: Int): Task
+  taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -478,6 +479,7 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
+  latestExecution: Int!
   patchNumber: Int
   requester: String!
   status: String!
