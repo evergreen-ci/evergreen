@@ -99,9 +99,9 @@ type Mutation {
 }
 
 enum SpawnHostStatusActions {
-  START
-  STOP
-  TERMINATE
+ START 
+ STOP 
+ TERMINATE
 }
 enum TaskSortCategory {
   NAME
@@ -258,10 +258,10 @@ type DistroInfo {
 }
 
 type Distro {
-  name: String
+  name: String 
   userSpawnAllowed: Boolean
-  workDir: String
-  user: String
+  workDir: String 
+  user: String 
   isVirtualWorkStation: Boolean!
 }
 
