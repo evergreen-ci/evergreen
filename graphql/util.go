@@ -416,6 +416,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
+			Blocked:      task.Blocked(),
 		}
 		taskResults = append(taskResults, &t)
 	}

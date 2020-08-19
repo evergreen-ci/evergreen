@@ -359,6 +359,7 @@ type TaskResult {
   status: String!
   baseStatus: String!
   buildVariant: String!
+  blocked: Boolean!
 }
 
 type PatchDuration {
@@ -438,6 +439,7 @@ type Task {
   activatedBy: String
   activatedTime: Time
   ami: String
+  blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
   buildId: String!
   buildVariant: String!

@@ -141,6 +141,7 @@ type TaskResult struct {
 	Status       string `json:"status"`
 	BaseStatus   string `json:"baseStatus"`
 	BuildVariant string `json:"buildVariant"`
+	Blocked      bool   `json:"blocked"`
 }
 
 type TaskTestResult struct {
