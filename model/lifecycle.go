@@ -1430,7 +1430,7 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		if err != nil {
 			return nil, err
 		}
-		// build an index to keep track of which tasks already exist, using display name
+		// build an index to keep track of which tasks already exist, and their activation
 		type taskInfo struct {
 			id        string
 			activated bool
@@ -1448,7 +1448,8 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if info, ok := existingTasksIndex[taskname]; ok {
 				if !info.activated && activated { // update task activation for dependencies that already exist
-					fullTask, err := task.FindOneNoMerge(task.ById(info.id))
+					var fullTask *task.Task
+					fullTask, err = task.FindOneId(info.id)
 					if err != nil {
 						return nil, err
 					}
