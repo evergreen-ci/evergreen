@@ -35,11 +35,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status st
 		taskIds = []string{taskId}
 	}
 	q := testresult.TestResultsQuery(taskIds, testId, testName, status, limit, execution)
-	res, err := testresult.Find(q)
-	if err != nil {
-		return []testresult.TestResult{}, err
-	}
-	return res, nil
+	return testresult.Find(q)
 }
 func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := task.FindOneIdNewOrOld(taskId)
