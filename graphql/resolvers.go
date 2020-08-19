@@ -1236,6 +1236,9 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task queue for distro %v: %v", distroID, err.Error()))
 	}
+	if distroQueue == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find queue with distro ID `%s`", distroID))
+	}
 
 	taskQueue := []*restModel.APITaskQueueItem{}
 
