@@ -63,6 +63,7 @@ type Query {
   myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
+  instanceTypes: [String!]!
 }
 
 type Mutation {
