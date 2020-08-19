@@ -806,8 +806,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 
-	if distroID != "" {
-		query[DistroIdKey] = distroID
+	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+		return 0, errors.WithStack(err)
 	}
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
