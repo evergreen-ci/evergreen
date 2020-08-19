@@ -395,17 +395,15 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdWithTask(hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
 	if host == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s: %s", hostID, err.Error()))
+		return nil, errors.Errorf("unable to find host %s", hostID)
 	}
 
 	apiHost := &restModel.APIHost{}
-
 	err = apiHost.BuildFromService(host)
-	if err != nil {
+	if err != nil || apiHost == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 	}
 

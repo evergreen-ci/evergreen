@@ -2519,14 +2519,16 @@ func GetHostByIdWithTask(hostID string) (*Host, error) {
 	defer cancel()
 
 	hosts := []Host{}
-
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error fetching host")
 	}
 	err = cursor.All(ctx, &hosts)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error fetching host")
+	}
+	if len(hosts) == 0 {
+		return nil, errors.Wrap(err, "host not found")
 	}
 
 	return &hosts[0], nil
