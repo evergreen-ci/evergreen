@@ -589,6 +589,12 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
+	sender, err = send.NewGenericLogger("evergreen", levelInfo)
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup evergreen generic logger")
+	}
+	e.senders[SenderGeneric] = sender
+
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))

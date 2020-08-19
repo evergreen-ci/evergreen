@@ -14,7 +14,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -71,6 +70,7 @@ type patchParams struct {
 	Uncommitted       bool
 	PreserveCommits   bool
 	Ref               string
+	BackportOf        string
 }
 
 type patchSubmission struct {
@@ -86,27 +86,10 @@ type patchSubmission struct {
 	syncStatuses      []string
 	syncTimeout       time.Duration
 	finalize          bool
+	backportOf        string
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
-	if err := validatePatchSize(diffData, p.Large); err != nil {
-		return nil, err
-	}
-	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
-			return nil, errors.New("patch aborted")
-		}
-	} else if !p.SkipConfirm && diffData.patchSummary != "" {
-		grip.Info(diffData.patchSummary)
-		if diffData.log != "" {
-			grip.Info(diffData.log)
-		}
-
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil, errors.New("patch aborted")
-		}
-	}
-
+func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
 	patchSub := patchSubmission{
 		projectId:         p.Project,
 		patchData:         diffData.fullPatch,
@@ -120,15 +103,43 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		syncStatuses:      p.SyncStatuses,
 		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
+		backportOf:        p.BackportOf,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
 		return nil, err
 	}
+
+	return newPatch, nil
+}
+
+func (p *patchParams) validateSubmission(diffData *localDiff) error {
+	if err := validatePatchSize(diffData, p.Large); err != nil {
+		return err
+	}
+	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
+		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
+			return errors.New("patch aborted")
+		}
+	} else if !p.SkipConfirm && diffData.patchSummary != "" {
+		grip.Info(diffData.patchSummary)
+		if diffData.log != "" {
+			grip.Info(diffData.log)
+		}
+
+		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+			return errors.New("patch aborted")
+		}
+	}
+
+	return nil
+}
+
+func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	grip.Info("Patch successfully created.")
@@ -138,15 +149,15 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		browserCmd, err := findBrowserCommand()
 		if err != nil || len(browserCmd) == 0 {
 			grip.Warningf("cannot find browser command: %s", err)
-			return newPatch, nil
+			return nil
 		}
 
 		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return newPatch, cmd.Run()
+		return cmd.Run()
 	}
 
-	return newPatch, nil
+	return nil
 }
 
 func findBrowserCommand() ([]string, error) {
@@ -225,10 +236,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
-	}
-
-	if p.Description == "" && !p.SkipConfirm {
-		p.Description = prompt("Enter a description for this patch (optional):")
 	}
 
 	return ref, nil
@@ -315,6 +322,27 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 	return nil
 }
 
+func (p *patchParams) getDescription() string {
+	if p.Description != "" {
+		return p.Description
+	}
+
+	description := ""
+	if !p.SkipConfirm {
+		description = prompt("Enter a description for this patch (optional):")
+	}
+
+	if description == "" {
+		var err error
+		description, err = getDefaultDescription()
+		if err != nil {
+			grip.Error(err)
+		}
+	}
+
+	return description
+}
+
 // Returns an error if the diff is greater than the system limit, or if it's above the large
 // patch threhsold and allowLarge is not set.
 func validatePatchSize(diff *localDiff, allowLarge bool) error {
@@ -343,7 +371,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	}{
 		Patch:         p,
 		ShowSummary:   summarize,
-		ShowFinalized: p.Alias != evergreen.CommitQueueAlias,
+		ShowFinalized: p.IsCommitQueuePatch(),
 		Link:          p.GetURL(uiHost),
 	})
 	if err != nil {

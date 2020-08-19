@@ -40,6 +40,7 @@ var (
 	PatchedConfigKey    = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
 	AliasKey            = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey  = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
+	MergePatchKey       = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 
 	// BSON fields for sync at end struct
 	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")
@@ -89,6 +90,10 @@ func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
 // ById produces a query to return the patch with the given _id.
 func ById(id mgobson.ObjectId) db.Q {
 	return db.Query(bson.M{IdKey: id})
+}
+
+func ByStringId(id string) db.Q {
+	return db.Query(bson.M{IdKey: NewId(id)})
 }
 
 func ByIds(ids []mgobson.ObjectId) db.Q {
@@ -183,6 +188,13 @@ func FindOne(query db.Q) (*Patch, error) {
 		return nil, nil
 	}
 	return patch, err
+}
+
+func FindOneId(id string) (*Patch, error) {
+	if !IsValidId(id) {
+		return nil, errors.Errorf("'%s' is not a valid ObjectId", id)
+	}
+	return FindOne(ByStringId(id))
 }
 
 // Find runs a patch query, returning all patches that satisfy the query.

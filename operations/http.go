@@ -522,6 +522,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncStatuses      []string      `json:"sync_statuses"`
 		SyncTimeout       time.Duration `json:"sync_timeout"`
 		Finalize          bool          `json:"finalize"`
+		BackportOf        string        `json:"backport_of"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectId,
@@ -535,6 +536,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncStatuses:      incomingPatch.syncStatuses,
 		SyncTimeout:       incomingPatch.syncTimeout,
 		Finalize:          incomingPatch.finalize,
+		BackportOf:        incomingPatch.backportOf,
 	}
 
 	rPipe, wPipe := io.Pipe()

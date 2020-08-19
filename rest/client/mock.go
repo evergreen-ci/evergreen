@@ -22,6 +22,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -685,6 +686,10 @@ func (c *Mock) GetHostProcessOutput(context.Context, []model.APIHostProcess, int
 }
 
 func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, bool) ([]string, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetRecentVersionsForProject(context.Context, string, string) ([]restmodel.APIVersion, error) {
 	return nil, nil
 }
 
