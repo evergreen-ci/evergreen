@@ -1733,6 +1733,37 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.Equal(t, "", found.GenerateTasksError)
 }
 
+func TestGetAllDependencies(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{
+			Id:        "t0",
+			DependsOn: []Dependency{{TaskId: "dependedOn0"}},
+		},
+		{
+			Id:        "t1",
+			DependsOn: []Dependency{{TaskId: "dependedOn1"}},
+		},
+	}
+	// not in the map and not in the db
+	dependencies, err := GetAllDependencies([]string{tasks[0].Id}, map[string]*Task{})
+	assert.Error(t, err)
+	assert.Nil(t, dependencies)
+
+	// in the map
+	dependencies, err = GetAllDependencies([]string{tasks[0].Id}, map[string]*Task{tasks[0].Id: &tasks[0]})
+	assert.NoError(t, err)
+	assert.Len(t, dependencies, 1)
+	assert.Equal(t, "dependedOn0", dependencies[0].TaskId)
+
+	// mix of map and db
+	require.NoError(t, tasks[1].Insert())
+	require.NoError(t, tasks[2].Insert())
+	dependencies, err = GetAllDependencies([]string{tasks[0].Id, tasks[1].Id}, map[string]*Task{tasks[0].Id: &tasks[0]})
+	assert.NoError(t, err)
+	assert.Len(t, dependencies, 2)
+}
+
 func TestGetRecursiveDependenciesUp(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{

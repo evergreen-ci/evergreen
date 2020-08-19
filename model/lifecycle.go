@@ -901,32 +901,14 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		newDisplayTask.GeneratedBy = generatedBy
 
-		// add every execution task dependency onto the display task, without duplicates
-		depMap := make(map[string]bool)
 		for _, etID := range newDisplayTask.ExecutionTasks {
 			if _, ok := taskMap[etID]; ok {
 				taskMap[etID].DisplayTask = newDisplayTask
-				for _, dep := range taskMap[etID].DependsOn {
-					if !depMap[dep.TaskId] {
-						depMap[dep.TaskId] = true
-						newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
-					}
-				}
-			} else {
-				execTask, err := task.FindOneId(etID)
-				if err != nil {
-					return nil, errors.Wrapf(err, "can't get existing execution task for display task '%s'", newDisplayTask.Id)
-				}
-				if execTask == nil {
-					return nil, errors.Errorf("no existing execution task '%s' found for display task '%s'", etID, newDisplayTask.Id)
-				}
-				for _, dep := range execTask.DependsOn {
-					if !depMap[dep.TaskId] {
-						depMap[dep.TaskId] = true
-						newDisplayTask.DependsOn = append(newDisplayTask.DependsOn, dep)
-					}
-				}
 			}
+		}
+		newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get dependencies for display task '%s'", newDisplayTask.Id)
 		}
 
 		tasks = append(tasks, newDisplayTask)
