@@ -913,7 +913,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					}
 				}
 			} else {
-				execTask, err := task.FindOneNoMerge(task.ById(etID).WithFields(task.DependsOnKey))
+				execTask, err := task.FindOneId(etID)
 				if err != nil {
 					return nil, errors.Wrapf(err, "can't get existing execution task for display task '%s'", newDisplayTask.Id)
 				}
