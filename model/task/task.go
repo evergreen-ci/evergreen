@@ -806,8 +806,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 
-	if distroID != "" {
-		query[DistroIdKey] = distroID
+	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+		return 0, errors.WithStack(err)
 	}
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
@@ -2314,6 +2314,28 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 		}})
 
 	return FindAll(query)
+}
+
+func GetLatestExecution(taskId string) (int, error) {
+	var t *Task
+	var err error
+	t, err = FindOneId(taskId)
+	if err != nil {
+		return -1, err
+	}
+	if t == nil {
+		pieces := strings.Split(taskId, "_")
+		pieces = pieces[:len(pieces)-1]
+		taskId = strings.Join(pieces, "_")
+		t, err = FindOneId(taskId)
+		if err != nil {
+			return -1, errors.Wrap(err, "error getting task")
+		}
+	}
+	if t == nil {
+		return -1, errors.New("task not found")
+	}
+	return t.Execution, nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks

@@ -95,6 +95,14 @@ type ComplexityRoot struct {
 		UILink         func(childComplexity int) int
 	}
 
+	Distro struct {
+		IsVirtualWorkstation func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		User                 func(childComplexity int) int
+		UserSpawnAllowed     func(childComplexity int) int
+		WorkDir              func(childComplexity int) int
+	}
+
 	DistroInfo struct {
 		Id                   func(childComplexity int) int
 		IsVirtualWorkstation func(childComplexity int) int
@@ -240,6 +248,7 @@ type ComplexityRoot struct {
 		UnscheduleTask             func(childComplexity int, taskID string) int
 		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
 		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
+		UpdateSpawnHostStatus      func(childComplexity int, hostID string, action SpawnHostStatusActions) int
 		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
 	}
 
@@ -345,6 +354,7 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
+		Distros            func(childComplexity int, onlySpawnable bool) int
 		Host               func(childComplexity int, hostID string) int
 		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
@@ -356,6 +366,7 @@ type ComplexityRoot struct {
 		Projects           func(childComplexity int) int
 		SiteBanner         func(childComplexity int) int
 		Task               func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions  func(childComplexity int, taskID string) int
 		TaskFiles          func(childComplexity int, taskID string, execution *int) int
 		TaskLogs           func(childComplexity int, taskID string) int
 		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
@@ -409,6 +420,7 @@ type ComplexityRoot struct {
 		HostLink          func(childComplexity int) int
 		Id                func(childComplexity int) int
 		IngestTime        func(childComplexity int) int
+		LatestExecution   func(childComplexity int) int
 		Logs              func(childComplexity int) int
 		PatchMetadata     func(childComplexity int) int
 		PatchNumber       func(childComplexity int) int
@@ -568,6 +580,7 @@ type MutationResolver interface {
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
+	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 }
@@ -586,6 +599,7 @@ type PatchResolver interface {
 type QueryResolver interface {
 	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
+	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Projects(ctx context.Context) (*Projects, error)
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
@@ -605,6 +619,7 @@ type QueryResolver interface {
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
+	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
 }
 type TaskResolver interface {
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -613,6 +628,7 @@ type TaskResolver interface {
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
+	LatestExecution(ctx context.Context, obj *model.APITask) (int, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
@@ -814,6 +830,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Dependency.UILink(childComplexity), true
+
+	case "Distro.isVirtualWorkStation":
+		if e.complexity.Distro.IsVirtualWorkstation == nil {
+			break
+		}
+
+		return e.complexity.Distro.IsVirtualWorkstation(childComplexity), true
+
+	case "Distro.name":
+		if e.complexity.Distro.Name == nil {
+			break
+		}
+
+		return e.complexity.Distro.Name(childComplexity), true
+
+	case "Distro.user":
+		if e.complexity.Distro.User == nil {
+			break
+		}
+
+		return e.complexity.Distro.User(childComplexity), true
+
+	case "Distro.userSpawnAllowed":
+		if e.complexity.Distro.UserSpawnAllowed == nil {
+			break
+		}
+
+		return e.complexity.Distro.UserSpawnAllowed(childComplexity), true
+
+	case "Distro.workDir":
+		if e.complexity.Distro.WorkDir == nil {
+			break
+		}
+
+		return e.complexity.Distro.WorkDir(childComplexity), true
 
 	case "DistroInfo.id":
 		if e.complexity.DistroInfo.Id == nil {
@@ -1613,6 +1664,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdatePublicKey(childComplexity, args["targetKeyName"].(string), args["updateInfo"].(PublicKeyInput)), true
 
+	case "Mutation.updateSpawnHostStatus":
+		if e.complexity.Mutation.UpdateSpawnHostStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSpawnHostStatus_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateSpawnHostStatus(childComplexity, args["hostId"].(string), args["action"].(SpawnHostStatusActions)), true
+
 	case "Mutation.updateUserSettings":
 		if e.complexity.Mutation.UpdateUserSettings == nil {
 			break
@@ -2064,6 +2127,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
 
+	case "Query.distros":
+		if e.complexity.Query.Distros == nil {
+			break
+		}
+
+		args, err := ec.field_Query_distros_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Distros(childComplexity, args["onlySpawnable"].(bool)), true
+
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
@@ -2175,6 +2250,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Task(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
+
+	case "Query.taskAllExecutions":
+		if e.complexity.Query.TaskAllExecutions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_taskAllExecutions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TaskAllExecutions(childComplexity, args["taskId"].(string)), true
 
 	case "Query.taskFiles":
 		if e.complexity.Query.TaskFiles == nil {
@@ -2508,6 +2595,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.IngestTime(childComplexity), true
+
+	case "Task.latestExecution":
+		if e.complexity.Task.LatestExecution == nil {
+			break
+		}
+
+		return e.complexity.Task.LatestExecution(childComplexity), true
 
 	case "Task.logs":
 		if e.complexity.Task.Logs == nil {
@@ -3150,6 +3244,7 @@ var sources = []*ast.Source{
     includeCommitQueue: Boolean = false
   ): UserPatches!
   task(taskId: String!, execution: Int): Task
+  taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -3201,8 +3296,9 @@ var sources = []*ast.Source{
     page: Int = 0
     limit: Int = 10
   ): HostsResponse!
-  myHosts: [Host!]
+  myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
+  distros(onlySpawnable: Boolean!): [Distro]!
 }
 
 type Mutation {
@@ -3230,6 +3326,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
     targetKeyName: String!
@@ -3237,6 +3334,11 @@ type Mutation {
   ): [PublicKey!]!
 }
 
+enum SpawnHostStatusActions {
+ START 
+ STOP 
+ TERMINATE
+}
 enum TaskSortCategory {
   NAME
   STATUS
@@ -3373,6 +3475,14 @@ type DistroInfo {
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
+}
+
+type Distro {
+  name: String 
+  userSpawnAllowed: Boolean
+  workDir: String 
+  user: String 
+  isVirtualWorkStation: Boolean!
 }
 
 type TaskInfo {
@@ -3588,6 +3698,7 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
+  latestExecution: Int!
   patchNumber: Int
   requester: String!
   status: String!
@@ -4179,6 +4290,28 @@ func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateSpawnHostStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["hostId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostId"] = arg0
+	var arg1 SpawnHostStatusActions
+	if tmp, ok := rawArgs["action"]; ok {
+		arg1, err = ec.unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["action"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateUserSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4218,6 +4351,20 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_distros_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 bool
+	if tmp, ok := rawArgs["onlySpawnable"]; ok {
+		arg0, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["onlySpawnable"] = arg0
 	return args, nil
 }
 
@@ -4454,6 +4601,20 @@ func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_taskAllExecutions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -5495,6 +5656,164 @@ func (ec *executionContext) _Dependency_uiLink(ctx context.Context, field graphq
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Distro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Distro_userSpawnAllowed(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Distro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserSpawnAllowed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Distro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkDir, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Distro_user(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Distro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Distro_isVirtualWorkStation(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Distro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsVirtualWorkstation, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _DistroInfo_id(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
@@ -8852,6 +9171,47 @@ func (ec *executionContext) _Mutation_spawnHost(ctx context.Context, field graph
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateSpawnHostStatus_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateSpawnHostStatus(rctx, args["hostId"].(string), args["action"].(SpawnHostStatusActions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_removePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10962,6 +11322,47 @@ func (ec *executionContext) _Query_task(ctx context.Context, field graphql.Colle
 	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_taskAllExecutions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_taskAllExecutions_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TaskAllExecutions(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -11626,11 +12027,14 @@ func (ec *executionContext) _Query_myHosts(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*model.APIHost)
 	fc.Result = res
-	return ec.marshalOHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx, field.Selections, res)
+	return ec.marshalNHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_myPublicKeys(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -11665,6 +12069,47 @@ func (ec *executionContext) _Query_myPublicKeys(ctx context.Context, field graph
 	res := resTmp.([]*model.APIPubKey)
 	fc.Result = res
 	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_distros(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_distros_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Distros(rctx, args["onlySpawnable"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIDistro)
+	fc.Result = res
+	return ec.marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -12873,6 +13318,40 @@ func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.C
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_latestExecution(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().LatestExecution(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -17285,6 +17764,41 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var distroImplementors = []string{"Distro"}
+
+func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, obj *model.APIDistro) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distroImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Distro")
+		case "name":
+			out.Values[i] = ec._Distro_name(ctx, field, obj)
+		case "userSpawnAllowed":
+			out.Values[i] = ec._Distro_userSpawnAllowed(ctx, field, obj)
+		case "workDir":
+			out.Values[i] = ec._Distro_workDir(ctx, field, obj)
+		case "user":
+			out.Values[i] = ec._Distro_user(ctx, field, obj)
+		case "isVirtualWorkStation":
+			out.Values[i] = ec._Distro_isVirtualWorkStation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var distroInfoImplementors = []string{"DistroInfo"}
 
 func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSet, obj *model.DistroInfo) graphql.Marshaler {
@@ -18030,6 +18544,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "updateSpawnHostStatus":
+			out.Values[i] = ec._Mutation_updateSpawnHostStatus(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "removePublicKey":
 			out.Values[i] = ec._Mutation_removePublicKey(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -18696,6 +19215,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_task(ctx, field)
 				return res
 			})
+		case "taskAllExecutions":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_taskAllExecutions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "patch":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -18928,6 +19461,9 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_myHosts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "myPublicKeys":
@@ -18939,6 +19475,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_myPublicKeys(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "distros":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_distros(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -19174,6 +19724,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_restarts(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
+		case "latestExecution":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_latestExecution(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "patchNumber":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -20307,6 +20871,43 @@ func (ec *executionContext) unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑ
 	return &res, err
 }
 
+func (ec *executionContext) marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v []*model.APIDistro) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
 func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, v interface{}) (model.APIDuration, error) {
 	return model.UnmarshalAPIDuration(v)
 }
@@ -21147,6 +21748,15 @@ func (ec *executionContext) marshalNSiteBanner2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._SiteBanner(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, v interface{}) (SpawnHostStatusActions, error) {
+	var res SpawnHostStatusActions
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, sel ast.SelectionSet, v SpawnHostStatusActions) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -21270,6 +21880,43 @@ func (ec *executionContext) unmarshalNSubscriptionInput2githubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalNTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
 	return ec._Task(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APITask) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v *model.APITask) graphql.Marshaler {
@@ -21965,6 +22612,17 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	return ret
 }
 
+func (ec *executionContext) marshalODistro2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v model.APIDistro) graphql.Marshaler {
+	return ec._Distro(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v *model.APIDistro) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Distro(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalODistroInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐDistroInfo(ctx context.Context, sel ast.SelectionSet, v model.DistroInfo) graphql.Marshaler {
 	return ec._DistroInfo(ctx, sel, &v)
 }
@@ -22065,46 +22723,6 @@ func (ec *executionContext) unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergree
 
 func (ec *executionContext) marshalOHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
 	return ec._Host(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOHost2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIHost) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
 }
 
 func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {

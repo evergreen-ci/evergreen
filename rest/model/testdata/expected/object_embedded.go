@@ -25,6 +25,7 @@ func APIMockEmbeddedToService(m APIMockEmbedded) *model.MockEmbedded {
 	out.One = *APIMockLayerOneToService(m.One)
 	return out
 }
+
 func APIMockLayerOneBuildFromService(t model.MockLayerOne) *APIMockLayerOne {
 	m := APIMockLayerOne{}
 	m.Two = *APIMockLayerTwoBuildFromService(t.Two)
@@ -36,6 +37,7 @@ func APIMockLayerOneToService(m APIMockLayerOne) *model.MockLayerOne {
 	out.Two = *APIMockLayerTwoToService(m.Two)
 	return out
 }
+
 func APIMockLayerTwoBuildFromService(t model.MockLayerTwo) *APIMockLayerTwo {
 	m := APIMockLayerTwo{}
 	m.SomeField = StringPtrStringPtr(t.SomeField)

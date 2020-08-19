@@ -145,7 +145,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	start = time.Now()
 	g.TaskID = j.TaskID
 
-	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
@@ -182,7 +182,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, pp, v, t, pm)
+	err = g.Save(context.Background(), p, pp, v, t)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {

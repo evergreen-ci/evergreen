@@ -39,29 +39,35 @@ func findConfigFilePath(fn string) (string, error) {
 		}
 	}
 
-	absfn, _ := filepath.Abs(fn)
-
-	files := []string{
-		fn,
-		absfn,
+	if fn != "" {
+		if isValidPath(fn) {
+			return fn, nil
+		}
+		absfn, _ := filepath.Abs(fn)
+		if isValidPath(absfn) {
+			return absfn, nil
+		}
+	}
+	defaultFiles := []string{
 		filepath.Join(userHome, evergreen.DefaultEvergreenConfig),
 		filepath.Join(filepath.Dir(currentBinPath), evergreen.DefaultEvergreenConfig),
 	}
-
-	for _, path := range files {
-		stat, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			continue
+	for _, path := range defaultFiles {
+		if isValidPath(path) {
+			grip.WarningWhen(fn != "", "Couldn't find configuration file, falling back on default.")
+			return path, nil
 		}
-
-		if stat.IsDir() {
-			continue
-		}
-
-		return path, nil
 	}
 
 	return "", errors.New("could not find client configuration file on the local system")
+}
+
+func isValidPath(path string) bool {
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) || stat.IsDir() {
+		return false
+	}
+	return true
 }
 
 // Client represents the data stored in the user's config file, by default

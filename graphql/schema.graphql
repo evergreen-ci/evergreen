@@ -8,6 +8,7 @@ type Query {
     includeCommitQueue: Boolean = false
   ): UserPatches!
   task(taskId: String!, execution: Int): Task
+  taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
   patchTasks(
@@ -59,8 +60,9 @@ type Query {
     page: Int = 0
     limit: Int = 10
   ): HostsResponse!
-  myHosts: [Host!]
+  myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
+  distros(onlySpawnable: Boolean!): [Distro]!
 }
 
 type Mutation {
@@ -88,6 +90,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
     targetKeyName: String!
@@ -95,6 +98,11 @@ type Mutation {
   ): [PublicKey!]!
 }
 
+enum SpawnHostStatusActions {
+ START 
+ STOP 
+ TERMINATE
+}
 enum TaskSortCategory {
   NAME
   STATUS
@@ -231,6 +239,14 @@ type DistroInfo {
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
+}
+
+type Distro {
+  name: String 
+  userSpawnAllowed: Boolean
+  workDir: String 
+  user: String 
+  isVirtualWorkStation: Boolean!
 }
 
 type TaskInfo {
@@ -446,6 +462,7 @@ type Task {
   hostLink: String
   restarts: Int
   execution: Int
+  latestExecution: Int!
   patchNumber: Int
   requester: String!
   status: String!

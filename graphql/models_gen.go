@@ -347,6 +347,49 @@ func (e SortDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type SpawnHostStatusActions string
+
+const (
+	SpawnHostStatusActionsStart     SpawnHostStatusActions = "START"
+	SpawnHostStatusActionsStop      SpawnHostStatusActions = "STOP"
+	SpawnHostStatusActionsTerminate SpawnHostStatusActions = "TERMINATE"
+)
+
+var AllSpawnHostStatusActions = []SpawnHostStatusActions{
+	SpawnHostStatusActionsStart,
+	SpawnHostStatusActionsStop,
+	SpawnHostStatusActionsTerminate,
+}
+
+func (e SpawnHostStatusActions) IsValid() bool {
+	switch e {
+	case SpawnHostStatusActionsStart, SpawnHostStatusActionsStop, SpawnHostStatusActionsTerminate:
+		return true
+	}
+	return false
+}
+
+func (e SpawnHostStatusActions) String() string {
+	return string(e)
+}
+
+func (e *SpawnHostStatusActions) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SpawnHostStatusActions(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SpawnHostStatusActions", str)
+	}
+	return nil
+}
+
+func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type TaskSortCategory string
 
 const (

@@ -3,7 +3,6 @@ package model
 import (
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -50,14 +49,6 @@ func TestCodegen(t *testing.T) {
 			expected, err = ioutil.ReadFile(converterFilepath)
 			require.NoError(t, err)
 			assert.Equal(t, string(expected), string(converters))
-
-			gocmd := os.Getenv("GO_BIN_PATH")
-			if gocmd == "" {
-				gocmd = "go"
-			}
-			buildCmd := exec.Command(gocmd, "build", converterFilepath)
-			_, err = buildCmd.Output()
-			assert.NoError(t, err, "%s does not compile", converterFilepath)
 		})
 	}
 }
@@ -65,4 +56,18 @@ func TestCodegen(t *testing.T) {
 func TestWords(t *testing.T) {
 	s := "thisIsAFieldName"
 	assert.Equal(t, words(s), []string{"this", "is", "a", "field", "name"})
+}
+
+func TestGqlTypeToGoType(t *testing.T) {
+	cases := map[string]string{
+		"String":  "string",
+		"String!": "string",
+		"Map":     "map[string]interface{}",
+		"[Int!]!": "[]int",
+	}
+	for input, output := range cases {
+		assert.Equalf(t, output, gqlTypeToGoType(input, false), "case: %s; expected: %s", input, output)
+	}
+
+	assert.Equal(t, "*float64", gqlTypeToGoType("Float", true))
 }

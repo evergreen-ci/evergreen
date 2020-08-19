@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1221,7 +1222,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
+func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	t1 := Task{
@@ -1239,6 +1240,57 @@ func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
+}
+
+func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	t1 := Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+		DistroId:      "d0",
+	}
+	require.NoError(t, t1.Insert())
+
+	d := distro.Distro{
+		Id: "d0",
+	}
+	require.NoError(t, d.Insert())
+
+	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	assert.NoError(t, err)
+	dbTask, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.False(t, dbTask.Activated)
+	assert.EqualValues(t, -1, dbTask.Priority)
+}
+
+func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	t1 := Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+		DistroId:      "d0.0",
+	}
+	require.NoError(t, t1.Insert())
+
+	d := distro.Distro{
+		Id:      "d0",
+		Aliases: []string{"d0.0", "d0.1"},
+	}
+	require.NoError(t, d.Insert())
+
+	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	assert.NoError(t, err)
+	dbTask, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.False(t, dbTask.Activated)
+	assert.EqualValues(t, -1, dbTask.Priority)
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
@@ -2014,4 +2066,19 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
+}
+
+func TestGetLatestExecution(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	sample := Task{
+		Id:        "task_id_some_other_stuff",
+		Execution: 55,
+	}
+	assert.NoError(t, sample.Insert())
+	execution, err := GetLatestExecution(sample.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, sample.Execution, execution)
+	execution, err = GetLatestExecution(fmt.Sprintf("%s_3", sample.Id))
+	assert.NoError(t, err)
+	assert.Equal(t, sample.Execution, execution)
 }

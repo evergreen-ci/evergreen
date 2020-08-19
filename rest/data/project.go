@@ -84,7 +84,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return true, errors.Wrap(err, "error finding evergreen settings")
+		return false, errors.Wrap(err, "error finding evergreen settings")
 	}
 
 	hook, err = model.SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
@@ -322,13 +322,27 @@ func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias str
 	}
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
-		_, _, variantTasks := p.ResolvePatchVTs(nil, nil, projectAlias.Alias, includeDeps)
+		requester := getRequesterFromAlias(projectAlias.Alias)
+		_, _, variantTasks := p.ResolvePatchVTs(nil, nil, requester, projectAlias.Alias, includeDeps)
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}
 	}
 
 	return matches, nil
+}
+
+func getRequesterFromAlias(alias string) string {
+	if alias == evergreen.GithubAlias {
+		return evergreen.GithubPRRequester
+	}
+	if alias == evergreen.GitTagAlias {
+		return evergreen.GitTagRequester
+	}
+	if alias == evergreen.CommitQueueAlias {
+		return evergreen.MergeTestRequester
+	}
+	return evergreen.PatchVersionRequester
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods

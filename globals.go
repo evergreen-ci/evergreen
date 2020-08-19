@@ -341,6 +341,7 @@ const (
 	DefaultDatabaseUrl                  = "mongodb://localhost:27017"
 	DefaultDatabaseName                 = "mci"
 	DefaultDatabaseWriteMode            = "majority"
+	DefaultDatabaseReadMode             = "majority"
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"

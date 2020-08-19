@@ -28,7 +28,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-const GitFetchProjectRetries = 5
+const (
+	GitFetchProjectRetries = 5
+	defaultCommitterName   = "Evergreen Agent"
+	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
+)
 
 // gitFetchProject is a command that fetches source code from git for the project
 // associated with the current task
@@ -46,6 +50,9 @@ type gitFetchProject struct {
 	ShallowClone bool `mapstructure:"shallow_clone"`
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
+
+	CommitterName  string `mapstructure:"committer_name"`
+	CommitterEmail string `mapstructure:"committer_email"`
 
 	base
 }
@@ -600,14 +607,22 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 // getApplyCommand determines the patch type. If the patch is a mailbox-style
 // patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
 // it uses git apply
-func getApplyCommand(patchFile string) (string, error) {
+func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 	isMBP, err := patch.IsMailbox(patchFile)
 	if err != nil {
 		return "", errors.Wrap(err, "can't check patch type")
 	}
 
 	if isMBP {
-		return fmt.Sprintf(`git -c "user.name=Evergreen Agent" -c "user.email=no-reply@evergreen.mongodb.com" am --keep-cr < '%s'`, patchFile), nil
+		committerName := defaultCommitterName
+		committerEmail := defaultCommitterEmail
+		if len(c.CommitterName) > 0 {
+			committerName = c.CommitterName
+		}
+		if len(c.CommitterEmail) > 0 {
+			committerEmail = c.CommitterEmail
+		}
+		return fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr < "%s"`, committerName, committerEmail, patchFile), nil
 	}
 
 	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil
@@ -700,7 +715,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := getPatchCommands(patchPart, conf, dir, tempAbsPath)
-		applyCommand, err := getApplyCommand(tempAbsPath)
+		applyCommand, err := c.getApplyCommand(tempAbsPath)
 		if err != nil {
 			logger.Execution().Error("Could not to determine patch type")
 			return errors.WithStack(err)
