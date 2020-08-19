@@ -1,0 +1,12 @@
+query {
+  distroTaskQueue(distroId: "osx-108") {
+    id
+    expectedDuration
+    requester
+    displayName
+    project
+    buildVariant
+    priority
+    revision
+  }
+}
