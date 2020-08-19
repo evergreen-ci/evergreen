@@ -1758,10 +1758,11 @@ func TestGetAllDependencies(t *testing.T) {
 
 	// mix of map and db
 	require.NoError(t, tasks[1].Insert())
-	require.NoError(t, tasks[2].Insert())
-	dependencies, err = GetAllDependencies([]string{tasks[0].Id, tasks[1].Id}, map[string]*Task{tasks[0].Id: &tasks[0]})
+	taskMap := map[string]*Task{tasks[0].Id: &tasks[0]}
+	dependencies, err = GetAllDependencies([]string{tasks[0].Id, tasks[1].Id}, taskMap)
 	assert.NoError(t, err)
 	assert.Len(t, dependencies, 2)
+	assert.Len(t, taskMap, 1)
 }
 
 func TestGetRecursiveDependenciesUp(t *testing.T) {

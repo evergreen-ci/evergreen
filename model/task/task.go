@@ -2098,6 +2098,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	return dt, nil
 }
 
+// GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
 func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
 	// fill in the gaps in taskMap
 	tasksToFetch := []string{}
@@ -2106,6 +2107,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 			tasksToFetch = append(tasksToFetch, tID)
 		}
 	}
+	missingTaskMap := make(map[string]*Task)
 	if len(tasksToFetch) > 0 {
 		missingTasks, err := FindAll(ByIds(tasksToFetch).WithFields(DependsOnKey))
 		if err != nil {
@@ -2115,7 +2117,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 			return nil, errors.New("no missing tasks found")
 		}
 		for i, t := range missingTasks {
-			taskMap[t.Id] = &missingTasks[i]
+			missingTaskMap[t.Id] = &missingTasks[i]
 		}
 	}
 
@@ -2123,6 +2125,9 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	depSet := make(map[Dependency]bool)
 	for _, tID := range taskIDs {
 		t, ok := taskMap[tID]
+		if !ok {
+			t, ok = missingTaskMap[tID]
+		}
 		if !ok {
 			return nil, errors.Errorf("task '%s' does not exist", tID)
 		}
