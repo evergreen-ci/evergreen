@@ -19,6 +19,17 @@ func TestFindTestsByTaskId(t *testing.T) {
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	serviceContext := &DBConnector{}
+
+	emptyTask := &task.Task{
+		Id: "empty_task",
+	}
+	assert.NoError(emptyTask.Insert())
+	foundTests, err := serviceContext.FindTestsByTaskId("empty_task", "", "", "", 0, 0)
+	assert.NoError(err, "missing tests should not return a 404")
+	assert.Len(foundTests, 0)
+
+	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
 	numTests := 10
 	numTasks := 2
 	testObjects := make([]string, numTests)
@@ -77,7 +88,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		}
 	}
 
-	foundTests, err := serviceContext.FindTestsByTaskId("fake_task", "", "", "", 0, 0)
+	foundTests, err = serviceContext.FindTestsByTaskId("fake_task", "", "", "", 0, 0)
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 	apiErr, ok := err.(gimlet.ErrorResponse)
