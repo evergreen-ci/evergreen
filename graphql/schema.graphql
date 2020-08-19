@@ -64,6 +64,7 @@ type Query {
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
+  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 }
 
 type Mutation {
@@ -145,6 +146,11 @@ enum HostSortBy {
   OWNER
 }
 
+enum TaskQueueItemType {
+  COMMIT
+  PATCH
+}
+
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -204,6 +210,17 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+}
+
+type TaskQueueItem {
+  id: ID!
+  displayName: String!
+  project: String!
+  buildVariant: String!
+  expectedDuration: Duration!
+  priority: Int!
+  revision: String!
+  requester: TaskQueueItemType!
 }
 
 type Host {

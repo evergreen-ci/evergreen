@@ -110,3 +110,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+  TaskQueueItem:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
