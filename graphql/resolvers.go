@@ -49,9 +49,11 @@ func (r *Resolver) Task() TaskResolver {
 }
 func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
-type hostResolver struct{ *Resolver }
+func (r *Resolver) TaskQueueItem() TaskQueueItemResolver { return &taskQueueItemResolver{r} }
 
+type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type taskQueueItemResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -1225,6 +1227,38 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		apiDistros = append(apiDistros, &apiDistro)
 	}
 	return apiDistros, nil
+}
+
+func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
+	distroQueue, err := model.LoadTaskQueue(distroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task queue for distro %v: %v", distroID, err.Error()))
+	}
+	if distroQueue == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find queue with distro ID `%s`", distroID))
+	}
+
+	taskQueue := []*restModel.APITaskQueueItem{}
+
+	for _, taskQueueItem := range distroQueue.Queue {
+		apiTaskQueueItem := restModel.APITaskQueueItem{}
+
+		err := apiTaskQueueItem.BuildFromService(taskQueueItem)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task queue item db model to api model: %v", err.Error()))
+		}
+
+		taskQueue = append(taskQueue, &apiTaskQueueItem)
+	}
+
+	return taskQueue, nil
+}
+
+func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.APITaskQueueItem) (TaskQueueItemType, error) {
+	if *obj.Requester != evergreen.RepotrackerVersionRequester {
+		return TaskQueueItemTypePatch, nil
+	}
+	return TaskQueueItemTypeCommit, nil
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {

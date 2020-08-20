@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
@@ -81,11 +82,8 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType:
-		return evergreen.SenderGithubMerge, nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		return evergreen.SenderCommitQueueDequeue, nil
+	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
+		return evergreen.SenderGeneric, nil
 
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -95,7 +93,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 // Composer builds a grip/message.Composer for the notification. Composer is
 // guaranteed to be non-nil if error is nil, but the composer may not be
 // loggable
-func (n *Notification) Composer() (message.Composer, error) {
+func (n *Notification) Composer(env evergreen.Environment) (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
 		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
@@ -200,7 +198,11 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.MergeMethod = sub.MergeMethod
 		payload.Item = sub.Item
 
-		return commitqueue.NewGithubMergePRMessage(level.Notice, *payload), nil
+		if err := payload.Initialize(env); err != nil {
+			return nil, errors.Wrap(err, "problem initializing GithubMergePR")
+		}
+
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
 	case event.CommitQueueDequeueSubscriberType:
 		payload, ok := n.Payload.(*commitqueue.DequeueItem)
@@ -208,7 +210,15 @@ func (n *Notification) Composer() (message.Composer, error) {
 			return nil, errors.New("commit-queue-dequeue payload is invalid")
 		}
 
-		return commitqueue.NewDequeueItemMessage(level.Notice, *payload), nil
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
+
+	case event.EnqueuePatchSubscriberType:
+		payload, ok := n.Payload.(*model.EnqueuePatch)
+		if !ok || payload == nil {
+			return nil, errors.New("enqueue-patch payload is invalid")
+		}
+
+		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -278,6 +288,7 @@ type NotificationStats struct {
 	Slack              int `json:"slack" bson:"slack" yaml:"slack"`
 	GithubMerge        int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 	CommitQueueDequeue int `json:"commit_queue_dequeue" bson:"commit_queue_dequeue" yaml:"commit_queue_dequeue"`
+	EnqueuePatch       int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -336,6 +347,9 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.CommitQueueDequeueSubscriberType:
 			nStats.CommitQueueDequeue = data.Count
+
+		case event.EnqueuePatchSubscriberType:
+			nStats.EnqueuePatch = data.Count
 
 		default:
 			grip.Error(message.Fields{

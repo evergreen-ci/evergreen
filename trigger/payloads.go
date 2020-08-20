@@ -417,6 +417,11 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 			Item:      data.ID,
 		}, nil
 
+	case event.EnqueuePatchSubscriberType:
+		return &model.EnqueuePatch{
+			PatchID: data.ID,
+		}, nil
+
 	case event.JIRAIssueSubscriberType:
 		return jiraIssue(data)
 

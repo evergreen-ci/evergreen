@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -19,10 +20,13 @@ import (
 )
 
 const (
-	itemFlagName          = "item"
-	pauseFlagName         = "pause"
-	resumeFlagName        = "resume"
-	commitsFlagName       = "commits"
+	itemFlagName        = "item"
+	pauseFlagName       = "pause"
+	resumeFlagName      = "resume"
+	commitsFlagName     = "commits"
+	existingPatchFlag   = "existing-patch"
+	backportProjectFlag = "backport-project"
+
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
 	commitFmtString       = "'%s' into '%s/%s:%s'"
@@ -38,6 +42,7 @@ func CommitQueue() cli.Command {
 			mergeCommand(),
 			setModuleCommand(),
 			enqueuePatch(),
+			backport(),
 		},
 	}
 }
@@ -274,6 +279,90 @@ func enqueuePatch() cli.Command {
 	}
 }
 
+func backport() cli.Command {
+	return cli.Command{
+		Name:  "backport",
+		Usage: "automatically backport low-risk commits",
+		Flags: mergeFlagSlices(
+			addPatchFinalizeFlag(),
+			addVariantsFlag(),
+			addTasksFlag(),
+			addPatchAliasFlag(),
+			addPatchBrowseFlag(
+				cli.StringFlag{
+					Name:  joinFlagNames(existingPatchFlag, "e"),
+					Usage: "existing commit queue patch",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(backportProjectFlag, "b"),
+					Usage: "project to backport onto",
+				},
+			)),
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			requireStringFlag(backportProjectFlag),
+			requireStringFlag(existingPatchFlag),
+		),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			confPath := c.Parent().Parent().String(confFlagName)
+			patchParams := &patchParams{
+				Tasks:      c.StringSlice(tasksFlagName),
+				Variants:   c.StringSlice(variantsFlagName),
+				Alias:      c.String(patchAliasFlagName),
+				Finalize:   c.Bool(patchFinalizeFlagName),
+				BackportOf: c.String(existingPatchFlag),
+				Project:    c.String(backportProjectFlag),
+				Browse:     c.Bool(patchBrowseFlagName),
+			}
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {
+				return err
+			}
+
+			existingPatch, err := ac.GetPatch(patchParams.BackportOf)
+			if err != nil {
+				return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf)
+			}
+			if !existingPatch.IsCommitQueuePatch() {
+				return errors.Errorf("patch '%s' is not a commit queue patch", patchParams.BackportOf)
+			}
+
+			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
+			if err != nil {
+				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", patchParams.Project)
+			}
+			if len(latestVersions) == 0 {
+				return errors.Errorf("no repotracker versions exist in project '%s'", patchParams.Project)
+			}
+			var backportPatch *patch.Patch
+			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})
+			if err != nil {
+				return errors.Wrap(err, "can't upload backport patch")
+			}
+
+			if err = patchParams.displayPatch(conf, backportPatch); err != nil {
+				return errors.Wrap(err, "problem getting result display")
+			}
+
+			return nil
+		},
+	}
+}
+
 func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
@@ -444,9 +533,15 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	}
 	patchParams.Description = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
 
-	patch, err := patchParams.createPatch(ac, conf, diffData)
+	if err = patchParams.validateSubmission(diffData); err != nil {
+		return err
+	}
+	patch, err := patchParams.createPatch(ac, diffData)
 	if err != nil {
 		return err
+	}
+	if err = patchParams.displayPatch(conf, patch); err != nil {
+		grip.Error("Patch information cannot be displayed.")
 	}
 
 	p.id = patch.Id.Hex()

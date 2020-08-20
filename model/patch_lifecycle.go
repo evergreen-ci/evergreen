@@ -351,7 +351,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	// if variant tasks is still empty, then the patch is empty and we shouldn't add to commit queue
-	if p.Alias == evergreen.CommitQueueAlias && len(p.VariantsTasks) == 0 {
+	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("No builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
@@ -515,18 +515,54 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	return "Commit Queue Merge: " + strings.Join(description, " || ")
 }
 
-func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
-	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(existingPatchID)))
+type EnqueuePatch struct {
+	PatchID string
+}
+
+func (e *EnqueuePatch) String() string {
+	return fmt.Sprintf("enqueue patch '%s'", e.PatchID)
+}
+
+func (e *EnqueuePatch) Send() error {
+	existingPatch, err := patch.FindOneId(e.PatchID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting existing patch '%s'", existingPatchID)
+		return errors.Wrap(err, "can't get existing patch")
 	}
 	if existingPatch == nil {
-		return nil, errors.Errorf("patch '%s' doesn't exist", existingPatchID)
+		return errors.Errorf("no patch '%s' found", e.PatchID)
 	}
 
+	// only enqueue once
+	if len(existingPatch.MergePatch) != 0 {
+		return nil
+	}
+
+	cq, err := commitqueue.FindOneId(existingPatch.Project)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit queue")
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
+	}
+
+	mergePatch, err := MakeMergePatchFromExisting(existingPatch)
+	if err != nil {
+		return errors.Wrap(err, "problem making merge patch")
+	}
+
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex()})
+
+	return errors.Wrap(err, "can't enqueue item")
+}
+
+func (e *EnqueuePatch) Valid() bool {
+	return patch.IsValidId(e.PatchID)
+}
+
+func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error) {
 	// verify the patch and its modules are in mbox format
 	if !existingPatch.CanEnqueueToCommitQueue() {
-		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatchID)
+		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatch.Id.Hex())
 	}
 
 	// verify the commit queue is on
@@ -537,14 +573,8 @@ func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 	if projectRef == nil {
 		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
 	}
-	if !projectRef.Enabled {
-		return nil, errors.Errorf("project '%s' is disabled", existingPatch.Project)
-	}
-	if projectRef.PatchingDisabled {
-		return nil, errors.Errorf("patching is disabled for project '%s'", existingPatch.Project)
-	}
-	if !projectRef.CommitQueue.Enabled {
-		return nil, errors.Errorf("commit queue is disabled for project '%s'", existingPatch.Project)
+	if err = projectRef.CommitQueueIsOn(); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	project := &Project{}
@@ -583,6 +613,14 @@ func MakeMergePatchFromExisting(existingPatchID string) (*patch.Patch, error) {
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")
+	}
+
+	if err = existingPatch.SetMergePatch(patchDoc.Id.Hex()); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "can't mark patch enqueued",
+			"existing_patch": existingPatch.Id.Hex(),
+			"merge_patch":    patchDoc.Id.Hex(),
+		}))
 	}
 
 	return patchDoc, nil

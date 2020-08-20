@@ -240,7 +240,7 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 }
 
 func (p *DBPatchConnector) IsPatchEmpty(id string) (bool, error) {
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(id)).WithFields(patch.PatchesKey))
+	patchDoc, err := patch.FindOne(patch.ByStringId(id).WithFields(patch.PatchesKey))
 	if err != nil {
 		return false, errors.WithStack(err)
 	}

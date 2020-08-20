@@ -25,6 +25,7 @@ import (
 
 // SizeLimit is a hard limit on patch size.
 const SizeLimit = 1024 * 1024 * 100
+const backportFmtString = "Backport: %s (%s)"
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
 type VariantTasks struct {
@@ -136,6 +137,8 @@ type Patch struct {
 	Activated       bool             `bson:"activated"`
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
+	BackportOf      string           `bson:"backport_of"`
+	MergePatch      string           `bson:"merge_patch"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
@@ -190,6 +193,18 @@ func (p *Patch) SetDescription(desc string) error {
 		bson.M{
 			"$set": bson.M{
 				DescriptionKey: desc,
+			},
+		},
+	)
+}
+
+func (p *Patch) SetMergePatch(newPatchID string) error {
+	p.MergePatch = newPatchID
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				MergePatchKey: newPatchID,
 			},
 		},
 	)
@@ -580,11 +595,19 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
+func (p *Patch) IsCommitQueuePatch() bool {
+	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch()
+}
+
+func (p *Patch) IsBackport() bool {
+	return len(p.BackportOf) > 0
+}
+
 func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
 	}
-	if p.IsPRMergePatch() {
+	if p.IsCommitQueuePatch() {
 		return evergreen.MergeTestRequester
 	}
 	return evergreen.PatchVersionRequester
@@ -598,6 +621,18 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 	}
 
 	return true
+}
+
+func (p *Patch) MakeBackportDescription() (string, error) {
+	commitQueuePatch, err := FindOneId(p.BackportOf)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get patch being backported")
+	}
+	if commitQueuePatch == nil {
+		return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf)
+	}
+
+	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.BackportOf), nil
 }
 
 // IsMailbox checks if the first line of a patch file
