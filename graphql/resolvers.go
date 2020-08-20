@@ -1675,6 +1675,14 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	return &user, nil
 }
 
+func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+	}
+	return config.Providers.AWS.AllowedInstanceTypes, nil
+}
+
 type taskResolver struct{ *Resolver }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {

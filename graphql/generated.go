@@ -360,6 +360,7 @@ type ComplexityRoot struct {
 		Host               func(childComplexity int, hostID string) int
 		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes      func(childComplexity int) int
 		MyHosts            func(childComplexity int) int
 		MyPublicKeys       func(childComplexity int) int
 		Patch              func(childComplexity int, id string) int
@@ -635,6 +636,7 @@ type QueryResolver interface {
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
+	InstanceTypes(ctx context.Context) ([]string, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 }
 type TaskResolver interface {
@@ -2209,6 +2211,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Hosts(childComplexity, args["hostId"].(*string), args["distroId"].(*string), args["currentTaskId"].(*string), args["statuses"].([]string), args["startedBy"].(*string), args["sortBy"].(*HostSortBy), args["sortDir"].(*SortDirection), args["page"].(*int), args["limit"].(*int)), true
 
+	case "Query.instanceTypes":
+		if e.complexity.Query.InstanceTypes == nil {
+			break
+		}
+
+		return e.complexity.Query.InstanceTypes(childComplexity), true
+
 	case "Query.myHosts":
 		if e.complexity.Query.MyHosts == nil {
 			break
@@ -3403,6 +3412,7 @@ var sources = []*ast.Source{
   myHosts: [Host!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
+  instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 }
 
@@ -3440,9 +3450,9 @@ type Mutation {
 }
 
 enum SpawnHostStatusActions {
-  START
-  STOP
-  TERMINATE
+ START 
+ STOP 
+ TERMINATE
 }
 enum TaskSortCategory {
   NAME
@@ -3599,10 +3609,10 @@ type DistroInfo {
 }
 
 type Distro {
-  name: String
+  name: String 
   userSpawnAllowed: Boolean
-  workDir: String
-  user: String
+  workDir: String 
+  user: String 
   isVirtualWorkStation: Boolean!
 }
 
@@ -12249,6 +12259,40 @@ func (ec *executionContext) _Query_distros(ctx context.Context, field graphql.Co
 	return ec.marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_instanceTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InstanceTypes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_distroTaskQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20007,6 +20051,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_distros(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "instanceTypes":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_instanceTypes(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
