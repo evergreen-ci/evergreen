@@ -110,6 +110,9 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			return
 		}
 	}
+
+	// Do not add an error if the setup script fails because there's no
+	// guarantee that it's been written to be idempotent.
 	grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, j.host), message.Fields{
 		"message":      "failed to run setup script",
 		"task":         j.host.ProvisionOptions.TaskId,
@@ -126,4 +129,13 @@ func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
 	}
 	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, j.CurrentAttempt+1))
 
+}
+
+func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	script := fmt.Sprintf("cd %s\n%s", h.Distro.HomeDir(), h.ProvisionOptions.SetupScript)
+	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+	j := NewHostExecuteJob(env, *h, script, false, "", ts)
+	j.Run(ctx)
+
+	return errors.Wrapf(j.Error(), "error running setup script for spawn host")
 }
