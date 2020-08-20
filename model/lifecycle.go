@@ -1426,7 +1426,7 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 	taskIds := []string{}
 	for _, b := range builds {
 		// Find the set of tasks that already exist for the set we want to add
-		taskNames := append(pairs.ExecTasks.TaskNames(b.BuildVariant), pairs.DisplayTasks.TaskNames(b.BuildVariant)...)
+		taskNames := append(pairs.ExecTasks.TaskNames(b.Id), pairs.DisplayTasks.TaskNames(b.Id)...)
 		tasksInBuild, err := task.Find(task.ByBuildIdAndTaskNames(b.Id, taskNames))
 		if err != nil {
 			return nil, err
