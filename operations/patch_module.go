@@ -19,7 +19,7 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(), addEnableEnqueueFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
@@ -39,6 +39,7 @@ func PatchSetModule() cli.Command {
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
+			enableEnqueue := c.Bool(enableEnqueueFlag)
 			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -92,7 +93,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return err
 			}
-			if !preserveCommits {
+			if enableEnqueue && !preserveCommits {
 				var existingPatch *patch.Patch
 				if existingPatch, err = ac.GetPatch(patchID); err != nil {
 					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
