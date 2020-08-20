@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -623,106 +622,6 @@ func gitUncommittedChanges() (bool, error) {
 		return false, errors.Wrap(err, "can't run git status")
 	}
 	return len(out) != 0, nil
-}
-
-func diffToMbox(diffData *localDiff, subject string) (string, error) {
-	if len(diffData.fullPatch) == 0 {
-		return "", nil
-	}
-
-	metadata, err := getGitConfigMetadata()
-	if err != nil {
-		grip.Error(errors.Wrap(err, "Problem getting git metadata. Patch will be ineligible to be enqueued on the commit queue."))
-		return diffData.fullPatch, nil
-	}
-	metadata.Subject = subject
-
-	return addMetadataToDiff(diffData, metadata)
-}
-
-func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
-	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: {{.Metadata.Username}} <{{.Metadata.Email}}>
-Date: {{.Metadata.CurrentTime}}
-Subject: {{.Metadata.Subject}}
-
----
-{{.DiffStat}}
-
-{{.DiffContent}}
---
-{{.Metadata.GitVersion}}
-`))
-
-	out := bytes.Buffer{}
-	err := mboxTemplate.Execute(&out, struct {
-		Metadata    GitMetadata
-		DiffStat    string
-		DiffContent string
-	}{
-		Metadata:    metadata,
-		DiffStat:    diffData.log,
-		DiffContent: diffData.fullPatch,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "problem executing mbox template")
-	}
-
-	return out.String(), nil
-}
-
-type GitMetadata struct {
-	Username    string
-	Email       string
-	CurrentTime string
-	GitVersion  string
-	Subject     string
-}
-
-func getGitConfigMetadata() (GitMetadata, error) {
-	var err error
-	metadata := GitMetadata{}
-	username, err := gitCmd("config", "user.name")
-	if err != nil {
-		return metadata, errors.Wrap(err, "can't get git user.name")
-	}
-	metadata.Username = strings.TrimSpace(username)
-
-	email, err := gitCmd("config", "user.email")
-	if err != nil {
-		return metadata, errors.Wrap(err, "can't get git user.email")
-	}
-	metadata.Email = strings.TrimSpace(email)
-
-	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
-
-	// We need just the version number, but git gives it as part of a larger string.
-	// Parse the version number out of the version string.
-	versionString, err := gitCmd("version")
-	if err != nil {
-		return metadata, errors.Wrap(err, "can't get git version")
-	}
-	versionString = strings.TrimSpace(versionString)
-	metadata.GitVersion, err = parseGitVersion(versionString)
-	if err != nil {
-		return metadata, errors.Wrap(err, "can't get git version")
-	}
-
-	return metadata, nil
-}
-
-func parseGitVersion(version string) (string, error) {
-	matches := regexp.MustCompile(`^git version ` +
-		// capture the version major.minor(.patch(.build(.etc...)))
-		`(\w+(?:\.\w+)+)` +
-		// match and discard Apple git's addition to the version string
-		`(?: \(Apple Git-[\w\.]+\))?$`,
-	).FindStringSubmatch(version)
-	if len(matches) != 2 {
-		return "", errors.Errorf("can't parse git version number from version string '%s'", version)
-	}
-
-	return matches[1], nil
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {

@@ -120,12 +120,6 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if !params.PreserveCommits {
-				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
-				if err != nil {
-					return err
-				}
-			}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err

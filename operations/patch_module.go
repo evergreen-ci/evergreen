@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -91,16 +90,6 @@ func PatchSetModule() cli.Command {
 			diffData, err := loadGitData(moduleBranch, ref, "", preserveCommits, args...)
 			if err != nil {
 				return err
-			}
-			if !preserveCommits {
-				var existingPatch *patch.Patch
-				if existingPatch, err = ac.GetPatch(patchID); err != nil {
-					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
-				}
-				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
-				if err != nil {
-					return err
-				}
 			}
 
 			if err = validatePatchSize(diffData, large); err != nil {
