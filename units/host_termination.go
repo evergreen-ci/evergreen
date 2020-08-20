@@ -371,11 +371,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			if calc, ok := manager.(cloud.CostCalculator); ok {
 				cost, err := calc.CostForDuration(ctx, j.host, j.host.StartTime, hostBillingEnds)
-				if err != nil {
-					j.AddError(err)
-					return
+				j.AddError(err) // don't return as this isn't crucial
+				if err == nil {
+					j.AddError(task.IncSpawnedHostCost(j.host.StartedBy, cost))
 				}
-				j.AddError(task.IncSpawnedHostCost(j.host.StartedBy, cost))
 			}
 		}
 	}
