@@ -1451,7 +1451,7 @@ func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pa
 					var fullTask *task.Task
 					fullTask, err = task.FindOneId(info.id)
 					if err != nil {
-						return nil, err
+						return nil, errors.Wrapf(err, "problem finding task '%s'", info.id)
 					}
 					if fullTask == nil {
 						return nil, errors.Errorf("task '%s' not found", info.id)
