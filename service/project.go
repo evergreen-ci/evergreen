@@ -668,13 +668,12 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if projectRef != nil {
-		http.Error(w, "Project already exists", http.StatusInternalServerError)
+		http.Error(w, "Project already exists", http.StatusBadRequest)
 		return
 	}
 
 	newProject := model.ProjectRef{
 		Identifier: id,
-		Enabled:    true,
 		Tracked:    true,
 		RepoKind:   "github",
 	}
