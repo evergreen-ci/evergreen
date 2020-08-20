@@ -809,7 +809,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		Version: "version_that_called_generate_task",
 	}
 	taskDisplayGen := task.Task{
-		Id:          "my_display_task_gen",
+		Id:          "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
 		DisplayName: "my_display_task_gen",
 		Version:     "version_that_called_generate_task",
 	}
