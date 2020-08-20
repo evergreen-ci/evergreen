@@ -524,12 +524,12 @@
           "patchTasks": {
             "tasks": [
               {
-                "baseStatus": "success",
-                "buildVariant": "ubuntu1604",
-                "displayName": "test-thirdparty-docker",
                 "id": "1",
                 "status": "success",
-                "blocked": "false"
+                "baseStatus": "success",
+                "displayName": "test-thirdparty-docker",
+                "buildVariant": "ubuntu1604",
+                "blocked": true
               }
             ],
             "count": 1

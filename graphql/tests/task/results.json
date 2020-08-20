@@ -340,8 +340,12 @@
       }
     },
     {
-      "query_file": "blocked.graphql",
+      "query_file": "blocked-false.graphql",
       "result": { "data": { "task": { "blocked": false } } }
+    },
+    {
+      "query_file": "blocked-true.graphql",
+      "result": { "data": { "task": { "blocked": true } } }
     }
   ]
 }
