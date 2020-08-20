@@ -96,6 +96,7 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
+			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
@@ -122,7 +123,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if params.EnableEnqueue && !params.PreserveCommits {
+			if (params.EnableEnqueue || conf.EnableEnqueue) && !params.PreserveCommits {
 				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
 				if err != nil {
 					return err

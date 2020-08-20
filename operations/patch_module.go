@@ -56,6 +56,7 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
+			preserveCommits = preserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
@@ -93,7 +94,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return err
 			}
-			if enableEnqueue && !preserveCommits {
+			if (enableEnqueue || conf.EnableEnqueue) && !preserveCommits {
 				var existingPatch *patch.Patch
 				if existingPatch, err = ac.GetPatch(patchID); err != nil {
 					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
