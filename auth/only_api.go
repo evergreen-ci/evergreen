@@ -69,11 +69,6 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 // findOnlyAPIUser finds an API-only user by ID and verifies that it is a valid
 // user against the list of authoritative valid users.
 func findOnlyAPIUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
-	grip.Debug(message.Fields{
-		"msg":   "foo",
-		"id":    id,
-		"valid": validIDs,
-	})
 	if !utility.StringSliceContains(validIDs, id) {
 		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
 	}
@@ -81,10 +76,6 @@ func findOnlyAPIUser(id string, validIDs []string, validUsers []gimlet.User) (*u
 		user.IdKey:      id,
 		user.OnlyAPIKey: true,
 	}))
-	grip.Debug(message.Fields{
-		"msg": "foo",
-		"u":   dbUser,
-	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find API-only user in DB")
 	}
