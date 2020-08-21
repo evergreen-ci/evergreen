@@ -81,6 +81,12 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			continue
 		}
 
+		if len(cmds) == 1 {
+			tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, index, total)
+		} else {
+			// for functions with more than one command
+			tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, index, idx+1, total)
+		}
 		for key, val := range commandInfo.Vars {
 			var newVal string
 			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
@@ -96,12 +102,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			a.comm.UpdateLastMessageTime()
 		} else {
 			tc.setCurrentIdleTimeout(nil)
-		}
-		if len(cmds) == 1 {
-			tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, index, total)
-		} else {
-			// for functions with more than one command
-			tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, index, idx+1, total)
 		}
 
 		start := time.Now()
