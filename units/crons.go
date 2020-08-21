@@ -395,20 +395,6 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		stats, err := countHosts()
-
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if stats.count > env.Settings().HostInit.GlobalMaxHosts {
-			grip.Warning(message.Fields{
-				"message":            "GlobalMaxHosts has been exceeded, no more hosts will be spawned",
-				"global_max_hosts":   evergreen.GlobalMaxHosts,
-				"total_active_hosts": stats.count,
-			})
-		}
-
 		if flags.HostAllocatorDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host allocation is disabled",

@@ -84,7 +84,7 @@ type hostCountStats struct {
 	excess int
 }
 
-func countHosts() (*hostCountStats, error) {
+func collectHostCountStats() (*hostCountStats, error) {
 	hosts, err := host.GetStatsByDistro()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting stats by distro")
@@ -115,7 +115,7 @@ func countHosts() (*hostCountStats, error) {
 
 func (j *hostStatsCollector) statsByDistro() error {
 
-	stats, err := countHosts()
+	stats, err := collectHostCountStats()
 
 	if err != nil {
 		return err
