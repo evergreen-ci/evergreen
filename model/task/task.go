@@ -2098,6 +2098,52 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	return dt, nil
 }
 
+// GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
+func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
+	// fill in the gaps in taskMap
+	tasksToFetch := []string{}
+	for _, tID := range taskIDs {
+		if _, ok := taskMap[tID]; !ok {
+			tasksToFetch = append(tasksToFetch, tID)
+		}
+	}
+	missingTaskMap := make(map[string]*Task)
+	if len(tasksToFetch) > 0 {
+		missingTasks, err := FindAll(ByIds(tasksToFetch).WithFields(DependsOnKey))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get tasks missing from map")
+		}
+		if missingTasks == nil {
+			return nil, errors.New("no missing tasks found")
+		}
+		for i, t := range missingTasks {
+			missingTaskMap[t.Id] = &missingTasks[i]
+		}
+	}
+
+	// extract the set of dependencies
+	depSet := make(map[Dependency]bool)
+	for _, tID := range taskIDs {
+		t, ok := taskMap[tID]
+		if !ok {
+			t, ok = missingTaskMap[tID]
+		}
+		if !ok {
+			return nil, errors.Errorf("task '%s' does not exist", tID)
+		}
+		for _, dep := range t.DependsOn {
+			depSet[dep] = true
+		}
+	}
+
+	deps := make([]Dependency, 0, len(depSet))
+	for dep := range depSet {
+		deps = append(deps, dep)
+	}
+
+	return deps, nil
+}
+
 func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second))
 	if err != nil {

@@ -339,20 +339,23 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		spotPrice     float64
 		az            string
 	)
-	// price fetcher tool only used for the default region
+	// Price fetcher tool only used for the default region.
+	// Suppress errors, because this isn't crucial to determining provider type.
 	if ec2settings.getRegion() == evergreen.DefaultEC2Region {
 		if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
 			onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
-			if err != nil {
-				return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
-			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting ec2 on-demand cost",
+				"host":    h.Id,
+			}))
 		}
 		if m.provider == spotProvider || m.provider == autoProvider {
 			// passing empty zone to find the "best"
 			spotPrice, az, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h), "")
-			if err != nil {
-				return 0, errors.Wrap(err, "error getting latest lowest spot price")
-			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting latest ec2 spot price",
+				"host":    h.Id,
+			}))
 		}
 	}
 
