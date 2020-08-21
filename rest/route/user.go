@@ -447,16 +447,19 @@ type serviceUserPostHandler struct {
 func makeUpdateServiceUser(sc data.Connector) gimlet.RouteHandler {
 	return &serviceUserPostHandler{
 		sc: sc,
+		u:  &model.APIDBUser{},
 	}
 }
 
 func (h *serviceUserPostHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserPostHandler{
 		sc: h.sc,
+		u:  &model.APIDBUser{},
 	}
 }
 
 func (h *serviceUserPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.u = &model.APIDBUser{}
 	if err := utility.ReadJSON(r.Body, h.u); err != nil {
 		return errors.Wrap(err, "request body is malformed")
 	}

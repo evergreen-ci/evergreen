@@ -12,7 +12,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartPurple = true;
     $scope.restartLavender = true;
     $scope.ValidThemes = ["announcement", "information", "warning", "important"];
-    $scope.validAuthKinds = ["ldap", "okta", "naive", "github"];
+    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 

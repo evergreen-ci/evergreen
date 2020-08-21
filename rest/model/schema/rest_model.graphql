@@ -3,6 +3,6 @@ directive @aliases(db: String, json: String) on FIELD_DEFINITION
 type User {
   UserID: String @aliases(db: Id, json: user_id)
   DisplayName: String @aliases(db: DispName, json: display_name)
-  OnlyApi: Boolean!
+  OnlyApi: Boolean! @aliases(db: OnlyAPI)
   Roles: [String!]! @aliases(db: SystemRoles)
 }

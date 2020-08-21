@@ -103,7 +103,7 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 	for _, kind := range config.Multi.ReadWrite {
 		manager, info, err := makeSingleManager(kind, settings, config)
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "could not create '%s' manager", kind))
+			grip.Critical(errors.Wrapf(err, "could not create '%s' manager", kind))
 			continue
 		}
 		rw = append(rw, manager)
@@ -120,7 +120,7 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 		// only contains write operation capabilities.
 		manager, _, err := makeSingleManager(kind, settings, config)
 		if err != nil {
-			grip.Error(err)
+			grip.Critical(errors.Wrapf(err, "could not create '%s' manager", kind))
 			continue
 		}
 		ro = append(ro, manager)

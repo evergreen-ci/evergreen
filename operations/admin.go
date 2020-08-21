@@ -45,6 +45,8 @@ func Admin() cli.Command {
 			updateRoleCmd(),
 			adminDistroExecute(),
 			updateServiceUser(),
+			getServiceUsers(),
+			deleteServiceUser(),
 		},
 	}
 }
@@ -649,11 +651,10 @@ func adminDistroExecute() cli.Command {
 
 func getServiceUsers() cli.Command {
 	return cli.Command{
-		Name:  "get-service-users",
-		Usage: "prints all service users",
-		Before: mergeBeforeFuncs(
-			setPlainLogger,
-		),
+		Name:   "get-service-users",
+		Usage:  "prints all service users",
+		Before: setPlainLogger,
+
 		Action: func(c *cli.Context) error {
 
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -701,9 +702,7 @@ func updateServiceUser() cli.Command {
 				Usage: "The roles for the user. Must be the entire list of roles to set",
 			},
 		},
-		Before: mergeBeforeFuncs(
-			requireStringFlag(idFlag),
-		),
+		Before: requireStringFlag(idFlag),
 		Action: func(c *cli.Context) error {
 			id := c.String(idFlag)
 			displayName := c.String(displayNameFlag)
@@ -737,9 +736,7 @@ func deleteServiceUser() cli.Command {
 				Usage: "the username of the service user",
 			},
 		},
-		Before: mergeBeforeFuncs(
-			requireStringFlag(idFlag),
-		),
+		Before: requireStringFlag(idFlag),
 		Action: func(c *cli.Context) error {
 			id := c.String(idFlag)
 

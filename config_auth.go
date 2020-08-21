@@ -17,9 +17,23 @@ type AuthUser struct {
 	Email       string `bson:"email" json:"email" yaml:"email"`
 }
 
+// OnlyAPIUser configures a special service user with only access to the API via
+// a key.
+type OnlyAPIUser struct {
+	Username string   `bson:"username" json:"username" yaml:"username"`
+	Key      string   `bson:"key" json:"key" yaml:"key"`
+	Roles    []string `bson:"roles" json:"roles" yaml:"roles"`
+}
+
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
 	Users []AuthUser `bson:"users" json:"users" yaml:"users"`
+}
+
+// OnlyAPIAuthConfig contains the users that can only authenticate via the API from
+// the settings.
+type OnlyAPIAuthConfig struct {
+	Users []OnlyAPIUser `bson:"users" json:"users" yaml:"users"`
 }
 
 // LDAPConfig contains settings for interacting with an LDAP server.
@@ -66,14 +80,15 @@ func (c *MultiAuthConfig) IsZero() bool {
 
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
-	LDAP                    *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
-	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
-	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
-	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
-	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`
-	AllowServiceUsers       bool              `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
-	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
-	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
+	LDAP                    *LDAPConfig        `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Okta                    *OktaConfig        `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	Naive                   *NaiveAuthConfig   `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	OnlyAPI                 *OnlyAPIAuthConfig `bson:"only_api,omitempty" json:"only_api" yaml:"only_api"` // deprecated
+	Github                  *GithubAuthConfig  `bson:"github,omitempty" json:"github" yaml:"github"`
+	Multi                   *MultiAuthConfig   `bson:"multi" json:"multi" yaml:"multi"`
+	AllowServiceUsers       bool               `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
+	PreferredType           string             `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
+	BackgroundReauthMinutes int                `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
@@ -109,6 +124,7 @@ func (c *AuthConfig) Set() error {
 			AuthLDAPKey:                    c.LDAP,
 			AuthOktaKey:                    c.Okta,
 			AuthNaiveKey:                   c.Naive,
+			AuthOnlyAPIKey:                 c.OnlyAPI,
 			AuthGithubKey:                  c.Github,
 			AuthMultiKey:                   c.Multi,
 			authPreferredTypeKey:           c.PreferredType,
@@ -123,6 +139,11 @@ func (c *AuthConfig) checkDuplicateUsers() error {
 	var usernames []string
 	if c.Naive != nil {
 		for _, u := range c.Naive.Users {
+			usernames = append(usernames, u.Username)
+		}
+	}
+	if c.OnlyAPI != nil {
+		for _, u := range c.OnlyAPI.Users {
 			usernames = append(usernames, u.Username)
 		}
 	}
@@ -144,11 +165,20 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthGithubKey,
 		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
-	if c.LDAP == nil && c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
+	if c.LDAP == nil && c.Naive == nil && c.OnlyAPI == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 
 	catcher.Add(c.checkDuplicateUsers())
+
+	if c.OnlyAPI != nil {
+		// Generate API key if none are explicitly set.
+		for i := range c.OnlyAPI.Users {
+			if c.OnlyAPI.Users[i].Key == "" {
+				c.OnlyAPI.Users[i].Key = utility.RandomString()
+			}
+		}
+	}
 
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {
@@ -171,8 +201,10 @@ func (c *AuthConfig) ValidateAndDefault() error {
 				catcher.NewWhen(c.Github == nil, "GitHub settings cannot be empty if using in multi auth")
 			case AuthNaiveKey:
 				catcher.NewWhen(c.Naive == nil, "Naive settings cannot be empty if using in multi auth")
+			case AuthOnlyAPIKey:
+				catcher.NewWhen(c.OnlyAPI == nil, "OnlyAPI settings cannot be empty if using in multi auth")
 			default:
-				grip.Errorf("unrecognized auth mechanism '%s'", kind)
+				catcher.Errorf("unrecognized auth mechanism '%s'", kind)
 			}
 			// Check for duplicate user managers.
 			catcher.ErrorfWhen(seen[kind], "duplicate auth mechanism '%s' in multi auth", kind)

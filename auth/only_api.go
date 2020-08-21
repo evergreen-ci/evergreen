@@ -7,8 +7,6 @@ import (
 	"github.com/evergreen-ci/gimlet/cached"
 	"github.com/evergreen-ci/gimlet/usercache"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,19 +14,6 @@ import (
 // NewOnlyAPIUserManager creates a user manager for special users that can only
 // make API requests. Users cannot be created and must come from the database.
 func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
-	validUsers := []gimlet.User{}
-	validIDs := []string{}
-	users, err := user.FindServiceUsers()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get service users")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, u := range users {
-		validUsers = append(validUsers, &u)
-		validIDs = append(validIDs, u.Username())
-	}
-
 	opts := usercache.ExternalOptions{
 		PutUserGetToken: func(gimlet.User) (string, error) {
 			return "", errors.New("cannot put new users in DB")
@@ -40,14 +25,14 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 			return errors.New("cannot clear user token")
 		},
 		GetUserByID: func(id string) (gimlet.User, bool, error) {
-			user, err := findOnlyAPIUser(id, validIDs, validUsers)
+			user, err := findOnlyAPIUser(id)
 			if err != nil {
 				return nil, false, errors.Errorf("failed to get API-only user")
 			}
 			return user, true, nil
 		},
 		GetOrCreateUser: func(u gimlet.User) (gimlet.User, error) {
-			user, err := findOnlyAPIUser(u.Username(), validIDs, validUsers)
+			user, err := findOnlyAPIUser(u.Username())
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get API-only user and cannot create new one")
 			}
@@ -55,20 +40,23 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 		},
 	}
 	cache, err := usercache.NewExternal(opts)
-	catcher.Wrap(err, "could not create DB cache")
-
-	if catcher.HasErrors() {
-		grip.Critical(message.WrapError(catcher.Resolve(), message.Fields{
-			"message": "failed to create API-only manager",
-			"reason":  "problems updating API-only users in database",
-		}))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create user cache")
 	}
 	return cached.NewUserManager(cache)
 }
 
 // findOnlyAPIUser finds an API-only user by ID and verifies that it is a valid
 // user against the list of authoritative valid users.
-func findOnlyAPIUser(id string, validIDs []string, validUsers []gimlet.User) (*user.DBUser, error) {
+func findOnlyAPIUser(id string) (*user.DBUser, error) {
+	validUsers, err := user.FindServiceUsers()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find service users")
+	}
+	validIDs := []string{}
+	for _, u := range validUsers {
+		validIDs = append(validIDs, u.Id)
+	}
 	if !utility.StringSliceContains(validIDs, id) {
 		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
 	}
