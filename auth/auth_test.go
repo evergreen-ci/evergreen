@@ -34,7 +34,7 @@ func TestLoadUserManager(t *testing.T) {
 	}
 	multiNoInfo := evergreen.MultiAuthConfig{
 		ReadWrite: []string{evergreen.AuthGithubKey},
-		ReadOnly:  []string{},
+		ReadOnly:  []string{evergreen.AuthOnlyAPIKey},
 	}
 
 	a := evergreen.AuthConfig{}
@@ -78,20 +78,6 @@ func TestLoadUserManager(t *testing.T) {
 	assert.False(t, info.CanClearTokens)
 	assert.False(t, info.CanReauthorize)
 	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is OnlyAPI")
-
-	a = evergreen.AuthConfig{Multi: &multi}
-	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.Error(t, err, "a multi UserManager should not be created if the component types are missing settings")
-	assert.Nil(t, um)
-	assert.False(t, info.CanClearTokens)
-	assert.False(t, info.CanReauthorize)
-
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, LDAP: &ldap}
-	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
-	assert.Error(t, err, "a multi UserManager should not be created if the component types are missing settings")
-	assert.Nil(t, um)
-	assert.False(t, info.CanClearTokens)
-	assert.False(t, info.CanReauthorize)
 
 	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, LDAP: &ldap, Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
