@@ -123,7 +123,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 	Convey("With a set of test definitions", t, func() {
 		Convey("an empty definition should return an empty list", func() {
 			a := matrixDefinition{}
-			cells := a.allCells()
+			cells, err := a.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 0)
 		})
 		Convey("an empty axis should cause a panic", func() {
@@ -131,13 +132,16 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"a": []string{},
 				"b": []string{"1"},
 			}
-			So(func() { a.allCells() }, ShouldPanic)
+			cells, err := a.allCells()
+			So(err, ShouldNotBeNil)
+			So(cells, ShouldBeNil)
 		})
 		Convey("a one-cell matrix should return a one-item list", func() {
 			a := matrixDefinition{
 				"a": []string{"0"},
 			}
-			cells := a.allCells()
+			cells, err := a.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 1)
 			So(cells, ShouldContainResembling, matrixValue{"a": "0"})
 			b := matrixDefinition{
@@ -145,7 +149,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"b": []string{"1"},
 				"c": []string{"2"},
 			}
-			cells = b.allCells()
+			cells, err = b.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 1)
 			So(cells, ShouldContainResembling, matrixValue{"a": "0", "b": "1", "c": "2"})
 		})
@@ -153,7 +158,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 			a := matrixDefinition{
 				"a": []string{"0", "1", "2"},
 			}
-			cells := a.allCells()
+			cells, err := a.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 3)
 			So(cells, ShouldContainResembling, matrixValue{"a": "0"})
 			So(cells, ShouldContainResembling, matrixValue{"a": "1"})
@@ -162,7 +168,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"a": []string{"0"},
 				"b": []string{"0", "1", "2"},
 			}
-			cells = b.allCells()
+			cells, err = b.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 3)
 			So(cells, ShouldContainResembling, matrixValue{"b": "0", "a": "0"})
 			So(cells, ShouldContainResembling, matrixValue{"b": "1", "a": "0"})
@@ -171,7 +178,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"c": []string{"0", "1", "2"},
 				"d": []string{"0"},
 			}
-			cells = c.allCells()
+			cells, err = c.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 3)
 			So(cells, ShouldContainResembling, matrixValue{"c": "0", "d": "0"})
 			So(cells, ShouldContainResembling, matrixValue{"c": "1", "d": "0"})
@@ -182,7 +190,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"a": []string{"0", "1"},
 				"b": []string{"0", "1"},
 			}
-			cells := a.allCells()
+			cells, err := a.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 4)
 			So(cells, ShouldContainResembling, matrixValue{"a": "0", "b": "0"})
 			So(cells, ShouldContainResembling, matrixValue{"a": "1", "b": "0"})
@@ -203,7 +212,8 @@ func TestMatrixDefinitionAllCells(t *testing.T) {
 				"b": bigList(290),
 				"c": bigList(20),
 			}
-			cells := huge.allCells()
+			cells, err := huge.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 15*290*20)
 			So(cells, ShouldContainResembling, matrixValue{"a": "0", "b": "0", "c": "0"})
 			So(cells, ShouldContainResembling, matrixValue{"a": "14", "b": "289", "c": "19"})
@@ -244,7 +254,8 @@ func TestMatrixDefinitionContains(t *testing.T) {
 				"a": []string{"0", "1"},
 				"b": []string{"0", "1"},
 			}
-			cells := a.allCells()
+			cells, err := a.allCells()
+			So(err, ShouldBeNil)
 			So(len(cells), ShouldEqual, 4)
 			So(a.contains(matrixValue{"a": "0", "b": "0"}), ShouldBeTrue)
 			So(a.contains(matrixValue{"a": "1", "b": "0"}), ShouldBeTrue)
