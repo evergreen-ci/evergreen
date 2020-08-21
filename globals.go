@@ -30,6 +30,8 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
+	GlobalMaxHosts = 6000
+
 	// Task Statuses used in the database models
 
 	// TaskInactive is not assigned to any new tasks, but can be found
