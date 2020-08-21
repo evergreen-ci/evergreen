@@ -11,12 +11,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/sam-falvo/mbox"
 )
+
+// Summary stores summary patch information
+type Summary struct {
+	Name        string `bson:"filename"`
+	Additions   int    `bson:"additions"`
+	Deletions   int    `bson:"deletions"`
+	Description string `bson:"description,omitempty"`
+}
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
@@ -70,7 +78,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
-func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err error) {
+func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 	// separate stats per file
 	fileStats := strings.Split(gitOutput.String(), "\n")
 
@@ -111,7 +119,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 			}
 		}
 
-		summary := patch.Summary{
+		summary := Summary{
 			Name:      details[2],
 			Additions: additions,
 			Deletions: deletions,
@@ -121,8 +129,8 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 	return summaries, nil
 }
 
-func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
-	summaries := []patch.Summary{}
+func GetPatchSummaries(patchContent string) ([]Summary, error) {
+	summaries := []Summary{}
 	if patchContent != "" {
 		gitOutput, err := GitApplyNumstat(patchContent)
 		if err != nil {
@@ -138,6 +146,64 @@ func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
 		}
 	}
 	return summaries, nil
+}
+
+// GetPatchSummariesByCommit returns patch summaries organized summaries by commit
+func GetPatchSummariesByCommit(reader io.Reader) ([]Summary, []string, error) {
+	stream, err := mbox.CreateMboxStream(reader)
+	if err != nil {
+		if err == io.EOF {
+			return nil, nil, errors.Errorf("patch is empty")
+		}
+		return nil, nil, errors.Wrap(err, "error creating stream")
+	}
+	if stream == nil {
+		return nil, nil, errors.New("mbox stream is nil")
+	}
+	summaries := []Summary{}
+	commitMessages := []string{}
+	// iterate through patches
+	for err == nil {
+		var buffer []byte
+		msg, err := stream.ReadMessage()
+		if err != nil {
+			if err == io.EOF { // no more patches
+				return summaries, commitMessages, nil
+			}
+			return nil, nil, errors.Wrap(err, "error reading message")
+		}
+
+		var description string
+		if subject := msg.Headers()["Subject"]; len(subject) > 0 {
+			description = strings.TrimSpace(subject[0])
+		}
+
+		reader := msg.BodyReader()
+		// iterate through patch body
+		for {
+			curBytes := make([]byte, bytes.MinRead)
+			n, err := reader.Read(curBytes)
+			if err != nil {
+				if err == io.EOF { // finished reading body of this patch
+					var patchSummaries []Summary
+					patchSummaries, err = GetPatchSummaries(string(buffer))
+					if err != nil {
+						return nil, nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
+					}
+					for i := range patchSummaries {
+						patchSummaries[i].Description = description
+					}
+					summaries = append(summaries, patchSummaries...)
+					commitMessages = append(commitMessages, description)
+					break
+				}
+				return nil, nil, errors.Wrap(err, "error reading body")
+			}
+			buffer = append(buffer, curBytes[0:n]...)
+		}
+	}
+
+	return summaries, commitMessages, nil
 }
 
 func ParseGitUrl(url string) (string, string, error) {

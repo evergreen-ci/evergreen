@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 				Githash: "revision",
 				PatchSet: patch.PatchSet{
 					Patch: fmt.Sprintf(string(fileBytes), testPath, testPath, testPath, testPath),
-					Summary: []patch.Summary{
+					Summary: []thirdparty.Summary{
 						{Name: configFilePath, Additions: 4, Deletions: 80},
 						{Name: "random.txt", Additions: 6, Deletions: 0},
 					},
@@ -145,7 +146,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 				Githash: "revision",
 				PatchSet: patch.PatchSet{
 					Patch:   string(fileBytes),
-					Summary: []patch.Summary{{Name: newConfigFilePath}},
+					Summary: []thirdparty.Summary{{Name: newConfigFilePath}},
 				},
 			},
 		},
@@ -311,7 +312,7 @@ func TestMakePatchedConfig(t *testing.T) {
 					Githash: "revision",
 					PatchSet: patch.PatchSet{
 						Patch: diffString,
-						Summary: []patch.Summary{{
+						Summary: []thirdparty.Summary{{
 							Name:      remoteConfigPath,
 							Additions: 3,
 							Deletions: 3,
@@ -339,7 +340,7 @@ func TestMakePatchedConfig(t *testing.T) {
 					Githash: "revision",
 					PatchSet: patch.PatchSet{
 						Patch:   string(fileBytes),
-						Summary: []patch.Summary{{Name: remoteConfigPath}},
+						Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
 					},
 				}},
 			}
@@ -891,7 +892,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				FinishTime: startTime.Add(30 * time.Minute),
 				Status:     evergreen.PatchFailed,
 				Alias:      evergreen.CommitQueueAlias,
-				GithubPatchData: patch.GithubPatch{
+				GithubPatchData: thirdparty.GithubPatch{
 					PRNumber: 456,
 				},
 			}
@@ -918,7 +919,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Status:      evergreen.PatchFailed,
 					Alias:       evergreen.CommitQueueAlias,
 					Author:      "me",
-					GithubPatchData: patch.GithubPatch{
+					GithubPatchData: thirdparty.GithubPatch{
 						PRNumber: 123,
 					},
 					Patches: []patch.ModulePatch{
@@ -927,7 +928,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 							ModuleName: "name",
 							PatchSet: patch.PatchSet{
 								Patch: "456",
-								Summary: []patch.Summary{
+								Summary: []thirdparty.Summary{
 									{Name: configFilePath, Additions: 4, Deletions: 80},
 									{Name: "random.txt", Additions: 6, Deletions: 0},
 								},

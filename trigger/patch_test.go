@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -44,7 +45,7 @@ func (s *patchSuite) SetupTest() {
 		Author:     "someone",
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
 			HeadOwner: "tychoish",

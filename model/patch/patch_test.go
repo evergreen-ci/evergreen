@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestConfigChanged(t *testing.T) {
 	p := &Patch{
 		Patches: []ModulePatch{{
 			PatchSet: PatchSet{
-				Summary: []Summary{{
+				Summary: []thirdparty.Summary{{
 					Name:      remoteConfigPath,
 					Additions: 3,
 					Deletions: 3,
@@ -59,7 +60,7 @@ func (s *patchSuite) SetupTest() {
 		{
 			Author:     "octocat",
 			CreateTime: s.time,
-			GithubPatchData: GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber:  9001,
 				Author:    "octocat",
 				BaseOwner: "evergreen-ci",
@@ -70,7 +71,7 @@ func (s *patchSuite) SetupTest() {
 		},
 		{
 			CreateTime: s.time.Add(-time.Hour),
-			GithubPatchData: GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber:  9001,
 				Author:    "octocat",
 				BaseOwner: "evergreen-ci",
@@ -81,7 +82,7 @@ func (s *patchSuite) SetupTest() {
 		},
 		{
 			CreateTime: s.time.Add(time.Hour),
-			GithubPatchData: GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber:  9001,
 				Author:    "octocat",
 				BaseOwner: "evergreen-ci",
@@ -92,7 +93,7 @@ func (s *patchSuite) SetupTest() {
 		},
 		{
 			CreateTime: s.time.Add(time.Hour),
-			GithubPatchData: GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber:  9002,
 				Author:    "octodog",
 				BaseOwner: "evergreen-ci",
@@ -103,7 +104,7 @@ func (s *patchSuite) SetupTest() {
 		},
 		{
 			CreateTime: s.time,
-			GithubPatchData: GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber:       9002,
 				Author:         "octodog",
 				MergeCommitSHA: "abcdef",
@@ -224,6 +225,18 @@ func TestPatchSortByCreateTime(t *testing.T) {
 	assert.Equal(4, patches[2].PatchNumber)
 	assert.Equal(5, patches[3].PatchNumber)
 	assert.Equal(100, patches[4].PatchNumber)
+}
+
+func TestIsBackport(t *testing.T) {
+	p := Patch{}
+	assert.False(t, p.IsBackport())
+
+	p.BackportOf.PatchID = "abc"
+	assert.True(t, p.IsBackport())
+
+	p = Patch{}
+	p.BackportOf.SHA = "abc"
+	assert.True(t, p.IsBackport())
 }
 
 func TestIsMailbox(t *testing.T) {

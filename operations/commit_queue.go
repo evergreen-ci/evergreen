@@ -26,6 +26,7 @@ const (
 	commitsFlagName     = "commits"
 	existingPatchFlag   = "existing-patch"
 	backportProjectFlag = "backport-project"
+	commitShaFlag       = "commit-sha"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
@@ -294,6 +295,10 @@ func backport() cli.Command {
 					Usage: "existing commit queue patch",
 				},
 				cli.StringFlag{
+					Name:  joinFlagNames(commitShaFlag, "s"),
+					Usage: "existing commit SHA to backport",
+				},
+				cli.StringFlag{
 					Name:  joinFlagNames(backportProjectFlag, "b"),
 					Usage: "project to backport onto",
 				},
@@ -301,7 +306,7 @@ func backport() cli.Command {
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireStringFlag(backportProjectFlag),
-			requireStringFlag(existingPatchFlag),
+			mutuallyExclusiveArgs(true, existingPatchFlag, commitShaFlag),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -309,13 +314,16 @@ func backport() cli.Command {
 
 			confPath := c.Parent().Parent().String(confFlagName)
 			patchParams := &patchParams{
-				Tasks:      c.StringSlice(tasksFlagName),
-				Variants:   c.StringSlice(variantsFlagName),
-				Alias:      c.String(patchAliasFlagName),
-				Finalize:   c.Bool(patchFinalizeFlagName),
-				BackportOf: c.String(existingPatchFlag),
-				Project:    c.String(backportProjectFlag),
-				Browse:     c.Bool(patchBrowseFlagName),
+				Tasks:    c.StringSlice(tasksFlagName),
+				Variants: c.StringSlice(variantsFlagName),
+				Alias:    c.String(patchAliasFlagName),
+				Finalize: c.Bool(patchFinalizeFlagName),
+				Project:  c.String(backportProjectFlag),
+				Browse:   c.Bool(patchBrowseFlagName),
+				BackportOf: patch.BackportInfo{
+					PatchID: c.String(existingPatchFlag),
+					SHA:     c.String(commitShaFlag),
+				},
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -333,12 +341,14 @@ func backport() cli.Command {
 				return err
 			}
 
-			existingPatch, err := ac.GetPatch(patchParams.BackportOf)
-			if err != nil {
-				return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf)
-			}
-			if !existingPatch.IsCommitQueuePatch() {
-				return errors.Errorf("patch '%s' is not a commit queue patch", patchParams.BackportOf)
+			if len(patchParams.BackportOf.PatchID) > 0 {
+				existingPatch, err := ac.GetPatch(patchParams.BackportOf.PatchID)
+				if err != nil {
+					return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf.PatchID)
+				}
+				if !existingPatch.IsCommitQueuePatch() {
+					return errors.Errorf("patch '%s' is not a commit queue patch", patchParams.BackportOf.PatchID)
+				}
 			}
 
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)

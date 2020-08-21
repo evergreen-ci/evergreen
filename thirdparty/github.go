@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -31,6 +31,27 @@ const (
 	GithubAPIStatusGood  = "good"
 
 	Github502Error = "502 Server Error"
+)
+
+// GithubPatch stores patch data for patches create from GitHub pull requests
+type GithubPatch struct {
+	PRNumber       int    `bson:"pr_number"`
+	BaseOwner      string `bson:"base_owner"`
+	BaseRepo       string `bson:"base_repo"`
+	BaseBranch     string `bson:"base_branch"`
+	HeadOwner      string `bson:"head_owner"`
+	HeadRepo       string `bson:"head_repo"`
+	HeadHash       string `bson:"head_hash"`
+	Author         string `bson:"author"`
+	AuthorUID      int    `bson:"author_uid"`
+	MergeCommitSHA string `bson:"merge_commit_sha"`
+}
+
+var (
+	// BSON fields for GithubPatch
+	GithubPatchPRNumberKey  = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	GithubPatchBaseOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	GithubPatchBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 )
 
 func githubShouldRetry(index int, req *http.Request, resp *http.Response, err error) bool {
@@ -293,6 +314,54 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	}
 	if commit == nil {
 		return nil, errors.New("commit not found in github")
+	}
+
+	return commit, nil
+}
+
+type PatchFormat int
+
+const (
+	Diff PatchFormat = PatchFormat(iota)
+	Patch
+)
+
+func (f PatchFormat) ToGithubFormat() github.RawType {
+	if f == Diff {
+		return github.Diff
+	}
+
+	return github.Patch
+}
+
+// GetBranchEvent gets the head of the a given branch via an API call to GitHub
+func GetRawCommit(ctx context.Context, oauthToken, repoOwner, repo, sha string, format PatchFormat) (string, error) {
+	httpClient := getGithubClient(oauthToken)
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	grip.Debugf("requesting raw github commit for '%s/%s': sha: %s\n", repoOwner, repo, sha)
+
+	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: format.ToGithubFormat()})
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying  '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
+		grip.Error(errMsg)
+		return "", APIResponseError{errMsg}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", ResponseReadError{err.Error()}
+		}
+		requestError := APIRequestError{}
+		if err = json.Unmarshal(respBody, &requestError); err != nil {
+			return "", APIRequestError{Message: string(respBody)}
+		}
+		return "", requestError
 	}
 
 	return commit, nil
@@ -595,7 +664,7 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
+func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
 	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	defer utility.PutHTTPClient(httpClient)
 
@@ -644,7 +713,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 }
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
-func GetGithubPullRequestDiff(ctx context.Context, token string, gh patch.GithubPatch) (string, []patch.Summary, error) {
+func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
 	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)

@@ -510,19 +510,19 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
 	// and non utf-8 characters will be preserved.
 	data := struct {
-		Description       string        `json:"desc"`
-		Project           string        `json:"project"`
-		PatchBytes        []byte        `json:"patch_bytes"`
-		Githash           string        `json:"githash"`
-		Alias             string        `json:"alias"`
-		Variants          []string      `json:"buildvariants_new"`
-		Tasks             []string      `json:"tasks"`
-		SyncTasks         []string      `json:"sync_tasks"`
-		SyncBuildVariants []string      `json:"sync_build_variants"`
-		SyncStatuses      []string      `json:"sync_statuses"`
-		SyncTimeout       time.Duration `json:"sync_timeout"`
-		Finalize          bool          `json:"finalize"`
-		BackportOf        string        `json:"backport_of"`
+		Description       string             `json:"desc"`
+		Project           string             `json:"project"`
+		PatchBytes        []byte             `json:"patch_bytes"`
+		Githash           string             `json:"githash"`
+		Alias             string             `json:"alias"`
+		Variants          []string           `json:"buildvariants_new"`
+		Tasks             []string           `json:"tasks"`
+		SyncTasks         []string           `json:"sync_tasks"`
+		SyncBuildVariants []string           `json:"sync_build_variants"`
+		SyncStatuses      []string           `json:"sync_statuses"`
+		SyncTimeout       time.Duration      `json:"sync_timeout"`
+		Finalize          bool               `json:"finalize"`
+		BackportOf        patch.BackportInfo `json:"backport_of"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectId,

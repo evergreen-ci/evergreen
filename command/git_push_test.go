@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
 	"github.com/mongodb/jasper"
@@ -57,7 +58,7 @@ func TestGitPush(t *testing.T) {
 					{
 						ModuleName: "",
 						PatchSet: patch.PatchSet{
-							Summary: []patch.Summary{
+							Summary: []thirdparty.Summary{
 								{
 									Name: "hello.txt",
 								},
