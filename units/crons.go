@@ -401,7 +401,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if stats.count > evergreen.GlobalMaxHosts {
+		if stats.count > env.Settings().HostInit.GlobalMaxHosts {
 			grip.Warning(message.Fields{
 				"message":            "GlobalMaxHosts has been exceeded, no more hosts will be spawned",
 				"global_max_hosts":   evergreen.GlobalMaxHosts,

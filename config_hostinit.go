@@ -14,6 +14,7 @@ type HostInitConfig struct {
 	HostThrottle         int `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
 	ProvisioningThrottle int `bson:"provisioning_throttle" json:"provisioning_throttle" yaml:"provisioning_throttle"`
 	CloudStatusBatchSize int `bson:"cloud_batch_size" json:"cloud_batch_size" yaml:"cloud_batch_size"`
+	GlobalMaxHosts       int `bson:"global_max_hosts" json:"global_max_hosts" yaml:"global_max_hosts"`
 }
 
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
@@ -49,6 +50,7 @@ func (c *HostInitConfig) Set() error {
 			"host_throttle":         c.HostThrottle,
 			"provisioning_throttle": c.ProvisioningThrottle,
 			"cloud_batch_size":      c.CloudStatusBatchSize,
+			"global_max_hosts":      c.GlobalMaxHosts,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -68,5 +70,8 @@ func (c *HostInitConfig) ValidateAndDefault() error {
 		c.CloudStatusBatchSize = 500
 	}
 
+	if c.GlobalMaxHosts <= 0 {
+		c.GlobalMaxHosts = 5000
+	}
 	return nil
 }
