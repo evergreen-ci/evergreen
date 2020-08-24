@@ -309,10 +309,6 @@ func (s *EC2Suite) TestConfigure() {
 	s.Equal("default-key", creds.AccessKeyID)
 	s.Equal("default-secret", creds.SecretAccessKey)
 
-	// Region specified, does not exist in config
-	err = s.onDemandWithRegionManager.Configure(ctx, settings)
-	s.Error(err)
-
 	// config missing key or secret
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
 		{Key: "test-key", Secret: ""},

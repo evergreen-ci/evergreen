@@ -320,7 +320,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	options.InstanceType = testInstanceType
 	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
-	fmt.Println(err.Error())
 	s.Contains(err.Error(), "not been allowed by admins")
 	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
 	s.NoError(config.Set())
@@ -328,8 +327,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	// found instance type in config
 	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
-	fmt.Println(err.Error())
-	s.Contains(err.Error(), "Unable to find region")
+	s.NotContains(err.Error(), "not been allowed by admins")
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {

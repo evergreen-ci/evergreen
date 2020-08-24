@@ -102,12 +102,13 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	var err error
+	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
+	if err != nil {
+		return errors.Wrap(err, "Problem getting EC2 keys")
+	}
 	if m.providerKey == "" || m.providerSecret == "" {
-		var err error
-		m.providerKey, m.providerSecret, err = GetEC2Key(settings)
-		if err != nil {
-			return errors.Wrap(err, "Problem getting EC2 keys")
-		}
+		return errors.New("provider key/secret can't be empty")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
