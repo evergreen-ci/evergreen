@@ -355,7 +355,7 @@ type ComplexityRoot struct {
 		AwsRegions         func(childComplexity int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
-		DistroTaskQueue    func(childComplexity int, distroID string) int
+		DistroTaskQueue    func(childComplexity int, distroID string, taskID *string, revision *string) int
 		Distros            func(childComplexity int, onlySpawnable bool) int
 		Host               func(childComplexity int, hostID string) int
 		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
@@ -637,7 +637,7 @@ type QueryResolver interface {
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
 	InstanceTypes(ctx context.Context) ([]string, error)
-	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
+	DistroTaskQueue(ctx context.Context, distroID string, taskID *string, revision *string) ([]*model.APITaskQueueItem, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -2163,7 +2163,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.DistroTaskQueue(childComplexity, args["distroId"].(string)), true
+		return e.complexity.Query.DistroTaskQueue(childComplexity, args["distroId"].(string), args["taskId"].(*string), args["revision"].(*string)), true
 
 	case "Query.distros":
 		if e.complexity.Query.Distros == nil {
@@ -3415,7 +3415,11 @@ var sources = []*ast.Source{
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
-  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  distroTaskQueue(
+    distroId: String!
+    taskId: String = ""
+    revision: String = ""
+  ): [TaskQueueItem!]!
 }
 
 type Mutation {
@@ -4500,6 +4504,22 @@ func (ec *executionContext) field_Query_distroTaskQueue_args(ctx context.Context
 		}
 	}
 	args["distroId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["revision"]; ok {
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["revision"] = arg2
 	return args, nil
 }
 
@@ -12319,7 +12339,7 @@ func (ec *executionContext) _Query_distroTaskQueue(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DistroTaskQueue(rctx, args["distroId"].(string))
+		return ec.resolvers.Query().DistroTaskQueue(rctx, args["distroId"].(string), args["taskId"].(*string), args["revision"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

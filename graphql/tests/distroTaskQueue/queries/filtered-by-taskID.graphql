@@ -1,0 +1,15 @@
+query {
+  distroTaskQueue(
+    distroId: "osx-108"
+    taskId: "mongo_c_driver_os_x_108_64_nossl_compile_292ceeaae06844f3d759e4a05e9b9cb7be97171e_16_04_15_17_13_00"
+  ) {
+    id
+    expectedDuration
+    requester
+    displayName
+    project
+    buildVariant
+    priority
+    revision
+  }
+}

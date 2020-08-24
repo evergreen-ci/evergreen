@@ -180,12 +180,16 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 	}
 }
 
+func GetTaskQueueWithFilters(distro string, taskID string, revision string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection}, taskID, revision)
+}
+
 func LoadTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection}, "", "")
 }
 
 func LoadDistroAliasTaskQueue(distroID string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskAliasQueuesCollection})
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskAliasQueuesCollection}, "", "")
 }
 
 func (self *TaskQueue) Length() int {
@@ -471,7 +475,21 @@ type taskQueueQuery struct {
 	DistroID   string
 }
 
-func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
+func getTaskQueueFilter(taskQueueItemKey, value string) bson.M {
+	return bson.M{
+		"$project": bson.M{
+			taskQueueQueueKey: bson.M{
+				"$filter": bson.M{
+					"input": "$" + taskQueueQueueKey,
+					"as":    "queue",
+					"cond":  bson.M{"$eq": []string{"$$queue." + taskQueueItemKey, value}},
+				},
+			},
+		},
+	}
+}
+
+func findTaskQueueForDistro(q taskQueueQuery, taskID string, revision string) (*TaskQueue, error) {
 	isDispatchedKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey)
 
 	pipeline := []bson.M{
@@ -522,6 +540,14 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 				},
 			},
 		},
+	}
+
+	if len(taskID) > 0 {
+		pipeline = append(pipeline, getTaskQueueFilter(taskQueueItemIdKey, taskID))
+	}
+
+	if len(revision) > 0 {
+		pipeline = append(pipeline, getTaskQueueFilter(taskQueueItemRevisionKey, revision))
 	}
 
 	out := []TaskQueue{}

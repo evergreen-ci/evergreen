@@ -64,7 +64,11 @@ type Query {
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
-  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  distroTaskQueue(
+    distroId: String!
+    taskId: String = ""
+    revision: String = ""
+  ): [TaskQueueItem!]!
 }
 
 type Mutation {

@@ -1229,8 +1229,8 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	return apiDistros, nil
 }
 
-func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
-	distroQueue, err := model.LoadTaskQueue(distroID)
+func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string, taskID *string, revision *string) ([]*restModel.APITaskQueueItem, error) {
+	distroQueue, err := model.GetTaskQueueWithFilters(distroID, *taskID, *revision)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task queue for distro %v: %v", distroID, err.Error()))
 	}
