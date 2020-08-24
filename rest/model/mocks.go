@@ -55,3 +55,10 @@ type MockTypes struct {
 	RuneType       rune
 	RunePtrType    *rune
 }
+
+type StructWithAliased struct {
+	Foo AliasedType
+	Bar string
+}
+
+type AliasedType string

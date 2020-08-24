@@ -21,3 +21,7 @@ models:
     model: github.com/evergreen-ci/evergreen/model/patch.DisplayTask
   ArtifactEntry:
     model: github.com/evergreen-ci/evergreen/model/artifact.Entry
+  StructWithAliased:
+    model: github.com/evergreen-ci/evergreen/rest/model.StructWithAliased
+  StructWithAliased2:
+    model: github.com/evergreen-ci/evergreen/rest/model.StructWithAliased2
