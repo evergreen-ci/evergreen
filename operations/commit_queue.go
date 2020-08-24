@@ -342,7 +342,8 @@ func backport() cli.Command {
 			}
 
 			if len(patchParams.BackportOf.PatchID) > 0 {
-				existingPatch, err := ac.GetPatch(patchParams.BackportOf.PatchID)
+				var existingPatch *patch.Patch
+				existingPatch, err = ac.GetPatch(patchParams.BackportOf.PatchID)
 				if err != nil {
 					return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf.PatchID)
 				}
