@@ -36,6 +36,51 @@ diff --git a/test3.txt b/test3.txt
 new file mode 100644
 index 0000000..e69de29
 `
+
+	mboxPatch = `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 10:41:34 -0500
+Subject: EVG-6799 remove one commit validation
+
+---
+operations/commit_queue.go | 16 +++++++++-------
+2 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/operations/commit_queue.go b/units/commit_queue.go
+index 3fd24ea7e..800e17d2f 100644
+--- a/operations/commit_queue.go
++++ b/operations/commit_queue.go
+@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
+                                Usage: "force item to front of queue",
+                        },
+                )),
++               Before: setPlainLogger,
+                Action: func(c *cli.Context) error {
+                        ctx, cancel := context.WithCancel(context.Background())
+                        defer cancel()
+
+From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
+From: ablack12 <annie.black@10gen.com>
+Date: Thu, 2 Jan 2020 13:35:10 -0500
+Subject: Commit message
+with an extended description
+---
+units/commit_queue.go | 5 +++--
+1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/units/commit_queue.go b/units/commit_queue.go
+index ce0542e91..718dd8099 100644
+--- a/units/commit_queue.go
++++ b/units/commit_queue.go
+@@ -512,6 +512,7 @@ func validateBranch(branch *github.Branch) error {
+ }
+
+ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
++       grip.Log("From (hoping this doesn't mess anything up)")'"
+        settings, err := evergreen.GetConfig()
+        if err != nil {
+                return errors.Wrap(err, "error retrieving Evergreen config")
+`
 )
 
 func TestGetPatchSummaries(t *testing.T) {
@@ -85,51 +130,7 @@ func TestParseGitUrl(t *testing.T) {
 }
 
 func TestGetPatchSummariesByCommit(t *testing.T) {
-	patchData := `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
-From: ablack12 <annie.black@10gen.com>
-Date: Thu, 2 Jan 2020 10:41:34 -0500
-Subject: EVG-6799 remove one commit validation
-
----
-operations/commit_queue.go | 16 +++++++++-------
-2 files changed, 9 insertions(+), 7 deletions(-)
-
-diff --git a/operations/commit_queue.go b/units/commit_queue.go
-index 3fd24ea7e..800e17d2f 100644
---- a/operations/commit_queue.go
-+++ b/operations/commit_queue.go
-@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
-                                Usage: "force item to front of queue",
-                        },
-                )),
-+               Before: setPlainLogger,
-                Action: func(c *cli.Context) error {
-                        ctx, cancel := context.WithCancel(context.Background())
-                        defer cancel()
-
-From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
-From: ablack12 <annie.black@10gen.com>
-Date: Thu, 2 Jan 2020 13:35:10 -0500
-Subject: Commit message
-with an extended description
----
-units/commit_queue.go | 5 +++--
-1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/units/commit_queue.go b/units/commit_queue.go
-index ce0542e91..718dd8099 100644
---- a/units/commit_queue.go
-+++ b/units/commit_queue.go
-@@ -512,6 +512,7 @@ func validateBranch(branch *github.Branch) error {
- }
- 
- func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
-+       grip.Log("From (hoping this doesn't mess anything up)")'"
-        settings, err := evergreen.GetConfig()
-        if err != nil {
-                return errors.Wrap(err, "error retrieving Evergreen config")
-`
-	summaries, commitMessages, err := GetPatchSummariesByCommit(patchData)
+	summaries, commitMessages, err := GetPatchSummariesByCommit(mboxPatch)
 	assert.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
@@ -143,14 +144,27 @@ index ce0542e91..718dd8099 100644
 	assert.Equal(t, "Commit message...", commitMessages[1])
 }
 
-func TestGetPatchSummariesByCountLong(t *testing.T) {
-	str := strings.Repeat("this is a long string", 100)
-	msg := fmt.Sprintf(`From foo@bar.com
+func TestGetPatchSummariesByCommitLong(t *testing.T) {
+	str := strings.Repeat("this is a long string", 1000)
+	msg := fmt.Sprintf(`From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
 From: ablack12 <annie.black@10gen.com>
 Date: Thu, 2 Jan 2020 10:41:34 -0500
 Subject: EVG-6799 remove one commit validation
 
----\n%s\n`, str)
+---
+diff --git a/thirdparty/git.go b/thirdparty/git.go
+index 03362f816..a9ae2024e 100644
+--- a/thirdparty/git.go
++++ b/thirdparty/git.go
+@@ -28,6 +28,7 @@ type Summary struct {
+ // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
+ // if it is successful
+ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
++       // %s
+        handle, err := ioutil.TempFile("", utility.RandomString())
+        if err != nil {
+                return nil, errors.New("Unable to create local patch file")
+`, str)
 	assert.True(t, len([]byte(str)) > 1000)
 	summaries, commitMessages, err := GetPatchSummariesByCommit(msg)
 	assert.NoError(t, err)

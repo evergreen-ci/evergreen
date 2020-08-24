@@ -25,6 +25,12 @@ type Summary struct {
 	Description string `bson:"description,omitempty"`
 }
 
+type Commit struct {
+	Summaries []Summary `bson:"summaries"`
+	Message   string    `bson:"message"`
+	Patch     string    `bson:"patch"`
+}
+
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
 func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
@@ -147,30 +153,61 @@ func GetPatchSummaries(patchContent string) ([]Summary, error) {
 	return summaries, nil
 }
 
-// GetPatchSummariesByCommit returns patch summaries organized summaries by commit
-func GetPatchSummariesByCommit(patchContent string) ([]Summary, []string, error) {
-	tmpDir, err := ioutil.TempDir("", "patch_summaries_by_commit")
+func GetPatchSummariesByCommit(mboxPatch string) ([]Summary, []string, error) {
+	commits, err := GetCommitsFromMboxPatch(mboxPatch)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "problem creating temporary directory")
-	}
-	defer os.RemoveAll(tmpDir)
-
-	mailSplitCommand := exec.Command("git", "mailsplit", "--keep-cr", fmt.Sprintf("-o%s", tmpDir))
-	mailSplitCommand.Stdin = strings.NewReader(patchContent)
-	if err = mailSplitCommand.Run(); err != nil {
-		return nil, nil, errors.Wrap(err, "problem splitting patch content")
+		return nil, nil, errors.Wrap(err, "can't get commits from patch")
 	}
 
 	summaries := []Summary{}
 	commitMessages := []string{}
+	for _, commit := range commits {
+		for i := range commit.Summaries {
+			commit.Summaries[i].Description = commit.Message
+		}
+		summaries = append(summaries, commit.Summaries...)
+		commitMessages = append(commitMessages, commit.Message)
+	}
+
+	return summaries, commitMessages, nil
+}
+
+func GetDiffsFromMboxPatch(patchContent string) (string, error) {
+	commits, err := GetCommitsFromMboxPatch(patchContent)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting commits from patch")
+	}
+	diffs := make([]string, 0, len(commits))
+	for _, commit := range commits {
+		diffs = append(diffs, commit.Patch)
+	}
+
+	return strings.Join(diffs, "\n"), nil
+}
+
+// GetCommitsFromMboxPatch returns commit information from an mbox patch
+func GetCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
+	tmpDir, err := ioutil.TempDir("", "patch_summaries_by_commit")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem creating temporary directory")
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mailSplitCommand := exec.Command("git", "mailsplit", "--keep-cr", fmt.Sprintf("-o%s", tmpDir))
+	mailSplitCommand.Stdin = strings.NewReader(mboxPatch)
+	if err = mailSplitCommand.Run(); err != nil {
+		return nil, errors.Wrap(err, "problem splitting patch content")
+	}
+
+	commits := []Commit{}
 	files, err := ioutil.ReadDir(tmpDir)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "problem listing split patches")
+		return nil, errors.Wrap(err, "problem listing split patches")
 	}
 	for i, file := range files {
 		fileReader, err := os.Open(filepath.Join(tmpDir, file.Name()))
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "can't open individual patch file")
+			return nil, errors.Wrap(err, "can't open individual patch file")
 		}
 
 		msgFile := filepath.Join(tmpDir, fmt.Sprintf("%d_message.txt", i))
@@ -179,37 +216,37 @@ func GetPatchSummariesByCommit(patchContent string) ([]Summary, []string, error)
 		mailInfoCommand.Stdin = fileReader
 		out, err := mailInfoCommand.CombinedOutput()
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem getting mailinfo from patches")
+			return nil, errors.Wrap(err, "problem getting mailinfo from patches")
 		}
 		commitMessage, err := parseCommitMessage(string(out))
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem parsing commit message")
+			return nil, errors.Wrap(err, "problem parsing commit message")
 		}
 		msgFileInfo, err := os.Stat(msgFile)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem getting message file info")
+			return nil, errors.Wrap(err, "problem getting message file info")
 		}
 		if msgFileInfo.Size() > 0 {
 			commitMessage = fmt.Sprintf("%s...", commitMessage)
 		}
 
-		patchString, err := ioutil.ReadFile(patchFile)
+		patchBytes, err := ioutil.ReadFile(patchFile)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem reading patch file")
+			return nil, errors.Wrap(err, "problem reading patch file")
 		}
-		patchSummaries, err := GetPatchSummaries(string(patchString))
+		patchSummaries, err := GetPatchSummaries(string(patchBytes))
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem getting commit summaries for patch")
-		}
-		for i := range patchSummaries {
-			patchSummaries[i].Description = commitMessage
+			return nil, errors.Wrap(err, "problem getting commit summaries for patch")
 		}
 
-		summaries = append(summaries, patchSummaries...)
-		commitMessages = append(commitMessages, commitMessage)
+		commits = append(commits, Commit{
+			Summaries: patchSummaries,
+			Message:   commitMessage,
+			Patch:     string(patchBytes),
+		})
 	}
 
-	return summaries, commitMessages, nil
+	return commits, nil
 }
 
 func parseCommitMessage(commitHeaders string) (string, error) {

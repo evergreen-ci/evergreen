@@ -2,10 +2,8 @@ package patch
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -20,7 +18,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"github.com/sam-falvo/mbox"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -244,8 +241,7 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 			continue
 		}
 
-		reader := strings.NewReader(rawStr)
-		diffs, err := GetPatchDiffsForMailbox(reader)
+		diffs, err := thirdparty.GetDiffsFromMboxPatch(rawStr)
 		if err != nil {
 			return errors.Wrapf(err, "error getting patch diffs for formatted patch")
 		}
@@ -679,49 +675,6 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 
 func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
-}
-
-func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
-	stream, err := mbox.CreateMboxStream(reader)
-	if err != nil {
-		if err == io.EOF {
-			return "", errors.Errorf("patch is empty")
-		}
-		return "", errors.Wrap(err, "error creating stream")
-	}
-	if stream == nil {
-		return "", errors.New("mbox stream is nil")
-	}
-
-	var result string
-	// iterate through patches
-	for err == nil {
-		var buffer []byte
-		msg, err := stream.ReadMessage()
-		if err != nil {
-			if err == io.EOF { // no more patches
-				return result, nil
-			}
-			return "", errors.Wrap(err, "error reading message")
-		}
-
-		reader := msg.BodyReader()
-		// iterate through patch body
-		for {
-			curBytes := make([]byte, bytes.MinRead)
-			n, err := reader.Read(curBytes)
-			if err != nil {
-				if err == io.EOF { // finished reading body of this patch
-					result = result + string(buffer)
-					break
-				}
-				return "", errors.Wrap(err, "error reading body")
-			}
-			buffer = append(buffer, curBytes[0:n]...)
-		}
-	}
-
-	return result, nil
 }
 
 func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
