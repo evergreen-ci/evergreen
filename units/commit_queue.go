@@ -306,6 +306,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "can't insert patch", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		return
 	}
 	nextItem.Version = patchDoc.Id.Hex()
 	if err = cq.UpdateVersion(nextItem); err != nil {
@@ -316,6 +317,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+		return
 	}
 
 	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
