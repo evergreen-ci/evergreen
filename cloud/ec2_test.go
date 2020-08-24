@@ -298,7 +298,7 @@ func (s *EC2Suite) TestConfigure() {
 
 	// No region specified
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
+		{Key: "default-key", Secret: "default-secret"},
 	}
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
@@ -313,27 +313,12 @@ func (s *EC2Suite) TestConfigure() {
 	err = s.onDemandWithRegionManager.Configure(ctx, settings)
 	s.Error(err)
 
-	// Region specified, config missing key or secret
+	// config missing key or secret
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
-		{Region: "test-region", Key: "test-key", Secret: ""},
+		{Key: "test-key", Secret: ""},
 	}
 	err = s.onDemandWithRegionManager.Configure(ctx, settings)
 	s.Error(err)
-
-	// Region specified, key and secret in config
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Region: evergreen.DefaultEC2Region, Key: "default-key", Secret: "default-secret"},
-		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
-	}
-	err = s.onDemandWithRegionManager.Configure(ctx, settings)
-	s.NoError(err)
-	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
-	s.True(ok)
-	creds, err = ec2m.credentials.Get()
-	s.NoError(err)
-	s.Equal("test-key", creds.AccessKeyID)
-	s.Equal("test-secret", creds.SecretAccessKey)
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -1361,20 +1346,18 @@ func (s *EC2Suite) TestGetEC2Key() {
 			AWS: evergreen.AWSConfig{},
 		},
 	}
-	key, secret, err := GetEC2Key("test-region", settings)
+	key, secret, err := GetEC2Key(settings)
 	s.Empty(key)
 	s.Empty(secret)
-	s.EqualError(err, "Unable to find region 'test-region' in config")
+	s.EqualError(err, "no EC2 keys in config")
 
 	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Region: "bogus-region", Key: "bogus-key", Secret: "bogus-secret"},
-		{Region: "test-region", Key: "test-key", Secret: "test-secret"},
+		{Key: "test-key", Secret: "test-secret"},
 	}
-	key, secret, err = GetEC2Key("test-region", settings)
+	key, secret, err = GetEC2Key(settings)
 	s.Equal("test-key", key)
 	s.Equal("test-secret", secret)
 	s.NoError(err)
-
 }
 
 func (s *EC2Suite) TestSetNextSubnet() {

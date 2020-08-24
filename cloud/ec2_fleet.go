@@ -104,7 +104,7 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 
 	if m.providerKey == "" || m.providerSecret == "" {
 		var err error
-		m.providerKey, m.providerSecret, err = GetEC2Key(m.region, settings)
+		m.providerKey, m.providerSecret, err = GetEC2Key(settings)
 		if err != nil {
 			return errors.Wrap(err, "Problem getting EC2 keys")
 		}

@@ -243,7 +243,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 
 	if m.providerKey == "" || m.providerSecret == "" {
 		var err error
-		m.providerKey, m.providerSecret, err = GetEC2Key(m.region, settings)
+		m.providerKey, m.providerSecret, err = GetEC2Key(settings)
 		if err != nil {
 			return errors.Wrap(err, "Problem getting EC2 keys")
 		}

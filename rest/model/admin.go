@@ -1302,7 +1302,6 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = ToStringPtr(v.Name)
-		a.Region = ToStringPtr(v.Region)
 		a.Key = ToStringPtr(v.Key)
 		a.Secret = ToStringPtr(v.Secret)
 	default:
@@ -1314,7 +1313,6 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 func (a *APIEC2Key) ToService() (interface{}, error) {
 	res := evergreen.EC2Key{}
 	res.Name = FromStringPtr(a.Name)
-	res.Region = FromStringPtr(a.Region)
 	res.Key = FromStringPtr(a.Key)
 	res.Secret = FromStringPtr(a.Secret)
 	return res, nil
