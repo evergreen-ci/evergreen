@@ -151,9 +151,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts()
-		if err != nil {
-			j.AddError(err)
-		}
+		j.AddError(err)
 
 		if allRunningDynamicHosts > j.env.Settings().HostInit.MaxTotalDynamicHosts {
 			grip.Info(message.Fields{
