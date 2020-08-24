@@ -666,7 +666,7 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 		return patchSet, errors.Wrap(err, "can't write patch to db")
 	}
 
-	summaries, commitMessages, err := thirdparty.GetPatchSummariesByCommit(strings.NewReader(commit))
+	summaries, commitMessages, err := thirdparty.GetPatchSummariesByCommit(commit)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "error getting summaries by commit")
 	}

@@ -2,7 +2,6 @@ package thirdparty
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -111,8 +110,8 @@ index 3fd24ea7e..800e17d2f 100644
 From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
 From: ablack12 <annie.black@10gen.com>
 Date: Thu, 2 Jan 2020 13:35:10 -0500
-Subject: temp
-
+Subject: Commit message
+with an extended description
 ---
 units/commit_queue.go | 5 +++--
 1 file changed, 3 insertions(+), 2 deletions(-)
@@ -130,21 +129,18 @@ index ce0542e91..718dd8099 100644
         if err != nil {
                 return errors.Wrap(err, "error retrieving Evergreen config")
 `
-	reader := ioutil.NopCloser(strings.NewReader(patchData))
-	defer assert.NoError(t, reader.Close())
-
-	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
+	summaries, commitMessages, err := GetPatchSummariesByCommit(patchData)
 	assert.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
-	assert.Equal(t, "temp", summaries[1].Description)
+	assert.Equal(t, "Commit message...", summaries[1].Description)
 
 	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
 	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
 
 	require.Len(t, commitMessages, 2)
 	assert.Equal(t, "EVG-6799 remove one commit validation", commitMessages[0])
-	assert.Equal(t, "temp", commitMessages[1])
+	assert.Equal(t, "Commit message...", commitMessages[1])
 }
 
 func TestGetPatchSummariesByCountLong(t *testing.T) {
@@ -156,9 +152,7 @@ Subject: EVG-6799 remove one commit validation
 
 ---\n%s\n`, str)
 	assert.True(t, len([]byte(str)) > 1000)
-	reader := ioutil.NopCloser(strings.NewReader(msg))
-	defer assert.NoError(t, reader.Close())
-	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
+	summaries, commitMessages, err := GetPatchSummariesByCommit(msg)
 	assert.NoError(t, err)
 	assert.NotNil(t, summaries)
 	assert.NotNil(t, commitMessages)

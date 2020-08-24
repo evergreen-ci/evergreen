@@ -446,9 +446,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 
 	var summaries []thirdparty.Summary
 	if patch.IsMailboxDiff(string(patchBytes)) {
-		reader := strings.NewReader(string(patchBytes))
 		var commitMessages []string
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesByCommit(reader)
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesByCommit(string(patchBytes))
 		if err != nil {
 			return errors.Wrapf(err, "error getting summaries by commit")
 		}
