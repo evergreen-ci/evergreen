@@ -334,7 +334,7 @@ func (f PatchFormat) ToGithubFormat() github.RawType {
 	return github.Patch
 }
 
-// GetBranchEvent gets the head of the a given branch via an API call to GitHub
+// GetRawCommit gets the specified commit via an API call to GitHub
 func GetRawCommit(ctx context.Context, oauthToken, repoOwner, repo, sha string, format PatchFormat) (string, error) {
 	httpClient := getGithubClient(oauthToken)
 	defer utility.PutHTTPClient(httpClient)

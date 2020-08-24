@@ -116,8 +116,8 @@ type SyncAtEndOptions struct {
 }
 
 type BackportInfo struct {
-	PatchID string
-	SHA     string
+	PatchID string `bson:"patch_id,omitempty" json:"patch_id,omitempty"`
+	SHA     string `bson:"sha,omitempty" json:"sha,omitempty"`
 }
 
 // Patch stores all details related to a patch request
