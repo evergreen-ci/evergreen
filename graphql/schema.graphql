@@ -217,7 +217,7 @@ type TaskQueueItem {
   displayName: String!
   project: String!
   buildVariant: String!
-  expectedDuration: Duration!
+  expectedDuration: String!
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
