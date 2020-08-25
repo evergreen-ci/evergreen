@@ -368,8 +368,8 @@ type Volume {
   type: String!
   availabilityZone: String!
   size: Int!
-  expiration: Time!
-  deviceName: String!
+  expiration: Time
+  deviceName: String
   hostID: String!
   noExpiration: Boolean!
   homeVolume: Boolean!

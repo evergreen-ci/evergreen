@@ -3817,8 +3817,8 @@ type Volume {
   type: String!
   availabilityZone: String!
   size: Int!
-  expiration: Time!
-  deviceName: String!
+  expiration: Time
+  deviceName: String
   hostID: String!
   noExpiration: Boolean!
   homeVolume: Boolean!
@@ -16983,14 +16983,11 @@ func (ec *executionContext) _Volume_expiration(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Volume_deviceName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
@@ -17017,14 +17014,11 @@ func (ec *executionContext) _Volume_deviceName(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
@@ -21707,14 +21701,8 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "expiration":
 			out.Values[i] = ec._Volume_expiration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "deviceName":
 			out.Values[i] = ec._Volume_deviceName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "hostID":
 			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
