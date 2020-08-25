@@ -222,6 +222,11 @@ func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "problem parsing commit message")
 		}
+
+		// If the commit message contains an extended description mailinfo will
+		// split off the description from the summary and write it to msgFile.
+		// Append an ellipsis to the message to indicate there's more to the message
+		// that git am will use when it creates the commit.
 		msgFileInfo, err := os.Stat(msgFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem getting message file info")
