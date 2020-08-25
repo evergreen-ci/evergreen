@@ -97,8 +97,8 @@ func mergeDisplayTasks(current DisplayTask, toMerge DisplayTask) DisplayTask {
 }
 
 type DisplayTask struct {
-	Name      string
-	ExecTasks []string
+	Name      string `yaml:"name,omitempty" bson:"name,omitempty"`
+	ExecTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
 }
 
 // SyncAtEndOptions describes when and how tasks perform sync at the end of a

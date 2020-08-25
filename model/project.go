@@ -114,11 +114,6 @@ func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 		name, b.Name)
 }
 
-type DisplayTask struct {
-	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
-	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
-}
-
 type BuildVariants []BuildVariant
 
 func (b BuildVariants) Len() int           { return len(b) }
@@ -230,7 +225,7 @@ type BuildVariant struct {
 
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
-	DisplayTasks []DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DisplayTasks []patch.DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
 type Module struct {
@@ -1134,7 +1129,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 
 func (bv *BuildVariant) GetDisplayTaskName(execTask string) string {
 	for _, dt := range bv.DisplayTasks {
-		for _, et := range dt.ExecutionTasks {
+		for _, et := range dt.ExecTasks {
 			if et == execTask {
 				return dt.Name
 			}
@@ -1335,7 +1330,7 @@ func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 		for _, dt := range bv.DisplayTasks {
 			vt.DisplayTasks = append(vt.DisplayTasks, patch.DisplayTask{
 				Name:      dt.Name,
-				ExecTasks: dt.ExecutionTasks,
+				ExecTasks: dt.ExecTasks,
 			})
 		}
 		vts = append(vts, vt)
@@ -1400,7 +1395,7 @@ func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants [
 		for _, dt := range bv.DisplayTasks {
 			if utility.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
-				for _, et := range dt.ExecutionTasks {
+				for _, et := range dt.ExecTasks	 {
 					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
 				}
 			}
@@ -1493,6 +1488,29 @@ func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []Pl
 		}
 	}
 	return matchingCmds
+}
+
+func (p *Project) GetVariant(variant string) *BuildVariant {
+	for _, bv := range p.BuildVariants {
+		if bv.Name == variant {
+			return &bv
+		}
+	}
+	return nil
+}
+
+func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
+	bv := p.GetVariant(variant)
+	if bv == nil {
+		return nil
+	}
+	for _, dt := range bv.DisplayTasks {
+		if dt.Name == name {
+			return &dt
+		}
+	}
+
+	return nil
 }
 
 // FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.

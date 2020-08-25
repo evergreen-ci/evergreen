@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
+	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -483,4 +486,125 @@ func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
 	}
 	return gimlet.NewJSONResponse(apiPatch)
+}
+
+type patchTasks struct {
+	Description string    `json:"description"`
+	Variants    []variant `json:"variants"`
+}
+
+type variant struct {
+	Id    string   `json:"id"`
+	Tasks []string `json:"tasks"`
+}
+
+type schedulePatchHandler struct {
+	variantTasks patchTasks
+
+	patchId string
+	patch   patch.Patch
+	sc      data.Connector
+}
+
+func makeSchedulePatchHandler(sc data.Connector) gimlet.RouteHandler {
+	return &schedulePatchHandler{
+		sc: sc,
+	}
+}
+
+func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
+	return &schedulePatchHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+	if p.patchId == "" {
+		return errors.New("must specify a patch ID")
+	}
+	var err error
+	apiPatch, err := p.sc.FindPatchById(p.patchId)
+	if err != nil {
+		return err
+	}
+	if apiPatch == nil {
+		return errors.New("patch not found")
+	}
+	dbPatch, err := apiPatch.ToService()
+	if err != nil {
+		return errors.Wrap(err, "unable to parse patch")
+	}
+	p.patch = dbPatch.(patch.Patch)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	patchTasks := patchTasks{}
+	if err = utility.ReadJSON(body, &patchTasks); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	if len(patchTasks.Variants) == 0 {
+		return errors.New("no variants specified")
+	}
+	p.variantTasks = patchTasks
+	return nil
+}
+
+func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to get config"))
+	}
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to get token"))
+	}
+	dbVersion, _ := p.sc.FindVersionById(p.patchId)
+	var project *dbModel.Project
+	grip.Warning(p.patch)
+	if dbVersion == nil {
+		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from patch"))
+		}
+	} else {
+		project, err = dbModel.FindProjectFromVersionID(dbVersion.Id)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from version"))
+		}
+	}
+	variantTasks := graphql.PatchVariantsTasksRequest{}
+	for i, v := range p.variantTasks.Variants {
+		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, patch.VariantTasks{Variant: v.Id})
+		for _, t := range v.Tasks {
+			dt := project.GetDisplayTask(v.Id, t)
+			if dt != nil {
+				variantTasks.VariantsTasks[i].DisplayTasks = append(variantTasks.VariantsTasks[i].DisplayTasks, *dt)
+			} else {
+				variantTasks.VariantsTasks[i].Tasks = append(variantTasks.VariantsTasks[i].Tasks, t)
+			}
+		}
+	}
+	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, variantTasks)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to schedule patch"))
+	}
+	if code != http.StatusOK {
+		resp := gimlet.NewResponseBuilder()
+		_ = resp.SetStatus(code)
+		_ = resp.AddData(msg)
+		return resp
+	}
+	dbVersion, err = p.sc.FindVersionById(versionId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find patch version"))
+	}
+	if dbVersion == nil {
+		return gimlet.NewJSONErrorResponse("no patch found")
+	}
+	restVersion := model.APIVersion{}
+	err = restVersion.BuildFromService(dbVersion)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error converting version model"))
+	}
+	return gimlet.NewJSONResponse(restVersion)
 }

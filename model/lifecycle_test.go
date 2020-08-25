@@ -768,17 +768,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
-			DisplayTasks: []DisplayTask{
-				DisplayTask{
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
 					Name: "bv1DisplayTask1",
-					ExecutionTasks: []string{
+					ExecTasks: []string{
 						"taskA",
 						"taskB",
 					},
 				},
-				DisplayTask{
+				patch.DisplayTask{
 					Name: "bv1DisplayTask2",
-					ExecutionTasks: []string{
+					ExecTasks: []string{
 						"taskC",
 						"taskD",
 					},
