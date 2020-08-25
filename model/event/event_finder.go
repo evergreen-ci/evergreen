@@ -3,7 +3,6 @@ package event
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -40,65 +39,27 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
-
-	filter := ResourceTypeKeyIs(ResourceTypeHost)
-	if hostTag != "" {
-		filter[ResourceIdKey] = bson.M{"$in": []string{hostID, hostTag}}
-	} else {
-		filter[ResourceIdKey] = hostID
-	}
-
-	// query := db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(limit)
-
+func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
+	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
-	// skip := page * limit
-	// if skip > 0 {
-	// 	query = query.Skip(skip)
-	// }
-
-	// err := db.FindAllQ(coll, query, &events)
-	// if err != nil || adb.ResultsNotFound(err) {
-	// 	return nil, errors.WithStack(err)
-	// }
-
-	// return events, nil
-
-	hostEventsPipeline := []bson.M{
-		{
-			"$filter": filter,
-		},
-		{
-			"$sort": bson.M{TimestampKey: -1},
-		},
+	skip := page * limit
+	if skip > 0 {
+		query = query.Skip(skip)
 	}
 
-	// APPLY PAGINATION
-	if limit > 0 {
-		hostEventsPipeline = append(hostEventsPipeline, bson.M{
-			"$skip": page * limit,
-		})
-		hostEventsPipeline = append(hostEventsPipeline, bson.M{
-			"$limit": limit,
-		})
+	err := db.FindAllQ(coll, query, &events)
+	if err != nil || adb.ResultsNotFound(err) {
+		return nil, 0, errors.WithStack(err)
 	}
+	//GET COUNT
 
-	// CONTEXT
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	cursor, err := env.DB().Collection(coll).Aggregate(ctx, hostEventsPipeline)
+	count, err := db.CountQ(coll, query)
 
 	if err != nil {
-		return nil, err
-	}
-	err = cursor.All(ctx, &events)
-	if err != nil {
-		return nil, err
+		return nil, 0, errors.Wrap(err, "failed to fetch number of host events")
 	}
 
-	return events, err
+	return events, count, nil
 }
 
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
