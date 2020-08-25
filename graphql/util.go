@@ -745,3 +745,34 @@ func CanUpdateSpawnHost(host *host.Host, usr *user.DBUser) bool {
 	return true
 
 }
+
+func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
+	vol, err := host.FindVolumeByID(volumeId)
+	mgrOpts := cloud.ManagerOpts{
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	}
+	env := evergreen.GetEnvironment()
+	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
+	}
+	if hostId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify host id")
+	}
+	var h *host.Host
+	h, err = host.FindOneId(hostId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host)
+	}
+	if h == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
+	}
+	if vol.AvailabilityZone != h.Zone {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("host and volume must have same availability zone")
+	}
+	if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
+}

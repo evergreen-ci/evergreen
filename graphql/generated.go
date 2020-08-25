@@ -230,7 +230,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
-		AttachVolumeToHost         func(childComplexity int, volumedID string, hostID string) int
+		AttachVolumeToHost         func(childComplexity int, volumeID string, hostID string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
@@ -600,7 +600,7 @@ type MutationResolver interface {
 	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
-	AttachVolumeToHost(ctx context.Context, volumedID string, hostID string) (bool, error)
+	AttachVolumeToHost(ctx context.Context, volumeID string, hostID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1472,7 +1472,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumedId"].(string), args["hostId"].(string)), true
+		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumeId"].(string), args["hostId"].(string)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -3461,7 +3461,7 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
-  attachVolumeToHost(volumedId: String!, hostId: String!): Boolean!
+  attachVolumeToHost(volumeId: String!, hostId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -4096,13 +4096,13 @@ func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.C
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["volumedId"]; ok {
+	if tmp, ok := rawArgs["volumeId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["volumedId"] = arg0
+	args["volumeId"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
@@ -9502,7 +9502,7 @@ func (ec *executionContext) _Mutation_attachVolumeToHost(ctx context.Context, fi
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AttachVolumeToHost(rctx, args["volumedId"].(string), args["hostId"].(string))
+		return ec.resolvers.Mutation().AttachVolumeToHost(rctx, args["volumeId"].(string), args["hostId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

@@ -439,6 +439,14 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	return apiHosts, nil
 }
 
+func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeID string, hostID string) (bool, error) {
+	success, _, gqlErr, err := AttachVolume(ctx, volumeID, hostID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
+}
+
 type patchResolver struct{ *Resolver }
 
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
