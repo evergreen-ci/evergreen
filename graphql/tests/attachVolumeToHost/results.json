@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+            "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
+            "tag": "",
+            "distroId": "ubuntu1604-power8-large",
+            "startedBy": "mci",
+            "provider": "static",
+            "user": "mci-exec",
+            "status": "running",
+            "runningTask": {
+              "id": null,
+              "name": null
+            },
+            "lastCommunicationTime": "2020-07-20T15:19:29-04:00"
+          }
+        }
+      }
+    }
+  ]
+}

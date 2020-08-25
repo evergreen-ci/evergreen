@@ -593,7 +593,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeAttach:
-		_, httpStatusCode, _, err := graphql.AttachVolume(vol.ID, *updateParams.HostID)
+		_, httpStatusCode, _, err := graphql.AttachVolume(ctx, vol.ID, *updateParams.HostID)
 		if err != nil {
 			uis.LoggedError(w, r, httpStatusCode, err)
 			return
