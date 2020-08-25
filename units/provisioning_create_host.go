@@ -135,6 +135,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
+		removeHostIntent := false
 		if numHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
 			grip.Info(message.Fields{
 				"host_id":   j.HostID,
@@ -145,7 +146,29 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"message":   "not provisioning host to respect maxhosts",
 				"max_hosts": j.host.Distro.HostAllocatorSettings.MaximumHosts,
 			})
+			removeHostIntent = true
 
+		}
+
+		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts()
+		j.AddError(err)
+
+		if allRunningDynamicHosts > j.env.Settings().HostInit.MaxTotalDynamicHosts {
+			grip.Info(message.Fields{
+				"host_id":                 j.HostID,
+				"attempt":                 j.CurrentAttempt,
+				"distro":                  j.host.Distro.Id,
+				"job":                     j.ID(),
+				"provider":                j.host.Provider,
+				"message":                 "not provisioning host to respect max_total_dynamic_hosts",
+				"total_dynamic_hosts":     allRunningDynamicHosts,
+				"max_total_dynamic_hosts": j.env.Settings().HostInit.MaxTotalDynamicHosts,
+			})
+			removeHostIntent = true
+
+		}
+
+		if removeHostIntent {
 			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
 
 			j.AddError(err)

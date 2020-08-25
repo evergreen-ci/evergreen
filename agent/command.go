@@ -87,7 +87,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			// for functions with more than one command
 			tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, index, idx+1, total)
 		}
-
 		for key, val := range commandInfo.Vars {
 			var newVal string
 			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
@@ -131,7 +130,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.logger.Task().Errorf("Command stopped early: %s", ctx.Err())
 			return errors.Wrap(ctx.Err(), "Agent stopped early")
 		}
-		tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 	}
 	return nil
 }
