@@ -663,8 +663,8 @@ func updateMakespans(b *build.Build) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
 }
 
-// UpdateBuildStatusForTask finds all the builds for a task and updates the
-// status of the build based on the task's status.
+// UpdateBuildAndVersionStatusForTask finds all the builds for a task and updates the
+// status of the build and version based on the tasks' statuses.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	const slowMS = 100 * time.Millisecond
 	// retrieve the task by the task id
@@ -692,7 +692,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	failedTask := false
-	buildComplete := false
 	finishedTasks := 0
 	tasksToNotify := 0
 
@@ -702,9 +701,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		if !t.IsFinished() {
 			if t.Blocked() {
 				tasksToNotify++
-				if evergreen.IsFailedTaskStatus(t.Status) {
-					failedTask = true
-				}
 			}
 			continue
 		}
@@ -762,9 +758,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	if finishedTasks >= len(buildTasks) {
-		buildComplete = true
+		updates.BuildComplete = true
 	}
-	if buildComplete || tasksToNotify >= len(buildTasks) {
+	if updates.BuildComplete || tasksToNotify >= len(buildTasks) {
 		updates.BuildNewStatus = evergreen.BuildSucceeded
 		if failedTask {
 			updates.BuildNewStatus = evergreen.BuildFailed
@@ -772,7 +768,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildComplete = true
 	}
 
-	if buildComplete {
+	if updates.BuildComplete {
 		if !failedTask {
 			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
 				err = errors.Wrap(err, "Error marking build as finished")
@@ -823,7 +819,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	if buildComplete {
+	if updates.BuildComplete {
 		// update the build's makespan information if the task has finished
 		if err = updateMakespans(b); err != nil {
 			err = errors.Wrap(err, "Error updating makespan information")
