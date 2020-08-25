@@ -230,6 +230,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
+		AttachVolumeToHost         func(childComplexity int, volumedID string, hostID string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
@@ -599,6 +600,7 @@ type MutationResolver interface {
 	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
+	AttachVolumeToHost(ctx context.Context, volumedID string, hostID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1459,6 +1461,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.attachVolumeToHost":
+		if e.complexity.Mutation.AttachVolumeToHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_attachVolumeToHost_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumedId"].(string), args["hostId"].(string)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -3447,12 +3461,13 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
+  attachVolumeToHost(volumedId: String!, hostId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
- START 
- STOP 
- TERMINATE
+  START
+  STOP
+  TERMINATE
 }
 enum TaskSortCategory {
   NAME
@@ -3609,10 +3624,10 @@ type DistroInfo {
 }
 
 type Distro {
-  name: String 
+  name: String
   userSpawnAllowed: Boolean
-  workDir: String 
-  user: String 
+  workDir: String
+  user: String
   isVirtualWorkStation: Boolean!
 }
 
@@ -4074,6 +4089,28 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["volumedId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["volumedId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["hostId"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["hostId"] = arg1
 	return args, nil
 }
 
@@ -9439,6 +9476,47 @@ func (ec *executionContext) _Mutation_updatePublicKey(ctx context.Context, field
 	res := resTmp.([]*model.APIPubKey)
 	fc.Result = res
 	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_attachVolumeToHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_attachVolumeToHost_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AttachVolumeToHost(rctx, args["volumedId"].(string), args["hostId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
@@ -19118,6 +19196,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "updatePublicKey":
 			out.Values[i] = ec._Mutation_updatePublicKey(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "attachVolumeToHost":
+			out.Values[i] = ec._Mutation_attachVolumeToHost(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

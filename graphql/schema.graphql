@@ -98,6 +98,7 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
+  attachVolumeToHost(volumedId: String!, hostId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
