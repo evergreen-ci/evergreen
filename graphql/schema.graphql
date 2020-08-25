@@ -61,6 +61,7 @@ type Query {
     limit: Int = 10
   ): HostsResponse!
   myHosts: [Host!]!
+  myVolumes: [Volume!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
@@ -359,6 +360,20 @@ type Build {
   status: String!
   predictedMakespan: Duration!
   actualMakespan: Duration!
+}
+
+type Volume {
+  id: String!
+  displayName: String!
+  createdBy: String!
+  type: String!
+  availabilityZone: String!
+  size: Int!
+  expiration: Time
+  deviceName: String
+  hostID: String!
+  noExpiration: Boolean!
+  homeVolume: Boolean!
 }
 
 type PatchProject {

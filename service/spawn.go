@@ -163,24 +163,14 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 
 func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	volumes, err := host.FindVolumesByUser(user.Username())
+	volumes, err := graphql.GetMyVolumes(user)
+
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", user.Username()))
 		return
 	}
 
-	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
-	for _, vol := range volumes {
-		apiVolume := restModel.APIVolume{}
-		if err = apiVolume.BuildFromService(vol); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error creating '%s'", vol.ID))
-			continue
-		}
-
-		apiVolumes = append(apiVolumes, apiVolume)
-	}
-
-	gimlet.WriteJSON(w, apiVolumes)
+	gimlet.WriteJSON(w, volumes)
 }
 
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
