@@ -247,7 +247,7 @@ func (s *systemMetricsCollector) Close() error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return errors.New("system metrics collector already cancelled or closed")
+		return s.catcher.Resolve()
 	}
 	s.mu.Unlock()
 
