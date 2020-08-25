@@ -1,0 +1,25 @@
+From bd195cb35107cd558965b8433b32fa090f97ae9b Mon Sep 17 00:00:00 2001
+From: Jonathan Brill <jonathan.brill@10gen.com>
+Date: Fri, 14 Aug 2020 09:39:26 -0400
+Subject: [PATCH] EVG-12779 increment agent version
+
+---
+ config.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config.go b/config.go
+index afe7908dd..714e415a3 100644
+--- a/config.go
++++ b/config.go
+@@ -32,7 +32,7 @@ var (
+ 	ClientVersion = "2020-08-13"
+ 
+ 	// Agent version to control agent rollover.
+-	AgentVersion = "2020-07-31"
++	AgentVersion = "2020-08-14"
+ )
+ 
+ // ConfigSection defines a sub-document in the evergreen config
+-- 
+2.19.1
+

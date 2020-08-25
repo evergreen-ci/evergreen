@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -22,8 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-
-	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -50,9 +49,11 @@ func (r *Resolver) Task() TaskResolver {
 }
 func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
-type hostResolver struct{ *Resolver }
+func (r *Resolver) TaskQueueItem() TaskQueueItemResolver { return &taskQueueItemResolver{r} }
 
+type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type taskQueueItemResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -244,6 +245,58 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
+	host, err := host.FindOneByIdOrTag(hostID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+	usr := route.MustHaveUser(ctx)
+	env := evergreen.GetEnvironment()
+
+	if !CanUpdateSpawnHost(host, usr) {
+		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
+	}
+
+	switch action {
+	case SpawnHostStatusActionsStart:
+		h, httpStatus, err := StartSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	case SpawnHostStatusActionsStop:
+		h, httpStatus, err := StopSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	case SpawnHostStatusActionsTerminate:
+		h, httpStatus, err := TerminateSpawnHost(ctx, env, host, usr, nil)
+		if err != nil {
+			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+		}
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(h)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+		}
+		return &apiHost, nil
+	default:
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find matching status for action : %s", action))
+	}
+
+}
+
 type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
@@ -346,15 +399,13 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
-
 	if host == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find host with id %s: %s", hostID, err.Error()))
+		return nil, errors.Errorf("unable to find host %s", hostID)
 	}
 
 	apiHost := &restModel.APIHost{}
-
 	err = apiHost.BuildFromService(host)
-	if err != nil {
+	if err != nil || apiHost == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
 	}
 
@@ -571,12 +622,48 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
 	start, err := model.GetEstimatedStartTime(*dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
 	}
 	apiTask.EstimatedStart = restModel.NewAPIDuration(start)
 	return apiTask, err
+}
+
+func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
+	latestTask, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if latestTask == nil {
+		return nil, errors.Errorf("unable to find task %s", taskID)
+	}
+	allTasks := []*restModel.APITask{}
+	for i := 0; i < latestTask.Execution; i++ {
+		var dbTask *task.Task
+		dbTask, err = task.FindByIdExecution(taskID, &i)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, err.Error())
+		}
+		if dbTask == nil {
+			return nil, errors.Errorf("unable to find task %s", taskID)
+		}
+		var apiTask *restModel.APITask
+		apiTask, err = GetAPITaskFromTask(ctx, r.sc, *dbTask)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "error converting task")
+		}
+		allTasks = append(allTasks, apiTask)
+	}
+	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *latestTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
+	allTasks = append(allTasks, apiTask)
+	return allTasks, nil
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
@@ -1114,6 +1201,66 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	return &hostevents, nil
 }
 
+func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
+	apiDistros := []*restModel.APIDistro{}
+
+	var distros []distro.Distro
+	if onlySpawnable {
+		d, err := distro.Find(distro.BySpawnAllowed())
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
+		}
+		distros = d
+	} else {
+		d, err := distro.FindAll()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
+		}
+		distros = d
+	}
+	for _, d := range distros {
+		apiDistro := restModel.APIDistro{}
+		err := apiDistro.BuildFromService(d)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIDistro from distro: %s", err.Error()))
+		}
+		apiDistros = append(apiDistros, &apiDistro)
+	}
+	return apiDistros, nil
+}
+
+func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
+	distroQueue, err := model.LoadTaskQueue(distroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task queue for distro %v: %v", distroID, err.Error()))
+	}
+	if distroQueue == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find queue with distro ID `%s`", distroID))
+	}
+
+	taskQueue := []*restModel.APITaskQueueItem{}
+
+	for _, taskQueueItem := range distroQueue.Queue {
+		apiTaskQueueItem := restModel.APITaskQueueItem{}
+
+		err := apiTaskQueueItem.BuildFromService(taskQueueItem)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task queue item db model to api model: %v", err.Error()))
+		}
+
+		taskQueue = append(taskQueue, &apiTaskQueueItem)
+	}
+
+	return taskQueue, nil
+}
+
+func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.APITaskQueueItem) (TaskQueueItemType, error) {
+	if *obj.Requester != evergreen.RepotrackerVersionRequester {
+		return TaskQueueItemTypePatch, nil
+	}
+	return TaskQueueItemTypeCommit, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
@@ -1528,6 +1675,14 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	return &user, nil
 }
 
+func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+	}
+	return config.Providers.AWS.AllowedInstanceTypes, nil
+}
+
 type taskResolver struct{ *Resolver }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
@@ -1631,6 +1786,10 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 
 func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
 	return *obj.DisplayStatus, nil
+}
+
+func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
+	return task.GetLatestExecution(*obj.Id)
 }
 
 // New injects resources into the resolvers, such as the data connector

@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,6 +20,9 @@ const (
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
 	tasksFlagName             = "tasks"
+	patchAliasFlagName        = "alias"
+	patchFinalizeFlagName     = "finalize"
+	patchBrowseFlagName       = "browse"
 	syncBuildVariantsFlagName = "sync_variants"
 	syncTasksFlagName         = "sync_tasks"
 	syncTimeoutFlagName       = "sync_timeout"
@@ -37,6 +41,7 @@ const (
 	dirFlagName               = "dir"
 	uncommittedChangesFlag    = "uncommitted"
 	preserveCommitsFlag       = "preserve-commits"
+	enableEnqueueFlag         = "enable-enqueue"
 	subscriptionTypeFlag      = "subscription-type"
 
 	anserDryRunFlagName      = "dry-run"
@@ -50,6 +55,7 @@ const (
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
+	dbRmodeFlagName    = "rmode"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -98,6 +104,27 @@ func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(tasksFlagName, "t"),
 		Usage: "task names",
+	})
+}
+
+func addPatchAliasFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(patchAliasFlagName, "a"),
+		Usage: "patch alias (set by project admin)",
+	})
+}
+
+func addPatchFinalizeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  joinFlagNames(patchFinalizeFlagName, "f"),
+		Usage: "schedule tasks immediately",
+	})
+}
+
+func addPatchBrowseFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  joinFlagNames(patchBrowseFlagName),
+		Usage: "open patch url in browser",
 	})
 }
 
@@ -250,6 +277,11 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Usage: "Write mode. Only valid values are blank or 'majority'",
 			Value: evergreen.DefaultDatabaseWriteMode,
 		},
+		cli.StringFlag{
+			Name:  dbRmodeFlagName,
+			Usage: "Read mode. Only valid values are blank or 'majority'",
+			Value: evergreen.DefaultDatabaseReadMode,
+		},
 	)
 }
 
@@ -278,7 +310,14 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  preserveCommitsFlag,
-		Usage: "preserve separate commits when enqueueing to the commit queue",
+		Usage: fmt.Sprintf("preserve separate commits when enqueueing to the commit queue. Implies --%s", enableEnqueueFlag),
+	})
+}
+
+func addEnableEnqueueFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  enableEnqueueFlag,
+		Usage: "format patch to enable enqueueing to the commit queue",
 	})
 }
 

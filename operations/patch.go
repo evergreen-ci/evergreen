@@ -13,34 +13,36 @@ import (
 
 const (
 	patchDescriptionFlagName = "description"
-	patchFinalizeFlagName    = "finalize"
 	patchVerboseFlagName     = "verbose"
-	patchAliasFlagName       = "alias"
-	patchBrowseFlagName      = "browse"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addSyncBuildVariantsFlag(), addSyncTasksFlag(), addSyncStatusesFlag(), addSyncTimeoutFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
-		cli.StringFlag{
-			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
-			Usage: "description for the patch",
-		},
-		cli.StringFlag{
-			Name:  joinFlagNames(patchAliasFlagName, "a"),
-			Usage: "patch alias (set by project admin)",
-		},
-		cli.BoolFlag{
-			Name:  joinFlagNames(patchFinalizeFlagName, "f"),
-			Usage: "schedule tasks immediately",
-		},
-		cli.BoolFlag{
-			Name:  joinFlagNames(patchBrowseFlagName),
-			Usage: "open patch url in browser",
-		},
-		cli.BoolFlag{
-			Name:  patchVerboseFlagName,
-			Usage: "show patch summary",
-		}))
+	return mergeFlagSlices(
+		addProjectFlag(flags...),
+		addPatchFinalizeFlag(),
+		addVariantsFlag(),
+		addTasksFlag(),
+		addPatchAliasFlag(),
+		addPatchBrowseFlag(),
+		addSyncBuildVariantsFlag(),
+		addSyncTasksFlag(),
+		addSyncStatusesFlag(),
+		addSyncTimeoutFlag(),
+		addLargeFlag(),
+		addYesFlag(),
+		addRefFlag(),
+		addUncommittedChangesFlag(),
+		addPreserveCommitsFlag(),
+		addEnableEnqueueFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
+				Usage: "description for the patch",
+			},
+			cli.BoolFlag{
+				Name:  patchVerboseFlagName,
+				Usage: "show patch summary",
+			},
+		))
 }
 
 func Patch() cli.Command {
@@ -83,6 +85,7 @@ func Patch() cli.Command {
 				Ref:               c.String(refFlagName),
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
+				EnableEnqueue:     c.Bool(enableEnqueueFlag),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -93,12 +96,13 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
+			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
 			}
 			if !keepGoing {
-				return nil
+				return errors.New("patch aborted")
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
@@ -113,27 +117,27 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-
-			if params.Description == "" {
-				params.Description, err = getDefaultDescription()
-				if err != nil {
-					grip.Error(err)
-				}
-			}
+			params.Description = params.getDescription()
 
 			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
 			if err != nil {
 				return err
 			}
-			if !params.PreserveCommits {
+			if (params.EnableEnqueue || conf.EnableEnqueue) && !params.PreserveCommits {
 				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
 				if err != nil {
 					return err
 				}
 			}
 
-			_, err = params.createPatch(ac, conf, diffData)
-			return err
+			if err = params.validateSubmission(diffData); err != nil {
+				return err
+			}
+			newPatch, err := params.createPatch(ac, diffData)
+			if err != nil {
+				return err
+			}
+			return params.displayPatch(conf, newPatch)
 		},
 	}
 }
@@ -194,6 +198,7 @@ func PatchFile() cli.Command {
 			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
 			}
+			params.Description = params.getDescription()
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
@@ -202,15 +207,14 @@ func PatchFile() cli.Command {
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
 
-			if params.Description == "" {
-				params.Description, err = getDefaultDescription()
-				if err != nil {
-					grip.Error(err)
-				}
+			if err = params.validateSubmission(diffData); err != nil {
+				return err
 			}
-
-			_, err = params.createPatch(ac, conf, diffData)
-			return err
+			newPatch, err := params.createPatch(ac, diffData)
+			if err != nil {
+				return err
+			}
+			return params.displayPatch(conf, newPatch)
 		},
 	}
 }

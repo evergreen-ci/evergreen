@@ -806,8 +806,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 
-	if distroID != "" {
-		query[DistroIdKey] = distroID
+	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
+		return 0, errors.WithStack(err)
 	}
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
@@ -1675,7 +1675,7 @@ func (t *Task) Archive() error {
 				return errors.Wrap(err, "error retrieving execution task")
 			}
 			if execTask == nil {
-				return errors.Errorf("unable to find execution task %s from display task %s", et, t.Id)
+				return errors.Errorf("unable to find execution task '%s' from display task '%s'", et, t.Id)
 			}
 			if err = execTask.Archive(); err != nil {
 				return errors.Wrap(err, "error archiving execution task")
@@ -1689,7 +1689,13 @@ func (t *Task) Archive() error {
 	archiveTask.Archived = true
 	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed")
+		grip.Debug(message.WrapError(err, message.Fields{
+			"archive_task_id": archiveTask.Id,
+			"old_task_id":     archiveTask.OldTaskId,
+			"execution":       t.Execution,
+			"display_only":    t.DisplayOnly,
+		}))
+		return errors.Wrap(err, "task.Archive() failed to insert new old task")
 	}
 
 	// only increment restarts if have a current restarts
@@ -1706,7 +1712,7 @@ func (t *Task) Archive() error {
 			"$inc":   inc,
 		})
 	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed")
+		return errors.Wrap(err, "task.Archive() failed to update task")
 	}
 	t.Aborted = false
 
@@ -2098,6 +2104,52 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	return dt, nil
 }
 
+// GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
+func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
+	// fill in the gaps in taskMap
+	tasksToFetch := []string{}
+	for _, tID := range taskIDs {
+		if _, ok := taskMap[tID]; !ok {
+			tasksToFetch = append(tasksToFetch, tID)
+		}
+	}
+	missingTaskMap := make(map[string]*Task)
+	if len(tasksToFetch) > 0 {
+		missingTasks, err := FindAll(ByIds(tasksToFetch).WithFields(DependsOnKey))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get tasks missing from map")
+		}
+		if missingTasks == nil {
+			return nil, errors.New("no missing tasks found")
+		}
+		for i, t := range missingTasks {
+			missingTaskMap[t.Id] = &missingTasks[i]
+		}
+	}
+
+	// extract the set of dependencies
+	depSet := make(map[Dependency]bool)
+	for _, tID := range taskIDs {
+		t, ok := taskMap[tID]
+		if !ok {
+			t, ok = missingTaskMap[tID]
+		}
+		if !ok {
+			return nil, errors.Errorf("task '%s' does not exist", tID)
+		}
+		for _, dep := range t.DependsOn {
+			depSet[dep] = true
+		}
+	}
+
+	deps := make([]Dependency, 0, len(depSet))
+	for dep := range depSet {
+		deps = append(deps, dep)
+	}
+
+	return deps, nil
+}
+
 func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second))
 	if err != nil {
@@ -2314,6 +2366,28 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 		}})
 
 	return FindAll(query)
+}
+
+func GetLatestExecution(taskId string) (int, error) {
+	var t *Task
+	var err error
+	t, err = FindOneId(taskId)
+	if err != nil {
+		return -1, err
+	}
+	if t == nil {
+		pieces := strings.Split(taskId, "_")
+		pieces = pieces[:len(pieces)-1]
+		taskId = strings.Join(pieces, "_")
+		t, err = FindOneId(taskId)
+		if err != nil {
+			return -1, errors.Wrap(err, "error getting task")
+		}
+	}
+	if t == nil {
+		return -1, errors.New("task not found")
+	}
+	return t.Execution, nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks

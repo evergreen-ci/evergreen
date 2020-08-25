@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mongodb/grip"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -69,7 +68,7 @@ type APITask struct {
 	Aborted            bool                `json:"aborted"`
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
-	Ami                *string             `json:ami`
+	Ami                *string             `json:"ami"`
 }
 
 type LogLinks struct {
@@ -168,8 +167,18 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 func (at *APITask) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *task.Task:
+		id := v.Id
+		// Old tasks are stored in a separate collection with ID set to
+		// "old_task_ID" + "_" + "execution_number". This ID is not exposed to the user,
+		// however. Instead in the UI executions are represented with a "/" and could be
+		// represented in other ways elsewhere. The correct way to represent an old task is
+		// with the same ID as the last execution, since semantically the tasks differ in
+		// their execution number, not in their ID.
+		if v.OldTaskId != "" {
+			id = v.OldTaskId
+		}
 		(*at) = APITask{
-			Id:                ToStringPtr(v.Id),
+			Id:                ToStringPtr(id),
 			ProjectId:         ToStringPtr(v.Project),
 			CreateTime:        ToTimePtr(v.CreateTime),
 			DispatchTime:      ToTimePtr(v.DispatchTime),
@@ -220,22 +229,16 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		if v.HostId != "" {
 			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().Ui.Url, v.HostId)
 			at.HostLink = &hostLink
-		}
-
-		h, err := host.FindOneId(v.HostId)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("Error while finding distro for host: %s", v.HostId))
-		}
-		if h != nil {
-			var ami *string = nil
-			for _, providerSetting := range h.Distro.ProviderSettingsList {
-				providerSettingAmi := providerSetting.Lookup("ami")
-				if providerSettingAmi != nil {
-					amiString := providerSettingAmi.StringValue()
-					ami = &amiString
+			h, err := host.FindOneId(v.HostId)
+			if err != nil {
+				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)
+			}
+			if h != nil && len(h.Distro.ProviderSettingsList) == 1 {
+				ami, ok := h.Distro.ProviderSettingsList[0].Lookup("ami").StringValueOK()
+				if ok {
+					at.Ami = ToStringPtr(ami)
 				}
 			}
-			at.Ami = ami
 		}
 
 		if len(v.ExecutionTasks) > 0 {

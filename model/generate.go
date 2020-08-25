@@ -117,29 +117,29 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config number.
-func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, *projectMaps, error) {
+func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
 	// Validate generated project against original project.
 	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
-		return nil, pp, v, nil, errors.Wrap(err, "generated project is invalid")
+		return nil, pp, v, errors.Wrap(err, "generated project is invalid")
 	}
 
 	newPP, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
+		return nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
 	}
 	newPP.Id = v.Id
 	p, err = TranslateProject(newPP)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error translating project")
+		return nil, nil, nil, errors.Wrap(err, "error translating project")
 	}
-	return p, newPP, v, &cachedProject, nil
+	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task, pm *projectMaps) error {
+func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task) error {
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
@@ -161,7 +161,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		return errors.WithStack(err)
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, v, p, t); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 	return nil
@@ -200,7 +200,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, t *task.Task) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project, t *task.Task) error {
 	// inherit priority from the parent task
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
@@ -216,7 +216,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProj
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
-	newTVPairs.ExecTasks = IncludePatchDependencies(p, newTVPairs.ExecTasks)
+	newTVPairs.ExecTasks = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
 
 	// group into new builds and new tasks for existing builds
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))

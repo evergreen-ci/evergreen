@@ -609,9 +609,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &genTask, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &genTask))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
@@ -695,9 +695,9 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0], pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0]))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -786,9 +786,9 @@ buildvariants:
 
 	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &t1, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &t1))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -809,7 +809,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 		Version: "version_that_called_generate_task",
 	}
 	taskDisplayGen := task.Task{
-		Id:          "my_display_task_gen",
+		Id:          "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
 		DisplayName: "my_display_task_gen",
 		Version:     "version_that_called_generate_task",
 	}
@@ -832,9 +832,9 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	g.TaskID = "task_that_called_generate_task"
 	p, pp, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, pm, err := g.NewVersion(p, pp, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists, pm))
+	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)

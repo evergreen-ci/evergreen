@@ -238,7 +238,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	catcher.Add(err)
 
 	if len(failed) > 0 {
-		// Include an additional 10 characters for overhead, like the
+		// include an additional 10 characters for overhead, like the
 		// parens and number of failures.
 		remaining := jiraMaxTitleLength - subj.Len() - 10
 

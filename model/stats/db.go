@@ -1,6 +1,6 @@
 package stats
 
-// This file provides database layer logic for pre-computed test ant task execution statistics.
+// This file provides database layer logic for pre-computed test and task execution statistics.
 // The database schema is the following:
 // *daily_stats_status*
 // {

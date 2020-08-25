@@ -79,7 +79,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 
 	if evergreen.IsPatchRequester(requester) {
 		var p *patch.Patch
-		p, err = patch.FindOne(patch.ById(patch.NewId(versionID)))
+		p, err = patch.FindOneId(versionID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get patch for '%s'", versionID)
 		}

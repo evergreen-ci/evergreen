@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -57,7 +56,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	commitQueuePosition := 0
-	if projCtx.Patch.Alias == evergreen.CommitQueueAlias {
+	if projCtx.Patch.IsCommitQueuePatch() {
 		cq, err := commitqueue.FindOneId(variantsAndTasksFromProject.Project.Identifier)
 		// still display patch page if problem finding commit queue
 		if err != nil {

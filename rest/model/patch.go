@@ -144,7 +144,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	catcher := grip.NewBasicCatcher()
 	res.Id = bson.ObjectIdHex(FromStringPtr(apiPatch.Id))
 	res.Description = FromStringPtr(apiPatch.Description)
-	res.Project = FromStringPtr(apiPatch.Description)
+	res.Project = FromStringPtr(apiPatch.Project)
 	res.Githash = FromStringPtr(apiPatch.Githash)
 	res.PatchNumber = apiPatch.PatchNumber
 	res.Author = FromStringPtr(apiPatch.Author)

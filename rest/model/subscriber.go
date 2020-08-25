@@ -87,7 +87,7 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			target = sub
 
 		case event.JIRACommentSubscriberType, event.EmailSubscriberType,
-			event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType:
+			event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 			target = v.Target
 
 		default:
@@ -192,7 +192,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		}
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
-		event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType:
+		event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 		target = s.Target
 
 	default:

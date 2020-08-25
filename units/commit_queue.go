@@ -79,7 +79,7 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Issue).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return
@@ -265,7 +265,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 	if catcher.HasErrors() {
 		update := NewGithubStatusUpdateJobForProcessingError(
-			commitqueue.Context,
+			commitqueue.GithubContext,
 			pr.Base.User.GetLogin(),
 			pr.Base.Repo.GetName(),
 			pr.Head.GetRef(),
@@ -334,7 +334,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 }
 
 func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
-	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
+	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
 		j.dequeue(cq, nextItem)
@@ -522,7 +522,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 		Owner:       *pr.Base.Repo.Owner.Login,
 		Repo:        *pr.Base.Repo.Name,
 		Ref:         *pr.Head.SHA,
-		Context:     commitqueue.Context,
+		Context:     commitqueue.GithubContext,
 		State:       state,
 		Description: description,
 		URL:         url,
@@ -624,15 +624,15 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 				Command: "git.get_project",
 				Type:    evergreen.CommandTypeSetup,
 				Params: map[string]interface{}{
-					"directory": "src",
+					"directory":       "src",
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
 			},
 			{
 				Command: "git.push",
 				Params: map[string]interface{}{
-					"directory":       "src",
-					"committer_name":  settings.CommitQueue.CommitterName,
-					"committer_email": settings.CommitQueue.CommitterEmail,
+					"directory": "src",
 				},
 			},
 		},

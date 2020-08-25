@@ -1017,6 +1017,21 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	return db.Update(ProjectRefCollection, filter, update)
 }
 
+func (p *ProjectRef) CommitQueueIsOn() error {
+	catcher := grip.NewBasicCatcher()
+	if !p.Enabled {
+		catcher.Add(errors.Errorf("project '%s' is disabled", p.Identifier))
+	}
+	if p.PatchingDisabled {
+		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Identifier))
+	}
+	if !p.CommitQueue.Enabled {
+		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Identifier))
+	}
+
+	return catcher.Resolve()
+}
+
 func (t TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindOneProjectRef(t.Project)
 	if err != nil {

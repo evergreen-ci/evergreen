@@ -5,15 +5,25 @@ import (
 )
 
 type dependencyIncluder struct {
-	Project  *Project
-	included map[TVPair]bool
+	Project   *Project
+	requester string
+	included  map[TVPair]bool
 }
 
-// Include crawls the tasks represented by the combination of variants and tasks and
+// IncludeDependencies takes a project and a slice of variant/task pairs names
+// and returns the expanded set of variant/task pairs to include all the dependencies/requirements
+// for the given set of tasks.
+// If any dependency is cross-variant, it will include the variant and task for that dependency.
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester string) []TVPair {
+	di := &dependencyIncluder{Project: project, requester: requester}
+	return di.include(tvpairs)
+}
+
+// include crawls the tasks represented by the combination of variants and tasks and
 // add or removes tasks based on the dependency graph. Dependent tasks
-// are added; tasks that depend on unpatchable tasks are pruned. New slices
+// are added; tasks that depend on unreachable tasks are pruned. New slices
 // of variants and tasks are returned.
-func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
+func (di *dependencyIncluder) include(initialDeps []TVPair) []TVPair {
 	di.included = map[TVPair]bool{}
 
 	// handle each pairing, recursively adding and pruning based
@@ -32,8 +42,8 @@ func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 }
 
 // handle finds and includes all tasks that the given task/variant pair depends
-// on. Returns true if the task and all of its dependent tasks are patchable,
-// false if they are not.
+// on. Returns true if the task and all of its dependent tasks can be scheduled
+// for the requester.
 func (di *dependencyIncluder) handle(pair TVPair) bool {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
@@ -45,7 +55,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		for _, t := range tg.Tasks {
 			if ok := di.handle(TVPair{TaskName: t, Variant: pair.Variant}); !ok {
 				di.included[pair] = false
-				return false // task depends on an unpatchable task, so skip it
+				return false // task depends on an unreachable task, so skip it
 			}
 		}
 		return true
@@ -61,9 +71,9 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		return false // task not found in project--skip it.
 	}
 
-	if bvt.SkipOnPatchBuild() || bvt.SkipOnNonGitTagBuild() {
+	if bvt.SkipOnRequester(di.requester) {
 		di.included[pair] = false
-		return false // task cannot be patched, so skip it
+		return false // task can't be run for this requester, so skip it
 	}
 	di.included[pair] = true
 
@@ -72,7 +82,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	for _, dep := range deps {
 		if ok := di.handle(dep); !ok {
 			di.included[pair] = false
-			return false // task depends on an unpatchable or non-existent task, so skip it
+			return false // task depends on an unreachable or non-existent task, so skip it
 		}
 	}
 
