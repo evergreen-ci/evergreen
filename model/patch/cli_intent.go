@@ -70,8 +70,8 @@ type cliIntent struct {
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
 
-	// BackportOf is the ID of a commit queue version to backport
-	BackportOf BackportInfo `bson:"backport_of"`
+	// BackportOf specifies what to backport
+	BackportOf BackportInfo `bson:"backport_of,omitempty"`
 }
 
 // BSON fields for the patches

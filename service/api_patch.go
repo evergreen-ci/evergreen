@@ -248,7 +248,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	var summaries []thirdparty.Summary
 	var commitMessages []string
 	if patch.IsMailboxDiff(patchContent) {
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesByCommit(patchContent)
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContent)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
 			return

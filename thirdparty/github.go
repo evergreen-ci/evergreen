@@ -319,30 +319,13 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	return commit, nil
 }
 
-type PatchFormat int
-
-const (
-	Diff PatchFormat = PatchFormat(iota)
-	Patch
-)
-
-func (f PatchFormat) ToGithubFormat() github.RawType {
-	if f == Diff {
-		return github.Diff
-	}
-
-	return github.Patch
-}
-
 // GetRawCommit gets the specified commit via an API call to GitHub
-func GetRawCommit(ctx context.Context, oauthToken, repoOwner, repo, sha string, format PatchFormat) (string, error) {
+func GetRawPatchCommit(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
 	httpClient := getGithubClient(oauthToken)
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	grip.Debugf("requesting raw github commit for '%s/%s': sha: %s\n", repoOwner, repo, sha)
-
-	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: format.ToGithubFormat()})
+	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Patch})
 	if resp != nil {
 		defer resp.Body.Close()
 	}

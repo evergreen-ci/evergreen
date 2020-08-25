@@ -153,8 +153,8 @@ func GetPatchSummaries(patchContent string) ([]Summary, error) {
 	return summaries, nil
 }
 
-func GetPatchSummariesByCommit(mboxPatch string) ([]Summary, []string, error) {
-	commits, err := GetCommitsFromMboxPatch(mboxPatch)
+func GetPatchSummariesFromMboxPatch(mboxPatch string) ([]Summary, []string, error) {
+	commits, err := getCommitsFromMboxPatch(mboxPatch)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "can't get commits from patch")
 	}
@@ -173,7 +173,7 @@ func GetPatchSummariesByCommit(mboxPatch string) ([]Summary, []string, error) {
 }
 
 func GetDiffsFromMboxPatch(patchContent string) (string, error) {
-	commits, err := GetCommitsFromMboxPatch(patchContent)
+	commits, err := getCommitsFromMboxPatch(patchContent)
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting commits from patch")
 	}
@@ -185,8 +185,8 @@ func GetDiffsFromMboxPatch(patchContent string) (string, error) {
 	return strings.Join(diffs, "\n"), nil
 }
 
-// GetCommitsFromMboxPatch returns commit information from an mbox patch
-func GetCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
+// getCommitsFromMboxPatch returns commit information from an mbox patch
+func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
 	tmpDir, err := ioutil.TempDir("", "patch_summaries_by_commit")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating temporary directory")

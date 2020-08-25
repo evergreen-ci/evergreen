@@ -581,7 +581,7 @@ func (p *Patch) IsCommitQueuePatch() bool {
 }
 
 func (p *Patch) IsBackport() bool {
-	return p.BackportOf != BackportInfo{}
+	return len(p.BackportOf.PatchID) != 0 || len(p.BackportOf.SHA) != 0
 }
 
 func (p *Patch) GetRequester() string {
@@ -612,7 +612,7 @@ func (p *Patch) MakeBackportDescription() (string, error) {
 			return "", errors.Wrap(err, "can't get patch being backported")
 		}
 		if commitQueuePatch == nil {
-			return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf)
+			return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf.PatchID)
 		}
 		description = commitQueuePatch.Description
 	}
@@ -652,7 +652,7 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 		return patchSet, errors.Wrap(err, "can't get github auth token")
 	}
 
-	commit, err := thirdparty.GetRawCommit(ctx, githubToken, owner, repo, sha, thirdparty.Patch)
+	commit, err := thirdparty.GetRawPatchCommit(ctx, githubToken, owner, repo, sha)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "problem getting commit '%s/%s:%s'", owner, repo, sha)
 	}
@@ -662,7 +662,7 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 		return patchSet, errors.Wrap(err, "can't write patch to db")
 	}
 
-	summaries, commitMessages, err := thirdparty.GetPatchSummariesByCommit(commit)
+	summaries, commitMessages, err := thirdparty.GetPatchSummariesFromMboxPatch(commit)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "error getting summaries by commit")
 	}

@@ -447,7 +447,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	var summaries []thirdparty.Summary
 	if patch.IsMailboxDiff(string(patchBytes)) {
 		var commitMessages []string
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesByCommit(string(patchBytes))
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(string(patchBytes))
 		if err != nil {
 			return errors.Wrapf(err, "error getting summaries by commit")
 		}
@@ -472,7 +472,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 			return errors.Wrap(err, "can't get existing merge patch")
 		}
 		if existingMergePatch == nil {
-			return errors.Errorf("patch '%s' does not exist", patchDoc.BackportOf)
+			return errors.Errorf("patch '%s' does not exist", patchDoc.BackportOf.PatchID)
 		}
 		if !existingMergePatch.IsCommitQueuePatch() {
 			return errors.Errorf("can only backport commit queue patches")

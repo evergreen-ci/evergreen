@@ -130,7 +130,7 @@ func TestParseGitUrl(t *testing.T) {
 }
 
 func TestGetPatchSummariesByCommit(t *testing.T) {
-	summaries, commitMessages, err := GetPatchSummariesByCommit(mboxPatch)
+	summaries, commitMessages, err := GetPatchSummariesFromMboxPatch(mboxPatch)
 	assert.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
@@ -166,7 +166,7 @@ index 03362f816..a9ae2024e 100644
                 return nil, errors.New("Unable to create local patch file")
 `, str)
 	assert.True(t, len([]byte(str)) > 1000)
-	summaries, commitMessages, err := GetPatchSummariesByCommit(msg)
+	summaries, commitMessages, err := GetPatchSummariesFromMboxPatch(msg)
 	assert.NoError(t, err)
 	assert.NotNil(t, summaries)
 	assert.NotNil(t, commitMessages)
