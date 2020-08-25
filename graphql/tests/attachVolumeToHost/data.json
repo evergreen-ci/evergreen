@@ -109,7 +109,7 @@
         "dispatcher_settings": {
           "version": "8913b66e37d56b0691ce394f6e159a977c6f3410f2b73118d13fba6d3c4dca9e"
         },
-        "_id": "09efad58f1a77ad9c3a3a7c3af3422fbd3a347f37924f6c0ad860b2490e63307",
+        "_id": "i-1104943f",
         "user": "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b"
       },
       "status": "c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8",
@@ -121,7 +121,7 @@
       "needs_agent": false,
       "user": "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
       "last_group": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "host_id": "43d96395816bec7bc65cd1bc9ed7d2eb2116e5e868d61ff59055b9cf8507ba8e",
+      "host_id": "i-1104943f",
       "provisioned": true,
       "last_task_completed_time": { "$date": "2020-07-20T19:16:17.279Z" },
       "host_type": "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
