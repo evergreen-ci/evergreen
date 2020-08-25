@@ -1,6 +1,6 @@
 mutation {
   attachVolumeToHost(
-    volumeId: "b6678ee48a9f08067ab343b5ed50be3ff63983f3d8ef3e90871470091cfaf959"
+    volumeId: "vol-0603934da6f024db5"
     hostId: "43d96395816bec7bc65cd1bc9ed7d2eb2116e5e868d61ff59055b9cf8507ba8e"
   )
 }
