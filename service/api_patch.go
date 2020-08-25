@@ -40,7 +40,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Description       string             `json:"desc"`
 		Project           string             `json:"project"`
-		BackportOf        patch.BackportInfo `json:"backport_of"`
+		BackportInfo      patch.BackportInfo `json:"backport_info"`
+		BackportOf        string             `json:"backport_of"`
 		PatchBytes        []byte             `json:"patch_bytes"`
 		Githash           string             `json:"githash"`
 		Variants          []string           `json:"buildvariants_new"`
@@ -79,6 +80,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(data.BackportInfo.SHA) == 0 && len(data.BackportInfo.PatchID) == 0 {
+		data.BackportInfo.PatchID = data.BackportOf
+	}
+
 	pref, err := model.FindOneProjectRef(data.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
@@ -114,7 +119,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Variants:     data.Variants,
 		Tasks:        data.Tasks,
 		Alias:        data.Alias,
-		BackportOf:   data.BackportOf,
+		BackportOf:   data.BackportInfo,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,
