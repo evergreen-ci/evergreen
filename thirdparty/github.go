@@ -331,7 +331,12 @@ func GetRawPatchCommit(ctx context.Context, oauthToken, repoOwner, repo, sha str
 	}
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying  '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
-		grip.Error(errMsg)
+		grip.Error(message.Fields{
+			"message": errMsg,
+			"owner":   repoOwner,
+			"repo":    repo,
+			"sha":     sha,
+		})
 		return "", APIResponseError{errMsg}
 	}
 
