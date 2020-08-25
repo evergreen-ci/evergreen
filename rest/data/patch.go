@@ -253,14 +253,23 @@ func (p *DBPatchConnector) IsPatchEmpty(id string) (bool, error) {
 func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get patch")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "can't get patch").Error(),
+		}
 	}
 	if patchDoc == nil {
-		return nil, errors.Errorf("no patch '%s' found", patchID)
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("no patch '%s' found", patchID),
+		}
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
-		return nil, errors.Wrap(err, "can't get patch contents")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "can't get patch contents").Error(),
+		}
 	}
 
 	patchMap := make(map[string]string)

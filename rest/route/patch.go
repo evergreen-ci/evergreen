@@ -157,7 +157,7 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
 	patchMap, err := p.sc.GetPatchRawPatches(p.patchID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	return gimlet.NewTextResponse(patchMap[p.moduleName])
