@@ -65,8 +65,8 @@ type Query {
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  taskQueueDistros: [TaskQueueDistro!]!
 }
-
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -221,6 +221,11 @@ type TaskQueueItem {
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
+}
+
+type TaskQueueDistro {
+  id: ID!
+  queueCount: Int!
 }
 
 type Host {
