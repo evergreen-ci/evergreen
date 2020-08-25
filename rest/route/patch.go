@@ -129,6 +129,42 @@ func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// GET /rest/v2/patches/{patch_id}/raw
+
+type patchRawHandler struct {
+	patchID    string
+	moduleName string
+	sc         data.Connector
+}
+
+func makePatchRawHandler(sc data.Connector) gimlet.RouteHandler {
+	return &patchByIdHandler{
+		sc: sc,
+	}
+}
+
+func (p *patchRawHandler) Factory() gimlet.RouteHandler {
+	return &patchByIdHandler{sc: p.sc}
+}
+
+func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchID = gimlet.GetVars(r)["patch_id"]
+	p.moduleName = r.URL.Query().Get("module")
+
+	return nil
+}
+
+func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
+	patchMap, err := p.sc.GetPatchRawPatches(p.patchID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	return gimlet.NewTextResponse(patchMap[p.moduleName])
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /rest/v2/users/<id>/patches
 
 type patchesByUserHandler struct {

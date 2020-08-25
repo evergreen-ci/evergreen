@@ -250,12 +250,34 @@ func (p *DBPatchConnector) IsPatchEmpty(id string) (bool, error) {
 	return len(patchDoc.Patches) == 0, nil
 }
 
+func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string, error) {
+	patchDoc, err := patch.FindOneId(patchID)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get patch")
+	}
+	if patchDoc == nil {
+		return nil, errors.Errorf("no patch '%s' found", patchID)
+	}
+
+	if err = patchDoc.FetchPatchFiles(false); err != nil {
+		return nil, errors.Wrap(err, "can't get patch contents")
+	}
+
+	patchMap := make(map[string]string)
+	for _, raw := range patchDoc.Patches {
+		patchMap[raw.ModuleName] = raw.PatchSet.Patch
+	}
+
+	return patchMap, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
-	CachedPatches  []restModel.APIPatch
-	CachedAborted  map[string]string
-	CachedPriority map[string]int64
+	CachedPatches    []restModel.APIPatch
+	CachedAborted    map[string]string
+	CachedPriority   map[string]int64
+	CachedRawPatches map[string]string
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -359,6 +381,10 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 func (c *MockPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	_, _, err := verifyPullRequestEventForAbort(event)
 	return err
+}
+
+func (c *MockPatchConnector) GetPatchRawPatches(patchID string) (map[string]string, error) {
+	return c.CachedRawPatches, nil
 }
 
 func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {
