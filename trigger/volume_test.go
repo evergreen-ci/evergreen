@@ -21,9 +21,10 @@ func TestVolumeExpiration(t *testing.T) {
 	require.Implements(t, (*eventHandler)(nil), &volumeTriggers{})
 
 	require.NoError(t, db.ClearCollections(event.AllLogCollection, host.VolumesCollection, event.SubscriptionsCollection, alertrecord.Collection))
+	expiration := time.Now().Add(15 * time.Hour).Round(time.Second)
 	v := host.Volume{
 		ID:         "v0",
-		Expiration: time.Now().Add(12 * time.Hour),
+		Expiration: expiration,
 	}
 	require.NoError(t, v.Insert())
 
@@ -32,20 +33,26 @@ func TestVolumeExpiration(t *testing.T) {
 	triggers.event = &event.EventLogEntry{ID: "e0"}
 
 	testData := hostTemplateData{
-		ID:             v.ID,
-		ExpirationTime: time.Now().Add(2 * time.Hour),
+		ID: v.ID,
 	}
 
 	for name, test := range map[string]func(*testing.T){
 		"Email": func(*testing.T) {
-			email, err := hostExpirationEmailPayload(testData, expiringVolumeTitle, expiringVolumeBody, triggers.Selectors())
+			email, err := hostExpirationEmailPayload(testData, expiringVolumeEmailSubject, expiringVolumeEmailBody, triggers.Selectors())
 			assert.NoError(t, err)
 			assert.Contains(t, email.Body, "Your volume with id v0 will be terminated at")
 		},
 		"Slack": func(*testing.T) {
-			slack, err := hostExpirationSlackPayload(testData, expiringVolumeBody, triggers.Selectors())
+			slack, err := hostExpirationSlackPayload(testData, expiringVolumeSlackBody, "linkTitle", triggers.Selectors())
 			assert.NoError(t, err)
 			assert.Contains(t, slack.Body, "Your volume with id v0 will be terminated at")
+		},
+		"Fetch": func(*testing.T) {
+			triggers := volumeTriggers{}
+			assert.NoError(t, triggers.Fetch(&event.EventLogEntry{ResourceId: "v0"}))
+			assert.Equal(t, "v0", triggers.templateData.ID)
+			assert.Equal(t, expiration.Format(time.RFC1123), triggers.templateData.ExpirationTime)
+			assert.Equal(t, "/spawn#?resourcetype=volumes&id=v0", triggers.templateData.URL)
 		},
 		"NotificationsFromEvent": func(*testing.T) {
 			require.NoError(t, db.Clear(event.SubscriptionsCollection))

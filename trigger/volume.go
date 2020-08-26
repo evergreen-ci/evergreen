@@ -17,8 +17,10 @@ func init() {
 
 const (
 	// notification templates
-	expiringVolumeTitle = `Volume termination reminder`
-	expiringVolumeBody  = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Attach to a host to extend its lifetime.`
+	expiringVolumeEmailSubject         = `Volume termination reminder`
+	expiringVolumeEmailBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>volume page</a> to extend its lifetime.`
+	expiringVolumeSlackBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|volume page> to extend its lifetime.`
+	expiringVolumeSlackAttachmentTitle = "Volume Page"
 )
 
 type volumeTriggers struct {
@@ -46,8 +48,8 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 
 	t.templateData = hostTemplateData{
 		ID:             t.volume.ID,
-		ExpirationTime: t.volume.Expiration,
-		URL:            fmt.Sprintf("%s/spawn", t.uiConfig.Url),
+		ExpirationTime: t.volume.Expiration.Format(time.RFC1123),
+		URL:            fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=%s", t.uiConfig.Url, t.volume.ID),
 	}
 
 	t.event = e
@@ -85,14 +87,14 @@ func makeVolumeTriggers() eventHandler {
 	return t
 }
 
-func (t *volumeTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {
+func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	var payload interface{}
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, subjectTempl, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, expiringVolumeEmailSubject, expiringVolumeEmailBody, sub.Selectors)
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle, sub.Selectors)
 	default:
 		return nil, nil
 	}
@@ -104,5 +106,5 @@ func (t *volumeTriggers) generate(sub *event.Subscription, subjectTempl, bodyTem
 }
 
 func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	return t.generate(sub, expiringVolumeTitle, expiringVolumeBody)
+	return t.generate(sub)
 }
