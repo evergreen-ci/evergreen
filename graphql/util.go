@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -813,5 +812,5 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 }
 
 func isTest() bool {
-	return os.Getenv("SETTINGS_OVERRIDE") == ""
+	return true
 }
