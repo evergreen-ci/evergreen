@@ -168,6 +168,11 @@ type VariantTasks struct {
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
 }
 
+type VolumeHost struct {
+	VolumeID string `json:"volumeId"`
+	HostID   string `json:"hostId"`
+}
+
 type HostSortBy string
 
 const (

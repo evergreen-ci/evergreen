@@ -1,3 +1,5 @@
 mutation {
-  attachVolumeToHost(volumeId: "vol-two", hostId: "i-1104943f")
+  attachVolumeToHost(
+    volumeAndHost: { volumeId: "vol-two", hostId: "i-1104943f" }
+  )
 }
