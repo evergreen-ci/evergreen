@@ -231,13 +231,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	catcher := grip.NewBasicCatcher()
 	if !p.Restricted {
-		catcher := grip.NewBasicCatcher()
-		catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier), "error adding project '%s' to list of all projects", p.Identifier)
 		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "error adding project '%s' to list of unrestricted projects", p.Identifier)
-		if catcher.HasErrors() {
-			return catcher.Resolve()
-		}
+	}
+	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier), "error adding project '%s' to list of all projects", p.Identifier)
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 	newScope := gimlet.Scope{
 		ID:          fmt.Sprintf("project_%s", p.Identifier),
