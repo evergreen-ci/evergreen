@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -770,4 +771,23 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 		apiVolumes = append(apiVolumes, apiVolume)
 	}
 	return apiVolumes, nil
+}
+
+func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
+	provider := evergreen.ProviderNameEc2OnDemand
+	if isTest() {
+		// Use the mock manager during integration tests
+		provider = evergreen.ProviderNameMock
+	}
+	mgrOpts := cloud.ManagerOpts{
+		Provider: provider,
+		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	}
+	env := evergreen.GetEnvironment()
+	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+	return mgr, err
+}
+
+func isTest() bool {
+	return os.Getenv("SETTINGS_OVERRIDE") != ""
 }
