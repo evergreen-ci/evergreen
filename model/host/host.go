@@ -2697,3 +2697,32 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 type counter struct {
 	Count int `bson:"count"`
 }
+
+type VirtualWorkstationCounter struct {
+	InstanceType string `bson:"instance_type" json:"instance_type"`
+	Count        int    `bson:"count" json:"count"`
+}
+
+func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			StatusKey:               evergreen.HostRunning,
+			IsVirtualWorkstationKey: true,
+		}},
+		{"$group": bson.M{
+			"_id":   "$" + InstanceTypeKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$project": bson.M{
+			"_id":           "0",
+			"instance_type": "$_id",
+			"count":         "$count",
+		}},
+	}
+
+	data := []VirtualWorkstationCounter{}
+	if err := db.Aggregate(Collection, pipeline, &data); err != nil {
+		return nil, errors.Wrap(err, "error getting virtual workstation info")
+	}
+	return data, nil
+}
