@@ -1,0 +1,176 @@
+{
+  "hosts": [
+    {
+      "needs_agent_monitor": false,
+      "last_version": "1e264b265ba73ec8a5bd925a20ba175320cfab83ae8c8ad420a23007b37936df",
+      "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },
+      "jasper_restart_attempts": 0,
+      "jasper_deploy_attempts": 0,
+      "tag": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "has_containers": false,
+      "jasper_credentials_id": "43d96395816bec7bc65cd1bc9ed7d2eb2116e5e868d61ff59055b9cf8507ba8e",
+      "priv_attempts": 0,
+      "agent_revision": "b8b8f6d205d703158ede9a7f1469844398e8817a25550865c3af553f06fb8056",
+      "last_project": "75f828791805ab68ac5579812fadd94207b0c51a68989ab121810e2625d0cb3d",
+      "running_task_project": "75f828791805ab68ac5579812fadd94207b0c51a68989ab121810e2625d0cb3d",
+      "zone": "us-east-1a",
+      "agent_deploy_attempt": 64,
+      "running_task_group": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "last_bv": "49cad56ee06f361209f660a6ddce85a5d3c6b404c0a47223e7514512bd16e51f",
+      "running_task_version": "d9d6a0f243979fc029e288dc9c0d117612f8367bb20fab06002c7bbe2515dbed",
+      "agent_start_time": { "$date": "1970-01-01T00:00:00Z" },
+      "running_task_group_order": 0,
+      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "last_communication": { "$date": "2020-07-20T19:19:22.146Z" },
+      "distro": {
+        "provider_settings": [
+          {
+            "hosts": [
+              {
+                "name": "43d96395816bec7bc65cd1bc9ed7d2eb2116e5e868d61ff59055b9cf8507ba8e"
+              },
+              {
+                "name": "0bbdffc661557ae66194617836cbf6c09f4cf6dd84883632173aa244620934f6"
+              }
+            ]
+          }
+        ],
+        "bootstrap_settings": {
+          "communication": "15a2980ab5214b1377b5216c3eac73cf81a7cd330b9a9ec2499a286130f1e133",
+          "shell_path": "b1fd29aea4dad2af84fad34e1f3c7fc8e2b7844731f14944381baeb581c333b6",
+          "client_dir": "196fe1a8cffc4eb7d86918689637a3798c0a132dcb493bd1caecb79591f84090",
+          "resource_limits": {
+            "num_files": 64000,
+            "virtual_memory": -1,
+            "num_processes": -1,
+            "locked_memory": -1
+          },
+          "jasper_credentials_path": "9192fe69b8a46821cd91c5f3e6b643d278471f93a1269127902780e822e23afe",
+          "jasper_binary_dir": "196fe1a8cffc4eb7d86918689637a3798c0a132dcb493bd1caecb79591f84090",
+          "method": "15a2980ab5214b1377b5216c3eac73cf81a7cd330b9a9ec2499a286130f1e133"
+        },
+        "is_virtual_workstation": false,
+        "finder_settings": {
+          "version": "c49fea7425fa7f8699897a97c159c6690267d9003bb78c53fafa8fc15c325d84"
+        },
+        "disable_shallow_clone": false,
+        "aliases": [
+          "3a8d3c19862652b84e37111bc20e16d561d78902b5478f9170d7af6796ce40a3",
+          "9ec394433d2dd99f422f21ceb50f62edcfba50255b84f1a274bf85295af26f09"
+        ],
+        "work_dir": "b560622207b8a0d6354080f8363aa7d8a32c30e5d3309099a820217d0e7dc748",
+        "spawn_allowed": false,
+        "note": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "home_volume_settings": {
+          "format_command": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "use_legacy_agent": false,
+        "icecream_settings": {},
+        "planner_settings": {
+          "mainline_time_in_queue_factor": { "$numberLong": "0" },
+          "group_versions": false,
+          "commit_queue_factor": { "$numberLong": "0" },
+          "target_time": { "$numberLong": "0" },
+          "patch_zipper_factor": { "$numberLong": "0" },
+          "expected_runtime_factor": { "$numberLong": "0" },
+          "version": "b07b07f6dda29264134200b8c0f9d90f0cf18b1321af7faadc278196ec49f7c2",
+          "patch_time_in_queue_factor": { "$numberLong": "0" }
+        },
+        "provider": "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
+        "ssh_key": "64fe974c8a499fc93675518623c94be43ffe81f68f277f53feaf55fb5ad792f2",
+        "clone_method": "15a2980ab5214b1377b5216c3eac73cf81a7cd330b9a9ec2499a286130f1e133",
+        "host_allocator_settings": {
+          "version": "28c1f7a3f334b15ba117f0aba11087fbf2b45395db1229c7d23327b7cd629bc7",
+          "maximum_hosts": 0,
+          "minimum_hosts": 0,
+          "acceptable_host_idle_time": { "$numberLong": "0" }
+        },
+        "arch": "193b9ef5dfc4685c536b57c58c8d199b1eb1592dcd0ff3bea28af79d303c528d",
+        "is_cluster": false,
+        "ssh_options": [
+          "394d4f0bf28c21361b5b58606a13a23fe6ec99d4faceb1bf250b39951460617d",
+          "d97a6066dff89d4c428140da1d3d8fce109285972345f5edcffcde79474b6e02",
+          "97e8263ce69402924f2abaebd09dc7fcfae9f819b6cd705b3778c500fb243379"
+        ],
+        "expansions": [
+          {
+            "value": "d14ccd01deef35575d30a02029f2c365714a3a7c799fba916f1b3354499a6ec9",
+            "key": "1fea9776bd5f3d1c305ec5ca024c66cc0cca351d3add0d114cc8c9b1c0b81e1f"
+          },
+          {
+            "value": "2c5046899ebdfc02bd88f83750be4854a7006869a7d532dd3d5fff280355e863",
+            "key": "6527c9361a2f469c5275afcb5d06e53013367cd231995de13dc7218711388382"
+          },
+          {
+            "value": "8d4af4d8b9137b3fb3581281da11ceeecb5cf9928def6f3d22ab24a86f79dfe0",
+            "key": "a01dd5f5774c6ed84073f57a1cf7bd5830e731bee86d6271d25bdc29f2fdfd22"
+          }
+        ],
+        "dispatcher_settings": {
+          "version": "8913b66e37d56b0691ce394f6e159a977c6f3410f2b73118d13fba6d3c4dca9e"
+        },
+        "_id": "i-1104943f",
+        "user": "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b"
+      },
+      "status": "c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8",
+      "running_task": "3c982b6bfcea40f73f1633fbcb83a800239cb1cd88724b382425fb727c4081c2",
+      "container_images": null,
+      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "provision_options": null,
+      "running_task_bv": "49cad56ee06f361209f660a6ddce85a5d3c6b404c0a47223e7514512bd16e51f",
+      "needs_agent": false,
+      "user": "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
+      "last_group": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "host_id": "i-1104943f",
+      "provisioned": true,
+      "last_task_completed_time": { "$date": "2020-07-20T19:16:17.279Z" },
+      "host_type": "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
+      "started_by": "64fe974c8a499fc93675518623c94be43ffe81f68f277f53feaf55fb5ad792f2",
+      "project": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "instance_type": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "last_task": "7bb807dd85d16bb842feebc0c08851620f21e24642cf0a589f40acbaca520971",
+      "_id": "i-1104943f"
+    }
+  ],
+  "volumes": [
+    {
+      "no_expiration": false,
+      "display_name": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+      "home_volume": true,
+      "availability_zone": "us-east-1a",
+      "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
+      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+      "host": "i-1104943f",
+      "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
+      "_id": "vol-0603934da6f024db5",
+      "type": "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+      "size": 500
+    },
+    {
+      "no_expiration": false,
+      "display_name": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+      "home_volume": true,
+      "availability_zone": "us-west-1",
+      "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
+      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+      "host": "not-real",
+      "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
+      "_id": "vol-two",
+      "type": "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+      "size": 500
+    },
+    {
+      "no_expiration": false,
+      "display_name": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+      "home_volume": true,
+      "availability_zone": "us-east-1a",
+      "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
+      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+      "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
+      "_id": "vol-three",
+      "type": "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+      "size": 500,
+      "host": ""
+    }
+  ]
+}
