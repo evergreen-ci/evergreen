@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -491,4 +492,27 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 	s.Require().NoError(err)
 	s.NoError(s.route.Parse(context.Background(), req))
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
+}
+
+func TestPatchRawHandler(t *testing.T) {
+	route := &patchRawHandler{
+		sc: &data.MockConnector{
+			URL: "https://evergreen.example.net",
+			MockPatchConnector: data.MockPatchConnector{
+				CachedRawPatches: map[string]string{
+					"":        "main diff",
+					"module1": "module1 diff",
+				},
+			},
+		},
+	}
+
+	response := route.Run(context.Background())
+	assert.Equal(t, http.StatusOK, response.Status())
+	assert.Equal(t, "main diff", response.Data())
+
+	route.moduleName = "module1"
+	response = route.Run(context.Background())
+	assert.Equal(t, http.StatusOK, response.Status())
+	assert.Equal(t, "module1 diff", response.Data())
 }
