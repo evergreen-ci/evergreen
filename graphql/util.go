@@ -840,7 +840,7 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	}
 	mgr, err := getManager(ctx, vol)
 	if vol.Host == "" {
-		return false, http.StatusBadRequest, InputValidationError, errors.Wrapf(err, "volume '%s' is not attached", vol.ID)
+		return false, http.StatusBadRequest, InputValidationError, errors.Errorf("volume '%s' is not attached", vol.ID)
 	}
 	h, err := host.FindOneId(vol.Host)
 	if err != nil {
@@ -854,7 +854,10 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 				"action":  "DetachVolume",
 			}))
 		}
-		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID))
+		return false, http.StatusInternalServerError, InternalServerError, errors.Errorf("host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID)
+	}
+	if isTest() {
+		mgr.SpawnHost(ctx, h)
 	}
 	if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)

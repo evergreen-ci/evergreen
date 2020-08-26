@@ -461,7 +461,11 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 }
 
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
-	return true, nil
+	success, _, gqlErr, err := DetachVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
 }
 
 type patchResolver struct{ *Resolver }
