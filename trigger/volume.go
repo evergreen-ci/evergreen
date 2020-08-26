@@ -109,18 +109,29 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notification.Notification, error) {
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
-		catcher := grip.NewBasicCatcher()
-		user, err := user.FindOneById(sub.Owner)
-		catcher.Add(errors.Wrapf(err, "can't get user '%s' for subscription owner", sub.Owner))
-
-		userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
-		catcher.Add(errors.Wrapf(err, "can't parse timezone '%s' for '%s'", user.Settings.Timezone, sub.Owner))
-
-		if !catcher.HasErrors() {
+		userTimeZone, err := getUserTimeZone(sub.Owner)
+		grip.Error(errors.Wrap(err, "problem getting time zone"))
+		if err == nil {
 			timeZone = userTimeZone
 		}
-		grip.Error(errors.Wrap(catcher.Resolve(), "problem getting user timezone"))
 	}
 	t.templateData.ExpirationTime = t.volume.Expiration.In(timeZone).Format(time.RFC1123)
 	return t.generate(sub)
+}
+
+func getUserTimeZone(userID string) (*time.Location, error) {
+	user, err := user.FindOneById(userID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get user '%s' for subscription owner", userID)
+	}
+	if user == nil {
+		return nil, errors.Errorf("no user '%s' found", userID)
+	}
+
+	userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't parse timezone '%s'", user.Settings.Timezone)
+	}
+
+	return userTimeZone, nil
 }

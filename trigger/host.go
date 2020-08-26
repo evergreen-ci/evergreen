@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -194,17 +193,11 @@ func hostExpirationSlackPayload(t hostTemplateData, messageString string, linkTi
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
-		catcher := grip.NewBasicCatcher()
-		user, err := user.FindOneById(sub.Owner)
-		catcher.Add(errors.Wrapf(err, "can't get user '%s' for subscription owner", sub.Owner))
-
-		userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
-		catcher.Add(errors.Wrapf(err, "can't parse timezone '%s' for '%s'", user.Settings.Timezone, sub.Owner))
-
-		if !catcher.HasErrors() {
+		userTimeZone, err := getUserTimeZone(sub.Owner)
+		grip.Error(errors.Wrap(err, "problem getting time zone"))
+		if err == nil {
 			timeZone = userTimeZone
 		}
-		grip.Error(errors.Wrap(catcher.Resolve(), "problem getting user timezone"))
 	}
 	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
 	return t.generate(sub)
