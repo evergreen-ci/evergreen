@@ -369,3 +369,50 @@ func TestCollectProcesses(t *testing.T) {
 		assert.NotZero(t, proc.Command)
 	}
 }
+
+func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv, err := testutil.NewMockMetricsServer(ctx, 12345)
+	require.NoError(t, err)
+
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	require.NoError(t, err)
+
+	task := &task.Task{
+		Id:           "id",
+		Project:      "project",
+		Version:      "version",
+		BuildVariant: "buildvariant",
+		DisplayName:  "display_name",
+		Execution:    0,
+	}
+
+	mc := newUptimeCollector()
+	coll, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		task:                     task,
+		interval:                 time.Second,
+		collectors:               []metricCollector{mc},
+		bufferTimedFlushInterval: time.Second,
+		conn:                     conn,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, coll.Start(ctx))
+
+	timer := time.NewTimer(3 * time.Second)
+	select {
+	case <-timer.C:
+		require.NoError(t, coll.Close())
+	}
+
+	assert.NotEmpty(t, srv.StreamData)
+	sentData := srv.StreamData[mc.name()]
+	assert.NotZero(t, len(sentData))
+	for _, data := range sentData {
+		assert.Equal(t, mc.name(), data.Type)
+		assert.Equal(t, mc.format(), sysmetrics.DataFormat(data.Format))
+		assert.NotEmpty(t, data.Data)
+	}
+}

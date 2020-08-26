@@ -172,11 +172,21 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 		case <-timer.C:
 			data, err := mc.collect(ctx)
 			if err != nil {
+				// Do not accumulate errors caused by system metrics collectors
+				// closing this metric collector's context.
+				if ctx.Err() != nil {
+					return
+				}
 				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.name()))
 				return
 			}
 			_, err = stream.Write(data)
 			if err != nil {
+				// Do not accumulate errors caused by system metrics collectors
+				// closing this metric collector's context.
+				if ctx.Err() != nil {
+					return
+				}
 				s.catcher.Add(errors.Wrapf(err, "problem writing system metrics data to stream for id %s and metricType %s", s.id, mc.name()))
 				return
 			}
