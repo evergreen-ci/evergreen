@@ -232,7 +232,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DetachVolumeFromHost       func(childComplexity int, volumeAndHost VolumeHost) int
+		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
@@ -617,7 +617,7 @@ type MutationResolver interface {
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
-	DetachVolumeFromHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
+	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1514,7 +1514,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DetachVolumeFromHost(childComplexity, args["volumeAndHost"].(VolumeHost)), true
+		return e.complexity.Mutation.DetachVolumeFromHost(childComplexity, args["volumeId"].(string)), true
 
 	case "Mutation.enqueuePatch":
 		if e.complexity.Mutation.EnqueuePatch == nil {
@@ -3577,7 +3577,7 @@ type Mutation {
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
-  detachVolumeFromHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -4257,14 +4257,14 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_detachVolumeFromHost_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 VolumeHost
-	if tmp, ok := rawArgs["volumeAndHost"]; ok {
-		arg0, err = ec.unmarshalNVolumeHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVolumeHost(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["volumeId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["volumeAndHost"] = arg0
+	args["volumeId"] = arg0
 	return args, nil
 }
 
@@ -9683,7 +9683,7 @@ func (ec *executionContext) _Mutation_detachVolumeFromHost(ctx context.Context, 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DetachVolumeFromHost(rctx, args["volumeAndHost"].(VolumeHost))
+		return ec.resolvers.Mutation().DetachVolumeFromHost(rctx, args["volumeId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

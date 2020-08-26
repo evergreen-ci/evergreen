@@ -459,7 +459,8 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 	}
 	return success, nil
 }
-func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
+
+func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
 	return true, nil
 }
 

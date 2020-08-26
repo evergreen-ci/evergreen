@@ -773,6 +773,20 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 	return apiVolumes, nil
 }
 
+func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
+	provider := evergreen.ProviderNameEc2OnDemand
+	if isTest() {
+		provider = evergreen.ProviderNameMock
+	}
+	mgrOpts := cloud.ManagerOpts{
+		Provider: provider,
+		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	}
+	env := evergreen.GetEnvironment()
+	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+	return mgr, err
+}
+
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
 	if volumeId == "" {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
@@ -784,16 +798,8 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
-	provider := evergreen.ProviderNameEc2OnDemand
-	if isTest() {
-		provider = evergreen.ProviderNameMock
-	}
-	mgrOpts := cloud.ManagerOpts{
-		Provider: provider,
-		Region:   cloud.AztoRegion(vol.AvailabilityZone),
-	}
-	env := evergreen.GetEnvironment()
-	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+
+	mgr, err := getManager(ctx, vol)
 
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
@@ -817,6 +823,41 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	}
 	if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
+}
+
+func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
+	}
+	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
+	}
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
+	mgr, err := getManager(ctx, vol)
+	if vol.Host == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.Wrapf(err, "volume '%s' is not attached", vol.ID)
+	}
+	h, err := host.FindOneId(vol.Host)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID)
+	}
+	if h == nil {
+		if err = host.UnsetVolumeHost(vol.ID); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
+				"route":   "graphql/util",
+				"action":  "DetachVolume",
+			}))
+		}
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID))
+	}
+	if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)
 	}
 	return true, http.StatusOK, "", nil
 }

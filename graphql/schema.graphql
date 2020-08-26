@@ -100,7 +100,7 @@ type Mutation {
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
-  detachVolumeFromHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
