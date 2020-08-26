@@ -542,26 +542,18 @@ func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSett
 	}
 }
 
-// Get EC2 key and secret from the AWS configuration for the given region
-func GetEC2Key(region string, s *evergreen.Settings) (string, string, error) {
-	// Get key and secret for specified region
-	var key, secret string
-	for _, k := range s.Providers.AWS.EC2Keys {
-		if k.Region == region {
-			key = k.Key
-			secret = k.Secret
-
-			// Error if key or secret are blank
-			if key == "" || secret == "" {
-				return "", "", errors.New("AWS ID and Secret must not be blank")
-			}
-			return key, secret, nil
-		}
+// Get EC2 key and secret from the AWS configuration
+func GetEC2Key(s *evergreen.Settings) (string, string, error) {
+	if len(s.Providers.AWS.EC2Keys) == 0 {
+		return "", "", errors.New("no EC2 keys in config")
 	}
 
-	// Error if region is missing from config
+	key := s.Providers.AWS.EC2Keys[0].Key
+	secret := s.Providers.AWS.EC2Keys[0].Secret
+
+	// Error if key or secret are blank
 	if key == "" || secret == "" {
-		return "", "", errors.Errorf("Unable to find region '%s' in config", region)
+		return "", "", errors.New("AWS ID and Secret must not be blank")
 	}
 
 	return key, secret, nil
