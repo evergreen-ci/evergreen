@@ -21,6 +21,22 @@
           }
         }
       }
+    },
+    {
+      "query_file": "differentAvailabilityZones.graphql",
+      "result": {}
+    },
+    {
+      "query_file": "emptyHost.graphql",
+      "result": {}
+    },
+    {
+      "query_file": "nonexistentHost.graphql",
+      "result": {}
+    },
+    {
+      "query_file": "nonexistentVolume.graphql",
+      "result": {}
     }
   ]
 }
