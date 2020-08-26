@@ -774,7 +774,16 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 }
 
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
+	}
 	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
+	}
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
 	provider := evergreen.ProviderNameEc2OnDemand
 	if isTest() {
 		provider = evergreen.ProviderNameMock
@@ -794,14 +803,14 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	}
 	var h *host.Host
 	h, err = host.FindOneId(hostId)
-	if isTest() {
-		mgr.SpawnHost(ctx, h)
-	}
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host)
 	}
 	if h == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
+	}
+	if isTest() {
+		mgr.SpawnHost(ctx, h)
 	}
 	if vol.AvailabilityZone != h.Zone {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("host and volume must have same availability zone")
