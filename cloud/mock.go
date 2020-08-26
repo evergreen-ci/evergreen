@@ -21,6 +21,8 @@ func init() {
 	globalMockState = &mockState{
 		instances: map[string]MockInstance{},
 	}
+	// intialize with host Id used in attachVolumeToHost/success.graphql gql integration tests
+	globalMockState.instances["i-1104943f"] = MockInstance{}
 }
 
 // MockInstance mocks a running server that Evergreen knows about. It contains
