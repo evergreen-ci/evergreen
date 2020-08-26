@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ type hostSuite struct {
 	subs     []event.Subscription
 	t        *hostTriggers
 	testData hostTemplateData
+	uiConfig *evergreen.UIConfig
 
 	suite.Suite
 }
@@ -56,10 +58,10 @@ func (s *hostSuite) SetupTest() {
 		s.NoError(s.subs[i].Upsert())
 	}
 
-	ui := &evergreen.UIConfig{
+	s.uiConfig = &evergreen.UIConfig{
 		Url: "https://evergreen.mongodb.com",
 	}
-	s.NoError(ui.Set())
+	s.NoError(s.uiConfig.Set())
 
 	s.testData = hostTemplateData{
 		ID:     "myHost",
@@ -80,6 +82,13 @@ func (s *hostSuite) TestSlackMessage() {
 	msg, err := hostExpirationSlackPayload(s.testData, expiringHostSlackBody, "linkTitle", s.t.Selectors())
 	s.NoError(err)
 	s.Contains(msg.Body, "Your myDistro host 'hostName' will be terminated at")
+}
+
+func (s *hostSuite) TestFetch() {
+	triggers := hostTriggers{}
+	s.NoError(triggers.Fetch(s.t.event))
+	s.Equal(s.t.host.Id, triggers.templateData.ID)
+	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
 }
 
 func (s *hostSuite) TestAllTriggers() {

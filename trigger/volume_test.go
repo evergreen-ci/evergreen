@@ -51,7 +51,6 @@ func TestVolumeExpiration(t *testing.T) {
 			triggers := volumeTriggers{}
 			assert.NoError(t, triggers.Fetch(&event.EventLogEntry{ResourceId: "v0"}))
 			assert.Equal(t, "v0", triggers.templateData.ID)
-			assert.Equal(t, expiration.Format(time.RFC1123), triggers.templateData.ExpirationTime)
 			assert.Equal(t, "/spawn#?resourcetype=volumes&id=v0", triggers.templateData.URL)
 		},
 		"NotificationsFromEvent": func(*testing.T) {
