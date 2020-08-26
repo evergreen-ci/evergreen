@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -156,7 +157,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream *sysmetrics.SystemMetricsWriteCloser) {
+func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream io.WriteCloser) {
 	timer := time.NewTimer(0)
 	defer func() {
 		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.name())), ""))

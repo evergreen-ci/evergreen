@@ -380,7 +380,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
 	require.NoError(t, err)
 
-	task := &task.Task{
+	tsk := &task.Task{
 		Id:           "id",
 		Project:      "project",
 		Version:      "version",
@@ -391,7 +391,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 
 	mc := newUptimeCollector()
 	coll, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
-		task:                     task,
+		task:                     tsk,
 		interval:                 time.Second,
 		collectors:               []metricCollector{mc},
 		bufferTimedFlushInterval: time.Second,
@@ -407,6 +407,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 		require.NoError(t, coll.Close())
 	}
 
+	assert.Equal(t, tsk.Id, srv.Create)
 	assert.NotEmpty(t, srv.StreamData)
 	sentData := srv.StreamData[mc.name()]
 	assert.NotZero(t, len(sentData))
