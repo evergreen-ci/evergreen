@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -47,9 +49,8 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	t.templateData = hostTemplateData{
-		ID:             t.volume.ID,
-		ExpirationTime: t.volume.Expiration.Format(time.RFC1123),
-		URL:            fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=%s", t.uiConfig.Url, t.volume.ID),
+		ID:  t.volume.ID,
+		URL: fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=%s", t.uiConfig.Url, t.volume.ID),
 	}
 
 	t.event = e
@@ -106,5 +107,20 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 }
 
 func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notification.Notification, error) {
+	timeZone := time.Local
+	if sub.OwnerType == event.OwnerTypePerson {
+		catcher := grip.NewBasicCatcher()
+		user, err := user.FindOneById(sub.Owner)
+		catcher.Add(errors.Wrapf(err, "can't get user '%s' for subscription owner", sub.Owner))
+
+		userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
+		catcher.Add(errors.Wrapf(err, "can't parse timezone '%s' for '%s'", user.Settings.Timezone, sub.Owner))
+
+		if !catcher.HasErrors() {
+			timeZone = userTimeZone
+		}
+		grip.Error(errors.Wrap(catcher.Resolve(), "problem getting user timezone"))
+	}
+	t.templateData.ExpirationTime = t.volume.Expiration.In(timeZone).Format(time.RFC1123)
 	return t.generate(sub)
 }
