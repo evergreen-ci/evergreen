@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -774,12 +775,17 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
 	vol, err := host.FindVolumeByID(volumeId)
+	provider := evergreen.ProviderNameEc2OnDemand
+	if isTest() {
+		provider = evergreen.ProviderNameMock
+	}
 	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameMock,
+		Provider: provider,
 		Region:   cloud.AztoRegion(vol.AvailabilityZone),
 	}
 	env := evergreen.GetEnvironment()
 	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
 	}
@@ -788,6 +794,9 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	}
 	var h *host.Host
 	h, err = host.FindOneId(hostId)
+	if isTest() {
+		mgr.SpawnHost(ctx, h)
+	}
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host)
 	}
@@ -801,4 +810,8 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID)
 	}
 	return true, http.StatusOK, "", nil
+}
+
+func isTest() bool {
+	return os.Getenv("SETTINGS_OVERRIDE") == ""
 }
