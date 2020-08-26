@@ -776,6 +776,7 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
 	if isTest() {
+		// Use the mock manager during integration tests
 		provider = evergreen.ProviderNameMock
 	}
 	mgrOpts := cloud.ManagerOpts{
@@ -816,6 +817,8 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
 	}
 	if isTest() {
+		// The mock manager needs to spawn the host specified in our test data
+		// The host should already be spawned in non-test scenario
 		_, err = mgr.SpawnHost(ctx, h)
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "error spawning host in test code")
 	}
@@ -858,6 +861,8 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 		return false, http.StatusInternalServerError, InternalServerError, errors.Errorf("host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID)
 	}
 	if isTest() {
+		// The mock manager needs to spawn the host specified in our test data
+		// The host should already be spawned in non-test scenario
 		_, err = mgr.SpawnHost(ctx, h)
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "error spawning host in test code")
 	}
