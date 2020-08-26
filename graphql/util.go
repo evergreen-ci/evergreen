@@ -816,7 +816,8 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
 	}
 	if isTest() {
-		mgr.SpawnHost(ctx, h)
+		_, err = mgr.SpawnHost(ctx, h)
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "error spawning host in test code")
 	}
 	if vol.AvailabilityZone != h.Zone {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("host and volume must have same availability zone")
@@ -857,7 +858,8 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 		return false, http.StatusInternalServerError, InternalServerError, errors.Errorf("host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID)
 	}
 	if isTest() {
-		mgr.SpawnHost(ctx, h)
+		_, err = mgr.SpawnHost(ctx, h)
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "error spawning host in test code")
 	}
 	if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)
