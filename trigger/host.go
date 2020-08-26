@@ -111,7 +111,7 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 		ID:     t.host.Id,
 		Name:   t.host.DisplayName,
 		Distro: t.host.Distro.Id,
-		URL:    fmt.Sprintf("%s/spawn", t.hostBase.uiConfig.Url),
+		URL:    fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", t.uiConfig.Url, t.host.Id),
 	}
 	if t.host.DisplayName == "" {
 		t.templateData.Name = t.host.Id
