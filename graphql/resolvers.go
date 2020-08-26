@@ -1254,16 +1254,6 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string, ta
 	return taskQueue, nil
 }
 
-func (r *taskQueueItemResolver) ExpectedDuration(ctx context.Context, obj *restModel.APITaskQueueItem) (string, error) {
-	expectedDuration := obj.ExpectedDuration.Round(time.Second).String()
-
-	if expectedDuration != "0s" {
-		return formatDuration(expectedDuration), nil
-	}
-
-	return "", nil
-}
-
 func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.APITaskQueueItem) (TaskQueueItemType, error) {
 	if *obj.Requester != evergreen.RepotrackerVersionRequester {
 		return TaskQueueItemTypePatch, nil

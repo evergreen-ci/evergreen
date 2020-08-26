@@ -662,8 +662,6 @@ type TaskResolver interface {
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 }
 type TaskQueueItemResolver interface {
-	ExpectedDuration(ctx context.Context, obj *model.APITaskQueueItem) (string, error)
-
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
 }
 
@@ -3572,7 +3570,7 @@ type TaskQueueItem {
   displayName: String!
   project: String!
   buildVariant: String!
-  expectedDuration: String!
+  expectedDuration: Duration!
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
@@ -15253,13 +15251,13 @@ func (ec *executionContext) _TaskQueueItem_expectedDuration(ctx context.Context,
 		Object:   "TaskQueueItem",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.TaskQueueItem().ExpectedDuration(rctx, obj)
+		return obj.ExpectedDuration, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15271,9 +15269,9 @@ func (ec *executionContext) _TaskQueueItem_expectedDuration(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(model.APIDuration)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskQueueItem_priority(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
@@ -20742,19 +20740,10 @@ func (ec *executionContext) _TaskQueueItem(ctx context.Context, sel ast.Selectio
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "expectedDuration":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._TaskQueueItem_expectedDuration(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._TaskQueueItem_expectedDuration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "priority":
 			out.Values[i] = ec._TaskQueueItem_priority(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
