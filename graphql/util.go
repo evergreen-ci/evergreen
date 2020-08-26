@@ -775,7 +775,7 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
 	vol, err := host.FindVolumeByID(volumeId)
 	mgrOpts := cloud.ManagerOpts{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameMock,
 		Region:   cloud.AztoRegion(vol.AvailabilityZone),
 	}
 	env := evergreen.GetEnvironment()
