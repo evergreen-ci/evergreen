@@ -1675,7 +1675,7 @@ func (t *Task) Archive() error {
 				return errors.Wrap(err, "error retrieving execution task")
 			}
 			if execTask == nil {
-				return errors.Errorf("unable to find execution task %s from display task %s", et, t.Id)
+				return errors.Errorf("unable to find execution task '%s' from display task '%s'", et, t.Id)
 			}
 			if err = execTask.Archive(); err != nil {
 				return errors.Wrap(err, "error archiving execution task")
@@ -1689,7 +1689,13 @@ func (t *Task) Archive() error {
 	archiveTask.Archived = true
 	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed")
+		grip.Debug(message.WrapError(err, message.Fields{
+			"archive_task_id": archiveTask.Id,
+			"old_task_id":     archiveTask.OldTaskId,
+			"execution":       t.Execution,
+			"display_only":    t.DisplayOnly,
+		}))
+		return errors.Wrap(err, "task.Archive() failed to insert new old task")
 	}
 
 	// only increment restarts if have a current restarts
@@ -1706,7 +1712,7 @@ func (t *Task) Archive() error {
 			"$inc":   inc,
 		})
 	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed")
+		return errors.Wrap(err, "task.Archive() failed to update task")
 	}
 	t.Aborted = false
 

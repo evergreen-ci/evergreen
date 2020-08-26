@@ -77,10 +77,17 @@ func (j *hostStatsCollector) Run(_ context.Context) {
 	j.AddError(j.statsByProvider())
 }
 
-func (j *hostStatsCollector) statsByDistro() error {
+type hostCountStats struct {
+	hosts  *host.DistroStats
+	tasks  int
+	count  int
+	excess int
+}
+
+func collectHostCountStats() (*hostCountStats, error) {
 	hosts, err := host.GetStatsByDistro()
 	if err != nil {
-		return errors.Wrap(err, "problem getting stats by distro")
+		return nil, errors.Wrap(err, "problem getting stats by distro")
 	}
 
 	tasks := 0
@@ -96,17 +103,35 @@ func (j *hostStatsCollector) statsByDistro() error {
 		}
 	}
 
+	stats := &hostCountStats{
+		hosts:  &hosts,
+		tasks:  tasks,
+		count:  count,
+		excess: excess,
+	}
+
+	return stats, nil
+}
+
+func (j *hostStatsCollector) statsByDistro() error {
+
+	stats, err := collectHostCountStats()
+
+	if err != nil {
+		return err
+	}
+
 	j.logger.Info(message.Fields{
 		"report":        "host stats by distro",
-		"hosts_total":   count,
-		"running_tasks": tasks,
-		"data":          hosts,
+		"hosts_total":   stats.count,
+		"running_tasks": stats.tasks,
+		"data":          stats.hosts,
 	})
 
-	j.logger.WarningWhen(excess > 0, message.Fields{
+	j.logger.WarningWhen(stats.excess > 0, message.Fields{
 		"report": "maxHosts exceeded",
-		"data":   hosts.MaxHostsExceeded(),
-		"total":  excess,
+		"data":   stats.hosts.MaxHostsExceeded(),
+		"total":  stats.excess,
 	})
 
 	return nil

@@ -554,6 +554,9 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		return nil, err
 	}
 
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, client.AuthError
+	}
 	if resp.StatusCode != http.StatusCreated {
 		return nil, NewAPIError(resp)
 	}

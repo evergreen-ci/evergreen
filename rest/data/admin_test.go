@@ -229,6 +229,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		HostThrottle:         64,
 		CloudStatusBatchSize: 1,
 		ProvisioningThrottle: 200,
+		MaxTotalDynamicHosts: 1000,
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,

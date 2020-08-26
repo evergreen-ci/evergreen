@@ -61,6 +61,7 @@ type Query {
     limit: Int = 10
   ): HostsResponse!
   myHosts: [Host!]!
+  myVolumes: [Volume!]!
   myPublicKeys: [PublicKey!]!
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
@@ -360,6 +361,20 @@ type Build {
   actualMakespan: Duration!
 }
 
+type Volume {
+  id: String!
+  displayName: String!
+  createdBy: String!
+  type: String!
+  availabilityZone: String!
+  size: Int!
+  expiration: Time
+  deviceName: String
+  hostID: String!
+  noExpiration: Boolean!
+  homeVolume: Boolean!
+}
+
 type PatchProject {
   variants: [ProjectBuildVariant!]!
   tasks: [String!]!
@@ -377,6 +392,7 @@ type TaskResult {
   status: String!
   baseStatus: String!
   buildVariant: String!
+  blocked: Boolean!
 }
 
 type PatchDuration {
@@ -451,55 +467,56 @@ type BaseTaskMetadata {
 }
 
 type Task {
-  failedTestCount: Int!
-  spawnHostLink: String
-  patchMetadata: PatchMetadata!
-  id: String!
-  createTime: Time
-  ingestTime: Time
-  dispatchTime: Time
-  scheduledTime: Time
-  startTime: Time
-  finishTime: Time
-  activatedTime: Time
-  version: String!
-  projectId: String!
-  revision: String
-  priority: Int
-  taskGroup: String
-  taskGroupMaxHosts: Int
-  logs: TaskLogLinks!
+  aborted: Boolean
   activated: Boolean!
   activatedBy: String
+  activatedTime: Time
+  ami: String
+  blocked: Boolean!
+  baseTaskMetadata: BaseTaskMetadata
   buildId: String!
-  distroId: String!
   buildVariant: String!
-  reliesOn: [Dependency!]!
+  canAbort: Boolean!
+  canRestart: Boolean!
+  canSchedule: Boolean!
+  canSetPriority: Boolean!
+  canUnschedule: Boolean!
+  createTime: Time
+  details: TaskEndDetail
+  dispatchTime: Time
   displayName: String!
+  displayOnly: Boolean
+  distroId: String!
+  estimatedStart: Duration
+  execution: Int
+  executionTasks: [String!]
+  expectedDuration: Duration
+  failedTestCount: Int!
+  finishTime: Time
+  generatedBy: String
+  generateTask: Boolean
   hostId: String
   hostLink: String
-  restarts: Int
-  execution: Int
+  id: String!
+  ingestTime: Time
   latestExecution: Int!
+  logs: TaskLogLinks!
+  patchMetadata: PatchMetadata!
   patchNumber: Int
+  priority: Int
+  projectId: String!
+  reliesOn: [Dependency!]!
   requester: String!
+  restarts: Int
+  revision: String
+  scheduledTime: Time
+  spawnHostLink: String
+  startTime: Time
   status: String!
-  details: TaskEndDetail
+  taskGroup: String
+  taskGroupMaxHosts: Int
   timeTaken: Duration
-  expectedDuration: Duration
-  displayOnly: Boolean
-  executionTasks: [String!]
-  generateTask: Boolean
-  generatedBy: String
-  aborted: Boolean
-  baseTaskMetadata: BaseTaskMetadata
-  canRestart: Boolean!
-  canAbort: Boolean!
-  canSchedule: Boolean!
-  canUnschedule: Boolean!
-  canSetPriority: Boolean!
-  estimatedStart: Duration
-  ami: String
+  version: String!
 }
 
 type Projects {

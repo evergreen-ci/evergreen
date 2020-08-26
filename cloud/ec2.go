@@ -1531,6 +1531,9 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
+	if m.region != evergreen.DefaultEC2Region { // price fetcher not implemented for other regions
+		return 0, nil
+	}
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}

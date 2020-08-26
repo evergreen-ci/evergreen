@@ -416,6 +416,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
+			Blocked:      task.Blocked(),
 		}
 		taskResults = append(taskResults, &t)
 	}
@@ -742,5 +743,31 @@ func CanUpdateSpawnHost(host *host.Host, usr *user.DBUser) bool {
 		return true
 	}
 	return true
+}
 
+func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
+	volumes, err := host.FindVolumesByUser(user.Username())
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting volumes for '%s'", user.Username())
+	}
+	sort.SliceStable(volumes, func(i, j int) bool {
+		// sort order: mounted < not mounted, expiration time asc
+		volumeI := volumes[i]
+		volumeJ := volumes[j]
+		isMountedI := volumeI.Host == ""
+		isMountedJ := volumeJ.Host == ""
+		if isMountedI == isMountedJ {
+			return volumeI.Expiration.Before(volumeJ.Expiration)
+		}
+		return isMountedJ
+	})
+	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
+	for _, vol := range volumes {
+		apiVolume := restModel.APIVolume{}
+		if err = apiVolume.BuildFromService(vol); err != nil {
+			return nil, errors.Wrapf(err, "error building volume '%s' from service", vol.ID)
+		}
+		apiVolumes = append(apiVolumes, apiVolume)
+	}
+	return apiVolumes, nil
 }

@@ -116,7 +116,7 @@ const (
 	MergeTestFailed    = "failed"
 
 	// maximum task (zero based) execution number
-	MaxTaskExecution = 3
+	MaxTaskExecution = 9
 
 	// maximum task priority
 	MaxTaskPriority = 100

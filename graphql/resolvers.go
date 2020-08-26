@@ -419,6 +419,19 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
+func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
+	volumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
+	for i, _ := range volumes {
+		volumePointers = append(volumePointers, &volumes[i])
+	}
+	return volumePointers, nil
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
