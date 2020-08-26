@@ -312,7 +312,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err = cq.UpdateVersion(nextItem); err != nil {
 		j.logError(err, "problem saving version", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", patchDoc.Id.Hex()))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
 		return
 	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
@@ -327,7 +327,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", ""))
 		return
 	}
 
