@@ -73,6 +73,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
       $scope.Settings.providers.aws.ec2_keys = $scope.Settings.providers.aws.ec2_keys || [];
+      $scope.Settings.providers.aws.allowed_regions = $scope.Settings.providers.aws.allowed_regions || [];
     }
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
