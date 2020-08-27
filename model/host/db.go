@@ -90,6 +90,7 @@ var (
 	SSHKeyNamesKey               = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
 	HomeVolumeIDKey              = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey              = bsonutil.MustHaveTag(Host{}, "PortBindings")
+	IsVirtualWorkstationKey      = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
