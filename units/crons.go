@@ -1215,11 +1215,14 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		settings := env.Settings()
 
-		allRegions := settings.Providers.AWS.AllowedRegions
+		allRegions := map[string]bool{}
+		for _, key := range settings.Providers.AWS.EC2Keys {
+			allRegions[key.Region] = true
+		}
 		// Enqueue jobs to update SSH keys in the cloud provider.
 		updateRegions := map[string]bool{}
 		for _, key := range settings.SSHKeyPairs {
-			for _, region := range allRegions {
+			for region := range allRegions {
 				if utility.StringSliceContains(key.EC2Regions, region) {
 					continue
 				}

@@ -1173,7 +1173,11 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 }
 
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
-	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
+	regions := []string{}
+	for _, item := range evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys {
+		regions = append(regions, item.Region)
+	}
+	return regions, nil
 }
 
 func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {

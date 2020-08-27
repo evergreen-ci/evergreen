@@ -1305,6 +1305,7 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = ToStringPtr(v.Name)
+		a.Region = ToStringPtr(v.Region)
 		a.Key = ToStringPtr(v.Key)
 		a.Secret = ToStringPtr(v.Secret)
 	default:
@@ -1316,6 +1317,7 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 func (a *APIEC2Key) ToService() (interface{}, error) {
 	res := evergreen.EC2Key{}
 	res.Name = FromStringPtr(a.Name)
+	res.Region = FromStringPtr(a.Region)
 	res.Key = FromStringPtr(a.Key)
 	res.Secret = FromStringPtr(a.Secret)
 	return res, nil
@@ -1353,7 +1355,6 @@ type APIAWSConfig struct {
 	S3BaseURL            *string           `json:"s3_base_url"`
 	DefaultSecurityGroup *string           `json:"default_security_group"`
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
-	AllowedRegions       []*string         `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
 }
 
@@ -1426,9 +1427,10 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
-		a.AllowedInstanceTypes = ToStringPtrSlice(v.AllowedInstanceTypes)
-		a.AllowedRegions = ToStringPtrSlice(v.AllowedRegions)
 
+		for _, t := range v.AllowedInstanceTypes {
+			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToStringPtr(t))
+		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1516,8 +1518,9 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		config.Subnets = append(config.Subnets, subnet)
 	}
 
-	config.AllowedInstanceTypes = FromStringPtrSlice(a.AllowedInstanceTypes)
-	config.AllowedRegions = FromStringPtrSlice(a.AllowedRegions)
+	for _, t := range a.AllowedInstanceTypes {
+		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromStringPtr(t))
+	}
 
 	return config, nil
 }

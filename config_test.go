@@ -361,6 +361,7 @@ func (s *AdminSuite) TestProvidersConfig() {
 		AWS: AWSConfig{
 			EC2Keys: []EC2Key{
 				{
+					Region: DefaultEC2Region,
 					Secret: "aws_secret",
 					Key:    "aws",
 				},

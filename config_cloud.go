@@ -63,6 +63,7 @@ func (c *CloudProviders) ValidateAndDefault() error { return nil }
 // EC2Key links a region with a corresponding key and secret
 type EC2Key struct {
 	Name   string `bson:"name" json:"name" yaml:"name"`
+	Region string `bson:"region" json:"region" yaml:"region"`
 	Key    string `bson:"key" json:"key" yaml:"key"`
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 }
@@ -74,7 +75,6 @@ type Subnet struct {
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	// EC2Keys stored as a list to allow for possible multiple accounts in the future.
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
@@ -87,7 +87,6 @@ type AWSConfig struct {
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
-	AllowedRegions []string `bson:"allowed_regions" json:"allowed_regions" yaml:"allowed_regions"`
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
