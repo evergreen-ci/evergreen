@@ -785,7 +785,7 @@ func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
 	}
 	env := evergreen.GetEnvironment()
 	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
-	return mgr, err
+	return mgr, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
 }
 
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
@@ -801,7 +801,7 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	}
 	mgr, err := getManager(ctx, vol)
 	if err != nil {
-		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
+		return false, http.StatusInternalServerError, InternalServerError, err
 	}
 	if hostId == "" {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify host id")
@@ -839,6 +839,9 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
 	mgr, err := getManager(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err
+	}
 	if vol.Host == "" {
 		return false, http.StatusBadRequest, InputValidationError, errors.Errorf("volume '%s' is not attached", vol.ID)
 	}

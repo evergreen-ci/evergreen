@@ -235,7 +235,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
 	}
 	if spawnHost == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occured Spawn host is nil"))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
 	}
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(spawnHost)
@@ -1334,7 +1334,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
 		// does not contain nil version err values before sending InternalServerError
 		if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
 	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
