@@ -866,14 +866,15 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	return true, http.StatusOK, "", nil
 }
 
+// returns true during integration tests
 func isTest() bool {
 	return os.Getenv("SETTINGS_OVERRIDE") != ""
 }
 
 func spawnHostForTestCode(ctx context.Context, mgr cloud.Manager, h *host.Host) error {
 	if isTest() {
-		// The mock manager needs to spawn the host specified in our test data
-		// The host should already be spawned in non-test scenario
+		// The mock manager needs to spawn the host specified in our test data.
+		// The host should already be spawned in a non-test scenario.
 		_, err := mgr.SpawnHost(ctx, h)
 		if err != nil {
 			return errors.Wrapf(err, "error spawning host in test code")
