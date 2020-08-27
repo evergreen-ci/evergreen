@@ -419,6 +419,19 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
+func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
+	volumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
+	for i, _ := range volumes {
+		volumePointers = append(volumePointers, &volumes[i])
+	}
+	return volumePointers, nil
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
@@ -1160,11 +1173,7 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 }
 
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
-	regions := []string{}
-	for _, item := range evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys {
-		regions = append(regions, item.Region)
-	}
-	return regions, nil
+	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
 func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {

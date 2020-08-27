@@ -214,7 +214,6 @@ func MockConfig() *evergreen.Settings {
 				EC2Keys: []evergreen.EC2Key{
 					{
 						Name:   "test",
-						Region: "us-east-1",
 						Key:    "aws_key",
 						Secret: "aws_secret",
 					},

@@ -2,9 +2,8 @@ package patch
 
 import (
 	"bufio"
-	"bytes"
+	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -13,19 +12,19 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"github.com/sam-falvo/mbox"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // SizeLimit is a hard limit on patch size.
 const SizeLimit = 1024 * 1024 * 100
-const backportFmtString = "Backport: %s (%s)"
+const backportFmtString = "Backport: %s"
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
 type VariantTasks struct {
@@ -116,50 +115,41 @@ type SyncAtEndOptions struct {
 	Timeout       time.Duration  `bson:"timeout,omitempty"`
 }
 
+type BackportInfo struct {
+	PatchID string `bson:"patch_id,omitempty" json:"patch_id,omitempty"`
+	SHA     string `bson:"sha,omitempty" json:"sha,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id              mgobson.ObjectId `bson:"_id,omitempty"`
-	Description     string           `bson:"desc"`
-	Project         string           `bson:"branch"`
-	Githash         string           `bson:"githash"`
-	PatchNumber     int              `bson:"patch_number"`
-	Author          string           `bson:"author"`
-	Version         string           `bson:"version"`
-	Status          string           `bson:"status"`
-	CreateTime      time.Time        `bson:"create_time"`
-	StartTime       time.Time        `bson:"start_time"`
-	FinishTime      time.Time        `bson:"finish_time"`
-	BuildVariants   []string         `bson:"build_variants"`
-	Tasks           []string         `bson:"tasks"`
-	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
-	SyncAtEndOpts   SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
-	Patches         []ModulePatch    `bson:"patches"`
-	Activated       bool             `bson:"activated"`
-	PatchedConfig   string           `bson:"patched_config"`
-	Alias           string           `bson:"alias"`
-	BackportOf      string           `bson:"backport_of"`
-	MergePatch      string           `bson:"merge_patch"`
-	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
+	Description     string                 `bson:"desc"`
+	Project         string                 `bson:"branch"`
+	Githash         string                 `bson:"githash"`
+	PatchNumber     int                    `bson:"patch_number"`
+	Author          string                 `bson:"author"`
+	Version         string                 `bson:"version"`
+	Status          string                 `bson:"status"`
+	CreateTime      time.Time              `bson:"create_time"`
+	StartTime       time.Time              `bson:"start_time"`
+	FinishTime      time.Time              `bson:"finish_time"`
+	BuildVariants   []string               `bson:"build_variants"`
+	Tasks           []string               `bson:"tasks"`
+	VariantsTasks   []VariantTasks         `bson:"variants_tasks"`
+	SyncAtEndOpts   SyncAtEndOptions       `bson:"sync_at_end_opts,omitempty"`
+	Patches         []ModulePatch          `bson:"patches"`
+	Activated       bool                   `bson:"activated"`
+	PatchedConfig   string                 `bson:"patched_config"`
+	Alias           string                 `bson:"alias"`
+	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
+	MergePatch      string                 `bson:"merge_patch"`
+	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
 func (p *Patch) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, p) }
-
-// GithubPatch stores patch data for patches create from GitHub pull requests
-type GithubPatch struct {
-	PRNumber       int    `bson:"pr_number"`
-	BaseOwner      string `bson:"base_owner"`
-	BaseRepo       string `bson:"base_repo"`
-	BaseBranch     string `bson:"base_branch"`
-	HeadOwner      string `bson:"head_owner"`
-	HeadRepo       string `bson:"head_repo"`
-	HeadHash       string `bson:"head_hash"`
-	Author         string `bson:"author"`
-	AuthorUID      int    `bson:"author_uid"`
-	MergeCommitSHA string `bson:"merge_commit_sha"`
-}
 
 // ModulePatch stores request details for a patch
 type ModulePatch struct {
@@ -171,18 +161,10 @@ type ModulePatch struct {
 
 // PatchSet stores information about the actual patch
 type PatchSet struct {
-	Patch          string    `bson:"patch,omitempty"`
-	PatchFileId    string    `bson:"patch_file_id,omitempty"`
-	CommitMessages []string  `bson:"commit_messages,omitempty"`
-	Summary        []Summary `bson:"summary"`
-}
-
-// Summary stores summary patch information
-type Summary struct {
-	Name        string `bson:"filename"`
-	Additions   int    `bson:"additions"`
-	Deletions   int    `bson:"deletions"`
-	Description string `bson:"description,omitempty"`
+	Patch          string               `bson:"patch,omitempty"`
+	PatchFileId    string               `bson:"patch_file_id,omitempty"`
+	CommitMessages []string             `bson:"commit_messages,omitempty"`
+	Summary        []thirdparty.Summary `bson:"summary"`
 }
 
 // SetDescription sets a patch's description in the database
@@ -259,8 +241,7 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 			continue
 		}
 
-		reader := strings.NewReader(rawStr)
-		diffs, err := GetPatchDiffsForMailbox(reader)
+		diffs, err := thirdparty.GetDiffsFromMboxPatch(rawStr)
 		if err != nil {
 			return errors.Wrapf(err, "error getting patch diffs for formatted patch")
 		}
@@ -600,7 +581,7 @@ func (p *Patch) IsCommitQueuePatch() bool {
 }
 
 func (p *Patch) IsBackport() bool {
-	return len(p.BackportOf) > 0
+	return len(p.BackportOf.PatchID) != 0 || len(p.BackportOf.SHA) != 0
 }
 
 func (p *Patch) GetRequester() string {
@@ -624,15 +605,19 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
-	commitQueuePatch, err := FindOneId(p.BackportOf)
-	if err != nil {
-		return "", errors.Wrap(err, "can't get patch being backported")
-	}
-	if commitQueuePatch == nil {
-		return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf)
+	description := fmt.Sprintf("commit '%s'", p.BackportOf.SHA)
+	if len(p.BackportOf.PatchID) > 0 {
+		commitQueuePatch, err := FindOneId(p.BackportOf.PatchID)
+		if err != nil {
+			return "", errors.Wrap(err, "can't get patch being backported")
+		}
+		if commitQueuePatch == nil {
+			return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf.PatchID)
+		}
+		description = commitQueuePatch.Description
 	}
 
-	return fmt.Sprintf(backportFmtString, commitQueuePatch.Description, p.BackportOf), nil
+	return fmt.Sprintf(backportFmtString, description), nil
 }
 
 // IsMailbox checks if the first line of a patch file
@@ -659,51 +644,37 @@ func IsMailbox(patchFile string) (bool, error) {
 	return IsMailboxDiff(line), nil
 }
 
-func IsMailboxDiff(patchDiff string) bool {
-	return strings.HasPrefix(patchDiff, "From ")
+func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, owner, repo, sha string) (PatchSet, error) {
+	patchSet := PatchSet{}
+
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return patchSet, errors.Wrap(err, "can't get github auth token")
+	}
+
+	commit, err := thirdparty.GetRawPatchCommit(ctx, githubToken, owner, repo, sha)
+	if err != nil {
+		return patchSet, errors.Wrapf(err, "problem getting commit '%s/%s:%s'", owner, repo, sha)
+	}
+
+	patchFileID := mgobson.NewObjectId()
+	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(commit)); err != nil {
+		return patchSet, errors.Wrap(err, "can't write patch to db")
+	}
+
+	summaries, commitMessages, err := thirdparty.GetPatchSummariesFromMboxPatch(commit)
+	if err != nil {
+		return patchSet, errors.Wrapf(err, "error getting summaries by commit")
+	}
+
+	patchSet.Summary = summaries
+	patchSet.CommitMessages = commitMessages
+	patchSet.PatchFileId = patchFileID.Hex()
+	return patchSet, nil
 }
 
-func GetPatchDiffsForMailbox(reader io.Reader) (string, error) {
-	stream, err := mbox.CreateMboxStream(reader)
-	if err != nil {
-		if err == io.EOF {
-			return "", errors.Errorf("patch is empty")
-		}
-		return "", errors.Wrap(err, "error creating stream")
-	}
-	if stream == nil {
-		return "", errors.New("mbox stream is nil")
-	}
-
-	var result string
-	// iterate through patches
-	for err == nil {
-		var buffer []byte
-		msg, err := stream.ReadMessage()
-		if err != nil {
-			if err == io.EOF { // no more patches
-				return result, nil
-			}
-			return "", errors.Wrap(err, "error reading message")
-		}
-
-		reader := msg.BodyReader()
-		// iterate through patch body
-		for {
-			curBytes := make([]byte, bytes.MinRead)
-			n, err := reader.Read(curBytes)
-			if err != nil {
-				if err == io.EOF { // finished reading body of this patch
-					result = result + string(buffer)
-					break
-				}
-				return "", errors.Wrap(err, "error reading body")
-			}
-			buffer = append(buffer, curBytes[0:n]...)
-		}
-	}
-
-	return result, nil
+func IsMailboxDiff(patchDiff string) bool {
+	return strings.HasPrefix(patchDiff, "From ")
 }
 
 func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
@@ -735,7 +706,7 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch,
 		Status:      evergreen.PatchCreated,
 		Alias:       alias,
 		PatchNumber: patchNumber,
-		GithubPatchData: GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:       pr.GetNumber(),
 			MergeCommitSHA: pr.GetMergeCommitSHA(),
 			BaseOwner:      pr.Base.User.GetLogin(),

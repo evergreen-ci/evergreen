@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -327,7 +328,7 @@ func TestRestartVersionsRoute(t *testing.T) {
 			Status:      evergreen.PatchFailed,
 			Alias:       evergreen.CommitQueueAlias,
 			Author:      "me",
-			GithubPatchData: patch.GithubPatch{
+			GithubPatchData: thirdparty.GithubPatch{
 				PRNumber: 123,
 			},
 		},

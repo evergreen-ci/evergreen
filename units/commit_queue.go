@@ -306,23 +306,29 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "can't insert patch", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		return
 	}
 	nextItem.Version = patchDoc.Id.Hex()
 	if err = cq.UpdateVersion(nextItem); err != nil {
 		j.logError(err, "problem saving version", nextItem)
+		j.dequeue(cq, nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
+		return
 	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+		return
 	}
 
 	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", ""))
+		return
 	}
 
 	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
@@ -469,7 +475,7 @@ func getModules(ctx context.Context, githubToken string, nextItem commitqueue.Co
 	return modulePRs, modulePatches, false, nil
 }
 
-func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "can't get diff")
@@ -485,7 +491,7 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	return patchContent, summaries, config, nil
 }
 
-func writePatchInfo(patchDoc *patch.Patch, patchSummaries []patch.Summary, patchContent string) error {
+func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, patchContent string) error {
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")

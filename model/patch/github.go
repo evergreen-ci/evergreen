@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -226,7 +227,7 @@ func (g *githubIntent) NewPatch() *Patch {
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
 		CreateTime:  g.PushedAt,
-		GithubPatchData: GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:   g.PRNumber,
 			BaseOwner:  baseRepo[0],
 			BaseRepo:   baseRepo[1],
