@@ -13,7 +13,7 @@
           "order": 0,
           "requester": "patch_request",
           "gitspec": "292ceeaae06844f3d759e4a05e9b9cb7be97171e",
-          "project": "mongo-c-driver",
+          "project": "peewee",
           "exp_dur": {
             "$numberLong": "600000000000"
           },
@@ -28,7 +28,7 @@
           "order": 11,
           "requester": "gitter_request",
           "gitspec": "336e39e76e7a65af1ec534f28e69f568ca97695c",
-          "project": "mongodb-mongo-v3.0.11",
+          "project": "summer",
           "exp_dur": {
             "$numberLong": "600000000000"
           },
@@ -43,7 +43,7 @@
           "order": 0,
           "requester": "patch_request",
           "gitspec": "292ceeaae06844f3d759e4a05e9b9cb7be97171e",
-          "project": "mongo-c-driver",
+          "project": "peewee",
           "exp_dur": {
             "$numberLong": "600000000000"
           },
