@@ -785,9 +785,10 @@ func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
 	}
 	env := evergreen.GetEnvironment()
 	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
-	return mgr, err
+	return mgr, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
 }
 
+// returns true only during integration tests
 func isTest() bool {
 	return os.Getenv("SETTINGS_OVERRIDE") != ""
 }
