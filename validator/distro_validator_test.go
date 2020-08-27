@@ -22,7 +22,7 @@ func TestCheckDistro(t *testing.T) {
 
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
-	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
+	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Region: evergreen.DefaultEC2Region, Key: "key", Secret: "secret"}}
 	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
 	defer func() {
 		conf.SSHKeyPairs = nil
