@@ -129,7 +129,9 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 			continue
 		}
 
-		structData, code, err := generateForStruct(fieldTemplate, structTemplate, typeName, dbModel, *gqlType, generatedConversions)
+		var structData string
+		var code string
+		structData, code, err = generateForStruct(fieldTemplate, structTemplate, typeName, dbModel, *gqlType, generatedConversions)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -163,10 +165,10 @@ func Codegen(schema string, config ModelMapping) ([]byte, []byte, error) {
 // as well as BuildFromService/ToService conversion methods
 func generateForStruct(fieldTemplate, structTemplate *template.Template, typeName, dbModel string, gqlType ast.Definition, generatedConversions map[typeInfo]string) (string, string, error) {
 	fields := ""
-	extractedFields := extractedFields{}
+	extracted := extractedFields{}
 	for _, field := range gqlType.Fields {
 		fieldInfo := getFieldInfo(field)
-		extractedFields[dbField(*field)] = fieldInfo
+		extracted[dbField(*field)] = fieldInfo
 		fieldData, err := output(fieldTemplate, fieldInfo)
 		if err != nil {
 			return "", "", err
@@ -184,7 +186,7 @@ func generateForStruct(fieldTemplate, structTemplate *template.Template, typeNam
 		return "", "", err
 	}
 
-	code, err := createConversionMethods(dbPkg, dbStructName, extractedFields, generatedConversions)
+	code, err := createConversionMethods(dbPkg, dbStructName, extracted, generatedConversions)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "error generating conversion methods for type '%s'", typeName)
 	}
