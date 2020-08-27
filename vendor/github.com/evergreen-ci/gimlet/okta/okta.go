@@ -194,13 +194,7 @@ func (m *userManager) reauthorizeGroup(accessToken, refreshToken string) error {
 // the given username.
 func (m *userManager) reauthorizeID(username string, tokens *tokenResponse) error {
 	idToken, err := m.doValidateIDToken(tokens.IDToken, "")
-	// When we receive an ID token from a refresh grant (i.e. during
-	// reauthorization), the ID token does not contain a nonce. However, the
-	// Okta token verification library requires that a nonce always be specified
-	// for verifying ID tokens.
-	// We ignore this error if it occurs. More info can be found here:
-	// https://bitbucket.org/openid/connect/issues/1025/ambiguity-with-how-nonce-is-handled-on
-	if err != nil && !strings.Contains(err.Error(), "the `Nonce` was not able to be validated") {
+	if err != nil {
 		return errors.Wrap(err, "invalid ID token")
 	}
 	email, ok := idToken.Claims["email"].(string)

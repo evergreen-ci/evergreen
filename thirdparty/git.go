@@ -11,12 +11,25 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+// Summary stores summary patch information
+type Summary struct {
+	Name        string `bson:"filename"`
+	Additions   int    `bson:"additions"`
+	Deletions   int    `bson:"deletions"`
+	Description string `bson:"description,omitempty"`
+}
+
+type Commit struct {
+	Summaries []Summary `bson:"summaries"`
+	Message   string    `bson:"message"`
+	Patch     string    `bson:"patch"`
+}
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
@@ -70,7 +83,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
-func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err error) {
+func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 	// separate stats per file
 	fileStats := strings.Split(gitOutput.String(), "\n")
 
@@ -111,7 +124,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 			}
 		}
 
-		summary := patch.Summary{
+		summary := Summary{
 			Name:      details[2],
 			Additions: additions,
 			Deletions: deletions,
@@ -121,8 +134,8 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 	return summaries, nil
 }
 
-func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
-	summaries := []patch.Summary{}
+func GetPatchSummaries(patchContent string) ([]Summary, error) {
+	summaries := []Summary{}
 	if patchContent != "" {
 		gitOutput, err := GitApplyNumstat(patchContent)
 		if err != nil {
@@ -138,6 +151,118 @@ func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
 		}
 	}
 	return summaries, nil
+}
+
+func GetPatchSummariesFromMboxPatch(mboxPatch string) ([]Summary, []string, error) {
+	commits, err := getCommitsFromMboxPatch(mboxPatch)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "can't get commits from patch")
+	}
+
+	summaries := []Summary{}
+	commitMessages := []string{}
+	for _, commit := range commits {
+		for i := range commit.Summaries {
+			commit.Summaries[i].Description = commit.Message
+		}
+		summaries = append(summaries, commit.Summaries...)
+		commitMessages = append(commitMessages, commit.Message)
+	}
+
+	return summaries, commitMessages, nil
+}
+
+func GetDiffsFromMboxPatch(patchContent string) (string, error) {
+	commits, err := getCommitsFromMboxPatch(patchContent)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting commits from patch")
+	}
+	diffs := make([]string, 0, len(commits))
+	for _, commit := range commits {
+		diffs = append(diffs, commit.Patch)
+	}
+
+	return strings.Join(diffs, "\n"), nil
+}
+
+// getCommitsFromMboxPatch returns commit information from an mbox patch
+func getCommitsFromMboxPatch(mboxPatch string) ([]Commit, error) {
+	tmpDir, err := ioutil.TempDir("", "patch_summaries_by_commit")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem creating temporary directory")
+	}
+	defer os.RemoveAll(tmpDir)
+
+	mailSplitCommand := exec.Command("git", "mailsplit", "--keep-cr", fmt.Sprintf("-o%s", tmpDir))
+	mailSplitCommand.Stdin = strings.NewReader(mboxPatch)
+	if err = mailSplitCommand.Run(); err != nil {
+		return nil, errors.Wrap(err, "problem splitting patch content")
+	}
+
+	commits := []Commit{}
+	files, err := ioutil.ReadDir(tmpDir)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem listing split patches")
+	}
+	for i, file := range files {
+		fileReader, err := os.Open(filepath.Join(tmpDir, file.Name()))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't open individual patch file")
+		}
+
+		msgFile := filepath.Join(tmpDir, fmt.Sprintf("%d_message.txt", i))
+		patchFile := filepath.Join(tmpDir, fmt.Sprintf("%d_patch.txt", i))
+		mailInfoCommand := exec.Command("git", "mailinfo", msgFile, patchFile)
+		mailInfoCommand.Stdin = fileReader
+		out, err := mailInfoCommand.CombinedOutput()
+		if err != nil {
+			return nil, errors.Wrap(err, "problem getting mailinfo from patches")
+		}
+		commitMessage, err := parseCommitMessage(string(out))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem parsing commit message")
+		}
+
+		// If the commit message contains an extended description mailinfo will
+		// split off the description from the summary and write it to msgFile.
+		// Append an ellipsis to the message to indicate there's more to the message
+		// that git am will use when it creates the commit.
+		msgFileInfo, err := os.Stat(msgFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem getting message file info")
+		}
+		if msgFileInfo.Size() > 0 {
+			commitMessage = fmt.Sprintf("%s...", commitMessage)
+		}
+
+		patchBytes, err := ioutil.ReadFile(patchFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem reading patch file")
+		}
+		patchSummaries, err := GetPatchSummaries(string(patchBytes))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem getting commit summaries for patch")
+		}
+
+		commits = append(commits, Commit{
+			Summaries: patchSummaries,
+			Message:   commitMessage,
+			Patch:     string(patchBytes),
+		})
+	}
+
+	return commits, nil
+}
+
+func parseCommitMessage(commitHeaders string) (string, error) {
+	lines := strings.Split(commitHeaders, "\n")
+	subjectPrefix := "Subject: "
+	for _, line := range lines {
+		if strings.HasPrefix(line, subjectPrefix) {
+			return strings.TrimPrefix(line, subjectPrefix), nil
+		}
+	}
+	return "", errors.Errorf("subject line not found in headers '%s'", commitHeaders)
 }
 
 func ParseGitUrl(url string) (string, string, error) {

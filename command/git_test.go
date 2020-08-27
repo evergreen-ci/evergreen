@@ -23,6 +23,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -92,7 +93,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
 	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
+	s.modelData3.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
@@ -106,7 +107,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
 	s.modelData4.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData4.TaskConfig.GithubPatchData = patch.GithubPatch{
+	s.modelData4.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:       9001,
 		MergeCommitSHA: "abcdef",
 	}
