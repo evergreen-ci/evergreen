@@ -20,21 +20,23 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/okta/okta-jwt-verifier-golang/adaptors"
 	"github.com/okta/okta-jwt-verifier-golang/adaptors/lestrratGoJwx"
 	"github.com/okta/okta-jwt-verifier-golang/discovery"
 	"github.com/okta/okta-jwt-verifier-golang/discovery/oidc"
 	"github.com/okta/okta-jwt-verifier-golang/errors"
 	"github.com/patrickmn/go-cache"
-	"net/http"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
 )
 
 var metaDataCache *cache.Cache = cache.New(5*time.Minute, 10*time.Minute)
 var metaDataMu = &sync.Mutex{}
+var regx = regexp.MustCompile(`[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\.?([a-zA-Z0-9-_]+)[/a-zA-Z0-9-_]+?$`)
 
 type JwtVerifier struct {
 	Issuer string
@@ -71,8 +73,9 @@ func (j *JwtVerifier) New() *JwtVerifier {
 	return j
 }
 
-func (j *JwtVerifier) SetLeeway(seconds int64) {
-	j.leeway = seconds
+func (j *JwtVerifier) SetLeeway(duration string) {
+	dur, _ := time.ParseDuration(duration)
+	j.leeway = int64(dur.Seconds())
 }
 
 func (j *JwtVerifier) VerifyAccessToken(jwt string) (*Jwt, error) {
@@ -189,6 +192,10 @@ func (j *JwtVerifier) GetAdaptor() adaptors.Adaptor {
 }
 
 func (j *JwtVerifier) validateNonce(nonce interface{}) error {
+	if nonce == nil {
+		nonce = ""
+	}
+
 	if nonce != j.ClaimsToValidate["nonce"] {
 		return fmt.Errorf("nonce: %s does not match %s", nonce, j.ClaimsToValidate["nonce"])
 	}
@@ -196,28 +203,67 @@ func (j *JwtVerifier) validateNonce(nonce interface{}) error {
 }
 
 func (j *JwtVerifier) validateAudience(audience interface{}) error {
-	if audience != j.ClaimsToValidate["aud"] {
-		return fmt.Errorf("aud: %s does not match %s", audience, j.ClaimsToValidate["aud"])
+
+	switch v := audience.(type) {
+	case string:
+		if v != j.ClaimsToValidate["aud"] {
+			return fmt.Errorf("aud: %s does not match %s", v, j.ClaimsToValidate["aud"])
+		}
+	case []string:
+		for _, element := range v {
+			if element == j.ClaimsToValidate["aud"] {
+				return nil
+			}
+		}
+		return fmt.Errorf("aud: %s does not match %s", v, j.ClaimsToValidate["aud"])
+	default:
+		return fmt.Errorf("Unknown type for audience validation")
 	}
+
 	return nil
 }
 
 func (j *JwtVerifier) validateClientId(clientId interface{}) error {
-	if clientId != j.ClaimsToValidate["cid"] {
-		return fmt.Errorf("clientId: %s does not match %s", clientId, j.ClaimsToValidate["cid"])
+	// Client Id can be optional, it will be validated if it is present in the ClaimsToValidate array
+	if cid, exists := j.ClaimsToValidate["cid"]; exists && clientId != cid {
+
+		switch v := clientId.(type) {
+		case string:
+			if v != cid {
+				return fmt.Errorf("aud: %s does not match %s", v, cid)
+			}
+		case []string:
+			for _, element := range v {
+				if element == cid {
+					return nil
+				}
+			}
+			return fmt.Errorf("aud: %s does not match %s", v, cid)
+		default:
+			return fmt.Errorf("Unknown type for clientId validation")
+		}
+
 	}
 	return nil
 }
 
 func (j *JwtVerifier) validateExp(exp interface{}) error {
-	if float64(time.Now().Unix()-j.leeway) > exp.(float64) {
+	expf, ok := exp.(float64)
+	if !ok {
+		return fmt.Errorf("exp: missing")
+	}
+	if float64(time.Now().Unix()-j.leeway) > expf {
 		return fmt.Errorf("the token is expired")
 	}
 	return nil
 }
 
 func (j *JwtVerifier) validateIat(iat interface{}) error {
-	if float64(time.Now().Unix()+j.leeway) < iat.(float64) {
+	iatf, ok := iat.(float64)
+	if !ok {
+		return fmt.Errorf("iat: missing")
+	}
+	if float64(time.Now().Unix()+j.leeway) < iatf {
 		return fmt.Errorf("the token was issued in the future")
 	}
 	return nil
@@ -261,8 +307,8 @@ func (j *JwtVerifier) isValidJwt(jwt string) (bool, error) {
 		return false, errors.JwtEmptyStringError()
 	}
 
-	// Verify that the JWT contains at least one period ('.') character.
-	var jwtRegex = regexp.MustCompile(`[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\.?([a-zA-Z0-9-_]+)[/a-zA-Z0-9-_]+?$`).MatchString
+	// Verify that the JWT Follows correct JWT encoding.
+	var jwtRegex = regx.MatchString
 	if !jwtRegex(jwt) {
 		return false, fmt.Errorf("token must contain at least 1 period ('.') and only characters 'a-Z 0-9 _'")
 	}

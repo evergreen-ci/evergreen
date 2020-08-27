@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -25,7 +26,7 @@ type TaskConfig struct {
 	RestrictedExpansions *util.Expansions
 	Redacted             map[string]bool
 	WorkDir              string
-	GithubPatchData      patch.GithubPatch
+	GithubPatchData      thirdparty.GithubPatch
 	Timeout              *Timeout
 	TaskSync             evergreen.S3Credentials
 

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1478,7 +1479,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	}
 	p := &patch.Patch{
 		Version: v.Id,
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:       12,
 			MergeCommitSHA: "abcdef",
 		},

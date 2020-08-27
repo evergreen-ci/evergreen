@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -21,8 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -43,7 +40,7 @@ type PatchIntentUnitsSuite struct {
 	project         string
 	variants        []string
 	tasks           []string
-	githubPatchData patch.GithubPatch
+	githubPatchData thirdparty.GithubPatch
 
 	suite.Suite
 }
@@ -129,7 +126,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.user = evergreen.GithubPatchUser
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
-	s.githubPatchData = patch.GithubPatch{
+	s.githubPatchData = thirdparty.GithubPatch{
 		PRNumber:   448,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
@@ -555,84 +552,4 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 
 	s.True(foundPatch)
 	s.True(foundBuild)
-}
-
-func TestGetPatchSummariesByCommit(t *testing.T) {
-	patchData := `From 8af7f21625315b8c24975016aa2107cf5a8a12b1 Mon Sep 17 00:00:00 2001
-From: ablack12 <annie.black@10gen.com>
-Date: Thu, 2 Jan 2020 10:41:34 -0500
-Subject: EVG-6799 remove one commit validation
-
----
-operations/commit_queue.go | 16 +++++++++-------
-2 files changed, 9 insertions(+), 7 deletions(-)
-
-diff --git a/operations/commit_queue.go b/units/commit_queue.go
-index 3fd24ea7e..800e17d2f 100644
---- a/operations/commit_queue.go
-+++ b/operations/commit_queue.go
-@@ -122,6 +122,7 @@ func mergeCommand() cli.Command {
-                                Usage: "force item to front of queue",
-                        },
-                )),
-+               Before: setPlainLogger,
-                Action: func(c *cli.Context) error {
-                        ctx, cancel := context.WithCancel(context.Background())
-                        defer cancel()
-
-From 8c030c565ebca71380f3ca5c88d895fa9f25bebd Mon Sep 17 00:00:00 2001
-From: ablack12 <annie.black@10gen.com>
-Date: Thu, 2 Jan 2020 13:35:10 -0500
-Subject: temp
-
----
-units/commit_queue.go | 5 +++--
-1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/units/commit_queue.go b/units/commit_queue.go
-index ce0542e91..718dd8099 100644
---- a/units/commit_queue.go
-+++ b/units/commit_queue.go
-@@ -512,6 +512,7 @@ func validateBranch(branch *github.Branch) error {
- }
- 
- func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
-+       grip.Log("From (hoping this doesn't mess anything up)")'"
-        settings, err := evergreen.GetConfig()
-        if err != nil {
-                return errors.Wrap(err, "error retrieving Evergreen config")
-`
-	assert.True(t, patch.IsMailboxDiff(patchData))
-	reader := ioutil.NopCloser(strings.NewReader(patchData))
-	defer assert.NoError(t, reader.Close())
-
-	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
-	assert.NoError(t, err)
-	require.Len(t, summaries, 2)
-	assert.Equal(t, "EVG-6799 remove one commit validation", summaries[0].Description)
-	assert.Equal(t, "temp", summaries[1].Description)
-
-	assert.Equal(t, "operations/commit_queue.go", summaries[0].Name)
-	assert.Equal(t, "units/commit_queue.go", summaries[1].Name)
-
-	require.Len(t, commitMessages, 2)
-	assert.Equal(t, "EVG-6799 remove one commit validation", commitMessages[0])
-	assert.Equal(t, "temp", commitMessages[1])
-}
-
-func TestGetPatchSummariesByCountLong(t *testing.T) {
-	str := strings.Repeat("this is a long string", 100)
-	msg := fmt.Sprintf(`From foo@bar.com
-From: ablack12 <annie.black@10gen.com>
-Date: Thu, 2 Jan 2020 10:41:34 -0500
-Subject: EVG-6799 remove one commit validation
-
----\n%s\n`, str)
-	assert.True(t, len([]byte(str)) > 1000)
-	reader := ioutil.NopCloser(strings.NewReader(msg))
-	defer assert.NoError(t, reader.Close())
-	summaries, commitMessages, err := GetPatchSummariesByCommit(reader)
-	assert.NoError(t, err)
-	assert.NotNil(t, summaries)
-	assert.NotNil(t, commitMessages)
 }
