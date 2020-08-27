@@ -866,7 +866,7 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	return true, http.StatusOK, "", nil
 }
 
-// returns true during integration tests
+// returns true only during integration tests
 func isTest() bool {
 	return os.Getenv("SETTINGS_OVERRIDE") != ""
 }
