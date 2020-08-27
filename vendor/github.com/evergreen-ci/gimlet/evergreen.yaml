@@ -3,7 +3,6 @@ command_type: test
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
   - "*.rst"
-  - "buildscripts/*" # our scripts are untested, so don't schedule tests for them
 
 #######################################
 #         YAML Templates              #
@@ -32,12 +31,9 @@ functions:
       working_dir: gopath/src/github.com/evergreen-ci/gimlet
       binary: make
       args: ["${make_args|}", "${target}"]
+      add_expansions_to_env: true
       env:
-        DISABLE_COVERAGE: ${disable_coverage}
         GOPATH: ${workdir}/gopath
-        GOROOT: ${goroot}
-        GO_BIN_PATH: ${go_bin_path}
-        TEST_TIMEOUT: ${test_timeout}
   setup-mongodb:
     - command: subprocess.exec
       type: setup
@@ -128,10 +124,6 @@ tasks:
     tags: ["test"]
     name: test
 
-  - <<: *run-build
-    tags: ["race"]
-    name: race
-
 #######################################
 #           Buildvariants             #
 #######################################
@@ -139,25 +131,25 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
-      goroot: /opt/golang/go1.13
-      go_bin_path: /opt/golang/go1.13/bin/go
-      race_enabed: true
-      test_timeout: 15m
-      disable_coverage: yes
+      DISABLE_COVERAGE: true
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.13
+      RACE_DETECTOR: true
+      TEST_TIMEOUT: 15m
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     run_on:
       - ubuntu1604-test
     tasks:
-      - name: ".race"
+      - name: ".test"
 
   - name: coverage
     display_name: Coverage
     run_on:
       - ubuntu1604-test
     expansions:
-      test_timeout: 15m
-      goroot: /opt/golang/go1.13
-      go_bin_path: /opt/golang/go1.13/bin/go
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.13
+      TEST_TIMEOUT: 15m
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".report"
@@ -166,9 +158,9 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     expansions:
-      disable_coverage: yes
-      go_bin_path: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+      DISABLE_COVERAGE: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     run_on:
       - ubuntu1604-test
@@ -178,9 +170,9 @@ buildvariants:
   - name: macos
     display_name: macOS
     expansions:
-      disable_coverage: yes
-      go_bin_path: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
+      DISABLE_COVERAGE: true
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
       - macos-1014

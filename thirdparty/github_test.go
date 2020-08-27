@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
@@ -166,7 +165,7 @@ func (s *githubSuite) TestGetGithubUser() {
 }
 
 func (s *githubSuite) TestGetPullRequestMergeBase() {
-	data := patch.GithubPatch{
+	data := GithubPatch{
 		BaseOwner: "evergreen-ci",
 		BaseRepo:  "evergreen",
 		HeadOwner: "evergreen-ci",
@@ -211,7 +210,7 @@ func (s *githubSuite) TestGitHubUserPermissionLevel() {
 }
 
 func (s *githubSuite) TestGetGithubPullRequestDiff() {
-	p := patch.GithubPatch{
+	p := GithubPatch{
 		PRNumber:   448,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",

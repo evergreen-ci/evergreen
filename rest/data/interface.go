@@ -213,6 +213,8 @@ type Connector interface {
 	FindPatchById(string) (*restModel.APIPatch, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
 	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
+	// GetPatchRawPatches fetches the raw patches for a patch
+	GetPatchRawPatches(string) (map[string]string, error)
 	// AbortVersion aborts all tasks of a version given its ID.
 	AbortVersion(string, string) error
 
