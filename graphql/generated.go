@@ -231,11 +231,11 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DeleteVolume               func(childComplexity int, volumeID string) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
 		RemovePublicKey            func(childComplexity int, keyName string) int
+		RemoveVolume               func(childComplexity int, volumeID string) int
 		RestartJasper              func(childComplexity int, hostIds []string) int
 		RestartPatch               func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                func(childComplexity int, taskID string) int
@@ -615,7 +615,7 @@ type MutationResolver interface {
 	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
-	DeleteVolume(ctx context.Context, volumeID string) (bool, error)
+	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1490,18 +1490,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreatePublicKey(childComplexity, args["publicKeyInput"].(PublicKeyInput)), true
 
-	case "Mutation.deleteVolume":
-		if e.complexity.Mutation.DeleteVolume == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_deleteVolume_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.DeleteVolume(childComplexity, args["volumeId"].(string)), true
-
 	case "Mutation.enqueuePatch":
 		if e.complexity.Mutation.EnqueuePatch == nil {
 			break
@@ -1549,6 +1537,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemovePublicKey(childComplexity, args["keyName"].(string)), true
+
+	case "Mutation.removeVolume":
+		if e.complexity.Mutation.RemoveVolume == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeVolume_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveVolume(childComplexity, args["volumeId"].(string)), true
 
 	case "Mutation.restartJasper":
 		if e.complexity.Mutation.RestartJasper == nil {
@@ -3562,7 +3562,7 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
-  deleteVolume(volumeId: String!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -4221,20 +4221,6 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_deleteVolume_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["volumeId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["volumeId"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4296,6 +4282,20 @@ func (ec *executionContext) field_Mutation_removePublicKey_args(ctx context.Cont
 		}
 	}
 	args["keyName"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeVolume_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["volumeId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["volumeId"] = arg0
 	return args, nil
 }
 
@@ -9585,7 +9585,7 @@ func (ec *executionContext) _Mutation_updatePublicKey(ctx context.Context, field
 	return ec.marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_deleteVolume(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_removeVolume(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -9601,7 +9601,7 @@ func (ec *executionContext) _Mutation_deleteVolume(ctx context.Context, field gr
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_deleteVolume_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_removeVolume_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -9609,7 +9609,7 @@ func (ec *executionContext) _Mutation_deleteVolume(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteVolume(rctx, args["volumeId"].(string))
+		return ec.resolvers.Mutation().RemoveVolume(rctx, args["volumeId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -19708,8 +19708,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "deleteVolume":
-			out.Values[i] = ec._Mutation_deleteVolume(ctx, field)
+		case "removeVolume":
+			out.Values[i] = ec._Mutation_removeVolume(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

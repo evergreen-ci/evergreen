@@ -1650,6 +1650,14 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
+func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DeleteVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
+}
+
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))

@@ -99,7 +99,7 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
-  deleteVolume(volumeId: String!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
