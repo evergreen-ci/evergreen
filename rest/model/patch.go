@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -172,7 +173,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	res.Tasks = tasks
 	i, err := apiPatch.GithubPatchData.ToService()
 	catcher.Add(err)
-	data, ok := i.(patch.GithubPatch)
+	data, ok := i.(thirdparty.GithubPatch)
 	if !ok {
 		catcher.Add(errors.New("cannot resolve patch data"))
 	}
@@ -192,7 +193,7 @@ type githubPatch struct {
 
 // BuildFromService converts from service level structs to an APIPatch
 func (g *githubPatch) BuildFromService(h interface{}) error {
-	v, ok := h.(patch.GithubPatch)
+	v, ok := h.(thirdparty.GithubPatch)
 	if !ok {
 		return errors.New("incorrect type when fetching converting github patch type")
 	}
@@ -208,7 +209,7 @@ func (g *githubPatch) BuildFromService(h interface{}) error {
 
 // ToService converts a service layer patch using the data from APIPatch
 func (g *githubPatch) ToService() (interface{}, error) {
-	res := patch.GithubPatch{}
+	res := thirdparty.GithubPatch{}
 	res.PRNumber = g.PRNumber
 	res.BaseOwner = FromStringPtr(g.BaseOwner)
 	res.BaseRepo = FromStringPtr(g.BaseRepo)

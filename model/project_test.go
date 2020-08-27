@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -463,7 +464,7 @@ buildvariants:
 
 	patchDoc := &patch.Patch{
 		Version: v.Id,
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  42,
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",

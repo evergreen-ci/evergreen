@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -57,7 +58,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 		Status:     evergreen.PatchFailed,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
 			HeadOwner: "tychoish",

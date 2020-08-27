@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -159,8 +160,8 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 		Githash: "abcdef",
 	}
 
-	patchSummaries := []patch.Summary{
-		patch.Summary{
+	patchSummaries := []thirdparty.Summary{
+		thirdparty.Summary{
 			Name:      "myfile.go",
 			Additions: 1,
 			Deletions: 0,

@@ -475,7 +475,7 @@ func getModules(ctx context.Context, githubToken string, nextItem commitqueue.Co
 	return modulePRs, modulePatches, false, nil
 }
 
-func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "can't get diff")
@@ -491,7 +491,7 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	return patchContent, summaries, config, nil
 }
 
-func writePatchInfo(patchDoc *patch.Patch, patchSummaries []patch.Summary, patchContent string) error {
+func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, patchContent string) error {
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")
