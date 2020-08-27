@@ -60,7 +60,7 @@ func expandMap(inputMap reflect.Value, expansions *Expansions) error {
 
 		// expand and set new value
 		val := inputMap.MapIndex(key)
-		expandedVal := reflect.Value{}
+		var expandedVal reflect.Value
 		switch val.Type().Kind() {
 		case reflect.String:
 			expandedValString, err := expansions.ExpandString(val.String())
