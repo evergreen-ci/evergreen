@@ -393,12 +393,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
-		go a.startSpotTerminationWatcher(tskCtx, innerCancel)
-	}
-
-	// kim: TODO: possibly don't do setup here
-	if err := a.setupSystemMetricsCollector(tskCtx, tc); err != nil {
-		tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
+		go a.startSpotTerminationWatcher(tskCtx)
 	}
 
 	complete := make(chan string)

@@ -79,20 +79,19 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
 
 	// set up the system stats collector
-	// tc.statsCollector = NewSimpleStatsCollector(
-	//     tc.logger,
-	//     a.jasper,
-	//     defaultStatsInterval,
-	//     "uptime",
-	//     "df -h",
-	//     "${ps|ps}",
-	// )
-	// tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
+	tc.statsCollector = NewSimpleStatsCollector(
+		tc.logger,
+		a.jasper,
+		defaultStatsInterval,
+		"uptime",
+		"df -h",
+		"${ps|ps}",
+	)
+	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
-	// kim: TODO: possibly don't do setup here
-	// if err := a.setupSystemMetricsCollector(ctx, tc); err != nil {
-	//     tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
-	// }
+	if err := a.setupSystemMetricsCollector(ctx, tc); err != nil {
+		tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
+	}
 
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("task canceled")
@@ -143,8 +142,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 }
 
 func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext) error {
-	// kim: TODO: figure out what the context associated with the communicator's
-	// gRPC client is.
 	conn, err := a.comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting cedar gRPC client connection")
@@ -154,11 +151,11 @@ func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext
 		interval: defaultStatsInterval,
 		collectors: []metricCollector{
 			newUptimeCollector(),
-			// newProcessCollector(),
-			// newDiskUsageCollector(tc.taskConfig.WorkDir),
+			newProcessCollector(),
+			newDiskUsageCollector(tc.taskConfig.WorkDir),
 		},
 		conn: conn,
-	}, tc.logger)
+	})
 	if err != nil {
 		return errors.Wrap(err, "initializing system metrics collector")
 	}
