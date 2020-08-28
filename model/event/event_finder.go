@@ -51,7 +51,6 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, 0, errors.WithStack(err)
 	}
-	//GET COUNT
 	count, err := db.CountQ(coll, query)
 
 	if err != nil {
