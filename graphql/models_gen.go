@@ -135,6 +135,11 @@ type TaskFiles struct {
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
 }
 
+type TaskQueueDistro struct {
+	ID         string `json:"id"`
+	QueueCount int    `json:"queueCount"`
+}
+
 type TaskResult struct {
 	ID           string `json:"id"`
 	DisplayName  string `json:"displayName"`

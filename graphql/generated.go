@@ -374,6 +374,7 @@ type ComplexityRoot struct {
 		TaskAllExecutions  func(childComplexity int, taskID string) int
 		TaskFiles          func(childComplexity int, taskID string, execution *int) int
 		TaskLogs           func(childComplexity int, taskID string) int
+		TaskQueueDistros   func(childComplexity int) int
 		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User               func(childComplexity int, userID *string) int
 		UserConfig         func(childComplexity int) int
@@ -489,6 +490,11 @@ type ComplexityRoot struct {
 		EventLogLink  func(childComplexity int) int
 		SystemLogLink func(childComplexity int) int
 		TaskLogLink   func(childComplexity int) int
+	}
+
+	TaskQueueDistro struct {
+		ID         func(childComplexity int) int
+		QueueCount func(childComplexity int) int
 	}
 
 	TaskQueueItem struct {
@@ -655,6 +661,7 @@ type QueryResolver interface {
 	Distros(ctx context.Context, onlySpawnable bool) ([]*model.APIDistro, error)
 	InstanceTypes(ctx context.Context) ([]string, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
+	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -2361,6 +2368,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.TaskLogs(childComplexity, args["taskId"].(string)), true
 
+	case "Query.taskQueueDistros":
+		if e.complexity.Query.TaskQueueDistros == nil {
+			break
+		}
+
+		return e.complexity.Query.TaskQueueDistros(childComplexity), true
+
 	case "Query.taskTests":
 		if e.complexity.Query.TaskTests == nil {
 			break
@@ -2992,6 +3006,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogLinks.TaskLogLink(childComplexity), true
 
+	case "TaskQueueDistro.id":
+		if e.complexity.TaskQueueDistro.ID == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueDistro.ID(childComplexity), true
+
+	case "TaskQueueDistro.queueCount":
+		if e.complexity.TaskQueueDistro.QueueCount == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueDistro.QueueCount(childComplexity), true
+
 	case "TaskQueueItem.buildVariant":
 		if e.complexity.TaskQueueItem.BuildVariant == nil {
 			break
@@ -3523,8 +3551,8 @@ var sources = []*ast.Source{
   distros(onlySpawnable: Boolean!): [Distro]!
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  taskQueueDistros: [TaskQueueDistro!]!
 }
-
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -3679,6 +3707,11 @@ type TaskQueueItem {
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
+}
+
+type TaskQueueDistro {
+  id: ID!
+  queueCount: Int!
 }
 
 type Host {
@@ -12526,6 +12559,40 @@ func (ec *executionContext) _Query_distroTaskQueue(ctx context.Context, field gr
 	return ec.marshalNTaskQueueItem2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskQueueItemᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_taskQueueDistros(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TaskQueueDistros(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*TaskQueueDistro)
+	fc.Result = res
+	return ec.marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -15274,6 +15341,74 @@ func (ec *executionContext) _TaskLogLinks_eventLogLink(ctx context.Context, fiel
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskQueueDistro_id(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskQueueDistro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskQueueDistro_queueCount(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskQueueDistro",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.QueueCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskQueueItem_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
@@ -20663,6 +20798,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "taskQueueDistros":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_taskQueueDistros(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -21256,6 +21405,38 @@ func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._TaskLogLinks_taskLogLink(ctx, field, obj)
 		case "eventLogLink":
 			out.Values[i] = ec._TaskLogLinks_eventLogLink(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var taskQueueDistroImplementors = []string{"TaskQueueDistro"}
+
+func (ec *executionContext) _TaskQueueDistro(ctx context.Context, sel ast.SelectionSet, obj *TaskQueueDistro) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskQueueDistroImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskQueueDistro")
+		case "id":
+			out.Values[i] = ec._TaskQueueDistro_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "queueCount":
+			out.Values[i] = ec._TaskQueueDistro_queueCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23345,6 +23526,57 @@ func (ec *executionContext) marshalNTaskFiles2ᚖgithubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) marshalNTaskLogLinks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx context.Context, sel ast.SelectionSet, v model.LogLinks) graphql.Marshaler {
 	return ec._TaskLogLinks(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskQueueDistro2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistro(ctx context.Context, sel ast.SelectionSet, v TaskQueueDistro) graphql.Marshaler {
+	return ec._TaskQueueDistro(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx context.Context, sel ast.SelectionSet, v []*TaskQueueDistro) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTaskQueueDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistro(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNTaskQueueDistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistro(ctx context.Context, sel ast.SelectionSet, v *TaskQueueDistro) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._TaskQueueDistro(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTaskQueueItem2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskQueueItem(ctx context.Context, sel ast.SelectionSet, v model.APITaskQueueItem) graphql.Marshaler {
