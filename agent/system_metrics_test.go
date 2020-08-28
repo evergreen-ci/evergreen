@@ -407,7 +407,10 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 		require.NoError(t, coll.Close())
 	}
 
-	assert.Equal(t, tsk.Id, srv.Create)
+	assert.Equal(t, tsk.Id, srv.Create.Info.TaskId)
+	assert.Equal(t, tsk.Project, srv.Create.Info.Project)
+	assert.Equal(t, tsk.Version, srv.Create.Info.Version)
+	assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
 	assert.NotEmpty(t, srv.StreamData)
 	sentData := srv.StreamData[mc.name()]
 	assert.NotZero(t, len(sentData))
