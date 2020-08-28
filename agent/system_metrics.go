@@ -229,11 +229,7 @@ func (s *systemMetricsCollector) cleanup() {
 	defer s.mu.Unlock()
 
 	if s.client != nil {
-		// kim: TODO: revert if this is not the problem - this is still
-		// problematic since it puts a hard limit on how long the transfer can
-		// go for, and we don't know how long transfers will take
-		// ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		if s.id != "" {
 			s.catcher.Add(errors.Wrap(s.client.CloseSystemMetrics(ctx, s.id, s.catcher.HasErrors()), fmt.Sprintf("error closing out system metrics object for id %s", s.id)))
