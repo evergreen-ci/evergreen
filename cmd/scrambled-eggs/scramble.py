@@ -74,7 +74,18 @@ def should_skip_key(key):
         "$minKey",
         "$oid",
         "$regularExpression",
-        "$timestamp"
+        "$timestamp",
+        "distro",
+        "_id",
+        "display_name",
+        "build_variant",
+        "order",
+        "requester",
+        "gitspec",
+        "count_over_threshold",
+        "task_group_infos",
+        "alias_queue"
+        "length",
     ]
     return key in special_keys
 
