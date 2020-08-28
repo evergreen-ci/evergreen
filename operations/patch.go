@@ -94,6 +94,7 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
+			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")

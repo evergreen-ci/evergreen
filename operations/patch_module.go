@@ -55,6 +55,7 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
+			preserveCommits = preserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
