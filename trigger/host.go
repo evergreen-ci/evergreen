@@ -194,8 +194,13 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(sub.Owner)
-		grip.Error(errors.Wrap(err, "problem getting time zone"))
-		if err == nil {
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting time zone",
+				"user":    sub.Owner,
+				"trigger": "hostExpiration",
+			}))
+		} else {
 			timeZone = userTimeZone
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -110,8 +111,13 @@ func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notificatio
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(sub.Owner)
-		grip.Error(errors.Wrap(err, "problem getting time zone"))
-		if err == nil {
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting time zone",
+				"user":    sub.Owner,
+				"trigger": "volumeExpiration",
+			}))
+		} else {
 			timeZone = userTimeZone
 		}
 	}
