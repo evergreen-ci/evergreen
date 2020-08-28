@@ -396,6 +396,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		go a.startSpotTerminationWatcher(tskCtx, innerCancel)
 	}
 
+	// kim: TODO: possibly don't do setup here
+	if err := a.setupSystemMetricsCollector(tskCtx, tc); err != nil {
+		tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
+	}
+
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
 

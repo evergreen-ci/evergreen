@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/mongodb/ftdc/metrics"
 	"github.com/mongodb/grip"
@@ -47,6 +48,7 @@ type systemMetricsCollector struct {
 	catcher         grip.Catcher
 	id              string
 	closed          bool
+	logger          client.LoggerProducer
 }
 
 // systemMetricsCollectorOptions are the required values for creating a new
@@ -98,7 +100,7 @@ func (s *systemMetricsCollectorOptions) validate() error {
 // newSystemMetricsCollector returns a systemMetricsCollector ready to start
 // collecting from the provided slice of metric collector objects at the
 // provided interval and streaming to cedar.
-func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollectorOptions) (*systemMetricsCollector, error) {
+func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollectorOptions, logger client.LoggerProducer) (*systemMetricsCollector, error) {
 	err := opts.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid options")
@@ -113,6 +115,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 			MaxBufferSize: opts.maxBufferSize,
 		},
 		catcher: grip.NewBasicCatcher(),
+		logger:  logger,
 	}
 	s.client, err = sysmetrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
 	if err != nil {
@@ -137,7 +140,9 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	streamingCtx, s.streamingCancel = context.WithCancel(ctx)
 
 	for _, collector := range s.collectors {
-		stream, err := s.client.StreamSystemMetrics(ctx, sysmetrics.MetricDataOpts{
+		// kim: TODO: potentially this context is cancelled before
+		// stream.Close() can be called
+		stream, err := s.client.StreamSystemMetrics(context.Background() /*ctx*/, sysmetrics.MetricDataOpts{
 			Id:         s.id,
 			MetricType: collector.name(),
 			Format:     collector.format(),
@@ -171,7 +176,9 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 		case <-ctx.Done():
 			return
 		case <-timer.C:
+			s.logger.System().Infof("start collecting data for metric type '%s'", mc.name())
 			data, err := mc.collect(ctx)
+			s.logger.System().Infof("finish collecting data for metric type '%s'", mc.name())
 			if err != nil {
 				// Do not accumulate errors caused by system metrics collectors
 				// closing this metric collector's context.
@@ -181,7 +188,9 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.name()))
 				return
 			}
+			s.logger.System().Infof("start streaming data for metric type '%s'", mc.name())
 			_, err = stream.Write(data)
+			s.logger.System().Infof("finish streaming data for metric type '%s'", mc.name())
 			if err != nil {
 				// Do not accumulate errors caused by system metrics collectors
 				// closing this metric collector's context.
@@ -220,7 +229,11 @@ func (s *systemMetricsCollector) cleanup() {
 	defer s.mu.Unlock()
 
 	if s.client != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		// kim: TODO: revert if this is not the problem - this is still
+		// problematic since it puts a hard limit on how long the transfer can
+		// go for, and we don't know how long transfers will take
+		// ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		if s.id != "" {
 			s.catcher.Add(errors.Wrap(s.client.CloseSystemMetrics(ctx, s.id, s.catcher.HasErrors()), fmt.Sprintf("error closing out system metrics object for id %s", s.id)))
