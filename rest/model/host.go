@@ -5,6 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -58,9 +60,9 @@ type DistroInfo struct {
 	Id                   *string `json:"distro_id"`
 	Provider             *string `json:"provider"`
 	ImageId              *string `json:"image_id"`
-	WorkDir              *string `json:"work_dir`
-	IsVirtualWorkstation bool    `json:"is_virtual_workstation`
-	User                 *string `json:user"`
+	WorkDir              *string `json:"work_dir"`
+	IsVirtualWorkstation bool    `json:"is_virtual_workstation"`
+	User                 *string `json:"user"`
 }
 
 type TaskInfo struct {
@@ -133,7 +135,11 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
-		errors.Wrap(err, "problem getting image ID")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get image ID",
+			"host":    v.Id,
+			"distro":  v.Distro.Id,
+		}))
 	}
 	di := DistroInfo{
 		Id:                   ToStringPtr(v.Distro.Id),

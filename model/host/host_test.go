@@ -4885,3 +4885,35 @@ func TestPartitionParents(t *testing.T) {
 	assert.Len(matched, 0)
 	assert.Len(notMatched, 0)
 }
+
+func TestCountVirtualWorkstationsByDistro(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	for i := 0; i < 100; i++ {
+		h := &Host{
+			Id:           fmt.Sprintf("%d", i),
+			Status:       evergreen.HostTerminated,
+			InstanceType: "foo",
+		}
+		if i%3 == 0 {
+			h.Status = evergreen.HostRunning
+		}
+		if i%5 == 0 {
+			h.IsVirtualWorkstation = true
+		}
+		if i%11 == 0 {
+			h.InstanceType = "bar"
+		}
+		require.NoError(t, h.Insert())
+	}
+	count, err := CountVirtualWorkstationsByInstanceType()
+	require.NoError(t, err)
+	for _, counter := range count {
+		require.NotEmpty(t, counter.InstanceType)
+		if counter.InstanceType == "foo" {
+			require.Equal(t, 6, counter.Count)
+		}
+		if counter.InstanceType == "bar" {
+			require.Equal(t, 1, counter.Count)
+		}
+	}
+}

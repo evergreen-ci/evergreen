@@ -131,12 +131,12 @@ func generateArrayConversions(modelName string, modelType types.Type, restName, 
 		outIsPtr: outIsPtr,
 		outType:  restType,
 	}
-	convertFuncs, err := arrayConversionFn(opts, generatedConversions)
+	funcs, err := arrayConversionFn(opts, generatedConversions)
 	if err != nil {
 		return "", err
 	}
 	bfsData := conversionLine{
-		TypeConversionFunc: convertFuncs.converter,
+		TypeConversionFunc: funcs.converter,
 	}
 	bfsCode, err := output(lineTemplate, bfsData)
 	if err != nil {
@@ -156,7 +156,7 @@ func generateArrayConversions(modelName string, modelType types.Type, restName, 
 	}
 	if modelTypeStr != restType {
 		tsData := conversionLine{
-			TypeConversionFunc: convertFuncs.inverter,
+			TypeConversionFunc: funcs.inverter,
 		}
 		tsCode, err := output(lineTemplate, tsData)
 		if err != nil {

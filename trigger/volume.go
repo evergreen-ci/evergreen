@@ -8,6 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -17,8 +20,10 @@ func init() {
 
 const (
 	// notification templates
-	expiringVolumeTitle = `Volume termination reminder`
-	expiringVolumeBody  = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Attach to a host to extend its lifetime.`
+	expiringVolumeEmailSubject         = `Volume termination reminder`
+	expiringVolumeEmailBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>volume page</a> to extend its lifetime.`
+	expiringVolumeSlackBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|volume page> to extend its lifetime.`
+	expiringVolumeSlackAttachmentTitle = "Volume Page"
 )
 
 type volumeTriggers struct {
@@ -45,9 +50,8 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	t.templateData = hostTemplateData{
-		ID:             t.volume.ID,
-		ExpirationTime: t.volume.Expiration,
-		URL:            fmt.Sprintf("%s/spawn", t.uiConfig.Url),
+		ID:  t.volume.ID,
+		URL: fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=%s", t.uiConfig.Url, t.volume.ID),
 	}
 
 	t.event = e
@@ -85,14 +89,14 @@ func makeVolumeTriggers() eventHandler {
 	return t
 }
 
-func (t *volumeTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {
+func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	var payload interface{}
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, subjectTempl, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, expiringVolumeEmailSubject, expiringVolumeEmailBody, sub.Selectors)
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle, sub.Selectors)
 	default:
 		return nil, nil
 	}
@@ -104,5 +108,36 @@ func (t *volumeTriggers) generate(sub *event.Subscription, subjectTempl, bodyTem
 }
 
 func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	return t.generate(sub, expiringVolumeTitle, expiringVolumeBody)
+	timeZone := time.Local
+	if sub.OwnerType == event.OwnerTypePerson {
+		userTimeZone, err := getUserTimeZone(sub.Owner)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting time zone",
+				"user":    sub.Owner,
+				"trigger": "volumeExpiration",
+			}))
+		} else {
+			timeZone = userTimeZone
+		}
+	}
+	t.templateData.ExpirationTime = t.volume.Expiration.In(timeZone).Format(time.RFC1123)
+	return t.generate(sub)
+}
+
+func getUserTimeZone(userID string) (*time.Location, error) {
+	user, err := user.FindOneById(userID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get user '%s' for subscription owner", userID)
+	}
+	if user == nil {
+		return nil, errors.Errorf("no user '%s' found", userID)
+	}
+
+	userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't parse timezone '%s'", user.Settings.Timezone)
+	}
+
+	return userTimeZone, nil
 }
