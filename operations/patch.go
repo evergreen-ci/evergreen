@@ -32,8 +32,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addYesFlag(),
 		addRefFlag(),
 		addUncommittedChangesFlag(),
-		addPreserveCommitsFlag(),
-		addEnableEnqueueFlag(
+		addPreserveCommitsFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 				Usage: "description for the patch",
@@ -85,7 +84,6 @@ func Patch() cli.Command {
 				Ref:               c.String(refFlagName),
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
-				EnableEnqueue:     c.Bool(enableEnqueueFlag),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -96,7 +94,6 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 			if err != nil {
 				return errors.Wrap(err, "can't test for uncommitted changes")
@@ -123,7 +120,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if (params.EnableEnqueue || conf.EnableEnqueue) && !params.PreserveCommits {
+			if !params.PreserveCommits {
 				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
 				if err != nil {
 					return err

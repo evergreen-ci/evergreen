@@ -69,7 +69,6 @@ type patchParams struct {
 	ShowSummary       bool
 	Uncommitted       bool
 	PreserveCommits   bool
-	EnableEnqueue     bool
 	Ref               string
 	BackportOf        patch.BackportInfo
 }
