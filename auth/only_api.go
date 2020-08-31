@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/cached"
 	"github.com/evergreen-ci/gimlet/usercache"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -46,20 +45,8 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 	return cached.NewUserManager(cache)
 }
 
-// findOnlyAPIUser finds an API-only user by ID and verifies that it is a valid
-// user against the list of authoritative valid users.
+// findOnlyAPIUser finds an API-only user by ID
 func findOnlyAPIUser(id string) (*user.DBUser, error) {
-	validUsers, err := user.FindServiceUsers()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to find service users")
-	}
-	validIDs := []string{}
-	for _, u := range validUsers {
-		validIDs = append(validIDs, u.Id)
-	}
-	if !utility.StringSliceContains(validIDs, id) {
-		return nil, errors.Errorf("user '%s' does not match a valid API-only user", validIDs)
-	}
 	dbUser, err := user.FindOne(db.Query(bson.M{
 		user.IdKey:      id,
 		user.OnlyAPIKey: true,
@@ -70,10 +57,6 @@ func findOnlyAPIUser(id string) (*user.DBUser, error) {
 	if dbUser == nil {
 		return nil, errors.Errorf("no such user '%s' in DB", id)
 	}
-	for _, user := range validUsers {
-		if user.Username() == dbUser.Username() && user.GetAPIKey() == dbUser.GetAPIKey() {
-			return dbUser, nil
-		}
-	}
-	return nil, errors.Errorf("user '%s' found but not in list of valid API-only users", id)
+
+	return dbUser, nil
 }
