@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -18,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -29,52 +29,6 @@ const (
 	jiraSource    = "JIRA"
 	jiraIssueType = "Build Failure"
 )
-
-func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
-	bbconf, ok := settings.Plugins["buildbaron"]
-	if !ok {
-		return nil
-	}
-
-	projectConfig, ok := bbconf["projects"]
-	if !ok {
-		grip.Error("no build baron projects configured")
-		return nil
-	}
-
-	projects := map[string]evergreen.BuildBaronProject{}
-	err := mapstructure.Decode(projectConfig, &projects)
-	if err != nil {
-		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
-	}
-
-	return projects
-}
-
-func bbGetTask(taskId string, execution string) (*task.Task, error) {
-	oldId := fmt.Sprintf("%v_%v", taskId, execution)
-	t, err := task.FindOneOld(task.ById(oldId))
-	if err != nil {
-		return t, errors.Wrap(err, "Failed to find task with old Id")
-	}
-	// if the archived task was not found, we must be looking for the most recent exec
-	if t == nil {
-		t, err = task.FindOne(task.ById(taskId))
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to find task")
-		}
-	}
-	if t == nil {
-		return nil, errors.Errorf("No task found for taskId: %s and execution: %s", taskId, execution)
-	}
-	if t.DisplayOnly {
-		t.LocalTestResults, err = t.GetTestResultsForDisplayTask()
-		if err != nil {
-			return nil, errors.Wrapf(err, "Problem finding test results for display task '%s'", t.Id)
-		}
-	}
-	return t, nil
-}
 
 // saveNote reads a request containing a note's content along with the last seen
 // edit time and updates the note in the database.
@@ -170,7 +124,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	exec := vars["execution"]
-	t, err := bbGetTask(taskId, exec)
+	t, err := graphql.BbGetTask(taskId, exec)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
@@ -203,7 +157,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	} else {
 		featuresURL = ""
 	}
-	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL})
+	gimlet.WriteJSON(rw, thirdparty.JiraRelatedTickets{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL})
 }
 
 // bbFileTicket creates a JIRA ticket for a task with the given test failures.
@@ -269,13 +223,6 @@ func (uis *UIServer) makeNotification(project string, t *task.Task) (*notificati
 		return nil, errors.Wrap(err, "error inserting notification")
 	}
 	return n, nil
-}
-
-type searchReturnInfo struct {
-	Issues      []thirdparty.JiraTicket `json:"issues"`
-	Search      string                  `json:"search"`
-	Source      string                  `json:"source"`
-	FeaturesURL string                  `json:"features_url"`
 }
 
 type suggester interface {

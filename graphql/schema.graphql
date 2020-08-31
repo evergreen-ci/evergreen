@@ -67,6 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
+  JiraRelatedTickets(taskId: String!, execution: String!): JiraRelatedTickets!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -716,6 +717,32 @@ type HostEventLogData {
   user: String!
   successful: Boolean!
   duration: Duration!
+}
+
+# build baron plugin
+type JiraRelatedTickets {
+  issues: [JiraTicket!]!
+  search: String!
+  source: String!
+  featuresURL: String!
+}
+type JiraTicket {
+  key: String!
+  fields: TicketFields!
+}
+
+type TicketFields {
+  summary: String!
+  assigneeDisplayName: String
+  resolutionName: String!
+  created: String!
+  updated: String!
+  status: JiraStatus!
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
 }
 
 scalar Time

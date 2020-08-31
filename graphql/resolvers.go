@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1853,6 +1854,56 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
 	return task.GetLatestExecution(*obj.Id)
 }
+
+func (r *queryResolver) JiraRelatedTickets(ctx context.Context, taskId string, exec string) (*thirdparty.JiraRelatedTickets, error) {
+	t, err := BbGetTask(taskId, exec)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	settings := evergreen.GetEnvironment().Settings()
+	buildBaronProjects := BbGetConfig(settings)
+
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+
+	bbProj, ok := buildBaronProjects[t.Project]
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Build Baron project for %s not found", t.Project))
+	}
+
+	jira := &jiraSuggest{bbProj, jiraHandler}
+	multiSource := &multiSourceSuggest{jira}
+
+	var tickets []thirdparty.JiraTicket
+	var source string
+
+	tickets, source, err = multiSource.Suggest(t)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+	}
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
+	var featuresURL string
+	if bbProj.BFSuggestionFeaturesURL != "" {
+		featuresURL = bbProj.BFSuggestionFeaturesURL
+		featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
+		featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
+	} else {
+		featuresURL = ""
+	}
+
+	return &thirdparty.JiraRelatedTickets{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, nil
+}
+
+type ticketFieldsResolver struct{ *Resolver }
+
+func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	return &obj.Assignee.DisplayName, nil
+}
+
+func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (string, error) {
+	return obj.Resolution.Name, nil
+}
+
+func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {

@@ -114,3 +114,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  JiraRelatedTickets:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraRelatedTickets
+  JiraTicket:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  TicketFields:
+    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
+  JiraStatus:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
