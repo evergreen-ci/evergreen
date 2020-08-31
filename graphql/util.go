@@ -784,7 +784,7 @@ func DeleteVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
-	mgr, err := getManager(ctx, vol)
+	mgr, err := getEC2Manager(ctx, vol)
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, err
 	}
@@ -806,7 +806,7 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
-	mgr, err := getManager(ctx, vol)
+	mgr, err := getEC2Manager(ctx, vol)
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, err
 	}
@@ -845,7 +845,7 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
-	mgr, err := getManager(ctx, vol)
+	mgr, err := getEC2Manager(ctx, vol)
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, err
 	}
@@ -876,7 +876,7 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	return true, http.StatusOK, "", nil
 }
 
-func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
+func getEC2Manager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
 	if isTest() {
 		// Use the mock manager during integration tests
