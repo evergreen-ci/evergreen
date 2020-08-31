@@ -821,10 +821,7 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, in
 	if h == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
 	}
-	err = spawnHostForTestCode(ctx, mgr, h)
-	if err != nil {
-		return false, http.StatusInternalServerError, InternalServerError, err
-	}
+
 	if vol.AvailabilityZone != h.Zone {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("host and volume must have same availability zone")
 	}
@@ -866,10 +863,7 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 		}
 		return false, http.StatusInternalServerError, InternalServerError, errors.Errorf("host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID)
 	}
-	err = spawnHostForTestCode(ctx, mgr, h)
-	if err != nil {
-		return false, http.StatusInternalServerError, InternalServerError, err
-	}
+
 	if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)
 	}
@@ -896,7 +890,11 @@ func isTest() bool {
 	return os.Getenv("SETTINGS_OVERRIDE") != ""
 }
 
-func spawnHostForTestCode(ctx context.Context, mgr cloud.Manager, h *host.Host) error {
+func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) error {
+	mgr, err := getEC2Manager(ctx, vol)
+	if err != nil {
+		return err
+	}
 	if isTest() {
 		// The mock manager needs to spawn the host specified in our test data.
 		// The host should already be spawned in a non-test scenario.
