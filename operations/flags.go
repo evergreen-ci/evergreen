@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -41,7 +40,6 @@ const (
 	dirFlagName               = "dir"
 	uncommittedChangesFlag    = "uncommitted"
 	preserveCommitsFlag       = "preserve-commits"
-	enableEnqueueFlag         = "enable-enqueue"
 	subscriptionTypeFlag      = "subscription-type"
 
 	anserDryRunFlagName      = "dry-run"
@@ -310,14 +308,7 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  preserveCommitsFlag,
-		Usage: fmt.Sprintf("preserve separate commits when enqueueing to the commit queue. Implies --%s", enableEnqueueFlag),
-	})
-}
-
-func addEnableEnqueueFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  enableEnqueueFlag,
-		Usage: "format patch to enable enqueueing to the commit queue",
+		Usage: "preserve separate commits when enqueueing to the commit queue",
 	})
 }
 
