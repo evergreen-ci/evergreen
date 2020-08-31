@@ -1283,6 +1283,30 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 	return taskQueue, nil
 }
 
+func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
+	queues, err := model.FindAllTaskQueues()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting all task queues: %v", err.Error()))
+	}
+
+	distros := []*TaskQueueDistro{}
+
+	for _, distro := range queues {
+		tqd := TaskQueueDistro{
+			ID:         distro.Distro,
+			QueueCount: len(distro.Queue),
+		}
+		distros = append(distros, &tqd)
+	}
+
+	// sort distros by queue count in descending order
+	sort.SliceStable(distros, func(i, j int) bool {
+		return distros[i].QueueCount > distros[j].QueueCount
+	})
+
+	return distros, nil
+}
+
 func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.APITaskQueueItem) (TaskQueueItemType, error) {
 	if *obj.Requester != evergreen.RepotrackerVersionRequester {
 		return TaskQueueItemTypePatch, nil
@@ -1664,6 +1688,14 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
+}
+
+func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DeleteVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
 }
 
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {

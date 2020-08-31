@@ -607,18 +607,9 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeDelete:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		_, httpStatusCode, _, err := graphql.DeleteVolume(ctx, vol.ID)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
-			return
-		}
-
-		if err := mgr.DeleteVolume(ctx, vol); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID))
+			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 	}

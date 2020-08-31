@@ -40,15 +40,15 @@ var (
 
 func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Host, map[string]gimlet.Permissions, int, error) {
 	if len(hostIds) == 0 {
-		return nil, nil, http.StatusBadRequest, errors.Errorf("hostIds cannot be empty")
+		return nil, nil, http.StatusBadRequest, errors.New("hostIds cannot be empty")
 	}
 
 	hosts, err := host.Find(host.ByIds(hostIds))
 	if err != nil {
-		return nil, nil, http.StatusInternalServerError, errors.Errorf("Error getting hosts to update")
+		return nil, nil, http.StatusInternalServerError, errors.New("Error getting hosts to update")
 	}
 	if len(hosts) == 0 {
-		return nil, nil, http.StatusNotFound, errors.Errorf("No matching hosts found")
+		return nil, nil, http.StatusNotFound, errors.New("No matching hosts found")
 	}
 
 	var permissions map[string]gimlet.Permissions
@@ -57,7 +57,7 @@ func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Hos
 
 	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
 	if err != nil {
-		return nil, nil, http.StatusInternalServerError, errors.Errorf("unable to get user permissions")
+		return nil, nil, http.StatusInternalServerError, errors.New("unable to get user permissions")
 	}
 
 	return hosts, permissions, 0, nil
@@ -97,23 +97,23 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 	}
 
 	if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-		return "", http.StatusBadRequest, errors.Errorf(DecommissionStaticHostError)
+		return "", http.StatusBadRequest, errors.New(DecommissionStaticHostError)
 	}
 
 	if newStatus == evergreen.HostTerminated {
 		if !queue.Info().Started {
-			return "", http.StatusInternalServerError, errors.Errorf(HostTerminationQueueingError)
+			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 
 		if err := queue.Put(ctx, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
-			return "", http.StatusInternalServerError, errors.Errorf(HostTerminationQueueingError)
+			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), 0, nil
 	}
 
 	err := h.SetStatus(newStatus, u.Id, notes)
 	if err != nil {
-		return "", http.StatusInternalServerError, errors.Errorf(HostUpdateError, err.Error)
+		return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 	}
 
 	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), 0, nil

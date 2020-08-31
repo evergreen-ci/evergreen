@@ -773,19 +773,26 @@ func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
 	return apiVolumes, nil
 }
 
-func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
-	provider := evergreen.ProviderNameEc2OnDemand
-	if isTest() {
-		// Use the mock manager during integration tests
-		provider = evergreen.ProviderNameMock
+func DeleteVolume(ctx context.Context, volumeId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
 	}
-	mgrOpts := cloud.ManagerOpts{
-		Provider: provider,
-		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
 	}
-	env := evergreen.GetEnvironment()
-	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
-	return mgr, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
+	mgr, err := getManager(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err
+	}
+	err = mgr.DeleteVolume(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
 }
 
 func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
@@ -867,6 +874,21 @@ func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)
 	}
 	return true, http.StatusOK, "", nil
+}
+
+func getManager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
+	provider := evergreen.ProviderNameEc2OnDemand
+	if isTest() {
+		// Use the mock manager during integration tests
+		provider = evergreen.ProviderNameMock
+	}
+	mgrOpts := cloud.ManagerOpts{
+		Provider: provider,
+		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	}
+	env := evergreen.GetEnvironment()
+	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+	return mgr, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
 }
 
 // returns true only during integration tests
