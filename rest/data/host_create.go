@@ -42,7 +42,7 @@ func (dc *DBCreateHostConnector) ListHostsForTask(ctx context.Context, taskID st
 	}
 
 	catcher := grip.NewBasicCatcher()
-	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(t.Id)
+	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(t.Id, t.Execution)
 	catcher.Add(err)
 	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(t.BuildId)
 	catcher.Add(err)
@@ -385,18 +385,19 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*h
 		}
 	} else {
 		options.UserName = taskID
+		t, err := task.FindOneId(taskID)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not find task")
+		}
+		if t == nil {
+			return nil, errors.New("no task returned")
+		}
 		if createHost.Scope == "build" {
-			t, err := task.FindOneId(taskID)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not find task")
-			}
-			if t == nil {
-				return nil, errors.New("no task returned")
-			}
 			options.SpawnOptions.BuildID = t.BuildId
 		}
 		if createHost.Scope == "task" {
 			options.SpawnOptions.TaskID = taskID
+			options.SpawnOptions.TaskExecutionNumber = t.Execution
 		}
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
