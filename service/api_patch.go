@@ -38,21 +38,34 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 
 	data := struct {
-		Description       string        `json:"desc"`
-		Project           string        `json:"project"`
-		PatchBytes        []byte        `json:"patch_bytes"`
-		Githash           string        `json:"githash"`
-		Variants          []string      `json:"buildvariants_new"`
-		Tasks             []string      `json:"tasks"`
-		SyncBuildVariants []string      `json:"sync_build_variants"`
-		SyncTasks         []string      `json:"sync_tasks"`
-		SyncStatuses      []string      `json:"sync_statuses"`
-		SyncTimeout       time.Duration `json:"sync_timeout"`
-		Finalize          bool          `json:"finalize"`
-		Alias             string        `json:"alias"`
+		Description       string             `json:"desc"`
+		Project           string             `json:"project"`
+		BackportInfo      patch.BackportInfo `json:"backport_info"`
+		BackportOf        string             `json:"backport_of"`
+		PatchBytes        []byte             `json:"patch_bytes"`
+		Githash           string             `json:"githash"`
+		Variants          []string           `json:"buildvariants_new"`
+		Tasks             []string           `json:"tasks"`
+		SyncBuildVariants []string           `json:"sync_build_variants"`
+		SyncTasks         []string           `json:"sync_tasks"`
+		SyncStatuses      []string           `json:"sync_statuses"`
+		SyncTimeout       time.Duration      `json:"sync_timeout"`
+		Finalize          bool               `json:"finalize"`
+		Alias             string             `json:"alias"`
 	}{}
 	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	opts := gimlet.PermissionOpts{
+		Resource:      data.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	}
+	if !dbUser.HasPermission(opts) {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch this project"))
 		return
 	}
 
@@ -65,6 +78,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	if data.Alias == evergreen.CommitQueueAlias && len(patchString) != 0 && !patch.IsMailboxDiff(patchString) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("CLI is out of date: use 'evergreen get-update --install'"))
 		return
+	}
+
+	if len(data.BackportInfo.SHA) == 0 && len(data.BackportInfo.PatchID) == 0 {
+		data.BackportInfo.PatchID = data.BackportOf
 	}
 
 	pref, err := model.FindOneProjectRef(data.Project)
@@ -102,6 +119,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Variants:     data.Variants,
 		Tasks:        data.Tasks,
 		Alias:        data.Alias,
+		BackportOf:   data.BackportInfo,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,
@@ -162,12 +180,9 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	if len(patchIdStr) == 0 {
 		return nil, errors.New("no patch id supplied")
 	}
-	if !patch.IsValidId(patchIdStr) {
-		return nil, errors.Errorf("patch id '%v' is not valid object id", patchIdStr)
-	}
 
 	// find the patch
-	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(patchIdStr)))
+	existingPatch, err := patch.FindOneId(patchIdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +199,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
+	if p.Version != "" && p.IsCommitQueuePatch() {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
 		return
 	}
@@ -206,7 +221,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchContent := string(data.PatchBytes)
-	if p.Alias == evergreen.CommitQueueAlias && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
+	if p.IsCommitQueuePatch() && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
 			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
 		return
@@ -235,11 +250,10 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var summaries []patch.Summary
+	var summaries []thirdparty.Summary
 	var commitMessages []string
 	if patch.IsMailboxDiff(patchContent) {
-		reader := strings.NewReader(patchContent)
-		summaries, commitMessages, err = units.GetPatchSummariesByCommit(reader)
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContent)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
 			return
@@ -286,7 +300,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Alias == evergreen.CommitQueueAlias {
+	if p.IsCommitQueuePatch() {
 		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, project)); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

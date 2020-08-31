@@ -39,29 +39,35 @@ func findConfigFilePath(fn string) (string, error) {
 		}
 	}
 
-	absfn, _ := filepath.Abs(fn)
-
-	files := []string{
-		fn,
-		absfn,
+	if fn != "" {
+		if isValidPath(fn) {
+			return fn, nil
+		}
+		absfn, _ := filepath.Abs(fn)
+		if isValidPath(absfn) {
+			return absfn, nil
+		}
+	}
+	defaultFiles := []string{
 		filepath.Join(userHome, evergreen.DefaultEvergreenConfig),
 		filepath.Join(filepath.Dir(currentBinPath), evergreen.DefaultEvergreenConfig),
 	}
-
-	for _, path := range files {
-		stat, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			continue
+	for _, path := range defaultFiles {
+		if isValidPath(path) {
+			grip.WarningWhen(fn != "", "Couldn't find configuration file, falling back on default.")
+			return path, nil
 		}
-
-		if stat.IsDir() {
-			continue
-		}
-
-		return path, nil
 	}
 
 	return "", errors.New("could not find client configuration file on the local system")
+}
+
+func isValidPath(path string) bool {
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) || stat.IsDir() {
+		return false
+	}
+	return true
 }
 
 // Client represents the data stored in the user's config file, by default
@@ -73,6 +79,8 @@ type ClientSettings struct {
 	APIKey             string              `json:"api_key" yaml:"api_key,omitempty"`
 	User               string              `json:"user" yaml:"user,omitempty"`
 	UncommittedChanges bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	EnableEnqueue      bool                `json:"enable_enqueue" yaml:"enable_enqueue,omitempty"`
+	PreserveCommits    bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects           []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	Admin              ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
 	LoadedFrom         string              `json:"-" yaml:"-"`

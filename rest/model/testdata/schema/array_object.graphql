@@ -1,0 +1,9 @@
+type ArtifactEntry {
+  TaskId: String!
+  Files: [File!]!
+}
+
+type File {
+  Name: String!
+  IgnoreForFetch: Boolean!
+}

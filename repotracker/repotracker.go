@@ -637,6 +637,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		if err != nil {
 			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
 		}
+		grip.Debug(message.Fields{
+			"message": "aliases for creating version",
+			"tag":     metadata.GitTag.Tag,
+			"project": projectInfo.Ref.Identifier,
+			"aliases": aliases,
+		})
 	} else if metadata.Alias != "" {
 		aliases, err = model.FindAliasInProject(projectInfo.Ref.Identifier, metadata.Alias)
 		if err != nil {
@@ -769,7 +775,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	buildsToCreate := []interface{}{}
 	tasksToCreate := task.Tasks{}
 	pairsToCreate := model.TVPairSet{}
-	// build all pairsToCreate before creating builds, to handle dependencies (if applicaable)
+	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
@@ -783,6 +789,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error checking project aliases",
+					"project": projectInfo.Project.Identifier,
 					"version": v.Id,
 				}))
 				continue
@@ -797,7 +804,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 						"message": "error finding tasks with alias filter",
 						"task":    t.Name,
 						"project": projectInfo.Project.Identifier,
-						"alias":   aliases,
+						"aliases": aliases,
 					}))
 					continue
 				}
@@ -805,10 +812,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					pairsToCreate = append(pairsToCreate, model.TVPair{Variant: buildvariant.Name, TaskName: t.Name})
 				}
 			}
-			pairsToCreate = model.IncludePatchDependencies(projectInfo.Project, pairsToCreate)
 		}
 	}
 
+	pairsToCreate = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
@@ -828,6 +835,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error creating build",
+				"project": projectInfo.Ref.Identifier,
 				"version": v.Id,
 			}))
 			continue

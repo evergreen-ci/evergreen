@@ -517,9 +517,9 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' in project "+
-								"'%s' references a nonexistent distro '%s'.\n"+
-								task.Name, buildVariant.Name, project.Identifier,
-								distro),
+								"'%s' references a nonexistent distro '%s'.\n",
+								task.Name, buildVariant.Name,
+								project.Identifier, distro),
 							Level: Warning,
 						},
 					)
@@ -531,7 +531,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' in project "+
-							"'%s' references a nonexistent distro '%s'.\n"+
+							"'%s' references a nonexistent distro '%s'.\n",
 							buildVariant.Name,
 							project.Identifier, distro),
 						Level: Warning,

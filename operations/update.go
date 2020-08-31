@@ -70,6 +70,11 @@ func Update() cli.Command {
 			if err != nil {
 				return err
 			}
+			defer func() {
+				if doInstall {
+					grip.Error(os.Remove(updatedBin))
+				}
+			}()
 
 			if doInstall {
 				grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
@@ -125,13 +130,15 @@ func copyFile(dst, src string) error {
 	}
 	// no need to check errors on read only file, we already got everything
 	// we need from the filesystem, so nothing can go wrong now.
-	defer s.Close()
+	defer func() {
+		grip.Error(s.Close())
+	}()
 	d, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(d, s); err != nil {
-		_ = d.Close()
+		grip.Error(d.Close())
 		return err
 	}
 	return d.Close()
@@ -144,27 +151,26 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		grip.Error(tempFile.Close())
-		grip.Error(os.Remove(tempFile.Name()))
-	}()
 
 	response, err := http.Get(url)
 	if err != nil {
+		grip.Error(tempFile.Close())
 		return "", err
 	}
 
 	if response == nil {
+		grip.Error(tempFile.Close())
 		return "", errors.Errorf("empty response from URL: %s", url)
 	}
 
 	defer response.Body.Close()
 	_, err = io.Copy(tempFile, response.Body)
 	if err != nil {
+		grip.Error(tempFile.Close())
 		return "", err
 	}
-	err = tempFile.Close()
-	if err != nil {
+
+	if err = tempFile.Close(); err != nil {
 		return "", err
 	}
 

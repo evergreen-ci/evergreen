@@ -209,6 +209,8 @@ type Communicator interface {
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 
+	GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]restmodel.APIVersion, error)
+
 	// GetTaskSyncReadCredentials returns the credentials to fetch task
 	// directory from S3.
 	GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error)

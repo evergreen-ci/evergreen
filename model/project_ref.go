@@ -231,13 +231,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	catcher := grip.NewBasicCatcher()
 	if !p.Restricted {
-		catcher := grip.NewBasicCatcher()
-		catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier), "error adding project '%s' to list of all projects", p.Identifier)
 		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "error adding project '%s' to list of unrestricted projects", p.Identifier)
-		if catcher.HasErrors() {
-			return catcher.Resolve()
-		}
+	}
+	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier), "error adding project '%s' to list of all projects", p.Identifier)
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 	newScope := gimlet.Scope{
 		ID:          fmt.Sprintf("project_%s", p.Identifier),
@@ -1015,6 +1015,21 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	}
 
 	return db.Update(ProjectRefCollection, filter, update)
+}
+
+func (p *ProjectRef) CommitQueueIsOn() error {
+	catcher := grip.NewBasicCatcher()
+	if !p.Enabled {
+		catcher.Add(errors.Errorf("project '%s' is disabled", p.Identifier))
+	}
+	if p.PatchingDisabled {
+		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Identifier))
+	}
+	if !p.CommitQueue.Enabled {
+		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Identifier))
+	}
+
+	return catcher.Resolve()
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {

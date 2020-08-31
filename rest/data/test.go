@@ -35,28 +35,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status st
 		taskIds = []string{taskId}
 	}
 	q := testresult.TestResultsQuery(taskIds, testId, testName, status, limit, execution)
-	res, err := testresult.Find(q)
-	if err != nil {
-		return []testresult.TestResult{}, err
-	}
-	if len(res) == 0 {
-		var message string
-		testMsg := "tests"
-		if testName != "" {
-			testMsg = fmt.Sprintf("test '%s'", testName)
-		}
-		if status != "" {
-			message = fmt.Sprintf("%s for task with taskId '%s', execution %d, and status '%s' not found", testMsg, taskId, execution, status)
-		} else {
-			message = fmt.Sprintf("%s for task with taskId '%s' and execution %d not found", testMsg, taskId, execution)
-		}
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    message,
-		}
-	}
-
-	return res, nil
+	return testresult.Find(q)
 }
 func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := task.FindOneIdNewOrOld(taskId)

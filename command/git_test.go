@@ -23,6 +23,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -92,7 +93,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
 	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
+	s.modelData3.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
@@ -106,7 +107,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
 	s.modelData4.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData4.TaskConfig.GithubPatchData = patch.GithubPatch{
+	s.modelData4.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:       9001,
 		MergeCommitSHA: "abcdef",
 	}
@@ -626,6 +627,27 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[4])
 	s.Regexp("^git checkout 'evg-merge-test-", cmds[5])
 	s.Equal("git reset --hard 1234abcd", cmds[6])
+}
+
+func (s *GitGetProjectSuite) TestGetApplyCommand() {
+	c := &gitFetchProject{
+		Directory:      "dir",
+		Token:          projectGitHubToken,
+		CommitterName:  "octocat",
+		CommitterEmail: "octocat@github.com",
+	}
+
+	// regular patch
+	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
+	applyCommand, err := c.getApplyCommand(patchPath)
+	s.NoError(err)
+	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
+
+	// mbox patch
+	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
+	applyCommand, err = c.getApplyCommand(patchPath)
+	s.NoError(err)
+	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {

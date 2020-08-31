@@ -393,7 +393,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
-		go a.startSpotTerminationWatcher(tskCtx, innerCancel)
+		go a.startSpotTerminationWatcher(tskCtx)
 	}
 
 	complete := make(chan string)

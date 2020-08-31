@@ -15,17 +15,18 @@ type APIUserSettings struct {
 
 func APIGithubUserBuildFromService(t user.GithubUser) *APIGithubUser {
 	m := APIGithubUser{}
-	m.LastKnownAs = StringStringPtr(t.LastKnownAs)
 	m.UID = IntInt(t.UID)
+	m.LastKnownAs = StringStringPtr(t.LastKnownAs)
 	return &m
 }
 
 func APIGithubUserToService(m APIGithubUser) *user.GithubUser {
 	out := &user.GithubUser{}
-	out.LastKnownAs = StringPtrString(m.LastKnownAs)
 	out.UID = IntInt(m.UID)
+	out.LastKnownAs = StringPtrString(m.LastKnownAs)
 	return out
 }
+
 func APIUserSettingsBuildFromService(t user.UserSettings) *APIUserSettings {
 	m := APIUserSettings{}
 	m.GithubUser = *APIGithubUserBuildFromService(t.GithubUser)

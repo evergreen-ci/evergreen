@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -20,36 +21,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-// dataFormat describes how the time series data is stored.
-type dataFormat int32
-
-// Valid dataFormat values.
-const (
-	dataFormatText dataFormat = 0
-	dataFormatFTDC dataFormat = 1
-	dataFormatBSON dataFormat = 2
-	dataFormatJSON dataFormat = 3
-	dataFormatCSV  dataFormat = 4
-)
-
-func (f dataFormat) validate() error {
-	switch f {
-	case dataFormatText, dataFormatFTDC, dataFormatBSON, dataFormatJSON, dataFormatCSV:
-		return nil
-	default:
-		return errors.New("invalid schema type specified")
-	}
-}
-
 // metricCollector is an interface representing an object that can collect
 // a single system metric over a series of time steps.
 type metricCollector interface {
 	// Name returns a string indicating the type of metric collected, such as "uptime".
-	Name() string
+	name() string
 	// Format returns the format of the collected data.
-	Format() dataFormat
+	format() sysmetrics.DataFormat
 	// Collect returns the value of the collected metric when the function is called.
-	Collect(context.Context) ([]byte, error)
+	collect(context.Context) ([]byte, error)
 }
 
 // systemMetricsCollector handles collecting an arbitrary set of system
@@ -159,13 +139,13 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	for _, collector := range s.collectors {
 		stream, err := s.client.StreamSystemMetrics(ctx, sysmetrics.MetricDataOpts{
 			Id:         s.id,
-			MetricType: collector.Name(),
-			Format:     sysmetrics.DataFormat(collector.Format()),
+			MetricType: collector.name(),
+			Format:     collector.format(),
 		}, *s.streamOpts)
 		if err != nil {
 			s.streamingCancel()
 			s.streamingCancel = nil
-			return errors.Wrap(err, fmt.Sprintf("problem creating system metrics stream for id %s and metricType %s", s.id, collector.Name()))
+			return errors.Wrap(err, fmt.Sprintf("problem creating system metrics stream for id %s and metricType %s", s.id, collector.name()))
 		}
 
 		s.stream.Add(1)
@@ -177,11 +157,11 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream *sysmetrics.SystemMetricsWriteCloser) {
+func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream io.WriteCloser) {
 	timer := time.NewTimer(0)
 	defer func() {
-		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.Name())), ""))
-		s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.Name())))
+		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.name())), ""))
+		s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.name())))
 		timer.Stop()
 		s.stream.Done()
 	}()
@@ -191,14 +171,24 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			data, err := mc.Collect(ctx)
+			data, err := mc.collect(ctx)
 			if err != nil {
-				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.Name()))
+				// Do not accumulate errors caused by system metrics collectors
+				// closing this metric collector's context.
+				if ctx.Err() != nil {
+					return
+				}
+				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.name()))
 				return
 			}
 			_, err = stream.Write(data)
 			if err != nil {
-				s.catcher.Add(errors.Wrapf(err, "problem writing system metrics data to stream for id %s and metricType %s", s.id, mc.Name()))
+				// Do not accumulate errors caused by system metrics collectors
+				// closing this metric collector's context.
+				if ctx.Err() != nil {
+					return
+				}
+				s.catcher.Add(errors.Wrapf(err, "problem writing system metrics data to stream for id %s and metricType %s", s.id, mc.name()))
 				return
 			}
 			_ = timer.Reset(s.interval)
@@ -247,7 +237,7 @@ func (s *systemMetricsCollector) Close() error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return errors.New("system metrics collector already cancelled or closed")
+		return s.catcher.Resolve()
 	}
 	s.mu.Unlock()
 
@@ -297,11 +287,11 @@ type diskUsageWrapper struct {
 	InodesUsedPercent float64 `json:"inodes_used_percent,omitempty"`
 }
 
-func (c *diskUsageCollector) Name() string { return "disk_usage" }
+func (c *diskUsageCollector) name() string { return "disk_usage" }
 
-func (c *diskUsageCollector) Format() dataFormat { return dataFormatFTDC }
+func (c *diskUsageCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatFTDC }
 
-func (c *diskUsageCollector) Collect(ctx context.Context) ([]byte, error) {
+func (c *diskUsageCollector) collect(ctx context.Context) ([]byte, error) {
 	usage, err := disk.UsageWithContext(ctx, c.dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
@@ -333,17 +323,17 @@ type uptimeWrapper struct {
 	Uptime uint64 `json:"uptime,omitempty"`
 }
 
-func (c *uptimeCollector) Name() string { return "uptime" }
+func (c *uptimeCollector) name() string { return "uptime" }
 
-func (c *uptimeCollector) Format() dataFormat { return dataFormatFTDC }
+func (c *uptimeCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatFTDC }
 
-func (c *uptimeCollector) Collect(ctx context.Context) ([]byte, error) {
+func (c *uptimeCollector) collect(ctx context.Context) ([]byte, error) {
 	uptime, err := host.UptimeWithContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
 	}
 
-	uptimeWrap := uptimeWrapper{uptime}
+	uptimeWrap := uptimeWrapper{Uptime: uptime}
 	return convertJSONToFTDC(ctx, uptimeWrap)
 }
 
@@ -372,11 +362,11 @@ type processData struct {
 	Command           string  `json:"command,omitempty"`
 }
 
-func (c *processCollector) Name() string { return "process" }
+func (c *processCollector) name() string { return "process" }
 
-func (c *processCollector) Format() dataFormat { return dataFormatJSON }
+func (c *processCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatJSON }
 
-func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
+func (c *processCollector) collect(ctx context.Context) ([]byte, error) {
 	var err error
 	procs, err := process.ProcessesWithContext(ctx)
 	if err != nil {
@@ -384,7 +374,7 @@ func (c *processCollector) Collect(ctx context.Context) ([]byte, error) {
 	}
 
 	procMetrics := createProcMetrics(ctx, procs)
-	procWrapper := processesWrapper{procMetrics}
+	procWrapper := processesWrapper{Processes: procMetrics}
 
 	results, err := json.Marshal(procWrapper)
 	return results, errors.Wrap(err, "problem marshaling processes into JSON")

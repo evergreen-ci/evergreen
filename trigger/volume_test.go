@@ -1,9 +1,11 @@
 package trigger
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -32,20 +34,30 @@ func TestVolumeExpiration(t *testing.T) {
 	triggers.event = &event.EventLogEntry{ID: "e0"}
 
 	testData := hostTemplateData{
-		ID:             v.ID,
-		ExpirationTime: time.Now().Add(2 * time.Hour),
+		ID: v.ID,
 	}
+
+	uiConfig := &evergreen.UIConfig{
+		Url: "https://evergreen.mongodb.com",
+	}
+	require.NoError(t, uiConfig.Set())
 
 	for name, test := range map[string]func(*testing.T){
 		"Email": func(*testing.T) {
-			email, err := hostExpirationEmailPayload(testData, expiringVolumeTitle, expiringVolumeBody, triggers.Selectors())
+			email, err := hostExpirationEmailPayload(testData, expiringVolumeEmailSubject, expiringVolumeEmailBody, triggers.Selectors())
 			assert.NoError(t, err)
 			assert.Contains(t, email.Body, "Your volume with id v0 will be terminated at")
 		},
 		"Slack": func(*testing.T) {
-			slack, err := hostExpirationSlackPayload(testData, expiringVolumeBody, triggers.Selectors())
+			slack, err := hostExpirationSlackPayload(testData, expiringVolumeSlackBody, "linkTitle", triggers.Selectors())
 			assert.NoError(t, err)
 			assert.Contains(t, slack.Body, "Your volume with id v0 will be terminated at")
+		},
+		"Fetch": func(*testing.T) {
+			triggers := volumeTriggers{}
+			assert.NoError(t, triggers.Fetch(&event.EventLogEntry{ResourceId: "v0"}))
+			assert.Equal(t, "v0", triggers.templateData.ID)
+			assert.Equal(t, fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=v0", uiConfig.Url), triggers.templateData.URL)
 		},
 		"NotificationsFromEvent": func(*testing.T) {
 			require.NoError(t, db.Clear(event.SubscriptionsCollection))

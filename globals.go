@@ -116,7 +116,7 @@ const (
 	MergeTestFailed    = "failed"
 
 	// maximum task (zero based) execution number
-	MaxTaskExecution = 3
+	MaxTaskExecution = 9
 
 	// maximum task priority
 	MaxTaskPriority = 100
@@ -341,6 +341,7 @@ const (
 	DefaultDatabaseUrl                  = "mongodb://localhost:27017"
 	DefaultDatabaseName                 = "mci"
 	DefaultDatabaseWriteMode            = "majority"
+	DefaultDatabaseReadMode             = "majority"
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
@@ -372,14 +373,13 @@ const (
 	SenderJIRAIssue
 	SenderJIRAComment
 	SenderEmail
-	SenderGithubMerge
-	SenderCommitQueueDequeue
+	SenderGeneric
 )
 
 func (k SenderKey) Validate() error {
 	switch k {
 	case SenderGithubStatus, SenderEvergreenWebhook, SenderSlack, SenderJIRAComment, SenderJIRAIssue,
-		SenderEmail, SenderGithubMerge, SenderCommitQueueDequeue:
+		SenderEmail, SenderGeneric:
 		return nil
 	default:
 		return errors.New("invalid sender defined")
@@ -400,12 +400,10 @@ func (k SenderKey) String() string {
 		return "jira-comment"
 	case SenderJIRAIssue:
 		return "jira-issue"
-	case SenderGithubMerge:
-		return "github-merge"
-	case SenderCommitQueueDequeue:
-		return "commit-queue-dequeue"
+	case SenderGeneric:
+		return "generic"
 	default:
-		return "<error:unkwown>"
+		return "<error:unknown>"
 	}
 }
 

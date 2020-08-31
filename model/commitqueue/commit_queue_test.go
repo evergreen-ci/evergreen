@@ -1,7 +1,6 @@
 package commitqueue
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -10,11 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -259,37 +255,6 @@ func (s *CommitQueueSuite) TestFindOneId() {
 	cq, err = FindOneId("not_here")
 	s.NoError(err)
 	s.Nil(cq)
-}
-
-func (s *CommitQueueSuite) TestSetupEnv() {
-	ctx := context.Background()
-	env := testutil.NewEnvironment(ctx, s.T())
-	testConfig := env.Settings()
-	githubToken, err := testConfig.GetGithubOauthToken()
-	s.NoError(err)
-
-	githubStatusSender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token: githubToken,
-	}, "")
-	s.NoError(err)
-	s.NotNil(githubStatusSender)
-	s.NoError(env.SetSender(evergreen.SenderGithubStatus, githubStatusSender))
-
-	sender, err := env.GetSender(evergreen.SenderCommitQueueDequeue)
-	s.Nil(sender)
-	s.Error(err)
-	sender, err = env.GetSender(evergreen.SenderGithubMerge)
-	s.Nil(sender)
-	s.Error(err)
-
-	s.NoError(SetupEnv(env))
-
-	sender, err = env.GetSender(evergreen.SenderCommitQueueDequeue)
-	s.NotNil(sender)
-	s.NoError(err)
-	sender, err = env.GetSender(evergreen.SenderGithubMerge)
-	s.NotNil(sender)
-	s.NoError(err)
 }
 
 func TestPreventMergeForItemPR(t *testing.T) {

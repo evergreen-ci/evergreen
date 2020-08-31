@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -43,7 +44,7 @@ func TestAPIPatch(t *testing.T) {
 		Activated:     true,
 		PatchedConfig: "config",
 		Alias:         "__github",
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
@@ -87,7 +88,7 @@ func TestAPIPatch(t *testing.T) {
 
 func TestGithubPatch(t *testing.T) {
 	assert := assert.New(t)
-	p := patch.GithubPatch{
+	p := thirdparty.GithubPatch{
 		PRNumber:  123,
 		BaseOwner: "evergreen-ci",
 		BaseRepo:  "evergreen",

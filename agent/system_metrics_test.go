@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	metrics "github.com/evergreen-ci/timber/system_metrics"
+	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/ftdc"
 	"github.com/pkg/errors"
@@ -21,25 +22,25 @@ import (
 )
 
 type mockMetricCollector struct {
-	collectErr bool
-	name       string
-	count      int
+	collectErr    bool
+	collectorName string
+	count         int
 }
 
-func (m *mockMetricCollector) Name() string {
-	return m.name
+func (m *mockMetricCollector) name() string {
+	return m.collectorName
 }
 
-func (m *mockMetricCollector) Format() dataFormat {
-	return dataFormatText
+func (m *mockMetricCollector) format() sysmetrics.DataFormat {
+	return sysmetrics.DataFormatText
 }
 
-func (m *mockMetricCollector) Collect(context.Context) ([]byte, error) {
+func (m *mockMetricCollector) collect(context.Context) ([]byte, error) {
 	if m.collectErr {
 		return nil, errors.New("Error collecting metrics")
 	} else {
 		m.count += 1
-		return []byte(fmt.Sprintf("%s-%d", m.name, m.count)), nil
+		return []byte(fmt.Sprintf("%s-%d", m.name(), m.count)), nil
 	}
 }
 
@@ -87,9 +88,9 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
+		collectorName: "first",
 	}, &mockMetricCollector{
-		name: "second",
+		collectorName: "second",
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
@@ -134,9 +135,9 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithInvalidOpts() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
+		collectorName: "first",
 	}, &mockMetricCollector{
-		name: "second",
+		collectorName: "second",
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
@@ -202,9 +203,9 @@ func (s *SystemMetricsSuite) TestStartSystemMetricsCollector() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
+		collectorName: "first",
 	}, &mockMetricCollector{
-		name: "second",
+		collectorName: "second",
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
@@ -246,9 +247,9 @@ func (s *SystemMetricsSuite) TestSystemMetricsCollectorStreamError() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
+		collectorName: "first",
 	}, &mockMetricCollector{
-		name: "second",
+		collectorName: "second",
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
@@ -273,9 +274,9 @@ func (s *SystemMetricsSuite) TestCloseSystemMetricsCollector() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	collectors := []metricCollector{&mockMetricCollector{
-		name: "first",
+		collectorName: "first",
 	}, &mockMetricCollector{
-		name: "second",
+		collectorName: "second",
 	}}
 
 	c, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
@@ -335,7 +336,7 @@ func TestSystemMetricsCollectors(t *testing.T) {
 
 			coll := testCase.makeCollector(t)
 
-			output, err := coll.Collect(ctx)
+			output, err := coll.collect(ctx)
 			require.NoError(t, err)
 
 			iter := ftdc.ReadMetrics(ctx, bytes.NewReader(output))
@@ -355,7 +356,7 @@ func TestCollectProcesses(t *testing.T) {
 	defer cancel()
 
 	coll := &processCollector{}
-	output, err := coll.Collect(ctx)
+	output, err := coll.collect(ctx)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, output)
@@ -366,5 +367,56 @@ func TestCollectProcesses(t *testing.T) {
 
 	for _, proc := range procs.Processes {
 		assert.NotZero(t, proc.Command)
+	}
+}
+
+func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv, err := testutil.NewMockMetricsServer(ctx, 12345)
+	require.NoError(t, err)
+
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	require.NoError(t, err)
+
+	tsk := &task.Task{
+		Id:           "id",
+		Project:      "project",
+		Version:      "version",
+		BuildVariant: "buildvariant",
+		DisplayName:  "display_name",
+		Execution:    0,
+	}
+
+	mc := newUptimeCollector()
+	coll, err := newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		task:                     tsk,
+		interval:                 time.Second,
+		collectors:               []metricCollector{mc},
+		bufferTimedFlushInterval: time.Second,
+		conn:                     conn,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, coll.Start(ctx))
+
+	timer := time.NewTimer(3 * time.Second)
+	select {
+	case <-timer.C:
+		require.NoError(t, coll.Close())
+	}
+
+	assert.Equal(t, tsk.Id, srv.Create.Info.TaskId)
+	assert.Equal(t, tsk.Project, srv.Create.Info.Project)
+	assert.Equal(t, tsk.Version, srv.Create.Info.Version)
+	assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
+	assert.NotEmpty(t, srv.StreamData)
+	sentData := srv.StreamData[mc.name()]
+	assert.NotZero(t, len(sentData))
+	for _, data := range sentData {
+		assert.Equal(t, mc.name(), data.Type)
+		assert.Equal(t, mc.format(), sysmetrics.DataFormat(data.Format))
+		assert.NotEmpty(t, data.Data)
 	}
 }

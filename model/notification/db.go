@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
@@ -75,6 +76,9 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 
 	case event.CommitQueueDequeueSubscriberType:
 		n.Payload = &commitqueue.DequeueItem{}
+
+	case event.EnqueuePatchSubscriberType:
+		n.Payload = &model.EnqueuePatch{}
 
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)

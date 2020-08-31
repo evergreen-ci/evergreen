@@ -280,10 +280,12 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 		if err != nil {
 			return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
 		}
+		// suppress error, as this information isn't crucial.
 		h.ComputeCostPerHour, _, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, client, ec2Settings, getOsName(h), h.Zone)
-		if err != nil {
-			return errors.Wrapf(err, "can't get pricing for host '%s'", h.Id)
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem getting latest ec2 spot price",
+			"host":    h.Id,
+		}))
 	}
 
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)

@@ -1,10 +1,8 @@
 package units
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -26,7 +24,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"github.com/sam-falvo/mbox"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -227,6 +224,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
+	if patchDoc.IsBackport() && !pref.CommitQueue.Enabled {
+		return errors.New("commit queue is disabled for project")
+	}
+
 	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
 		j.gitHubError = PatchTaskSyncDisabled
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
@@ -296,11 +297,17 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.Alias == evergreen.CommitQueueAlias {
+	if patchDoc.IsCommitQueuePatch() {
 		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, project)
 	}
+	if patchDoc.IsBackport() {
+		patchDoc.Description, err = patchDoc.MakeBackportDescription()
+		if err != nil {
+			return errors.Wrap(err, "can't make backport patch description")
+		}
+	}
 
-	if (j.intent.ShouldFinalizePatch() || patchDoc.Alias == evergreen.CommitQueueAlias) &&
+	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
 		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
@@ -336,6 +343,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}
 	}
+	if patchDoc.IsBackport() {
+		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
+		if err = backportSubscription.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert backport subscription"))
+		}
+	}
+
 	if catcher.HasErrors() {
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 			"message":     "failed to save subscription, patch will not notify",
@@ -392,12 +406,17 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 			"job":         j.ID(),
 		}))
 	}()
+
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}
 	if projectRef == nil {
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
+	}
+
+	if patchDoc.IsBackport() {
+		return j.buildBackportPatchDoc(ctx, projectRef, patchDoc)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -425,11 +444,10 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		return errors.Wrap(err, "error parsing patch")
 	}
 
-	var summaries []patch.Summary
+	var summaries []thirdparty.Summary
 	if patch.IsMailboxDiff(string(patchBytes)) {
-		reader := strings.NewReader(string(patchBytes))
 		var commitMessages []string
-		summaries, commitMessages, err = GetPatchSummariesByCommit(reader)
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(string(patchBytes))
 		if err != nil {
 			return errors.Wrapf(err, "error getting summaries by commit")
 		}
@@ -447,62 +465,40 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	return nil
 }
 
-// if commit queue then mbox format, organize summaries by commit
-func GetPatchSummariesByCommit(reader io.Reader) ([]patch.Summary, []string, error) {
-	stream, err := mbox.CreateMboxStream(reader)
-	if err != nil {
-		if err == io.EOF {
-			return nil, nil, errors.Errorf("patch is empty")
-		}
-		return nil, nil, errors.Wrap(err, "error creating stream")
-	}
-	if stream == nil {
-		return nil, nil, errors.New("mbox stream is nil")
-	}
-	summaries := []patch.Summary{}
-	commitMessages := []string{}
-	// iterate through patches
-	for err == nil {
-		var buffer []byte
-		msg, err := stream.ReadMessage()
+func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projectRef *model.ProjectRef, patchDoc *patch.Patch) error {
+	if len(patchDoc.BackportOf.PatchID) > 0 {
+		existingMergePatch, err := patch.FindOneId(patchDoc.BackportOf.PatchID)
 		if err != nil {
-			if err == io.EOF { // no more patches
-				return summaries, commitMessages, nil
-			}
-			return nil, nil, errors.Wrap(err, "error reading message")
+			return errors.Wrap(err, "can't get existing merge patch")
+		}
+		if existingMergePatch == nil {
+			return errors.Errorf("patch '%s' does not exist", patchDoc.BackportOf.PatchID)
+		}
+		if !existingMergePatch.IsCommitQueuePatch() {
+			return errors.Errorf("can only backport commit queue patches")
 		}
 
-		var description string
-		if subject := msg.Headers()["Subject"]; len(subject) > 0 {
-			description = strings.TrimSpace(subject[0])
-		}
-
-		reader := msg.BodyReader()
-		// iterate through patch body
-		for {
-			curBytes := make([]byte, bytes.MinRead)
-			n, err := reader.Read(curBytes)
-			if err != nil {
-				if err == io.EOF { // finished reading body of this patch
-					var patchSummaries []patch.Summary
-					patchSummaries, err = thirdparty.GetPatchSummaries(string(buffer))
-					if err != nil {
-						return nil, nil, errors.Wrapf(err, "error getting patch summaries for commit '%s'", description)
-					}
-					for i := range patchSummaries {
-						patchSummaries[i].Description = description
-					}
-					summaries = append(summaries, patchSummaries...)
-					commitMessages = append(commitMessages, description)
-					break
-				}
-				return nil, nil, errors.Wrap(err, "error reading body")
+		for _, p := range existingMergePatch.Patches {
+			if p.ModuleName == "" {
+				p.Githash = patchDoc.Githash
 			}
-			buffer = append(buffer, curBytes[0:n]...)
+			patchDoc.Patches = append(patchDoc.Patches, p)
 		}
+		return nil
 	}
 
-	return summaries, commitMessages, nil
+	patchSet, err := patch.CreatePatchSetForSHA(ctx, j.env.Settings(), projectRef.Owner, projectRef.Repo, patchDoc.BackportOf.SHA)
+	if err != nil {
+		return errors.Wrapf(err, "can't create a patch set for SHA '%s'", patchDoc.BackportOf.SHA)
+	}
+	patchDoc.Patches = []patch.ModulePatch{{
+		ModuleName: "",
+		IsMbox:     true,
+		PatchSet:   patchSet,
+		Githash:    patchDoc.Githash,
+	}}
+
+	return nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {

@@ -17,3 +17,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.MockLayerTwo
   AssortedTypes:
     model: github.com/evergreen-ci/evergreen/rest/model.MockTypes
+  SortOfDisplayTask:
+    model: github.com/evergreen-ci/evergreen/model/patch.DisplayTask
+  ArtifactEntry:
+    model: github.com/evergreen-ci/evergreen/model/artifact.Entry

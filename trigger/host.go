@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -20,8 +21,10 @@ func init() {
 
 const (
 	// notification templates
-	expiringHostTitle = `{{.Distro}} host termination reminder`
-	expiringHostBody  = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
+	expiringHostEmailSubject         = `{{.Distro}} host termination reminder`
+	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its lifetime.`
+	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
+	expiringHostSlackAttachmentTitle = "Spawnhost Page"
 )
 
 type hostBase struct {
@@ -78,7 +81,7 @@ type hostTemplateData struct {
 	ID             string
 	Name           string
 	Distro         string
-	ExpirationTime time.Time
+	ExpirationTime string
 	URL            string
 }
 
@@ -104,11 +107,10 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	t.templateData = hostTemplateData{
-		ID:             t.host.Id,
-		Name:           t.host.DisplayName,
-		Distro:         t.host.Distro.Id,
-		ExpirationTime: t.host.ExpirationTime,
-		URL:            fmt.Sprintf("%s/spawn", t.hostBase.uiConfig.Url),
+		ID:     t.host.Id,
+		Name:   t.host.DisplayName,
+		Distro: t.host.Distro.Id,
+		URL:    fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", t.uiConfig.Url, t.host.Id),
 	}
 	if t.host.DisplayName == "" {
 		t.templateData.Name = t.host.Id
@@ -117,14 +119,14 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {
+func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	var payload interface{}
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, subjectTempl, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, expiringHostEmailSubject, expiringHostEmailBody, sub.Selectors)
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, expiringHostSlackBody, expiringHostSlackAttachmentTitle, sub.Selectors)
 	default:
 		return nil, nil
 	}
@@ -166,7 +168,7 @@ func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString st
 	}, nil
 }
 
-func hostExpirationSlackPayload(t hostTemplateData, messageString string, selectors []event.Selector) (*notification.SlackPayload, error) {
+func hostExpirationSlackPayload(t hostTemplateData, messageString string, linkTitle string, selectors []event.Selector) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
@@ -181,7 +183,7 @@ func hostExpirationSlackPayload(t hostTemplateData, messageString string, select
 	return &notification.SlackPayload{
 		Body: msg,
 		Attachments: []message.SlackAttachment{{
-			Title:     "Spawnhost Page",
+			Title:     linkTitle,
 			TitleLink: t.URL,
 			Color:     evergreenSuccessColor,
 		}},
@@ -189,5 +191,19 @@ func hostExpirationSlackPayload(t hostTemplateData, messageString string, select
 }
 
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	return t.generate(sub, expiringHostTitle, expiringHostBody)
+	timeZone := time.Local
+	if sub.OwnerType == event.OwnerTypePerson {
+		userTimeZone, err := getUserTimeZone(sub.Owner)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting time zone",
+				"user":    sub.Owner,
+				"trigger": "hostExpiration",
+			}))
+		} else {
+			timeZone = userTimeZone
+		}
+	}
+	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
+	return t.generate(sub)
 }

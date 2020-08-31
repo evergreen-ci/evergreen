@@ -134,6 +134,11 @@ type TaskFiles struct {
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
 }
 
+type TaskQueueDistro struct {
+	ID         string `json:"id"`
+	QueueCount int    `json:"queueCount"`
+}
+
 type TaskResult struct {
 	ID           string `json:"id"`
 	DisplayName  string `json:"displayName"`
@@ -141,6 +146,7 @@ type TaskResult struct {
 	Status       string `json:"status"`
 	BaseStatus   string `json:"baseStatus"`
 	BuildVariant string `json:"buildVariant"`
+	Blocked      bool   `json:"blocked"`
 }
 
 type TaskTestResult struct {
@@ -344,6 +350,90 @@ func (e *SortDirection) UnmarshalGQL(v interface{}) error {
 }
 
 func (e SortDirection) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type SpawnHostStatusActions string
+
+const (
+	SpawnHostStatusActionsStart     SpawnHostStatusActions = "START"
+	SpawnHostStatusActionsStop      SpawnHostStatusActions = "STOP"
+	SpawnHostStatusActionsTerminate SpawnHostStatusActions = "TERMINATE"
+)
+
+var AllSpawnHostStatusActions = []SpawnHostStatusActions{
+	SpawnHostStatusActionsStart,
+	SpawnHostStatusActionsStop,
+	SpawnHostStatusActionsTerminate,
+}
+
+func (e SpawnHostStatusActions) IsValid() bool {
+	switch e {
+	case SpawnHostStatusActionsStart, SpawnHostStatusActionsStop, SpawnHostStatusActionsTerminate:
+		return true
+	}
+	return false
+}
+
+func (e SpawnHostStatusActions) String() string {
+	return string(e)
+}
+
+func (e *SpawnHostStatusActions) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SpawnHostStatusActions(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SpawnHostStatusActions", str)
+	}
+	return nil
+}
+
+func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TaskQueueItemType string
+
+const (
+	TaskQueueItemTypeCommit TaskQueueItemType = "COMMIT"
+	TaskQueueItemTypePatch  TaskQueueItemType = "PATCH"
+)
+
+var AllTaskQueueItemType = []TaskQueueItemType{
+	TaskQueueItemTypeCommit,
+	TaskQueueItemTypePatch,
+}
+
+func (e TaskQueueItemType) IsValid() bool {
+	switch e {
+	case TaskQueueItemTypeCommit, TaskQueueItemTypePatch:
+		return true
+	}
+	return false
+}
+
+func (e TaskQueueItemType) String() string {
+	return string(e)
+}
+
+func (e *TaskQueueItemType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaskQueueItemType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaskQueueItemType", str)
+	}
+	return nil
+}
+
+func (e TaskQueueItemType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

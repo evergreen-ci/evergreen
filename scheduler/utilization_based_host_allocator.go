@@ -29,6 +29,13 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
 	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
+		grip.Info(message.Fields{
+			"message":        "distro is at max hosts",
+			"distro":         distro.Id,
+			"existing_hosts": numExistingHosts,
+			"max_hosts":      distro.HostAllocatorSettings.MaximumHosts,
+			"provider":       distro.Provider,
+		})
 		return 0, nil
 	}
 

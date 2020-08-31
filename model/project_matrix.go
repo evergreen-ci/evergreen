@@ -106,10 +106,10 @@ func (mdef matrixDefinition) String() string {
 // allCells returns every value (cell) within the matrix definition.
 // IMPORTANT: this logic assume that all selectors have been evaluated
 // and no duplicates exist.
-func (mdef matrixDefinition) allCells() []matrixValue {
+func (mdef matrixDefinition) allCells() ([]matrixValue, error) {
 	// this should never happen, we handle empty defs but just for sanity
 	if len(mdef) == 0 {
-		return nil
+		return nil, nil
 	}
 	// You can think of the logic below as traversing an n-dimensional matrix,
 	// emulating an n-dimensional for-loop using a set of counters (like an old-school
@@ -123,7 +123,7 @@ func (mdef matrixDefinition) allCells() []matrixValue {
 	axes := []axisCache{}
 	for axis, values := range mdef {
 		if len(values) == 0 {
-			panic(fmt.Sprintf("axis '%v' has empty values list", axis))
+			return nil, errors.Errorf("axis '%s' has empty values list", axis)
 		}
 		axes = append(axes, axisCache{Id: axis, Vals: values})
 	}
@@ -150,7 +150,7 @@ func (mdef matrixDefinition) allCells() []matrixValue {
 		// add one to the leftmost bucket on the next loop
 		carryOne = true
 	}
-	return cells
+	return cells, nil
 }
 
 // evaluatedCopy returns a copy of the definition with its tag selectors evaluated.
@@ -267,7 +267,11 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 			errs = append(errs, evalErrs...)
 			continue
 		}
-		unpruned := evaluatedSpec.allCells()
+		unpruned, err := evaluatedSpec.allCells()
+		if err != nil {
+			// If allCells fails we should exit immediately
+			return nil, []error{err}
+		}
 		pruned := []parserBV{}
 		for _, cell := range unpruned {
 			// create the variant if it isn't excluded

@@ -31,7 +31,7 @@ type StatusChanges struct {
 }
 
 func SetActiveState(t *task.Task, caller string, active bool) error {
-	modifiedTasks := []task.Task{}
+	var modifiedTasks []task.Task
 	if active {
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
@@ -569,7 +569,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		return errors.Errorf("No patch for task")
 	}
 
-	if p.Alias != evergreen.CommitQueueAlias {
+	if !p.IsCommitQueuePatch() {
 		return nil
 	}
 
@@ -610,7 +610,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, t.Version)
 			}
 			status := message.GithubStatus{
-				Context:     commitqueue.Context,
+				Context:     commitqueue.GithubContext,
 				Description: "merge test failed",
 				State:       message.GithubStateFailure,
 				Owner:       p.GithubPatchData.BaseOwner,

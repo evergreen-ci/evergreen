@@ -7,7 +7,10 @@
       "tag": "evg-ubuntu1604-small-20200720144805-8687799505734220270",
       "distro": {
         "_id": "ubuntu1604-small",
-        "aliases": ["ubuntu1604", "ubuntu1604-test"],
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-test"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
@@ -22,13 +25,25 @@
       "priv_attempts": 1,
       "last_task": "",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T14:48:05.256Z" },
-      "start_time": { "$date": "2020-07-20T14:48:27Z" },
-      "agent_start_time": { "$date": "2020-07-20T14:49:20.449Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:48:27Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T14:49:20.449Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 1,
-      "last_task_completed_time": { "$date": "0001-01-01T00:00:00Z" },
-      "last_communication": { "$date": "2020-07-20T18:58:51.025Z" },
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T18:58:51.025Z"
+      },
       "status": "provisioning",
       "started_by": "mci",
       "user_host": false,
@@ -36,7 +51,9 @@
       "needs_agent": false,
       "needs_agent_monitor": false,
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "90" },
+      "volume_total_size": {
+        "$numberLong": "90"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -47,8 +64,12 @@
       "running_task_project": "mongo-tools",
       "running_task_version": "5f15ad3c3627e07772ab2d01",
       "total_cost": 0.0011340309722222223,
-      "total_idle_time": { "$numberLong": "54073000000" },
-      "prov_time": { "$date": "2020-07-20T14:49:30.784Z" }
+      "total_idle_time": {
+        "$numberLong": "54073000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T14:49:30.784Z"
+      }
     },
     {
       "_id": "i-0f81a2d39744003dd",
@@ -57,14 +78,19 @@
       "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "distro": {
         "_id": "ubuntu1604-large",
-        "aliases": ["ubuntu1604", "ubuntu1604-build"],
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-build"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
         "provider_settings": [
           {
             "region": "us-east-1",
-            "security_group_ids": ["sg-1a636869"],
+            "security_group_ids": [
+              "sg-1a636869"
+            ],
             "key_name": "mci",
             "bid_price": 0.84,
             "instance_type": "c4.4xlarge",
@@ -128,13 +154,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -143,7 +181,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 120,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -164,13 +204,25 @@
       "priv_attempts": 1,
       "last_task": "mongodb_mongo_v3.6_ubuntu1604_debug_ubsan_rollback_fuzzer_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T18:01:08.213Z" },
-      "start_time": { "$date": "2020-07-20T18:02:02Z" },
-      "agent_start_time": { "$date": "2020-07-20T18:02:50.406Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T18:01:08.213Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:02:02Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T18:02:50.406Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 2,
-      "last_task_completed_time": { "$date": "2020-07-20T19:00:10.630Z" },
-      "last_communication": { "$date": "2020-07-20T19:08:41.928Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T19:00:10.630Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T19:08:41.928Z"
+      },
       "status": "running",
       "started_by": "mci",
       "user_host": false,
@@ -179,7 +231,9 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "370" },
+      "volume_total_size": {
+        "$numberLong": "370"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -244,8 +298,12 @@
         }
       ],
       "total_cost": 0.3028389870061729,
-      "total_idle_time": { "$numberLong": "50424000000" },
-      "prov_time": { "$date": "2020-07-20T18:03:00.758Z" },
+      "total_idle_time": {
+        "$numberLong": "50424000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T18:03:00.758Z"
+      },
       "last_bv": "ubuntu1604-debug-ubsan",
       "last_group": "",
       "last_project": "mongodb-mongo-v3.6",
@@ -264,7 +322,10 @@
       "tag": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "distro": {
         "_id": "ubuntu1604-small",
-        "aliases": ["ubuntu1604", "ubuntu1604-test"],
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-test"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
@@ -282,7 +343,9 @@
                 "size": 50
               }
             ],
-            "security_group_ids": ["sg-1a636869"],
+            "security_group_ids": [
+              "sg-1a636869"
+            ],
             "security_group": "sg-1a636869",
             "bid_price": 0.21,
             "region": "us-east-1",
@@ -336,13 +399,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -351,7 +426,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 300,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -372,13 +449,25 @@
       "priv_attempts": 1,
       "last_task": "mongo_tools_ubuntu1604_qa_tests_4.0_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T14:48:05.256Z" },
-      "start_time": { "$date": "2020-07-20T14:48:09Z" },
-      "agent_start_time": { "$date": "2020-07-20T14:48:54.371Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:48:09Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T14:48:54.371Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 1,
-      "last_task_completed_time": { "$date": "2020-07-20T19:07:25.876Z" },
-      "last_communication": { "$date": "2020-07-20T19:10:20.453Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T19:07:25.876Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T19:10:20.453Z"
+      },
       "status": "running",
       "started_by": "mci",
       "user_host": false,
@@ -387,7 +476,9 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "90" },
+      "volume_total_size": {
+        "$numberLong": "90"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -452,8 +543,12 @@
         }
       ],
       "total_cost": 0.32626226055555557,
-      "total_idle_time": { "$numberLong": "45837000000" },
-      "prov_time": { "$date": "2020-07-20T14:49:00.267Z" },
+      "total_idle_time": {
+        "$numberLong": "45837000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T14:49:00.267Z"
+      },
       "last_bv": "ubuntu1604",
       "last_group": "",
       "last_project": "mongo-tools",
@@ -507,13 +602,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -522,7 +629,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 1,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -541,16 +650,30 @@
       "zone": "",
       "provisioned": true,
       "priv_attempts": 0,
-      "prov_time": { "$date": "2020-07-20T18:59:16.654Z" },
+      "prov_time": {
+        "$date": "2020-07-20T18:59:16.654Z"
+      },
       "last_task": "",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T18:49:02.498Z" },
-      "start_time": { "$date": "2020-07-20T18:59:16.497Z" },
-      "agent_start_time": { "$date": "2020-07-20T18:59:17.682Z" },
-      "termination_time": { "$date": "2020-07-20T19:04:06Z" },
+      "creation_time": {
+        "$date": "2020-07-20T18:49:02.498Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:59:16.497Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T18:59:17.682Z"
+      },
+      "termination_time": {
+        "$date": "2020-07-20T19:04:06Z"
+      },
       "task_count": 0,
-      "last_task_completed_time": { "$date": "0001-01-01T00:00:00Z" },
-      "last_communication": { "$date": "2020-07-20T19:02:20.671Z" },
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T19:02:20.671Z"
+      },
       "status": "terminated",
       "started_by": "mci",
       "user_host": false,
@@ -559,7 +682,9 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "0" },
+      "volume_total_size": {
+        "$numberLong": "0"
+      },
       "parent_id": "i-025830c3d17d6c1b2",
       "container_build_attempt": 0,
       "spawn_options": {},
@@ -568,7 +693,9 @@
       "home_volume_id": "",
       "volumes": null,
       "total_cost": 0,
-      "total_idle_time": { "$numberLong": "289503056922" }
+      "total_idle_time": {
+        "$numberLong": "289503056922"
+      }
     },
     {
       "_id": "i-0fb9fe0592ea38150",
@@ -577,7 +704,10 @@
       "tag": "evg-debian92-small-20200720180503-7572246267770553771",
       "distro": {
         "_id": "debian92-small",
-        "aliases": ["debian92", "debian92-test"],
+        "aliases": [
+          "debian92",
+          "debian92-test"
+        ],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
@@ -593,7 +723,9 @@
             ],
             "instance_type": "m4.xlarge",
             "ami": "ami-045934b2e9f5e9f49",
-            "security_group_ids": ["sg-1a636869"],
+            "security_group_ids": [
+              "sg-1a636869"
+            ],
             "subnet_id": "subnet-6dd81326",
             "is_vpc": true,
             "region": "us-east-1",
@@ -650,13 +782,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -665,7 +809,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 40,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -686,13 +832,25 @@
       "priv_attempts": 1,
       "last_task": "",
       "no_expiration": false,
-      "creation_time": { "$date": "2020-07-20T18:05:03.174Z" },
-      "start_time": { "$date": "2020-07-20T18:06:20Z" },
-      "agent_start_time": { "$date": "2020-07-20T18:07:05.587Z" },
-      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "creation_time": {
+        "$date": "2020-07-20T18:05:03.174Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:06:20Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T18:07:05.587Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "task_count": 1,
-      "last_task_completed_time": { "$date": "0001-01-01T00:00:00Z" },
-      "last_communication": { "$date": "2020-07-20T19:16:36.380Z" },
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T19:16:36.380Z"
+      },
       "status": "provisioning",
       "started_by": "mci",
       "user_host": false,
@@ -701,7 +859,9 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-debian92-small-20200720180503-7572246267770553771",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "112" },
+      "volume_total_size": {
+        "$numberLong": "112"
+      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -772,16 +932,25 @@
       "running_task_project": "mongodb-mongo-v3.6",
       "running_task_version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
       "total_cost": 0.00105818637654321,
-      "total_idle_time": { "$numberLong": "46369000000" },
-      "prov_time": { "$date": "2020-07-20T18:07:16.636Z" }
+      "total_idle_time": {
+        "$numberLong": "46369000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T18:07:16.636Z"
+      }
     },
     {
       "_id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2019-01-25T17:40:50.223Z" },
+      "creation_time": {
+        "$date": "2019-01-25T17:40:50.223Z"
+      },
       "distro": {
         "_id": "ubuntu1804-power8-small",
-        "aliases": ["ubuntu1804-power8", "ubuntu1804-power8-test"],
+        "aliases": [
+          "ubuntu1804-power8",
+          "ubuntu1804-power8-test"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
@@ -857,13 +1026,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -872,7 +1053,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -884,7 +1067,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
       "host_type": "static",
@@ -893,31 +1078,41 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "quarantined",
       "tag": "",
       "user": "mci-exec",
       "zone": "",
       "agent_revision": "2020-06-05",
-      "last_communication": { "$date": "2020-06-20T07:10:18.218Z" },
+      "last_communication": {
+        "$date": "2020-06-20T07:10:18.218Z"
+      },
       "needs_agent": false,
       "last_bv": "enterprise-ubuntu1804-ppc64le",
       "last_group": "",
       "last_project": "mongodb-mongo-master",
       "last_task": "mongodb_mongo_master_enterprise_ubuntu1804_ppc64le_gle_auth_834a3c49d9ea9bfe2361650475158fc0dbb374cd_20_06_18_01_33_45",
-      "last_task_completed_time": { "$date": "2020-06-20T05:34:51.433Z" },
+      "last_task_completed_time": {
+        "$date": "2020-06-20T05:34:51.433Z"
+      },
       "last_version": "mongodb_mongo_master_834a3c49d9ea9bfe2361650475158fc0dbb374cd",
       "jasper_credentials_id": "",
       "jasper_deploy_attempts": 0,
       "needs_agent_monitor": false,
-      "agent_start_time": { "$date": "2019-10-21T11:39:50.146Z" },
+      "agent_start_time": {
+        "$date": "2019-10-21T11:39:50.146Z"
+      },
       "jasper_restart_attempts": 0
     },
     {
       "_id": "macos-1014-68.macstadium.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2019-09-16T15:49:05.059Z" },
+      "creation_time": {
+        "$date": "2019-09-16T15:49:05.059Z"
+      },
       "distro": {
         "_id": "macos-1014",
         "arch": "darwin_amd64",
@@ -1202,13 +1397,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -1217,7 +1424,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -1229,7 +1438,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "macos-1014-68.macstadium.build.10gen.cc",
       "host_type": "static",
@@ -1241,32 +1452,47 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "quarantined",
       "tag": "",
       "user": "mci",
       "zone": "",
       "needs_agent": false,
-      "last_communication": { "$date": "2020-02-28T13:15:07.343Z" },
+      "last_communication": {
+        "$date": "2020-02-28T13:15:07.343Z"
+      },
       "agent_revision": "4634cc2fa643e23da573e68d1fd8e281da0a0fa3",
-      "agent_start_time": { "$date": "1970-01-01T00:00:00Z" },
+      "agent_start_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "last_bv": "osx",
       "last_group": "",
       "last_project": "cloud-automation-master",
       "last_task": "cloud_automation_master_osx_OSXTestGroup41_788f2b2b5f520a61cd2203edd509cd243283260a_20_02_25_07_32_39",
-      "last_task_completed_time": { "$date": "2020-02-25T08:40:04.623Z" },
+      "last_task_completed_time": {
+        "$date": "2020-02-25T08:40:04.623Z"
+      },
       "last_version": "cloud_automation_master_788f2b2b5f520a61cd2203edd509cd243283260a",
       "jasper_restart_attempts": 0,
-      "prov_time": { "$date": "2020-02-13T18:19:23.282Z" }
+      "prov_time": {
+        "$date": "2020-02-13T18:19:23.282Z"
+      }
     },
     {
       "_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.568Z"
+      },
       "distro": {
         "_id": "rhel71-power8-large",
-        "aliases": ["rhel71-power8", "rhel71-power8-build"],
+        "aliases": [
+          "rhel71-power8",
+          "rhel71-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
@@ -1324,13 +1550,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -1339,7 +1577,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -1351,7 +1591,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -1360,26 +1602,34 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
       "user": "mci-exec",
       "zone": "",
       "agent_revision": "2020-07-18",
-      "last_communication": { "$date": "2020-07-20T19:19:22.146Z" },
+      "last_communication": {
+        "$date": "2020-07-20T19:19:22.146Z"
+      },
       "needs_agent": false,
       "agent_deploy_attempt": 64,
       "last_bv": "package_rpm_ppc",
       "last_group": "",
       "last_project": "mms",
       "last_task": "mms_package_rpm_ppc_foliage_467b718c9ad2cc58b67198e917deb2f800713505_20_07_20_15_23_30",
-      "last_task_completed_time": { "$date": "2020-07-20T19:16:17.279Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T19:16:17.279Z"
+      },
       "last_version": "mms_467b718c9ad2cc58b67198e917deb2f800713505",
       "needs_agent_monitor": false,
       "jasper_credentials_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "jasper_deploy_attempts": 0,
-      "agent_start_time": { "$date": "1970-01-01T00:00:00Z" },
+      "agent_start_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
       "jasper_restart_attempts": 0,
       "running_task": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
       "running_task_bv": "package_rpm_ppc",
@@ -1391,10 +1641,15 @@
     {
       "_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.199Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.199Z"
+      },
       "distro": {
         "_id": "ubuntu1604-power8-large",
-        "aliases": ["ubuntu1604-power8", "ubuntu1604-power8-build"],
+        "aliases": [
+          "ubuntu1604-power8",
+          "ubuntu1604-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
@@ -1443,13 +1698,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -1458,7 +1725,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -1470,7 +1739,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -1479,17 +1750,23 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
       "user": "mci-exec",
       "zone": "",
       "agent_revision": "2020-07-18",
-      "last_communication": { "$date": "2020-07-20T19:19:29.576Z" },
+      "last_communication": {
+        "$date": "2020-07-20T19:19:29.576Z"
+      },
       "needs_agent": false,
       "agent_deploy_attempt": 91,
-      "last_task_completed_time": { "$date": "2020-07-18T18:07:09.575Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-18T18:07:09.575Z"
+      },
       "last_bv": "power8-ubuntu1604",
       "last_group": "",
       "last_project": "cxx-driver",
@@ -1498,13 +1775,17 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "",
       "jasper_deploy_attempts": 0,
-      "agent_start_time": { "$date": "2019-08-15T12:58:20.426Z" },
+      "agent_start_time": {
+        "$date": "2019-08-15T12:58:20.426Z"
+      },
       "jasper_restart_attempts": 0
     },
     {
       "_id": "build10.ny.cbi.10gen.cc",
       "container_images": null,
-      "creation_time": { "$date": "2018-11-08T15:22:11.700Z" },
+      "creation_time": {
+        "$date": "2018-11-08T15:22:11.700Z"
+      },
       "distro": {
         "_id": "centos6-perf",
         "arch": "linux_amd64",
@@ -1610,13 +1891,25 @@
         },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
         "dispatcher_settings": {
           "version": "revised-with-dependencies"
@@ -1625,7 +1918,9 @@
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "use_legacy_agent": false,
@@ -1637,7 +1932,9 @@
         },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "build10.ny.cbi.10gen.cc",
       "host_type": "static",
@@ -1646,25 +1943,33 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
       "user": "mci-perf-exec",
       "zone": "",
       "agent_revision": "2020-07-18",
-      "last_communication": { "$date": "2020-07-20T19:21:47.891Z" },
+      "last_communication": {
+        "$date": "2020-07-20T19:21:47.891Z"
+      },
       "needs_agent": false,
       "last_bv": "linux-wt-repl",
       "last_group": "",
       "last_project": "performance",
       "last_task": "performance_linux_wt_repl_singleThreaded_4123eb7e7fde047ca1f1b396712d41a3de8a89f1_20_07_20_15_29_32",
-      "last_task_completed_time": { "$date": "2020-07-20T18:22:30.044Z" },
+      "last_task_completed_time": {
+        "$date": "2020-07-20T18:22:30.044Z"
+      },
       "last_version": "performance_4123eb7e7fde047ca1f1b396712d41a3de8a89f1",
       "needs_agent_monitor": false,
       "jasper_credentials_id": "",
       "jasper_deploy_attempts": 0,
-      "agent_start_time": { "$date": "2019-08-15T12:57:58.849Z" },
+      "agent_start_time": {
+        "$date": "2019-08-15T12:57:58.849Z"
+      },
       "jasper_restart_attempts": 0,
       "running_task": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
       "running_task_bv": "linux-wt-standalone",
@@ -1677,19 +1982,37 @@
   "tasks": [
     {
       "_id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-      "create_time": { "$date": "2020-07-20T17:39:20Z" },
-      "injest_time": { "$date": "2020-07-20T17:39:32.622Z" },
-      "dispatch_time": { "$date": "2020-07-20T19:00:11.393Z" },
-      "scheduled_time": { "$date": "2020-07-20T19:00:05.952Z" },
-      "start_time": { "$date": "2020-07-20T19:00:11.946Z" },
-      "finish_time": { "$date": "2020-07-20T19:24:37.372Z" },
-      "activated_time": { "$date": "2020-07-20T19:00:04.632Z" },
+      "create_time": {
+        "$date": "2020-07-20T17:39:20Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T17:39:32.622Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T19:00:11.393Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T19:00:05.952Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T19:00:11.946Z"
+      },
+      "finish_time": {
+        "$date": "2020-07-20T19:24:37.372Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T19:00:04.632Z"
+      },
       "version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
       "branch": "mongodb-mongo-v3.6",
       "gitspec": "bc405c72dce4714da604810cdc90c132bd5fbaa1",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T19:24:11.954Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T19:24:11.954Z"
+      },
       "activated": true,
       "activated_by": "EVERGREEN_MONITOR",
       "deactivated_for_dependency": false,
@@ -1711,16 +2034,30 @@
       "order": 3896,
       "r": "gitter_request",
       "status": "success",
-      "time_taken": { "$numberLong": "1465426348723" },
+      "time_taken": {
+        "$numberLong": "1465426348723"
+      },
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "1463754179857" },
-        "std_dev": { "$numberLong": "5701635379" },
-        "ttl": { "$numberLong": "35351592673795" },
-        "collected_at": { "$date": "2020-07-20T17:41:02.102Z" }
+        "value": {
+          "$numberLong": "1463754179857"
+        },
+        "std_dev": {
+          "$numberLong": "5701635379"
+        },
+        "ttl": {
+          "$numberLong": "35351592673795"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T17:41:02.102Z"
+        }
       },
-      "expected_duration": { "$numberLong": "1463754179857" },
-      "expected_duration_std_dev": { "$numberLong": "5701635379" },
+      "expected_duration": {
+        "$numberLong": "1463754179857"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "5701635379"
+      },
       "agent_version": "2020-07-18",
       "logs": {
         "agent": null,
@@ -1740,19 +2077,37 @@
     },
     {
       "_id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
-      "create_time": { "$date": "2020-06-24T16:38:45Z" },
-      "injest_time": { "$date": "2020-07-20T14:42:05.698Z" },
-      "dispatch_time": { "$date": "2020-07-20T14:49:20.617Z" },
-      "scheduled_time": { "$date": "2020-07-20T14:43:02.257Z" },
-      "start_time": { "$date": "2020-07-20T14:49:21.073Z" },
-      "finish_time": { "$date": "1970-01-01T00:00:00Z" },
-      "activated_time": { "$date": "2020-07-20T14:42:05.698Z" },
+      "create_time": {
+        "$date": "2020-06-24T16:38:45Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T14:42:05.698Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T14:49:20.617Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T14:43:02.257Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:49:21.073Z"
+      },
+      "finish_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T14:42:05.698Z"
+      },
       "version": "5f15ad3c3627e07772ab2d01",
       "branch": "mongo-tools",
       "gitspec": "b7227e1b7aeaaa6283d53b32fc03968a46b19c2d",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T20:10:51.036Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T20:10:51.036Z"
+      },
       "activated": true,
       "activated_by": "",
       "deactivated_for_dependency": false,
@@ -1773,33 +2128,65 @@
       "order": 87789,
       "r": "github_pull_request",
       "status": "started",
-      "time_taken": { "$numberLong": "0" },
+      "time_taken": {
+        "$numberLong": "0"
+      },
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "517408331604" },
-        "std_dev": { "$numberLong": "22305147605" },
-        "ttl": { "$numberLong": "51239141507054" },
-        "collected_at": { "$date": "2020-07-20T14:43:02.231Z" }
+        "value": {
+          "$numberLong": "517408331604"
+        },
+        "std_dev": {
+          "$numberLong": "22305147605"
+        },
+        "ttl": {
+          "$numberLong": "51239141507054"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T14:43:02.231Z"
+        }
       },
-      "expected_duration": { "$numberLong": "517408331604" },
-      "expected_duration_std_dev": { "$numberLong": "22305147605" },
+      "expected_duration": {
+        "$numberLong": "517408331604"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "22305147605"
+      },
       "agent_version": "2020-07-18"
     },
     {
       "_id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-      "create_time": { "$date": "2020-07-20T17:39:20Z" },
-      "injest_time": { "$date": "2020-07-20T17:39:34.070Z" },
-      "dispatch_time": { "$date": "2020-07-20T18:07:05.799Z" },
-      "scheduled_time": { "$date": "2020-07-20T17:41:01.092Z" },
-      "start_time": { "$date": "2020-07-20T18:07:06.369Z" },
-      "finish_time": { "$date": "2020-07-20T19:21:30.435Z" },
-      "activated_time": { "$date": "2020-07-20T17:40:23.659Z" },
+      "create_time": {
+        "$date": "2020-07-20T17:39:20Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T17:39:34.070Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T18:07:05.799Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T17:41:01.092Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:07:06.369Z"
+      },
+      "finish_time": {
+        "$date": "2020-07-20T19:21:30.435Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T17:40:23.659Z"
+      },
       "version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
       "branch": "mongodb-mongo-v3.6",
       "gitspec": "bc405c72dce4714da604810cdc90c132bd5fbaa1",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T19:21:06.391Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T19:21:06.391Z"
+      },
       "activated": true,
       "activated_by": "",
       "deactivated_for_dependency": false,
@@ -1821,16 +2208,30 @@
       "order": 3896,
       "r": "gitter_request",
       "status": "success",
-      "time_taken": { "$numberLong": "4464066906138" },
+      "time_taken": {
+        "$numberLong": "4464066906138"
+      },
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "4481648703646" },
-        "std_dev": { "$numberLong": "23789324283" },
-        "ttl": { "$numberLong": "42258842919871" },
-        "collected_at": { "$date": "2020-07-20T17:41:01.059Z" }
+        "value": {
+          "$numberLong": "4481648703646"
+        },
+        "std_dev": {
+          "$numberLong": "23789324283"
+        },
+        "ttl": {
+          "$numberLong": "42258842919871"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T17:41:01.059Z"
+        }
       },
-      "expected_duration": { "$numberLong": "4481648703646" },
-      "expected_duration_std_dev": { "$numberLong": "23789324283" },
+      "expected_duration": {
+        "$numberLong": "4481648703646"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "23789324283"
+      },
       "agent_version": "2020-07-18",
       "details": {
         "status": "success",
@@ -1850,19 +2251,37 @@
     },
     {
       "_id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
-      "create_time": { "$date": "2020-07-20T14:37:05Z" },
-      "injest_time": { "$date": "2020-07-20T15:02:06.764Z" },
-      "dispatch_time": { "$date": "2020-07-20T19:16:18.038Z" },
-      "scheduled_time": { "$date": "2020-07-20T15:14:02.601Z" },
-      "start_time": { "$date": "2020-07-20T19:16:22.151Z" },
-      "finish_time": { "$date": "2020-07-20T19:23:52.419Z" },
-      "activated_time": { "$date": "2020-07-20T15:02:06.764Z" },
+      "create_time": {
+        "$date": "2020-07-20T14:37:05Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T15:02:06.764Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T19:16:18.038Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T15:14:02.601Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T19:16:22.151Z"
+      },
+      "finish_time": {
+        "$date": "2020-07-20T19:23:52.419Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T15:02:06.764Z"
+      },
       "version": "mms_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459",
       "branch": "mms",
       "gitspec": "7f9f33c48eba3790333bc4ed6ac72eba8dd9f459",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T19:23:52.149Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T19:23:52.149Z"
+      },
       "activated": true,
       "activated_by": "",
       "deactivated_for_dependency": false,
@@ -1883,17 +2302,31 @@
       "order": 21366,
       "r": "gitter_request",
       "status": "success",
-      "time_taken": { "$numberLong": "450268993353" },
+      "time_taken": {
+        "$numberLong": "450268993353"
+      },
       "generated_by": "mms_evg_foliage_stat_check_init_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "501281607308" },
-        "std_dev": { "$numberLong": "58841204385" },
-        "ttl": { "$numberLong": "30485900699035" },
-        "collected_at": { "$date": "2020-07-20T15:14:02.385Z" }
+        "value": {
+          "$numberLong": "501281607308"
+        },
+        "std_dev": {
+          "$numberLong": "58841204385"
+        },
+        "ttl": {
+          "$numberLong": "30485900699035"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T15:14:02.385Z"
+        }
       },
-      "expected_duration": { "$numberLong": "501281607308" },
-      "expected_duration_std_dev": { "$numberLong": "58841204385" },
+      "expected_duration": {
+        "$numberLong": "501281607308"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "58841204385"
+      },
       "agent_version": "2020-07-18",
       "details": {
         "status": "success",
@@ -1911,19 +2344,37 @@
     },
     {
       "_id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-      "create_time": { "$date": "2020-07-20T17:39:20Z" },
-      "injest_time": { "$date": "2020-07-20T17:39:26.888Z" },
-      "dispatch_time": { "$date": "2020-07-20T18:56:12.687Z" },
-      "scheduled_time": { "$date": "2020-07-20T17:40:02.803Z" },
-      "start_time": { "$date": "2020-07-20T18:56:18.352Z" },
-      "finish_time": { "$date": "2020-07-20T19:30:32.300Z" },
-      "activated_time": { "$date": "2020-07-20T17:39:28.908Z" },
+      "create_time": {
+        "$date": "2020-07-20T17:39:20Z"
+      },
+      "injest_time": {
+        "$date": "2020-07-20T17:39:26.888Z"
+      },
+      "dispatch_time": {
+        "$date": "2020-07-20T18:56:12.687Z"
+      },
+      "scheduled_time": {
+        "$date": "2020-07-20T17:40:02.803Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T18:56:18.352Z"
+      },
+      "finish_time": {
+        "$date": "2020-07-20T19:30:32.300Z"
+      },
+      "activated_time": {
+        "$date": "2020-07-20T17:39:28.908Z"
+      },
       "version": "performance_3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
       "branch": "performance-3.6",
       "gitspec": "bc405c72dce4714da604810cdc90c132bd5fbaa1",
-      "priority": { "$numberLong": "0" },
+      "priority": {
+        "$numberLong": "0"
+      },
       "task_group": "",
-      "last_heartbeat": { "$date": "2020-07-20T19:30:17.897Z" },
+      "last_heartbeat": {
+        "$date": "2020-07-20T19:30:17.897Z"
+      },
       "activated": true,
       "activated_by": "",
       "deactivated_for_dependency": false,
@@ -1944,16 +2395,30 @@
       "order": 1424,
       "r": "gitter_request",
       "status": "success",
-      "time_taken": { "$numberLong": "2053948843214" },
+      "time_taken": {
+        "$numberLong": "2053948843214"
+      },
       "can_sync": false,
       "duration_prediction": {
-        "value": { "$numberLong": "1940652835273" },
-        "std_dev": { "$numberLong": "7190743667" },
-        "ttl": { "$numberLong": "52802805190598" },
-        "collected_at": { "$date": "2020-07-20T17:40:02.787Z" }
+        "value": {
+          "$numberLong": "1940652835273"
+        },
+        "std_dev": {
+          "$numberLong": "7190743667"
+        },
+        "ttl": {
+          "$numberLong": "52802805190598"
+        },
+        "collected_at": {
+          "$date": "2020-07-20T17:40:02.787Z"
+        }
       },
-      "expected_duration": { "$numberLong": "1940652835273" },
-      "expected_duration_std_dev": { "$numberLong": "7190743667" },
+      "expected_duration": {
+        "$numberLong": "1940652835273"
+      },
+      "expected_duration_std_dev": {
+        "$numberLong": "7190743667"
+      },
       "agent_version": "2020-07-18",
       "details": {
         "status": "success",

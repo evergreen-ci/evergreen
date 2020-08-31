@@ -56,6 +56,9 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 			W:     c.Int(dbWriteNumFlagName),
 			WMode: c.String(dbWmodeFlagName),
 		},
+		ReadConcernSettings: evergreen.ReadConcern{
+			Level: c.String(dbRmodeFlagName),
+		},
 	}
 }
 

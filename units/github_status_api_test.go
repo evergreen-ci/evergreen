@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -57,7 +58,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 		Status:     evergreen.PatchFailed,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
-		GithubPatchData: patch.GithubPatch{
+		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
 			HeadOwner: "tychoish",
@@ -138,7 +139,7 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	s.Equal(ref, status.Ref)
 
 	s.Zero(status.URL)
-	s.Equal(commitqueue.Context, status.Context)
+	s.Equal(commitqueue.GithubContext, status.Context)
 	s.Equal("added to queue", status.Description)
 	s.Equal(message.GithubStatePending, status.State)
 }
@@ -158,7 +159,7 @@ func (s *githubStatusUpdateSuite) TestForDeleteFromCommitQueue() {
 	s.Equal(ref, status.Ref)
 
 	s.Zero(status.URL)
-	s.Equal(commitqueue.Context, status.Context)
+	s.Equal(commitqueue.GithubContext, status.Context)
 	s.Equal("removed from queue", status.Description)
 	s.Equal(message.GithubStateSuccess, status.State)
 }
