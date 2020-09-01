@@ -1,0 +1,5 @@
+mutation {
+  attachVolumeToHost(
+    volumeAndHost: { volumeId: "vol-4db5", hostId: "i-1104943f" }
+  )
+}

@@ -99,6 +99,8 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
 }
 
@@ -153,6 +155,10 @@ enum TaskQueueItemType {
   PATCH
 }
 
+input VolumeHost {
+  volumeId: String!
+  hostId: String!
+}
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
