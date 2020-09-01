@@ -193,6 +193,10 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 	}, nil
 }
 
+func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput *SpawnVolumeInput) (bool, error) {
+	return true, nil
+}
+
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
