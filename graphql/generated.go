@@ -506,6 +506,7 @@ type ComplexityRoot struct {
 		Project          func(childComplexity int) int
 		Requester        func(childComplexity int) int
 		Revision         func(childComplexity int) int
+		Version          func(childComplexity int) int
 	}
 
 	TaskResult struct {
@@ -3082,6 +3083,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskQueueItem.Revision(childComplexity), true
 
+	case "TaskQueueItem.version":
+		if e.complexity.TaskQueueItem.Version == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueItem.Version(childComplexity), true
+
 	case "TaskResult.baseStatus":
 		if e.complexity.TaskResult.BaseStatus == nil {
 			break
@@ -3714,6 +3722,7 @@ type TaskQueueItem {
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
+  version: String!
 }
 
 type TaskQueueDistro {
@@ -15710,6 +15719,40 @@ func (ec *executionContext) _TaskQueueItem_requester(ctx context.Context, field 
 	return ec.marshalNTaskQueueItemType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueItemType(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskQueueItem_version(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskQueueItem",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskResult_id(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21535,6 +21578,11 @@ func (ec *executionContext) _TaskQueueItem(ctx context.Context, sel ast.Selectio
 				}
 				return res
 			})
+		case "version":
+			out.Values[i] = ec._TaskQueueItem_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

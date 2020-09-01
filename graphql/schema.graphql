@@ -223,6 +223,7 @@ type TaskQueueItem {
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
+  version: String!
 }
 
 type TaskQueueDistro {
