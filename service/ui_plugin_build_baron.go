@@ -133,8 +133,8 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jira := &graphql.JiraSuggest{bbProj, uis.jiraHandler}
-	multiSource := &graphql.MultiSourceSuggest{jira}
+	jira := &graphql.JiraSuggest{BbProj: bbProj, JiraHandler: uis.jiraHandler}
+	multiSource := &graphql.MultiSourceSuggest{JiraSuggester: jira}
 
 	var tickets []thirdparty.JiraTicket
 	var source string
