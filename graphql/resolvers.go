@@ -195,10 +195,17 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
 	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
-	success, _, gqlErr, err := RequestNewVolume(ctx, volume)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
 	}
+	if spawnVolumeInput.Host != nil {
+		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		if err != nil {
+			gqlErr.Send(ctx, errors.Wrapf(err, "Volume has been created but an error occured").Error())
+		}
+	}
+
 	// TODO: handle optional spawnVolumeInput fields
 	return success, nil
 }

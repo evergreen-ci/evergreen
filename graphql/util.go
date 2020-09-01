@@ -914,18 +914,19 @@ func GetVolumeFromSpawnVolumeInput(spawnVolumeInput SpawnVolumeInput) host.Volum
 	}
 }
 
-func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlError, error) {
+func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlError, error, *host.Volume) {
 	authedUser := route.MustHaveUser(ctx)
 	if volume.Size == 0 {
-		return false, http.StatusBadRequest, InputValidationError, errors.New("Must specify volume size")
+		return false, http.StatusBadRequest, InputValidationError, errors.New("Must specify volume size"), nil
 	}
 	err := cloud.ValidVolumeOptions(&volume, evergreen.GetEnvironment().Settings())
 	if err != nil {
-		return false, http.StatusBadRequest, InputValidationError, err
+		return false, http.StatusBadRequest, InputValidationError, err, nil
 	}
 	volume.CreatedBy = authedUser.Id
-	if _, err := cloud.CreateVolume(ctx, evergreen.GetEnvironment(), &volume, evergreen.ProviderNameEc2OnDemand); err != nil {
-		return false, http.StatusInternalServerError, InternalServerError, errors.Wrap(err, "error creating volume")
+	vol, err := cloud.CreateVolume(ctx, evergreen.GetEnvironment(), &volume, evergreen.ProviderNameEc2OnDemand)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrap(err, "error creating volume"), nil
 	}
-	return true, http.StatusOK, "", nil
+	return false, http.StatusOK, "", nil, vol
 }
