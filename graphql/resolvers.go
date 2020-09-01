@@ -1194,7 +1194,7 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	events, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
+	events, count, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}
@@ -1210,6 +1210,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	}
 	hostevents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
+		Count:           count,
 	}
 	return &hostevents, nil
 }

@@ -192,6 +192,7 @@ type ComplexityRoot struct {
 	}
 
 	HostEvents struct {
+		Count           func(childComplexity int) int
 		EventLogEntries func(childComplexity int) int
 	}
 
@@ -1335,6 +1336,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.HostEventLogEntry.Timestamp(childComplexity), true
+
+	case "HostEvents.count":
+		if e.complexity.HostEvents.Count == nil {
+			break
+		}
+
+		return e.complexity.HostEvents.Count(childComplexity), true
 
 	case "HostEvents.eventLogEntries":
 		if e.complexity.HostEvents.EventLogEntries == nil {
@@ -4179,6 +4187,7 @@ type SiteBanner {
 
 type HostEvents {
   eventLogEntries: [HostEventLogEntry!]!
+  count: Int!
 }
 
 type HostEventLogEntry {
@@ -8152,6 +8161,40 @@ func (ec *executionContext) _HostEvents_eventLogEntries(ctx context.Context, fie
 	res := resTmp.([]*model.HostAPIEventLogEntry)
 	fc.Result = res
 	return ec.marshalNHostEventLogEntry2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventLogEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _HostEvents_count(ctx context.Context, field graphql.CollectedField, obj *HostEvents) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "HostEvents",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HostsResponse_filteredHostsCount(ctx context.Context, field graphql.CollectedField, obj *HostsResponse) (ret graphql.Marshaler) {
@@ -19595,6 +19638,11 @@ func (ec *executionContext) _HostEvents(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("HostEvents")
 		case "eventLogEntries":
 			out.Values[i] = ec._HostEvents_eventLogEntries(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "count":
+			out.Values[i] = ec._HostEvents_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

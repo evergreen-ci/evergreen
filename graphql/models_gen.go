@@ -42,6 +42,7 @@ type GroupedProjects struct {
 
 type HostEvents struct {
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
+	Count           int                           `json:"count"`
 }
 
 type HostsResponse struct {

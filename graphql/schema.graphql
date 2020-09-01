@@ -680,6 +680,7 @@ type SiteBanner {
 
 type HostEvents {
   eventLogEntries: [HostEventLogEntry!]!
+  count: Int!
 }
 
 type HostEventLogEntry {
