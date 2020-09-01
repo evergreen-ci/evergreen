@@ -1854,6 +1854,17 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 	return task.GetLatestExecution(*obj.Id)
 }
 
+func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
+	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: ", err.Error()))
+	}
+	if position < 0 {
+		return 0, nil
+	}
+	return position, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{
