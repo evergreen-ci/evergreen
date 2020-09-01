@@ -14,7 +14,7 @@ import (
 
 func TestOnlyAPIUserManager(t *testing.T) {
 	config := evergreen.AuthConfig{
-		OnlyAPI: &evergreen.OnlyAPIAuthConfig{},
+		OnlyAPI:           &evergreen.OnlyAPIAuthConfig{},
 		AllowServiceUsers: true,
 	}
 	manager, info, err := LoadUserManager(&evergreen.Settings{AuthConfig: config})
@@ -52,8 +52,8 @@ func TestOnlyAPIUserManager(t *testing.T) {
 		},
 		"GetUserByIDSucceeds": func(t *testing.T) {
 			u1 := user.DBUser{
-				Id: "user1",
-				APIKey:      "key1",
+				Id:      "user1",
+				APIKey:  "key1",
 				OnlyAPI: true,
 			}
 			assert.NoError(t, u1.Insert())
@@ -70,8 +70,8 @@ func TestOnlyAPIUserManager(t *testing.T) {
 		},
 		"GetUserByIDFailsIfNonexistent": func(t *testing.T) {
 			u := user.DBUser{
-				Id: "user1",
-				APIKey:      "key1",
+				Id:      "user1",
+				APIKey:  "key1",
 				OnlyAPI: true,
 			}
 			assert.NoError(t, u.Insert())
