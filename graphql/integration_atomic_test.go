@@ -4,9 +4,10 @@ package graphql_test
 // To add a new test:
 // 1. Add a new directory in the tests directory. Name it after the query/mutation you are testing.
 // 2. Add a data.json file to the dir you created. The data for your tests goes here. See tests/patchTasks/data.json for example.
-// 3. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/patchTasks/results.json for example.
-// 4. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
-// 5. That's all! Start testing.
+// 3. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
+// 4. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/patchTasks/results.json for example.
+// 5. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
+// 6. That's all! Start testing.
 
 import (
 	"bytes"
@@ -76,55 +77,7 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 			user.PubKey{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 			user.PubKey{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 		}}
-	// Initialize Spawn Host and Spawn Volume used in tests
 	require.NoError(t, testUser.Insert())
-	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
-	require.NoError(t, err)
-	volCreation, err := time.Parse(time.RFC3339, "2020-06-05T14:43:06.567Z")
-	require.NoError(t, err)
-	volume := host.Volume{
-		ID:               "vol-0603934da6f024db5",
-		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
-		CreatedBy:        "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
-		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
-		Size:             500,
-		AvailabilityZone: "us-east-1a",
-		Expiration:       volExp,
-		NoExpiration:     false,
-		CreationDate:     volCreation,
-		Host:             "i-1104943f",
-		HomeVolume:       true,
-	}
-	require.NoError(t, volume.Insert())
-	h := host.Host{
-		Id:     "i-1104943f",
-		Host:   "i-1104943f",
-		User:   "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
-		Secret: "",
-		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-		Distro: distro.Distro{
-			Id: "i-1104943f",
-			Aliases: []string{
-				"3a8d3c19862652b84e37111bc20e16d561d78902b5478f9170d7af6796ce40a3",
-				"9ec394433d2dd99f422f21ceb50f62edcfba50255b84f1a274bf85295af26f09",
-			},
-			Arch:     "193b9ef5dfc4685c536b57c58c8d199b1eb1592dcd0ff3bea28af79d303c528d",
-			WorkDir:  "b560622207b8a0d6354080f8363aa7d8a32c30e5d3309099a820217d0e7dc748",
-			Provider: "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
-			User:     "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
-		},
-		Provider:           "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
-		IP:                 "",
-		ExternalIdentifier: "",
-		DisplayName:        "",
-		Project:            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-		Zone:               "us-east-1a",
-		Provisioned:        true,
-		ProvisionAttempts:  0,
-	}
-	require.NoError(t, h.Insert())
-	err = graphql.SpawnHostForTestCode(ctx, &volume, &h)
-	require.NoError(t, err)
 	modifyHostRole := gimlet.Role{
 		ID:          "modify_host",
 		Name:        "modify host",
@@ -142,7 +95,7 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	}
 	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
 	require.NoError(t, err)
-
+	directorySpecificTestSetup(t, directory)
 	state.url = server.URL
 	state.apiKey = apiKey
 	state.apiUser = apiUser
@@ -227,4 +180,69 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 		}
 	}
 	return catcher.Resolve()
+}
+
+func directorySpecificTestSetup(t *testing.T, directory string) {
+	type setupFn func(*testing.T)
+	// Map the directory name to the test setup function
+	m := map[string]setupFn{
+		"attachVolumeToHost":   spawnTestHostAndVolume,
+		"detachVolumeFromHost": spawnTestHostAndVolume,
+		"removeVolume":         spawnTestHostAndVolume,
+	}
+	if m[directory] != nil {
+		m[directory](t)
+	}
+}
+
+func spawnTestHostAndVolume(t *testing.T) {
+	// Initialize Spawn Host and Spawn Volume used in tests
+	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
+	require.NoError(t, err)
+	volCreation, err := time.Parse(time.RFC3339, "2020-06-05T14:43:06.567Z")
+	require.NoError(t, err)
+	volume := host.Volume{
+		ID:               "vol-0603934da6f024db5",
+		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+		CreatedBy:        "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+		Size:             500,
+		AvailabilityZone: "us-east-1a",
+		Expiration:       volExp,
+		NoExpiration:     false,
+		CreationDate:     volCreation,
+		Host:             "i-1104943f",
+		HomeVolume:       true,
+	}
+	require.NoError(t, volume.Insert())
+	h := host.Host{
+		Id:     "i-1104943f",
+		Host:   "i-1104943f",
+		User:   "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
+		Secret: "",
+		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Distro: distro.Distro{
+			Id: "i-1104943f",
+			Aliases: []string{
+				"3a8d3c19862652b84e37111bc20e16d561d78902b5478f9170d7af6796ce40a3",
+				"9ec394433d2dd99f422f21ceb50f62edcfba50255b84f1a274bf85295af26f09",
+			},
+			Arch:     "193b9ef5dfc4685c536b57c58c8d199b1eb1592dcd0ff3bea28af79d303c528d",
+			WorkDir:  "b560622207b8a0d6354080f8363aa7d8a32c30e5d3309099a820217d0e7dc748",
+			Provider: "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
+			User:     "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
+		},
+		Provider:           "2053dbbf6ec7135c4e994d3464c478db6f48d3ca21052c8f44915edc96e02c39",
+		IP:                 "",
+		ExternalIdentifier: "",
+		DisplayName:        "",
+		Project:            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Zone:               "us-east-1a",
+		Provisioned:        true,
+		ProvisionAttempts:  0,
+	}
+	require.NoError(t, h.Insert())
+	ctx := context.Background()
+	err = graphql.SpawnHostForTestCode(ctx, &volume, &h)
+	require.NoError(t, err)
 }
