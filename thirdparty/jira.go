@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type JiraRelatedTickets struct {
+type SearchReturnInfo struct {
 	Issues      []JiraTicket `json:"issues"`
 	Search      string       `json:"search"`
 	Source      string       `json:"source"`

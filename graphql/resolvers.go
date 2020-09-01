@@ -1855,7 +1855,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 	return task.GetLatestExecution(*obj.Id)
 }
 
-func (r *queryResolver) JiraRelatedTickets(ctx context.Context, taskId string, exec string) (*thirdparty.JiraRelatedTickets, error) {
+func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
 	t, err := BbGetTask(taskId, exec)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -1870,8 +1870,8 @@ func (r *queryResolver) JiraRelatedTickets(ctx context.Context, taskId string, e
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
-	jira := &jiraSuggest{bbProj, jiraHandler}
-	multiSource := &multiSourceSuggest{jira}
+	jira := &JiraSuggest{bbProj, jiraHandler}
+	multiSource := &MultiSourceSuggest{jira}
 
 	var tickets []thirdparty.JiraTicket
 	var source string
@@ -1890,7 +1890,7 @@ func (r *queryResolver) JiraRelatedTickets(ctx context.Context, taskId string, e
 		featuresURL = ""
 	}
 
-	return &thirdparty.JiraRelatedTickets{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, nil
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, nil
 }
 
 type ticketFieldsResolver struct{ *Resolver }
