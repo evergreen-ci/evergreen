@@ -93,7 +93,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
-  spawnVolume(spawnVolumeInput: SpawnVolumeInput): Boolean!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(

@@ -905,3 +905,27 @@ func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) e
 	}
 	return nil
 }
+
+func GetVolumeFromSpawnVolumeInput(spawnVolumeInput SpawnVolumeInput) host.Volume {
+	return host.Volume{
+		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
+		Size:             spawnVolumeInput.Size,
+		Type:             spawnVolumeInput.Type,
+	}
+}
+
+func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlError, error) {
+	authedUser := route.MustHaveUser(ctx)
+	if volume.Size == 0 {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("Must specify volume size")
+	}
+	err := cloud.ValidVolumeOptions(&volume, evergreen.GetEnvironment().Settings())
+	if err != nil {
+		return false, http.StatusBadRequest, InputValidationError, err
+	}
+	volume.CreatedBy = authedUser.Id
+	if _, err := cloud.CreateVolume(ctx, evergreen.GetEnvironment(), &volume, evergreen.ProviderNameEc2OnDemand); err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrap(err, "error creating volume")
+	}
+	return true, http.StatusOK, "", nil
+}

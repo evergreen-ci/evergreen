@@ -193,8 +193,14 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 	}, nil
 }
 
-func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput *SpawnVolumeInput) (bool, error) {
-	return true, nil
+func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
+	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
+	success, _, gqlErr, err := RequestNewVolume(ctx, volume)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	// TODO: handle optional spawnVolumeInput fields
+	return success, nil
 }
 
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {

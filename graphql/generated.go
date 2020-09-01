@@ -248,7 +248,7 @@ type ComplexityRoot struct {
 		SetPatchPriority           func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
 		SpawnHost                  func(childComplexity int, spawnHostInput *SpawnHostInput) int
-		SpawnVolume                func(childComplexity int, spawnVolumeInput *SpawnVolumeInput) int
+		SpawnVolume                func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
 		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
 		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
@@ -621,7 +621,7 @@ type MutationResolver interface {
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
-	SpawnVolume(ctx context.Context, spawnVolumeInput *SpawnVolumeInput) (bool, error)
+	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -1717,7 +1717,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SpawnVolume(childComplexity, args["spawnVolumeInput"].(*SpawnVolumeInput)), true
+		return e.complexity.Mutation.SpawnVolume(childComplexity, args["spawnVolumeInput"].(SpawnVolumeInput)), true
 
 	case "Mutation.unschedulePatchTasks":
 		if e.complexity.Mutation.UnschedulePatchTasks == nil {
@@ -3626,7 +3626,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
-  spawnVolume(spawnVolumeInput: SpawnVolumeInput): Boolean!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
@@ -4601,9 +4601,9 @@ func (ec *executionContext) field_Mutation_spawnHost_args(ctx context.Context, r
 func (ec *executionContext) field_Mutation_spawnVolume_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *SpawnVolumeInput
+	var arg0 SpawnVolumeInput
 	if tmp, ok := rawArgs["spawnVolumeInput"]; ok {
-		arg0, err = ec.unmarshalOSpawnVolumeInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx, tmp)
+		arg0, err = ec.unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -9619,7 +9619,7 @@ func (ec *executionContext) _Mutation_spawnVolume(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SpawnVolume(rctx, args["spawnVolumeInput"].(*SpawnVolumeInput))
+		return ec.resolvers.Mutation().SpawnVolume(rctx, args["spawnVolumeInput"].(SpawnVolumeInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23610,6 +23610,10 @@ func (ec *executionContext) marshalNSpawnHostStatusActions2githubᚗcomᚋevergr
 	return v
 }
 
+func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx context.Context, v interface{}) (SpawnVolumeInput, error) {
+	return ec.unmarshalInputSpawnVolumeInput(ctx, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -25064,18 +25068,6 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 		return nil, nil
 	}
 	res, err := ec.unmarshalOSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx, v)
-	return &res, err
-}
-
-func (ec *executionContext) unmarshalOSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx context.Context, v interface{}) (SpawnVolumeInput, error) {
-	return ec.unmarshalInputSpawnVolumeInput(ctx, v)
-}
-
-func (ec *executionContext) unmarshalOSpawnVolumeInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx context.Context, v interface{}) (*SpawnVolumeInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalOSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx, v)
 	return &res, err
 }
 
