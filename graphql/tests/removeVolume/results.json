@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": { "data": { "removeVolume": true } }
+    },
+    {
+      "query_file": "nonexistentVolume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "volume 'not-real' does not exist",
+            "path": ["removeVolume"],
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "emptyVolume.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "must specify volume id",
+            "path": ["removeVolume"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}
