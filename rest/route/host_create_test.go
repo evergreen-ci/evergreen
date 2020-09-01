@@ -43,6 +43,11 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	require.NoError(d.Insert())
 
+	sampleTask := &task.Task{
+		Id: "task-id",
+	}
+	require.NoError(sampleTask.Insert())
+
 	// spawn an evergreen distro
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
@@ -84,6 +89,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// scope to build
+	require.NoError(db.ClearCollections(task.Collection))
 	myTask := task.Task{
 		Id:      "task-id",
 		BuildId: "build-id",
@@ -319,6 +325,10 @@ func TestHostCreateDocker(t *testing.T) {
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
 
+	sampleTask := &task.Task{
+		Id: handler.taskID,
+	}
+	require.NoError(sampleTask.Insert())
 	c := apimodels.CreateHost{
 		CloudProvider: apimodels.ProviderDocker,
 		NumHosts:      "1",
