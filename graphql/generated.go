@@ -210,13 +210,6 @@ type ComplexityRoot struct {
 		Value         func(childComplexity int) int
 	}
 
-	JiraRelatedTickets struct {
-		FeaturesURL func(childComplexity int) int
-		Issues      func(childComplexity int) int
-		Search      func(childComplexity int) int
-		Source      func(childComplexity int) int
-	}
-
 	JiraStatus struct {
 		Id   func(childComplexity int) int
 		Name func(childComplexity int) int
@@ -384,7 +377,6 @@ type ComplexityRoot struct {
 		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		InstanceTypes      func(childComplexity int) int
-		JiraRelatedTickets func(childComplexity int, taskID string, execution string) int
 		MyHosts            func(childComplexity int) int
 		MyPublicKeys       func(childComplexity int) int
 		MyVolumes          func(childComplexity int) int
@@ -392,6 +384,7 @@ type ComplexityRoot struct {
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
+		SearchReturnInfo   func(childComplexity int, taskID string, execution string) int
 		SiteBanner         func(childComplexity int) int
 		Task               func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions  func(childComplexity int, taskID string) int
@@ -410,6 +403,13 @@ type ComplexityRoot struct {
 		EventLogs  func(childComplexity int) int
 		SystemLogs func(childComplexity int) int
 		TaskLogs   func(childComplexity int) int
+	}
+
+	SearchReturnInfo struct {
+		FeaturesURL func(childComplexity int) int
+		Issues      func(childComplexity int) int
+		Search      func(childComplexity int) int
+		Source      func(childComplexity int) int
 	}
 
 	SiteBanner struct {
@@ -698,7 +698,7 @@ type QueryResolver interface {
 	InstanceTypes(ctx context.Context) ([]string, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
-	JiraRelatedTickets(ctx context.Context, taskID string, execution string) (*thirdparty.JiraRelatedTickets, error)
+	SearchReturnInfo(ctx context.Context, taskID string, execution string) (*thirdparty.SearchReturnInfo, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -1430,34 +1430,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InstanceTag.Value(childComplexity), true
-
-	case "JiraRelatedTickets.featuresURL":
-		if e.complexity.JiraRelatedTickets.FeaturesURL == nil {
-			break
-		}
-
-		return e.complexity.JiraRelatedTickets.FeaturesURL(childComplexity), true
-
-	case "JiraRelatedTickets.issues":
-		if e.complexity.JiraRelatedTickets.Issues == nil {
-			break
-		}
-
-		return e.complexity.JiraRelatedTickets.Issues(childComplexity), true
-
-	case "JiraRelatedTickets.search":
-		if e.complexity.JiraRelatedTickets.Search == nil {
-			break
-		}
-
-		return e.complexity.JiraRelatedTickets.Search(childComplexity), true
-
-	case "JiraRelatedTickets.source":
-		if e.complexity.JiraRelatedTickets.Source == nil {
-			break
-		}
-
-		return e.complexity.JiraRelatedTickets.Source(childComplexity), true
 
 	case "JiraStatus.id":
 		if e.complexity.JiraStatus.Id == nil {
@@ -2382,18 +2354,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
 
-	case "Query.JiraRelatedTickets":
-		if e.complexity.Query.JiraRelatedTickets == nil {
-			break
-		}
-
-		args, err := ec.field_Query_JiraRelatedTickets_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.JiraRelatedTickets(childComplexity, args["taskId"].(string), args["execution"].(string)), true
-
 	case "Query.myHosts":
 		if e.complexity.Query.MyHosts == nil {
 			break
@@ -2457,6 +2417,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Projects(childComplexity), true
+
+	case "Query.SearchReturnInfo":
+		if e.complexity.Query.SearchReturnInfo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_SearchReturnInfo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SearchReturnInfo(childComplexity, args["taskId"].(string), args["execution"].(string)), true
 
 	case "Query.siteBanner":
 		if e.complexity.Query.SiteBanner == nil {
@@ -2597,6 +2569,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RecentTaskLogs.TaskLogs(childComplexity), true
+
+	case "SearchReturnInfo.featuresURL":
+		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
+			break
+		}
+
+		return e.complexity.SearchReturnInfo.FeaturesURL(childComplexity), true
+
+	case "SearchReturnInfo.issues":
+		if e.complexity.SearchReturnInfo.Issues == nil {
+			break
+		}
+
+		return e.complexity.SearchReturnInfo.Issues(childComplexity), true
+
+	case "SearchReturnInfo.search":
+		if e.complexity.SearchReturnInfo.Search == nil {
+			break
+		}
+
+		return e.complexity.SearchReturnInfo.Search(childComplexity), true
+
+	case "SearchReturnInfo.source":
+		if e.complexity.SearchReturnInfo.Source == nil {
+			break
+		}
+
+		return e.complexity.SearchReturnInfo.Source(childComplexity), true
 
 	case "SiteBanner.text":
 		if e.complexity.SiteBanner.Text == nil {
@@ -3746,7 +3746,7 @@ var sources = []*ast.Source{
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  JiraRelatedTickets(taskId: String!, execution: String!): JiraRelatedTickets!
+  SearchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -4399,7 +4399,7 @@ type HostEventLogData {
 }
 
 # build baron plugin
-type JiraRelatedTickets {
+type SearchReturnInfo {
   issues: [JiraTicket!]!
   search: String!
   source: String!
@@ -4418,10 +4418,6 @@ type TicketFields {
   updated: String!
   status: JiraStatus!
 }
-
-# type JiraResolution {
-#   name: String!
-# }
 
 type JiraStatus {
   id: String!
@@ -4891,7 +4887,7 @@ func (ec *executionContext) field_Mutation_updateUserSettings_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_JiraRelatedTickets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_SearchReturnInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -8646,142 +8642,6 @@ func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, fiel
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _JiraRelatedTickets_issues(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraRelatedTickets) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "JiraRelatedTickets",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Issues, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]thirdparty.JiraTicket)
-	fc.Result = res
-	return ec.marshalNJiraTicket2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _JiraRelatedTickets_search(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraRelatedTickets) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "JiraRelatedTickets",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Search, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _JiraRelatedTickets_source(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraRelatedTickets) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "JiraRelatedTickets",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Source, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _JiraRelatedTickets_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraRelatedTickets) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "JiraRelatedTickets",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FeaturesURL, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _JiraStatus_id(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraStatus) (ret graphql.Marshaler) {
@@ -13285,7 +13145,7 @@ func (ec *executionContext) _Query_taskQueueDistros(ctx context.Context, field g
 	return ec.marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_JiraRelatedTickets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_SearchReturnInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -13301,7 +13161,7 @@ func (ec *executionContext) _Query_JiraRelatedTickets(ctx context.Context, field
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_JiraRelatedTickets_args(ctx, rawArgs)
+	args, err := ec.field_Query_SearchReturnInfo_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -13309,7 +13169,7 @@ func (ec *executionContext) _Query_JiraRelatedTickets(ctx context.Context, field
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().JiraRelatedTickets(rctx, args["taskId"].(string), args["execution"].(string))
+		return ec.resolvers.Query().SearchReturnInfo(rctx, args["taskId"].(string), args["execution"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13321,9 +13181,9 @@ func (ec *executionContext) _Query_JiraRelatedTickets(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*thirdparty.JiraRelatedTickets)
+	res := resTmp.(*thirdparty.SearchReturnInfo)
 	fc.Result = res
-	return ec.marshalNJiraRelatedTickets2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraRelatedTickets(ctx, field.Selections, res)
+	return ec.marshalNSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -13529,6 +13389,142 @@ func (ec *executionContext) _RecentTaskLogs_agentLogs(ctx context.Context, field
 	res := resTmp.([]*apimodels.LogMessage)
 	fc.Result = res
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SearchReturnInfo_issues(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SearchReturnInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Issues, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]thirdparty.JiraTicket)
+	fc.Result = res
+	return ec.marshalNJiraTicket2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SearchReturnInfo_search(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SearchReturnInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Search, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SearchReturnInfo_source(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SearchReturnInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Source, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SearchReturnInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeaturesURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SiteBanner_text(ctx context.Context, field graphql.CollectedField, obj *model.APIBanner) (ret graphql.Marshaler) {
@@ -20598,48 +20594,6 @@ func (ec *executionContext) _InstanceTag(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var jiraRelatedTicketsImplementors = []string{"JiraRelatedTickets"}
-
-func (ec *executionContext) _JiraRelatedTickets(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.JiraRelatedTickets) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, jiraRelatedTicketsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("JiraRelatedTickets")
-		case "issues":
-			out.Values[i] = ec._JiraRelatedTickets_issues(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "search":
-			out.Values[i] = ec._JiraRelatedTickets_search(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "source":
-			out.Values[i] = ec._JiraRelatedTickets_source(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "featuresURL":
-			out.Values[i] = ec._JiraRelatedTickets_featuresURL(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var jiraStatusImplementors = []string{"JiraStatus"}
 
 func (ec *executionContext) _JiraStatus(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.JiraStatus) graphql.Marshaler {
@@ -21925,7 +21879,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "JiraRelatedTickets":
+		case "SearchReturnInfo":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -21933,7 +21887,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_JiraRelatedTickets(ctx, field)
+				res = ec._Query_SearchReturnInfo(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -21982,6 +21936,48 @@ func (ec *executionContext) _RecentTaskLogs(ctx context.Context, sel ast.Selecti
 			}
 		case "agentLogs":
 			out.Values[i] = ec._RecentTaskLogs_agentLogs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var searchReturnInfoImplementors = []string{"SearchReturnInfo"}
+
+func (ec *executionContext) _SearchReturnInfo(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.SearchReturnInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, searchReturnInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SearchReturnInfo")
+		case "issues":
+			out.Values[i] = ec._SearchReturnInfo_issues(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "search":
+			out.Values[i] = ec._SearchReturnInfo_search(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "source":
+			out.Values[i] = ec._SearchReturnInfo_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "featuresURL":
+			out.Values[i] = ec._SearchReturnInfo_featuresURL(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -23984,20 +23980,6 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) marshalNJiraRelatedTickets2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraRelatedTickets(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraRelatedTickets) graphql.Marshaler {
-	return ec._JiraRelatedTickets(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNJiraRelatedTickets2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraRelatedTickets(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraRelatedTickets) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._JiraRelatedTickets(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNJiraStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraStatus) graphql.Marshaler {
 	return ec._JiraStatus(ctx, sel, &v)
 }
@@ -24492,6 +24474,20 @@ func (ec *executionContext) unmarshalNRequiredStatus2githubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRequiredStatus(ctx context.Context, sel ast.SelectionSet, v RequiredStatus) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNSearchReturnInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v thirdparty.SearchReturnInfo) graphql.Marshaler {
+	return ec._SearchReturnInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SearchReturnInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) (model.APISelector, error) {

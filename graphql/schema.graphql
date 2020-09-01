@@ -67,7 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  JiraRelatedTickets(taskId: String!, execution: String!): JiraRelatedTickets!
+  SearchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -720,7 +720,7 @@ type HostEventLogData {
 }
 
 # build baron plugin
-type JiraRelatedTickets {
+type SearchReturnInfo {
   issues: [JiraTicket!]!
   search: String!
   source: String!
