@@ -776,6 +776,7 @@ type APIHostInitConfig struct {
 	HostThrottle         int `json:"host_throttle"`
 	ProvisioningThrottle int `json:"provisioning_throttle"`
 	CloudStatusBatchSize int `json:"cloud_batch_size"`
+	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -784,6 +785,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.HostThrottle = v.HostThrottle
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
+		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -795,6 +797,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		HostThrottle:         a.HostThrottle,
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
+		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
 	}, nil
 }
 

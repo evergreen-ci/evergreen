@@ -42,6 +42,7 @@ type GroupedProjects struct {
 
 type HostEvents struct {
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
+	Count           int                           `json:"count"`
 }
 
 type HostsResponse struct {
@@ -134,6 +135,11 @@ type TaskFiles struct {
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
 }
 
+type TaskQueueDistro struct {
+	ID         string `json:"id"`
+	QueueCount int    `json:"queueCount"`
+}
+
 type TaskResult struct {
 	ID           string `json:"id"`
 	DisplayName  string `json:"displayName"`
@@ -141,6 +147,7 @@ type TaskResult struct {
 	Status       string `json:"status"`
 	BaseStatus   string `json:"baseStatus"`
 	BuildVariant string `json:"buildVariant"`
+	Blocked      bool   `json:"blocked"`
 }
 
 type TaskTestResult struct {
@@ -165,6 +172,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VolumeHost struct {
+	VolumeID string `json:"volumeId"`
+	HostID   string `json:"hostId"`
 }
 
 type HostSortBy string

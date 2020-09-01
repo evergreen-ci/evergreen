@@ -6,30 +6,36 @@ orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
-# go environment configuration
-ifneq (,$(GO_BIN_PATH))
+# start environment setup
 gobin := $(GO_BIN_PATH)
-else
+ifeq ($(gobin),)
 gobin := go
 endif
-
 gopath := $(GOPATH)
+gocache := $(abspath $(buildDir)/.cache)
+goroot := $(GOROOT)
 ifeq ($(OS),Windows_NT)
+gocache := $(shell cygpath -m $(gocache))
 gopath := $(shell cygpath -m $(gopath))
+goroot := $(shell cygpath -m $(goroot))
 endif
-ifeq (,$(gopath))
-gopath := $($(gobin) env GOPATH)
-endif
-goEnv := GOPATH=$(gopath) $(if $(GO_BIN_PATH),PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
-# end go environment configuration
+
+export GOPATH := $(gopath)
+export GOCACHE := $(gocache)
+export GOROOT := $(goroot)
+# end environment setup
+
+
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
 
 
 # start lint setup targets
 lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
-$(buildDir)/golangci-lint:$(buildDir)
-	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
-$(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/golangci-lint
-	@$(goEnv) $(gobin) build -o $@ $<
+$(buildDir)/golangci-lint:
+	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
+	@$(gobin) build -o $@ $<
 # end lint setup targets
 
 
@@ -45,7 +51,7 @@ $(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/golangci-lint
 # start dependency installation tools
 #   implementation details for being able to lazily install dependencies
 testOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).test))
-raceOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).race))
+lintOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).lint))
 coverageOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).coverage))
 coverageHtmlOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html))
 # end dependency installation tools
@@ -55,46 +61,24 @@ coverageHtmlOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/outpu
 # end lint setup targets
 
 # userfacing targets for basic build and development operations
-lint:$(buildDir)/output.lint
-$(buildDir): $(gopath)/src/$(projectPath)
-	@mkdir -p $(buildDir)
-	$(goEnv) $(gobin) build ./.
-build-race: $(gopath)/src/$(projectPath)
-	$(goEnv) $(gobin) build -race $(subst -,/,$(foreach pkg,$(packages),./$(pkg)))
+lint:$(lintOutput)
+compile $(buildDir):
+	$(gobin) build ./.
 test:$(testOutput)
-race:$(raceOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
-phony := build build-race race test coverage coverage-html
-.PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS: $(buildDir)/output.lint
+phony := build test coverage coverage-html
+.PRECIOUS: $(testOutput) $(lintOuptut) $(coverageOutput) $(coverageHtmlOutput)
 # end front-ends
-
-
-# implementation details for building the binary and creating a
-# convienent link in the working directory
-$(gopath)/src/$(orgPath):
-	@mkdir -p $@
-$(gopath)/src/$(projectPath):$(gopath)/src/$(orgPath)
-	@[ -L $@ ] || ln -s $(shell pwd) $@
-$(buildDir)/$(name):$(gopath)/src/$(projectPath)
-	$(goEnv) $(gobin) build -o $@ main/$(name).go
-$(buildDir)/$(name).race:
-	$(goEnv) $(gobin) build -race -o $@ main/$(name).go
-# end main build
-
-$(buildDir)/output.%.test:
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
-race-%:$(buildDir)/output.%.race
-	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $<
 coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-html-coverage-%:$(buildDir)/output.%.coverage.html $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+
+html-coverage-%:$(buildDir)/output.%.coverage.html
+	
 lint-%:$(buildDir)/output.%.lint
 	@grep -v -s -q "^--- FAIL" $<
 # end convienence targets
@@ -104,44 +88,35 @@ lint-%:$(buildDir)/output.%.lint
 #    tests have compile and runtime deps. This varable has everything
 #    that the tests actually need to run. (The "build" target is
 #    intentional and makes these targets rerun as expected.)
-testArgs := -test.v
-ifneq (,$(RUN_TEST))
-testArgs += -test.run='$(RUN_TEST)'
+testArgs := -v
+ifeq (,$(DISABLE_COVERAGE))
+	testArgs += -cover
 endif
-ifneq (,$(RUN_CASE))
-testArgs += -testify.m='$(RUN_CASE)'
+ifneq (,$(RACE_DETECTOR))
+	testArgs += -race
+endif
+ifneq (,$(RUN_TEST))
+	testArgs += -run='$(RUN_TEST)'
 endif
 ifneq (,$(RUN_COUNT))
-testArgs += -test.count='$(RUN_COUNT)'
+	testArgs += -count=$(RUN_COUNT)
 endif
 ifneq (,$(TEST_TIMEOUT))
-testArgs += -test.timeout=$(TEST_TIMEOUT)
-else
-testArgs += -test.timeout=10m
+	testArgs += -timeout=$(TEST_TIMEOUT)
 endif
 #    implementation for package coverage and test running,mongodb to produce
 #    and save test output.
-$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	$(goEnv) $(gobin) tool cover -html=$(buildDir)/output.$(subst /,-,$*).coverage -o $(buildDir)/output.$(subst /,-,$*).coverage.html
-$(buildDir)/output.%.coverage: $(buildDir)
-	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile=$(buildDir)/output.$(subst /,-,$*).coverage $(projectPath)/$(subst -,/,$*)
-	@-[ -f $(buildDir)/output.$(subst /,-,$*).coverage ] && $(goEnv) $(gobin) tool cover -func=$(buildDir)/output.$(subst /,-,$*).coverage | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/output.$(name).coverage: $(buildDir)
-	$(goEnv) $(gobin) test -covermode=count -coverprofile=$@ $(projectPath)
-	@-[ -f $@ ] && $(goEnv) $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/output.%.test: $(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/output.$(subst /,-,$*).test
-$(buildDir)/output.%.race: .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/output.$(subst /,-,$*).race
-$(buildDir)/output.$(name).test: $(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
-$(buildDir)/output.$(name).race: $(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -race ./ | tee $@
+$(buildDir)/output.%.coverage: .FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+$(buildDir)/output.%.coverage.html: $(buildDir)/output.%.coverage .FORCE
+	$(gobin) tool cover -html=$< -o $@
+$(buildDir)/output.%.test: .FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $(buildDir)/output.$(subst /,-,$*).test
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$(packages)'
+# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
+$(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
+	@$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
 
@@ -159,7 +134,9 @@ phony += vendor-clean
 
 # clean and other utility targets
 clean:
-	rm -rf $(name) $(lintDeps) $(buildDir)/output.*
+	rm -rf $(lintDeps)
+clean-results:
+	rm -rf $(buildDir)/output.*
 phony += clean
 # end dependency targets
 

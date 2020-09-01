@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "query_file": "distros.graphql",
+      "result": {
+        "data": {
+          "taskQueueDistros": [
+            {
+              "id": "osx-108",
+              "queueCount": 3
+            },
+            {
+              "id": "debian71-test",
+              "queueCount": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

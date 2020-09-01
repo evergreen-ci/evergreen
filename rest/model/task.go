@@ -167,8 +167,18 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 func (at *APITask) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *task.Task:
+		id := v.Id
+		// Old tasks are stored in a separate collection with ID set to
+		// "old_task_ID" + "_" + "execution_number". This ID is not exposed to the user,
+		// however. Instead in the UI executions are represented with a "/" and could be
+		// represented in other ways elsewhere. The correct way to represent an old task is
+		// with the same ID as the last execution, since semantically the tasks differ in
+		// their execution number, not in their ID.
+		if v.OldTaskId != "" {
+			id = v.OldTaskId
+		}
 		(*at) = APITask{
-			Id:                ToStringPtr(v.Id),
+			Id:                ToStringPtr(id),
 			ProjectId:         ToStringPtr(v.Project),
 			CreateTime:        ToTimePtr(v.CreateTime),
 			DispatchTime:      ToTimePtr(v.DispatchTime),

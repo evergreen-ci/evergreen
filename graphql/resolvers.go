@@ -235,7 +235,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
 	}
 	if spawnHost == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occured Spawn host is nil"))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
 	}
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(spawnHost)
@@ -419,6 +419,19 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
+func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
+	volumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
+	for i, _ := range volumes {
+		volumePointers = append(volumePointers, &volumes[i])
+	}
+	return volumePointers, nil
+}
+
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
@@ -437,6 +450,22 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil
+}
+
+func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
+	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
+}
+
+func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DetachVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
 }
 
 type patchResolver struct{ *Resolver }
@@ -1181,7 +1210,7 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	events, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
+	events, count, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}
@@ -1197,6 +1226,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	}
 	hostevents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
+		Count:           count,
 	}
 	return &hostevents, nil
 }
@@ -1254,6 +1284,30 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 	return taskQueue, nil
 }
 
+func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
+	queues, err := model.FindAllTaskQueues()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting all task queues: %v", err.Error()))
+	}
+
+	distros := []*TaskQueueDistro{}
+
+	for _, distro := range queues {
+		tqd := TaskQueueDistro{
+			ID:         distro.Distro,
+			QueueCount: len(distro.Queue),
+		}
+		distros = append(distros, &tqd)
+	}
+
+	// sort distros by queue count in descending order
+	sort.SliceStable(distros, func(i, j int) bool {
+		return distros[i].QueueCount > distros[j].QueueCount
+	})
+
+	return distros, nil
+}
+
 func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.APITaskQueueItem) (TaskQueueItemType, error) {
 	if *obj.Requester != evergreen.RepotrackerVersionRequester {
 		return TaskQueueItemTypePatch, nil
@@ -1305,7 +1359,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
 		// does not contain nil version err values before sending InternalServerError
 		if !strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occured fetching patch `%s`: %s", patchID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
 	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
@@ -1635,6 +1689,14 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
+}
+
+func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DeleteVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
 }
 
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {

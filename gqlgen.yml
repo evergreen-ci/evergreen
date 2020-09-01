@@ -33,6 +33,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
+  Volume:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:

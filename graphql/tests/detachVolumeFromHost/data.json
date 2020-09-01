@@ -1,0 +1,30 @@
+{
+  "volumes": [
+    {
+      "no_expiration": false,
+      "display_name": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+      "home_volume": true,
+      "availability_zone": "us-west-1",
+      "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
+      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+      "host": "not-real",
+      "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
+      "_id": "vol-two",
+      "type": "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+      "size": 500
+    },
+    {
+      "no_expiration": false,
+      "display_name": "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+      "home_volume": true,
+      "availability_zone": "us-east-1a",
+      "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
+      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+      "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
+      "_id": "vol-three",
+      "type": "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+      "size": 500,
+      "host": ""
+    }
+  ]
+}

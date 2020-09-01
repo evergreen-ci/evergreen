@@ -29,7 +29,7 @@ imports:
 
 # Okta verifier and packages
 - name: github.com/okta/okta-jwt-verifier-golang
-  version: 04702def3e1b9b1c6b419c9c3aae1ec184a5d4b2
+  version: 6a9e44fa762203760404ed185bcd215d59732785
 - name: github.com/lestrrat-go/jwx
   version: 5d60d87d07ddea9874404944870bec81aabcf574
 - name: github.com/patrickmn/go-cache

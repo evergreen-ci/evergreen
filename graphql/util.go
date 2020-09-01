@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -416,6 +417,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
+			Blocked:      task.Blocked(),
 		}
 		taskResults = append(taskResults, &t)
 	}
@@ -742,5 +744,164 @@ func CanUpdateSpawnHost(host *host.Host, usr *user.DBUser) bool {
 		return true
 	}
 	return true
+}
 
+func GetMyVolumes(user *user.DBUser) ([]restModel.APIVolume, error) {
+	volumes, err := host.FindVolumesByUser(user.Username())
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting volumes for '%s'", user.Username())
+	}
+	sort.SliceStable(volumes, func(i, j int) bool {
+		// sort order: mounted < not mounted, expiration time asc
+		volumeI := volumes[i]
+		volumeJ := volumes[j]
+		isMountedI := volumeI.Host == ""
+		isMountedJ := volumeJ.Host == ""
+		if isMountedI == isMountedJ {
+			return volumeI.Expiration.Before(volumeJ.Expiration)
+		}
+		return isMountedJ
+	})
+	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
+	for _, vol := range volumes {
+		apiVolume := restModel.APIVolume{}
+		if err = apiVolume.BuildFromService(vol); err != nil {
+			return nil, errors.Wrapf(err, "error building volume '%s' from service", vol.ID)
+		}
+		apiVolumes = append(apiVolumes, apiVolume)
+	}
+	return apiVolumes, nil
+}
+
+func DeleteVolume(ctx context.Context, volumeId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
+	}
+	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
+	}
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
+	mgr, err := getEC2Manager(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err
+	}
+	err = mgr.DeleteVolume(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
+}
+
+func AttachVolume(ctx context.Context, volumeId string, hostId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
+	}
+	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
+	}
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
+	mgr, err := getEC2Manager(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err
+	}
+	if hostId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify host id")
+	}
+	var h *host.Host
+	h, err = host.FindOneId(hostId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host)
+	}
+	if h == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("host '%s' does not exist", hostId)
+	}
+
+	if vol.AvailabilityZone != h.Zone {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("host and volume must have same availability zone")
+	}
+	if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
+}
+
+func DetachVolume(ctx context.Context, volumeId string) (bool, int, GqlError, error) {
+	if volumeId == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.New("must specify volume id")
+	}
+	vol, err := host.FindVolumeByID(volumeId)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get volume '%s'", volumeId)
+	}
+	if vol == nil {
+		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
+	}
+	mgr, err := getEC2Manager(ctx, vol)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err
+	}
+	if vol.Host == "" {
+		return false, http.StatusBadRequest, InputValidationError, errors.Errorf("volume '%s' is not attached", vol.ID)
+	}
+	h, err := host.FindOneId(vol.Host)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID)
+	}
+	if h == nil {
+		if err = host.UnsetVolumeHost(vol.ID); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
+				"route":   "graphql/util",
+				"action":  "DetachVolume",
+			}))
+		}
+		return false, http.StatusInternalServerError, InternalServerError, errors.Errorf("host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID)
+	}
+
+	if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID)
+	}
+	return true, http.StatusOK, "", nil
+}
+
+func getEC2Manager(ctx context.Context, vol *host.Volume) (cloud.Manager, error) {
+	provider := evergreen.ProviderNameEc2OnDemand
+	if isTest() {
+		// Use the mock manager during integration tests
+		provider = evergreen.ProviderNameMock
+	}
+	mgrOpts := cloud.ManagerOpts{
+		Provider: provider,
+		Region:   cloud.AztoRegion(vol.AvailabilityZone),
+	}
+	env := evergreen.GetEnvironment()
+	mgr, err := cloud.GetManager(ctx, env, mgrOpts)
+	return mgr, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID)
+}
+
+// returns true only during integration tests
+func isTest() bool {
+	return os.Getenv("SETTINGS_OVERRIDE") != ""
+}
+
+func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) error {
+	mgr, err := getEC2Manager(ctx, vol)
+	if err != nil {
+		return err
+	}
+	if isTest() {
+		// The mock manager needs to spawn the host specified in our test data.
+		// The host should already be spawned in a non-test scenario.
+		_, err := mgr.SpawnHost(ctx, h)
+		if err != nil {
+			return errors.Wrapf(err, "error spawning host in test code")
+		}
+	}
+	return nil
 }

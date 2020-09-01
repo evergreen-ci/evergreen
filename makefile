@@ -156,13 +156,14 @@ $(gopath)/bin:
 # end dependency installation tools
 
 
+lintDeps := $(buildDir)/.lintSetup $(buildDir)/golangci-lint $(buildDir)/run-linter
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1 && touch $@
+	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<
@@ -235,7 +236,6 @@ list-tests:
 phony += lint lint-deps build test coverage coverage-html list-tests
 .PRECIOUS:$(testOutput) $(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
-.PRECIOUS:$(buildDir)/output.lint
 # end front-ends
 
 
@@ -464,11 +464,9 @@ $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
+# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
-	@./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	@./$< --output="$@" --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages="$(packages)"
-#  targets to process and generate coverage reports
+	@$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
@@ -476,7 +474,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
+	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
 

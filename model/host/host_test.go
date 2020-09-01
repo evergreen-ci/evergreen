@@ -2884,26 +2884,43 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 				SpawnedByTask: true,
 			},
 		},
+		{
+			Id:     "7",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TaskID:              "task_1",
+				BuildID:             "build_1",
+				SpawnedByTask:       true,
+				TaskExecutionNumber: 1,
+			},
+		},
 	}
 	for i := range hosts {
 		require.NoError(hosts[i].Insert())
 	}
 	found, err := FindAllHostsSpawnedByTasks()
 	assert.NoError(err)
-	assert.Len(found, 2)
+	assert.Len(found, 3)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
+	assert.Equal(found[2].Id, "7")
 
-	found, err = FindHostsSpawnedByTask("task_1")
+	found, err = FindHostsSpawnedByTask("task_1", 0)
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal(found[0].Id, "1")
 
+	found, err = FindHostsSpawnedByTask("task_1", 1)
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal(found[0].Id, "7")
+
 	found, err = FindHostsSpawnedByBuild("build_1")
 	assert.NoError(err)
-	assert.Len(found, 2)
+	assert.Len(found, 3)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
+	assert.Equal(found[2].Id, "7")
 }
 
 func TestCountContainersOnParents(t *testing.T) {
@@ -3166,6 +3183,12 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	require.NoError(finishedTask.Insert())
+	finishedTaskNewExecution := &task.Task{
+		Id:        "restarted_task",
+		Status:    evergreen.TaskStarted,
+		Execution: 1,
+	}
+	require.NoError(finishedTaskNewExecution.Insert())
 	finishedBuild := &build.Build{
 		Id:     "running_build",
 		Status: evergreen.BuildSucceeded,
@@ -3187,6 +3210,25 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				TaskID:          "running_task",
 				SpawnedByTask:   true,
+			},
+		},
+		{
+			Id:     "running_host_task_later_execution",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "restarted_task",
+				SpawnedByTask:   true,
+			},
+		},
+		{
+			Id:     "running_host_task_same",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown:     time.Now().Add(time.Minute),
+				TaskID:              "restarted_task",
+				SpawnedByTask:       true,
+				TaskExecutionNumber: 1,
 			},
 		},
 		{
@@ -3258,10 +3300,11 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 
 	found, err = allHostsSpawnedByFinishedTasks()
 	assert.NoError(err)
-	assert.Len(found, 2)
+	assert.Len(found, 3)
 	should := map[string]bool{
-		"running_host_task":          false,
-		"running_host_task_building": false,
+		"running_host_task":                 false,
+		"running_host_task_building":        false,
+		"running_host_task_later_execution": false,
 	}
 	for _, f := range found {
 		should[f.Id] = true
@@ -3286,13 +3329,14 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 
 	found, err = AllHostsSpawnedByTasksToTerminate()
 	assert.NoError(err)
-	assert.Len(found, 5)
+	assert.Len(found, 6)
 	should = map[string]bool{
-		"running_host_timeout":        false,
-		"running_host_task":           false,
-		"running_host_task_building":  false,
-		"running_host_build":          false,
-		"running_host_build_starting": false,
+		"running_host_timeout":              false,
+		"running_host_task":                 false,
+		"running_host_task_building":        false,
+		"running_host_build":                false,
+		"running_host_build_starting":       false,
+		"running_host_task_later_execution": false,
 	}
 	for _, f := range found {
 		should[f.Id] = true
@@ -4884,4 +4928,36 @@ func TestPartitionParents(t *testing.T) {
 	matched, notMatched = partitionParents(parents, distroId, defaultMaxImagesPerParent)
 	assert.Len(matched, 0)
 	assert.Len(notMatched, 0)
+}
+
+func TestCountVirtualWorkstationsByDistro(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	for i := 0; i < 100; i++ {
+		h := &Host{
+			Id:           fmt.Sprintf("%d", i),
+			Status:       evergreen.HostTerminated,
+			InstanceType: "foo",
+		}
+		if i%3 == 0 {
+			h.Status = evergreen.HostRunning
+		}
+		if i%5 == 0 {
+			h.IsVirtualWorkstation = true
+		}
+		if i%11 == 0 {
+			h.InstanceType = "bar"
+		}
+		require.NoError(t, h.Insert())
+	}
+	count, err := CountVirtualWorkstationsByInstanceType()
+	require.NoError(t, err)
+	for _, counter := range count {
+		require.NotEmpty(t, counter.InstanceType)
+		if counter.InstanceType == "foo" {
+			require.Equal(t, 6, counter.Count)
+		}
+		if counter.InstanceType == "bar" {
+			require.Equal(t, 1, counter.Count)
+		}
+	}
 }

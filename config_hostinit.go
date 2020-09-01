@@ -14,6 +14,7 @@ type HostInitConfig struct {
 	HostThrottle         int `bson:"host_throttle" json:"host_throttle" yaml:"host_throttle"`
 	ProvisioningThrottle int `bson:"provisioning_throttle" json:"provisioning_throttle" yaml:"provisioning_throttle"`
 	CloudStatusBatchSize int `bson:"cloud_batch_size" json:"cloud_batch_size" yaml:"cloud_batch_size"`
+	MaxTotalDynamicHosts int `bson:"max_total_dynamic_hosts" json:"max_total_dynamic_hosts" yaml:"max_total_dynamic_hosts"`
 }
 
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
@@ -46,9 +47,10 @@ func (c *HostInitConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"host_throttle":         c.HostThrottle,
-			"provisioning_throttle": c.ProvisioningThrottle,
-			"cloud_batch_size":      c.CloudStatusBatchSize,
+			"host_throttle":           c.HostThrottle,
+			"provisioning_throttle":   c.ProvisioningThrottle,
+			"cloud_batch_size":        c.CloudStatusBatchSize,
+			"max_total_dynamic_hosts": c.MaxTotalDynamicHosts,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -68,5 +70,8 @@ func (c *HostInitConfig) ValidateAndDefault() error {
 		c.CloudStatusBatchSize = 500
 	}
 
+	if c.MaxTotalDynamicHosts <= 0 {
+		c.MaxTotalDynamicHosts = 5000
+	}
 	return nil
 }

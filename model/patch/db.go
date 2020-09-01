@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -57,22 +58,6 @@ var (
 	// BSON fields for the patch set struct
 	PatchSetPatchKey   = bsonutil.MustHaveTag(PatchSet{}, "Patch")
 	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
-
-	// BSON fields for the git patch summary struct
-	GitSummaryNameKey      = bsonutil.MustHaveTag(Summary{}, "Name")
-	GitSummaryAdditionsKey = bsonutil.MustHaveTag(Summary{}, "Additions")
-	GitSummaryDeletionsKey = bsonutil.MustHaveTag(Summary{}, "Deletions")
-
-	// BSON fields for GithubPatch
-	githubPatchPRNumberKey   = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
-	githubPatchBaseOwnerKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
-	githubPatchBaseRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
-	githubPatchBaseBranchKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseBranch")
-	githubPatchHeadOwnerKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadOwner")
-	githubPatchHeadRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
-	githubPatchHeadHashKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
-	githubPatchAuthorKey     = bsonutil.MustHaveTag(GithubPatch{}, "Author")
-	githubMergeCommitSHAKey  = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
 )
 
 // Query Validation
@@ -263,9 +248,9 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 		CreateTimeKey: bson.M{
 			"$lt": t,
 		},
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseOwnerKey): owner,
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseRepoKey):  repo,
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchPRNumberKey):  prNumber,
 	})
 }
 

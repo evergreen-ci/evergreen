@@ -39,7 +39,7 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
+func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
 	skip := page * limit
@@ -49,10 +49,15 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 
 	err := db.FindAllQ(coll, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
-		return nil, errors.WithStack(err)
+		return nil, 0, errors.WithStack(err)
+	}
+	count, err := db.CountQ(coll, query)
+
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "failed to fetch number of host events")
 	}
 
-	return events, nil
+	return events, count, nil
 }
 
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
