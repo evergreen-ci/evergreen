@@ -1,14 +1,12 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -135,8 +133,8 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jira := &jiraSuggest{bbProj, uis.jiraHandler}
-	multiSource := &multiSourceSuggest{jira}
+	jira := &graphql.JiraSuggest{bbProj, uis.jiraHandler}
+	multiSource := &graphql.MultiSourceSuggest{jira}
 
 	var tickets []thirdparty.JiraTicket
 	var source string
@@ -225,47 +223,47 @@ func (uis *UIServer) makeNotification(project string, t *task.Task) (*notificati
 	return n, nil
 }
 
-type suggester interface {
-	Suggest(context.Context, *task.Task) ([]thirdparty.JiraTicket, error)
-	GetTimeout() time.Duration
-}
+// type suggester interface {
+// 	Suggest(context.Context, *task.Task) ([]thirdparty.JiraTicket, error)
+// 	GetTimeout() time.Duration
+// }
 
 /////////////////////////////////////////////
 // jiraSuggest type (implements suggester) //
 /////////////////////////////////////////////
 
-type jiraSuggest struct {
-	bbProj      evergreen.BuildBaronProject
-	jiraHandler thirdparty.JiraHandler
-}
+// type jiraSuggest struct {
+// 	bbProj      evergreen.BuildBaronProject
+// 	jiraHandler thirdparty.JiraHandler
+// }
 
 // Suggest returns JIRA ticket results based on the test and/or task name.
-func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
-	jql := t.GetJQL(js.bbProj.TicketSearchProjects)
+// func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
+// 	jql := t.GetJQL(js.bbProj.TicketSearchProjects)
 
-	results, err := js.jiraHandler.JQLSearch(jql, 0, -1)
-	if err != nil {
-		return nil, err
-	}
+// 	results, err := js.jiraHandler.JQLSearch(jql, 0, -1)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return results.Issues, nil
-}
+// 	return results.Issues, nil
+// }
 
-func (js *jiraSuggest) GetTimeout() time.Duration {
-	// This function is never called because we are willing to wait forever for the fallback handler
-	// to return JIRA ticket results.
-	return 0
-}
+// func (js *jiraSuggest) GetTimeout() time.Duration {
+// 	// This function is never called because we are willing to wait forever for the fallback handler
+// 	// to return JIRA ticket results.
+// 	return 0
+// }
 
 /////////////////////////////
 // multiSourceSuggest type //
 /////////////////////////////
 
-type multiSourceSuggest struct {
-	jiraSuggester suggester
-}
+// type multiSourceSuggest struct {
+// 	jiraSuggester suggester
+// }
 
-func (mss *multiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
-	tickets, err := mss.jiraSuggester.Suggest(context.TODO(), t)
-	return tickets, jiraSource, err
-}
+// func (mss *multiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
+// 	tickets, err := mss.jiraSuggester.Suggest(context.TODO(), t)
+// 	return tickets, jiraSource, err
+// }

@@ -62,17 +62,17 @@ func BbGetTask(taskId string, execution string) (*task.Task, error) {
 	}
 	return t, nil
 }
-func (js *jiraSuggest) GetTimeout() time.Duration {
+func (js *JiraSuggest) GetTimeout() time.Duration {
 	// This function is never called because we are willing to wait forever for the fallback handler
 	// to return JIRA ticket results.
 	return 0
 }
 
 // Suggest returns JIRA ticket results based on the test and/or task name.
-func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
-	jql := t.GetJQL(js.bbProj.TicketSearchProjects)
+func (js *JiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
+	jql := t.GetJQL(js.BbProj.TicketSearchProjects)
 
-	results, err := js.jiraHandler.JQLSearch(jql, 0, -1)
+	results, err := js.JiraHandler.JQLSearch(jql, 0, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -80,21 +80,21 @@ func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.
 	return results.Issues, nil
 }
 
-type suggester interface {
+type Suggester interface {
 	Suggest(context.Context, *task.Task) ([]thirdparty.JiraTicket, error)
 	GetTimeout() time.Duration
 }
 
-type multiSourceSuggest struct {
-	jiraSuggester suggester
+type MultiSourceSuggest struct {
+	JiraSuggester Suggester
 }
 
-type jiraSuggest struct {
-	bbProj      evergreen.BuildBaronProject
-	jiraHandler thirdparty.JiraHandler
+type JiraSuggest struct {
+	BbProj      evergreen.BuildBaronProject
+	JiraHandler thirdparty.JiraHandler
 }
 
-func (mss *multiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
-	tickets, err := mss.jiraSuggester.Suggest(context.TODO(), t)
+func (mss *MultiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
+	tickets, err := mss.JiraSuggester.Suggest(context.TODO(), t)
 	return tickets, jiraSource, err
 }
