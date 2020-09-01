@@ -432,16 +432,16 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.project.OomTracker && status == evergreen.TaskFailed {
+	if tc.oomTrackerEnabled() && status == evergreen.TaskFailed {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
 		defer oomCancel()
 		if err := tc.oomTracker.Check(oomCtx); err != nil {
 			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
 		}
-		durationString := fmt.Sprintf("found no OOM kill in %.2f seconds", time.Now().Sub(startTime).Seconds())
+		durationString := fmt.Sprintf("found no OOM kill in %.3f seconds", time.Now().Sub(startTime).Seconds())
 		if found, _ := tc.oomTracker.Report(); found {
-			durationString = fmt.Sprintf("found an OOM kill in %.2f seconds", time.Now().Sub(startTime).Seconds())
+			durationString = fmt.Sprintf("found an OOM kill in %.3f seconds", time.Now().Sub(startTime).Seconds())
 		}
 		tc.logger.Execution().Debug(durationString)
 	}
