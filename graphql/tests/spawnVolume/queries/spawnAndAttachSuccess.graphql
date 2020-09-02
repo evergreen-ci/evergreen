@@ -1,0 +1,10 @@
+mutation {
+  spawnVolume(
+    spawnVolumeInput: {
+      availabilityZone: "us-east-1a"
+      size: 300
+      type: "standard"
+      host: "i-1104943f"
+    }
+  )
+}
