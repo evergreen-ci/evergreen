@@ -61,7 +61,7 @@ models:
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUser
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskEventLogData:

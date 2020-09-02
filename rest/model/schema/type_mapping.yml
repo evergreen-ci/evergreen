@@ -1,0 +1,3 @@
+models:
+  User:
+    model: github.com/evergreen-ci/evergreen/model/user.DBUser

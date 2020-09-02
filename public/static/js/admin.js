@@ -1,8 +1,8 @@
-mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, $http, mciAdminRestService, notificationService) {
+mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function ($scope, $window, $http, mciAdminRestService, notificationService) {
   $scope.validDefaultLoggers = $window.validDefaultLoggers;
   $scope.can_clear_tokens = $window.can_clear_tokens;
 
-  $scope.load = function() {
+  $scope.load = function () {
     $scope.Settings = {};
 
     $scope.getSettings();
@@ -11,14 +11,13 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartRed = true;
     $scope.restartPurple = true;
     $scope.restartLavender = true;
-    $scope.ValidThemes = [ "announcement", "information", "warning", "important"];
-    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "github"];
-    $scope.apiOnlyUserMissingKey = false;
+    $scope.ValidThemes = ["announcement", "information", "warning", "important"];
+    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
-  $scope.getSettings = function() {
-    var successHandler = function(resp) {
+  $scope.getSettings = function () {
+    var successHandler = function (resp) {
       if (resp.data.slack && resp.data.slack.options) {
         var fields = resp.data.slack.options.fields;
         var fieldsSet = [];
@@ -29,14 +28,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       }
 
       $scope.tempCredentials = [];
-      _.each(resp.data.credentials, function(val, key) {
+      _.each(resp.data.credentials, function (val, key) {
         var obj = {};
         obj[key] = val;
         $scope.tempCredentials.push(obj);
       });
 
       $scope.tempExpansions = [];
-      _.each(resp.data.expansions, function(val, key) {
+      _.each(resp.data.expansions, function (val, key) {
         var obj = {};
         obj[key] = val;
         $scope.tempExpansions.push(obj);
@@ -46,16 +45,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
 
       if (!resp.data.auth) {
-          resp.data.auth = {};
-      }
-      if (resp.data.auth.only_api) {
-        $scope.tempOnlyAPIUsers = _.clone(resp.data.auth.only_api.users);
-      } else {
-        $scope.tempOnlyAPIUsers = [];
+        resp.data.auth = {};
       }
       if (resp.data.auth.multi) {
         if (resp.data.auth.multi.read_write) {
-        $scope.tempMultiAuthReadWrite = _.clone(resp.data.auth.multi.read_write);
+          $scope.tempMultiAuthReadWrite = _.clone(resp.data.auth.multi.read_write);
         } else {
           $scope.tempMultiAuthReadWrite = [];
         }
@@ -73,17 +67,20 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
     }
-    var errorHandler = function(resp) {
+    var errorHandler = function (resp) {
       notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
     }
-    mciAdminRestService.getSettings({ success: successHandler, error: errorHandler });
+    mciAdminRestService.getSettings({
+      success: successHandler,
+      error: errorHandler
+    });
   }
 
-  $scope.saveSettings = function() {
-    var successHandler = function(resp) {
+  $scope.saveSettings = function () {
+    var successHandler = function (resp) {
       window.location.href = "/admin";
     }
-    var errorHandler = function(resp) {
+    var errorHandler = function (resp) {
       notificationService.pushNotification("Error saving settings: " + resp.data.message, "errorHeader");
     }
 
@@ -97,7 +94,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     $scope.Settings.credentials = {};
-    _.map($scope.tempCredentials, function(elem, index) {
+    _.map($scope.tempCredentials, function (elem, index) {
       for (var key in elem) {
         $scope.Settings.credentials[key] = elem[key];
       }
@@ -120,18 +117,8 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.auth.multi.read_only = $scope.tempMultiAuthReadOnly;
     }
 
-    if ($scope.tempOnlyAPIUsers.length > 0) {
-        if (!$scope.Settings.auth) {
-            $scope.Settings.auth = {};
-        }
-        if (!$scope.Settings.auth.only_api) {
-            $scope.Settings.auth.only_api = {};
-        }
-        $scope.Settings.auth.only_api.users = $scope.tempOnlyAPIUsers;
-    }
-
     $scope.Settings.expansions = {};
-    _.map($scope.tempExpansions, function(elem, index) {
+    _.map($scope.tempExpansions, function (elem, index) {
       for (var key in elem) {
         $scope.Settings.expansions[key] = elem[key];
       }
@@ -139,14 +126,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
     try {
       $scope.Settings.plugins = jsyaml.safeLoad($scope.tempPlugins);
-    } catch(e) {
+    } catch (e) {
       notificationService.pushNotification("Error parsing plugin yaml: " + e, "errorHeader");
       return;
     }
 
     try {
       var parsedContainerPools = jsyaml.safeLoad($scope.tempContainerPools);
-    } catch(e) {
+    } catch (e) {
       notificationService.pushNotification("Error parsing container pools yaml: " + e, "errorHeader");
       return;
     }
@@ -168,7 +155,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
       // check uniqueness
       if (p.id in uniqueIds) {
-        notificationService.pushNotification("Error saving settings: found duplicate container pool ID: " + p.id , "errorHeader");
+        notificationService.pushNotification("Error saving settings: found duplicate container pool ID: " + p.id, "errorHeader");
         return;
       }
       uniqueIds[p.id] = true
@@ -186,48 +173,55 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.expansions = {};
     }
 
-    mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
+    mciAdminRestService.saveSettings($scope.Settings, {
+      success: successHandler,
+      error: errorHandler
+    });
   }
 
-  $scope.validEC2Credentials = function(item){
+  $scope.validEC2Credentials = function (item) {
     return item && item.region && item.key && item.secret;
   }
 
-  $scope.addEC2Credential = function(){
+  $scope.addEC2Credential = function () {
     if ($scope.Settings.providers == null || $scope.Settings.providers == undefined) {
       $scope.Settings.providers = {
-        "aws": {"ec2_keys": []}
+        "aws": {
+          "ec2_keys": []
+        }
       };
     }
     if ($scope.Settings.providers.aws.ec2_keys === undefined || $scope.Settings.providers.aws.ec2_keys === null) {
-        $scope.Settings.providers.aws.ec2_keys = []
+      $scope.Settings.providers.aws.ec2_keys = []
     }
-    if (!$scope.validEC2Credentials($scope.new_item)){
-        $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
-        return
+    if (!$scope.validEC2Credentials($scope.new_item)) {
+      $scope.invalidCredential = "EC2 Region, Key, and Secret required.";
+      return
     }
     $scope.Settings.providers.aws.ec2_keys.push($scope.new_item);
     $scope.new_item = {};
     $scope.invalidCredential = "";
   }
 
-  $scope.deleteEC2Credential = function(index){
+  $scope.deleteEC2Credential = function (index) {
     $scope.Settings.providers.aws.ec2_keys.splice(index, 1);
   }
 
-  $scope.addSubnet = function(){
+  $scope.addSubnet = function () {
     if ($scope.Settings.providers == null) {
       $scope.Settings.providers = {
-        "aws": {"subnets": []}
+        "aws": {
+          "subnets": []
+        }
       };
     }
     if ($scope.Settings.providers.aws.subnets == null) {
-        $scope.Settings.providers.aws.subnets = []
+      $scope.Settings.providers.aws.subnets = []
     }
 
-    if (!$scope.validSubnet($scope.new_subnet)){
-        $scope.invalidSubnet = "Availability zone and subnet ID are required.";
-        return
+    if (!$scope.validSubnet($scope.new_subnet)) {
+      $scope.invalidSubnet = "Availability zone and subnet ID are required.";
+      return
     }
 
     $scope.Settings.providers.aws.subnets.push($scope.new_subnet);
@@ -235,55 +229,58 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidSubnet = "";
   }
 
-  $scope.deleteSubnet = function(index){
+  $scope.deleteSubnet = function (index) {
     $scope.Settings.providers.aws.subnets.splice(index, 1);
   }
 
-  $scope.validSubnet = function(subnet){
+  $scope.validSubnet = function (subnet) {
     return subnet && subnet.az && subnet.subnet_id;
   }
 
-  $scope.clearAllUserTokens = function(){
-    if(!confirm("This will log out all users from all existing sessions. Continue?"))
+  $scope.clearAllUserTokens = function () {
+    if (!confirm("This will log out all users from all existing sessions. Continue?"))
       return
 
     $http.post('/admin/cleartokens').then(
-      function(resp) {
+      function (resp) {
         window.location.reload();
       },
-      function(resp) {
-        notificationService.pushNotification("Failed to clear user tokens: " + resp.data.error,'errorHeader');
+      function (resp) {
+        notificationService.pushNotification("Failed to clear user tokens: " + resp.data.error, 'errorHeader');
       });
   }
 
-  $scope.clearCommitQueues = function(){
-    if(!confirm("This will clear the contents of all commit queues. Continue?")){
+  $scope.clearCommitQueues = function () {
+    if (!confirm("This will clear the contents of all commit queues. Continue?")) {
       return
     }
 
-    var successHandler = function(resp) {
+    var successHandler = function (resp) {
       notificationService.pushNotification("Operation successful: cleared " + resp.data.cleared_count + " queues", 'notifyHeader', 'success');
     };
-    var errorHandler = function(resp) {
+    var errorHandler = function (resp) {
       notificationService.pushNotification("Failed to clear commit queues: " + resp.data.error, 'errorHeader');
     };
 
-    mciAdminRestService.clearCommitQueues({ success: successHandler, error: errorHandler });
+    mciAdminRestService.clearCommitQueues({
+      success: successHandler,
+      error: errorHandler
+    });
   }
 
-  timestamp = function(ts) {
+  timestamp = function (ts) {
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
   }
 
   // restartType: tasks or versions
-  $scope.restartItems = function(restartType, dryRun) {
+  $scope.restartItems = function (restartType, dryRun) {
     if (restartType === "tasks") {
-        var restartTitle = "Tasks";
+      var restartTitle = "Tasks";
     } else if (restartType === "versions") {
-        var restartTitle = "Commit Queue Versions"
+      var restartTitle = "Commit Queue Versions"
     } else {
-        alert("Please choose an item to restart");
-        return
+      alert("Please choose an item to restart");
+      return
     }
     if (!$scope.fromDate || !$scope.toDate || !$scope.toTime || !$scope.fromTime) {
       alert("The from/to date and time must be populated to restart " + restartType);
@@ -292,9 +289,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     var from = combineDateTime($scope.fromDate, $scope.fromTime);
     var to = combineDateTime($scope.toDate, $scope.toTime);
     if (to < from) {
-        alert("From time cannot be after to time");
-        $scope.disableSubmit = false;
-        return;
+      alert("From time cannot be after to time");
+      $scope.disableSubmit = false;
+      return;
     }
 
     if (restartType === "tasks" && !$scope.restartRed && !$scope.restartPurple && !$scope.restartLavender) {
@@ -304,68 +301,71 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     if (dryRun === false) {
       $scope.disableRestart = true;
       if (restartType === "tasks") {
-          var successHandler = function(resp) {
-              $("#divMsg").text("The below " + restartType + " have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
-              $scope.disableSubmit = false;
-          }
+        var successHandler = function (resp) {
+          $("#divMsg").text("The below " + restartType + " have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
+          $scope.disableSubmit = false;
+        }
       }
       if (restartType === "versions") {
-          var successHandler = function(resp) {
-              $("#divMsg").text("The below " + restartType + " have been re-added to queue. For more information, please inspect the commit queues.");
-              $scope.disableSubmit = false;
-          }
+        var successHandler = function (resp) {
+          $("#divMsg").text("The below " + restartType + " have been re-added to queue. For more information, please inspect the commit queues.");
+          $scope.disableSubmit = false;
+        }
       }
 
-    }
-    else {
+    } else {
       $scope.disableSubmit = true;
       $scope.disableRestart = false;
       $("#divMsg").text("");
       dryRun = true;
-      var successHandler = function(resp) {
+      var successHandler = function (resp) {
         $scope.items = resp.data.items_restarted;
         $scope.modalTitle = "Restart " + restartTitle;
         $scope.itemType = restartType;
         $("#restart-modal").modal("show");
       }
     }
-    var errorHandler = function(resp) {
+    var errorHandler = function (resp) {
       notificationService.pushNotification("Error restarting " + restartType + ": " + resp.data.error, "errorHeader");
     }
 
-    mciAdminRestService.restartItems(from, to, dryRun, restartType, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, { success: successHandler, error: errorHandler });
+    mciAdminRestService.restartItems(from, to, dryRun, restartType, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, {
+      success: successHandler,
+      error: errorHandler
+    });
   }
 
-  combineDateTime = function(date, time) {
+  combineDateTime = function (date, time) {
     date.setHours(time.getHours());
     date.setMinutes(time.getMinutes());
 
     return date;
   }
 
-  $scope.enableSubmit = function() {
+  $scope.enableSubmit = function () {
     $scope.disableSubmit = false;
     $scope.$apply();
   }
 
   // itemType should be task or version
-  $scope.jumpToItem = function(itemType, itemId) {
+  $scope.jumpToItem = function (itemType, itemId) {
     if (itemType === "versions") {
       window.open("/version/" + itemId);
-    }
-    else {
+    } else {
       window.open(/task/ + itemId);
     }
   }
 
 
-  $scope.scrollTo = function(section) {
-    var offset = $('#'+section).offset();
+  $scope.scrollTo = function (section) {
+    var offset = $('#' + section).offset();
     var scrollto = offset.top - 55; //position of the element - header height(ish)
-    $('html, body').animate({scrollTop:scrollto}, 0);
+    $('html, body').animate({
+      scrollTop: scrollto
+    }, 0);
   }
 
-  $scope.clearSection = function(section, subsection) {
+  $scope.clearSection = function (section, subsection) {
     if (!subsection) {
       $scope.Settings[section] = {};
     } else {
@@ -373,11 +373,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
   }
 
-  $scope.chipToUserJSON = function(chip) {
+  $scope.chipToUserJSON = function (chip) {
     var user = {};
     try {
       var user = JSON.parse(chip);
-    } catch(e) {
+    } catch (e) {
       alert("Unable to parse json: " + e);
       return null;
     }
@@ -388,18 +388,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
     return user;
   }
-
-  $scope.onAPIOnlyUsersChanged  = function(){
-    for (const user of $scope.tempOnlyAPIUsers) {
-      if (!user.key) {
-        $scope.apiOnlyUserMissingKey = true;
-        return
-      }
-    }
-    $scope.apiOnlyUserMissingKey = false;
-  }
-
-  $scope.addCredential = function(chip) {
+  $scope.addCredential = function (chip) {
     var obj = {};
     pieces = chip.split(":");
     if (pieces.length !== 2) {
@@ -416,41 +405,41 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return obj;
   }
 
-  $scope.addSSHKeyPair = function() {
+  $scope.addSSHKeyPair = function () {
     if ($scope.tempSSHKeyPairs.length === 0) {
-        $scope.tempSSHKeyPairs = [];
+      $scope.tempSSHKeyPairs = [];
     }
     $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
     $scope.newSSHKeyPair = {};
   }
 
-  $scope.addMultiAuthReadWrite = function() {
+  $scope.addMultiAuthReadWrite = function () {
     if (!$scope.tempMultiAuthReadWrite) {
       $scope.tempMultiAuthReadWrite = [];
     }
     $scope.tempMultiAuthReadWrite.push("");
   }
 
-  $scope.removeMultiAuthReadWrite = function(index) {
+  $scope.removeMultiAuthReadWrite = function (index) {
     $scope.tempMultiAuthReadWrite.splice(index, 1);
   }
 
-  $scope.addMultiAuthReadOnly = function() {
+  $scope.addMultiAuthReadOnly = function () {
     if (!$scope.tempMultiAuthReadOnly) {
       $scope.tempMultiAuthReadOnly = [];
     }
     $scope.tempMultiAuthReadOnly.push("");
   }
 
-  $scope.removeMultiAuthReadOnly = function(index) {
-     $scope.tempMultiAuthReadOnly.splice(index, 1);
+  $scope.removeMultiAuthReadOnly = function (index) {
+    $scope.tempMultiAuthReadOnly.splice(index, 1);
   }
 
-  $scope.invalidAuth = function(kind) {
+  $scope.invalidAuth = function (kind) {
     return ($scope.validAuthKinds.indexOf(kind) < 0);
   }
 
-  $scope.addExpansion = function(chip) {
+  $scope.addExpansion = function (chip) {
     var obj = {};
     pieces = chip.split(":");
     if (pieces.length !== 2) {
@@ -467,23 +456,27 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return obj;
   }
 
-  $scope.deleteJIRAProject = function(key) {
+  $scope.deleteJIRAProject = function (key) {
     if (!key) {
       return;
     }
     delete $scope.Settings.jira_notifications.custom_fields[key];
   }
-  $scope.addJIRAProject = function() {
+  $scope.addJIRAProject = function () {
     var value = $scope.jiraMapping.newProject.toUpperCase();
     if (!value) {
       return;
     }
     if (!$scope.Settings.jira_notifications.custom_fields[value]) {
-      $scope.Settings.jira_notifications.custom_fields[value] = {fields: {}, components: [], labels: []};
+      $scope.Settings.jira_notifications.custom_fields[value] = {
+        fields: {},
+        components: [],
+        labels: []
+      };
     }
     delete $scope.jiraMapping.newProject;
   }
-  $scope.addJIRAFieldToProject = function(project) {
+  $scope.addJIRAFieldToProject = function (project) {
     var field = $scope.jiraMapping.newField[project];
 
     if ($scope.Settings.jira_notifications.custom_fields[project].fields == null) {
@@ -491,33 +484,33 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     if (!field || $scope.Settings.jira_notifications.custom_fields[project].fields[field]) {
-        return;
+      return;
     }
 
     $scope.Settings.jira_notifications.custom_fields[project].fields[field] = "{FIXME}";
     delete $scope.jiraMapping.newField[project];
   }
-  $scope.deleteJIRAFieldFromProject = function(project, field) {
+  $scope.deleteJIRAFieldFromProject = function (project, field) {
     if (!field) {
-        return;
+      return;
     }
     delete $scope.Settings.jira_notifications.custom_fields[project].fields[field];
   }
-  $scope.removeComponent = function(project, component) {
+  $scope.removeComponent = function (project, component) {
     var index = $scope.Settings.jira_notifications.custom_fields[project].components.indexOf(component);
     $scope.Settings.jira_notifications.custom_fields[project].components.splice(index, 1);
   }
-  $scope.removeLabel = function(project, label) {
+  $scope.removeLabel = function (project, label) {
     var index = $scope.Settings.jira_notifications.custom_fields[project].labels.indexOf(label);
     $scope.Settings.jira_notifications.custom_fields[project].labels.splice(index, 1);
   }
-  $scope.addComponent = function(project) {
+  $scope.addComponent = function (project) {
     if ($scope.Settings.jira_notifications.custom_fields[project].components == null) {
       $scope.Settings.jira_notifications.custom_fields[project].components = [];
     }
     $scope.Settings.jira_notifications.custom_fields[project].components.push("");
   }
-  $scope.addLabel = function(project) {
+  $scope.addLabel = function (project) {
     if ($scope.Settings.jira_notifications.custom_fields[project].labels == null) {
       $scope.Settings.jira_notifications.custom_fields[project].labels = [];
     }

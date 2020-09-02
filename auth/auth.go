@@ -45,8 +45,8 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 	if authConfig.Github != nil {
 		return makeGithubManager(settings, authConfig.Github)
 	}
-	if authConfig.OnlyAPI != nil {
-		return makeOnlyAPIManager(authConfig.OnlyAPI)
+	if authConfig.AllowServiceUsers {
+		return makeOnlyAPIManager()
 	}
 	return nil, evergreen.UserManagerInfo{}, errors.New("Must have at least one form of authentication, currently there are none")
 }
@@ -81,8 +81,8 @@ func makeNaiveManager(config *evergreen.NaiveAuthConfig) (gimlet.UserManager, ev
 	return manager, evergreen.UserManagerInfo{}, nil
 }
 
-func makeOnlyAPIManager(config *evergreen.OnlyAPIAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
-	manager, err := NewOnlyAPIUserManager(config)
+func makeOnlyAPIManager() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewOnlyAPIUserManager()
 	if err != nil {
 		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up API-only authentication")
 	}
@@ -103,7 +103,8 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 	for _, kind := range config.Multi.ReadWrite {
 		manager, info, err := makeSingleManager(kind, settings, config)
 		if err != nil {
-			return nil, evergreen.UserManagerInfo{}, errors.Wrapf(err, "could not create '%s' manager", kind)
+			grip.Critical(errors.Wrapf(err, "could not create '%s' manager", kind))
+			continue
 		}
 		rw = append(rw, manager)
 		if info.CanClearTokens {
@@ -119,7 +120,8 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 		// only contains write operation capabilities.
 		manager, _, err := makeSingleManager(kind, settings, config)
 		if err != nil {
-			return nil, evergreen.UserManagerInfo{}, errors.Wrapf(err, "could not create '%s' manager", kind)
+			grip.Critical(errors.Wrapf(err, "could not create '%s' manager", kind))
+			continue
 		}
 		ro = append(ro, manager)
 	}
@@ -145,10 +147,8 @@ func makeSingleManager(kind string, settings *evergreen.Settings, config evergre
 		if config.Naive != nil {
 			return makeNaiveManager(config.Naive)
 		}
-	case evergreen.AuthOnlyAPIKey:
-		if config.OnlyAPI != nil {
-			return makeOnlyAPIManager(config.OnlyAPI)
-		}
+	case evergreen.AuthServiceUsersKey:
+		return makeOnlyAPIManager()
 	default:
 		return nil, evergreen.UserManagerInfo{}, errors.Errorf("unrecognized user manager of type '%s'", kind)
 	}

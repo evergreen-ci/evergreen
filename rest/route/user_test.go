@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/stretchr/testify/assert"
@@ -360,4 +361,61 @@ func TestPostUserRoles(t *testing.T) {
 	dbUser, err = user.FindOneById(newId)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
+}
+
+func TestServiceUserOperations(t *testing.T) {
+	require.NoError(t, db.Clear(user.Collection))
+	ctx := context.Background()
+
+	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"] }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	require.NoError(t, err)
+	handler := makeUpdateServiceUser(&data.DBConnector{})
+	assert.NoError(t, handler.Parse(ctx, request))
+	_ = handler.Run(ctx)
+
+	request, err = http.NewRequest(http.MethodGet, "", nil)
+	require.NoError(t, err)
+	handler = makeGetServiceUsers(&data.DBConnector{})
+	resp := handler.Run(ctx)
+	users, valid := resp.Data().([]restModel.APIDBUser)
+	assert.True(t, valid)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "foo", *users[0].UserID)
+	assert.Equal(t, "service", *users[0].DisplayName)
+	assert.Equal(t, []string{"one", "two"}, users[0].Roles)
+	assert.True(t, users[0].OnlyApi)
+
+	body = `{ "user_id": "foo", "display_name": "different" }`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	require.NoError(t, err)
+	handler = makeUpdateServiceUser(&data.DBConnector{})
+	assert.NoError(t, handler.Parse(ctx, request))
+	_ = handler.Run(ctx)
+
+	request, err = http.NewRequest(http.MethodGet, "", nil)
+	require.NoError(t, err)
+	handler = makeGetServiceUsers(&data.DBConnector{})
+	resp = handler.Run(ctx)
+	users, valid = resp.Data().([]restModel.APIDBUser)
+	assert.True(t, valid)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "foo", *users[0].UserID)
+	assert.Equal(t, "different", *users[0].DisplayName)
+
+	request, err = http.NewRequest(http.MethodDelete, "", nil)
+	require.NoError(t, err)
+	assert.NoError(t, request.ParseForm())
+	request.Form.Add("id", "foo")
+	handler = makeDeleteServiceUser(&data.DBConnector{})
+	assert.NoError(t, handler.Parse(ctx, request))
+	_ = handler.Run(ctx)
+
+	request, err = http.NewRequest(http.MethodGet, "", nil)
+	require.NoError(t, err)
+	handler = makeGetServiceUsers(&data.DBConnector{})
+	resp = handler.Run(ctx)
+	users, valid = resp.Data().([]restModel.APIDBUser)
+	assert.True(t, valid)
+	assert.Len(t, users, 0)
 }

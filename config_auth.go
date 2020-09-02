@@ -30,7 +30,7 @@ type NaiveAuthConfig struct {
 	Users []AuthUser `bson:"users" json:"users" yaml:"users"`
 }
 
-// KeyAuthConfig contains the users that can only authenticate via the API from
+// OnlyAPIAuthConfig contains the users that can only authenticate via the API from
 // the settings.
 type OnlyAPIAuthConfig struct {
 	Users []OnlyAPIUser `bson:"users" json:"users" yaml:"users"`
@@ -83,9 +83,10 @@ type AuthConfig struct {
 	LDAP                    *LDAPConfig        `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
 	Okta                    *OktaConfig        `bson:"okta,omitempty" json:"okta" yaml:"okta"`
 	Naive                   *NaiveAuthConfig   `bson:"naive,omitempty" json:"naive" yaml:"naive"`
-	OnlyAPI                 *OnlyAPIAuthConfig `bson:"only_api,omitempty" json:"only_api" yaml:"only_api"`
+	OnlyAPI                 *OnlyAPIAuthConfig `bson:"only_api,omitempty" json:"only_api" yaml:"only_api"` // deprecated
 	Github                  *GithubAuthConfig  `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig   `bson:"multi" json:"multi" yaml:"multi"`
+	AllowServiceUsers       bool               `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
 	PreferredType           string             `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int                `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
 }
