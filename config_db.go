@@ -100,6 +100,7 @@ var (
 	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
 	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
+	AllowServiceUsersKey           = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

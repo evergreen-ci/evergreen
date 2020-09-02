@@ -129,6 +129,7 @@ func (c *AuthConfig) Set() error {
 			AuthMultiKey:                   c.Multi,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
+			AllowServiceUsersKey:           c.AllowServiceUsers,
 		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
@@ -202,7 +203,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 			case AuthNaiveKey:
 				catcher.NewWhen(c.Naive == nil, "Naive settings cannot be empty if using in multi auth")
 			case AuthOnlyAPIKey:
-				catcher.NewWhen(c.OnlyAPI == nil, "OnlyAPI settings cannot be empty if using in multi auth")
+				continue
 			default:
 				catcher.Errorf("unrecognized auth mechanism '%s'", kind)
 			}

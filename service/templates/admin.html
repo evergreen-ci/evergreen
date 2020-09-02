@@ -750,6 +750,11 @@ Admin Settings
 										<label>Background Reauth (Minutes)</label>
 										<input type="number" ng-model="Settings.auth.background_reauth_minutes">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-checkbox ng-model="Settings.auth.allow_service_users">
+											Allow Service Users
+										</md-checkbox>
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
