@@ -199,11 +199,23 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
 	}
+	errorTemplate := "Volume %s has been created but an error occured."
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
 		if err != nil {
-			gqlErr.Send(ctx, errors.Wrapf(err, "Volume has been created but an error occured").Error())
+			gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
+	}
+	var additionalOptions restModel.VolumeModifyOptions
+	if spawnVolumeInput.Expiration != nil {
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
+		if err != nil {
+			gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
+		additionalOptions.Expiration = newExpiration
+	} else if spawnVolumeInput.NoExpiration != nil {
+		// handle no expiration jazz
 	}
 
 	// TODO: handle optional spawnVolumeInput fields
