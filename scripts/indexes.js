@@ -466,6 +466,11 @@ db.users.ensureIndex({
     unique: true,
     sparse: true
 })
+db.users.createIndex({
+    "only_api": 1
+}, {
+    sparse: true
+})
 
 //======notifications======//
 db.notifications.ensureIndex({

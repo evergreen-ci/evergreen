@@ -452,6 +452,7 @@ type ComplexityRoot struct {
 		IngestTime        func(childComplexity int) int
 		LatestExecution   func(childComplexity int) int
 		Logs              func(childComplexity int) int
+		MinQueuePosition  func(childComplexity int) int
 		PatchMetadata     func(childComplexity int) int
 		PatchNumber       func(childComplexity int) int
 		Priority          func(childComplexity int) int
@@ -679,7 +680,7 @@ type QueryResolver interface {
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
-	User(ctx context.Context, userID *string) (*model.APIUser, error)
+	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error)
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
@@ -721,6 +722,8 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
+
+	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
 }
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
@@ -2850,6 +2853,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Logs(childComplexity), true
 
+	case "Task.minQueuePosition":
+		if e.complexity.Task.MinQueuePosition == nil {
+			break
+		}
+
+		return e.complexity.Task.MinQueuePosition(childComplexity), true
+
 	case "Task.patchMetadata":
 		if e.complexity.Task.PatchMetadata == nil {
 			break
@@ -4210,6 +4220,7 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   version: String!
+  minQueuePosition: Int!
 }
 
 type Projects {
@@ -12487,9 +12498,9 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIUser)
+	res := resTmp.(*model.APIDBUser)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx, field.Selections, res)
+	return ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_taskLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -15208,6 +15219,40 @@ func (ec *executionContext) _Task_version(ctx context.Context, field graphql.Col
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_minQueuePosition(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().MinQueuePosition(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -17368,7 +17413,7 @@ func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, fiel
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -17402,7 +17447,7 @@ func (ec *executionContext) _User_displayName(ctx context.Context, field graphql
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _User_userId(ctx context.Context, field graphql.CollectedField, obj *model.APIUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_userId(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -22312,6 +22357,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "minQueuePosition":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_minQueuePosition(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22906,7 +22965,7 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 
 var userImplementors = []string{"User"}
 
-func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.APIUser) graphql.Marshaler {
+func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.APIDBUser) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -25063,11 +25122,11 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return ec.marshalNTime2timeᚐTime(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx context.Context, sel ast.SelectionSet, v model.APIUser) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v model.APIDBUser) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUser(ctx context.Context, sel ast.SelectionSet, v *model.APIUser) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v *model.APIDBUser) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")

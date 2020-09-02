@@ -1720,7 +1720,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	return myPublicKeys, nil
 }
 
-func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
+func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIDBUser, error) {
 	usr := route.MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
@@ -1731,7 +1731,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
-	user := restModel.APIUser{
+	user := restModel.APIDBUser{
 		DisplayName: &displayName,
 		UserID:      &userID,
 	}
@@ -1885,6 +1885,17 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 }
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
+
+func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
+	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
+	}
+	if position < 0 {
+		return 0, nil
+	}
+	return position, nil
+}
 
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {

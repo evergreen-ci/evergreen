@@ -704,3 +704,13 @@ func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
 func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
 	return nil, nil
 }
+
+func (c *Mock) UpdateServiceUser(context.Context, string, string, []string) error {
+	return nil
+}
+func (c *Mock) DeleteServiceUser(context.Context, string) error {
+	return nil
+}
+func (c *Mock) GetServiceUsers(context.Context) ([]model.APIDBUser, error) {
+	return nil, nil
+}

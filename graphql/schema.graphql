@@ -531,6 +531,7 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   version: String!
+  minQueuePosition: Int!
 }
 
 type Projects {
