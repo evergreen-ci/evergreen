@@ -3,9 +3,9 @@ package generator
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/operations/metabuild/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/shrub"
-	"github.com/mongodb/jasper/metabuild/model"
-	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

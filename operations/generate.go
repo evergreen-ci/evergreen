@@ -1,4 +1,4 @@
-package cli
+package operations
 
 import (
 	"encoding/json"
@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/operations/metabuild/generator"
+	"github.com/evergreen-ci/evergreen/operations/metabuild/model"
 	"github.com/evergreen-ci/shrub"
-	"github.com/mongodb/jasper/metabuild/generator"
-	"github.com/mongodb/jasper/metabuild/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
@@ -18,7 +18,7 @@ import (
 func Generate() cli.Command {
 	return cli.Command{
 		Name:  "generate",
-		Usage: "Generate JSON evergreen configurations.",
+		Usage: "Generate simple evergreen configurations.",
 		Subcommands: []cli.Command{
 			generateGolang(),
 			generateMake(),
@@ -84,7 +84,7 @@ func generateGolang() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(discoveryDirFlagName),
-			requireOneFlag(generatorFileFlagName, controlFileFlagName),
+			mutuallyExclusiveArgs(true, generatorFileFlagName, controlFileFlagName),
 			checkGeneratedConfigFormat,
 			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName, discoveryDirFlagName),
 		),
@@ -102,7 +102,8 @@ func generateGolang() cli.Command {
 					return errors.Wrapf(err, "creating generator from build file '%s'", genFile)
 				}
 			} else if ctrlFile != "" {
-				gc, err := model.NewGolangControl(ctrlFile, discoveryDir)
+				var gc *model.GolangControl
+				gc, err = model.NewGolangControl(ctrlFile, discoveryDir)
 				if err != nil {
 					return errors.Wrapf(err, "creating builder from control file '%s'", ctrlFile)
 				}
@@ -151,7 +152,7 @@ func generateMake() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireOneFlag(generatorFileFlagName, controlFileFlagName),
+			mutuallyExclusiveArgs(true, generatorFileFlagName, controlFileFlagName),
 			checkGeneratedConfigFormat,
 			cleanupFilePathSeparators(generatorFileFlagName, controlFileFlagName),
 		),

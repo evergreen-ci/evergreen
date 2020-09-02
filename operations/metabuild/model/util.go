@@ -1,8 +1,8 @@
 package model
 
 import (
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 )
 
