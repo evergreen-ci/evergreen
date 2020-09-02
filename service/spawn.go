@@ -468,7 +468,7 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Size is required", http.StatusBadRequest)
 		return
 	}
-	_, httpStatusCode, _, err = graphql.RequestNewVolume(ctx, *volume)
+	_, httpStatusCode, _, err, _ := graphql.RequestNewVolume(r.Context(), *volume)
 	if err != nil {
 		uis.LoggedError(w, r, httpStatusCode, err)
 		return
