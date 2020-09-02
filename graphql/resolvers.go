@@ -200,7 +200,6 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		return false, gqlErr.Send(ctx, err.Error())
 	}
 	errorTemplate := "Volume %s has been created but an error occured."
-
 	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
 		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
 	}
