@@ -437,6 +437,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not mark task finished")
 	}
 
+	if err = UpdateUnblockedDependencies(t); err != nil {
+		return errors.Wrap(err, "could not update unblocked dependencies")
+	}
+
 	if err = UpdateBlockedDependencies(t); err != nil {
 		return errors.Wrap(err, "could not update blocked dependencies")
 	}

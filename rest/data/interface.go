@@ -132,6 +132,9 @@ type Connector interface {
 	FindUserById(string) (gimlet.User, error)
 	//FindUserByGithubName is a method to find a user given their Github name, if configured.
 	FindUserByGithubName(string) (gimlet.User, error)
+	GetServiceUsers() ([]restModel.APIDBUser, error)
+	AddOrUpdateServiceUser(restModel.APIDBUser) error
+	DeleteServiceUser(id string) error
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, string, int) ([]host.Host, error)

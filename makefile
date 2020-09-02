@@ -6,6 +6,7 @@ nodeDir := public
 packages := $(name) agent operations cloud cloud-userdata command db util plugin units graphql
 packages += thirdparty auth scheduler model validator service repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages += operations-metabuild-generator operations-metabuild-model
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
@@ -163,7 +164,7 @@ $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
+	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<

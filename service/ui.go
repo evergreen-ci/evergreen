@@ -95,7 +95,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		Home:               home,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
-		buildBaronProjects: bbGetConfig(settings),
+		buildBaronProjects: graphql.BbGetConfig(settings),
 		render:             gimlet.NewHTMLRenderer(ropts),
 		renderText:         gimlet.NewTextRenderer(ropts),
 		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.Export()),
@@ -436,11 +436,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes
-	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCreatedTickets).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
-	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
 	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
 	app.PrefixRoute("/plugin").Route("/dashboard/tasks/project/{project_id}/version/{version_id}").Wrap(needsLogin, viewTasks).Handler(perfDashGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()
@@ -454,5 +449,11 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/plugin").Route("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetCommit).Get()
 	app.PrefixRoute("/plugin").Route("/json/history/{task_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTaskHistory).Get()
 
+	//build baron
+	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCreatedTickets).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
+	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
 	return app
 }

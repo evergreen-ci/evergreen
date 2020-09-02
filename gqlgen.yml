@@ -61,7 +61,7 @@ models:
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUser
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskEventLogData:
@@ -114,3 +114,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  SearchReturnInfo:
+    model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
+  JiraTicket:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  TicketFields:
+    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
+  JiraStatus:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
