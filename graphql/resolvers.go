@@ -202,7 +202,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	errorTemplate := "Volume %s has been created but an error occured."
 
 	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
-		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time and set volume as non-expirable")
+		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
 	}
 	var additionalOptions restModel.VolumeModifyOptions
 	if spawnVolumeInput.Expiration != nil {
