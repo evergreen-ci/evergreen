@@ -19,10 +19,10 @@ const (
 )
 
 func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error) {
-
+	projectNotFoundError := false
 	t, err := BbGetTask(taskId, exec)
 	if err != nil {
-		return nil, projectFound, err
+		return nil, projectNotFoundError, err
 		// return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	settings := evergreen.GetEnvironment().Settings()
@@ -31,10 +31,10 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 
 	bbProj, ok := buildBaronProjects[t.Project]
-	projectFound := true
+
 	if !ok {
-		projectFound := false
-		return nil, projectFound, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
+		projectNotFoundError := true
+		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 		// return nil, InternalServerError.Send(ctx, fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
@@ -46,7 +46,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		return nil, projectFound, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 		// return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
@@ -58,7 +58,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	} else {
 		featuresURL = ""
 	}
-	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectFound, nil
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectNotFoundError, nil
 }
 
 func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {

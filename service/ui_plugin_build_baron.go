@@ -121,52 +121,17 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	taskId := vars["task_id"]
 	exec := vars["execution"]
 
-	searchReturnInfo, err := graphql.GetSearchReturnInfo(taskId, exec)
-	if err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
+	searchReturnInfo, projectNotFound, err := graphql.GetSearchReturnInfo(taskId, exec)
+	if projectNotFound {
+		gimlet.WriteJSON(rw, err.Error())
 		return
 	}
-
-	t, err := graphql.BbGetTask(taskId, exec)
 	if err != nil {
-		notFoundString := fmt.Sprintf("Build Baron project for %s not found", t.Project)
-		if err.Error() == notFoundString {
-			gimlet.WriteJSON(rw, notFoundString)
-			return
-		}
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
 
 	gimlet.WriteJSON(rw, searchReturnInfo)
-	// bbProj, ok := uis.buildBaronProjects[t.Project]
-	// if !ok {
-	// 	gimlet.WriteJSON(rw, fmt.Sprintf("Build Baron project for %s not found", t.Project))
-	// 	return
-	// }
-
-	// jira := &graphql.JiraSuggest{BbProj: bbProj, JiraHandler: uis.jiraHandler}
-	// multiSource := &graphql.MultiSourceSuggest{JiraSuggester: jira}
-
-	// var tickets []thirdparty.JiraTicket
-	// var source string
-
-	// tickets, source, err = multiSource.Suggest(t)
-	// if err != nil {
-	// 	message := fmt.Sprintf("Error searching for tickets: %s", err)
-	// 	grip.Error(message)
-	// 	gimlet.WriteJSONInternalError(rw, message)
-	// 	return
-	// }
-	// jql := t.GetJQL(bbProj.TicketSearchProjects)
-	// var featuresURL string
-	// if bbProj.BFSuggestionFeaturesURL != "" {
-	// 	featuresURL = bbProj.BFSuggestionFeaturesURL
-	// 	featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
-	// 	featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
-	// } else {
-	// 	featuresURL = ""
-	// }
 
 }
 

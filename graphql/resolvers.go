@@ -1857,8 +1857,8 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 
 func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
 
-	searchReturnInfo, projectFound, err := GetSearchReturnInfo(taskId, exec)
-	if !projectFound {
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, exec)
+	if projectNotFound {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if err != nil {
