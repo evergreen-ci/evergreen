@@ -200,11 +200,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		return false, gqlErr.Send(ctx, err.Error())
 	}
 	errorTemplate := "Volume %s has been created but an error occured."
-	if spawnVolumeInput.Host != nil {
-		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
-		if err != nil {
-			gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
-		}
+
+	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time and set volume as non-expirable")
 	}
 	var additionalOptions restModel.VolumeModifyOptions
 	if spawnVolumeInput.Expiration != nil {
@@ -214,11 +212,16 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 			gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
 		additionalOptions.Expiration = newExpiration
-	} else if spawnVolumeInput.NoExpiration != nil {
-		// handle no expiration jazz
+	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		additionalOptions.NoExpiration = true
+	}
+	if spawnVolumeInput.Host != nil {
+		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		if err != nil {
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
 	}
 
-	// TODO: handle optional spawnVolumeInput fields
 	return success, nil
 }
 
