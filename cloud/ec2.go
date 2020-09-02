@@ -1459,6 +1459,9 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
 			return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
 		}
+		if err := volume.SetNoExpiration(false); err != nil {
+			return errors.Wrapf(err, "error clearing volume '%s' no-expiration in db", volume.ID)
+		}
 	}
 
 	if opts.NoExpiration && opts.HasExpiration {
