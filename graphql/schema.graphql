@@ -734,7 +734,7 @@ type JiraTicket {
 type TicketFields {
   summary: String!
   assigneeDisplayName: String
-  resolutionName: String!
+  resolutionName: String
   created: String!
   updated: String!
   status: JiraStatus!

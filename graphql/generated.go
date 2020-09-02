@@ -727,7 +727,7 @@ type TaskQueueItemResolver interface {
 }
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
-	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (string, error)
+	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 }
 
 type executableSchema struct {
@@ -4413,7 +4413,7 @@ type JiraTicket {
 type TicketFields {
   summary: String!
   assigneeDisplayName: String
-  resolutionName: String!
+  resolutionName: String
   created: String!
   updated: String!
   status: JiraStatus!
@@ -17197,14 +17197,11 @@ func (ec *executionContext) _TicketFields_resolutionName(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TicketFields_created(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
@@ -22853,9 +22850,6 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 					}
 				}()
 				res = ec._TicketFields_resolutionName(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "created":

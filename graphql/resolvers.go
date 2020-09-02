@@ -1896,11 +1896,17 @@ func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exe
 type ticketFieldsResolver struct{ *Resolver }
 
 func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Assignee == nil {
+		return nil, nil
+	}
 	return &obj.Assignee.DisplayName, nil
 }
 
-func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (string, error) {
-	return obj.Resolution.Name, nil
+func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Resolution == nil {
+		return nil, nil
+	}
+	return &obj.Resolution.Name, nil
 }
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
