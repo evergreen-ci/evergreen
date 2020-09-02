@@ -1857,7 +1857,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: ", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
 	}
 	if position < 0 {
 		return 0, nil
