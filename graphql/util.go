@@ -924,9 +924,13 @@ func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlEr
 		return false, http.StatusBadRequest, InputValidationError, err, nil
 	}
 	volume.CreatedBy = authedUser.Id
-	vol, err := cloud.CreateVolume(ctx, evergreen.GetEnvironment(), &volume, evergreen.ProviderNameEc2OnDemand)
+	mgr, err := getEC2Manager(ctx, &volume)
+	if err != nil {
+		return false, http.StatusInternalServerError, InternalServerError, err, nil
+	}
+	vol, err := mgr.CreateVolume(ctx, &volume)
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, errors.Wrap(err, "error creating volume"), nil
 	}
-	return false, http.StatusOK, "", nil, vol
+	return true, http.StatusOK, "", nil, vol
 }
