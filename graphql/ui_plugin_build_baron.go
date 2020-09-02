@@ -33,7 +33,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	bbProj, ok := buildBaronProjects[t.Project]
 
 	if !ok {
-		projectNotFoundError := true
+		projectNotFoundError = true
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 		// return nil, InternalServerError.Send(ctx, fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
