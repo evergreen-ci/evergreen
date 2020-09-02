@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1853,6 +1854,37 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
 	return task.GetLatestExecution(*obj.Id)
 }
+
+func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
+
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, exec)
+	if projectNotFound {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	return searchReturnInfo, nil
+}
+
+type ticketFieldsResolver struct{ *Resolver }
+
+func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Assignee == nil {
+		return nil, nil
+	}
+	return &obj.Assignee.DisplayName, nil
+}
+
+func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Resolution == nil {
+		return nil, nil
+	}
+	return &obj.Resolution.Name, nil
+}
+
+func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
