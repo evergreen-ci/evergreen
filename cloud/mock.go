@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -389,6 +390,9 @@ func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volum
 	defer l.Unlock()
 	if mockMgr.Volumes == nil {
 		mockMgr.Volumes = map[string]MockVolume{}
+	}
+	if volume.ID == "" {
+		volume.ID = primitive.NewObjectID().String()
 	}
 	mockMgr.Volumes[volume.ID] = MockVolume{}
 	if err := volume.Insert(); err != nil {
