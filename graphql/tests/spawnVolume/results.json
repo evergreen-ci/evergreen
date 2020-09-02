@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "availabilityZoneFail.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "Valid availability zones are: []",
+            "path": ["spawnVolume"],
+            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
+}
