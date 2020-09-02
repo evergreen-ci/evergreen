@@ -262,6 +262,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 func addSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{{AZ: "us-east-1a", SubnetID: "new_id"}}
 }
+
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
 }
