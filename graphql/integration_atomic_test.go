@@ -187,24 +187,28 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 func directorySpecificTestSetup(t *testing.T, directory string) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
-	m := map[string]setupFn{
-		"attachVolumeToHost":   spawnTestHostAndVolume,
-		"detachVolumeFromHost": spawnTestHostAndVolume,
-		"removeVolume":         spawnTestHostAndVolume,
-		"spawnVolume":          addSubnets,
+	m := map[string][]setupFn{
+		"attachVolumeToHost":   []setupFn{spawnTestHostAndVolume},
+		"detachVolumeFromHost": []setupFn{spawnTestHostAndVolume},
+		"removeVolume":         []setupFn{spawnTestHostAndVolume},
+		"spawnVolume":          []setupFn{spawnTestHostAndVolume, addSubnets},
 	}
 	if m[directory] != nil {
-		m[directory](t)
+		for _, exec := range m[directory] {
+			exec(t)
+		}
 	}
 }
 func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
-	m := map[string]cleanupFn{
-		"spawnVolume": clearSubnets,
+	m := map[string][]cleanupFn{
+		"spawnVolume": []cleanupFn{clearSubnets},
 	}
 	if m[directory] != nil {
-		m[directory](t)
+		for _, exec := range m[directory] {
+			exec(t)
+		}
 	}
 }
 func spawnTestHostAndVolume(t *testing.T) {
