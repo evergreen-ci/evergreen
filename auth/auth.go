@@ -115,6 +115,14 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 		}
 	}
 	var ro []gimlet.UserManager
+	if config.AllowServiceUsers {
+		manager, _, err := makeOnlyAPIManager()
+		if err == nil {
+			ro = append(ro, manager)
+		} else {
+			grip.Critical(errors.Wrap(err, "could not create only-api manager"))
+		}
+	}
 	for _, kind := range config.Multi.ReadOnly {
 		// Ignore info because these managers are read-only and info currently
 		// only contains write operation capabilities.

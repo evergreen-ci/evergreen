@@ -386,6 +386,7 @@ type APIAuthConfig struct {
 	Multi                   *APIMultiAuthConfig  `json:"multi"`
 	PreferredType           *string              `json:"preferred_type"`
 	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
+	AllowServiceUsers       bool                 `json:"allow_service_users"`
 }
 
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
@@ -423,6 +424,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		}
 		a.PreferredType = ToStringPtr(v.PreferredType)
 		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
+		a.AllowServiceUsers = v.AllowServiceUsers
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -499,6 +501,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		Multi:                   multi,
 		PreferredType:           FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
+		AllowServiceUsers:       a.AllowServiceUsers,
 	}, nil
 }
 
