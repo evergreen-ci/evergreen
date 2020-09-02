@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/graphql"
@@ -17,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -122,40 +120,54 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	exec := vars["execution"]
-	t, err := graphql.BbGetTask(taskId, exec)
+
+	searchReturnInfo, err := graphql.GetSearchReturnInfo(taskId, exec)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
-	bbProj, ok := uis.buildBaronProjects[t.Project]
-	if !ok {
-		gimlet.WriteJSON(rw, fmt.Sprintf("Build Baron project for %s not found", t.Project))
-		return
-	}
 
-	jira := &graphql.JiraSuggest{BbProj: bbProj, JiraHandler: uis.jiraHandler}
-	multiSource := &graphql.MultiSourceSuggest{JiraSuggester: jira}
-
-	var tickets []thirdparty.JiraTicket
-	var source string
-
-	tickets, source, err = multiSource.Suggest(t)
+	t, err := graphql.BbGetTask(taskId, exec)
 	if err != nil {
-		message := fmt.Sprintf("Error searching for tickets: %s", err)
-		grip.Error(message)
-		gimlet.WriteJSONInternalError(rw, message)
+		notFoundString := fmt.Sprintf("Build Baron project for %s not found", t.Project)
+		if err.Error() == notFoundString {
+			gimlet.WriteJSON(rw, notFoundString)
+			return
+		}
+		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
-	jql := t.GetJQL(bbProj.TicketSearchProjects)
-	var featuresURL string
-	if bbProj.BFSuggestionFeaturesURL != "" {
-		featuresURL = bbProj.BFSuggestionFeaturesURL
-		featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
-		featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
-	} else {
-		featuresURL = ""
-	}
-	gimlet.WriteJSON(rw, thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL})
+
+	gimlet.WriteJSON(rw, searchReturnInfo)
+	// bbProj, ok := uis.buildBaronProjects[t.Project]
+	// if !ok {
+	// 	gimlet.WriteJSON(rw, fmt.Sprintf("Build Baron project for %s not found", t.Project))
+	// 	return
+	// }
+
+	// jira := &graphql.JiraSuggest{BbProj: bbProj, JiraHandler: uis.jiraHandler}
+	// multiSource := &graphql.MultiSourceSuggest{JiraSuggester: jira}
+
+	// var tickets []thirdparty.JiraTicket
+	// var source string
+
+	// tickets, source, err = multiSource.Suggest(t)
+	// if err != nil {
+	// 	message := fmt.Sprintf("Error searching for tickets: %s", err)
+	// 	grip.Error(message)
+	// 	gimlet.WriteJSONInternalError(rw, message)
+	// 	return
+	// }
+	// jql := t.GetJQL(bbProj.TicketSearchProjects)
+	// var featuresURL string
+	// if bbProj.BFSuggestionFeaturesURL != "" {
+	// 	featuresURL = bbProj.BFSuggestionFeaturesURL
+	// 	featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
+	// 	featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
+	// } else {
+	// 	featuresURL = ""
+	// }
+
 }
 
 // bbFileTicket creates a JIRA ticket for a task with the given test failures.

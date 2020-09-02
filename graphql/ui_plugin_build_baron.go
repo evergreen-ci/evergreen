@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,6 +17,49 @@ import (
 const (
 	jiraSource = "JIRA"
 )
+
+func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error) {
+
+	t, err := BbGetTask(taskId, exec)
+	if err != nil {
+		return nil, projectFound, err
+		// return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	settings := evergreen.GetEnvironment().Settings()
+	buildBaronProjects := BbGetConfig(settings)
+
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+
+	bbProj, ok := buildBaronProjects[t.Project]
+	projectFound := true
+	if !ok {
+		projectFound := false
+		return nil, projectFound, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
+		// return nil, InternalServerError.Send(ctx, fmt.Sprintf("Build Baron project for %s not found", t.Project))
+	}
+
+	jira := &JiraSuggest{bbProj, jiraHandler}
+	multiSource := &MultiSourceSuggest{jira}
+
+	var tickets []thirdparty.JiraTicket
+	var source string
+
+	tickets, source, err = multiSource.Suggest(t)
+	if err != nil {
+		return nil, projectFound, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+		// return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+	}
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
+	var featuresURL string
+	if bbProj.BFSuggestionFeaturesURL != "" {
+		featuresURL = bbProj.BFSuggestionFeaturesURL
+		featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
+		featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
+	} else {
+		featuresURL = ""
+	}
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectFound, nil
+}
 
 func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
 	bbconf, ok := settings.Plugins["buildbaron"]
