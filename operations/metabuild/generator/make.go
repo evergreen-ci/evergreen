@@ -1,8 +1,8 @@
 package generator
 
 import (
+	"github.com/evergreen-ci/evergreen/operations/metabuild/model"
 	"github.com/evergreen-ci/shrub"
-	"github.com/mongodb/jasper/metabuild/model"
 	"github.com/pkg/errors"
 )
 

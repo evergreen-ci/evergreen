@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +36,7 @@ type GolangGeneralConfig struct {
 	// defined) unless explicitly excluded.
 	GeneralConfig `yaml:",inline"`
 	// RootPackage is the name of the root package for the project (e.g.
-	// github.com/mongodb/jasper).
+	// github.com/owner/repo).
 	RootPackage string `yaml:"root_package"`
 	// DiscoverSourceFiles determines whether or not source files will also be
 	// taken into consideration when automatically discovering packages. By

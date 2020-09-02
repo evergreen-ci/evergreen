@@ -7,9 +7,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/jasper/testutil"
-	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -730,7 +729,7 @@ func TestDiscoverPackages(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			rootPackage := util.ConsistentFilepath("github.com", "fake_user", "fake_repo")
-			gopath, err := ioutil.TempDir(testutil.BuildDirectory(), "gopath")
+			gopath, err := ioutil.TempDir("", "gopath")
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, os.RemoveAll(gopath))
