@@ -1015,7 +1015,7 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 // FindOneIdOldOrNew attempts to find a given task ID by first looking in the
 // old collection, then the tasks collection
 func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
-	task, err := FindOneOld(ById(fmt.Sprintf("%s_%d", id, execution)))
+	task, err := FindOneOld(ById(MakeOldID(id, execution)))
 	if task == nil || err != nil {
 		return FindOne(ById(id))
 	}
@@ -1032,6 +1032,36 @@ func FindOneIdNewOrOld(id string) (*Task, error) {
 	}
 
 	return task, err
+}
+
+func MakeOldID(taskID string, execution int) string {
+	return fmt.Sprintf("%s_%d", taskID, execution)
+}
+
+func FindAllNewOrOld(q db.Q, execution int) ([]Task, error) {
+	existingTasks, err := FindAll(q)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get current tasks")
+	}
+	tasks := []Task{}
+	oldIDs := []string{}
+	for _, t := range existingTasks {
+		if t.Execution == execution {
+			tasks = append(tasks, t)
+		} else {
+			oldIDs = append(oldIDs, MakeOldID(t.Id, execution))
+		}
+	}
+
+	if len(oldIDs) > 0 {
+		oldTasks, err := FindAllOld(ByIds(oldIDs))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get old tasks")
+		}
+		tasks = append(tasks, oldTasks...)
+	}
+
+	return tasks, nil
 }
 
 // Find returns all tasks that satisfy the query.
@@ -1061,6 +1091,16 @@ func Find(query db.Q) ([]Task, error) {
 func FindAll(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return tasks, err
+}
+
+// Find returns really all tasks that satisfy the query.
+func FindAllOld(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

@@ -21,14 +21,8 @@ import (
 )
 
 // getUiTaskCache takes a build object and returns a slice of
-// uiTask objects suitable for front-end as well as the time spent and makespan
-// of the build's tasks
-func getUiTaskCache(build *build.Build) ([]uiTask, time.Duration, time.Duration, error) {
-	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(build.Id))
-	if err != nil {
-		return nil, 0, 0, errors.WithStack(err)
-	}
-
+// uiTask objects suitable for front-end
+func getUiTaskCache(build *build.Build, tasks []task.Task) ([]uiTask, error) {
 	idToTask := make(map[string]task.Task)
 	for _, task := range tasks {
 		idToTask[task.Id] = task
@@ -41,17 +35,7 @@ func getUiTaskCache(build *build.Build) ([]uiTask, time.Duration, time.Duration,
 		uiTasks = append(uiTasks, taskAsUI)
 	}
 
-	filteredTasks := make([]task.Task, 0, len(tasks))
-	// remove display tasks
-	for i := range tasks {
-		if tasks[i].DisplayOnly {
-			continue
-		}
-		filteredTasks = append(filteredTasks, tasks[i])
-	}
-	timeTaken, makespan := task.GetTimeSpent(filteredTasks)
-
-	return uiTasks, timeTaken, makespan, nil
+	return uiTasks, nil
 }
 
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
@@ -81,14 +65,18 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	uiTasks, timeTaken, makespan, err := getUiTaskCache(projCtx.Build)
+	tasks, err := task.FindAllNewOrOld(task.ByBuildId(projCtx.Build.Id), 0)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
+		return
+	}
+	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	buildAsUI.Tasks = uiTasks
-	buildAsUI.TimeTaken = timeTaken
-	buildAsUI.Makespan = makespan
+	buildAsUI.TimeTaken, buildAsUI.Makespan = task.GetTimeSpent(tasks)
 
 	if projCtx.Build.TriggerID != "" {
 		var projectName string
@@ -257,14 +245,18 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	uiTasks, timeTaken, makespan, err := getUiTaskCache(projCtx.Build)
+	tasks, err := task.FindAllNewOrOld(task.ByBuildId(projCtx.Build.Id), 0)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
+		return
+	}
+	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	updatedBuild.Tasks = uiTasks
-	updatedBuild.TimeTaken = timeTaken
-	updatedBuild.Makespan = makespan
+	updatedBuild.TimeTaken, updatedBuild.Makespan = task.GetTimeSpent(tasks)
 
 	gimlet.WriteJSON(w, updatedBuild)
 }

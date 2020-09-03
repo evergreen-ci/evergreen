@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,19 +80,12 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 	return projects
 }
 
-func BbGetTask(taskId string, execution string) (*task.Task, error) {
-	oldId := fmt.Sprintf("%v_%v", taskId, execution)
-	t, err := task.FindOneOld(task.ById(oldId))
+func BbGetTask(taskId string, executionString string) (*task.Task, error) {
+	execution, err := strconv.Atoi(executionString)
 	if err != nil {
-		return t, errors.Wrap(err, "Failed to find task with old Id")
+		return nil, errors.Wrap(err, "Invalid execution number")
 	}
-	// if the archived task was not found, we must be looking for the most recent exec
-	if t == nil {
-		t, err = task.FindOne(task.ById(taskId))
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to find task")
-		}
-	}
+	t, err := task.FindOneIdOldOrNew(taskId, execution)
 	if t == nil {
 		return nil, errors.Errorf("No task found for taskId: %s and execution: %s", taskId, execution)
 	}
