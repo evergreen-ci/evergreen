@@ -1,74 +1,92 @@
+name := timber
 buildDir := build
 
-packages := ./ ./internal ./buildlogger ./buildlogger/fetcher ./system_metrics
-lintPackages := timber buildlogger buildlogger-fetcher system_metrics
-# override the go binary path if set
-ifneq ($(GO_BIN_PATH),)
+packages := $(name) buildlogger buildlogger-fetcher system_metrics
+testPackages := buildlogger buildlogger-fetcher system_metrics
+
+# start environment setup
 gobin := $(GO_BIN_PATH)
-else
-gobin := go
+ifeq ($(gobin),)
+	gobin := go
 endif
 gopath := $(GOPATH)
+gocache := $(abspath $(buildDir)/.cache)
+goroot := $(GOROOT)
 ifeq ($(OS),Windows_NT)
-gopath := $(shell cygpath -m $(gopath))
+	gocache := $(shell cygpath -m $(gocache))
+	gopath := $(shell cygpath -m $(gopath))
+	goroot := $(shell cygpath -m $(goroot))
 endif
-ifeq ($(gopath),)
-gopath := $($(gobin) env GOPATH)
-endif
-goEnv := GOPATH=$(gopath)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
+
+export GOPATH := $(gopath)
+export GOCACHE := $(gocache)
+export GOROOT := $(goroot)
+# end environment setup
+
+
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
 
 
 # start lint setup targets
 lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
 $(buildDir)/golangci-lint:$(buildDir)
-	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
+	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/golangci-lint $(buildDir)
-	@$(goEnv) $(gobin) build -o $@ $<
+	@$(gobin) build -o $@ $<
 # end lint setup targets
 
+testOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
+lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+coverageOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage)
+coverageHtmlOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage.html)
 
 testArgs := -v
-ifneq (,$(RUN_TEST))
-testArgs += -run='$(RUN_TEST)'
+ifeq (,$(DISABLE_COVERAGE))
+	testArgs += -cover
+endif
+ifneq (,$(RACE_DETECTOR))
+	testArgs += -race
 endif
 ifneq (,$(RUN_COUNT))
-testArgs += -count='$(RUN_COUNT)'
+	testArgs += -count=$(RUN_COUNT)
+endif
+ifneq (,$(RUN_TEST))
+	testArgs += -run='$(RUN_TEST)'
 endif
 ifneq (,$(SKIP_LONG))
-testArgs += -short
+	testArgs += -short
 endif
 
-compile:
-	$(goEnv) $(gobin) build $(packages)
-race:
-	@mkdir -p $(buildDir)
-	$(goEnv) $(gobin) test $(testArgs) -race $(packages) | tee $(buildDir)/race.out
-	@grep -s -q -e "^PASS" $(buildDir)/race.out && ! grep -s -q "^WARNING: DATA RACE" $(buildDir)/race.out
-test:
-	@mkdir -p $(buildDir)
-	$(goEnv) $(gobin) test $(testArgs) $(if $(DISABLE_COVERAGE),, -cover) $(packages) | tee $(buildDir)/test.out
-	@grep -s -q -e "^PASS" $(buildDir)/test.out
-coverage:$(buildDir)/output.coverage
-	@$(goEnv) $(gobin) tool cover -func=$< | sed -E 's%github.com/.*/jasper/%%' | column -t
-coverage-html:$(buildDir)/output.coverage.html
-lint:$(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
-phony += lint lint-deps build build-race race test coverage coverage-html
-.PRECIOUS:$(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
-.PRECIOUS:$(buildDir)/output.lint
+test:$(testOutput)
+	
+coverage:$(coverageOutput)
+	@$(gobin) tool cover -func=$< | sed -E 's%github.com/.*/jasper/%%' | column -t
+coverage-html:$(coverageHtmlOutput)
+	
+lint:$(lintOutput)
+	
+phony += lint $(buildDir) race test coverage coverage-html
+.PRECIOUS:$(coverageOutput) $(coverageHtmlOutput) $(lintOutput) $(testOutput)
 
 
-$(buildDir): compile
-	@mkdir -p $@
-$(buildDir)/output.coverage:$(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) -coverprofile $@ -cover $(packages)
-$(buildDir)/output.coverage.html:$(buildDir)/output.coverage
-	$(goEnv) $(gobin) tool cover -html=$< -o $@
-#  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$(packages)'
+compile $(buildDir):
+	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
+# test execution and output handlers
+$(buildDir)/output.%.test: .FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
+	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
+	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
 #  targets to process and generate coverage reports
+$(buildDir)/output.%.coverage:.FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
+	$(gobin) tool cover -html=$< -o $@
+#  targets to generate gotest output from the linter.
+# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
+$(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
+	@$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
 .FORCE:
@@ -88,6 +106,8 @@ clean:
 	rm -rf internal/*.pb.go
 	rm -f vendor/*.proto
 	rm -rf $(lintDeps)
+clean-results:
+	rm -rf $(buildDir)/output.*
 
 buildlogger.proto:
 	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/buildlogger.proto -o $@
@@ -120,7 +140,7 @@ vendor-clean:
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
 test-%:$(buildDir)/output.%.test
-	@grep -s -q -e "^PASS" $<
+	
 coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(buildDir)/output.$*.test
 html-coverage-%:$(buildDir)/output.%.coverage.html
