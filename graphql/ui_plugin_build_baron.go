@@ -26,9 +26,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	}
 	settings := evergreen.GetEnvironment().Settings()
 	buildBaronProjects := BbGetConfig(settings)
-
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
-
 	bbProj, ok := buildBaronProjects[t.Project]
 
 	if !ok {
@@ -36,6 +33,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}
 

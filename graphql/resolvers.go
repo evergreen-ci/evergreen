@@ -1855,8 +1855,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 	return task.GetLatestExecution(*obj.Id)
 }
 
-func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
-
+func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec string) (*BuildBaron, error) {
 	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, exec)
 	if projectNotFound {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -1864,8 +1863,10 @@ func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exe
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
-	return searchReturnInfo, nil
+	return &BuildBaron{
+		SearchReturnInfo:     searchReturnInfo,
+		BuildBaronConfigured: !projectNotFound,
+	}, nil
 }
 
 type ticketFieldsResolver struct{ *Resolver }
