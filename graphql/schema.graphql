@@ -67,7 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  searchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
+  buildBaron(taskId: String!, execution: String!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -718,6 +718,11 @@ type HostEventLogData {
   user: String!
   successful: Boolean!
   duration: Duration!
+}
+
+type BuildBaron {
+  searchReturnInfo: SearchReturnInfo
+  buildBaronConfigured: Boolean!
 }
 
 # build baron plugin

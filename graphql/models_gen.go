@@ -10,11 +10,17 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
 type BaseTaskMetadata struct {
 	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
 	BaseTaskLink     string             `json:"baseTaskLink"`
+}
+
+type BuildBaron struct {
+	SearchReturnInfo     *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
+	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
 }
 
 type Dependency struct {
