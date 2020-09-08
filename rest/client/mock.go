@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 // Mock mocks EvergreenREST for testing.
@@ -262,6 +263,11 @@ func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerIn
 		Username: "user",
 		Password: "password",
 	}, nil
+}
+
+// GetCedarGRPCConn returns a nil gRPC connection.
+func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
+	return nil, errors.New("(*Mock) GetCedarGRPCConn is not implemented")
 }
 
 // SendTaskLogMessages posts tasks messages to the api server

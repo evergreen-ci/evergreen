@@ -314,6 +314,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/papertrail/go-tail/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
@@ -375,7 +376,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
-	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
+	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid/
 	mkdir -p vendor/github.com/vektah/gqlparser/v2 && find vendor/github.com/vektah/gqlparser -maxdepth 1 -mindepth 1 -not -name "v2" -exec mv {} vendor/github.com/vektah/gqlparser/v2 \;
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
