@@ -63,6 +63,7 @@ func (c *CloudProviders) ValidateAndDefault() error { return nil }
 // EC2Key links a region with a corresponding key and secret
 type EC2Key struct {
 	Name   string `bson:"name" json:"name" yaml:"name"`
+	Region string `bson:"region" json:"region" yaml:"region"` // this can be removed after EVG-8284 is merged
 	Key    string `bson:"key" json:"key" yaml:"key"`
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 }
