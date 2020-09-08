@@ -1,111 +1,113 @@
 buildDir := build
+name := pail
+packages := $(name)
 projectPath := github.com/evergreen-ci/pail
 
-packages := pail
 
 # start environment setup
-ifneq (,${GO_BIN_PATH})
-gobin := ${GO_BIN_PATH}
-else
+gobin := $(GO_BIN_PATH)
+ifeq ($(gobin),)
 gobin := go
 endif
 gopath := $(GOPATH)
+gocache := $(abspath $(buildDir)/.cache)
+goroot := $(GOROOT)
 ifeq ($(OS),Windows_NT)
+gocache := $(shell cygpath -m $(gocache))
 gopath := $(shell cygpath -m $(gopath))
-userProfile := $(shell cygpath -m $(USERPROFILE))
+goroot := $(shell cygpath -m $(goroot))
 endif
-goEnv := GOPATH=$(gopath) $(if ${GO_BIN_PATH},PATH="$(shell dirname ${GO_BIN_PATH}):${PATH}")
+
+export GOPATH := $(gopath)
+export GOCACHE := $(gocache)
+export GOROOT := $(goroot)
 # end environment setup
 
 
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
+
+
 # start lint setup targets
-lintDeps := $(buildDir)/.lintSetup $(buildDir)/run-linter $(buildDir)/golangci-lint
-$(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@touch $@
-$(buildDir)/golangci-lint:$(buildDir)
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.10.2 >/dev/null 2>&1
-$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup $(buildDir)
-	@$(goEnv) $(gobin) build -o $@ $<
+lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
+$(buildDir)/golangci-lint:
+	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
+	@$(gobin) build -o $@ $<
 # end lint setup targets
 
 
+# benchmark setup targets
+benchmarks:$(buildDir)/run-benchmarks .FORCE
+	./$(buildDir)/run-benchmarks
+$(buildDir)/run-benchmarks:cmd/run-benchmarks/run-benchmarks.go
+	$(gobin) build -o $@ $<
+# end benchmark setup targets
+
+
 testArgs := -v
-ifneq (,$(RUN_TEST))
-testArgs += -run='$(RUN_TEST)'
+ifeq (,$(DISABLE_COVERAGE))
+	testArgs += -cover
+endif
+ifneq (,$(RACE_DETECTOR))
+	testArgs += -race
 endif
 ifneq (,$(RUN_COUNT))
-  WORK_DIR: ${workdir}
-testArgs += -count='$(RUN_COUNT)'
+	testArgs += -count=$(RUN_COUNT)
+endif
+ifneq (,$(RUN_TEST))
+	testArgs += -run='$(RUN_TEST)'
 endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif
-ifneq (,$(DISABLE_COVERAGE))
-testArgs += -cover
-endif
-ifneq (,$(RACE_DETECTOR))
-testArgs += -race
-endif
 ifneq (,$(TEST_TIMEOUT))
-testArgs += -timeout=$(TEST_TIMEOUT)
+	testArgs += -timeout=$(TEST_TIMEOUT)
 else
-testArgs += -timeout=30m
+	testArgs += -timeout=30m
 endif
 
 # test execution and output handlers
-$(buildDir)/output.%.test:$(buildDir)/ .FORCE
-	export USERPROFILE=$(userProfile)
-	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
+$(buildDir)/output.%.test:.FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
-$(buildDir)/output.test:$(buildDir)/ .FORCE
-	export USERPROFILE=$(userProfile)
-	$(goEnv) $(gobin) test $(testArgs) ./... | tee $@
-	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
-$(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
-	export USERPROFILE=$(userProfile)
-	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
-	@-[ -f $@ ] && $(goEnv) $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	$(goEnv) $(gobin) tool cover -html=$< -o $@
-#  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
-	@./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$(packages)'
 #  targets to process and generate coverage reports
+$(buildDir)/output.%.coverage:.FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
+	$(gobin) tool cover -html=$< -o $@
+#  targets to generate gotest output from the linter.
+# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
+$(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
+	@$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
 
-# userfacing targets for basic build and development operations
-compile:
-	$(goEnv) $(gobin) build ./
-test:$(buildDir)/test.out
-$(buildDir)/test.out:.FORCE
-	export USERPROFILE=$(userProfile)
-	@mkdir -p $(buildDir)
-	$(goEnv) $(gobin) test $(testArgs) ./ | tee $@
-	@grep -s -q -e "^PASS" $@
-coverage:$(buildDir)/cover.out
-	@$(goEnv) $(gobin) tool cover -func=$< | sed -E 's%$(projectPath)/%%' | column -t
-coverage-html:$(buildDir)/cover.html
+testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
+lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
+coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 
+
+# userfacing targets for basic build and development operations
+test:$(testOutput)
+	
+coverage:$(coverageOutput)
+	
+coverage-html:$(coverageHtmlOutput)
+	
 benchmark:
-	$(goEnv) $(gobin) test -v -benchmem -bench=. -run="Benchmark.*" -timeout=20m
+	$(gobin) test -v -benchmem -bench=. -run="Benchmark.*" -timeout=20m
 lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 
-phony += lint build race test coverage coverage-html
-.PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
-.PRECIOUS:$(buildDir)/output.lint
+phony += lint $(buildDir) test coverage coverage-html
+.PRECIOUS: $(coverageOutput) $(coverageHtmlOutput) $(lintOutput) $(testOutput)
 # end front-ends
 
 
-$(buildDir): compile
-	@mkdir -p $@
-$(buildDir)/cover.out:$(buildDir) .FORCE
-	export USERPROFILE=$(userProfile)
-	$(goEnv) $(gobin) test $(testArgs) -covermode=count -coverprofile $@ -cover ./
-$(buildDir)/cover.html:$(buildDir)/cover.out
-	$(goEnv) $(gobin) tool cover -html=$< -o $@
+compile $(buildDir):
+	$(gobin) build ./
 
 
 vendor-clean:
@@ -117,6 +119,19 @@ vendor-clean:
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/montanaflynn
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/grip
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/pkg/errors
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/stretchr/testify
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/go.mongodb.org/mongo-driver
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/ftdc/vendor/go.mongodb.org/mongo-driver/
+	# Note: we have a circular dependency problem between pail and poplar
+	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/evergreen-ci/pail
+	rm -rf vendor/github.com/evergreen-ci/utility/file.go
+	rm -rf vendor/github.com/evergreen-ci/utility/http.go
+	rm -rf vendor/github.com/evergreen-ci/utility/network.go
+	rm -rf vendor/github.com/evergreen-ci/utility/parsing.go
+	find vendor/ -type d -empty | xargs rm -rf
+	find vendor/ -type d -name '.git' | xargs rm -rf
 phony += vendor-clean
 clean:
 	rm -rf $(lintDeps)
