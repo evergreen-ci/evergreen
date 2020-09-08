@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -683,7 +684,7 @@ func (s *s3Bucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 }
 
 func (s *s3Bucket) s3WithUploadChecksumHelper(ctx context.Context, target, file string) (bool, error) {
-	localmd5, err := md5sum(file)
+	localmd5, err := utility.MD5SumFile(file)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem checksumming '%s'", file)
 	}
@@ -768,7 +769,7 @@ func doDownload(ctx context.Context, b Bucket, key, path string) error {
 }
 
 func s3DownloadWithChecksum(ctx context.Context, b Bucket, item BucketItem, local string) error {
-	localmd5, err := md5sum(local)
+	localmd5, err := utility.MD5SumFile(local)
 	if os.IsNotExist(errors.Cause(err)) {
 		if err = doDownload(ctx, b, item.Name(), local); err != nil {
 			return errors.WithStack(err)
