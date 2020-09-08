@@ -1220,6 +1220,17 @@ ul.tooltip-tasks li.tooltip-task {
   height: 16px;
   width: 26px;
 }
+.success,
+.pass {
+  background-color: #5cb85c !important;
+}
+.failed,
+.fail {
+  background-color: #d9534f !important;
+}
+.system-failed {
+  background-color: #800080 !important;
+}
 .current-project {
   font-weight: bold;
   background-color: aliceblue;
