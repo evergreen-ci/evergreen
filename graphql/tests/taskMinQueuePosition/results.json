@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "minQueuePosition.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "minQueuePosition": 2
+          }
+        }
+      }
+    },
+    {
+      "query_file": "taskNotOnQueue.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "minQueuePosition": 0
+          }
+        }
+      }
+    }
+  ]
+}

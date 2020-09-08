@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -450,6 +451,22 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil
+}
+
+func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
+	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
+}
+
+func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DetachVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
 }
 
 type patchResolver struct{ *Resolver }
@@ -1194,7 +1211,7 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	events, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
+	events, count, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}
@@ -1210,6 +1227,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	}
 	hostevents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
+		Count:           count,
 	}
 	return &hostevents, nil
 }
@@ -1674,6 +1692,14 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
+func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	success, _, gqlErr, err := DeleteVolume(ctx, volumeID)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	return success, nil
+}
+
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
@@ -1694,7 +1720,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	return myPublicKeys, nil
 }
 
-func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIUser, error) {
+func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIDBUser, error) {
 	usr := route.MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
@@ -1705,7 +1731,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
-	user := restModel.APIUser{
+	user := restModel.APIDBUser{
 		DisplayName: &displayName,
 		UserID:      &userID,
 	}
@@ -1827,6 +1853,48 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
 	return task.GetLatestExecution(*obj.Id)
+}
+
+func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
+
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, exec)
+	if projectNotFound {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	return searchReturnInfo, nil
+}
+
+type ticketFieldsResolver struct{ *Resolver }
+
+func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Assignee == nil {
+		return nil, nil
+	}
+	return &obj.Assignee.DisplayName, nil
+}
+
+func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Resolution == nil {
+		return nil, nil
+	}
+	return &obj.Resolution.Name, nil
+}
+
+func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
+
+func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
+	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
+	}
+	if position < 0 {
+		return 0, nil
+	}
+	return position, nil
 }
 
 // New injects resources into the resolvers, such as the data connector

@@ -300,19 +300,6 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIUser struct {
-	DisplayName *string `json:"display_name"`
-	UserID      *string `json:"user_id"`
-}
-
-func (a *APIUser) BuildFromService(h interface{}) error {
-	return errors.New("BuildFromService not implemented for APIUser")
-}
-
-func (a *APIUser) ToService() (interface{}, error) {
-	return nil, errors.New("ToService not implemented for APIUser")
-}
-
 // UpdateUserSettings Returns an updated version of the user settings struct
 func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
 	adminSettings, err := evergreen.GetConfig()

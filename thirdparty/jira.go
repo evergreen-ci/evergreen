@@ -17,6 +17,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type SearchReturnInfo struct {
+	Issues      []JiraTicket `json:"issues"`
+	Search      string       `json:"search"`
+	Source      string       `json:"source"`
+	FeaturesURL string       `json:"features_url"`
+}
+
 // JiraTickets marshal to and unmarshal from the json issue
 // returned by the rest api at /rest/api/latest/issue/{ticket_id}
 type JiraTicket struct {

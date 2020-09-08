@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -582,4 +584,45 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 	users, err = FindNeedsReauthorization(24*time.Hour, 1)
 	s.NoError(err)
 	s.Empty(users, "should not find users who have not exceeded the reauth limit")
+}
+
+func TestServiceUserOperations(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	u := DBUser{
+		Id:          "u",
+		DispName:    "service_user",
+		SystemRoles: []string{"one"},
+	}
+	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
+	u.OnlyAPI = true
+	assert.NoError(t, AddOrUpdateServiceUser(u))
+	dbUser, err := FindOneById(u.Id)
+	assert.NoError(t, err)
+	assert.True(t, dbUser.OnlyAPI)
+	assert.Equal(t, u.DispName, dbUser.DispName)
+	assert.Equal(t, u.SystemRoles, dbUser.SystemRoles)
+	u.APIKey = dbUser.APIKey
+	assert.NotEmpty(t, u.APIKey)
+
+	u.DispName = "another"
+	u.SystemRoles = []string{"one", "two"}
+	assert.NoError(t, AddOrUpdateServiceUser(u))
+	dbUser, err = FindOneById(u.Id)
+	assert.NoError(t, err)
+	assert.True(t, dbUser.OnlyAPI)
+	assert.Equal(t, u.DispName, dbUser.DispName)
+	assert.Equal(t, u.SystemRoles, dbUser.SystemRoles)
+	assert.Equal(t, u.APIKey, dbUser.APIKey)
+
+	users, err := FindServiceUsers()
+	assert.NoError(t, err)
+	assert.Len(t, users, 1)
+
+	err = DeleteServiceUser("doesntexist")
+	assert.EqualError(t, err, "service user 'doesntexist' not found")
+	err = DeleteServiceUser(u.Id)
+	assert.NoError(t, err)
+	dbUser, err = FindOneById(u.Id)
+	assert.NoError(t, err)
+	assert.Nil(t, dbUser)
 }

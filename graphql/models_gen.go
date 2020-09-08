@@ -42,6 +42,7 @@ type GroupedProjects struct {
 
 type HostEvents struct {
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
+	Count           int                           `json:"count"`
 }
 
 type HostsResponse struct {
@@ -171,6 +172,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VolumeHost struct {
+	VolumeID string `json:"volumeId"`
+	HostID   string `json:"hostId"`
 }
 
 type HostSortBy string

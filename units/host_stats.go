@@ -34,10 +34,11 @@ type hostStatsJob struct {
 }
 
 type taskSpawnedHost struct {
-	ID        string `json:"id"`
-	SpawnedBy string `json:"spawned_by"`
-	Task      string `json:"task_scope"`
-	Build     string `json:"build_scope"`
+	ID                  string `json:"id"`
+	SpawnedBy           string `json:"spawned_by"`
+	Task                string `json:"task_scope"`
+	TaskExecutionNumber int    `json:"task_execution_number"`
+	Build               string `json:"build_scope"`
 }
 
 func makeHostStats() *hostStatsJob {
@@ -85,10 +86,11 @@ func (j *hostStatsJob) Run(_ context.Context) {
 	hosts := []taskSpawnedHost{}
 	for _, h := range taskSpawned {
 		hosts = append(hosts, taskSpawnedHost{
-			ID:        h.Id,
-			SpawnedBy: h.User,
-			Task:      h.SpawnOptions.TaskID,
-			Build:     h.SpawnOptions.BuildID,
+			ID:                  h.Id,
+			SpawnedBy:           h.User,
+			Task:                h.SpawnOptions.TaskID,
+			TaskExecutionNumber: h.SpawnOptions.TaskExecutionNumber,
+			Build:               h.SpawnOptions.BuildID,
 		})
 	}
 	j.logger.Info(message.Fields{
@@ -99,13 +101,14 @@ func (j *hostStatsJob) Run(_ context.Context) {
 	for _, h := range taskSpawned {
 		if !utility.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
 			j.logger.Warning(message.Fields{
-				"message":         "long running host spawned by task",
-				"id":              h.Id,
-				"duration":        time.Since(h.StartTime).Seconds(),
-				"duration_string": time.Since(h.StartTime).String(),
-				"spawned_by":      h.User,
-				"task_scope":      h.SpawnOptions.TaskID,
-				"build_scope":     h.SpawnOptions.BuildID,
+				"message":               "long running host spawned by task",
+				"id":                    h.Id,
+				"duration":              time.Since(h.StartTime).Seconds(),
+				"duration_string":       time.Since(h.StartTime).String(),
+				"spawned_by":            h.User,
+				"task_scope":            h.SpawnOptions.TaskID,
+				"task_execution_number": h.SpawnOptions.TaskExecutionNumber,
+				"build_scope":           h.SpawnOptions.BuildID,
 			})
 		}
 	}

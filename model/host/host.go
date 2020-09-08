@@ -304,6 +304,11 @@ type SpawnOptions struct {
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 
+	// TaskExecutionNumber is the execution number of the task that spawned this host. This
+	// field is deliberately NOT omitempty in order to support the aggregation in
+	// allHostsSpawnedByFinishedTasks().
+	TaskExecutionNumber int `bson:"task_execution_number" json:"task_execution_number"`
+
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
@@ -1834,11 +1839,13 @@ func FindAllHostsSpawnedByTasks() ([]Host, error) {
 }
 
 // FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
-func FindHostsSpawnedByTask(taskID string) ([]Host, error) {
+func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
 	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
+	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
 	query := db.Query(bson.M{
-		StatusKey: evergreen.HostRunning,
-		taskIDKey: taskID,
+		StatusKey:              evergreen.HostRunning,
+		taskIDKey:              taskID,
+		taskExecutionNumberKey: execution,
 	})
 	hosts, err := Find(query)
 	if err != nil {
