@@ -195,15 +195,15 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
+	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	}
 	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
 	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
 	}
 	errorTemplate := "Volume %s has been created but an error occured."
-	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
-		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
-	}
 	var additionalOptions restModel.VolumeModifyOptions
 	if spawnVolumeInput.Expiration != nil {
 		var newExpiration time.Time
