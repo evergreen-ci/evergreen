@@ -194,6 +194,48 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 	}, nil
 }
 
+func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
+	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	}
+	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	errorTemplate := "Volume %s has been created but an error occurred."
+	var additionalOptions restModel.VolumeModifyOptions
+	if spawnVolumeInput.Expiration != nil {
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
+		if err != nil {
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
+		additionalOptions.Expiration = newExpiration
+	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		additionalOptions.NoExpiration = true
+	}
+	// modify volume if additional options is not empty
+	if additionalOptions != (restModel.VolumeModifyOptions{}) {
+		mgr, err := getEC2Manager(ctx, &volume)
+		if err != nil {
+			return false, err
+		}
+		err = mgr.ModifyVolume(ctx, vol, &additionalOptions)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		}
+	}
+	if spawnVolumeInput.Host != nil {
+		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		if err != nil {
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
+	}
+
+	return success, nil
+}
+
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {

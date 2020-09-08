@@ -94,6 +94,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
@@ -219,6 +220,15 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+}
+
+input SpawnVolumeInput {
+  availabilityZone: String!
+  size: Int!
+  type: String!
+  expiration: Time
+  noExpiration: Boolean
+  host: String
 }
 
 type TaskQueueItem {

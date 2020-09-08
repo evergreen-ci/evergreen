@@ -459,7 +459,6 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
-	authedUser := MustHaveUser(r)
 	volume := &host.Volume{}
 	if err := utility.ReadJSON(util.NewRequestReader(r), volume); err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
@@ -475,17 +474,11 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
 	}
-	if err := cloud.ValidVolumeOptions(volume, &uis.Settings); err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, err)
-	}
-
-	volume.CreatedBy = authedUser.Id
-	ctx := r.Context()
-	if _, err := cloud.CreateVolume(ctx, uis.env, volume, evergreen.ProviderNameEc2OnDemand); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error creating volume"))
+	_, httpStatusCode, _, err, _ := graphql.RequestNewVolume(r.Context(), *volume)
+	if err != nil {
+		uis.LoggedError(w, r, httpStatusCode, err)
 		return
 	}
-
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Volume Created"))
 	gimlet.WriteJSON(w, "Volume successfully created")
 	return

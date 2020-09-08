@@ -136,6 +136,15 @@ type SpawnHostInput struct {
 	HomeVolumeSize       *int            `json:"homeVolumeSize"`
 }
 
+type SpawnVolumeInput struct {
+	AvailabilityZone string     `json:"availabilityZone"`
+	Size             int        `json:"size"`
+	Type             string     `json:"type"`
+	Expiration       *time.Time `json:"expiration"`
+	NoExpiration     *bool      `json:"noExpiration"`
+	Host             *string    `json:"host"`
+}
+
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
