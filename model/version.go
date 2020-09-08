@@ -107,7 +107,7 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
-	tasks, err := task.FindAllNewOrOld(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey), 0)
+	tasks, err := task.FindAllFirstExecution(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey))
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
 	}

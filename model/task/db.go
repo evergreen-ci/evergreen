@@ -1038,7 +1038,7 @@ func MakeOldID(taskID string, execution int) string {
 	return fmt.Sprintf("%s_%d", taskID, execution)
 }
 
-func FindAllNewOrOld(q db.Q, execution int) ([]Task, error) {
+func FindAllFirstExecution(q db.Q) ([]Task, error) {
 	existingTasks, err := FindAll(q)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get current tasks")
@@ -1046,10 +1046,10 @@ func FindAllNewOrOld(q db.Q, execution int) ([]Task, error) {
 	tasks := []Task{}
 	oldIDs := []string{}
 	for _, t := range existingTasks {
-		if t.Execution == execution {
+		if t.Execution == 0 {
 			tasks = append(tasks, t)
 		} else {
-			oldIDs = append(oldIDs, MakeOldID(t.Id, execution))
+			oldIDs = append(oldIDs, MakeOldID(t.Id, 0))
 		}
 	}
 

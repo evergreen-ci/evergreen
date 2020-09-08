@@ -870,7 +870,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.Equal("task", tasks[1].OldTaskId)
 }
 
-func TestFindAllNewOrOld(t *testing.T) {
+func TestFindAllFirstExecution(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	tasks := []Task{
 		{Id: "t0"},
@@ -883,7 +883,7 @@ func TestFindAllNewOrOld(t *testing.T) {
 	oldTask := Task{Id: MakeOldID("t1", 0)}
 	require.NoError(t, db.Insert(OldCollection, &oldTask))
 
-	foundTasks, err := FindAllNewOrOld(db.Query(nil), 0)
+	foundTasks, err := FindAllFirstExecution(db.Query(nil))
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 3)
 	expectedIDs := []string{"t0", MakeOldID("t1", 0), "t2"}
@@ -891,12 +891,6 @@ func TestFindAllNewOrOld(t *testing.T) {
 		assert.Contains(t, expectedIDs, task.Id)
 		assert.Equal(t, 0, task.Execution)
 	}
-
-	foundTasks, err = FindAllNewOrOld(db.Query(nil), 1)
-	assert.NoError(t, err)
-	assert.Len(t, foundTasks, 1)
-	assert.Equal(t, "t1", foundTasks[0].Id)
-	assert.Equal(t, 1, foundTasks[0].Execution)
 }
 
 func TestWithinTimePeriodProjectFilter(t *testing.T) {

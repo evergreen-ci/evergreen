@@ -65,7 +65,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	tasks, err := task.FindAllNewOrOld(task.ByBuildId(projCtx.Build.Id), 0)
+	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
@@ -245,7 +245,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	tasks, err := task.FindAllNewOrOld(task.ByBuildId(projCtx.Build.Id), 0)
+	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
