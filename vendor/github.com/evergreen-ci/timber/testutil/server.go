@@ -23,7 +23,7 @@ type MockMetricsServer struct {
 	StreamErr  bool
 	CloseErr   bool
 	Create     *internal.SystemMetrics
-	Data       *internal.SystemMetricsData
+	Data       map[string][]*internal.SystemMetricsData
 	StreamData map[string][]*internal.SystemMetricsData
 	Close      *internal.SystemMetricsSeriesEnd
 	DialOpts   timber.DialCedarOptions
@@ -53,7 +53,10 @@ func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.Sy
 	if ms.AddErr {
 		return nil, errors.New("add error")
 	}
-	ms.Data = in
+	if ms.Data == nil {
+		ms.Data = make(map[string][]*internal.SystemMetricsData)
+	}
+	ms.Data[in.Type] = append(ms.Data[in.Type], in)
 	return &internal.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
