@@ -277,8 +277,8 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 
 			if c.cedarGRPCClient == nil {
-				var bi *apimodels.BuildloggerInfo
-				bi, err = c.GetBuildloggerInfo(ctx)
+				var bi *apimodels.CedarConfig
+				bi, err = c.GetCedarConfig(ctx)
 				if err != nil {
 					return nil, errors.Wrap(err, "error setting up buildlogger sender")
 				}

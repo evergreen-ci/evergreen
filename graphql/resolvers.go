@@ -1027,7 +1027,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
-			BaseURL:       evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        taskID,
 			Execution:     t.Execution,
 			PrintPriority: true,

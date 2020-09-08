@@ -73,9 +73,9 @@ type Communicator interface {
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
-	// GetBuildloggerInfo returns buildlogger service information including
-	// the base URL, RPC port, and LDAP credentials.
-	GetBuildloggerInfo(context.Context) (*apimodels.BuildloggerInfo, error)
+	// GetCedarConfig returns the cedar service information including the
+	// base URL, RPC port, and credentials.
+	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
 
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
