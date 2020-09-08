@@ -260,8 +260,8 @@ func (s *SystemMetricsSuite) TestSystemMetricsCollectorStreamError() {
 		noBufferTimedFlush: true,
 	})
 	s.Require().NoError(err)
-	s.Require().NoError(c.Start(ctx))
 	s.server.AddErr = true
+	s.Require().NoError(c.Start(ctx))
 	time.Sleep(2 * c.interval)
 
 	s.Require().Error(c.Close())
