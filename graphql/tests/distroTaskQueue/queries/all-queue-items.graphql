@@ -8,5 +8,6 @@ query {
     buildVariant
     priority
     revision
+    version
   }
 }

@@ -438,3 +438,108 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
+
+type serviceUserPostHandler struct {
+	sc data.Connector
+	u  *model.APIDBUser
+}
+
+func makeUpdateServiceUser(sc data.Connector) gimlet.RouteHandler {
+	return &serviceUserPostHandler{
+		sc: sc,
+		u:  &model.APIDBUser{},
+	}
+}
+
+func (h *serviceUserPostHandler) Factory() gimlet.RouteHandler {
+	return &serviceUserPostHandler{
+		sc: h.sc,
+		u:  &model.APIDBUser{},
+	}
+}
+
+func (h *serviceUserPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.u = &model.APIDBUser{}
+	if err := utility.ReadJSON(r.Body, h.u); err != nil {
+		return errors.Wrap(err, "request body is malformed")
+	}
+	if h.u.UserID == nil || *h.u.UserID == "" {
+		return errors.New("user_id must be specified")
+	}
+	return nil
+}
+
+func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
+	if h.u == nil {
+		return gimlet.NewJSONInternalErrorResponse("error reading request body")
+	}
+	err := h.sc.AddOrUpdateServiceUser(*h.u)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+type serviceUserDeleteHandler struct {
+	sc       data.Connector
+	username string
+}
+
+func makeDeleteServiceUser(sc data.Connector) gimlet.RouteHandler {
+	return &serviceUserDeleteHandler{
+		sc: sc,
+	}
+}
+
+func (h *serviceUserDeleteHandler) Factory() gimlet.RouteHandler {
+	return &serviceUserDeleteHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.username = r.FormValue("id")
+	if h.username == "" {
+		return errors.New("'id' must be specified")
+	}
+
+	return nil
+}
+
+func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	err := h.sc.DeleteServiceUser(h.username)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+type serviceUsersGetHandler struct {
+	sc data.Connector
+}
+
+func makeGetServiceUsers(sc data.Connector) gimlet.RouteHandler {
+	return &serviceUsersGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *serviceUsersGetHandler) Factory() gimlet.RouteHandler {
+	return &serviceUsersGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
+	users, err := h.sc.GetServiceUsers()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(users)
+}

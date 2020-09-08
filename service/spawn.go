@@ -593,90 +593,23 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeAttach:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		_, httpStatusCode, _, err := graphql.AttachVolume(ctx, vol.ID, *updateParams.HostID)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
-			return
-		}
-
-		if updateParams.HostID == nil || *updateParams.HostID == "" {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must specify host id"))
-			return
-		}
-		var h *host.Host
-		h, err = host.FindOneId(*updateParams.HostID)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s'", vol.Host))
-			return
-		}
-		if h == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("host '%s' does not exist", *updateParams.HostID))
-			return
-		}
-		if vol.AvailabilityZone != h.Zone {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("host and volume must have same availability zone"))
-			return
-		}
-
-		if err = mgr.AttachVolume(ctx, h, &host.VolumeAttachment{VolumeID: vol.ID}); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't attach volume '%s'", vol.ID))
+			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 
 	case VolumeDetach:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		_, httpStatusCode, _, err := graphql.DetachVolume(ctx, vol.ID)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
-			return
-		}
-
-		if vol.Host == "" {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "volume '%s' is not attached", vol.ID))
-			return
-		}
-		h, err := host.FindOneId(vol.Host)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID))
-			return
-		}
-		if h == nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "host '%s' for volume '%s' doesn't exist", vol.Host, vol.ID))
-			if err = host.UnsetVolumeHost(vol.ID); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
-					"route":   "modifyVolume",
-					"action":  "detach",
-				}))
-			}
-			return
-		}
-
-		if err := mgr.DetachVolume(ctx, h, vol.ID); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't detach volume '%s'", vol.ID))
+			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 
 	case VolumeDelete:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		_, httpStatusCode, _, err := graphql.DeleteVolume(ctx, vol.ID)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
-			return
-		}
-
-		if err := mgr.DeleteVolume(ctx, vol); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't delete volume '%s'", vol.ID))
+			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 	}

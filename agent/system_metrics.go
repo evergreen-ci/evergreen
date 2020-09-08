@@ -39,8 +39,8 @@ type systemMetricsCollector struct {
 	stream          sync.WaitGroup
 	close           sync.WaitGroup
 	streamingCancel context.CancelFunc
-	taskOpts        *sysmetrics.SystemMetricsOptions
-	streamOpts      *sysmetrics.StreamOpts
+	taskOpts        sysmetrics.SystemMetricsOptions
+	writeOpts       sysmetrics.WriteCloserOptions
 	interval        time.Duration
 	collectors      []metricCollector
 	client          *sysmetrics.SystemMetricsClient
@@ -107,7 +107,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		interval:   opts.interval,
 		collectors: opts.collectors,
 		taskOpts:   getSystemMetricsInfo(opts.task),
-		streamOpts: &sysmetrics.StreamOpts{
+		writeOpts: sysmetrics.WriteCloserOptions{
 			FlushInterval: opts.bufferTimedFlushInterval,
 			NoTimedFlush:  opts.noBufferTimedFlush,
 			MaxBufferSize: opts.maxBufferSize,
@@ -128,7 +128,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 // any errors will only be logged to the global error logs in this case.
 func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	var err error
-	s.id, err = s.client.CreateSystemMetricsRecord(ctx, *s.taskOpts)
+	s.id, err = s.client.CreateSystemMetricsRecord(ctx, s.taskOpts)
 	if err != nil {
 		return errors.Wrap(err, "problem creating cedar system metrics metadata object")
 	}
@@ -137,11 +137,11 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	streamingCtx, s.streamingCancel = context.WithCancel(ctx)
 
 	for _, collector := range s.collectors {
-		stream, err := s.client.StreamSystemMetrics(ctx, sysmetrics.MetricDataOpts{
+		stream, err := s.client.NewSystemMetricsWriteCloser(ctx, sysmetrics.MetricDataOptions{
 			Id:         s.id,
 			MetricType: collector.name(),
 			Format:     collector.format(),
-		}, *s.streamOpts)
+		}, s.writeOpts)
 		if err != nil {
 			s.streamingCancel()
 			s.streamingCancel = nil
@@ -248,8 +248,8 @@ func (s *systemMetricsCollector) Close() error {
 	return s.catcher.Resolve()
 }
 
-func getSystemMetricsInfo(t *task.Task) *sysmetrics.SystemMetricsOptions {
-	return &sysmetrics.SystemMetricsOptions{
+func getSystemMetricsInfo(t *task.Task) sysmetrics.SystemMetricsOptions {
+	return sysmetrics.SystemMetricsOptions{
 		Project:     t.Project,
 		Version:     t.Version,
 		Variant:     t.BuildVariant,

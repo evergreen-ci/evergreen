@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -125,7 +126,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if tc.project.OomTracker {
+	if tc.oomTrackerEnabled() {
 		tc.logger.Execution().Info("OOM tracker clearing system messages")
 		if err = tc.oomTracker.Clear(innerCtx); err != nil {
 			tc.logger.Execution().Errorf("error clearing system messages: %s", err)
@@ -285,6 +286,10 @@ func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
 		Detected: detected,
 		Pids:     pids,
 	}
+}
+
+func (tc *taskContext) oomTrackerEnabled() bool {
+	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, tc.taskConfig.Distro.Provider)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {

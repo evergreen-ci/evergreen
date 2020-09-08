@@ -174,6 +174,35 @@ func (u *DBUserConnector) SubmitFeedback(in restModel.APIFeedbackSubmission) err
 	return errors.Wrap(feedback.Insert(), "error saving feedback")
 }
 
+func (u *DBUserConnector) GetServiceUsers() ([]restModel.APIDBUser, error) {
+	users, err := user.FindServiceUsers()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get service users")
+	}
+	apiUsers := []restModel.APIDBUser{}
+	for _, u := range users {
+		apiUsers = append(apiUsers, *restModel.APIDBUserBuildFromService(u))
+	}
+	return apiUsers, nil
+}
+
+func (u *DBUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
+	existingUser, err := user.FindOneById(*toUpdate.UserID)
+	if err != nil {
+		return errors.Wrap(err, "unable to query for user")
+	}
+	if existingUser != nil && !existingUser.OnlyAPI {
+		return errors.New("cannot update an existing non-service user")
+	}
+	toUpdate.OnlyApi = true
+	dbUser := restModel.APIDBUserToService(toUpdate)
+	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "unable to update service user")
+}
+
+func (u *DBUserConnector) DeleteServiceUser(id string) error {
+	return user.DeleteServiceUser(id)
+}
+
 // MockUserConnector stores a cached set of users that are queried against by the
 // implementations of the UserConnector interface's functions.
 type MockUserConnector struct {
@@ -244,5 +273,14 @@ func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.Us
 }
 
 func (u *MockUserConnector) SubmitFeedback(feedback restModel.APIFeedbackSubmission) error {
+	return nil
+}
+func (u *MockUserConnector) GetServiceUsers() ([]restModel.APIDBUser, error) {
+	return nil, nil
+}
+func (u *MockUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
+	return nil
+}
+func (u *MockUserConnector) DeleteServiceUser(string) error {
 	return nil
 }

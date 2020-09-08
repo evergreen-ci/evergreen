@@ -6,6 +6,7 @@ nodeDir := public
 packages := $(name) agent operations cloud cloud-userdata command db util plugin units graphql
 packages += thirdparty auth scheduler model validator service repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages += operations-metabuild-generator operations-metabuild-model
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
@@ -163,7 +164,7 @@ $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
+	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<
@@ -310,7 +311,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/papertrail/go-tail/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
@@ -373,7 +373,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
-	rm -rf vendor/github.com/shirou/gopsutil/host/host_linux_riscv64.go
 	mkdir -p vendor/github.com/vektah/gqlparser/v2 && find vendor/github.com/vektah/gqlparser -maxdepth 1 -mindepth 1 -not -name "v2" -exec mv {} vendor/github.com/vektah/gqlparser/v2 \;
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean

@@ -67,6 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
+  searchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -99,6 +100,9 @@ type Mutation {
     targetKeyName: String!
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -152,6 +156,10 @@ enum TaskQueueItemType {
   PATCH
 }
 
+input VolumeHost {
+  volumeId: String!
+  hostId: String!
+}
 input PatchReconfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
@@ -222,6 +230,7 @@ type TaskQueueItem {
   priority: Int!
   revision: String!
   requester: TaskQueueItemType!
+  version: String!
 }
 
 type TaskQueueDistro {
@@ -522,6 +531,7 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   version: String!
+  minQueuePosition: Int!
 }
 
 type Projects {
@@ -678,6 +688,7 @@ type SiteBanner {
 
 type HostEvents {
   eventLogEntries: [HostEventLogEntry!]!
+  count: Int!
 }
 
 type HostEventLogEntry {
@@ -707,6 +718,32 @@ type HostEventLogData {
   user: String!
   successful: Boolean!
   duration: Duration!
+}
+
+# build baron plugin
+type SearchReturnInfo {
+  issues: [JiraTicket!]!
+  search: String!
+  source: String!
+  featuresURL: String!
+}
+type JiraTicket {
+  key: String!
+  fields: TicketFields!
+}
+
+type TicketFields {
+  summary: String!
+  assigneeDisplayName: String
+  resolutionName: String
+  created: String!
+  updated: String!
+  status: JiraStatus!
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
 }
 
 scalar Time

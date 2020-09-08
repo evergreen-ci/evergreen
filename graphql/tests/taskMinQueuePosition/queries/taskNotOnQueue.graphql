@@ -1,0 +1,7 @@
+query {
+  task(
+    taskId: "evergreen_ubuntu1604_test_model_task_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+  ) {
+    minQueuePosition
+  }
+}
