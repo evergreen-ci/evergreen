@@ -98,8 +98,7 @@ func (b *parallelBucketImpl) Push(ctx context.Context, opts SyncOptions) error {
 					continue
 				}
 
-				err = b.Bucket.Upload(ctx, filepath.Join(opts.Remote, fn), filepath.Join(opts.Local, fn))
-				if err != nil {
+				if err := b.Bucket.Upload(ctx, filepath.Join(opts.Remote, fn), filepath.Join(opts.Local, fn)); err != nil {
 					catcher.Add(err)
 					cancel()
 				}
