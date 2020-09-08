@@ -5,15 +5,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var globalMockState *mockState
