@@ -209,7 +209,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
 		if err != nil {
-			gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
 		additionalOptions.Expiration = newExpiration
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
