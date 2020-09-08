@@ -40,7 +40,7 @@ type systemMetricsCollector struct {
 	close           sync.WaitGroup
 	streamingCancel context.CancelFunc
 	taskOpts        sysmetrics.SystemMetricsOptions
-	wcOpts          sysmetrics.WriteCloserOptions
+	writeOpts       sysmetrics.WriteCloserOptions
 	interval        time.Duration
 	collectors      []metricCollector
 	client          *sysmetrics.SystemMetricsClient
@@ -107,7 +107,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		interval:   opts.interval,
 		collectors: opts.collectors,
 		taskOpts:   getSystemMetricsInfo(opts.task),
-		wcOpts: sysmetrics.WriteCloserOptions{
+		writeOpts: sysmetrics.WriteCloserOptions{
 			FlushInterval: opts.bufferTimedFlushInterval,
 			NoTimedFlush:  opts.noBufferTimedFlush,
 			MaxBufferSize: opts.maxBufferSize,
@@ -141,7 +141,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 			Id:         s.id,
 			MetricType: collector.name(),
 			Format:     collector.format(),
-		}, s.wcOpts)
+		}, s.writeOpts)
 		if err != nil {
 			s.streamingCancel()
 			s.streamingCancel = nil

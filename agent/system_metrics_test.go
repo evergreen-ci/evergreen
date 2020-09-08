@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	metrics "github.com/evergreen-ci/timber/system_metrics"
 	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/ftdc"
@@ -105,7 +104,7 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
 	s.Assert().Equal(collectors, c.collectors)
-	s.Assert().Equal(metrics.SystemMetricsOptions{
+	s.Assert().Equal(sysmetrics.SystemMetricsOptions{
 		Project:     "Project",
 		Version:     "Version",
 		Variant:     "Variant",
@@ -113,15 +112,15 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 		TaskId:      "Id",
 		Execution:   0,
 		Mainline:    !s.task.IsPatchRequest(),
-		Compression: metrics.CompressionTypeNone,
-		Schema:      metrics.SchemaTypeRawEvents,
-	}, *c.taskOpts)
+		Compression: sysmetrics.CompressionTypeNone,
+		Schema:      sysmetrics.SchemaTypeRawEvents,
+	}, c.taskOpts)
 	s.Assert().Equal(time.Minute, c.interval)
-	s.Assert().Equal(metrics.StreamOpts{
+	s.Assert().Equal(sysmetrics.WriteCloserOptions{
 		FlushInterval: time.Minute,
 		NoTimedFlush:  true,
 		MaxBufferSize: 1e7,
-	}, *c.streamOpts)
+	}, c.writeOpts)
 	s.Require().NotNil(c.client)
 	s.Require().NoError(c.client.CloseSystemMetrics(ctx, "ID", true))
 	s.Assert().NotNil(s.server.Close)
@@ -224,7 +223,7 @@ func (s *SystemMetricsSuite) TestStartSystemMetricsCollector() {
 	time.Sleep(2 * time.Second)
 	s.server.Mu.Lock()
 	s.Assert().NotNil(s.server.Create)
-	s.Assert().Len(s.server.StreamData["first"], 2)
+	s.Assert().Len(s.server.Data["first"], 2)
 	s.server.Mu.Unlock()
 	s.Assert().NoError(c.catcher.Resolve())
 
@@ -261,8 +260,9 @@ func (s *SystemMetricsSuite) TestSystemMetricsCollectorStreamError() {
 		noBufferTimedFlush: true,
 	})
 	s.Require().NoError(err)
-	s.server.StreamErr = true
 	s.Require().NoError(c.Start(ctx))
+	s.server.AddErr = true
+	time.Sleep(2 * c.interval)
 
 	s.Require().Error(c.Close())
 }
@@ -411,8 +411,8 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 	assert.Equal(t, tsk.Project, srv.Create.Info.Project)
 	assert.Equal(t, tsk.Version, srv.Create.Info.Version)
 	assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
-	assert.NotEmpty(t, srv.StreamData)
-	sentData := srv.StreamData[mc.name()]
+	assert.NotEmpty(t, srv.Data)
+	sentData := srv.Data[mc.name()]
 	assert.NotZero(t, len(sentData))
 	for _, data := range sentData {
 		assert.Equal(t, mc.name(), data.Type)
