@@ -2290,12 +2290,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AwsRegions(childComplexity), true
 
-	case "Query.BuildBaron":
+	case "Query.buildBaron":
 		if e.complexity.Query.BuildBaron == nil {
 			break
 		}
 
-		args, err := ec.field_Query_BuildBaron_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_buildBaron_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3775,7 +3775,7 @@ var sources = []*ast.Source{
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  BuildBaron(taskId: String!, execution: String!): BuildBaron!
+  buildBaron(taskId: String!, execution: String!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -4922,7 +4922,21 @@ func (ec *executionContext) field_Mutation_updateUserSettings_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_BuildBaron_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["name"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -4941,20 +4955,6 @@ func (ec *executionContext) field_Query_BuildBaron_args(ctx context.Context, raw
 		}
 	}
 	args["execution"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["name"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["name"] = arg0
 	return args, nil
 }
 
@@ -13245,7 +13245,7 @@ func (ec *executionContext) _Query_taskQueueDistros(ctx context.Context, field g
 	return ec.marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_BuildBaron(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -13261,7 +13261,7 @@ func (ec *executionContext) _Query_BuildBaron(ctx context.Context, field graphql
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_BuildBaron_args(ctx, rawArgs)
+	args, err := ec.field_Query_buildBaron_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -22039,7 +22039,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "BuildBaron":
+		case "buildBaron":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -22047,7 +22047,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_BuildBaron(ctx, field)
+				res = ec._Query_buildBaron(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
