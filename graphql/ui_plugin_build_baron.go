@@ -86,8 +86,11 @@ func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 		return nil, errors.Wrap(err, "Invalid execution number")
 	}
 	t, err := task.FindOneIdOldOrNew(taskId, execution)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding task")
+	}
 	if t == nil {
-		return nil, errors.Errorf("No task found for taskId: %s and execution: %s", taskId, execution)
+		return nil, errors.Errorf("No task found for taskId: %s and execution: %d", taskId, execution)
 	}
 	if t.DisplayOnly {
 		t.LocalTestResults, err = t.GetTestResultsForDisplayTask()
