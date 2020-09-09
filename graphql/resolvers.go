@@ -234,7 +234,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
 	volume, err := r.sc.FindVolumeById(updateVolumeInput.VolumeID)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
 	}
 	if volume == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
