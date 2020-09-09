@@ -6,6 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -60,7 +62,11 @@ type HostAPIEventData struct {
 }
 
 func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
-	jiraHost := evergreen.GetEnvironment().Settings().Jira.GetHostURL()
+	settings, err := evergreen.GetConfig()
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "error getting settings",
+	}))
+	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""
 	if len(v.JiraIssue) != 0 {
 		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue

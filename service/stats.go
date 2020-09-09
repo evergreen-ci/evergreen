@@ -102,7 +102,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 
 		// Copy display and execution tasks to UIBuildVariant ui-model
 		for _, dispTask := range bv.DisplayTasks {
-			executionTasks := dispTask.ExecutionTasks
+			executionTasks := dispTask.ExecTasks
 			newBv.DisplayTasks = append(newBv.DisplayTasks, UIDisplayTask{
 				Name:           dispTask.Name,
 				ExecutionTasks: executionTasks,

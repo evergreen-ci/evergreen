@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -60,7 +59,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 }
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -232,10 +231,13 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		return nil, http.StatusOK, "Builds and tasks successfully added to patch.", version.Id
 
 	} else {
-		env := evergreen.GetEnvironment()
-		githubOauthToken, err := env.Settings().GetGithubOauthToken()
+		settings, err := evergreen.GetConfig()
 		if err != nil {
-			return err, http.StatusBadRequest, "", ""
+			return err, http.StatusInternalServerError, "", ""
+		}
+		githubOauthToken, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return err, http.StatusInternalServerError, "", ""
 		}
 		p.Activated = true
 		err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks())
@@ -267,7 +269,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
-			if err := env.LocalQueue().Put(ctx, job); err != nil {
+			if err := evergreen.GetEnvironment().LocalQueue().Put(ctx, job); err != nil {
 				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
 			}
 		}
@@ -511,7 +513,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
-	user := route.MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
 	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
@@ -616,7 +618,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if err != nil {
 		return err
 	}
-	err = route.MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	err = MustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
 	if err != nil {
 		return InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
 	}
@@ -635,7 +637,7 @@ func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 }
 
 func doesPublicKeyNameAlreadyExist(ctx context.Context, publicKeyName string) bool {
-	publicKeys := route.MustHaveUser(ctx).PublicKeys()
+	publicKeys := MustHaveUser(ctx).PublicKeys()
 	for _, pubKey := range publicKeys {
 		if pubKey.Name == publicKeyName {
 			return true
@@ -645,7 +647,7 @@ func doesPublicKeyNameAlreadyExist(ctx context.Context, publicKeyName string) bo
 }
 
 func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	publicKeys := []*restModel.APIPubKey{}
 	for _, item := range usr.PublicKeys() {
 		currName := item.Name
@@ -906,6 +908,25 @@ func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) e
 	return nil
 }
 
+func MustHaveUser(ctx context.Context) *user.DBUser {
+	u := gimlet.GetUser(ctx)
+	if u == nil {
+		grip.Error(message.Fields{
+			"message": "no user attached to request expecting user",
+		})
+		return &user.DBUser{}
+	}
+	usr, valid := u.(*user.DBUser)
+	if !valid {
+		grip.Error(message.Fields{
+			"message": "invalid user attached to request expecting user",
+		})
+		return &user.DBUser{}
+	}
+
+	return usr
+}
+
 func GetVolumeFromSpawnVolumeInput(spawnVolumeInput SpawnVolumeInput) host.Volume {
 	return host.Volume{
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
@@ -915,7 +936,7 @@ func GetVolumeFromSpawnVolumeInput(spawnVolumeInput SpawnVolumeInput) host.Volum
 }
 
 func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlError, error, *host.Volume) {
-	authedUser := route.MustHaveUser(ctx)
+	authedUser := MustHaveUser(ctx)
 	if volume.Size == 0 {
 		return false, http.StatusBadRequest, InputValidationError, errors.New("Must specify volume size"), nil
 	}

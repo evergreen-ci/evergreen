@@ -2074,7 +2074,7 @@ buildvariants:
 	assert.NotNil(pp)
 	assert.NoError(err)
 
-	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
+	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
 	syntaxErrs := CheckProjectSyntax(&proj)
