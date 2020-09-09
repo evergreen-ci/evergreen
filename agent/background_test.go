@@ -71,18 +71,21 @@ func (s *BackgroundSuite) TestStartHeartbeat() {
 func (s *BackgroundSuite) TestTaskAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
+	start := time.Now()
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	beat := <-heartbeat
+	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
+	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestMaxHeartbeats() {
 	s.mockCommunicator.HeartbeatShouldErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
 	start := time.Now()
@@ -90,13 +93,13 @@ func (s *BackgroundSuite) TestMaxHeartbeats() {
 	beat := <-heartbeat
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
-	s.True(end.Sub(start) < 50*time.Millisecond) // canceled before context expired
+	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	s.mockCommunicator.HeartbeatShouldSometimesErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
 	start := time.Now()
@@ -104,7 +107,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	beat := <-heartbeat
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
-	s.True(end.Sub(start) > 49*time.Millisecond) // canceled by context
+	s.True(end.Sub(start) >= time.Second) // canceled by context
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
