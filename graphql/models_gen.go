@@ -10,11 +10,17 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
 type BaseTaskMetadata struct {
 	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
 	BaseTaskLink     string             `json:"baseTaskLink"`
+}
+
+type BuildBaron struct {
+	SearchReturnInfo     *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
+	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
 }
 
 type Dependency struct {
@@ -128,6 +134,15 @@ type SpawnHostInput struct {
 	SetUpScript          *string         `json:"setUpScript"`
 	IsVirtualWorkStation bool            `json:"isVirtualWorkStation"`
 	HomeVolumeSize       *int            `json:"homeVolumeSize"`
+}
+
+type SpawnVolumeInput struct {
+	AvailabilityZone string     `json:"availabilityZone"`
+	Size             int        `json:"size"`
+	Type             string     `json:"type"`
+	Expiration       *time.Time `json:"expiration"`
+	NoExpiration     *bool      `json:"noExpiration"`
+	Host             *string    `json:"host"`
 }
 
 type TaskFiles struct {

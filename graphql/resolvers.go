@@ -193,6 +193,48 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 	}, nil
 }
 
+func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
+	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	}
+	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
+	if err != nil {
+		return false, gqlErr.Send(ctx, err.Error())
+	}
+	errorTemplate := "Volume %s has been created but an error occurred."
+	var additionalOptions restModel.VolumeModifyOptions
+	if spawnVolumeInput.Expiration != nil {
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
+		if err != nil {
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
+		additionalOptions.Expiration = newExpiration
+	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		additionalOptions.NoExpiration = true
+	}
+	// modify volume if additional options is not empty
+	if additionalOptions != (restModel.VolumeModifyOptions{}) {
+		mgr, err := getEC2Manager(ctx, &volume)
+		if err != nil {
+			return false, err
+		}
+		err = mgr.ModifyVolume(ctx, vol, &additionalOptions)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		}
+	}
+	if spawnVolumeInput.Host != nil {
+		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		if err != nil {
+			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+		}
+	}
+
+	return success, nil
+}
+
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
@@ -519,8 +561,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 }
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
-	// excludes display tasks
-	tasks, err := task.Find(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	tasks, err := task.FindAllFirstExecution(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1026,7 +1067,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
-			BaseURL:       evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        taskID,
 			Execution:     t.Execution,
 			PrintPriority: true,
@@ -1189,11 +1230,7 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 }
 
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
-	regions := []string{}
-	for _, item := range evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys {
-		regions = append(regions, item.Region)
-	}
-	return regions, nil
+	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
 func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {
@@ -1854,17 +1891,18 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 	return task.GetLatestExecution(*obj.Id)
 }
 
-func (r *queryResolver) SearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, error) {
-
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, exec)
+func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, fmt.Sprintf("%d", exec))
 	if projectNotFound {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
-	return searchReturnInfo, nil
+	return &BuildBaron{
+		SearchReturnInfo:     searchReturnInfo,
+		BuildBaronConfigured: !projectNotFound,
+	}, nil
 }
 
 type ticketFieldsResolver struct{ *Resolver }

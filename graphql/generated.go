@@ -65,6 +65,11 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 	}
 
+	BuildBaron struct {
+		BuildBaronConfigured func(childComplexity int) int
+		SearchReturnInfo     func(childComplexity int) int
+	}
+
 	ClientBinary struct {
 		Arch        func(childComplexity int) int
 		DisplayName func(childComplexity int) int
@@ -261,6 +266,7 @@ type ComplexityRoot struct {
 		SetPatchPriority           func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
 		SpawnHost                  func(childComplexity int, spawnHostInput *SpawnHostInput) int
+		SpawnVolume                func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
 		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
 		UnscheduleTask             func(childComplexity int, taskID string) int
 		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
@@ -369,6 +375,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AwsRegions         func(childComplexity int) int
+		BuildBaron         func(childComplexity int, taskID string, execution int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
 		DistroTaskQueue    func(childComplexity int, distroID string) int
@@ -384,7 +391,6 @@ type ComplexityRoot struct {
 		PatchBuildVariants func(childComplexity int, patchID string) int
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
-		SearchReturnInfo   func(childComplexity int, taskID string, execution string) int
 		SiteBanner         func(childComplexity int) int
 		Task               func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions  func(childComplexity int, taskID string) int
@@ -652,6 +658,7 @@ type MutationResolver interface {
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
+	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*model.APIHost, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -699,7 +706,7 @@ type QueryResolver interface {
 	InstanceTypes(ctx context.Context) ([]string, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
-	SearchReturnInfo(ctx context.Context, taskID string, execution string) (*thirdparty.SearchReturnInfo, error)
+	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -796,6 +803,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
+
+	case "BuildBaron.buildBaronConfigured":
+		if e.complexity.BuildBaron.BuildBaronConfigured == nil {
+			break
+		}
+
+		return e.complexity.BuildBaron.BuildBaronConfigured(childComplexity), true
+
+	case "BuildBaron.searchReturnInfo":
+		if e.complexity.BuildBaron.SearchReturnInfo == nil {
+			break
+		}
+
+		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
 
 	case "ClientBinary.arch":
 		if e.complexity.ClientBinary.Arch == nil {
@@ -1779,6 +1800,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SpawnHost(childComplexity, args["spawnHostInput"].(*SpawnHostInput)), true
 
+	case "Mutation.spawnVolume":
+		if e.complexity.Mutation.SpawnVolume == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_spawnVolume_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SpawnVolume(childComplexity, args["spawnVolumeInput"].(SpawnVolumeInput)), true
+
 	case "Mutation.unschedulePatchTasks":
 		if e.complexity.Mutation.UnschedulePatchTasks == nil {
 			break
@@ -2271,6 +2304,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AwsRegions(childComplexity), true
 
+	case "Query.buildBaron":
+		if e.complexity.Query.BuildBaron == nil {
+			break
+		}
+
+		args, err := ec.field_Query_buildBaron_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BuildBaron(childComplexity, args["taskId"].(string), args["execution"].(int)), true
+
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
 			break
@@ -2420,18 +2465,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Projects(childComplexity), true
-
-	case "Query.searchReturnInfo":
-		if e.complexity.Query.SearchReturnInfo == nil {
-			break
-		}
-
-		args, err := ec.field_Query_searchReturnInfo_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.SearchReturnInfo(childComplexity, args["taskId"].(string), args["execution"].(string)), true
 
 	case "Query.siteBanner":
 		if e.complexity.Query.SiteBanner == nil {
@@ -3756,7 +3789,7 @@ var sources = []*ast.Source{
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  searchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -3783,6 +3816,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
@@ -3908,6 +3942,15 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+}
+
+input SpawnVolumeInput {
+  availabilityZone: String!
+  size: Int!
+  type: String!
+  expiration: Time
+  noExpiration: Boolean
+  host: String
 }
 
 type TaskQueueItem {
@@ -4409,6 +4452,11 @@ type HostEventLogData {
   duration: Duration!
 }
 
+type BuildBaron {
+  searchReturnInfo: SearchReturnInfo
+  buildBaronConfigured: Boolean!
+}
+
 # build baron plugin
 type SearchReturnInfo {
   issues: [JiraTicket!]!
@@ -4774,6 +4822,20 @@ func (ec *executionContext) field_Mutation_spawnHost_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_spawnVolume_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 SpawnVolumeInput
+	if tmp, ok := rawArgs["spawnVolumeInput"]; ok {
+		arg0, err = ec.unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["spawnVolumeInput"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_unschedulePatchTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4909,6 +4971,28 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -5187,28 +5271,6 @@ func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_searchReturnInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["execution"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
 	return args, nil
 }
 
@@ -5691,6 +5753,71 @@ func (ec *executionContext) _Build_actualMakespan(ctx context.Context, field gra
 	res := resTmp.(model.APIDuration)
 	fc.Result = res
 	return ec.marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaron_searchReturnInfo(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BuildBaron",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SearchReturnInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*thirdparty.SearchReturnInfo)
+	fc.Result = res
+	return ec.marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BuildBaron",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildBaronConfigured, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
@@ -9949,6 +10076,47 @@ func (ec *executionContext) _Mutation_spawnHost(ctx context.Context, field graph
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_spawnVolume(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_spawnVolume_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SpawnVolume(rctx, args["spawnVolumeInput"].(SpawnVolumeInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_updateSpawnHostStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13156,7 +13324,7 @@ func (ec *executionContext) _Query_taskQueueDistros(ctx context.Context, field g
 	return ec.marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_searchReturnInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -13172,7 +13340,7 @@ func (ec *executionContext) _Query_searchReturnInfo(ctx context.Context, field g
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_searchReturnInfo_args(ctx, rawArgs)
+	args, err := ec.field_Query_buildBaron_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -13180,7 +13348,7 @@ func (ec *executionContext) _Query_searchReturnInfo(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().SearchReturnInfo(rctx, args["taskId"].(string), args["execution"].(string))
+		return ec.resolvers.Query().BuildBaron(rctx, args["taskId"].(string), args["execution"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13192,9 +13360,9 @@ func (ec *executionContext) _Query_searchReturnInfo(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*thirdparty.SearchReturnInfo)
+	res := resTmp.(*BuildBaron)
 	fc.Result = res
-	return ec.marshalNSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx, field.Selections, res)
+	return ec.marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -19596,6 +19764,54 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, obj interface{}) (SpawnVolumeInput, error) {
+	var it SpawnVolumeInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "availabilityZone":
+			var err error
+			it.AvailabilityZone, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "size":
+			var err error
+			it.Size, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "type":
+			var err error
+			it.Type, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "expiration":
+			var err error
+			it.Expiration, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "noExpiration":
+			var err error
+			it.NoExpiration, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "host":
+			var err error
+			it.Host, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, obj interface{}) (model.APISubscriber, error) {
 	var it model.APISubscriber
 	var asMap = obj.(map[string]interface{})
@@ -19876,6 +20092,35 @@ func (ec *executionContext) _Build(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "actualMakespan":
 			out.Values[i] = ec._Build_actualMakespan(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var buildBaronImplementors = []string{"BuildBaron"}
+
+func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSet, obj *BuildBaron) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, buildBaronImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BuildBaron")
+		case "searchReturnInfo":
+			out.Values[i] = ec._BuildBaron_searchReturnInfo(ctx, field, obj)
+		case "buildBaronConfigured":
+			out.Values[i] = ec._BuildBaron_buildBaronConfigured(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -20900,6 +21145,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "spawnVolume":
+			out.Values[i] = ec._Mutation_spawnVolume(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "updateSpawnHostStatus":
 			out.Values[i] = ec._Mutation_updateSpawnHostStatus(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -21921,7 +22171,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "searchReturnInfo":
+		case "buildBaron":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -21929,7 +22179,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_searchReturnInfo(ctx, field)
+				res = ec._Query_buildBaron(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -23516,6 +23766,20 @@ func (ec *executionContext) marshalNBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 	return ec._Build(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNBuildBaron2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx context.Context, sel ast.SelectionSet, v BuildBaron) graphql.Marshaler {
+	return ec._BuildBaron(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx context.Context, sel ast.SelectionSet, v *BuildBaron) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._BuildBaron(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
 	return ec._ClientBinary(ctx, sel, &v)
 }
@@ -24529,20 +24793,6 @@ func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑci
 	return v
 }
 
-func (ec *executionContext) marshalNSearchReturnInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v thirdparty.SearchReturnInfo) graphql.Marshaler {
-	return ec._SearchReturnInfo(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._SearchReturnInfo(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, v interface{}) (model.APISelector, error) {
 	return ec.unmarshalInputSelectorInput(ctx, v)
 }
@@ -24588,6 +24838,10 @@ func (ec *executionContext) unmarshalNSpawnHostStatusActions2githubᚗcomᚋever
 
 func (ec *executionContext) marshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, sel ast.SelectionSet, v SpawnHostStatusActions) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx context.Context, v interface{}) (SpawnVolumeInput, error) {
+	return ec.unmarshalInputSpawnVolumeInput(ctx, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -26023,6 +26277,17 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSearchReturnInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v thirdparty.SearchReturnInfo) graphql.Marshaler {
+	return ec._SearchReturnInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v *thirdparty.SearchReturnInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SearchReturnInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {

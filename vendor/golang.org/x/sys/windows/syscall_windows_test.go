@@ -14,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -402,5 +403,58 @@ func TestGetPreferredUILanguages(t *testing.T) {
 		if err != nil {
 			t.Errorf(`failed to call %v(MUI_LANGUAGE_NAME): %v`, fName, err)
 		}
+	}
+}
+
+func TestProcessWorkingSetSizeEx(t *testing.T) {
+	// Grab a handle to the current process
+	hProcess := windows.CurrentProcess()
+
+	// Allocate memory to store the result of the query
+	var minimumWorkingSetSize, maximumWorkingSetSize uintptr
+
+	// Make the system-call
+	var flag uint32
+	windows.GetProcessWorkingSetSizeEx(hProcess, &minimumWorkingSetSize, &maximumWorkingSetSize, &flag)
+
+	// Set the new limits to the current ones
+	if err := windows.SetProcessWorkingSetSizeEx(hProcess, minimumWorkingSetSize, maximumWorkingSetSize, flag); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestJobObjectInfo(t *testing.T) {
+	jo, err := windows.CreateJobObject(nil, nil)
+	if err != nil {
+		t.Fatalf("CreateJobObject failed: %v", err)
+	}
+	defer windows.CloseHandle(jo)
+
+	var info windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+
+	err = windows.QueryInformationJobObject(jo, windows.JobObjectExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil)
+	if err != nil {
+		t.Fatalf("QueryInformationJobObject failed: %v", err)
+	}
+
+	const wantMemLimit = 4 * 1024
+
+	info.BasicLimitInformation.LimitFlags |= windows.JOB_OBJECT_LIMIT_PROCESS_MEMORY
+	info.ProcessMemoryLimit = wantMemLimit
+	_, err = windows.SetInformationJobObject(jo, windows.JobObjectExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)))
+	if err != nil {
+		t.Fatalf("SetInformationJobObject failed: %v", err)
+	}
+
+	err = windows.QueryInformationJobObject(jo, windows.JobObjectExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil)
+	if err != nil {
+		t.Fatalf("QueryInformationJobObject failed: %v", err)
+	}
+
+	if have := info.ProcessMemoryLimit; wantMemLimit != have {
+		t.Errorf("ProcessMemoryLimit is wrong: want %v have %v", wantMemLimit, have)
 	}
 }

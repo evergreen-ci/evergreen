@@ -185,7 +185,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Construct the old task id.
-		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
+		oldTaskId := task.MakeOldID(projCtx.Task.Id, execution)
 
 		// Try to find the task in the old_tasks collection.
 		var taskFromDb *task.Task
@@ -574,7 +574,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: true,
@@ -634,7 +634,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: !raw,

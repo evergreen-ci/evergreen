@@ -377,11 +377,11 @@ func TestRlimit(t *testing.T) {
 	}
 	set := rlimit
 	set.Cur = set.Max - 1
-	if runtime.GOOS == "darwin" && set.Cur > 10240 {
-		// The max file limit is 10240, even though
-		// the max returned by Getrlimit is 1<<63-1.
-		// This is OPEN_MAX in sys/syslimits.h.
-		set.Cur = 10240
+	if runtime.GOOS == "darwin" && set.Cur > 4096 {
+		// rlim_min for RLIMIT_NOFILE should be equal to
+		// or lower than kern.maxfilesperproc, which on
+		// some machines are 4096. See #40564.
+		set.Cur = 4096
 	}
 	err = unix.Setrlimit(unix.RLIMIT_NOFILE, &set)
 	if err != nil {
@@ -394,6 +394,9 @@ func TestRlimit(t *testing.T) {
 	}
 	set = rlimit
 	set.Cur = set.Max - 1
+	if runtime.GOOS == "darwin" && set.Cur > 4096 {
+		set.Cur = 4096
+	}
 	if set != get {
 		// Seems like Darwin requires some privilege to
 		// increase the soft limit of rlimit sandbox, though
@@ -680,8 +683,23 @@ func TestFstatat(t *testing.T) {
 		t.Fatalf("Fstatat: %v", err)
 	}
 
-	if st1 != st2 {
-		t.Errorf("Fstatat: returned stat does not match Lstat")
+	if st2.Dev != st1.Dev {
+		t.Errorf("Fstatat: got dev %v, expected %v", st2.Dev, st1.Dev)
+	}
+	if st2.Ino != st1.Ino {
+		t.Errorf("Fstatat: got ino %v, expected %v", st2.Ino, st1.Ino)
+	}
+	if st2.Mode != st1.Mode {
+		t.Errorf("Fstatat: got mode %v, expected %v", st2.Mode, st1.Mode)
+	}
+	if st2.Uid != st1.Uid {
+		t.Errorf("Fstatat: got uid %v, expected %v", st2.Uid, st1.Uid)
+	}
+	if st2.Gid != st1.Gid {
+		t.Errorf("Fstatat: got gid %v, expected %v", st2.Gid, st1.Gid)
+	}
+	if st2.Size != st1.Size {
+		t.Errorf("Fstatat: got size %v, expected %v", st2.Size, st1.Size)
 	}
 }
 
@@ -773,6 +791,45 @@ func TestRenameat(t *testing.T) {
 	_, err = os.Stat(from)
 	if err == nil {
 		t.Errorf("Renameat: stat of renamed file %q unexpectedly succeeded", from)
+	}
+}
+
+func TestUtimesNanoAt(t *testing.T) {
+	defer chtmpdir(t)()
+
+	symlink := "symlink1"
+	os.Remove(symlink)
+	err := os.Symlink("nonexisting", symlink)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Some filesystems only support microsecond resolution. Account for
+	// that in Nsec.
+	ts := []unix.Timespec{
+		{Sec: 1111, Nsec: 2000},
+		{Sec: 3333, Nsec: 4000},
+	}
+	err = unix.UtimesNanoAt(unix.AT_FDCWD, symlink, ts, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		t.Fatalf("UtimesNanoAt: %v", err)
+	}
+
+	var st unix.Stat_t
+	err = unix.Lstat(symlink, &st)
+	if err != nil {
+		t.Fatalf("Lstat: %v", err)
+	}
+
+	// Only check Mtim, Atim might not be supported by the underlying filesystem
+	expected := ts[1]
+	if st.Mtim.Nsec == 0 {
+		// Some filesystems only support 1-second time stamp resolution
+		// and will always set Nsec to 0.
+		expected.Nsec = 0
+	}
+	if st.Mtim != expected {
+		t.Errorf("UtimesNanoAt: wrong mtime: got %v, expected %v", st.Mtim, expected)
 	}
 }
 

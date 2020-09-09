@@ -3,10 +3,7 @@ package pail
 import (
 	"archive/tar"
 	"context"
-	"crypto/md5"
-	"crypto/sha1"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,35 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-func checksum(hash hash.Hash, path string) (string, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return "", errors.Wrapf(err, "file '%s' does not exist", path)
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem opening '%s'", path)
-	}
-	defer f.Close()
-
-	_, err = io.Copy(hash, f)
-	if err != nil {
-		return "", errors.Wrap(err, "problem hashing contents")
-	}
-
-	return fmt.Sprintf("%x", hash.Sum(nil)), nil
-}
-
-func md5sum(path string) (string, error) {
-	out, err := checksum(md5.New(), path)
-	return out, errors.WithStack(err)
-}
-
-func sha1sum(path string) (string, error) {
-	out, err := checksum(sha1.New(), path)
-	return out, errors.WithStack(err)
-}
 
 func walkLocalTree(ctx context.Context, prefix string) ([]string, error) {
 	var out []string

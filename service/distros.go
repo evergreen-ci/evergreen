@@ -276,11 +276,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	regions := []string{}
-	for _, key := range uis.Settings.Providers.AWS.EC2Keys {
-		regions = append(regions, key.Region)
-	}
-
+	regions := uis.Settings.Providers.AWS.AllowedRegions
 	opts := gimlet.PermissionOpts{Resource: id, ResourceType: evergreen.DistroResourceType}
 	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 	if err != nil {

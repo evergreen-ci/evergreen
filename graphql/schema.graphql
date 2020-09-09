@@ -67,7 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  searchReturnInfo(taskId: String!, execution: String!): SearchReturnInfo!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -94,6 +94,7 @@ type Mutation {
   ): Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
@@ -219,6 +220,15 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+}
+
+input SpawnVolumeInput {
+  availabilityZone: String!
+  size: Int!
+  type: String!
+  expiration: Time
+  noExpiration: Boolean
+  host: String
 }
 
 type TaskQueueItem {
@@ -718,6 +728,11 @@ type HostEventLogData {
   user: String!
   successful: Boolean!
   duration: Duration!
+}
+
+type BuildBaron {
+  searchReturnInfo: SearchReturnInfo
+  buildBaronConfigured: Boolean!
 }
 
 # build baron plugin

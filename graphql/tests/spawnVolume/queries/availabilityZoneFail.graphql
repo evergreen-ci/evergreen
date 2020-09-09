@@ -1,0 +1,9 @@
+mutation {
+  spawnVolume(
+    spawnVolumeInput: {
+      availabilityZone: "thangthang"
+      size: 300
+      type: "standard"
+    }
+  )
+}

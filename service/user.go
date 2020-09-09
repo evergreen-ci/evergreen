@@ -196,10 +196,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		UIHost  string   `json:"ui_server_host"`
 		Regions []string `json:"regions"`
 	}
-	regions := []string{}
-	for _, item := range uis.Settings.Providers.AWS.EC2Keys {
-		regions = append(regions, item.Region)
-	}
+	regions := uis.Settings.Providers.AWS.AllowedRegions
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url, regions}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {

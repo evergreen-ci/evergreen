@@ -17,6 +17,7 @@ func NewConfigModel() *APIAdminSettings {
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
 		Backup:            &APIBackupConfig{},
+		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
@@ -53,6 +54,7 @@ type APIAdminSettings struct {
 	Banner             *string                           `json:"banner,omitempty"`
 	BannerTheme        *string                           `json:"banner_theme,omitempty"`
 	Backup             *APIBackupConfig                  `json:"backup,omitempty"`
+	Cedar              *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir  *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir          *string                           `json:"configdir,omitempty"`
@@ -541,6 +543,38 @@ func (a *APIBackupConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APICedarConfig struct {
+	BaseURL  *string `json:"base_url"`
+	RPCPort  *string `json:"rpc_port"`
+	User     *string `json:"user"`
+	Password *string `json:"password"`
+	APIKey   *string `json:"api_key"`
+}
+
+func (a *APICedarConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.CedarConfig:
+		a.BaseURL = ToStringPtr(v.BaseURL)
+		a.RPCPort = ToStringPtr(v.RPCPort)
+		a.User = ToStringPtr(v.User)
+		a.Password = ToStringPtr(v.Password)
+		a.APIKey = ToStringPtr(v.APIKey)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APICedarConfig) ToService() (interface{}, error) {
+	return evergreen.CedarConfig{
+		BaseURL:  FromStringPtr(a.BaseURL),
+		RPCPort:  FromStringPtr(a.RPCPort),
+		User:     FromStringPtr(a.User),
+		Password: FromStringPtr(a.Password),
+		APIKey:   FromStringPtr(a.APIKey),
+	}, nil
+}
+
 type APILDAPConfig struct {
 	URL                *string `json:"url"`
 	Port               *string `json:"port"`
@@ -934,16 +968,11 @@ func (a *APILDAPRoleMap) ToService() (interface{}, error) {
 }
 
 type APILoggerConfig struct {
-	Buffer              *APILogBuffering `json:"buffer"`
-	DefaultLevel        *string          `json:"default_level"`
-	ThresholdLevel      *string          `json:"threshold_level"`
-	LogkeeperURL        *string          `json:"logkeeper_url"`
-	BuildloggerBaseURL  *string          `json:"buildlogger_base_url"`
-	BuildloggerRPCPort  *string          `json:"buildlogger_rpc_port"`
-	BuildloggerUser     *string          `json:"buildlogger_user"`
-	BuildloggerPassword *string          `json:"buildlogger_password"`
-	BuildloggerAPIKey   *string          `json:"buildlogger_api_key"`
-	DefaultLogger       *string          `json:"default_logger"`
+	Buffer         *APILogBuffering `json:"buffer"`
+	DefaultLevel   *string          `json:"default_level"`
+	ThresholdLevel *string          `json:"threshold_level"`
+	LogkeeperURL   *string          `json:"logkeeper_url"`
+	DefaultLogger  *string          `json:"default_logger"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -952,11 +981,6 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = ToStringPtr(v.DefaultLevel)
 		a.ThresholdLevel = ToStringPtr(v.ThresholdLevel)
 		a.LogkeeperURL = ToStringPtr(v.LogkeeperURL)
-		a.BuildloggerBaseURL = ToStringPtr(v.BuildloggerBaseURL)
-		a.BuildloggerRPCPort = ToStringPtr(v.BuildloggerRPCPort)
-		a.BuildloggerUser = ToStringPtr(v.BuildloggerUser)
-		a.BuildloggerPassword = ToStringPtr(v.BuildloggerPassword)
-		a.BuildloggerAPIKey = ToStringPtr(v.BuildloggerAPIKey)
 		a.DefaultLogger = ToStringPtr(v.DefaultLogger)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
@@ -970,15 +994,10 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 
 func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
-		DefaultLevel:        FromStringPtr(a.DefaultLevel),
-		ThresholdLevel:      FromStringPtr(a.ThresholdLevel),
-		LogkeeperURL:        FromStringPtr(a.LogkeeperURL),
-		BuildloggerBaseURL:  FromStringPtr(a.BuildloggerBaseURL),
-		BuildloggerRPCPort:  FromStringPtr(a.BuildloggerRPCPort),
-		BuildloggerUser:     FromStringPtr(a.BuildloggerUser),
-		BuildloggerPassword: FromStringPtr(a.BuildloggerPassword),
-		BuildloggerAPIKey:   FromStringPtr(a.BuildloggerAPIKey),
-		DefaultLogger:       FromStringPtr(a.DefaultLogger),
+		DefaultLevel:   FromStringPtr(a.DefaultLevel),
+		ThresholdLevel: FromStringPtr(a.ThresholdLevel),
+		LogkeeperURL:   FromStringPtr(a.LogkeeperURL),
+		DefaultLogger:  FromStringPtr(a.DefaultLogger),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -1267,6 +1286,7 @@ type APIAWSConfig struct {
 	S3BaseURL            *string           `json:"s3_base_url"`
 	DefaultSecurityGroup *string           `json:"default_security_group"`
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
+	AllowedRegions       []*string         `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
 }
 
@@ -1339,10 +1359,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
+		a.AllowedInstanceTypes = ToStringPtrSlice(v.AllowedInstanceTypes)
+		a.AllowedRegions = ToStringPtrSlice(v.AllowedRegions)
 
-		for _, t := range v.AllowedInstanceTypes {
-			a.AllowedInstanceTypes = append(a.AllowedInstanceTypes, ToStringPtr(t))
-		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1430,9 +1449,8 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		config.Subnets = append(config.Subnets, subnet)
 	}
 
-	for _, t := range a.AllowedInstanceTypes {
-		config.AllowedInstanceTypes = append(config.AllowedInstanceTypes, FromStringPtr(t))
-	}
+	config.AllowedInstanceTypes = FromStringPtrSlice(a.AllowedInstanceTypes)
+	config.AllowedRegions = FromStringPtrSlice(a.AllowedRegions)
 
 	return config, nil
 }
