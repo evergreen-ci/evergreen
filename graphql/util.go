@@ -934,3 +934,10 @@ func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlEr
 	}
 	return true, http.StatusOK, "", nil, vol
 }
+
+func ValidateVolumeExpirationInput(ctx context.Context, expirationTime *time.Time, noExpiration *bool) error {
+	if expirationTime != nil && noExpiration != nil && *noExpiration == true {
+		return InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	}
+	return nil
+}

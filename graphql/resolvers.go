@@ -195,8 +195,9 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
-	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
-		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	err := ValidateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
+	if err != nil {
+		return false, err
 	}
 	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
 	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
@@ -237,6 +238,10 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 }
 
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
+	err := ValidateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -1598,7 +1603,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
-
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
