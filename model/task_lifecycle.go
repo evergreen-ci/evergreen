@@ -758,27 +758,17 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	if (finishedTasks + blockedTasks) >= len(buildTasks) {
 		updates.BuildComplete = true
+		updates.BuildNewStatus = evergreen.BuildSucceeded
 		if failedTask {
 			updates.BuildNewStatus = evergreen.BuildFailed
-			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
-		} else {
-			updates.BuildNewStatus = evergreen.BuildSucceeded
-			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
+		}
+		if err = b.MarkFinished(updates.BuildNewStatus, finishTime); err != nil {
+			return errors.Wrapf(err, "Error marking build as finished with status '%s'", updates.BuildNewStatus)
 		}
 
 		// update the build's makespan information
 		if err = updateMakespans(b); err != nil {
-			err = errors.Wrap(err, "Error updating makespan information")
-			grip.Error(err)
-			return err
+			return errors.Wrap(err, "Error updating makespan information")
 		}
 	}
 
