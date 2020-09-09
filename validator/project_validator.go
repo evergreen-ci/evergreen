@@ -107,6 +107,7 @@ var projectSyntaxValidators = []projectValidator{
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
+	validateParameters,
 	validateTaskGroups,
 	validateHostCreates,
 	validateDuplicateBVTasks,
@@ -1026,6 +1027,34 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 						project.Identifier, dep.Variant, task.Name),
 				})
 			}
+		}
+	}
+	return errs
+}
+
+func validateParameters(p *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+
+	names := map[string]bool{}
+	for _, param := range p.Parameters {
+		if _, ok := names[param.Parameter.Key]; ok {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("parameter '%s' is defined multiple times", param.Parameter.Key),
+			})
+			names[param.Parameter.Key] = true
+		}
+		if strings.Contains(param.Parameter.Key, "=") {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("parameter '%s' cannot contain `=`", param.Parameter.Key),
+			})
+		}
+		if param.Parameter.Value == "" {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("parameter '%s' has no default value given", param.Parameter.Key),
+			})
 		}
 	}
 	return errs

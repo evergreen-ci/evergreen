@@ -2133,6 +2133,27 @@ func TestValidateCreateHosts(t *testing.T) {
 	assert.Len(errs, 1)
 }
 
+func TestValidateParameters(t *testing.T) {
+	p := &model.Project{
+		Parameters: []model.ParameterInfo{
+			{
+				Parameter: model.Parameter{
+					Key:   "iter=count",
+					Value: "",
+				},
+			},
+		},
+	}
+
+	assert.Len(t, validateParameters(p), 2)
+	p.Parameters[0].Parameter.Key = "iter_count"
+	assert.Len(t, validateParameters(p), 1)
+	p.Parameters[0].Parameter.Value = "3"
+	assert.Len(t, validateParameters(p), 0)
+	p.Parameters[0].Description = "not validated"
+	assert.Len(t, validateParameters(p), 0)
+}
+
 func TestDuplicateTaskInBV(t *testing.T) {
 	assert := assert.New(t)
 

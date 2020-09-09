@@ -64,6 +64,7 @@ type ParserProject struct {
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
 	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
@@ -578,6 +579,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		DisplayName:       pp.DisplayName,
 		CommandType:       pp.CommandType,
 		Ignore:            pp.Ignore,
+		Parameters:        pp.Parameters,
 		Pre:               pp.Pre,
 		Post:              pp.Post,
 		Timeout:           pp.Timeout,

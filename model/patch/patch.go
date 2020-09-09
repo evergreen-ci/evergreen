@@ -101,6 +101,12 @@ type DisplayTask struct {
 	ExecTasks []string
 }
 
+// Parameter defines a key/value pair to be used as an expansion.
+type Parameter struct {
+	Key   string `yaml:"key" bson:"key"`
+	Value string `yaml:"value" bson:"value"`
+}
+
 // SyncAtEndOptions describes when and how tasks perform sync at the end of a
 // task.
 type SyncAtEndOptions struct {
@@ -138,6 +144,7 @@ type Patch struct {
 	VariantsTasks   []VariantTasks         `bson:"variants_tasks"`
 	SyncAtEndOpts   SyncAtEndOptions       `bson:"sync_at_end_opts,omitempty"`
 	Patches         []ModulePatch          `bson:"patches"`
+	Parameters      []Parameter            `bson:"parameters"`
 	Activated       bool                   `bson:"activated"`
 	PatchedConfig   string                 `bson:"patched_config"`
 	Alias           string                 `bson:"alias"`

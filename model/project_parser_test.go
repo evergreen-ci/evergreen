@@ -502,6 +502,25 @@ tasks:
 	assert.Equal("execTask4", p.BuildVariants[0].Tasks[2].Name)
 }
 
+func TestParameterParsing(t *testing.T) {
+	yml := `
+parameters:
+- key: "iter_count"
+  value: "3"
+  description: "you know it"
+- key: buggy
+  value: driver
+`
+	p, err := createIntermediateProject([]byte(yml))
+	assert.NoError(t, err)
+	require.Len(t, p.Parameters, 2)
+	assert.Equal(t, "iter_count", p.Parameters[0].Key)
+	assert.Equal(t, "3", p.Parameters[0].Value)
+	assert.Equal(t, "you know it", p.Parameters[0].Description)
+	assert.Equal(t, "buggy", p.Parameters[1].Key)
+	assert.Equal(t, "driver", p.Parameters[1].Value)
+}
+
 func TestDisplayTaskValidation(t *testing.T) {
 	assert := assert.New(t)
 
@@ -1322,6 +1341,10 @@ loggers:
     - type: something
       splunk_token: idk
     - type: somethingElse
+parameters:
+- key: iter_count
+  value: 3
+  description: "used for something"
 tasks:
 - name: task_1
   depends_on:

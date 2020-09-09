@@ -46,6 +46,7 @@ type Project struct {
 	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type"`
 	Ignore            []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters        []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
 	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
@@ -231,6 +232,12 @@ type BuildVariant struct {
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+}
+
+// ParameterInfo is used to provide extra information about a parameter.
+type ParameterInfo struct {
+	patch.Parameter `yaml:",inline" bson:",inline"`
+	Description     string `yaml:"description" bson:"description"`
 }
 
 type Module struct {
@@ -942,6 +949,14 @@ func (p *Project) GetVariantMappings() map[string]string {
 		mappings[buildVariant.Name] = buildVariant.DisplayName
 	}
 	return mappings
+}
+
+func (p *Project) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range p.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }
 
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
