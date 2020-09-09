@@ -1,0 +1,8 @@
+mutation {
+  updateVolume(
+    updateVolumeInput: {
+      volumeId: "vol-0603934da6f024db5"
+      expiration: "2020-08-06T17:42:12Z"
+    }
+  )
+}

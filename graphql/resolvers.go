@@ -264,6 +264,9 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		}
 		updateOptions.Expiration = newExpiration
 	}
+	if updateVolumeInput.Name != nil {
+		updateOptions.NewName = *updateVolumeInput.Name
+	}
 	err = applyVolumeOptions(ctx, *volume, updateOptions)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
