@@ -214,6 +214,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		}
 		additionalOptions.Expiration = newExpiration
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
 	err = applyVolumeOptions(ctx, volume, additionalOptions)
@@ -248,9 +249,11 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	}
 	var updateOptions restModel.VolumeModifyOptions
 	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == true {
+		// this value should only ever be true or nil
 		updateOptions.NoExpiration = true
 	}
 	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == false {
+		// this value should only ever be true or nil
 		updateOptions.HasExpiration = true
 	}
 	if updateVolumeInput.Expiration != nil {
