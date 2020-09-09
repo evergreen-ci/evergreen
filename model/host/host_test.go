@@ -747,7 +747,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
 		})
-		Convey("updating the running task on a starting userdata host should succeed", func() {
+		Convey("updating the running task on a starting user data host should succeed", func() {
 			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h2.Id))

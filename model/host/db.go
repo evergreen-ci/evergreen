@@ -388,7 +388,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 func ByTaskSpec(group, buildVariant, project, version string) db.Q {
 	return db.Query(
 		bson.M{
-			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
+			StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
 			"$or": []bson.M{
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},

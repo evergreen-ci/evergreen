@@ -117,7 +117,7 @@ clientsLoop:
 				hostIDs = append(hostIDs, h.Id)
 			}
 			for i := range hosts {
-				j.AddError(errors.Wrap(setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
+				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
 			}
 			continue clientsLoop
 		}
@@ -127,7 +127,7 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrap(setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
+			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
 		}
 	}
 }
@@ -158,7 +158,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 }
 
 // setCloudHostStatus sets the host's status to HostProvisioning if host is running.
-func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
+func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
 	switch hostStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated:
 		grip.Debug(message.Fields{
@@ -169,11 +169,11 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 		})
 		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
 	case cloud.StatusRunning:
-		if err := initialSetup(ctx, m, &h); err != nil {
+		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
 		}
 
-		// We're done provisioning userdata hosts. The userdata script will do the rest.
+		// We're done provisioning user data hosts. The userdata script will do the rest.
 		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned", h.Id)
 		}
@@ -190,14 +190,14 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 	return nil
 }
 
-func initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
+func (j *cloudHostReadyJob) initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
 	if err := cloudMgr.OnUp(ctx, h); err != nil {
 		return errors.Wrapf(err, "OnUp callback failed for host %s", h.Id)
 	}
-	return setDNSName(ctx, cloudMgr, h)
+	return j.setDNSName(ctx, cloudMgr, h)
 }
 
-func setDNSName(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
+func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
 	if h.Host != "" {
 		return nil
 	}
