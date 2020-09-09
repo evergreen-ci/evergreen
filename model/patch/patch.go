@@ -97,7 +97,7 @@ func mergeDisplayTasks(current DisplayTask, toMerge DisplayTask) DisplayTask {
 }
 
 type DisplayTask struct {
-	Name      string `yaml:"name,omitempty" bson:"name,omitempty"`
+	Name      string   `yaml:"name,omitempty" bson:"name,omitempty"`
 	ExecTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
 }
 
