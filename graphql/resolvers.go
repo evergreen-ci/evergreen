@@ -216,16 +216,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
 		additionalOptions.NoExpiration = true
 	}
-	// modify volume if additional options is not empty
-	if additionalOptions != (restModel.VolumeModifyOptions{}) {
-		mgr, err := getEC2Manager(ctx, &volume)
-		if err != nil {
-			return false, err
-		}
-		err = mgr.ModifyVolume(ctx, vol, &additionalOptions)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
-		}
+	err = applyVolumeOptions(ctx, volume, additionalOptions)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
@@ -238,13 +231,39 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 }
 
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
-	err := ValidateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
+	volume, err := r.sc.FindVolumeById(updateVolumeInput.VolumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
+	}
+	if volume == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
+	}
+	err = ValidateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err
 	}
 	err = ValidateVolumeName(ctx, updateVolumeInput.Name)
 	if err != nil {
 		return false, err
+	}
+	var updateOptions restModel.VolumeModifyOptions
+	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == true {
+		updateOptions.NoExpiration = true
+	}
+	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == false {
+		updateOptions.HasExpiration = true
+	}
+	if updateVolumeInput.Expiration != nil {
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(updateVolumeInput.Expiration)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error parsing time %s", err))
+		}
+		updateOptions.Expiration = newExpiration
+	}
+	err = applyVolumeOptions(ctx, *volume, updateOptions)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
 	}
 	return true, nil
 }
