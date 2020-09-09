@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -20,7 +19,16 @@ import (
 	"github.com/pkg/errors"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
+
+func newGRPCError(code codes.Code, err error) error {
+	if err == nil {
+		return nil
+	}
+	return status.Errorf(code, "%v", err)
+}
 
 // AttachService attaches the given manager to the jasper GRPC server. This
 // function eventually calls generated Protobuf code for registering the
@@ -108,7 +116,7 @@ func (s *jasperService) ID(ctx context.Context, _ *empty.Empty) (*IDResponse, er
 func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*ProcessInfo, error) {
 	jopts, err := opts.Export()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem exporting create options")
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "exporting create options"))
 	}
 
 	// Spawn a new context so that the process' context is not potentially
@@ -118,7 +126,7 @@ func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*Proce
 
 	proc, err := s.manager.CreateProcess(pctx, jopts)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, newGRPCError(codes.Internal, errors.WithStack(err))
 	}
 
 	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
@@ -129,13 +137,13 @@ func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*Proce
 		// that the reason for it isn't just because the process has exited
 		// already, since that should not be considered an error.
 		if !getProcInfoNoHang(ctx, proc).Complete {
-			return nil, errors.WithStack(err)
+			return nil, newGRPCError(codes.Internal, errors.Wrap(err, "registering trigger"))
 		}
 	}
 
 	info, err := ConvertProcessInfo(getProcInfoNoHang(ctx, proc))
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not convert info for process '%s'", proc.ID())
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "converting info for process '%s'", proc.ID()))
 	}
 	return info, nil
 }
@@ -144,20 +152,20 @@ func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) 
 	ctx := stream.Context()
 	procs, err := s.manager.List(ctx, options.Filter(strings.ToLower(f.GetName().String())))
 	if err != nil {
-		return errors.WithStack(err)
+		return newGRPCError(codes.Internal, errors.WithStack(err))
 	}
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("list canceled")
+			return newGRPCError(codes.DeadlineExceeded, errors.New("list cancelled"))
 		}
 
 		info, err := ConvertProcessInfo(getProcInfoNoHang(ctx, p))
 		if err != nil {
-			return errors.Wrapf(err, "could not convert info for process '%s'", p.ID())
+			return newGRPCError(codes.Internal, errors.Wrapf(err, "converting info for process with id '%s'", p.ID()))
 		}
 		if err := stream.Send(info); err != nil {
-			return errors.Wrap(err, "problem sending process info")
+			return newGRPCError(codes.Internal, errors.Wrap(err, "sending process info"))
 		}
 	}
 
@@ -168,20 +176,20 @@ func (s *jasperService) Group(t *TagName, stream JasperProcessManager_GroupServe
 	ctx := stream.Context()
 	procs, err := s.manager.Group(ctx, t.Value)
 	if err != nil {
-		return errors.WithStack(err)
+		return newGRPCError(codes.Internal, errors.WithStack(err))
 	}
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("list canceled")
+			return newGRPCError(codes.DeadlineExceeded, errors.New("group cancelled"))
 		}
 
 		info, err := ConvertProcessInfo(getProcInfoNoHang(ctx, p))
 		if err != nil {
-			return errors.Wrapf(err, "could not get info for process '%s'", p.ID())
+			return newGRPCError(codes.Internal, errors.Wrapf(err, "getting info for process with id '%s'", p.ID()))
 		}
 		if err := stream.Send(info); err != nil {
-			return errors.Wrap(err, "problem sending process info")
+			return newGRPCError(codes.Internal, errors.Wrap(err, "sending process info"))
 		}
 	}
 
@@ -191,12 +199,12 @@ func (s *jasperService) Group(t *TagName, stream JasperProcessManager_GroupServe
 func (s *jasperService) Get(ctx context.Context, id *JasperProcessID) (*ProcessInfo, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching process '%s'", id.Value)
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 
 	info, err := ConvertProcessInfo(getProcInfoNoHang(ctx, proc))
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get info for process '%s'", id.Value)
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "could not get info for process '%s'", id.Value))
 	}
 	return info, nil
 }
@@ -205,25 +213,16 @@ func (s *jasperService) Signal(ctx context.Context, sig *SignalProcess) (*Operat
 	proc, err := s.manager.Get(ctx, sig.ProcessID.Value)
 	if err != nil {
 		err = errors.Wrapf(err, "couldn't find process with id '%s'", sig.ProcessID)
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, err)
 	}
 
 	if err = proc.Signal(ctx, sig.Signal.Export()); err != nil {
 		err = errors.Wrapf(err, "problem sending '%s' to '%s'", sig.Signal, sig.ProcessID)
-		return &OperationOutcome{
-			Success:  false,
-			ExitCode: -3,
-			Text:     err.Error(),
-		}, nil
+		return nil, newGRPCError(codes.Internal, err)
 	}
 
 	return &OperationOutcome{
 		Success:  true,
-		Text:     fmt.Sprintf("sending '%s' to '%s'", sig.Signal, sig.ProcessID),
 		ExitCode: int32(getProcInfoNoHang(ctx, proc).ExitCode),
 	}, nil
 }
@@ -231,27 +230,20 @@ func (s *jasperService) Signal(ctx context.Context, sig *SignalProcess) (*Operat
 func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*OperationOutcome, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", id.Value)
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process '%s'", id.Value))
 	}
 
 	exitCode, err := proc.Wait(ctx)
 	if err != nil {
-		err = errors.Wrap(err, "problem encountered while waiting")
 		return &OperationOutcome{
 			Success:  false,
-			Text:     err.Error(),
+			Text:     errors.Wrap(err, "waiting for process").Error(),
 			ExitCode: int32(exitCode),
 		}, nil
 	}
 
 	return &OperationOutcome{
 		Success:  true,
-		Text:     fmt.Sprintf("wait completed on process with id '%s'", id.Value),
 		ExitCode: int32(exitCode),
 	}, nil
 }
@@ -259,8 +251,7 @@ func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*Operati
 func (s *jasperService) Respawn(ctx context.Context, id *JasperProcessID) (*ProcessInfo, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", id.Value)
-		return nil, errors.WithStack(err)
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 
 	// Spawn a new context so that the process' context is not potentially
@@ -269,27 +260,29 @@ func (s *jasperService) Respawn(ctx context.Context, id *JasperProcessID) (*Proc
 	pctx, cancel := context.WithCancel(context.Background())
 	newProc, err := proc.Respawn(pctx)
 	if err != nil {
-		err = errors.Wrap(err, "problem encountered while respawning")
 		cancel()
-		return nil, errors.WithStack(err)
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "respawning process"))
 	}
 	if err := s.manager.Register(ctx, newProc); err != nil {
 		cancel()
-		return nil, errors.WithStack(err)
+		return nil, newGRPCError(codes.Internal, errors.WithStack(err))
 	}
 
 	if err := newProc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
 		cancel()
+		// If we get an error registering a trigger, then we should make sure
+		// that the reason for it isn't just because the process has exited
+		// already, since that should not be considered an error.
 		if !getProcInfoNoHang(ctx, newProc).Complete {
-			return nil, errors.WithStack(err)
+			return nil, newGRPCError(codes.Internal, errors.Wrap(err, "registering trigger"))
 		}
 	}
 
 	newProcInfo, err := ConvertProcessInfo(getProcInfoNoHang(ctx, newProc))
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get info for process '%s'", newProc.ID())
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "getting info for process '%s'", newProc.ID()))
 	}
 	return newProcInfo, nil
 }
@@ -297,26 +290,22 @@ func (s *jasperService) Respawn(ctx context.Context, id *JasperProcessID) (*Proc
 func (s *jasperService) Clear(ctx context.Context, _ *empty.Empty) (*OperationOutcome, error) {
 	s.manager.Clear(ctx)
 
-	return &OperationOutcome{Success: true, Text: "service cleared", ExitCode: 0}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) Close(ctx context.Context, _ *empty.Empty) (*OperationOutcome, error) {
 	if err := s.manager.Close(ctx); err != nil {
 		err = errors.Wrap(err, "problem encountered closing service")
-		return &OperationOutcome{
-			Success:  false,
-			ExitCode: 1,
-			Text:     err.Error(),
-		}, err
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "closing service"))
 	}
 
-	return &OperationOutcome{Success: true, Text: "service closed", ExitCode: 0}, nil
+	return &OperationOutcome{Success: true, ExitCode: 0}, nil
 }
 
 func (s *jasperService) GetTags(ctx context.Context, id *JasperProcessID) (*ProcessTags, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding process '%s'", id.Value)
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 
 	return &ProcessTags{ProcessID: id.Value, Tags: proc.GetTags()}, nil
@@ -325,55 +314,36 @@ func (s *jasperService) GetTags(ctx context.Context, id *JasperProcessID) (*Proc
 func (s *jasperService) TagProcess(ctx context.Context, tags *ProcessTags) (*OperationOutcome, error) {
 	proc, err := s.manager.Get(ctx, tags.ProcessID)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", tags.ProcessID)
-		return &OperationOutcome{
-			ExitCode: 1,
-			Success:  false,
-			Text:     err.Error(),
-		}, err
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", tags.ProcessID))
 	}
 
 	for _, t := range tags.Tags {
 		proc.Tag(t)
 	}
 
-	return &OperationOutcome{
-		Success:  true,
-		ExitCode: 0,
-		Text:     "added tags",
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) ResetTags(ctx context.Context, id *JasperProcessID) (*OperationOutcome, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", id.Value)
-		return &OperationOutcome{
-			ExitCode: -1,
-			Success:  false,
-			Text:     err.Error(),
-		}, err
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 	proc.ResetTags()
-	return &OperationOutcome{Success: true, Text: "set tags", ExitCode: 0}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) DownloadMongoDB(ctx context.Context, opts *MongoDBDownloadOptions) (*OperationOutcome, error) {
 	jopts := opts.Export()
 	if err := jopts.Validate(); err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     errors.Wrap(err, "problem validating MongoDB download options").Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.InvalidArgument, errors.Wrap(err, "invalid MongoDB download options"))
 	}
 
 	if err := jasper.SetupDownloadMongoDBReleases(ctx, s.cache, jopts); err != nil {
-		err = errors.Wrap(err, "problem in download setup")
-		return &OperationOutcome{Success: false, Text: err.Error(), ExitCode: -3}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "download setup"))
 	}
 
-	return &OperationOutcome{Success: true, Text: "download jobs started"}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) ConfigureCache(ctx context.Context, opts *CacheOptions) (*OperationOutcome, error) {
@@ -404,26 +374,21 @@ func (s *jasperService) DownloadFile(ctx context.Context, opts *DownloadInfo) (*
 	jopts := opts.Export()
 
 	if err := jopts.Validate(); err != nil {
-		err = errors.Wrap(err, "problem validating download options")
-		return &OperationOutcome{Success: false, Text: err.Error(), ExitCode: -2}, nil
+		return nil, newGRPCError(codes.InvalidArgument, errors.Wrap(err, "validating download options"))
 	}
 
 	if err := jopts.Download(); err != nil {
-		err = errors.Wrapf(err, "problem occurred during file download for URL %s to path %s", jopts.URL, jopts.Path)
-		return &OperationOutcome{Success: false, Text: err.Error(), ExitCode: -3}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "downloading file"))
 	}
 
-	return &OperationOutcome{
-		Success: true,
-		Text:    fmt.Sprintf("downloaded file %s to path %s", jopts.URL, jopts.Path),
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) GetLogStream(ctx context.Context, request *LogRequest) (*LogStream, error) {
 	id := request.Id
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding process '%s'", id.Value)
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 
 	stream := &LogStream{}
@@ -431,7 +396,7 @@ func (s *jasperService) GetLogStream(ctx context.Context, request *LogRequest) (
 	if err == io.EOF {
 		stream.Done = true
 	} else if err != nil {
-		return nil, errors.Wrapf(err, "could not get logs for process '%s'", request.Id.Value)
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "getting logs for process '%s'", request.Id.Value))
 	}
 	return stream, nil
 }
@@ -439,11 +404,10 @@ func (s *jasperService) GetLogStream(ctx context.Context, request *LogRequest) (
 func (s *jasperService) GetBuildloggerURLs(ctx context.Context, id *JasperProcessID) (*BuildloggerURLs, error) {
 	proc, err := s.manager.Get(ctx, id.Value)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", id.Value)
-		return nil, err
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", id.Value))
 	}
 
-	urls := []string{}
+	var urls []string
 	for _, logger := range getProcInfoNoHang(ctx, proc).Options.Output.Loggers {
 		if logger.Type() == options.LogBuildloggerV2 {
 			producer := logger.Producer()
@@ -458,7 +422,7 @@ func (s *jasperService) GetBuildloggerURLs(ctx context.Context, id *JasperProces
 	}
 
 	if len(urls) == 0 {
-		return nil, errors.Errorf("process '%s' does not use buildlogger", id.Value)
+		return nil, newGRPCError(codes.InvalidArgument, errors.Errorf("process with id '%s' does not use buildlogger", id.Value))
 	}
 
 	return &BuildloggerURLs{Urls: urls}, nil
@@ -469,55 +433,29 @@ func (s *jasperService) RegisterSignalTriggerID(ctx context.Context, params *Sig
 
 	proc, err := s.manager.Get(ctx, jasperProcessID)
 	if err != nil {
-		err = errors.Wrapf(err, "problem finding process '%s'", jasperProcessID)
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting process with id '%s'", jasperProcessID))
 	}
 
 	makeTrigger, ok := jasper.GetSignalTriggerFactory(signalTriggerID)
 	if !ok {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     errors.Errorf("could not find signal trigger with id '%s'", signalTriggerID).Error(),
-			ExitCode: -3,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Errorf("getting signal trigger with id '%s'", signalTriggerID))
 	}
 
 	if err := proc.RegisterSignalTrigger(ctx, makeTrigger()); err != nil {
-		err = errors.Wrapf(err, "problem registering signal trigger '%s'", signalTriggerID)
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -4,
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "registering signal  trigger '%s'", signalTriggerID))
 	}
 
-	return &OperationOutcome{
-		Success:  true,
-		Text:     fmt.Sprintf("registered signal trigger with id '%s' on process with id '%s'", signalTriggerID, jasperProcessID),
-		ExitCode: 0,
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) SignalEvent(ctx context.Context, name *EventName) (*OperationOutcome, error) {
 	eventName := name.Value
 
 	if err := jasper.SignalEvent(ctx, eventName); err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     errors.Wrapf(err, "problem signaling event '%s'", eventName).Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "signaling event '%s'", eventName))
 	}
 
-	return &OperationOutcome{
-		Success:  true,
-		Text:     fmt.Sprintf("signaled event named '%s'", eventName),
-		ExitCode: 0,
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) error {
@@ -530,10 +468,10 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 		if err != nil {
 			if sendErr := stream.SendAndClose(&OperationOutcome{
 				Success:  false,
-				Text:     errors.Wrap(err, "error receiving from client stream").Error(),
+				Text:     errors.Wrap(err, "receiving from client stream").Error(),
 				ExitCode: -2,
 			}); sendErr != nil {
-				return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
+				return newGRPCError(codes.Internal, errors.Wrapf(sendErr, "sending error response to client: %s", err.Error()))
 			}
 			return nil
 		}
@@ -543,10 +481,10 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 		if err := jopts.Validate(); err != nil {
 			if sendErr := stream.SendAndClose(&OperationOutcome{
 				Success:  false,
-				Text:     errors.Wrap(err, "problem validating file write options").Error(),
+				Text:     errors.Wrap(err, "validating file write options").Error(),
 				ExitCode: -3,
 			}); sendErr != nil {
-				return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
+				return newGRPCError(codes.Internal, errors.Wrapf(sendErr, "sending error response to client: %s", err.Error()))
 			}
 			return nil
 		}
@@ -557,7 +495,7 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 				Text:     errors.Wrap(err, "problem validating file write opts").Error(),
 				ExitCode: -4,
 			}); sendErr != nil {
-				return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
+				return newGRPCError(codes.Internal, errors.Wrapf(sendErr, "sending error response to client: %s", err.Error()))
 			}
 			return nil
 		}
@@ -566,97 +504,76 @@ func (s *jasperService) WriteFile(stream JasperProcessManager_WriteFileServer) e
 	if err := jopts.SetPerm(); err != nil {
 		if sendErr := stream.SendAndClose(&OperationOutcome{
 			Success:  false,
-			Text:     errors.Wrapf(err, "problem setting permissions for file %s", jopts.Path).Error(),
+			Text:     errors.Wrapf(err, "setting permissions for file %s", jopts.Path).Error(),
 			ExitCode: -5,
 		}); sendErr != nil {
-			return errors.Wrapf(sendErr, "could not send error response to client: %s", err.Error())
+			return newGRPCError(codes.Internal, errors.Wrapf(sendErr, "sending error response to client: %s", err.Error()))
 		}
 		return nil
 	}
 
-	return errors.Wrap(stream.SendAndClose(&OperationOutcome{
+	if err := stream.SendAndClose(&OperationOutcome{
 		Success: true,
-		Text:    fmt.Sprintf("file %s successfully written", jopts.Path),
-	}), "could not send success response to client")
+	}); err != nil {
+		return newGRPCError(codes.Internal, errors.Wrapf(err, "sending succses response to client"))
+	}
+
+	return nil
 }
 
 func (s *jasperService) ScriptingHarnessCreate(ctx context.Context, opts *ScriptingOptions) (*ScriptingHarnessID, error) {
 	xopts, err := opts.Export()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting options")
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "converting options"))
+	}
+
+	if err = xopts.Validate(); err != nil {
+		return nil, newGRPCError(codes.InvalidArgument, errors.Wrap(err, "invalid scripting options"))
 	}
 
 	se, err := s.scripting.Create(s.manager, xopts)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem generating scripting environment")
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "generating scripting environment"))
 	}
-	return &ScriptingHarnessID{
-		Id:    se.ID(),
-		Setup: true,
-	}, nil
+
+	return &ScriptingHarnessID{Id: se.ID()}, nil
 }
-func (s *jasperService) ScriptingHarnessCheck(ctx context.Context, id *ScriptingHarnessID) (*OperationOutcome, error) {
+func (s *jasperService) ScriptingHarnessGet(ctx context.Context, id *ScriptingHarnessID) (*OperationOutcome, error) {
 	se, err := s.scripting.Get(id.Id)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", id.Id))
 	}
 
 	return &OperationOutcome{
-		Success:  true,
-		Text:     se.ID(),
-		ExitCode: 0,
+		Success: true,
+		Text:    se.ID(),
 	}, nil
 }
 
 func (s *jasperService) ScriptingHarnessSetup(ctx context.Context, id *ScriptingHarnessID) (*OperationOutcome, error) {
 	se, err := s.scripting.Get(id.Id)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", id.Id))
 	}
 
-	err = se.Setup(ctx)
-
-	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+	if err = se.Setup(ctx); err != nil {
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "setting up scripting harness"))
 	}
 
 	return &OperationOutcome{
-		Success:  true,
-		Text:     se.ID(),
-		ExitCode: 0,
+		Success: true,
+		Text:    se.ID(),
 	}, nil
 }
 
 func (s *jasperService) ScriptingHarnessCleanup(ctx context.Context, id *ScriptingHarnessID) (*OperationOutcome, error) {
 	se, err := s.scripting.Get(id.Id)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", id.Id))
 	}
 
-	err = se.Cleanup(ctx)
-
-	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+	if err = se.Cleanup(ctx); err != nil {
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "cleaning up scripting harness"))
 	}
 
 	return &OperationOutcome{
@@ -669,135 +586,78 @@ func (s *jasperService) ScriptingHarnessCleanup(ctx context.Context, id *Scripti
 func (s *jasperService) ScriptingHarnessRun(ctx context.Context, args *ScriptingHarnessRunArgs) (*OperationOutcome, error) {
 	se, err := s.scripting.Get(args.Id)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", args.Id))
 	}
 
 	err = se.Run(ctx, args.Args)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "running scripting command"))
 	}
 
 	return &OperationOutcome{
-		Success:  true,
-		Text:     se.ID(),
-		ExitCode: 0,
+		Success: true,
+		Text:    se.ID(),
 	}, nil
 }
 
 func (s *jasperService) ScriptingHarnessRunScript(ctx context.Context, args *ScriptingHarnessRunScriptArgs) (*OperationOutcome, error) {
 	se, err := s.scripting.Get(args.Id)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", args.Id))
 	}
 
 	err = se.RunScript(ctx, args.Script)
 	if err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "running script"))
 	}
 
 	return &OperationOutcome{
-		Success:  true,
-		Text:     se.ID(),
-		ExitCode: 0,
+		Success: true,
+		Text:    se.ID(),
 	}, nil
 }
 
 func (s *jasperService) ScriptingHarnessBuild(ctx context.Context, args *ScriptingHarnessBuildArgs) (*ScriptingHarnessBuildResponse, error) {
 	se, err := s.scripting.Get(args.Id)
 	if err != nil {
-		return &ScriptingHarnessBuildResponse{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -1,
-			}}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", args.Id))
 	}
 
 	path, err := se.Build(ctx, args.Directory, args.Args)
 	if err != nil {
-		return &ScriptingHarnessBuildResponse{
-			Path: path,
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -2,
-			}}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "running build"))
 	}
 
 	return &ScriptingHarnessBuildResponse{
 		Path: path,
 		Outcome: &OperationOutcome{
-			Success:  true,
-			Text:     se.ID(),
-			ExitCode: 0,
+			Success: true,
+			Text:    se.ID(),
 		}}, nil
 }
 
 func (s *jasperService) ScriptingHarnessTest(ctx context.Context, args *ScriptingHarnessTestArgs) (*ScriptingHarnessTestResponse, error) {
 	se, err := s.scripting.Get(args.Id)
 	if err != nil {
-		return &ScriptingHarnessTestResponse{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -1,
-			},
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Wrapf(err, "getting scripting harness with id '%s'", args.Id))
 	}
 
 	exportedArgs, err := args.Export()
 	if err != nil {
-		return &ScriptingHarnessTestResponse{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -2,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "exporting arguments"))
 	}
 
 	res, err := se.Test(ctx, args.Directory, exportedArgs...)
 	if err != nil {
-		return &ScriptingHarnessTestResponse{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -3,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "running tests"))
 	}
 	convertedRes, err := ConvertScriptingTestResults(res)
 	if err != nil {
-		return &ScriptingHarnessTestResponse{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -4,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "converting test results"))
 	}
 
 	return &ScriptingHarnessTestResponse{
-		Outcome: &OperationOutcome{
-			Success:  true,
-			ExitCode: 0,
-		},
+		Outcome: &OperationOutcome{Success: true},
 		Results: convertedRes,
 	}, nil
 }
@@ -805,149 +665,104 @@ func (s *jasperService) ScriptingHarnessTest(ctx context.Context, args *Scriptin
 func (s *jasperService) LoggingCacheCreate(ctx context.Context, args *LoggingCacheCreateArgs) (*LoggingCacheInstance, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return nil, errors.New("logging cache not supported")
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
-	opt, err := args.Options.Export()
+	opts, err := args.Options.Export()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem exporting output options")
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "exporting options"))
+	}
+	if err := opts.Validate(); err != nil {
+		return nil, newGRPCError(codes.InvalidArgument, errors.Wrap(err, "invalid options"))
 	}
 
-	out, err := lc.Create(args.Name, &opt)
+	out, err := lc.Create(args.Id, &opts)
 	if err != nil {
-		return &LoggingCacheInstance{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -1,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "creating logger"))
 	}
+	out.ManagerID = s.manager.ID()
 
 	logger, err := ConvertCachedLogger(out)
 	if err != nil {
-		return &LoggingCacheInstance{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -2,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "converting cached logger"))
 	}
+
 	return logger, nil
 }
 
 func (s *jasperService) LoggingCacheGet(ctx context.Context, args *LoggingCacheArgs) (*LoggingCacheInstance, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return nil, errors.New("logging cache not supported")
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
 
-	out := lc.Get(args.Name)
+	out := lc.Get(args.Id)
 	if out == nil {
-		return &LoggingCacheInstance{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     "not found",
-				ExitCode: -1,
-			},
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Errorf("getting logger with id '%s'", args.Id))
 	}
 
 	logger, err := ConvertCachedLogger(out)
 	if err != nil {
-		return &LoggingCacheInstance{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     err.Error(),
-				ExitCode: -2,
-			},
-		}, nil
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "converting cached logger"))
 	}
+
 	return logger, nil
 }
 
 func (s *jasperService) LoggingCacheRemove(ctx context.Context, args *LoggingCacheArgs) (*OperationOutcome, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     "logging cache is not supported",
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
 
-	lc.Remove(args.Name)
+	lc.Remove(args.Id)
 
-	return &OperationOutcome{
-		Success: true,
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) LoggingCachePrune(ctx context.Context, arg *timestamp.Timestamp) (*OperationOutcome, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return nil, errors.New("logging cache not supported")
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
 
 	ts, err := ptypes.Timestamp(arg)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert prune timestamp to equivalent protobuf RPC timestamp")
+		return nil, newGRPCError(codes.Internal, errors.Wrap(err, "converting timestamp"))
 	}
+
 	lc.Prune(ts)
 
-	return &OperationOutcome{
-		Success: true,
-	}, nil
+	return &OperationOutcome{Success: true}, nil
 }
 
 func (s *jasperService) LoggingCacheLen(ctx context.Context, _ *empty.Empty) (*LoggingCacheSize, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return &LoggingCacheSize{
-			Outcome: &OperationOutcome{
-				Success:  false,
-				Text:     "logging cache is not supported",
-				ExitCode: -1,
-			},
-		}, nil
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
 
 	return &LoggingCacheSize{
-		Outcome: &OperationOutcome{
-			Success:  true,
-			ExitCode: 0,
-		},
-		Id:   s.manager.ID(),
-		Size: int64(lc.Len()),
+		Outcome: &OperationOutcome{Success: true},
+		Id:      s.manager.ID(),
+		Size:    int64(lc.Len()),
 	}, nil
 }
 
 func (s *jasperService) SendMessages(ctx context.Context, lp *LoggingPayload) (*OperationOutcome, error) {
 	lc := s.manager.LoggingCache(ctx)
 	if lc == nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     "logging cache is not supported",
-			ExitCode: -1,
-		}, nil
+		return nil, newGRPCError(codes.FailedPrecondition, errors.New("logging cache not supported"))
 	}
 
 	logger := lc.Get(lp.LoggerID)
 	if logger == nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     fmt.Sprintf("logging instance '%s' does not exist", lp.LoggerID),
-			ExitCode: -2,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Errorf("getting logger with id '%s'", lp.LoggerID))
 	}
 
 	payload := lp.Export()
+
 	if err := logger.Send(payload); err != nil {
-		return &OperationOutcome{
-			Success:  false,
-			Text:     err.Error(),
-			ExitCode: -3,
-		}, nil
+		return nil, newGRPCError(codes.NotFound, errors.Errorf("sending message to logger with id '%s'", lp.LoggerID))
 	}
 
 	return &OperationOutcome{Success: true}, nil

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/jasper/options"
 )
 
 // ClientOptions represents the options to connect the CLI client to the Jasper
@@ -30,35 +29,29 @@ func (opts *ClientOptions) Validate() error {
 	return catcher.Resolve()
 }
 
-// sshClientOptions represents the options necessary to run a Jasper CLI
-// command over SSH.
-type sshClientOptions struct {
-	Machine options.Remote
-	Client  ClientOptions
-}
-
-// args returns the Jasper CLI command that will be run over SSH.
-func (opts *sshClientOptions) buildCommand(clientSubcommand ...string) []string {
+// buildCommand returns the Jasper CLI command that will be run over SSH using
+// the Jasper manager.
+func (opts *ClientOptions) buildCommand(clientSubcommand ...string) []string {
 	args := append(
 		[]string{
-			opts.Client.BinaryPath,
+			opts.BinaryPath,
 			JasperCommand,
 			ClientCommand,
 		},
 		clientSubcommand...,
 	)
-	args = append(args, fmt.Sprintf("--%s=%s", serviceFlagName, opts.Client.Type))
+	args = append(args, fmt.Sprintf("--%s=%s", serviceFlagName, opts.Type))
 
-	if opts.Client.Host != "" {
-		args = append(args, fmt.Sprintf("--%s=%s", hostFlagName, opts.Client.Host))
+	if opts.Host != "" {
+		args = append(args, fmt.Sprintf("--%s=%s", hostFlagName, opts.Host))
 	}
 
-	if opts.Client.Port != 0 {
-		args = append(args, fmt.Sprintf("--%s=%d", portFlagName, opts.Client.Port))
+	if opts.Port != 0 {
+		args = append(args, fmt.Sprintf("--%s=%d", portFlagName, opts.Port))
 	}
 
-	if opts.Client.CredentialsFilePath != "" {
-		args = append(args, fmt.Sprintf("--%s=%s", credsFilePathFlagName, opts.Client.CredentialsFilePath))
+	if opts.CredentialsFilePath != "" {
+		args = append(args, fmt.Sprintf("--%s=%s", credsFilePathFlagName, opts.CredentialsFilePath))
 	}
 
 	return args

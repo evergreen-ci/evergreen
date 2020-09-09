@@ -50,17 +50,17 @@ imports:
   - name: github.com/docker/go-units
     version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
   - name: github.com/docker/docker
-    version: aa6a9891b09cce3d9004121294301a30d45d998d
+    version: 9dc6525e6118a25fab2be322d1914740ea842495
   - name: github.com/coreos/go-systemd
     version: 95778dfbb74eb7e4dbaf43bf7d71809650ef8076
   - name: github.com/godbus/dbus
     version: f93dedc6ceb4596891d18bae4a2adf9258f0acfb
   - name: github.com/gogo/protobuf
-    version: 382325bbbb4d1c850eec1f3ec92a1a16f502d68b
+    version: 5628607bb4c51c3157aacc3a50f0ab707582b805
 
   # grpc and dependencies
   - name: google.golang.org/grpc
-    version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb
+    version: 39ef2aaf62df775b9c54a59957d113a0495cae73
   - name: golang.org/x/crypto
     version: 87dc89f01550277dc22b74ffcf4cd89fa2f40f4c
   - name: golang.org/x/net
@@ -70,10 +70,19 @@ imports:
   - name: golang.org/x/text
     version: 6c92c7dc7f53607809182301b96e4cc1975143f1
   - name: google.golang.org/genproto
-    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
+    version: d751682dd1038b2274391fec637b1a9c366d9a0a
+    subpackages:
+      - googleapis/rpc
+    # google.golang.org/protobuf and
+    # github.com/golang/protobuf refer to the exact
+    # same repo, but because
+    # google.golang.org/genproto/googleapis/rpc does
+    # not alias github.com/golang/protobuf, we're
+    # forced to vendor both of them.
+  - name: google.golang.org/protobuf
+    version: d04d7b157bb510b1e0c10132224b616ac0e26b17
   - name: github.com/golang/protobuf
-    version: c823c79ea1570fb5ff454033735a8e68575d1d0f
-
+    version: d04d7b157bb510b1e0c10132224b616ac0e26b17
   # vendoring because many dependencies use it
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86

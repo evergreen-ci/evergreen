@@ -60,10 +60,10 @@ func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *options.C
 	}
 
 	grip.Warning(message.WrapError(m.loggers.Put(proc.ID(), &options.CachedLogger{
-		ID:      proc.ID(),
-		Manager: m.id,
-		Error:   util.ConvertWriter(opts.Output.GetError()),
-		Output:  util.ConvertWriter(opts.Output.GetOutput()),
+		ID:        proc.ID(),
+		ManagerID: m.id,
+		Error:     util.ConvertWriter(opts.Output.GetError()),
+		Output:    util.ConvertWriter(opts.Output.GetOutput()),
 	}), message.Fields{
 		"message": "problem caching logger for process",
 		"process": proc.ID(),
@@ -124,12 +124,12 @@ func (m *basicProcessManager) Register(ctx context.Context, proc Process) error 
 }
 
 func (m *basicProcessManager) List(ctx context.Context, f options.Filter) ([]Process, error) {
-	out := []Process{}
 
 	if err := f.Validate(); err != nil {
-		return out, errors.Wrap(err, "invalid filter")
+		return nil, errors.Wrap(err, "invalid filter")
 	}
 
+	out := []Process{}
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {
 			return nil, errors.WithStack(ctx.Err())

@@ -5,10 +5,11 @@ import (
 
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
-// Constants representing the Jasper RemoteClient interface as CLI commands.
+// Constants representing the remote.Manager interface as CLI commands.
 const (
 	RemoteCommand             = "remote"
 	ConfigureCacheCommand     = "configure-cache"
@@ -17,11 +18,13 @@ const (
 	GetBuildloggerURLsCommand = "get-buildlogger-urls"
 	GetLogStreamCommand       = "get-log-stream"
 	SignalEventCommand        = "signal-event"
-	WriteFileCommand          = "write-file"
+	SendMessagesCommand       = "send-messages"
+	CreateScriptingCommand    = "create-scripting"
+	GetScriptingCommand       = "get-scripting"
 )
 
-// Remote creates a cli.Command that allows the remote-specific methods in the
-// RemoteClient interface except for CloseClient, for which there is no CLI
+// Remote creates a cli.Command that supports the remote-specific methods in the
+// remote.Manager interface except for CloseClient, for which there is no CLI
 // equivalent.
 func Remote() cli.Command {
 	return cli.Command{
@@ -33,11 +36,12 @@ func Remote() cli.Command {
 			remoteGetLogStream(),
 			remoteGetBuildloggerURLs(),
 			remoteSignalEvent(),
-			remoteWriteFile(),
+			remoteSendMessages(),
+			remoteCreateScripting(),
+			remoteGetScripting(),
 		},
 	}
 }
-
 func remoteConfigureCache() cli.Command {
 	return cli.Command{
 		Name:   ConfigureCacheCommand,
@@ -47,20 +51,6 @@ func remoteConfigureCache() cli.Command {
 			input := options.Cache{}
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.ConfigureCache(ctx, input))
-			})
-		},
-	}
-}
-
-func remoteWriteFile() cli.Command {
-	return cli.Command{
-		Name:   WriteFileCommand,
-		Flags:  clientFlags(),
-		Before: clientBefore(),
-		Action: func(c *cli.Context) error {
-			input := options.WriteFile{}
-			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
-				return makeOutcomeResponse(client.WriteFile(ctx, input))
 			})
 		},
 	}
@@ -140,6 +130,64 @@ func remoteSignalEvent() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				if err := client.SignalEvent(ctx, input.Name); err != nil {
 					return makeOutcomeResponse(err)
+				}
+				return makeOutcomeResponse(nil)
+			})
+		},
+	}
+}
+
+func remoteSendMessages() cli.Command {
+	return cli.Command{
+		Name:   SendMessagesCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			input := options.LoggingPayload{}
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
+				if err := client.SendMessages(ctx, input); err != nil {
+					return makeOutcomeResponse(err)
+				}
+				return makeOutcomeResponse(nil)
+			})
+		},
+	}
+}
+
+func remoteCreateScripting() cli.Command {
+	return cli.Command{
+		Name:   CreateScriptingCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			in := &ScriptingCreateInput{}
+			return doPassthroughInputOutput(c, in, func(ctx context.Context, client remote.Manager) interface{} {
+				harnessOpts, err := in.Export()
+				if err != nil {
+					return &IDResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error creating scripting harness"))}
+				}
+
+				env, err := client.CreateScripting(ctx, harnessOpts)
+				if err != nil {
+					return &IDResponse{ID: harnessOpts.ID(), OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error creating scripting harness"))}
+				}
+				return &IDResponse{ID: env.ID(), OutcomeResponse: *makeOutcomeResponse(nil)}
+			})
+		},
+	}
+}
+
+func remoteGetScripting() cli.Command {
+	return cli.Command{
+		Name:   GetScriptingCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			input := &IDInput{}
+			return doPassthroughInputOutput(c, input, func(ctx context.Context, client remote.Manager) interface{} {
+				_, err := client.GetScripting(ctx, input.ID)
+				if err != nil {
+					return makeOutcomeResponse(errors.Wrapf(err, "getting scripting harness with ID '%s'", input.ID))
 				}
 				return makeOutcomeResponse(nil)
 			})

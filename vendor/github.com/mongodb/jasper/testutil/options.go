@@ -61,5 +61,14 @@ func ValidMongoDBDownloadOptions() options.MongoDBDownload {
 	}
 }
 
+// ValidScriptingHarnessOptions returns valid options for creating a Python
+// scripting environment.
+func ValidScriptingHarnessOptions(dir string) options.ScriptingHarness {
+	return &options.ScriptingPython{
+		VirtualEnvPath: dir,
+		Packages:       []string{"requests"},
+	}
+}
+
 // OptsModify functions mutate creation options for tests.
 type OptsModify func(*options.Create)
