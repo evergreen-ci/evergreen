@@ -204,10 +204,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 // that occurs. If the script exits with a non-zero exit code, the error will be
 // non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
-	switch j.host.Distro.BootstrapSettings.Method {
-	case distro.BootstrapMethodNone:
-		return nil
-	case distro.BootstrapMethodSSH:
+	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
 		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not set up Jasper",

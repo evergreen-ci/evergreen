@@ -172,13 +172,9 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
 		}
-
-		// We're done provisioning user data hosts. The userdata script will do the rest.
-		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-			return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned", h.Id)
-		}
-		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
+		return j.setNextState(h)
 	}
+
 	grip.Info(message.Fields{
 		"message": "host not ready for setup",
 		"host_id": h.Id,
@@ -188,6 +184,19 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		"status":  hostStatus,
 	})
 	return nil
+}
+
+func (j *cloudHostReadyJob) setNextState(h host.Host) error {
+	switch h.Distro.BootstrapSettings.Method {
+	case distro.BootstrapMethodUserData:
+		// Task hosts are not provisioned so we can skip the provisioning state.
+		return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned not running", h.Id)
+	case distro.BootstrapMethodNone:
+		// We're done provisioning user data hosts. The user data script will do the rest.
+		return errors.Wrapf(h.MarkAsProvisioned(), "error marking host %s as running", h.Id)
+	default:
+		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
+	}
 }
 
 func (j *cloudHostReadyJob) initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
