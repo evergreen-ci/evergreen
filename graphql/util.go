@@ -960,3 +960,18 @@ func ValidateVolumeName(ctx context.Context, name *string) error {
 	}
 	return nil
 }
+
+func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions restModel.VolumeModifyOptions) error {
+	// modify volume if volume options is not empty
+	if volumeOptions != (restModel.VolumeModifyOptions{}) {
+		mgr, err := getEC2Manager(ctx, &volume)
+		if err != nil {
+			return err
+		}
+		err = mgr.ModifyVolume(ctx, &volume, &volumeOptions)
+		if err != nil {
+			return InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		}
+	}
+	return nil
+}
