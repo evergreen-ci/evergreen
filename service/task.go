@@ -574,7 +574,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: true,
@@ -634,7 +634,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: !raw,

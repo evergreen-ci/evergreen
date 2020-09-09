@@ -34,7 +34,7 @@ var (
 	ClientVersion = "2020-09-02"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2020-09-08"
+	AgentVersion = "2020-09-09"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -62,6 +62,7 @@ type Settings struct {
 	Banner             string                    `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Backup             BackupConfig              `bson:"backup" json:"backup" yaml:"backup"`
+	Cedar              CedarConfig               `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`

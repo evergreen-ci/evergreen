@@ -310,29 +310,29 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	return nextTask, nil
 }
 
-// GetBuildloggerInfo returns buildlogger service information including the
-// base URL, RPC port, and LDAP credentials.
-func (c *communicatorImpl) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
-	bi := &apimodels.BuildloggerInfo{}
+// GetCedarConfig returns the cedar service information including the base URL,
+// URL, RPC port, and credentials.
+func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+	cc := &apimodels.CedarConfig{}
 
 	info := requestInfo{
 		method:  get,
 		version: apiVersion1,
-		path:    "agent/buildlogger_info",
+		path:    "agent/cedar_config",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get buildlogger service info")
+		return nil, errors.Wrap(err, "failed to get cedar service info")
 	}
 	defer resp.Body.Close()
 
-	if err = utility.ReadJSON(resp.Body, bi); err != nil {
+	if err = utility.ReadJSON(resp.Body, cc); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
 
-	return bi, nil
+	return cc, nil
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or

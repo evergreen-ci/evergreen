@@ -315,17 +315,17 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 
 func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
-		bi, err := c.GetBuildloggerInfo(ctx)
+		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error setting up buildlogger sender")
 		}
 
 		dialOpts := timber.DialCedarOptions{
-			BaseAddress: bi.BaseURL,
-			RPCPort:     bi.RPCPort,
-			Username:    bi.Username,
-			Password:    bi.Password,
-			APIKey:      bi.APIKey,
+			BaseAddress: cc.BaseURL,
+			RPCPort:     cc.RPCPort,
+			Username:    cc.Username,
+			Password:    cc.Password,
+			APIKey:      cc.APIKey,
 			Retries:     10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)

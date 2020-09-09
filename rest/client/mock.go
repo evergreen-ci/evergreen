@@ -255,13 +255,14 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
-// GetBuildloggerInfo returns mock buildlogger service information.
-func (c *Mock) GetBuildloggerInfo(ctx context.Context) (*apimodels.BuildloggerInfo, error) {
-	return &apimodels.BuildloggerInfo{
+// GetCedarConfig returns mock cedar service information.
+func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+	return &apimodels.CedarConfig{
 		BaseURL:  "base_url",
 		RPCPort:  "1000",
 		Username: "user",
 		Password: "password",
+		APIKey:   "api_key",
 	}, nil
 }
 
