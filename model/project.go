@@ -225,7 +225,7 @@ type BuildVariant struct {
 
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
-	DisplayTasks []patch.DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
 type Module struct {
@@ -1395,7 +1395,7 @@ func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants [
 		for _, dt := range bv.DisplayTasks {
 			if utility.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
-				for _, et := range dt.ExecTasks	 {
+				for _, et := range dt.ExecTasks {
 					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
 				}
 			}
@@ -1490,17 +1490,8 @@ func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []Pl
 	return matchingCmds
 }
 
-func (p *Project) GetVariant(variant string) *BuildVariant {
-	for _, bv := range p.BuildVariants {
-		if bv.Name == variant {
-			return &bv
-		}
-	}
-	return nil
-}
-
 func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
-	bv := p.GetVariant(variant)
+	bv := p.FindBuildVariant(variant)
 	if bv == nil {
 		return nil
 	}

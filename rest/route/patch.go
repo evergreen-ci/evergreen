@@ -15,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -215,13 +213,6 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
-	grip.Debug(message.Fields{
-		"limit": p.limit,
-		"user":  p.user,
-		"key":   p.key,
-		"op":    "patches for user",
-	})
-
 	// sortAsc set to false in order to display patches in desc chronological order
 	patches, err := p.sc.FindPatchesByUser(p.user, p.key, p.limit+1)
 	if err != nil {
@@ -560,7 +551,6 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	dbVersion, _ := p.sc.FindVersionById(p.patchId)
 	var project *dbModel.Project
-	grip.Warning(p.patch)
 	if dbVersion == nil {
 		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
 		if err != nil {
@@ -573,16 +563,17 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	variantTasks := graphql.PatchVariantsTasksRequest{}
-	for i, v := range p.variantTasks.Variants {
-		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, patch.VariantTasks{Variant: v.Id})
+	for _, v := range p.variantTasks.Variants {
+		variantToSchedule := patch.VariantTasks{Variant: v.Id}
 		for _, t := range v.Tasks {
 			dt := project.GetDisplayTask(v.Id, t)
 			if dt != nil {
-				variantTasks.VariantsTasks[i].DisplayTasks = append(variantTasks.VariantsTasks[i].DisplayTasks, *dt)
+				variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
 			} else {
-				variantTasks.VariantsTasks[i].Tasks = append(variantTasks.VariantsTasks[i].Tasks, t)
+				variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
 			}
 		}
+		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, variantToSchedule)
 	}
 	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, variantTasks)
 	if err != nil {
@@ -602,8 +593,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse("no patch found")
 	}
 	restVersion := model.APIVersion{}
-	err = restVersion.BuildFromService(dbVersion)
-	if err != nil {
+	if err = restVersion.BuildFromService(dbVersion); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error converting version model"))
 	}
 	return gimlet.NewJSONResponse(restVersion)
