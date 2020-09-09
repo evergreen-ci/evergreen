@@ -870,6 +870,29 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.Equal("task", tasks[1].OldTaskId)
 }
 
+func TestFindAllFirstExecution(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", Execution: 1},
+		{Id: "t2", DisplayOnly: true},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+	oldTask := Task{Id: MakeOldID("t1", 0)}
+	require.NoError(t, db.Insert(OldCollection, &oldTask))
+
+	foundTasks, err := FindAllFirstExecution(db.Query(nil))
+	assert.NoError(t, err)
+	assert.Len(t, foundTasks, 3)
+	expectedIDs := []string{"t0", MakeOldID("t1", 0), "t2"}
+	for _, task := range foundTasks {
+		assert.Contains(t, expectedIDs, task.Id)
+		assert.Equal(t, 0, task.Execution)
+	}
+}
+
 func TestWithinTimePeriodProjectFilter(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
@@ -1570,6 +1593,11 @@ func TestGetTimeSpent(t *testing.T) {
 			StartTime:  referenceTime,
 			FinishTime: referenceTime.Add(2 * time.Hour),
 			TimeTaken:  2 * time.Hour,
+		},
+		{
+			DisplayOnly: true,
+			FinishTime:  referenceTime.Add(3 * time.Hour),
+			TimeTaken:   2 * time.Hour,
 		},
 		{
 			StartTime:  referenceTime,

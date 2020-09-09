@@ -1684,7 +1684,7 @@ func (t *Task) Archive() error {
 	}
 
 	archiveTask := *t
-	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
+	archiveTask.Id = MakeOldID(t.Id, t.Execution)
 	archiveTask.OldTaskId = t.Id
 	archiveTask.Archived = true
 	err := db.Insert(OldCollection, &archiveTask)
@@ -2391,12 +2391,14 @@ func GetLatestExecution(taskId string) (int, error) {
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks
-// tasks should not include display tasks so they aren't double counted
 func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	var timeTaken time.Duration
 	earliestStartTime := utility.MaxTime
 	latestFinishTime := utility.ZeroTime
 	for _, t := range tasks {
+		if t.DisplayOnly {
+			continue
+		}
 		timeTaken += t.TimeTaken
 		if !utility.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
 			earliestStartTime = t.StartTime
