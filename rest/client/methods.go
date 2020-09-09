@@ -313,7 +313,7 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	bi := &apimodels.CedarConfig{}
+	cc := &apimodels.CedarConfig{}
 
 	info := requestInfo{
 		method:  get,
@@ -327,12 +327,12 @@ func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 	}
 	defer resp.Body.Close()
 
-	if err = utility.ReadJSON(resp.Body, bi); err != nil {
+	if err = utility.ReadJSON(resp.Body, cc); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
 
-	return bi, nil
+	return cc, nil
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
