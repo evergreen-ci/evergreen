@@ -242,6 +242,10 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	if err != nil {
 		return false, err
 	}
+	err = ValidateVolumeName(ctx, updateVolumeInput.Name)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

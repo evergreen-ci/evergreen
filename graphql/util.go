@@ -941,3 +941,22 @@ func ValidateVolumeExpirationInput(ctx context.Context, expirationTime *time.Tim
 	}
 	return nil
 }
+
+func ValidateVolumeName(ctx context.Context, name *string) error {
+	if name == nil {
+		return nil
+	}
+	if *name == "" {
+		return InputValidationError.Send(ctx, "Name cannot be empty.")
+	}
+	myVolumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	if err != nil {
+		return err
+	}
+	for _, vol := range myVolumes {
+		if *name == *vol.ID || *name == *vol.DisplayName {
+			return InputValidationError.Send(ctx, "The provided volume name is already in use")
+		}
+	}
+	return nil
+}
