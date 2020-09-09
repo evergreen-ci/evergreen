@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -300,7 +301,7 @@ func (b *gridfsLegacyBucket) Push(ctx context.Context, opts SyncOptions) error {
 			return errors.Wrapf(err, "problem finding '%s'", target)
 		}
 
-		localmd5, err := md5sum(filepath.Join(opts.Local, path))
+		localmd5, err := utility.MD5SumFile(filepath.Join(opts.Local, path))
 		if err != nil {
 			return errors.Wrapf(err, "problem checksumming '%s'", path)
 		}
@@ -361,7 +362,7 @@ func (b *gridfsLegacyBucket) Pull(ctx context.Context, opts SyncOptions) error {
 		fn := denormalizedName[len(opts.Remote)+1:]
 		name := filepath.Join(opts.Local, fn)
 		keys = append(keys, fn)
-		checksum, err = md5sum(name)
+		checksum, err = utility.MD5SumFile(name)
 		if os.IsNotExist(errors.Cause(err)) {
 			if err = b.Download(ctx, denormalizedName, name); err != nil {
 				return errors.WithStack(err)

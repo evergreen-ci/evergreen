@@ -241,12 +241,13 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	var err error
+	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
+	if err != nil {
+		return errors.Wrap(err, "Problem getting EC2 keys")
+	}
 	if m.providerKey == "" || m.providerSecret == "" {
-		var err error
-		m.providerKey, m.providerSecret, err = GetEC2Key(m.region, settings)
-		if err != nil {
-			return errors.Wrap(err, "Problem getting EC2 keys")
-		}
+		return errors.New("provider key/secret can't be empty")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
@@ -1458,6 +1459,9 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 	if !utility.IsZeroTime(opts.Expiration) {
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
 			return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
+		}
+		if err := volume.SetNoExpiration(false); err != nil {
+			return errors.Wrapf(err, "error clearing volume '%s' no-expiration in db", volume.ID)
 		}
 	}
 

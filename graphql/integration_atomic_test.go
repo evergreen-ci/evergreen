@@ -5,9 +5,10 @@ package graphql_test
 // 1. Add a new directory in the tests directory. Name it after the query/mutation you are testing.
 // 2. Add a data.json file to the dir you created. The data for your tests goes here. See tests/patchTasks/data.json for example.
 // 3. (Optional) Add directory specific test setup within the directorySpecificTestSetup function.
-// 4. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/patchTasks/results.json for example.
-// 5. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
-// 6. That's all! Start testing.
+// 4. (Optional) Add directory specific test cleanup within the directorySpecificTestCleanup function.
+// 5. Add a results.json file to the dir you created. The results that your queries will be asserts against go here. See tests/patchTasks/results.json for example.
+// 6. Create a queries dir in the dir you created. All the queries/mutations for your tests go in this dir.
+// 7. That's all! Start testing.
 
 import (
 	"bytes"
@@ -160,6 +161,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 
 		t.Run(fmt.Sprintf("%s/%s", state.directory, testCase.QueryFile), singleTest)
 	}
+	directorySpecificTestCleanup(t, state.directory)
 }
 
 func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state atomicGraphQLState) error {
@@ -185,16 +187,30 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 func directorySpecificTestSetup(t *testing.T, directory string) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
-	m := map[string]setupFn{
-		"attachVolumeToHost":   spawnTestHostAndVolume,
-		"detachVolumeFromHost": spawnTestHostAndVolume,
-		"removeVolume":         spawnTestHostAndVolume,
+	m := map[string][]setupFn{
+		"attachVolumeToHost":   []setupFn{spawnTestHostAndVolume},
+		"detachVolumeFromHost": []setupFn{spawnTestHostAndVolume},
+		"removeVolume":         []setupFn{spawnTestHostAndVolume},
+		"spawnVolume":          []setupFn{spawnTestHostAndVolume, addSubnets},
 	}
 	if m[directory] != nil {
-		m[directory](t)
+		for _, exec := range m[directory] {
+			exec(t)
+		}
 	}
 }
-
+func directorySpecificTestCleanup(t *testing.T, directory string) {
+	type cleanupFn func(*testing.T)
+	// Map the directory name to the test cleanup function
+	m := map[string][]cleanupFn{
+		"spawnVolume": []cleanupFn{clearSubnets},
+	}
+	if m[directory] != nil {
+		for _, exec := range m[directory] {
+			exec(t)
+		}
+	}
+}
 func spawnTestHostAndVolume(t *testing.T) {
 	// Initialize Spawn Host and Spawn Volume used in tests
 	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
@@ -245,4 +261,12 @@ func spawnTestHostAndVolume(t *testing.T) {
 	ctx := context.Background()
 	err = graphql.SpawnHostForTestCode(ctx, &volume, &h)
 	require.NoError(t, err)
+}
+
+func addSubnets(t *testing.T) {
+	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{{AZ: "us-east-1a", SubnetID: "new_id"}}
+}
+
+func clearSubnets(t *testing.T) {
+	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
 }

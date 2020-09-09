@@ -266,6 +266,9 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/go-test2json/vendor
 	rm -rf vendor/github.com/evergreen-ci/pail/testdata/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/aws/aws-sdk-go/
+	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/evergreen-ci/poplar/
+	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/evergreen-ci/utility/
+	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/jmespath/go-jmespath/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/mitchellh/go-homedir/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/pkg/errors/
@@ -292,6 +295,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mholt/archiver/tarsz.go
 	rm -rf vendor/github.com/mholt/archiver/tarxz.go
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/aws/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
@@ -310,7 +314,9 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/evergreen-ci/birch
 	rm -rf vendor/github.com/mongodb/ftdc/vendor/github.com/papertrail/go-tail/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/shirou/gopsutil/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
@@ -326,6 +332,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/shrub/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/utility/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/golang/protobuf/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/amboy/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/ftdc
@@ -342,6 +349,8 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/genproto/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
+	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid/
+	rm -rf vendor/github.com/shirou/gopsutil/host/host_linux_riscv64.go
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/
@@ -369,10 +378,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/ftdc
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/mongodb/amboy
 	rm -rf vendor/github.com/mongodb/anser/vendor/github.com/evergreen-ci/birch
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/uuid/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/google/uuid/
-	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid
 	mkdir -p vendor/github.com/vektah/gqlparser/v2 && find vendor/github.com/vektah/gqlparser -maxdepth 1 -mindepth 1 -not -name "v2" -exec mv {} vendor/github.com/vektah/gqlparser/v2 \;
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean

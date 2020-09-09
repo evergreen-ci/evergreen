@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"google.golang.org/grpc"
 )
 
 // Communicator is an interface for communicating with the API server.
@@ -76,6 +77,9 @@ type Communicator interface {
 	// GetBuildloggerInfo returns buildlogger service information including
 	// the base URL, RPC port, and LDAP credentials.
 	GetBuildloggerInfo(context.Context) (*apimodels.BuildloggerInfo, error)
+	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
+	// creates it if it doesn't exist.
+	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
 
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
