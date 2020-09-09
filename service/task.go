@@ -185,7 +185,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Construct the old task id.
-		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
+		oldTaskId := task.MakeOldID(projCtx.Task.Id, execution)
 
 		// Try to find the task in the old_tasks collection.
 		var taskFromDb *task.Task

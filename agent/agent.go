@@ -53,23 +53,24 @@ type Options struct {
 }
 
 type taskContext struct {
-	currentCommand command.Command
-	expansions     util.Expansions
-	expVars        *apimodels.ExpansionVars
-	logger         client.LoggerProducer
-	jasper         jasper.Manager
-	logs           *apimodels.TaskLogs
-	statsCollector *StatsCollector
-	task           client.TaskData
-	taskGroup      string
-	runGroupSetup  bool
-	taskConfig     *model.TaskConfig
-	taskDirectory  string
-	logDirectories map[string]interface{}
-	timeout        timeoutInfo
-	project        *model.Project
-	taskModel      *task.Task
-	oomTracker     jasper.OOMTracker
+	currentCommand         command.Command
+	expansions             util.Expansions
+	expVars                *apimodels.ExpansionVars
+	logger                 client.LoggerProducer
+	jasper                 jasper.Manager
+	logs                   *apimodels.TaskLogs
+	statsCollector         *StatsCollector
+	systemMetricsCollector *systemMetricsCollector
+	task                   client.TaskData
+	taskGroup              string
+	runGroupSetup          bool
+	taskConfig             *model.TaskConfig
+	taskDirectory          string
+	logDirectories         map[string]interface{}
+	timeout                timeoutInfo
+	project                *model.Project
+	taskModel              *task.Task
+	oomTracker             jasper.OOMTracker
 	sync.RWMutex
 }
 
@@ -392,7 +393,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
-		go a.startSpotTerminationWatcher(tskCtx, innerCancel)
+		go a.startSpotTerminationWatcher(tskCtx)
 	}
 
 	complete := make(chan string)
@@ -495,6 +496,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		grip.Error("Task system failure")
 	default:
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
+	}
+
+	if tc.systemMetricsCollector != nil {
+		err := tc.systemMetricsCollector.Close()
+		tc.logger.System().Error(errors.Wrap(err, "error closing system metrics collector"))
 	}
 
 	a.killProcs(ctx, tc, false)

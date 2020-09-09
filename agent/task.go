@@ -45,9 +45,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		}
 	}()
 
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
+	taskCtx, taskCancel := context.WithCancel(ctx)
+	defer taskCancel()
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("problem during configuring initial state")
@@ -55,14 +54,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if ctx.Err() != nil {
+	if taskCtx.Err() != nil {
 		grip.Info("task canceled")
 		return
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
-	if ctx.Err() != nil {
+	if taskCtx.Err() != nil {
 		grip.Info("task canceled")
 		return
 	}
@@ -70,16 +69,15 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	if ctx.Err() != nil {
+	if taskCtx.Err() != nil {
 		grip.Info("task canceled")
 		return
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
-	var innerCtx context.Context
-	innerCtx, cancel = context.WithCancel(ctx)
-	defer cancel()
-	go a.startMaxExecTimeoutWatch(ctx, tc, cancel)
+	innerCtx, innerCancel := context.WithCancel(ctx)
+	defer innerCancel()
+	go a.startMaxExecTimeoutWatch(ctx, tc, innerCancel)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
@@ -91,6 +89,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		"${ps|ps}",
 	)
 	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
+
+	if err := a.setupSystemMetricsCollector(ctx, tc); err != nil {
+		tc.logger.System().Error(errors.Wrap(err, "setting up system metrics collector"))
+	}
 
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("task canceled")
@@ -138,6 +140,31 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 	complete <- evergreen.TaskSucceeded
+}
+
+func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext) error {
+	conn, err := a.comm.GetCedarGRPCConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting cedar gRPC client connection")
+	}
+	tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
+		task:     tc.taskModel,
+		interval: defaultStatsInterval,
+		collectors: []metricCollector{
+			newUptimeCollector(),
+			newProcessCollector(),
+			newDiskUsageCollector(tc.taskConfig.WorkDir),
+		},
+		conn: conn,
+	})
+	if err != nil {
+		return errors.Wrap(err, "initializing system metrics collector")
+	}
+
+	if err = tc.systemMetricsCollector.Start(ctx); err != nil {
+		return errors.Wrap(err, "starting system metrics collection")
+	}
+	return nil
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {

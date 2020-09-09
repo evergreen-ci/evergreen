@@ -46,6 +46,7 @@ package unix
 #include <sys/statvfs.h>
 #include <sys/sysinfo.h>
 #include <sys/time.h>
+#include <sys/timerfd.h>
 #include <sys/times.h>
 #include <sys/timex.h>
 #include <sys/un.h>
@@ -80,14 +81,17 @@ struct termios2 {
 #include <linux/blkpg.h>
 #include <linux/bpf.h>
 #include <linux/can.h>
+#include <linux/can/raw.h>
 #include <linux/capability.h>
 #include <linux/cgroupstats.h>
 #include <linux/cryptouser.h>
 #include <linux/devlink.h>
+#include <linux/dm-ioctl.h>
 #include <linux/errqueue.h>
 #include <linux/fanotify.h>
 #include <linux/filter.h>
 #include <linux/fs.h>
+#include <linux/fsverity.h>
 #include <linux/genetlink.h>
 #include <linux/hdreg.h>
 #include <linux/icmpv6.h>
@@ -102,9 +106,11 @@ struct termios2 {
 #include <linux/net_namespace.h>
 #include <linux/net_tstamp.h>
 #include <linux/netfilter/nf_tables.h>
+#include <linux/netfilter/nf_tables_compat.h>
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netfilter.h>
 #include <linux/netlink.h>
+#include <linux/nexthop.h>
 #include <linux/perf_event.h>
 #include <linux/random.h>
 #include <linux/rtc.h>
@@ -205,6 +211,8 @@ union sockaddr_all {
 	struct sockaddr_ll s5;
 	struct sockaddr_nl s6;
 	struct sockaddr_pppox s7;
+	struct sockaddr_l2tpip s8;
+	struct sockaddr_l2tpip6 s9;
 };
 
 struct sockaddr_any {
@@ -249,6 +257,16 @@ struct my_sockaddr_un {
 #else
 	char sun_path[108];
 #endif
+};
+
+// copied from /usr/include/netiucv/iucv.h modified with explicit signed chars.
+struct sockaddr_iucv {
+	sa_family_t siucv_family;
+	unsigned short siucv_port;
+	unsigned int siucv_addr;
+	signed char siucv_nodeid[8];
+	signed char siucv_user_id[8];
+	signed char siucv_name[8];
 };
 
 #ifdef __ARM_EABI__
@@ -406,6 +424,18 @@ type Timeval C.struct_timeval
 
 type Timex C.struct_timex
 
+type ItimerSpec C.struct_itimerspec
+
+const (
+	TIME_OK    = C.TIME_OK
+	TIME_INS   = C.TIME_INS
+	TIME_DEL   = C.TIME_DEL
+	TIME_OOP   = C.TIME_OOP
+	TIME_WAIT  = C.TIME_WAIT
+	TIME_ERROR = C.TIME_ERROR
+	TIME_BAD   = C.TIME_BAD
+)
+
 type Time_t C.time_t
 
 type Tms C.struct_tms
@@ -439,6 +469,39 @@ type Flock_t C.struct_flock
 type FscryptPolicy C.struct_fscrypt_policy
 
 type FscryptKey C.struct_fscrypt_key
+
+type FscryptPolicyV1 C.struct_fscrypt_policy_v1
+
+type FscryptPolicyV2 C.struct_fscrypt_policy_v2
+
+type FscryptGetPolicyExArg C.struct_fscrypt_get_policy_ex_arg
+
+type FscryptKeySpecifier C.struct_fscrypt_key_specifier
+
+type FscryptAddKeyArg C.struct_fscrypt_add_key_arg
+
+type FscryptRemoveKeyArg C.struct_fscrypt_remove_key_arg
+
+type FscryptGetKeyStatusArg C.struct_fscrypt_get_key_status_arg
+
+// Device Mapper
+
+type DmIoctl C.struct_dm_ioctl
+
+type DmTargetSpec C.struct_dm_target_spec
+
+type DmTargetDeps C.struct_dm_target_deps
+
+type DmNameList C.struct_dm_name_list
+
+type DmTargetVersions C.struct_dm_target_versions
+
+type DmTargetMsg C.struct_dm_target_msg
+
+const (
+	SizeofDmIoctl      = C.sizeof_struct_dm_ioctl
+	SizeofDmTargetSpec = C.sizeof_struct_dm_target_spec
+)
 
 // Structure for Keyctl
 
@@ -484,6 +547,12 @@ type RawSockaddrXDP C.struct_sockaddr_xdp
 type RawSockaddrPPPoX [C.sizeof_struct_sockaddr_pppox]byte
 
 type RawSockaddrTIPC C.struct_sockaddr_tipc
+
+type RawSockaddrL2TPIP C.struct_sockaddr_l2tpip
+
+type RawSockaddrL2TPIP6 C.struct_sockaddr_l2tpip6
+
+type RawSockaddrIUCV C.struct_sockaddr_iucv
 
 type RawSockaddr C.struct_sockaddr
 
@@ -537,6 +606,9 @@ const (
 	SizeofSockaddrXDP       = C.sizeof_struct_sockaddr_xdp
 	SizeofSockaddrPPPoX     = C.sizeof_struct_sockaddr_pppox
 	SizeofSockaddrTIPC      = C.sizeof_struct_sockaddr_tipc
+	SizeofSockaddrL2TPIP    = C.sizeof_struct_sockaddr_l2tpip
+	SizeofSockaddrL2TPIP6   = C.sizeof_struct_sockaddr_l2tpip6
+	SizeofSockaddrIUCV      = C.sizeof_struct_sockaddr_iucv
 	SizeofLinger            = C.sizeof_struct_linger
 	SizeofIovec             = C.sizeof_struct_iovec
 	SizeofIPMreq            = C.sizeof_struct_ip_mreq
@@ -778,6 +850,8 @@ type FdSet C.fd_set
 
 type Sysinfo_t C.struct_sysinfo
 
+const SI_LOAD_SHIFT = C.SI_LOAD_SHIFT
+
 type Utsname C.struct_utsname
 
 type Ustat_t C.struct_ustat
@@ -1004,6 +1078,13 @@ const (
 	PERF_SAMPLE_STREAM_ID    = C.PERF_SAMPLE_STREAM_ID
 	PERF_SAMPLE_RAW          = C.PERF_SAMPLE_RAW
 	PERF_SAMPLE_BRANCH_STACK = C.PERF_SAMPLE_BRANCH_STACK
+	PERF_SAMPLE_REGS_USER    = C.PERF_SAMPLE_REGS_USER
+	PERF_SAMPLE_STACK_USER   = C.PERF_SAMPLE_STACK_USER
+	PERF_SAMPLE_WEIGHT       = C.PERF_SAMPLE_WEIGHT
+	PERF_SAMPLE_DATA_SRC     = C.PERF_SAMPLE_DATA_SRC
+	PERF_SAMPLE_IDENTIFIER   = C.PERF_SAMPLE_IDENTIFIER
+	PERF_SAMPLE_TRANSACTION  = C.PERF_SAMPLE_TRANSACTION
+	PERF_SAMPLE_REGS_INTR    = C.PERF_SAMPLE_REGS_INTR
 
 	PERF_SAMPLE_BRANCH_USER       = C.PERF_SAMPLE_BRANCH_USER
 	PERF_SAMPLE_BRANCH_KERNEL     = C.PERF_SAMPLE_BRANCH_KERNEL
@@ -1663,6 +1744,24 @@ const (
 	NFT_NG_RANDOM                     = C.NFT_NG_RANDOM
 )
 
+// netfilter nf_tables_compat
+// generated using:
+// perl -nlE '/^\s*(NFT\w+)/ && say "$1 = C.$1"' /usr/include/linux/netfilter/nf_tables_compat.h
+const (
+	NFTA_TARGET_UNSPEC = C.NFTA_TARGET_UNSPEC
+	NFTA_TARGET_NAME   = C.NFTA_TARGET_NAME
+	NFTA_TARGET_REV    = C.NFTA_TARGET_REV
+	NFTA_TARGET_INFO   = C.NFTA_TARGET_INFO
+	NFTA_MATCH_UNSPEC  = C.NFTA_MATCH_UNSPEC
+	NFTA_MATCH_NAME    = C.NFTA_MATCH_NAME
+	NFTA_MATCH_REV     = C.NFTA_MATCH_REV
+	NFTA_MATCH_INFO    = C.NFTA_MATCH_INFO
+	NFTA_COMPAT_UNSPEC = C.NFTA_COMPAT_UNSPEC
+	NFTA_COMPAT_NAME   = C.NFTA_COMPAT_NAME
+	NFTA_COMPAT_REV    = C.NFTA_COMPAT_REV
+	NFTA_COMPAT_TYPE   = C.NFTA_COMPAT_TYPE
+)
+
 type RTCTime C.struct_rtc_time
 
 type RTCWkAlrm C.struct_rtc_wkalrm
@@ -1849,157 +1948,283 @@ type CryptoReportKPP C.struct_crypto_report_kpp
 type CryptoReportAcomp C.struct_crypto_report_acomp
 
 // generated by:
-// perl -nlE '/^\s*(BPF_\w+)/ && say "$1 = C.$1"' include/uapi/linux/bpf.h
+// perl -nlE '/^\s*((TCP_)?BPF_\w+)/ && say "$1 = C.$1"' include/uapi/linux/bpf.h
 const (
-	BPF_REG_0                           = C.BPF_REG_0
-	BPF_REG_1                           = C.BPF_REG_1
-	BPF_REG_2                           = C.BPF_REG_2
-	BPF_REG_3                           = C.BPF_REG_3
-	BPF_REG_4                           = C.BPF_REG_4
-	BPF_REG_5                           = C.BPF_REG_5
-	BPF_REG_6                           = C.BPF_REG_6
-	BPF_REG_7                           = C.BPF_REG_7
-	BPF_REG_8                           = C.BPF_REG_8
-	BPF_REG_9                           = C.BPF_REG_9
-	BPF_REG_10                          = C.BPF_REG_10
-	BPF_MAP_CREATE                      = C.BPF_MAP_CREATE
-	BPF_MAP_LOOKUP_ELEM                 = C.BPF_MAP_LOOKUP_ELEM
-	BPF_MAP_UPDATE_ELEM                 = C.BPF_MAP_UPDATE_ELEM
-	BPF_MAP_DELETE_ELEM                 = C.BPF_MAP_DELETE_ELEM
-	BPF_MAP_GET_NEXT_KEY                = C.BPF_MAP_GET_NEXT_KEY
-	BPF_PROG_LOAD                       = C.BPF_PROG_LOAD
-	BPF_OBJ_PIN                         = C.BPF_OBJ_PIN
-	BPF_OBJ_GET                         = C.BPF_OBJ_GET
-	BPF_PROG_ATTACH                     = C.BPF_PROG_ATTACH
-	BPF_PROG_DETACH                     = C.BPF_PROG_DETACH
-	BPF_PROG_TEST_RUN                   = C.BPF_PROG_TEST_RUN
-	BPF_PROG_GET_NEXT_ID                = C.BPF_PROG_GET_NEXT_ID
-	BPF_MAP_GET_NEXT_ID                 = C.BPF_MAP_GET_NEXT_ID
-	BPF_PROG_GET_FD_BY_ID               = C.BPF_PROG_GET_FD_BY_ID
-	BPF_MAP_GET_FD_BY_ID                = C.BPF_MAP_GET_FD_BY_ID
-	BPF_OBJ_GET_INFO_BY_FD              = C.BPF_OBJ_GET_INFO_BY_FD
-	BPF_PROG_QUERY                      = C.BPF_PROG_QUERY
-	BPF_RAW_TRACEPOINT_OPEN             = C.BPF_RAW_TRACEPOINT_OPEN
-	BPF_BTF_LOAD                        = C.BPF_BTF_LOAD
-	BPF_BTF_GET_FD_BY_ID                = C.BPF_BTF_GET_FD_BY_ID
-	BPF_TASK_FD_QUERY                   = C.BPF_TASK_FD_QUERY
-	BPF_MAP_LOOKUP_AND_DELETE_ELEM      = C.BPF_MAP_LOOKUP_AND_DELETE_ELEM
-	BPF_MAP_TYPE_UNSPEC                 = C.BPF_MAP_TYPE_UNSPEC
-	BPF_MAP_TYPE_HASH                   = C.BPF_MAP_TYPE_HASH
-	BPF_MAP_TYPE_ARRAY                  = C.BPF_MAP_TYPE_ARRAY
-	BPF_MAP_TYPE_PROG_ARRAY             = C.BPF_MAP_TYPE_PROG_ARRAY
-	BPF_MAP_TYPE_PERF_EVENT_ARRAY       = C.BPF_MAP_TYPE_PERF_EVENT_ARRAY
-	BPF_MAP_TYPE_PERCPU_HASH            = C.BPF_MAP_TYPE_PERCPU_HASH
-	BPF_MAP_TYPE_PERCPU_ARRAY           = C.BPF_MAP_TYPE_PERCPU_ARRAY
-	BPF_MAP_TYPE_STACK_TRACE            = C.BPF_MAP_TYPE_STACK_TRACE
-	BPF_MAP_TYPE_CGROUP_ARRAY           = C.BPF_MAP_TYPE_CGROUP_ARRAY
-	BPF_MAP_TYPE_LRU_HASH               = C.BPF_MAP_TYPE_LRU_HASH
-	BPF_MAP_TYPE_LRU_PERCPU_HASH        = C.BPF_MAP_TYPE_LRU_PERCPU_HASH
-	BPF_MAP_TYPE_LPM_TRIE               = C.BPF_MAP_TYPE_LPM_TRIE
-	BPF_MAP_TYPE_ARRAY_OF_MAPS          = C.BPF_MAP_TYPE_ARRAY_OF_MAPS
-	BPF_MAP_TYPE_HASH_OF_MAPS           = C.BPF_MAP_TYPE_HASH_OF_MAPS
-	BPF_MAP_TYPE_DEVMAP                 = C.BPF_MAP_TYPE_DEVMAP
-	BPF_MAP_TYPE_SOCKMAP                = C.BPF_MAP_TYPE_SOCKMAP
-	BPF_MAP_TYPE_CPUMAP                 = C.BPF_MAP_TYPE_CPUMAP
-	BPF_MAP_TYPE_XSKMAP                 = C.BPF_MAP_TYPE_XSKMAP
-	BPF_MAP_TYPE_SOCKHASH               = C.BPF_MAP_TYPE_SOCKHASH
-	BPF_MAP_TYPE_CGROUP_STORAGE         = C.BPF_MAP_TYPE_CGROUP_STORAGE
-	BPF_MAP_TYPE_REUSEPORT_SOCKARRAY    = C.BPF_MAP_TYPE_REUSEPORT_SOCKARRAY
-	BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE  = C.BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
-	BPF_MAP_TYPE_QUEUE                  = C.BPF_MAP_TYPE_QUEUE
-	BPF_MAP_TYPE_STACK                  = C.BPF_MAP_TYPE_STACK
-	BPF_PROG_TYPE_UNSPEC                = C.BPF_PROG_TYPE_UNSPEC
-	BPF_PROG_TYPE_SOCKET_FILTER         = C.BPF_PROG_TYPE_SOCKET_FILTER
-	BPF_PROG_TYPE_KPROBE                = C.BPF_PROG_TYPE_KPROBE
-	BPF_PROG_TYPE_SCHED_CLS             = C.BPF_PROG_TYPE_SCHED_CLS
-	BPF_PROG_TYPE_SCHED_ACT             = C.BPF_PROG_TYPE_SCHED_ACT
-	BPF_PROG_TYPE_TRACEPOINT            = C.BPF_PROG_TYPE_TRACEPOINT
-	BPF_PROG_TYPE_XDP                   = C.BPF_PROG_TYPE_XDP
-	BPF_PROG_TYPE_PERF_EVENT            = C.BPF_PROG_TYPE_PERF_EVENT
-	BPF_PROG_TYPE_CGROUP_SKB            = C.BPF_PROG_TYPE_CGROUP_SKB
-	BPF_PROG_TYPE_CGROUP_SOCK           = C.BPF_PROG_TYPE_CGROUP_SOCK
-	BPF_PROG_TYPE_LWT_IN                = C.BPF_PROG_TYPE_LWT_IN
-	BPF_PROG_TYPE_LWT_OUT               = C.BPF_PROG_TYPE_LWT_OUT
-	BPF_PROG_TYPE_LWT_XMIT              = C.BPF_PROG_TYPE_LWT_XMIT
-	BPF_PROG_TYPE_SOCK_OPS              = C.BPF_PROG_TYPE_SOCK_OPS
-	BPF_PROG_TYPE_SK_SKB                = C.BPF_PROG_TYPE_SK_SKB
-	BPF_PROG_TYPE_CGROUP_DEVICE         = C.BPF_PROG_TYPE_CGROUP_DEVICE
-	BPF_PROG_TYPE_SK_MSG                = C.BPF_PROG_TYPE_SK_MSG
-	BPF_PROG_TYPE_RAW_TRACEPOINT        = C.BPF_PROG_TYPE_RAW_TRACEPOINT
-	BPF_PROG_TYPE_CGROUP_SOCK_ADDR      = C.BPF_PROG_TYPE_CGROUP_SOCK_ADDR
-	BPF_PROG_TYPE_LWT_SEG6LOCAL         = C.BPF_PROG_TYPE_LWT_SEG6LOCAL
-	BPF_PROG_TYPE_LIRC_MODE2            = C.BPF_PROG_TYPE_LIRC_MODE2
-	BPF_PROG_TYPE_SK_REUSEPORT          = C.BPF_PROG_TYPE_SK_REUSEPORT
-	BPF_PROG_TYPE_FLOW_DISSECTOR        = C.BPF_PROG_TYPE_FLOW_DISSECTOR
-	BPF_CGROUP_INET_INGRESS             = C.BPF_CGROUP_INET_INGRESS
-	BPF_CGROUP_INET_EGRESS              = C.BPF_CGROUP_INET_EGRESS
-	BPF_CGROUP_INET_SOCK_CREATE         = C.BPF_CGROUP_INET_SOCK_CREATE
-	BPF_CGROUP_SOCK_OPS                 = C.BPF_CGROUP_SOCK_OPS
-	BPF_SK_SKB_STREAM_PARSER            = C.BPF_SK_SKB_STREAM_PARSER
-	BPF_SK_SKB_STREAM_VERDICT           = C.BPF_SK_SKB_STREAM_VERDICT
-	BPF_CGROUP_DEVICE                   = C.BPF_CGROUP_DEVICE
-	BPF_SK_MSG_VERDICT                  = C.BPF_SK_MSG_VERDICT
-	BPF_CGROUP_INET4_BIND               = C.BPF_CGROUP_INET4_BIND
-	BPF_CGROUP_INET6_BIND               = C.BPF_CGROUP_INET6_BIND
-	BPF_CGROUP_INET4_CONNECT            = C.BPF_CGROUP_INET4_CONNECT
-	BPF_CGROUP_INET6_CONNECT            = C.BPF_CGROUP_INET6_CONNECT
-	BPF_CGROUP_INET4_POST_BIND          = C.BPF_CGROUP_INET4_POST_BIND
-	BPF_CGROUP_INET6_POST_BIND          = C.BPF_CGROUP_INET6_POST_BIND
-	BPF_CGROUP_UDP4_SENDMSG             = C.BPF_CGROUP_UDP4_SENDMSG
-	BPF_CGROUP_UDP6_SENDMSG             = C.BPF_CGROUP_UDP6_SENDMSG
-	BPF_LIRC_MODE2                      = C.BPF_LIRC_MODE2
-	BPF_FLOW_DISSECTOR                  = C.BPF_FLOW_DISSECTOR
-	BPF_STACK_BUILD_ID_EMPTY            = C.BPF_STACK_BUILD_ID_EMPTY
-	BPF_STACK_BUILD_ID_VALID            = C.BPF_STACK_BUILD_ID_VALID
-	BPF_STACK_BUILD_ID_IP               = C.BPF_STACK_BUILD_ID_IP
-	BPF_ADJ_ROOM_NET                    = C.BPF_ADJ_ROOM_NET
-	BPF_HDR_START_MAC                   = C.BPF_HDR_START_MAC
-	BPF_HDR_START_NET                   = C.BPF_HDR_START_NET
-	BPF_LWT_ENCAP_SEG6                  = C.BPF_LWT_ENCAP_SEG6
-	BPF_LWT_ENCAP_SEG6_INLINE           = C.BPF_LWT_ENCAP_SEG6_INLINE
-	BPF_OK                              = C.BPF_OK
-	BPF_DROP                            = C.BPF_DROP
-	BPF_REDIRECT                        = C.BPF_REDIRECT
-	BPF_SOCK_OPS_VOID                   = C.BPF_SOCK_OPS_VOID
-	BPF_SOCK_OPS_TIMEOUT_INIT           = C.BPF_SOCK_OPS_TIMEOUT_INIT
-	BPF_SOCK_OPS_RWND_INIT              = C.BPF_SOCK_OPS_RWND_INIT
-	BPF_SOCK_OPS_TCP_CONNECT_CB         = C.BPF_SOCK_OPS_TCP_CONNECT_CB
-	BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB  = C.BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB
-	BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB = C.BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB
-	BPF_SOCK_OPS_NEEDS_ECN              = C.BPF_SOCK_OPS_NEEDS_ECN
-	BPF_SOCK_OPS_BASE_RTT               = C.BPF_SOCK_OPS_BASE_RTT
-	BPF_SOCK_OPS_RTO_CB                 = C.BPF_SOCK_OPS_RTO_CB
-	BPF_SOCK_OPS_RETRANS_CB             = C.BPF_SOCK_OPS_RETRANS_CB
-	BPF_SOCK_OPS_STATE_CB               = C.BPF_SOCK_OPS_STATE_CB
-	BPF_SOCK_OPS_TCP_LISTEN_CB          = C.BPF_SOCK_OPS_TCP_LISTEN_CB
-	BPF_TCP_ESTABLISHED                 = C.BPF_TCP_ESTABLISHED
-	BPF_TCP_SYN_SENT                    = C.BPF_TCP_SYN_SENT
-	BPF_TCP_SYN_RECV                    = C.BPF_TCP_SYN_RECV
-	BPF_TCP_FIN_WAIT1                   = C.BPF_TCP_FIN_WAIT1
-	BPF_TCP_FIN_WAIT2                   = C.BPF_TCP_FIN_WAIT2
-	BPF_TCP_TIME_WAIT                   = C.BPF_TCP_TIME_WAIT
-	BPF_TCP_CLOSE                       = C.BPF_TCP_CLOSE
-	BPF_TCP_CLOSE_WAIT                  = C.BPF_TCP_CLOSE_WAIT
-	BPF_TCP_LAST_ACK                    = C.BPF_TCP_LAST_ACK
-	BPF_TCP_LISTEN                      = C.BPF_TCP_LISTEN
-	BPF_TCP_CLOSING                     = C.BPF_TCP_CLOSING
-	BPF_TCP_NEW_SYN_RECV                = C.BPF_TCP_NEW_SYN_RECV
-	BPF_TCP_MAX_STATES                  = C.BPF_TCP_MAX_STATES
-	BPF_FIB_LKUP_RET_SUCCESS            = C.BPF_FIB_LKUP_RET_SUCCESS
-	BPF_FIB_LKUP_RET_BLACKHOLE          = C.BPF_FIB_LKUP_RET_BLACKHOLE
-	BPF_FIB_LKUP_RET_UNREACHABLE        = C.BPF_FIB_LKUP_RET_UNREACHABLE
-	BPF_FIB_LKUP_RET_PROHIBIT           = C.BPF_FIB_LKUP_RET_PROHIBIT
-	BPF_FIB_LKUP_RET_NOT_FWDED          = C.BPF_FIB_LKUP_RET_NOT_FWDED
-	BPF_FIB_LKUP_RET_FWD_DISABLED       = C.BPF_FIB_LKUP_RET_FWD_DISABLED
-	BPF_FIB_LKUP_RET_UNSUPP_LWT         = C.BPF_FIB_LKUP_RET_UNSUPP_LWT
-	BPF_FIB_LKUP_RET_NO_NEIGH           = C.BPF_FIB_LKUP_RET_NO_NEIGH
-	BPF_FIB_LKUP_RET_FRAG_NEEDED        = C.BPF_FIB_LKUP_RET_FRAG_NEEDED
-	BPF_FD_TYPE_RAW_TRACEPOINT          = C.BPF_FD_TYPE_RAW_TRACEPOINT
-	BPF_FD_TYPE_TRACEPOINT              = C.BPF_FD_TYPE_TRACEPOINT
-	BPF_FD_TYPE_KPROBE                  = C.BPF_FD_TYPE_KPROBE
-	BPF_FD_TYPE_KRETPROBE               = C.BPF_FD_TYPE_KRETPROBE
-	BPF_FD_TYPE_UPROBE                  = C.BPF_FD_TYPE_UPROBE
-	BPF_FD_TYPE_URETPROBE               = C.BPF_FD_TYPE_URETPROBE
+	BPF_REG_0                               = C.BPF_REG_0
+	BPF_REG_1                               = C.BPF_REG_1
+	BPF_REG_2                               = C.BPF_REG_2
+	BPF_REG_3                               = C.BPF_REG_3
+	BPF_REG_4                               = C.BPF_REG_4
+	BPF_REG_5                               = C.BPF_REG_5
+	BPF_REG_6                               = C.BPF_REG_6
+	BPF_REG_7                               = C.BPF_REG_7
+	BPF_REG_8                               = C.BPF_REG_8
+	BPF_REG_9                               = C.BPF_REG_9
+	BPF_REG_10                              = C.BPF_REG_10
+	BPF_MAP_CREATE                          = C.BPF_MAP_CREATE
+	BPF_MAP_LOOKUP_ELEM                     = C.BPF_MAP_LOOKUP_ELEM
+	BPF_MAP_UPDATE_ELEM                     = C.BPF_MAP_UPDATE_ELEM
+	BPF_MAP_DELETE_ELEM                     = C.BPF_MAP_DELETE_ELEM
+	BPF_MAP_GET_NEXT_KEY                    = C.BPF_MAP_GET_NEXT_KEY
+	BPF_PROG_LOAD                           = C.BPF_PROG_LOAD
+	BPF_OBJ_PIN                             = C.BPF_OBJ_PIN
+	BPF_OBJ_GET                             = C.BPF_OBJ_GET
+	BPF_PROG_ATTACH                         = C.BPF_PROG_ATTACH
+	BPF_PROG_DETACH                         = C.BPF_PROG_DETACH
+	BPF_PROG_TEST_RUN                       = C.BPF_PROG_TEST_RUN
+	BPF_PROG_GET_NEXT_ID                    = C.BPF_PROG_GET_NEXT_ID
+	BPF_MAP_GET_NEXT_ID                     = C.BPF_MAP_GET_NEXT_ID
+	BPF_PROG_GET_FD_BY_ID                   = C.BPF_PROG_GET_FD_BY_ID
+	BPF_MAP_GET_FD_BY_ID                    = C.BPF_MAP_GET_FD_BY_ID
+	BPF_OBJ_GET_INFO_BY_FD                  = C.BPF_OBJ_GET_INFO_BY_FD
+	BPF_PROG_QUERY                          = C.BPF_PROG_QUERY
+	BPF_RAW_TRACEPOINT_OPEN                 = C.BPF_RAW_TRACEPOINT_OPEN
+	BPF_BTF_LOAD                            = C.BPF_BTF_LOAD
+	BPF_BTF_GET_FD_BY_ID                    = C.BPF_BTF_GET_FD_BY_ID
+	BPF_TASK_FD_QUERY                       = C.BPF_TASK_FD_QUERY
+	BPF_MAP_LOOKUP_AND_DELETE_ELEM          = C.BPF_MAP_LOOKUP_AND_DELETE_ELEM
+	BPF_MAP_FREEZE                          = C.BPF_MAP_FREEZE
+	BPF_BTF_GET_NEXT_ID                     = C.BPF_BTF_GET_NEXT_ID
+	BPF_MAP_LOOKUP_BATCH                    = C.BPF_MAP_LOOKUP_BATCH
+	BPF_MAP_LOOKUP_AND_DELETE_BATCH         = C.BPF_MAP_LOOKUP_AND_DELETE_BATCH
+	BPF_MAP_UPDATE_BATCH                    = C.BPF_MAP_UPDATE_BATCH
+	BPF_MAP_DELETE_BATCH                    = C.BPF_MAP_DELETE_BATCH
+	BPF_LINK_CREATE                         = C.BPF_LINK_CREATE
+	BPF_LINK_UPDATE                         = C.BPF_LINK_UPDATE
+	BPF_LINK_GET_FD_BY_ID                   = C.BPF_LINK_GET_FD_BY_ID
+	BPF_LINK_GET_NEXT_ID                    = C.BPF_LINK_GET_NEXT_ID
+	BPF_ENABLE_STATS                        = C.BPF_ENABLE_STATS
+	BPF_ITER_CREATE                         = C.BPF_ITER_CREATE
+	BPF_MAP_TYPE_UNSPEC                     = C.BPF_MAP_TYPE_UNSPEC
+	BPF_MAP_TYPE_HASH                       = C.BPF_MAP_TYPE_HASH
+	BPF_MAP_TYPE_ARRAY                      = C.BPF_MAP_TYPE_ARRAY
+	BPF_MAP_TYPE_PROG_ARRAY                 = C.BPF_MAP_TYPE_PROG_ARRAY
+	BPF_MAP_TYPE_PERF_EVENT_ARRAY           = C.BPF_MAP_TYPE_PERF_EVENT_ARRAY
+	BPF_MAP_TYPE_PERCPU_HASH                = C.BPF_MAP_TYPE_PERCPU_HASH
+	BPF_MAP_TYPE_PERCPU_ARRAY               = C.BPF_MAP_TYPE_PERCPU_ARRAY
+	BPF_MAP_TYPE_STACK_TRACE                = C.BPF_MAP_TYPE_STACK_TRACE
+	BPF_MAP_TYPE_CGROUP_ARRAY               = C.BPF_MAP_TYPE_CGROUP_ARRAY
+	BPF_MAP_TYPE_LRU_HASH                   = C.BPF_MAP_TYPE_LRU_HASH
+	BPF_MAP_TYPE_LRU_PERCPU_HASH            = C.BPF_MAP_TYPE_LRU_PERCPU_HASH
+	BPF_MAP_TYPE_LPM_TRIE                   = C.BPF_MAP_TYPE_LPM_TRIE
+	BPF_MAP_TYPE_ARRAY_OF_MAPS              = C.BPF_MAP_TYPE_ARRAY_OF_MAPS
+	BPF_MAP_TYPE_HASH_OF_MAPS               = C.BPF_MAP_TYPE_HASH_OF_MAPS
+	BPF_MAP_TYPE_DEVMAP                     = C.BPF_MAP_TYPE_DEVMAP
+	BPF_MAP_TYPE_SOCKMAP                    = C.BPF_MAP_TYPE_SOCKMAP
+	BPF_MAP_TYPE_CPUMAP                     = C.BPF_MAP_TYPE_CPUMAP
+	BPF_MAP_TYPE_XSKMAP                     = C.BPF_MAP_TYPE_XSKMAP
+	BPF_MAP_TYPE_SOCKHASH                   = C.BPF_MAP_TYPE_SOCKHASH
+	BPF_MAP_TYPE_CGROUP_STORAGE             = C.BPF_MAP_TYPE_CGROUP_STORAGE
+	BPF_MAP_TYPE_REUSEPORT_SOCKARRAY        = C.BPF_MAP_TYPE_REUSEPORT_SOCKARRAY
+	BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE      = C.BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
+	BPF_MAP_TYPE_QUEUE                      = C.BPF_MAP_TYPE_QUEUE
+	BPF_MAP_TYPE_STACK                      = C.BPF_MAP_TYPE_STACK
+	BPF_MAP_TYPE_SK_STORAGE                 = C.BPF_MAP_TYPE_SK_STORAGE
+	BPF_MAP_TYPE_DEVMAP_HASH                = C.BPF_MAP_TYPE_DEVMAP_HASH
+	BPF_MAP_TYPE_STRUCT_OPS                 = C.BPF_MAP_TYPE_STRUCT_OPS
+	BPF_MAP_TYPE_RINGBUF                    = C.BPF_MAP_TYPE_RINGBUF
+	BPF_PROG_TYPE_UNSPEC                    = C.BPF_PROG_TYPE_UNSPEC
+	BPF_PROG_TYPE_SOCKET_FILTER             = C.BPF_PROG_TYPE_SOCKET_FILTER
+	BPF_PROG_TYPE_KPROBE                    = C.BPF_PROG_TYPE_KPROBE
+	BPF_PROG_TYPE_SCHED_CLS                 = C.BPF_PROG_TYPE_SCHED_CLS
+	BPF_PROG_TYPE_SCHED_ACT                 = C.BPF_PROG_TYPE_SCHED_ACT
+	BPF_PROG_TYPE_TRACEPOINT                = C.BPF_PROG_TYPE_TRACEPOINT
+	BPF_PROG_TYPE_XDP                       = C.BPF_PROG_TYPE_XDP
+	BPF_PROG_TYPE_PERF_EVENT                = C.BPF_PROG_TYPE_PERF_EVENT
+	BPF_PROG_TYPE_CGROUP_SKB                = C.BPF_PROG_TYPE_CGROUP_SKB
+	BPF_PROG_TYPE_CGROUP_SOCK               = C.BPF_PROG_TYPE_CGROUP_SOCK
+	BPF_PROG_TYPE_LWT_IN                    = C.BPF_PROG_TYPE_LWT_IN
+	BPF_PROG_TYPE_LWT_OUT                   = C.BPF_PROG_TYPE_LWT_OUT
+	BPF_PROG_TYPE_LWT_XMIT                  = C.BPF_PROG_TYPE_LWT_XMIT
+	BPF_PROG_TYPE_SOCK_OPS                  = C.BPF_PROG_TYPE_SOCK_OPS
+	BPF_PROG_TYPE_SK_SKB                    = C.BPF_PROG_TYPE_SK_SKB
+	BPF_PROG_TYPE_CGROUP_DEVICE             = C.BPF_PROG_TYPE_CGROUP_DEVICE
+	BPF_PROG_TYPE_SK_MSG                    = C.BPF_PROG_TYPE_SK_MSG
+	BPF_PROG_TYPE_RAW_TRACEPOINT            = C.BPF_PROG_TYPE_RAW_TRACEPOINT
+	BPF_PROG_TYPE_CGROUP_SOCK_ADDR          = C.BPF_PROG_TYPE_CGROUP_SOCK_ADDR
+	BPF_PROG_TYPE_LWT_SEG6LOCAL             = C.BPF_PROG_TYPE_LWT_SEG6LOCAL
+	BPF_PROG_TYPE_LIRC_MODE2                = C.BPF_PROG_TYPE_LIRC_MODE2
+	BPF_PROG_TYPE_SK_REUSEPORT              = C.BPF_PROG_TYPE_SK_REUSEPORT
+	BPF_PROG_TYPE_FLOW_DISSECTOR            = C.BPF_PROG_TYPE_FLOW_DISSECTOR
+	BPF_PROG_TYPE_CGROUP_SYSCTL             = C.BPF_PROG_TYPE_CGROUP_SYSCTL
+	BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE   = C.BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE
+	BPF_PROG_TYPE_CGROUP_SOCKOPT            = C.BPF_PROG_TYPE_CGROUP_SOCKOPT
+	BPF_PROG_TYPE_TRACING                   = C.BPF_PROG_TYPE_TRACING
+	BPF_PROG_TYPE_STRUCT_OPS                = C.BPF_PROG_TYPE_STRUCT_OPS
+	BPF_PROG_TYPE_EXT                       = C.BPF_PROG_TYPE_EXT
+	BPF_PROG_TYPE_LSM                       = C.BPF_PROG_TYPE_LSM
+	BPF_CGROUP_INET_INGRESS                 = C.BPF_CGROUP_INET_INGRESS
+	BPF_CGROUP_INET_EGRESS                  = C.BPF_CGROUP_INET_EGRESS
+	BPF_CGROUP_INET_SOCK_CREATE             = C.BPF_CGROUP_INET_SOCK_CREATE
+	BPF_CGROUP_SOCK_OPS                     = C.BPF_CGROUP_SOCK_OPS
+	BPF_SK_SKB_STREAM_PARSER                = C.BPF_SK_SKB_STREAM_PARSER
+	BPF_SK_SKB_STREAM_VERDICT               = C.BPF_SK_SKB_STREAM_VERDICT
+	BPF_CGROUP_DEVICE                       = C.BPF_CGROUP_DEVICE
+	BPF_SK_MSG_VERDICT                      = C.BPF_SK_MSG_VERDICT
+	BPF_CGROUP_INET4_BIND                   = C.BPF_CGROUP_INET4_BIND
+	BPF_CGROUP_INET6_BIND                   = C.BPF_CGROUP_INET6_BIND
+	BPF_CGROUP_INET4_CONNECT                = C.BPF_CGROUP_INET4_CONNECT
+	BPF_CGROUP_INET6_CONNECT                = C.BPF_CGROUP_INET6_CONNECT
+	BPF_CGROUP_INET4_POST_BIND              = C.BPF_CGROUP_INET4_POST_BIND
+	BPF_CGROUP_INET6_POST_BIND              = C.BPF_CGROUP_INET6_POST_BIND
+	BPF_CGROUP_UDP4_SENDMSG                 = C.BPF_CGROUP_UDP4_SENDMSG
+	BPF_CGROUP_UDP6_SENDMSG                 = C.BPF_CGROUP_UDP6_SENDMSG
+	BPF_LIRC_MODE2                          = C.BPF_LIRC_MODE2
+	BPF_FLOW_DISSECTOR                      = C.BPF_FLOW_DISSECTOR
+	BPF_CGROUP_SYSCTL                       = C.BPF_CGROUP_SYSCTL
+	BPF_CGROUP_UDP4_RECVMSG                 = C.BPF_CGROUP_UDP4_RECVMSG
+	BPF_CGROUP_UDP6_RECVMSG                 = C.BPF_CGROUP_UDP6_RECVMSG
+	BPF_CGROUP_GETSOCKOPT                   = C.BPF_CGROUP_GETSOCKOPT
+	BPF_CGROUP_SETSOCKOPT                   = C.BPF_CGROUP_SETSOCKOPT
+	BPF_TRACE_RAW_TP                        = C.BPF_TRACE_RAW_TP
+	BPF_TRACE_FENTRY                        = C.BPF_TRACE_FENTRY
+	BPF_TRACE_FEXIT                         = C.BPF_TRACE_FEXIT
+	BPF_MODIFY_RETURN                       = C.BPF_MODIFY_RETURN
+	BPF_LSM_MAC                             = C.BPF_LSM_MAC
+	BPF_TRACE_ITER                          = C.BPF_TRACE_ITER
+	BPF_CGROUP_INET4_GETPEERNAME            = C.BPF_CGROUP_INET4_GETPEERNAME
+	BPF_CGROUP_INET6_GETPEERNAME            = C.BPF_CGROUP_INET6_GETPEERNAME
+	BPF_CGROUP_INET4_GETSOCKNAME            = C.BPF_CGROUP_INET4_GETSOCKNAME
+	BPF_CGROUP_INET6_GETSOCKNAME            = C.BPF_CGROUP_INET6_GETSOCKNAME
+	BPF_XDP_DEVMAP                          = C.BPF_XDP_DEVMAP
+	BPF_LINK_TYPE_UNSPEC                    = C.BPF_LINK_TYPE_UNSPEC
+	BPF_LINK_TYPE_RAW_TRACEPOINT            = C.BPF_LINK_TYPE_RAW_TRACEPOINT
+	BPF_LINK_TYPE_TRACING                   = C.BPF_LINK_TYPE_TRACING
+	BPF_LINK_TYPE_CGROUP                    = C.BPF_LINK_TYPE_CGROUP
+	BPF_LINK_TYPE_ITER                      = C.BPF_LINK_TYPE_ITER
+	BPF_LINK_TYPE_NETNS                     = C.BPF_LINK_TYPE_NETNS
+	BPF_ANY                                 = C.BPF_ANY
+	BPF_NOEXIST                             = C.BPF_NOEXIST
+	BPF_EXIST                               = C.BPF_EXIST
+	BPF_F_LOCK                              = C.BPF_F_LOCK
+	BPF_F_NO_PREALLOC                       = C.BPF_F_NO_PREALLOC
+	BPF_F_NO_COMMON_LRU                     = C.BPF_F_NO_COMMON_LRU
+	BPF_F_NUMA_NODE                         = C.BPF_F_NUMA_NODE
+	BPF_F_RDONLY                            = C.BPF_F_RDONLY
+	BPF_F_WRONLY                            = C.BPF_F_WRONLY
+	BPF_F_STACK_BUILD_ID                    = C.BPF_F_STACK_BUILD_ID
+	BPF_F_ZERO_SEED                         = C.BPF_F_ZERO_SEED
+	BPF_F_RDONLY_PROG                       = C.BPF_F_RDONLY_PROG
+	BPF_F_WRONLY_PROG                       = C.BPF_F_WRONLY_PROG
+	BPF_F_CLONE                             = C.BPF_F_CLONE
+	BPF_F_MMAPABLE                          = C.BPF_F_MMAPABLE
+	BPF_STATS_RUN_TIME                      = C.BPF_STATS_RUN_TIME
+	BPF_STACK_BUILD_ID_EMPTY                = C.BPF_STACK_BUILD_ID_EMPTY
+	BPF_STACK_BUILD_ID_VALID                = C.BPF_STACK_BUILD_ID_VALID
+	BPF_STACK_BUILD_ID_IP                   = C.BPF_STACK_BUILD_ID_IP
+	BPF_F_RECOMPUTE_CSUM                    = C.BPF_F_RECOMPUTE_CSUM
+	BPF_F_INVALIDATE_HASH                   = C.BPF_F_INVALIDATE_HASH
+	BPF_F_HDR_FIELD_MASK                    = C.BPF_F_HDR_FIELD_MASK
+	BPF_F_PSEUDO_HDR                        = C.BPF_F_PSEUDO_HDR
+	BPF_F_MARK_MANGLED_0                    = C.BPF_F_MARK_MANGLED_0
+	BPF_F_MARK_ENFORCE                      = C.BPF_F_MARK_ENFORCE
+	BPF_F_INGRESS                           = C.BPF_F_INGRESS
+	BPF_F_TUNINFO_IPV6                      = C.BPF_F_TUNINFO_IPV6
+	BPF_F_SKIP_FIELD_MASK                   = C.BPF_F_SKIP_FIELD_MASK
+	BPF_F_USER_STACK                        = C.BPF_F_USER_STACK
+	BPF_F_FAST_STACK_CMP                    = C.BPF_F_FAST_STACK_CMP
+	BPF_F_REUSE_STACKID                     = C.BPF_F_REUSE_STACKID
+	BPF_F_USER_BUILD_ID                     = C.BPF_F_USER_BUILD_ID
+	BPF_F_ZERO_CSUM_TX                      = C.BPF_F_ZERO_CSUM_TX
+	BPF_F_DONT_FRAGMENT                     = C.BPF_F_DONT_FRAGMENT
+	BPF_F_SEQ_NUMBER                        = C.BPF_F_SEQ_NUMBER
+	BPF_F_INDEX_MASK                        = C.BPF_F_INDEX_MASK
+	BPF_F_CURRENT_CPU                       = C.BPF_F_CURRENT_CPU
+	BPF_F_CTXLEN_MASK                       = C.BPF_F_CTXLEN_MASK
+	BPF_F_CURRENT_NETNS                     = C.BPF_F_CURRENT_NETNS
+	BPF_CSUM_LEVEL_QUERY                    = C.BPF_CSUM_LEVEL_QUERY
+	BPF_CSUM_LEVEL_INC                      = C.BPF_CSUM_LEVEL_INC
+	BPF_CSUM_LEVEL_DEC                      = C.BPF_CSUM_LEVEL_DEC
+	BPF_CSUM_LEVEL_RESET                    = C.BPF_CSUM_LEVEL_RESET
+	BPF_F_ADJ_ROOM_FIXED_GSO                = C.BPF_F_ADJ_ROOM_FIXED_GSO
+	BPF_F_ADJ_ROOM_ENCAP_L3_IPV4            = C.BPF_F_ADJ_ROOM_ENCAP_L3_IPV4
+	BPF_F_ADJ_ROOM_ENCAP_L3_IPV6            = C.BPF_F_ADJ_ROOM_ENCAP_L3_IPV6
+	BPF_F_ADJ_ROOM_ENCAP_L4_GRE             = C.BPF_F_ADJ_ROOM_ENCAP_L4_GRE
+	BPF_F_ADJ_ROOM_ENCAP_L4_UDP             = C.BPF_F_ADJ_ROOM_ENCAP_L4_UDP
+	BPF_F_ADJ_ROOM_NO_CSUM_RESET            = C.BPF_F_ADJ_ROOM_NO_CSUM_RESET
+	BPF_ADJ_ROOM_ENCAP_L2_MASK              = C.BPF_ADJ_ROOM_ENCAP_L2_MASK
+	BPF_ADJ_ROOM_ENCAP_L2_SHIFT             = C.BPF_ADJ_ROOM_ENCAP_L2_SHIFT
+	BPF_F_SYSCTL_BASE_NAME                  = C.BPF_F_SYSCTL_BASE_NAME
+	BPF_SK_STORAGE_GET_F_CREATE             = C.BPF_SK_STORAGE_GET_F_CREATE
+	BPF_F_GET_BRANCH_RECORDS_SIZE           = C.BPF_F_GET_BRANCH_RECORDS_SIZE
+	BPF_RB_NO_WAKEUP                        = C.BPF_RB_NO_WAKEUP
+	BPF_RB_FORCE_WAKEUP                     = C.BPF_RB_FORCE_WAKEUP
+	BPF_RB_AVAIL_DATA                       = C.BPF_RB_AVAIL_DATA
+	BPF_RB_RING_SIZE                        = C.BPF_RB_RING_SIZE
+	BPF_RB_CONS_POS                         = C.BPF_RB_CONS_POS
+	BPF_RB_PROD_POS                         = C.BPF_RB_PROD_POS
+	BPF_RINGBUF_BUSY_BIT                    = C.BPF_RINGBUF_BUSY_BIT
+	BPF_RINGBUF_DISCARD_BIT                 = C.BPF_RINGBUF_DISCARD_BIT
+	BPF_RINGBUF_HDR_SZ                      = C.BPF_RINGBUF_HDR_SZ
+	BPF_ADJ_ROOM_NET                        = C.BPF_ADJ_ROOM_NET
+	BPF_ADJ_ROOM_MAC                        = C.BPF_ADJ_ROOM_MAC
+	BPF_HDR_START_MAC                       = C.BPF_HDR_START_MAC
+	BPF_HDR_START_NET                       = C.BPF_HDR_START_NET
+	BPF_LWT_ENCAP_SEG6                      = C.BPF_LWT_ENCAP_SEG6
+	BPF_LWT_ENCAP_SEG6_INLINE               = C.BPF_LWT_ENCAP_SEG6_INLINE
+	BPF_LWT_ENCAP_IP                        = C.BPF_LWT_ENCAP_IP
+	BPF_OK                                  = C.BPF_OK
+	BPF_DROP                                = C.BPF_DROP
+	BPF_REDIRECT                            = C.BPF_REDIRECT
+	BPF_LWT_REROUTE                         = C.BPF_LWT_REROUTE
+	BPF_SOCK_OPS_RTO_CB_FLAG                = C.BPF_SOCK_OPS_RTO_CB_FLAG
+	BPF_SOCK_OPS_RETRANS_CB_FLAG            = C.BPF_SOCK_OPS_RETRANS_CB_FLAG
+	BPF_SOCK_OPS_STATE_CB_FLAG              = C.BPF_SOCK_OPS_STATE_CB_FLAG
+	BPF_SOCK_OPS_RTT_CB_FLAG                = C.BPF_SOCK_OPS_RTT_CB_FLAG
+	BPF_SOCK_OPS_ALL_CB_FLAGS               = C.BPF_SOCK_OPS_ALL_CB_FLAGS
+	BPF_SOCK_OPS_VOID                       = C.BPF_SOCK_OPS_VOID
+	BPF_SOCK_OPS_TIMEOUT_INIT               = C.BPF_SOCK_OPS_TIMEOUT_INIT
+	BPF_SOCK_OPS_RWND_INIT                  = C.BPF_SOCK_OPS_RWND_INIT
+	BPF_SOCK_OPS_TCP_CONNECT_CB             = C.BPF_SOCK_OPS_TCP_CONNECT_CB
+	BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB      = C.BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB
+	BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB     = C.BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB
+	BPF_SOCK_OPS_NEEDS_ECN                  = C.BPF_SOCK_OPS_NEEDS_ECN
+	BPF_SOCK_OPS_BASE_RTT                   = C.BPF_SOCK_OPS_BASE_RTT
+	BPF_SOCK_OPS_RTO_CB                     = C.BPF_SOCK_OPS_RTO_CB
+	BPF_SOCK_OPS_RETRANS_CB                 = C.BPF_SOCK_OPS_RETRANS_CB
+	BPF_SOCK_OPS_STATE_CB                   = C.BPF_SOCK_OPS_STATE_CB
+	BPF_SOCK_OPS_TCP_LISTEN_CB              = C.BPF_SOCK_OPS_TCP_LISTEN_CB
+	BPF_SOCK_OPS_RTT_CB                     = C.BPF_SOCK_OPS_RTT_CB
+	BPF_TCP_ESTABLISHED                     = C.BPF_TCP_ESTABLISHED
+	BPF_TCP_SYN_SENT                        = C.BPF_TCP_SYN_SENT
+	BPF_TCP_SYN_RECV                        = C.BPF_TCP_SYN_RECV
+	BPF_TCP_FIN_WAIT1                       = C.BPF_TCP_FIN_WAIT1
+	BPF_TCP_FIN_WAIT2                       = C.BPF_TCP_FIN_WAIT2
+	BPF_TCP_TIME_WAIT                       = C.BPF_TCP_TIME_WAIT
+	BPF_TCP_CLOSE                           = C.BPF_TCP_CLOSE
+	BPF_TCP_CLOSE_WAIT                      = C.BPF_TCP_CLOSE_WAIT
+	BPF_TCP_LAST_ACK                        = C.BPF_TCP_LAST_ACK
+	BPF_TCP_LISTEN                          = C.BPF_TCP_LISTEN
+	BPF_TCP_CLOSING                         = C.BPF_TCP_CLOSING
+	BPF_TCP_NEW_SYN_RECV                    = C.BPF_TCP_NEW_SYN_RECV
+	BPF_TCP_MAX_STATES                      = C.BPF_TCP_MAX_STATES
+	TCP_BPF_IW                              = C.TCP_BPF_IW
+	TCP_BPF_SNDCWND_CLAMP                   = C.TCP_BPF_SNDCWND_CLAMP
+	BPF_DEVCG_ACC_MKNOD                     = C.BPF_DEVCG_ACC_MKNOD
+	BPF_DEVCG_ACC_READ                      = C.BPF_DEVCG_ACC_READ
+	BPF_DEVCG_ACC_WRITE                     = C.BPF_DEVCG_ACC_WRITE
+	BPF_DEVCG_DEV_BLOCK                     = C.BPF_DEVCG_DEV_BLOCK
+	BPF_DEVCG_DEV_CHAR                      = C.BPF_DEVCG_DEV_CHAR
+	BPF_FIB_LOOKUP_DIRECT                   = C.BPF_FIB_LOOKUP_DIRECT
+	BPF_FIB_LOOKUP_OUTPUT                   = C.BPF_FIB_LOOKUP_OUTPUT
+	BPF_FIB_LKUP_RET_SUCCESS                = C.BPF_FIB_LKUP_RET_SUCCESS
+	BPF_FIB_LKUP_RET_BLACKHOLE              = C.BPF_FIB_LKUP_RET_BLACKHOLE
+	BPF_FIB_LKUP_RET_UNREACHABLE            = C.BPF_FIB_LKUP_RET_UNREACHABLE
+	BPF_FIB_LKUP_RET_PROHIBIT               = C.BPF_FIB_LKUP_RET_PROHIBIT
+	BPF_FIB_LKUP_RET_NOT_FWDED              = C.BPF_FIB_LKUP_RET_NOT_FWDED
+	BPF_FIB_LKUP_RET_FWD_DISABLED           = C.BPF_FIB_LKUP_RET_FWD_DISABLED
+	BPF_FIB_LKUP_RET_UNSUPP_LWT             = C.BPF_FIB_LKUP_RET_UNSUPP_LWT
+	BPF_FIB_LKUP_RET_NO_NEIGH               = C.BPF_FIB_LKUP_RET_NO_NEIGH
+	BPF_FIB_LKUP_RET_FRAG_NEEDED            = C.BPF_FIB_LKUP_RET_FRAG_NEEDED
+	BPF_FD_TYPE_RAW_TRACEPOINT              = C.BPF_FD_TYPE_RAW_TRACEPOINT
+	BPF_FD_TYPE_TRACEPOINT                  = C.BPF_FD_TYPE_TRACEPOINT
+	BPF_FD_TYPE_KPROBE                      = C.BPF_FD_TYPE_KPROBE
+	BPF_FD_TYPE_KRETPROBE                   = C.BPF_FD_TYPE_KRETPROBE
+	BPF_FD_TYPE_UPROBE                      = C.BPF_FD_TYPE_UPROBE
+	BPF_FD_TYPE_URETPROBE                   = C.BPF_FD_TYPE_URETPROBE
+	BPF_FLOW_DISSECTOR_F_PARSE_1ST_FRAG     = C.BPF_FLOW_DISSECTOR_F_PARSE_1ST_FRAG
+	BPF_FLOW_DISSECTOR_F_STOP_AT_FLOW_LABEL = C.BPF_FLOW_DISSECTOR_F_STOP_AT_FLOW_LABEL
+	BPF_FLOW_DISSECTOR_F_STOP_AT_ENCAP      = C.BPF_FLOW_DISSECTOR_F_STOP_AT_ENCAP
 )
 
 // generated by:
@@ -2230,4 +2455,41 @@ const (
 	DEVLINK_DPIPE_HEADER_ETHERNET             = C.DEVLINK_DPIPE_HEADER_ETHERNET
 	DEVLINK_DPIPE_HEADER_IPV4                 = C.DEVLINK_DPIPE_HEADER_IPV4
 	DEVLINK_DPIPE_HEADER_IPV6                 = C.DEVLINK_DPIPE_HEADER_IPV6
+)
+
+// fs-verity
+
+type FsverityDigest C.struct_fsverity_digest
+
+type FsverityEnableArg C.struct_fsverity_enable_arg
+
+// nexthop
+
+type Nhmsg C.struct_nhmsg
+
+type NexthopGrp C.struct_nexthop_grp
+
+const (
+	NHA_UNSPEC     = C.NHA_UNSPEC
+	NHA_ID         = C.NHA_ID
+	NHA_GROUP      = C.NHA_GROUP
+	NHA_GROUP_TYPE = C.NHA_GROUP_TYPE
+	NHA_BLACKHOLE  = C.NHA_BLACKHOLE
+	NHA_OIF        = C.NHA_OIF
+	NHA_GATEWAY    = C.NHA_GATEWAY
+	NHA_ENCAP_TYPE = C.NHA_ENCAP_TYPE
+	NHA_ENCAP      = C.NHA_ENCAP
+	NHA_GROUPS     = C.NHA_GROUPS
+	NHA_MASTER     = C.NHA_MASTER
+)
+
+// raw CAN sockets
+
+const (
+	CAN_RAW_FILTER        = C.CAN_RAW_FILTER
+	CAN_RAW_ERR_FILTER    = C.CAN_RAW_ERR_FILTER
+	CAN_RAW_LOOPBACK      = C.CAN_RAW_LOOPBACK
+	CAN_RAW_RECV_OWN_MSGS = C.CAN_RAW_RECV_OWN_MSGS
+	CAN_RAW_FD_FRAMES     = C.CAN_RAW_FD_FRAMES
+	CAN_RAW_JOIN_FILTERS  = C.CAN_RAW_JOIN_FILTERS
 )
