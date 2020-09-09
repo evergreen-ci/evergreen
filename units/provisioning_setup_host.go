@@ -199,94 +199,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	return nil
 }
 
-func (j *setupHostJob) setDNSName(ctx context.Context, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
-	if j.host.Host != "" {
-		return nil
-	}
-
-	// get the DNS name for the host
-	hostDNS, err := cloudMgr.GetDNSName(ctx, j.host)
-	if err != nil {
-		return errors.Wrapf(err, "error checking DNS name for host %s", j.host.Id)
-	}
-
-	// sanity check for the host DNS name
-	if hostDNS == "" {
-		// DNS name not required if IP address set
-		if j.host.IP != "" {
-			return nil
-		}
-		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", j.host.Id)
-	}
-
-	// update the host's DNS name
-	if err = j.host.SetDNSName(hostDNS); err != nil {
-		return errors.Wrapf(err, "error setting DNS name for host %s", j.host.Id)
-	}
-
-	return nil
-}
-
 // runHostSetup transfers the specified setup script for an individual host.
 // Returns the output from running the script remotely, as well as any error
 // that occurs. If the script exits with a non-zero exit code, the error will be
 // non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
-	// fetch the appropriate cloud provider for the host
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
-	}
-	cloudMgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		return errors.Wrapf(err,
-			"failed to get cloud manager for host %s with provider %s",
-			j.host.Id, j.host.Provider)
-	}
-
-	if err = j.setDNSName(ctx, cloudMgr, settings); err != nil {
-		return errors.Wrap(err, "error setting DNS name")
-	}
-
-	// run the function scheduled for when the host is up
-	if err = cloudMgr.OnUp(ctx, j.host); err != nil {
-		err = errors.Wrapf(err, "OnUp callback failed for host %s", j.host.Id)
-		return err
-	}
-
 	switch j.host.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodNone:
 		return nil
-	case distro.BootstrapMethodUserData:
-		// Updating the host LCT prevents the agent monitor deploy job from
-		// running. The agent monitor should be started by the user data script.
-		grip.Warning(message.WrapError(j.host.UpdateLastCommunicated(), message.Fields{
-			"message": "failed to update host's last communication time",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-
-		// Do not set the host to running - hosts bootstrapped with user data
-		// are not considered done provisioning until user data has finished
-		// running.
-		if err = j.host.SetProvisionedNotRunning(); err != nil {
-			return errors.Wrapf(err, "error marking host %s as provisioned", j.host.Id)
-		}
-
-		grip.Info(message.Fields{
-			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
-			"host_id":                 j.host.Id,
-			"distro":                  j.host.Distro.Id,
-			"provisioning":            j.host.Distro.BootstrapSettings.Method,
-			"provider":                j.host.Provider,
-			"attempts":                j.host.ProvisionAttempts,
-			"job":                     j.ID(),
-			"provision_duration_secs": time.Since(j.host.CreationTime).Seconds(),
-		})
-		return nil
 	case distro.BootstrapMethodSSH:
-		if err = setupJasper(ctx, j.env, settings, j.host); err != nil {
+		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not set up Jasper",
 				"host_id": j.host.Id,
@@ -313,8 +235,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Set
 		if j.host.Distro.IsPowerShellSetup() {
 			scriptName = evergreen.PowerShellSetupScriptName
 		}
-		var output string
-		output, err = copyScript(ctx, j.env, settings, j.host, filepath.Join(j.host.Distro.HomeDir(), scriptName), j.host.Distro.Setup)
+		output, err := copyScript(ctx, j.env, settings, j.host, filepath.Join(j.host.Distro.HomeDir(), scriptName), j.host.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %s to host %s: %s",
 				scriptName, j.host.Id, output)
@@ -525,10 +446,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}))
 
 		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
-	}
-
-	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		return nil
 	}
 
 	if j.host.IsVirtualWorkstation {

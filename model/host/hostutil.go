@@ -1246,7 +1246,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
-	if h.Status != evergreen.HostProvisioning {
+	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 

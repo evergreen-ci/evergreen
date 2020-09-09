@@ -718,7 +718,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		}
 		h2 := Host{
 			Id:     "test2",
-			Status: evergreen.HostProvisioning,
+			Status: evergreen.HostStarting,
 			Distro: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodUserData,
@@ -747,7 +747,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldNotBeNil)
 		})
-		Convey("updating the running task on a provisioning host should succeed", func() {
+		Convey("updating the running task on a starting userdata host should succeed", func() {
 			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h2.Id))
@@ -1342,7 +1342,7 @@ func TestNeedsReprovisioningLocked(t *testing.T) {
 
 func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
-		"ReturnsHostsProvisionedButNotRunning": func(t *testing.T, h *Host) {
+		"ReturnsHostsStartedButNotRunning": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindUserDataSpawnHostsProvisioning()
@@ -1390,7 +1390,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 			}()
 			h := Host{
 				Id:          "host_id",
-				Status:      evergreen.HostProvisioning,
+				Status:      evergreen.HostStarting,
 				Provisioned: true,
 				StartedBy:   "user",
 				Distro: distro.Distro{
@@ -1994,7 +1994,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		RunningTask:           "running_task",
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
-		Status:                evergreen.HostProvisioning,
+		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-60 * time.Minute),
 	}
 	// User data host that is not running task and has passed the grace period
@@ -2010,7 +2010,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		LastCommunicationTime: time.Now().Add(-time.Hour),
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
-		Status:                evergreen.HostProvisioning,
+		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-70 * time.Minute),
 	}
 	// User data host that is running task but has not communicated recently is
@@ -2027,7 +2027,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		LastCommunicationTime: time.Now().Add(-time.Hour),
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
-		Status:                evergreen.HostProvisioning,
+		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now().Add(-100 * time.Minute),
 	}
 	// User data host that is not running task but has not passed the grace
@@ -2043,7 +2043,7 @@ func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 		LastCommunicationTime: time.Now(),
 		StartedBy:             evergreen.User,
 		Provider:              evergreen.ProviderNameMock,
-		Status:                evergreen.HostProvisioning,
+		Status:                evergreen.HostStarting,
 		CreationTime:          time.Now(),
 	}
 

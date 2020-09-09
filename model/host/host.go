@@ -1118,7 +1118,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		statuses = append(statuses, evergreen.HostStarting, evergreen.HostProvisioning)
+		statuses = append(statuses, evergreen.HostStarting)
 	}
 	selector := bson.M{
 		IdKey:          h.Id,
@@ -1549,7 +1549,7 @@ func FindHostsToTerminate() ([]Host, error) {
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
 						{ProvisionedKey: false},
-						{StatusKey: evergreen.HostProvisioning},
+						{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
 					}},
 					{"$or": []bson.M{
 						{

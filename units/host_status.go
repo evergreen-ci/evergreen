@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -168,6 +169,14 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 		})
 		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
 	case cloud.StatusRunning:
+		if err := initialSetup(ctx, m, &h); err != nil {
+			return errors.Wrap(err, "problem doing initial setup")
+		}
+
+		// We're done provisioning userdata hosts. The userdata script will do the rest.
+		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned", h.Id)
+		}
 		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
 	}
 	grip.Info(message.Fields{
@@ -178,5 +187,40 @@ func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostS
 		"runner":  "hostinit",
 		"status":  hostStatus,
 	})
+	return nil
+}
+
+func initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
+	if err := cloudMgr.OnUp(ctx, h); err != nil {
+		return errors.Wrapf(err, "OnUp callback failed for host %s", h.Id)
+	}
+	return setDNSName(ctx, cloudMgr, h)
+}
+
+func setDNSName(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
+	if h.Host != "" {
+		return nil
+	}
+
+	// get the DNS name for the host
+	hostDNS, err := cloudMgr.GetDNSName(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "error checking DNS name for host %s", h.Id)
+	}
+
+	// sanity check for the host DNS name
+	if hostDNS == "" {
+		// DNS name not required if IP address set
+		if h.IP != "" {
+			return nil
+		}
+		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", h.Id)
+	}
+
+	// update the host's DNS name
+	if err = h.SetDNSName(hostDNS); err != nil {
+		return errors.Wrapf(err, "error setting DNS name for host %s", h.Id)
+	}
+
 	return nil
 }

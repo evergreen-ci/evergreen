@@ -175,7 +175,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 						StatusKey: evergreen.HostRunning,
 					},
 					{
-						StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}},
+						StatusKey:    evergreen.HostStarting,
 						bootstrapKey: distro.BootstrapMethodUserData,
 						// User data hosts have a grace period between creation
 						// and provisioning during which they are not considered
@@ -909,7 +909,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
 	hosts, err := Find(db.Query(bson.M{
-		StatusKey:      evergreen.HostProvisioning,
+		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
 		StartedByKey:   bson.M{"$ne": evergreen.User},
 		bootstrapKey:   distro.BootstrapMethodUserData,
