@@ -1,0 +1,4 @@
+type StructWithAliased {
+  Foo: String
+  Bar: String
+}
