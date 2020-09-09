@@ -246,6 +246,78 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
+func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
+	usr := route.MustHaveUser(ctx)
+	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+
+	if !CanUpdateSpawnHost(h, usr) {
+		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
+	}
+
+	if editSpawnHostInput.HostName != nil {
+		err = h.SetDisplayName(*editSpawnHostInput.HostName)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost name: %s", err))
+		}
+	}
+	if editSpawnHostInput.NoExpiration != nil {
+		if *editSpawnHostInput.NoExpiration {
+			h.MarkShouldNotExpire(ExpireInDays(evergreen.SpawnHostExpireDays))
+		} else {
+			h.MarkShouldExpire(ExpireInDays(evergreen.SpawnHostExpireDays))
+		}
+	}
+	if editSpawnHostInput.Expiration != nil {
+		err = h.SetExpirationTime(*editSpawnHostInput.Expiration)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost expiration time: %s", err))
+		}
+	}
+	if editSpawnHostInput.InstanceType != nil {
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+		}
+		foundInstanceType := false
+		for _, a := range config.Providers.AWS.AllowedInstanceTypes {
+			if a == *editSpawnHostInput.InstanceType {
+				foundInstanceType = true
+				err = h.SetInstanceType(*editSpawnHostInput.InstanceType)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost expiration time: %s", err))
+				}
+			}
+		}
+		if !foundInstanceType {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding matching instance type"))
+		}
+	}
+
+	if editSpawnHostInput.AddedInstanceTags != nil {
+		addedTags := []host.Tag{}
+		for _, tag := range editSpawnHostInput.AddedInstanceTags {
+			addedTags = append(addedTags, *tag)
+		}
+		h.AddTags(addedTags)
+	}
+	if editSpawnHostInput.DeletedInstanceTags != nil {
+		deletedTags := []string{}
+		for _, tag := range editSpawnHostInput.DeletedInstanceTags {
+			deletedTags = append(deletedTags, tag.Key)
+		}
+		h.DeleteTags(deletedTags)
+	}
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(h)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+	}
+	return &apiHost, nil
+}
+
 func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
 	host, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {

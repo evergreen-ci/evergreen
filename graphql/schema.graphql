@@ -103,6 +103,7 @@ type Mutation {
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
 }
 
 enum SpawnHostStatusActions {
@@ -221,6 +222,17 @@ input SpawnHostInput {
   homeVolumeSize: Int
 }
 
+input EditSpawnHostInput {
+  hostId: String!
+  hostName: String
+  expiration: Time 
+  noExpiration: Boolean
+  instanceType: String
+  addedInstanceTags: [InstanceTagInput!]
+  deletedInstanceTags: [InstanceTagInput!]
+  volume: String
+}
+
 type TaskQueueItem {
   id: ID!
   displayName: String!
@@ -267,6 +279,10 @@ type InstanceTag {
   canBeModified: Boolean
 }
 
+input InstanceTagInput {
+  key: String!
+  value: String! 
+}
 type DistroInfo {
   id: String
   workDir: String
