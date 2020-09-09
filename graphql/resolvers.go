@@ -195,7 +195,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
-	err := ValidateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
+	err := validateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err
 	}
@@ -239,11 +239,11 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	if volume == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
 	}
-	err = ValidateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
+	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err
 	}
-	err = ValidateVolumeName(ctx, updateVolumeInput.Name)
+	err = validateVolumeName(ctx, updateVolumeInput.Name)
 	if err != nil {
 		return false, err
 	}
