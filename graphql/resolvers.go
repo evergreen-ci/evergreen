@@ -1892,7 +1892,8 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, fmt.Sprintf("%d", exec))
+	execString := strconv.Itoa(exec)
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
 	if projectNotFound {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
