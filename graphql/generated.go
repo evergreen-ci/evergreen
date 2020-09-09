@@ -148,6 +148,7 @@ type ComplexityRoot struct {
 
 	Host struct {
 		AvailabilityZone      func(childComplexity int) int
+		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
@@ -1106,6 +1107,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.AvailabilityZone(childComplexity), true
+
+	case "Host.displayName":
+		if e.complexity.Host.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.Host.DisplayName(childComplexity), true
 
 	case "Host.distro":
 		if e.complexity.Host.Distro == nil {
@@ -3961,7 +3969,7 @@ input SpawnHostInput {
 
 input EditSpawnHostInput {
   hostId: String!
-  hostName: String
+  displayName: String
   expiration: Time 
   noExpiration: Boolean
   instanceType: String
@@ -4017,6 +4025,7 @@ type Host {
   availabilityZone: String
   instanceTags: [InstanceTag]
   expiration: Time
+  displayName: String
 }
 
 type InstanceTag {
@@ -7788,6 +7797,37 @@ func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _HostEventLogData_agentRevision(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
@@ -19651,9 +19691,9 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
-		case "hostName":
+		case "displayName":
 			var err error
-			it.HostName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.DisplayName, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -20792,6 +20832,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceTags(ctx, field, obj)
 		case "expiration":
 			out.Values[i] = ec._Host_expiration(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._Host_displayName(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

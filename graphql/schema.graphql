@@ -225,7 +225,7 @@ input SpawnHostInput {
 
 input EditSpawnHostInput {
   hostId: String!
-  hostName: String
+  displayName: String
   expiration: Time 
   noExpiration: Boolean
   instanceType: String
@@ -281,6 +281,7 @@ type Host {
   availabilityZone: String
   instanceTags: [InstanceTag]
   expiration: Time
+  displayName: String
 }
 
 type InstanceTag {

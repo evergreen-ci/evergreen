@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -299,8 +301,8 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
 
-	if editSpawnHostInput.HostName != nil {
-		err = h.SetDisplayName(*editSpawnHostInput.HostName)
+	if editSpawnHostInput.DisplayName != nil {
+		err = h.SetDisplayName(*editSpawnHostInput.DisplayName)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost name: %s", err))
 		}
@@ -337,21 +339,26 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding matching instance type"))
 		}
 	}
-
-	if editSpawnHostInput.AddedInstanceTags != nil {
+	if editSpawnHostInput.AddedInstanceTags != nil || editSpawnHostInput.DeletedInstanceTags != nil {
 		addedTags := []host.Tag{}
+		deletedTags := []string{}
 		for _, tag := range editSpawnHostInput.AddedInstanceTags {
+			tag.CanBeModified = true
 			addedTags = append(addedTags, *tag)
 		}
-		h.AddTags(addedTags)
-	}
-	if editSpawnHostInput.DeletedInstanceTags != nil {
-		deletedTags := []string{}
 		for _, tag := range editSpawnHostInput.DeletedInstanceTags {
 			deletedTags = append(deletedTags, tag.Key)
 		}
-		h.DeleteTags(deletedTags)
+		opts := host.HostModifyOptions{
+			AddInstanceTags:    addedTags,
+			DeleteInstanceTags: deletedTags,
+		}
+		if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating tags on db: %s", err))
+		}
+
 	}
+
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(h)
 	if err != nil {

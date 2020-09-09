@@ -39,7 +39,7 @@ type DisplayTask struct {
 
 type EditSpawnHostInput struct {
 	HostID              string      `json:"hostId"`
-	HostName            *string     `json:"hostName"`
+	DisplayName         *string     `json:"displayName"`
 	Expiration          *time.Time  `json:"expiration"`
 	NoExpiration        *bool       `json:"noExpiration"`
 	InstanceType        *string     `json:"instanceType"`
