@@ -871,22 +871,22 @@ func (h *Host) SetProvisionedNotRunning() error {
 	return nil
 }
 
-// UpdateProvisioningToRunning changes the host status from provisioning to
+// UpdateStartingToRunning changes the host status from provisioning to
 // running, as well as logging that the host has finished provisioning.
-func (h *Host) UpdateProvisioningToRunning() error {
-	if h.Status != evergreen.HostProvisioning {
+func (h *Host) UpdateStartingToRunning() error {
+	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 
 	if err := UpdateOne(
 		bson.M{
 			IdKey:          h.Id,
-			StatusKey:      evergreen.HostProvisioning,
+			StatusKey:      evergreen.HostStarting,
 			ProvisionedKey: true,
 		},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
 	); err != nil {
-		return errors.Wrap(err, "problem changing host status from provisioning to running")
+		return errors.Wrap(err, "problem changing host status from starting to running")
 	}
 
 	h.Status = evergreen.HostRunning
