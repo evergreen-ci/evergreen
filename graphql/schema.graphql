@@ -236,6 +236,7 @@ input UpdateVolumeInput {
   expiration: Time
   noExpiration: Boolean
   name: String
+  volumeId: String!
 }
 
 type TaskQueueItem {

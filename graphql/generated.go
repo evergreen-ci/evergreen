@@ -3972,6 +3972,7 @@ input UpdateVolumeInput {
   expiration: Time
   noExpiration: Boolean
   name: String
+  volumeId: String!
 }
 
 type TaskQueueItem {
@@ -19993,6 +19994,12 @@ func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context,
 		case "name":
 			var err error
 			it.Name, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "volumeId":
+			var err error
+			it.VolumeID, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

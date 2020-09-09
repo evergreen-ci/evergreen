@@ -175,6 +175,7 @@ type UpdateVolumeInput struct {
 	Expiration   *time.Time `json:"expiration"`
 	NoExpiration *bool      `json:"noExpiration"`
 	Name         *string    `json:"name"`
+	VolumeID     string     `json:"volumeId"`
 }
 
 type UserConfig struct {
