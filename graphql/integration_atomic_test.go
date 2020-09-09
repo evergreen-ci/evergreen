@@ -74,11 +74,11 @@ func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicG
 		Settings:    user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
 		SystemRoles: []string{"unrestrictedTaskAccess", "modify_host"},
 		PubKeys: []user.PubKey{
-			user.PubKey{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
+			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
+			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
+			{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
+			{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
+			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 		}}
 	require.NoError(t, testUser.Insert())
 	modifyHostRole := gimlet.Role{
@@ -194,11 +194,11 @@ func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
-		"attachVolumeToHost":   []setupFn{spawnTestHostAndVolume},
-		"detachVolumeFromHost": []setupFn{spawnTestHostAndVolume},
-		"removeVolume":         []setupFn{spawnTestHostAndVolume},
-		"spawnVolume":          []setupFn{spawnTestHostAndVolume, addSubnets},
-		"schedulePatch":        []setupFn{persistTestSettings},
+		"attachVolumeToHost":   {spawnTestHostAndVolume},
+		"detachVolumeFromHost": {spawnTestHostAndVolume},
+		"removeVolume":         {spawnTestHostAndVolume},
+		"spawnVolume":          {spawnTestHostAndVolume, addSubnets},
+		"schedulePatch":        {persistTestSettings},
 	}
 	if m[state.directory] != nil {
 		for _, exec := range m[state.directory] {
@@ -210,7 +210,7 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"spawnVolume": []cleanupFn{clearSubnets},
+		"spawnVolume": {clearSubnets},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
