@@ -218,7 +218,14 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                           <a href="/task/[[task.id]]">Jump to latest</a>
                         </span>
                       </td>
+                    </tr>
 
+                    <tr ng-show="task.generated_by_id">
+                      <td class="icon"><i class="fa fa-clone"></i></td>
+                      <td>
+                        <span>Genearated by </span>
+                        <a href="/task/[[task.generated_by_id]]/[[i]]">[[task.generated_by_name]]</a>
+                      </td>
                     </tr>
                     <tr ng-show="task.host_id">
                       <td class="icon"><i class="fa fa-desktop"></i></td>
