@@ -236,6 +236,10 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	return success, nil
 }
 
+func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
+	return true, nil
+}
+
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := route.MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
