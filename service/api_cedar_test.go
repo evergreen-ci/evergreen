@@ -17,14 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildlogger(t *testing.T) {
+func TestCedar(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.Collection))
 	conf := testutil.TestConfig()
-	conf.LoggerConfig.BuildloggerBaseURL = "cedar.mongodb.com"
-	conf.LoggerConfig.BuildloggerRPCPort = "7070"
-	conf.LoggerConfig.BuildloggerUser = "user"
-	conf.LoggerConfig.BuildloggerPassword = "pass"
-	conf.LoggerConfig.BuildloggerAPIKey = "api_key"
+	conf.Cedar.BaseURL = "cedar.mongodb.com"
+	conf.Cedar.RPCPort = "7070"
+	conf.Cedar.User = "user"
+	conf.Cedar.Password = "pass"
+	conf.Cedar.APIKey = "api_key"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	as, err := NewAPIServer(evergreen.GetEnvironment(), queue)
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestBuildlogger(t *testing.T) {
 	}
 	require.NoError(t, sampleHost.Insert())
 
-	url := "/api/2/agent/buildlogger_info"
+	url := "/api/2/agent/cedar_config"
 	request, err := http.NewRequest("GET", url, nil)
 	request.Header.Add(evergreen.HostHeader, sampleHost.Id)
 	request.Header.Add(evergreen.HostSecretHeader, sampleHost.Secret)
@@ -54,11 +54,11 @@ func TestBuildlogger(t *testing.T) {
 	handler.ServeHTTP(w, request)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	bi := &apimodels.BuildloggerInfo{}
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), bi))
-	assert.Equal(t, "cedar.mongodb.com", bi.BaseURL)
-	assert.Equal(t, "7070", bi.RPCPort)
-	assert.Equal(t, "user", bi.Username)
-	assert.Equal(t, "pass", bi.Password)
-	assert.Equal(t, "api_key", bi.APIKey)
+	cc := &apimodels.CedarConfig{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), cc))
+	assert.Equal(t, "cedar.mongodb.com", cc.BaseURL)
+	assert.Equal(t, "7070", cc.RPCPort)
+	assert.Equal(t, "user", cc.Username)
+	assert.Equal(t, "pass", cc.Password)
+	assert.Equal(t, "api_key", cc.APIKey)
 }

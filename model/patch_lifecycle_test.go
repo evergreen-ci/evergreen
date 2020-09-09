@@ -642,10 +642,10 @@ func TestAddNewPatch(t *testing.T) {
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
-				DisplayTasks: []DisplayTask{
-					DisplayTask{
+				DisplayTasks: []patch.DisplayTask{
+					patch.DisplayTask{
 						Name:           "displaytask1",
-						ExecutionTasks: []string{"task1", "task2"},
+						ExecTasks: []string{"task1", "task2"},
 					},
 				},
 			},
@@ -712,10 +712,10 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
-				DisplayTasks: []DisplayTask{
-					DisplayTask{
+				DisplayTasks: []patch.DisplayTask{
+					patch.DisplayTask{
 						Name:           "displaytask1",
-						ExecutionTasks: []string{"task1", "task2"},
+						ExecTasks: []string{"task1", "task2"},
 					},
 				},
 			},

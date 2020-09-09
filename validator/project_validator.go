@@ -780,7 +780,7 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	// check display tasks
 	for _, bv := range project.BuildVariants {
 		for _, dp := range bv.DisplayTasks {
-			for _, etn := range dp.ExecutionTasks {
+			for _, etn := range dp.ExecTasks {
 				if strings.HasPrefix(etn, "display_") {
 					errs = append(errs,
 						ValidationError{

@@ -1,19 +1,27 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -515,4 +523,225 @@ func TestPatchRawHandler(t *testing.T) {
 	response = route.Run(context.Background())
 	assert.Equal(t, http.StatusOK, response.Status())
 	assert.Equal(t, "module1 diff", response.Data())
+}
+
+func TestSchedulePatchRoute(t *testing.T) {
+	// setup, lots of setup
+	const config = `
+functions:
+  "fetch source" :
+    - command: git.get_project
+      params:
+        directory: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          echo "this is a 2nd command in the function!"
+          ls
+  "debug":
+    command: shell.exec
+    params:
+      script: |
+        echo "i am a debug function."
+  "run a task that fails" :
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        echo "this is a function with only a single command to run!"
+        ./run.py results fail
+  "run a task that passes" :
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        ./run.py results pass
+  "run a function with an arg":
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        echo "I was called with ${foobar}"
+pre:
+  command: shell.exec
+  params:
+    script: |
+      rm -rf src || true
+      echo "pre-task run. JUST ONE COMMAND"
+post:
+  - command: shell.exec
+    params:
+      script: |
+        echo "post-task run."
+        true
+  - command: attach.results
+    params:
+      file_location: src/results.json
+
+tasks:
+- name: compile
+  depends_on: []
+  commands:
+    - func: "fetch source"
+    - func: "run a task that passes" 
+    - func: "run a function with an arg"
+      vars:
+        foobar: "TESTING: ONE"
+    - func: "run a function with an arg"
+      vars:
+        foobar: "TESTING: TWO"
+
+- name: passing_test 
+  depends_on: 
+  - name: compile
+  commands:
+    - func: "fetch source"
+    - func: "run a task that passes"
+
+- name: failing_test 
+  depends_on: 
+  - name: compile
+  commands:
+    - func: "fetch source"
+    - func: "run a task that fails"
+
+- name: timeout_test
+  depends_on: 
+  - name: compile
+  commands:
+    - func: "fetch source"
+    - command: shell.exec
+      timeout_secs: 20
+      params:
+        working_dir: src
+        script: |
+           echo "this is going to timeout"
+           ./run.py timeout
+modules:
+- name: render-module
+  repo: git@github.com:evergreen-ci/render.git
+  prefix: modules
+  branch: master
+
+buildvariants:
+- name: osx-108
+  display_name: OSX
+  modules: ~
+  run_on:
+  - localtestdistro
+  expansions:
+    test_flags: "blah blah"
+  tasks:
+  - name: compile
+  - name: passing_test
+  - name: failing_test
+  - name: timeout_test
+- name: ubuntu
+  display_name: Ubuntu
+  modules: ["render-module"]
+  run_on:
+  - ubuntu1404-test
+  expansions:
+    test_flags: "blah blah"
+  tasks:
+  - name: compile
+  - name: passing_test
+  - name: failing_test
+  - name: timeout_test`
+	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
+	require.NoError(t, settings.Set())
+	projectRef := &serviceModel.ProjectRef{
+		Identifier: "sample",
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		RepoKind:   "github",
+		Branch:     "master",
+		RemotePath: "evergreen.yml",
+		Enabled:    true,
+		BatchTime:  180,
+	}
+	require.NoError(t, projectRef.Insert())
+	unfinalized := patch.Patch{
+		Id:            mgobson.NewObjectId(),
+		Project:       projectRef.Identifier,
+		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		PatchedConfig: config,
+	}
+	require.NoError(t, unfinalized.Insert())
+	ctx := context.Background()
+	handler := makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+
+	// nonexistent patch ID should error
+	req, err := http.NewRequest(http.MethodPost, "", nil)
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": mgobson.NewObjectId().Hex()})
+	assert.NoError(t, err)
+	assert.Error(t, handler.Parse(ctx, req))
+
+	// valid request, scheduling patch for the first time
+	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	body := patchTasks{
+		Description: "some text",
+		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
+	}
+	jsonBody, err := json.Marshal(&body)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp := handler.Run(ctx)
+	respVersion := resp.Data().(model.APIVersion)
+	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 2)
+	foundCompile := false
+	foundPassing := false
+	for _, t := range tasks {
+		if t.DisplayName == "compile" {
+			foundCompile = true
+		}
+		if t.DisplayName == "passing_test" {
+			foundPassing = true
+		}
+	}
+	assert.True(t, foundCompile)
+	assert.True(t, foundPassing)
+
+	// valid request, reconfiguring a finalized patch
+	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	body = patchTasks{
+		Description: "some text",
+		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
+	}
+	jsonBody, err = json.Marshal(&body)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp = handler.Run(ctx)
+	respVersion = resp.Data().(model.APIVersion)
+	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 3)
+	foundCompile = false
+	foundPassing = false
+	foundFailing := false
+	for _, t := range tasks {
+		if t.DisplayName == "compile" {
+			foundCompile = true
+		}
+		if t.DisplayName == "passing_test" {
+			foundPassing = true
+		}
+		if t.DisplayName == "failing_test" {
+			foundFailing = true
+		}
+	}
+	assert.True(t, foundFailing)
+	assert.True(t, foundPassing)
+	assert.True(t, foundCompile)
 }

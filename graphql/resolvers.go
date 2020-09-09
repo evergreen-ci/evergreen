@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -147,7 +146,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
 
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 
 	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
@@ -174,7 +173,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 	}
 
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
@@ -275,7 +274,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 }
 
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
 		err := savePublicKey(ctx, *spawnHostInput.PublicKey)
 		if err != nil {
@@ -331,7 +330,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
 	if !CanUpdateSpawnHost(host, usr) {
@@ -501,7 +500,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 }
 
 func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
-	volumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	volumes, err := GetMyVolumes(MustHaveUser(ctx))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -514,7 +513,7 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 }
 
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
@@ -630,7 +629,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 }
 
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 
 	started, err := GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
 	if err != nil {
@@ -692,7 +691,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 }
 
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
 	err := userSettings.BuildFromService(usr.Settings)
 	if err != nil {
@@ -702,7 +701,7 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 }
 
 func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	userIdParam := usr.Username()
 	if userID != nil {
 		userIdParam = *userID
@@ -781,7 +780,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	groupsMap := make(map[string][]*restModel.UIProjectFields)
 	favorites := []*restModel.UIProjectFields{}
 
@@ -1106,7 +1105,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string) (*RecentTas
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
-			BaseURL:       evergreen.GetEnvironment().Settings().LoggerConfig.BuildloggerBaseURL,
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        taskID,
 			Execution:     t.Execution,
 			PrintPriority: true,
@@ -1245,7 +1244,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 }
 
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	settings := evergreen.GetEnvironment().Settings()
 	config := &UserConfig{
 		User:          usr.Username(),
@@ -1504,7 +1503,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 }
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	user := route.MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
 	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
@@ -1615,7 +1614,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 }
 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	username := usr.Username()
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
@@ -1644,7 +1643,7 @@ func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commi
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	username := usr.Username()
 	idType, id, err := getResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
 	if err != nil {
@@ -1698,7 +1697,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 }
 
 func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 
 	updatedUserSettings, err := restModel.UpdateUserSettings(ctx, usr, *userSettings)
 	if err != nil {
@@ -1712,7 +1711,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 }
 
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
-	user := route.MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
@@ -1728,7 +1727,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 }
 
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
-	user := route.MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
@@ -1758,7 +1757,7 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
 	}
-	err := route.MustHaveUser(ctx).DeletePublicKey(keyName)
+	err := MustHaveUser(ctx).DeletePublicKey(keyName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
 	}
@@ -1785,7 +1784,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	if err != nil {
 		return nil, err
 	}
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating public key, %s: %s", targetKeyName, err.Error()))
@@ -1795,7 +1794,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 }
 
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIDBUser, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
 		usr, err = model.FindUserByID(*userIdParam)
@@ -1930,7 +1929,8 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, string(exec))
+	execString := strconv.Itoa(exec)
+	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
 	if projectNotFound {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
