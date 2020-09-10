@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/cloud"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -308,10 +307,11 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 	}
 	if editSpawnHostInput.NoExpiration != nil {
+
 		if *editSpawnHostInput.NoExpiration {
-			h.MarkShouldNotExpire(ExpireInDays(evergreen.SpawnHostExpireDays))
+			h.MarkShouldNotExpire(cloud.ExpireInDays(evergreen.SpawnHostExpireDays))
 		} else {
-			h.MarkShouldExpire(ExpireInDays(evergreen.SpawnHostExpireDays))
+			h.MarkShouldExpire(cloud.ExpireInDays(evergreen.SpawnHostExpireDays))
 		}
 	}
 	if editSpawnHostInput.Expiration != nil {
@@ -325,19 +325,13 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 		}
-		foundInstanceType := false
-		for _, a := range config.Providers.AWS.AllowedInstanceTypes {
-			if a == *editSpawnHostInput.InstanceType {
-				foundInstanceType = true
-				err = h.SetInstanceType(*editSpawnHostInput.InstanceType)
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost expiration time: %s", err))
-				}
-			}
+		allowedTypes := config.Providers.AWS.AllowedInstanceTypes
+
+		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *editSpawnHostInput.InstanceType, allowedTypes)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting instance type: %s", err))
 		}
-		if !foundInstanceType {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding matching instance type"))
-		}
+		h.SetInstanceType(*editSpawnHostInput.InstanceType)
 	}
 	if editSpawnHostInput.AddedInstanceTags != nil || editSpawnHostInput.DeletedInstanceTags != nil {
 		addedTags := []host.Tag{}

@@ -906,12 +906,6 @@ func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) e
 	return nil
 }
 
-// expireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
-// in the future.
-func ExpireInDays(numDays int) string {
-	return time.Now().AddDate(0, 0, numDays).Format(evergreen.ExpireOnFormat)
-}
-
 func GetVolumeFromSpawnVolumeInput(spawnVolumeInput SpawnVolumeInput) host.Volume {
 	return host.Volume{
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,

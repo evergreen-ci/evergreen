@@ -716,7 +716,7 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 
 // setNoExpiration changes whether a host should expire
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
-	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
+	expireOnValue := ExpireInDays(evergreen.SpawnHostExpireDays)
 	if !host.IsIntentHostId(h.Id) {
 		resources, err := m.getResources(ctx, h)
 		if err != nil {
@@ -1350,7 +1350,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []*ec2.Tag{
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
-		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
+		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(ExpireInDays(evergreen.SpawnHostExpireDays))},
 	}
 
 	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
