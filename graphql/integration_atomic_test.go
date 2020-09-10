@@ -60,7 +60,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 
 const apiUser = "testuser"
 
-func setup(t *testing.T, directory string) atomicGraphQLState {
+func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicGraphQLState {
 	const apiKey = "testapikey"
 	const slackUsername = "testslackuser"
 	state := atomicGraphQLState{taskLogDB: model.TaskLogDB, taskLogColl: model.TaskLogCollection}
