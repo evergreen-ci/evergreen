@@ -667,8 +667,8 @@ func updateMakespans(b *build.Build) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
 }
 
-// UpdateBuildStatusForTask finds all the builds for a task and updates the
-// status of the build based on the task's status.
+// UpdateBuildAndVersionStatusForTask finds all the builds for a task and updates the
+// status of the build and version based on the tasks' statuses.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	const slowMS = 100 * time.Millisecond
 	// retrieve the task by the task id
@@ -696,24 +696,19 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	failedTask := false
-	buildComplete := false
 	finishedTasks := 0
-	tasksToNotify := 0
+	blockedTasks := 0
 
 	cache := task.NewDisplayTaskCache()
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
 			if t.Blocked() {
-				tasksToNotify++
-				if evergreen.IsFailedTaskStatus(t.Status) {
-					failedTask = true
-				}
+				blockedTasks++
 			}
 			continue
 		}
 		finishedTasks++
-		tasksToNotify++
 
 		var displayTask *task.Task
 		displayTask, err = cache.Get(&t)
@@ -765,34 +760,22 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
 
-	if finishedTasks >= len(buildTasks) {
-		buildComplete = true
-	}
-	if buildComplete || tasksToNotify >= len(buildTasks) {
+	if (finishedTasks + blockedTasks) >= len(buildTasks) {
+		updates.BuildComplete = true
 		updates.BuildNewStatus = evergreen.BuildSucceeded
 		if failedTask {
 			updates.BuildNewStatus = evergreen.BuildFailed
 		}
-		updates.BuildComplete = true
-	}
+		if err = b.MarkFinished(updates.BuildNewStatus, finishTime); err != nil {
+			return errors.Wrapf(err, "Error marking build as finished with status '%s'", updates.BuildNewStatus)
+		}
 
-	if buildComplete {
-		if !failedTask {
-			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
-
-		} else {
-			// some task failed
-			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
+		// update the build's makespan information
+		if err = updateMakespans(b); err != nil {
+			return errors.Wrap(err, "Error updating makespan information")
 		}
 	}
+
 	startPhaseAt := time.Now()
 
 	// These are deliberately out of the buildComplete block to ensure versions
@@ -814,9 +797,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	if evergreen.IsPatchRequester(b.Requester) {
 		if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
-			err = errors.Wrap(err, "Error marking patch as finished")
-			grip.Error(err)
-			return err
+			return errors.Wrap(err, "error marking patch as finished")
 		}
 		if updates.VersionComplete && len(updates.VersionNewStatus) != 0 {
 			patchStatus := evergreen.PatchFailed
@@ -827,23 +808,12 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	if buildComplete {
-		// update the build's makespan information if the task has finished
-		if err = updateMakespans(b); err != nil {
-			err = errors.Wrap(err, "Error updating makespan information")
-			grip.Error(err)
-			return err
-		}
-	}
-
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
 		updates.BuildNewStatus = evergreen.BuildCreated
 		if err != nil {
-			err = errors.Wrap(err, "Error updating build status")
-			grip.Error(err)
-			return err
+			return errors.Wrap(err, "error updating build status")
 		}
 	}
 

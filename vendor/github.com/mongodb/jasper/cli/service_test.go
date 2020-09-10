@@ -27,7 +27,7 @@ func TestDaemon(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
 
-			client, err := newRemoteClient(ctx, RPCService, "localhost", port, "")
+			client, err := newRemoteManager(ctx, RPCService, "localhost", port, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client
@@ -43,7 +43,7 @@ func TestDaemon(t *testing.T) {
 			require.NoError(t, daemon.Start(svc))
 			require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", port)))
 
-			client, err := newRemoteClient(ctx, RESTService, "localhost", port, "")
+			client, err := newRemoteManager(ctx, RESTService, "localhost", port, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client
@@ -59,7 +59,7 @@ func TestDaemon(t *testing.T) {
 			require.NoError(t, daemon.Start(svc))
 			require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", restPort)))
 
-			client, err := newRemoteClient(ctx, RESTService, "localhost", restPort, "")
+			client, err := newRemoteManager(ctx, RESTService, "localhost", restPort, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client
@@ -74,7 +74,7 @@ func TestDaemon(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
 
-			client, err := newRemoteClient(ctx, RPCService, "localhost", rpcPort, "")
+			client, err := newRemoteManager(ctx, RPCService, "localhost", rpcPort, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client

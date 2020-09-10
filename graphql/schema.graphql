@@ -526,6 +526,7 @@ type Task {
   failedTestCount: Int!
   finishTime: Time
   generatedBy: String
+  generatedByName: String
   generateTask: Boolean
   hostId: String
   hostLink: String

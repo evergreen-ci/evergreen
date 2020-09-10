@@ -453,6 +453,7 @@ type ComplexityRoot struct {
 		FinishTime        func(childComplexity int) int
 		GenerateTask      func(childComplexity int) int
 		GeneratedBy       func(childComplexity int) int
+		GeneratedByName   func(childComplexity int) int
 		HostId            func(childComplexity int) int
 		HostLink          func(childComplexity int) int
 		Id                func(childComplexity int) int
@@ -720,6 +721,8 @@ type TaskResolver interface {
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
+
+	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
 
 	LatestExecution(ctx context.Context, obj *model.APITask) (int, error)
 
@@ -2858,6 +2861,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.GeneratedBy(childComplexity), true
 
+	case "Task.generatedByName":
+		if e.complexity.Task.GeneratedByName == nil {
+			break
+		}
+
+		return e.complexity.Task.GeneratedByName(childComplexity), true
+
 	case "Task.hostId":
 		if e.complexity.Task.HostId == nil {
 			break
@@ -4262,6 +4272,7 @@ type Task {
   failedTestCount: Int!
   finishTime: Time
   generatedBy: String
+  generatedByName: String
   generateTask: Boolean
   hostId: String
   hostLink: String
@@ -14724,6 +14735,37 @@ func (ec *executionContext) _Task_generatedBy(ctx context.Context, field graphql
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_generatedByName(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().GeneratedByName(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_generateTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -22598,6 +22640,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_finishTime(ctx, field, obj)
 		case "generatedBy":
 			out.Values[i] = ec._Task_generatedBy(ctx, field, obj)
+		case "generatedByName":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_generatedByName(ctx, field, obj)
+				return res
+			})
 		case "generateTask":
 			out.Values[i] = ec._Task_generateTask(ctx, field, obj)
 		case "hostId":

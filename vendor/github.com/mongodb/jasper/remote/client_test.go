@@ -37,6 +37,10 @@ type clientTestCase struct {
 	Case func(context.Context, *testing.T, Manager)
 }
 
+// addBasicClientTests contains all the manager tests found in the root package
+// TestManagerImplementations, minus the ones that are not compatible with
+// remote interfaces. Other than incompatible tests, these tests should exactly
+// mirror the ones in the root package.
 func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []clientTestCase {
 	return append([]clientTestCase{
 		{
@@ -75,6 +79,65 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 			},
 		},
 		{
+			Name: "CreateSimpleProcess",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				opts := testutil.TrueCreateOpts()
+				modify(opts)
+				proc, err := client.CreateProcess(ctx, opts)
+				require.NoError(t, err)
+				assert.NotNil(t, proc)
+				info := proc.Info(ctx)
+				assert.True(t, info.IsRunning || info.Complete)
+			},
+		},
+		{
+			Name: "CreateProcessFails",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				opts := &options.Create{}
+				modify(opts)
+				proc, err := client.CreateProcess(ctx, opts)
+				require.Error(t, err)
+				assert.Nil(t, proc)
+			},
+		},
+		{
+			Name: "ListDoesNotErrorWhenEmpty",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				all, err := client.List(ctx, options.All)
+				require.NoError(t, err)
+				assert.Len(t, all, 0)
+			},
+		},
+		{
+			Name: "ListAllOperations",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				opts := testutil.TrueCreateOpts()
+				modify(opts)
+				created, err := createProcs(ctx, opts, client, 10)
+				require.NoError(t, err)
+				assert.Len(t, created, 10)
+				output, err := client.List(ctx, options.All)
+				require.NoError(t, err)
+				assert.Len(t, output, 10)
+			},
+		},
+		{
+			Name: "ListAllReturnsErrorWithCanceledContext",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				cctx, cancel := context.WithCancel(ctx)
+				opts := testutil.TrueCreateOpts()
+				modify(opts)
+
+				created, err := createProcs(ctx, opts, client, 10)
+				require.NoError(t, err)
+				assert.Len(t, created, 10)
+				cancel()
+				output, err := client.List(cctx, options.All)
+				require.Error(t, err)
+				assert.Nil(t, output)
+			},
+		},
+		{
 			Name: "LongRunningOperationsAreListedAsRunning",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.SleepCreateOpts(20)
@@ -97,41 +160,11 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 			},
 		},
 		{
-			Name: "ListDoesNotErrorWhenEmptyResult",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				all, err := client.List(ctx, options.All)
-				require.NoError(t, err)
-				assert.Len(t, all, 0)
-			},
-		},
-		{
-			Name: "ListErrorsWithInvalidFilter",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				procs, err := client.List(ctx, options.Filter("foo"))
-				assert.Error(t, err)
-				assert.Nil(t, procs)
-			},
-		},
-		{
-			Name: "ListAllReturnsErrorWithCanceledContext",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				cctx, cancel := context.WithCancel(ctx)
-				opts := testutil.TrueCreateOpts()
-				modify(opts)
-				created, err := createProcs(ctx, opts, client, 10)
-				require.NoError(t, err)
-				assert.Len(t, created, 10)
-				cancel()
-				output, err := client.List(cctx, options.All)
-				require.Error(t, err)
-				assert.Nil(t, output)
-			},
-		},
-		{
 			Name: "ListReturnsOneSuccessfulCommand",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.TrueCreateOpts()
 				modify(opts)
+
 				proc, err := client.CreateProcess(ctx, opts)
 				require.NoError(t, err)
 
@@ -141,24 +174,38 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 				listOut, err := client.List(ctx, options.Successful)
 				require.NoError(t, err)
 
-				if assert.Len(t, listOut, 1) {
-					assert.Equal(t, listOut[0].ID(), proc.ID())
-				}
+				require.Len(t, listOut, 1)
+				assert.Equal(t, listOut[0].ID(), proc.ID())
 			},
 		},
 		{
-			Name: "RegisterAlwaysErrors",
+			Name: "ListReturnsOneFailedCommand",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				proc, err := client.CreateProcess(ctx, &options.Create{Args: []string{"ls"}})
-				assert.NotNil(t, proc)
+				opts := testutil.FalseCreateOpts()
+				modify(opts)
+
+				proc, err := client.CreateProcess(ctx, opts)
+				require.NoError(t, err)
+				_, err = proc.Wait(ctx)
+				require.Error(t, err)
+
+				listOut, err := client.List(ctx, options.Failed)
 				require.NoError(t, err)
 
-				assert.Error(t, client.Register(ctx, nil))
-				assert.Error(t, client.Register(ctx, proc))
+				require.Len(t, listOut, 1)
+				assert.Equal(t, listOut[0].ID(), proc.ID())
 			},
 		},
 		{
-			Name: "GetMethodErrorsWithNoResponse",
+			Name: "ListErrorsWithInvalidFilter",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				procs, err := client.List(ctx, options.Filter("foo"))
+				assert.Error(t, err)
+				assert.Empty(t, procs)
+			},
+		},
+		{
+			Name: "GetMethodErrorsWithNonexistentProcess",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				proc, err := client.Get(ctx, "foo")
 				require.Error(t, err)
@@ -166,7 +213,7 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 			},
 		},
 		{
-			Name: "GetMethodReturnsMatchingProc",
+			Name: "GetMethodReturnsMatchingProcess",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.TrueCreateOpts()
 				modify(opts)
@@ -187,7 +234,7 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 			},
 		},
 		{
-			Name: "GroupErrorsForCanceledContexts",
+			Name: "GroupErrorsForCanceledContext",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
 				opts := testutil.TrueCreateOpts()
 				modify(opts)
@@ -222,20 +269,6 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 		{
 			Name: "CloseEmptyManagerNoops",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				require.NoError(t, client.Close(ctx))
-			},
-		},
-		{
-			Name: "ClosersWithoutTriggersTerminatesProcesses",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				if runtime.GOOS == "windows" {
-					t.Skip("the sleep tests don't block correctly on windows")
-				}
-				opts := testutil.SleepCreateOpts(100)
-				modify(opts)
-
-				_, err := createProcs(ctx, opts, client, 10)
-				require.NoError(t, err)
 				assert.NoError(t, client.Close(ctx))
 			},
 		},
@@ -270,24 +303,17 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 			},
 		},
 		{
-			Name: "WaitingOnNonExistentProcessErrors",
+			Name: "CloserWithoutTriggersTerminatesProcesses",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				opts := testutil.TrueCreateOpts()
+				if runtime.GOOS == "windows" {
+					t.Skip("manager close tests will error due to process termination on Windows")
+				}
+				opts := testutil.SleepCreateOpts(100)
 				modify(opts)
 
-				proc, err := client.CreateProcess(ctx, opts)
+				_, err := createProcs(ctx, opts, client, 10)
 				require.NoError(t, err)
-
-				_, err = proc.Wait(ctx)
-				require.NoError(t, err)
-
-				client.Clear(ctx)
-
-				_, err = proc.Wait(ctx)
-				require.Error(t, err)
-				procs, err := client.List(ctx, options.All)
-				require.NoError(t, err)
-				assert.Len(t, procs, 0)
+				assert.NoError(t, client.Close(ctx))
 			},
 		},
 		{
@@ -350,12 +376,39 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 				require.NoError(t, jasper.Terminate(ctx, sleepProc)) // Clean up
 			},
 		},
+		//
+		// The tests below this are specific to the remote manager.
+		//
 		{
-			Name: "RegisterIsDisabled",
+			Name: "WaitingOnNonexistentProcessErrors",
 			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				err := client.Register(ctx, nil)
+				opts := testutil.TrueCreateOpts()
+				modify(opts)
+
+				proc, err := client.CreateProcess(ctx, opts)
+				require.NoError(t, err)
+
+				_, err = proc.Wait(ctx)
+				require.NoError(t, err)
+
+				client.Clear(ctx)
+
+				_, err = proc.Wait(ctx)
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "cannot register")
+				procs, err := client.List(ctx, options.All)
+				require.NoError(t, err)
+				assert.Len(t, procs, 0)
+			},
+		},
+		{
+			Name: "RegisterAlwaysErrors",
+			Case: func(ctx context.Context, t *testing.T, client Manager) {
+				proc, err := client.CreateProcess(ctx, &options.Create{Args: []string{"ls"}})
+				assert.NotNil(t, proc)
+				require.NoError(t, err)
+
+				assert.Error(t, client.Register(ctx, nil))
+				assert.Error(t, client.Register(ctx, proc))
 			},
 		},
 		{
@@ -395,19 +448,15 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 				}
 			},
 		},
-		{
-			Name: "WriteFileFailsWithInvalidPath",
-			Case: func(ctx context.Context, t *testing.T, client Manager) {
-				opts := options.WriteFile{Content: []byte("foo")}
-				assert.Error(t, client.WriteFile(ctx, opts))
-			},
-		},
 	}, tests...)
 }
 
-func TestManager(t *testing.T) {
+func TestManagerImplementations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	httpClient := testutil.GetHTTPClient()
+	defer testutil.PutHTTPClient(httpClient)
 
 	for _, factory := range []struct {
 		Name        string
@@ -447,6 +496,19 @@ func TestManager(t *testing.T) {
 
 				client, err := makeInsecureRPCServiceAndClient(ctx, mngr)
 				require.NoError(t, err)
+				return client
+			},
+		},
+		{
+			Name: "REST",
+			Constructor: func(ctx context.Context, t *testing.T) Manager {
+				_, port, err := startRESTService(ctx, httpClient)
+				require.NoError(t, err)
+
+				client := &restClient{
+					prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
+					client: httpClient,
+				}
 				return client
 			},
 		},
@@ -650,6 +712,13 @@ func TestManager(t *testing.T) {
 								require.NoError(t, err)
 
 								assert.Zero(t, stat.Size())
+							},
+						},
+						clientTestCase{
+							Name: "WriteFileFailsWithInvalidPath",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								opts := options.WriteFile{Content: []byte("foo")}
+								assert.Error(t, client.WriteFile(ctx, opts))
 							},
 						},
 						clientTestCase{
@@ -994,7 +1063,7 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheCreate",
+							Name: "LoggingCacheCreateSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								logger, err := lc.Create("new_logger", &options.Output{})
@@ -1014,7 +1083,7 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheGetExists",
+							Name: "LoggingCacheGetSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								expectedLogger, err := lc.Create("new_logger", &options.Output{})
@@ -1026,15 +1095,15 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheGetDNE",
+							Name: "LoggingCacheGetFailsWithNonexistentLogger",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
-								logger := lc.Get("DNE")
+								logger := lc.Get("nonexistent")
 								require.Nil(t, logger)
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheRemove",
+							Name: "LoggingCacheRemoveSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								logger1, err := lc.Create("logger1", &options.Output{})
@@ -1050,7 +1119,7 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCachePrune",
+							Name: "LoggingCachePruneSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								logger1, err := lc.Create("logger1", &options.Output{})
@@ -1067,7 +1136,7 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheLenEmpty",
+							Name: "LoggingCacheLenIsNonzero",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								_, err := lc.Create("logger1", &options.Output{})
@@ -1079,17 +1148,17 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingCacheLenNotEmpty",
+							Name: "LoggingCacheLenIsZero",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								assert.Zero(t, lc.Len())
 							},
 						},
 						clientTestCase{
-							Name: "LoggingSendMessagesInvalid",
+							Name: "SendMessagesFailsWithNonexistentLogger",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								payload := options.LoggingPayload{
-									LoggerID: "DNE",
+									LoggerID: "nonexistent",
 									Data:     "new log message",
 									Priority: level.Warning,
 									Format:   options.LoggingPayloadFormatString,
@@ -1098,7 +1167,7 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "LoggingSendMessagesValid",
+							Name: "SendMessagesSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
 								logger1, err := lc.Create("logger1", &options.Output{})
@@ -1114,16 +1183,21 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingGetDNE",
+							Name: "ScriptingGetWithNonexistentHarnessFails",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								_, err := client.GetScripting(ctx, "DNE")
+								_, err := client.GetScripting(ctx, "nonexistent")
 								assert.Error(t, err)
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingGetExists",
+							Name: "ScriptingGetWithExistingHarnessSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								expectedHarness := createTestScriptingHarness(ctx, t, client, ".")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(tmpDir))
+								}()
+								expectedHarness := createTestScriptingHarness(ctx, t, client, tmpDir)
 
 								harness, err := client.GetScripting(ctx, expectedHarness.ID())
 								require.NoError(t, err)
@@ -1131,91 +1205,100 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingSetup",
+							Name: "ScriptingSetupSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								harness := createTestScriptingHarness(ctx, t, client, ".")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(tmpDir))
+								}()
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 								assert.NoError(t, harness.Setup(ctx))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingCleanup",
+							Name: "ScriptingCleanupSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								harness := createTestScriptingHarness(ctx, t, client, ".")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(tmpDir))
+								}()
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 								assert.NoError(t, harness.Cleanup(ctx))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingRunNoError",
+							Name: "ScriptingRunSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 
 								require.NoError(t, err)
-								tmpFile := filepath.Join(tmpdir, "fake_script.go")
+								tmpFile := filepath.Join(tmpDir, "fake_script.go")
 								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(0) }`), 0755))
 								assert.NoError(t, harness.Run(ctx, []string{tmpFile}))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingRunError",
+							Name: "ScriptingRunErrors",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 
-								tmpFile := filepath.Join(tmpdir, "fake_script.go")
+								tmpFile := filepath.Join(tmpDir, "fake_script.go")
 								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(42) }`), 0755))
 								assert.Error(t, harness.Run(ctx, []string{tmpFile}))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingRunScriptNoError",
+							Name: "ScriptingRunScriptSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
-
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 								assert.NoError(t, harness.RunScript(ctx, `package main; import "fmt"; func main() { fmt.Println("Hello World") }`))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingRunScriptError",
+							Name: "ScriptingRunScriptErrors",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
 
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 								require.Error(t, harness.RunScript(ctx, `package main; import "os"; func main() { os.Exit(42) }`))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingBuild",
+							Name: "ScriptingBuildSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 
-								tmpFile := filepath.Join(tmpdir, "fake_script.go")
+								tmpFile := filepath.Join(tmpDir, "fake_script.go")
 								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(0) }`), 0755))
-								_, err = harness.Build(ctx, tmpdir, []string{
+								_, err = harness.Build(ctx, tmpDir, []string{
 									"-o",
-									filepath.Join(tmpdir, "fake_script"),
+									filepath.Join(tmpDir, "fake_script"),
 									tmpFile,
 								})
 								require.NoError(t, err)
@@ -1224,18 +1307,18 @@ func TestManager(t *testing.T) {
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingTest",
+							Name: "ScriptingTestSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpdir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
 								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpdir))
+									assert.NoError(t, os.RemoveAll(tmpDir))
 								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpdir)
+								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
 
-								tmpFile := filepath.Join(tmpdir, "fake_script_test.go")
+								tmpFile := filepath.Join(tmpDir, "fake_script_test.go")
 								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "testing"; func TestMain(t *testing.T) { return }`), 0755))
-								results, err := harness.Test(ctx, tmpdir, scripting.TestOptions{Name: "dummy"})
+								results, err := harness.Test(ctx, tmpDir, scripting.TestOptions{Name: "dummy"})
 								require.NoError(t, err)
 								require.Len(t, results, 1)
 							},
@@ -1244,7 +1327,11 @@ func TestManager(t *testing.T) {
 						t.Run(test.Name, func(t *testing.T) {
 							tctx, cancel := context.WithTimeout(ctx, testutil.RPCTestTimeout)
 							defer cancel()
-							test.Case(tctx, t, factory.Constructor(tctx, t))
+							client := factory.Constructor(tctx, t)
+							defer func() {
+								assert.NoError(t, client.CloseConnection())
+							}()
+							test.Case(tctx, t, client)
 						})
 					}
 				})
@@ -1259,4 +1346,20 @@ func createTestScriptingHarness(ctx context.Context, t *testing.T, client Manage
 	require.NoError(t, err)
 
 	return harness
+}
+
+func createProcs(ctx context.Context, opts *options.Create, manager Manager, num int) ([]jasper.Process, error) {
+	catcher := grip.NewBasicCatcher()
+	var procs []jasper.Process
+	for i := 0; i < num; i++ {
+		optsCopy := *opts
+
+		proc, err := manager.CreateProcess(ctx, &optsCopy)
+		catcher.Add(err)
+		if proc != nil {
+			procs = append(procs, proc)
+		}
+	}
+
+	return procs, catcher.Resolve()
 }

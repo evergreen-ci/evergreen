@@ -10,15 +10,24 @@ import (
 
 // LoggingCache provides an interface to a cache of loggers.
 type LoggingCache interface {
+	// Create creates and caches a new logger based on the given output options.
 	Create(id string, opts *options.Output) (*options.CachedLogger, error)
+	// Put adds an existing logger to the cache.
 	Put(id string, logger *options.CachedLogger) error
+	// Get gets an existing cached logger. Implementations should return nil if
+	// the logger cannot be found.
 	Get(id string) *options.CachedLogger
+	// Remove removes an existing logging cache.
 	Remove(id string)
+	// Prune removes all loggers that were last accessed before the given
+	// timestamp.
 	Prune(lastAccessed time.Time)
+	// Len returns the number of loggers. Implementations should return
+	// -1 if the length cannot be retrieved successfully.
 	Len() int
 }
 
-// NewLoggingCache produces a thread-safe implementation of a logging
+// NewLoggingCache produces a thread-safe implementation of a local logging
 // cache for use in manager implementations.
 func NewLoggingCache() LoggingCache {
 	return &loggingCacheImpl{

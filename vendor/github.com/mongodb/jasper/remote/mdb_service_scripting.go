@@ -6,10 +6,8 @@ import (
 
 	"github.com/evergreen-ci/mrpc/mongowire"
 	"github.com/evergreen-ci/mrpc/shell"
-	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // Constants representing scripting commands.
@@ -23,45 +21,6 @@ const (
 	ScriptingBuildCommand     = "build_scripting"
 	ScriptingTestCommand      = "test_scripting"
 )
-
-func (s *mdbService) scriptingGet(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := &scriptingGetRequest{}
-	if !s.serviceScriptingRequest(ctx, w, msg, req, ScriptingGetCommand) {
-		return
-	}
-
-	harness := s.getHarness(ctx, w, req.ID, ScriptingGetCommand)
-	if harness == nil {
-		return
-	}
-
-	s.serviceScriptingResponse(ctx, w, nil, ScriptingGetCommand)
-}
-
-func (s *mdbService) scriptingCreate(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := &scriptingCreateRequest{}
-	if !s.serviceScriptingRequest(ctx, w, msg, req, ScriptingCreateCommand) {
-		return
-	}
-
-	opts, err := options.NewScriptingHarness(req.Params.Type)
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem creating harness options"), ScriptingCreateCommand)
-		return
-	}
-	if err = bson.Unmarshal(req.Params.Options, opts); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem unmarshalling options"), ScriptingCreateCommand)
-		return
-	}
-
-	harness, err := s.harnessCache.Create(s.manager, opts)
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem creating harness"), ScriptingCreateCommand)
-		return
-	}
-
-	s.serviceScriptingResponse(ctx, w, makeScriptingCreateResponse(harness.ID()), ScriptingCreateCommand)
-}
 
 func (s *mdbService) scriptingSetup(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &scriptingSetupRequest{}

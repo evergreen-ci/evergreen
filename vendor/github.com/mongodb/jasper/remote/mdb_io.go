@@ -241,6 +241,10 @@ type signalEventRequest struct {
 	Name string `bson:"signal_event"`
 }
 
+type sendMessagesRequest struct {
+	Payload options.LoggingPayload `bson:"send_messages"`
+}
+
 type loggingCacheSizeResponse struct {
 	shell.ErrorResponse `bson:"error_response,inline"`
 	Size                int `bson:"size"`
@@ -250,15 +254,15 @@ type loggingCacheCreateRequest struct {
 	Params struct {
 		ID      string          `bson:"id"`
 		Options *options.Output `bson:"options"`
-	} `bson:"create_logging_cache"`
+	} `bson:"logging_cache_create"`
 }
 
 type loggingCacheGetRequest struct {
-	ID string `bson:"get_logging_cache"`
+	ID string `bson:"logging_cache_get"`
 }
 
-type loggingCacheDeleteRequest struct {
-	ID string `bson:"delete_logging_cache"`
+type loggingCacheRemoveRequest struct {
+	ID string `bson:"logging_cache_remove"`
 }
 
 type loggingCacheCreateAndGetResponse struct {
@@ -279,10 +283,6 @@ type loggingCachePruneRequest struct {
 
 type loggingCacheLenRequest struct {
 	Len bool `bson:"logging_cache_size"`
-}
-
-type loggingSendMessageRequest struct {
-	Payload options.LoggingPayload `bson:"send_message"`
 }
 
 type scriptingCreateRequest struct {

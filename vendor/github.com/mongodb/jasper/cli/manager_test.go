@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/mongodb/jasper"
@@ -131,6 +133,27 @@ func TestCLIManager(t *testing.T) {
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, managerClose(), resp))
 					assert.True(t, resp.Successful())
+				},
+				"WriteFileSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+					tmpFile, err := ioutil.TempFile(testutil.BuildDirectory(), "write_file")
+					require.NoError(t, err)
+					defer func() {
+						assert.NoError(t, tmpFile.Close())
+						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
+					}()
+
+					opts := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
+					input, err := json.Marshal(opts)
+					require.NoError(t, err)
+					resp := &OutcomeResponse{}
+
+					require.NoError(t, execCLICommandInputOutput(t, c, managerWriteFile(), input, resp))
+
+					assert.True(t, resp.Successful())
+
+					data, err := ioutil.ReadFile(opts.Path)
+					require.NoError(t, err)
+					assert.Equal(t, opts.Content, data)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

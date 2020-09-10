@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -15,16 +16,14 @@ import (
 )
 
 // sshClient uses SSH to access a remote machine's Jasper CLI, which has access
-// to methods in the RemoteClient interface.
+// to methods in the remote.Manager interface.
 type sshClient struct {
-	manager jasper.Manager
-	opts    sshClientOptions
-	shCache scripting.HarnessCache
+	client *sshRunner
 }
 
 // NewSSHClient creates a new Jasper manager that connects to a remote
 // machine's Jasper service over SSH using the remote machine's Jasper CLI.
-func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProcs bool) (remote.Manager, error) {
+func NewSSHClient(clientOpts ClientOptions, remoteOpts options.Remote) (remote.Manager, error) {
 	if err := remoteOpts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "problem validating remote options")
 	}
@@ -45,20 +44,13 @@ func NewSSHClient(remoteOpts options.Remote, clientOpts ClientOptions, trackProc
 		return nil, errors.Wrap(err, "problem validating client options")
 	}
 
-	manager, err := jasper.NewSynchronizedManager(trackProcs)
+	runner, err := newSSHRunner(clientOpts, remoteOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem creating underlying manager")
+		return nil, errors.Wrap(err, "could not set up SSH client")
 	}
-
-	client := &sshClient{
-		opts: sshClientOptions{
-			Machine: remoteOpts,
-			Client:  clientOpts,
-		},
-		shCache: scripting.NewCache(),
-		manager: manager,
-	}
-	return client, nil
+	return &sshClient{
+		client: runner,
+	}, nil
 }
 
 func (c *sshClient) ID() string {
@@ -86,13 +78,13 @@ func (c *sshClient) CreateProcess(ctx context.Context, opts *options.Create) (ja
 		return nil, errors.WithStack(err)
 	}
 
-	return newSSHProcess(c.runClientCommand, resp.Info)
+	return newSSHProcess(c.client, resp.Info)
 }
 
 // CreateCommand creates a command that logically will execute via the remote
 // CLI. Users should not use (*jasper.Command).SetRunFunc().
 func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
-	return c.manager.CreateCommand(ctx).SetRunFunc(func(opts options.Command) error {
+	return c.client.manager.CreateCommand(ctx).SetRunFunc(func(opts options.Command) error {
 		output, err := c.runManagerCommand(ctx, CreateCommand, &opts)
 		if err != nil {
 			return errors.Wrap(err, "could not run command from given input")
@@ -107,10 +99,30 @@ func (c *sshClient) CreateCommand(ctx context.Context) *jasper.Command {
 }
 
 func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
-	return c.shCache.Create(c.manager, opts)
+	output, err := c.runRemoteCommand(ctx, CreateScriptingCommand, opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	resp, err := ExtractIDResponse(output)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return newSSHClientScriptingHarness(c.client, resp.ID), nil
 }
+
 func (c *sshClient) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
-	return c.shCache.Get(id)
+	output, err := c.runRemoteCommand(ctx, GetScriptingCommand, &IDInput{ID: id})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if _, err := ExtractOutcomeResponse(output); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return newSSHClientScriptingHarness(c.client, id), nil
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {
@@ -130,7 +142,7 @@ func (c *sshClient) List(ctx context.Context, f options.Filter) ([]jasper.Proces
 
 	procs := make([]jasper.Process, len(resp.Infos))
 	for i := range resp.Infos {
-		if procs[i], err = newSSHProcess(c.runClientCommand, resp.Infos[i]); err != nil {
+		if procs[i], err = newSSHProcess(c.client, resp.Infos[i]); err != nil {
 			return nil, errors.Wrap(err, "problem creating SSH process")
 		}
 	}
@@ -151,7 +163,7 @@ func (c *sshClient) Group(ctx context.Context, tag string) ([]jasper.Process, er
 
 	procs := make([]jasper.Process, len(resp.Infos))
 	for i := range resp.Infos {
-		if procs[i], err = newSSHProcess(c.runClientCommand, resp.Infos[i]); err != nil {
+		if procs[i], err = newSSHProcess(c.client, resp.Infos[i]); err != nil {
 			return nil, errors.Wrap(err, "problem creating SSH process")
 		}
 	}
@@ -170,11 +182,13 @@ func (c *sshClient) Get(ctx context.Context, id string) (jasper.Process, error) 
 		return nil, errors.WithStack(err)
 	}
 
-	return newSSHProcess(c.runClientCommand, resp.Info)
+	return newSSHProcess(c.client, resp.Info)
 }
 
 func (c *sshClient) Clear(ctx context.Context) {
-	_, _ = c.runManagerCommand(ctx, ClearCommand, nil)
+	if _, err := c.runManagerCommand(ctx, ClearCommand, nil); err != nil {
+		grip.Debug(errors.Wrap(err, "clearing manager"))
+	}
 }
 
 func (c *sshClient) Close(ctx context.Context) error {
@@ -188,6 +202,21 @@ func (c *sshClient) Close(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *sshClient) WriteFile(ctx context.Context, opts options.WriteFile) error {
+	return opts.WriteBufferedContent(func(opts options.WriteFile) error {
+		output, err := c.runManagerCommand(ctx, WriteFileCommand, &opts)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if _, err := ExtractOutcomeResponse(output); err != nil {
+			return errors.WithStack(err)
+		}
+
+		return nil
+	})
 }
 
 func (c *sshClient) CloseConnection() error {
@@ -218,21 +247,6 @@ func (c *sshClient) DownloadFile(ctx context.Context, opts options.Download) err
 	}
 
 	return nil
-}
-
-func (c *sshClient) WriteFile(ctx context.Context, opts options.WriteFile) error {
-	return opts.WriteBufferedContent(func(opts options.WriteFile) error {
-		output, err := c.runRemoteCommand(ctx, WriteFileCommand, &opts)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if _, err := ExtractOutcomeResponse(output); err != nil {
-			return errors.WithStack(err)
-		}
-
-		return nil
-	})
 }
 
 func (c *sshClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
@@ -290,35 +304,63 @@ func (c *sshClient) SignalEvent(ctx context.Context, name string) error {
 }
 
 func (c *sshClient) LoggingCache(ctx context.Context) jasper.LoggingCache {
-	return c.manager.LoggingCache(ctx)
+	return newSSHLoggingCache(ctx, c.client)
 }
 
-// TODO: implement
-func (c *sshClient) SendMessages(_ context.Context, _ options.LoggingPayload) error {
-	return errors.New("message sending is not supported")
+func (c *sshClient) SendMessages(ctx context.Context, opts options.LoggingPayload) error {
+	output, err := c.runRemoteCommand(ctx, SendMessagesCommand, opts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if _, err := ExtractOutcomeResponse(output); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
-func (c *sshClient) runManagerCommand(ctx context.Context, managerSubcommand string, subcommandInput interface{}) ([]byte, error) {
-	return c.runClientCommand(ctx, []string{ManagerCommand, managerSubcommand}, subcommandInput)
+func (c *sshClient) runManagerCommand(ctx context.Context, managerSubcommand string, subcommandInput interface{}) (json.RawMessage, error) {
+	return c.client.runClientCommand(ctx, []string{ManagerCommand, managerSubcommand}, subcommandInput)
 }
 
-func (c *sshClient) runRemoteCommand(ctx context.Context, remoteSubcommand string, subcommandInput interface{}) ([]byte, error) {
-	return c.runClientCommand(ctx, []string{RemoteCommand, remoteSubcommand}, subcommandInput)
+func (c *sshClient) runRemoteCommand(ctx context.Context, remoteSubcommand string, subcommandInput interface{}) (json.RawMessage, error) {
+	return c.client.runClientCommand(ctx, []string{RemoteCommand, remoteSubcommand}, subcommandInput)
+}
+
+// sshRunner is a client to help run Jasper CLI commands over SSH.
+type sshRunner struct {
+	manager    jasper.Manager
+	clientOpts ClientOptions
+	remoteOpts options.Remote
+}
+
+func newSSHRunner(clientOpts ClientOptions, remoteOpts options.Remote) (*sshRunner, error) {
+	manager, err := jasper.NewSynchronizedManager(false)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem creating underlying manager")
+	}
+
+	return &sshRunner{
+		clientOpts: clientOpts,
+		remoteOpts: remoteOpts,
+		manager:    manager,
+	}, nil
 }
 
 // runClientCommand creates a command that runs the given CLI client subcommand
 // over SSH with the given input to be sent as JSON to standard input. If
 // subcommandInput is nil, it does not use standard input.
-func (c *sshClient) runClientCommand(ctx context.Context, subcommand []string, subcommandInput interface{}) ([]byte, error) {
+func (r *sshRunner) runClientCommand(ctx context.Context, subcommand []string, subcommandInput interface{}) (json.RawMessage, error) {
 	input, err := clientInput(subcommandInput)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating client input")
 	}
 	output := clientOutput()
 
-	cmd := c.newCommand(ctx, subcommand, input, output)
+	cmd := r.newCommand(ctx, subcommand, input, output)
 	if err := cmd.Run(ctx); err != nil {
-		return nil, errors.Wrapf(err, "problem running command '%s' over SSH", c.opts.buildCommand(subcommand...))
+		return nil, errors.Wrapf(err, "problem running command '%s' over SSH", r.clientOpts.buildCommand(subcommand...))
 	}
 
 	return output.Bytes(), nil
@@ -326,9 +368,9 @@ func (c *sshClient) runClientCommand(ctx context.Context, subcommand []string, s
 
 // newCommand creates the command that runs the Jasper CLI client command
 // over SSH.
-func (c *sshClient) newCommand(ctx context.Context, clientSubcommand []string, input []byte, output io.WriteCloser) *jasper.Command {
-	cmd := c.manager.CreateCommand(ctx).SetRemoteOptions(&c.opts.Machine).
-		Add(c.opts.buildCommand(clientSubcommand...))
+func (r *sshRunner) newCommand(ctx context.Context, clientSubcommand []string, input json.RawMessage, output io.WriteCloser) *jasper.Command {
+	cmd := r.manager.CreateCommand(ctx).SetRemoteOptions(&r.remoteOpts).
+		Add(r.clientOpts.buildCommand(clientSubcommand...))
 
 	if len(input) != 0 {
 		cmd.SetInputBytes(input)
@@ -350,7 +392,7 @@ func clientOutput() *CappedWriter {
 }
 
 // clientInput constructs the JSON input to the CLI from the struct.
-func clientInput(input interface{}) ([]byte, error) {
+func clientInput(input interface{}) (json.RawMessage, error) {
 	if input == nil {
 		return nil, nil
 	}

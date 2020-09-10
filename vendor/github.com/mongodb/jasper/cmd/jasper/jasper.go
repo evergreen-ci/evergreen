@@ -18,7 +18,6 @@ func newApp() *cli.App {
 	app.Name = "jasper"
 	app.Usage = "The Jasper build system."
 	app.Commands = []cli.Command{
-		jcli.Generate(),
 		jcli.Client(),
 		jcli.Service(),
 		jcli.Run(),
