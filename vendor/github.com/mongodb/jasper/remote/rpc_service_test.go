@@ -21,9 +21,8 @@ func TestRPCService(t *testing.T) {
 		t.Run(managerName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(context.Context, *testing.T, internal.JasperProcessManagerClient){
 				"RegisterSignalTriggerIDChecksForExistingProcess": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {
-					outcome, err := client.RegisterSignalTriggerID(ctx, internal.ConvertSignalTriggerParams("foo", jasper.CleanTerminationSignalTrigger))
-					require.NoError(t, err)
-					assert.False(t, outcome.Success)
+					_, err := client.RegisterSignalTriggerID(ctx, internal.ConvertSignalTriggerParams("foo", jasper.CleanTerminationSignalTrigger))
+					assert.Error(t, err)
 				},
 				//"": func(ctx context.Context, t *testing.T, client internal.JasperProcessManagerClient) {},
 			} {

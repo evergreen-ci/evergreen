@@ -31,6 +31,7 @@ func Client() cli.Command {
 			Manager(),
 			Process(),
 			Remote(),
+			LoggingCache(),
 		},
 	}
 }

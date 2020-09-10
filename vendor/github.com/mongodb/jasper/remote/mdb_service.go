@@ -2,7 +2,6 @@ package remote
 
 import (
 	"context"
-	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -77,7 +76,7 @@ func StartMDBService(ctx context.Context, m jasper.Manager, addr net.Addr) (util
 
 func (s *mdbService) registerHandlers() error {
 	for name, handler := range map[string]mrpc.HandlerFunc{
-		// Manager commands
+		// jasper.Manager commands
 		ManagerIDCommand:     s.managerID,
 		CreateProcessCommand: s.managerCreateProcess,
 		ListCommand:          s.managerList,
@@ -87,7 +86,7 @@ func (s *mdbService) registerHandlers() error {
 		CloseCommand:         s.managerClose,
 		WriteFileCommand:     s.managerWriteFile,
 
-		// Process commands
+		// jasper.Process commands
 		InfoCommand:                    s.processInfo,
 		RunningCommand:                 s.processRunning,
 		CompleteCommand:                s.processComplete,
@@ -99,9 +98,18 @@ func (s *mdbService) registerHandlers() error {
 		GetTagsCommand:                 s.processGetTags,
 		ResetTagsCommand:               s.processResetTags,
 
-		// Scripting commands
-		ScriptingGetCommand:       s.scriptingGet,
+		// Manager commands
+		ConfigureCacheCommand:     s.configureCache,
+		DownloadFileCommand:       s.downloadFile,
+		DownloadMongoDBCommand:    s.downloadMongoDB,
+		GetLogStreamCommand:       s.getLogStream,
+		GetBuildloggerURLsCommand: s.getBuildloggerURLs,
+		SignalEventCommand:        s.signalEvent,
+		SendMessagesCommand:       s.sendMessages,
 		ScriptingCreateCommand:    s.scriptingCreate,
+		ScriptingGetCommand:       s.scriptingGet,
+
+		// scripting.Harness commands
 		ScriptingSetupCommand:     s.scriptingSetup,
 		ScriptingCleanupCommand:   s.scriptingCleanup,
 		ScriptingRunCommand:       s.scriptingRun,
@@ -109,21 +117,12 @@ func (s *mdbService) registerHandlers() error {
 		ScriptingBuildCommand:     s.scriptingBuild,
 		ScriptingTestCommand:      s.scriptingTest,
 
-		// Logging Commands
-		LoggingCacheSizeCommand:   s.loggingSize,
+		// jasper.LoggingCache commands
 		LoggingCacheCreateCommand: s.loggingCreate,
-		LoggingCacheDeleteCommand: s.loggingDelete,
 		LoggingCacheGetCommand:    s.loggingGet,
+		LoggingCacheRemoveCommand: s.loggingRemove,
 		LoggingCachePruneCommand:  s.loggingPrune,
-		LoggingSendMessageCommand: s.loggingSendMessage,
-
-		// Remote client commands
-		ConfigureCacheCommand:     s.configureCache,
-		DownloadFileCommand:       s.downloadFile,
-		DownloadMongoDBCommand:    s.downloadMongoDB,
-		GetLogStreamCommand:       s.getLogStream,
-		GetBuildloggerURLsCommand: s.getBuildloggerURLs,
-		SignalEventCommand:        s.signalEvent,
+		LoggingCacheSizeCommand:   s.loggingSize,
 	} {
 		if err := s.RegisterOperation(&mongowire.OpScope{
 			Type:    mongowire.OP_COMMAND,
@@ -161,170 +160,4 @@ func (s *mdbService) pruneCache(ctx context.Context) {
 			return
 		}
 	}
-}
-
-// Constants representing remote client commands.
-const (
-	ConfigureCacheCommand     = "configure_cache"
-	DownloadFileCommand       = "download_file"
-	DownloadMongoDBCommand    = "download_mongodb"
-	GetLogStreamCommand       = "get_log_stream"
-	GetBuildloggerURLsCommand = "get_buildlogger_urls"
-	SignalEventCommand        = "signal_event"
-)
-
-func (s *mdbService) configureCache(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := configureCacheRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), ConfigureCacheCommand)
-		return
-	}
-	opts := req.Options
-	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid cache options"), ConfigureCacheCommand)
-		return
-	}
-
-	s.cacheMutex.Lock()
-	defer s.cacheMutex.Unlock()
-	if opts.MaxSize > 0 {
-		s.cacheOpts.MaxSize = opts.MaxSize
-	}
-	if opts.PruneDelay > time.Duration(0) {
-		s.cacheOpts.PruneDelay = opts.PruneDelay
-	}
-	s.cacheOpts.Disabled = opts.Disabled
-
-	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, ConfigureCacheCommand)
-}
-
-func (s *mdbService) downloadFile(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := downloadFileRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadFileCommand)
-		return
-	}
-	opts := req.Options
-
-	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid download options"), DownloadFileCommand)
-		return
-	}
-
-	if err := opts.Download(); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not download file"), DownloadFileCommand)
-		return
-	}
-
-	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadFileCommand)
-}
-
-func (s *mdbService) downloadMongoDB(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := &downloadMongoDBRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
-		return
-	}
-	opts := req.Options
-
-	if err := opts.Validate(); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid download options"), DownloadMongoDBCommand)
-		return
-	}
-
-	if err := jasper.SetupDownloadMongoDBReleases(ctx, s.cache, opts); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem setting up download"), DownloadMongoDBCommand)
-		return
-	}
-
-	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, DownloadMongoDBCommand)
-}
-
-func (s *mdbService) getLogStream(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := getLogStreamRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), DownloadMongoDBCommand)
-		return
-	}
-	id := req.Params.ID
-	count := req.Params.Count
-
-	proc, err := s.manager.Get(ctx, id)
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process"), GetLogStreamCommand)
-		return
-	}
-
-	var done bool
-	logs, err := jasper.GetInMemoryLogStream(ctx, proc, count)
-	if err == io.EOF {
-		done = true
-	} else if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get logs"), GetLogStreamCommand)
-		return
-	}
-
-	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, makeGetLogStreamResponse(logs, done))
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GetLogStreamCommand)
-		return
-	}
-
-	shell.WriteResponse(ctx, w, resp, GetLogStreamCommand)
-}
-
-func (s *mdbService) getBuildloggerURLs(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := &getBuildloggerURLsRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), GetBuildloggerURLsCommand)
-		return
-	}
-	id := req.ID
-
-	proc, err := s.manager.Get(ctx, id)
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get process"), GetBuildloggerURLsCommand)
-		return
-	}
-
-	urls := []string{}
-	for _, logger := range getProcInfoNoHang(ctx, proc).Options.Output.Loggers {
-		if logger.Type() == options.LogBuildloggerV2 {
-			producer := logger.Producer()
-			if producer == nil {
-				continue
-			}
-			rawProducer, ok := producer.(*options.BuildloggerV2Options)
-			if ok {
-				urls = append(urls, rawProducer.Buildlogger.GetGlobalLogURL())
-			}
-		}
-	}
-	if len(urls) == 0 {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Errorf("process '%s' does not use buildlogger", proc.ID()), GetBuildloggerURLsCommand)
-		return
-	}
-
-	resp, err := shell.ResponseToMessage(mongowire.OP_REPLY, urls)
-	if err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not make response"), GetBuildloggerURLsCommand)
-		return
-	}
-	shell.WriteResponse(ctx, w, resp, GetBuildloggerURLsCommand)
-}
-
-func (s *mdbService) signalEvent(ctx context.Context, w io.Writer, msg mongowire.Message) {
-	req := &signalEventRequest{}
-	if err := shell.MessageToRequest(msg, &req); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), SignalEventCommand)
-		return
-	}
-	name := req.Name
-
-	if err := jasper.SignalEvent(ctx, name); err != nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrapf(err, "could not signal event '%s'", name), SignalEventCommand)
-		return
-	}
-
-	shell.WriteOKResponse(ctx, w, mongowire.OP_REPLY, SignalEventCommand)
 }

@@ -124,13 +124,20 @@ func ConvertCreateOptions(opts *options.Create) (*CreateOptions, error) {
 // Export takes a protobuf RPC ProcessInfo struct and returns the analogous
 // Jasper ProcessInfo struct.
 func (info *ProcessInfo) Export() (jasper.ProcessInfo, error) {
-	startAt, err := ptypes.Timestamp(info.StartAt)
-	if err != nil {
-		return jasper.ProcessInfo{}, errors.Wrap(err, "could not convert end timestamp from equivalent protobuf RPC timestamp")
+	var startAt time.Time
+	var err error
+	if info.StartAt != nil {
+		startAt, err = ptypes.Timestamp(info.StartAt)
+		if err != nil {
+			return jasper.ProcessInfo{}, errors.Wrap(err, "could not convert start timestamp from equivalent protobuf RPC timestamp")
+		}
 	}
-	endAt, err := ptypes.Timestamp(info.EndAt)
-	if err != nil {
-		return jasper.ProcessInfo{}, errors.Wrap(err, "could not convert end timestamp from equivalent protobuf RPC timestamp")
+	var endAt time.Time
+	if info.EndAt != nil {
+		endAt, err = ptypes.Timestamp(info.EndAt)
+		if err != nil {
+			return jasper.ProcessInfo{}, errors.Wrap(err, "could not convert end timestamp from equivalent protobuf RPC timestamp")
+		}
 	}
 	opts, err := info.Options.Export()
 	if err != nil {
@@ -238,7 +245,7 @@ func ConvertFilter(f options.Filter) *Filter {
 
 // Export takes a protobuf RPC OutputOptions struct and returns the analogous
 // Jasper OutputOptions struct.
-func (opts OutputOptions) Export() (options.Output, error) {
+func (opts *OutputOptions) Export() (options.Output, error) {
 	loggers := []*options.LoggerConfig{}
 	for _, logger := range opts.Loggers {
 		exportedLogger, err := logger.Export()
@@ -279,7 +286,7 @@ func ConvertOutputOptions(opts options.Output) (OutputOptions, error) {
 
 // Export takes a protobuf RPC Logger struct and returns the analogous
 // Jasper Logger struct.
-func (logger LoggerConfig) Export() (*options.LoggerConfig, error) {
+func (logger *LoggerConfig) Export() (*options.LoggerConfig, error) {
 	var producer options.LoggerProducer
 	switch {
 	case logger.GetDefault() != nil:
@@ -395,7 +402,7 @@ func ConvertLogFormat(f options.LogFormat) LogFormat {
 
 // Export takes a protobuf RPC BaseOptions struct and returns the analogous
 // Jasper BaseOptions struct.
-func (opts BaseOptions) Export() options.BaseOptions {
+func (opts *BaseOptions) Export() options.BaseOptions {
 	return options.BaseOptions{
 		Level:  opts.Level.Export(),
 		Buffer: opts.Buffer.Export(),
@@ -405,7 +412,7 @@ func (opts BaseOptions) Export() options.BaseOptions {
 
 // Export takes a protobuf RPC DefaultLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts DefaultLoggerOptions) Export() options.LoggerProducer {
+func (opts *DefaultLoggerOptions) Export() options.LoggerProducer {
 	return &options.DefaultLoggerOptions{
 		Prefix: opts.Prefix,
 		Base:   opts.Base.Export(),
@@ -414,7 +421,7 @@ func (opts DefaultLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC FileLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts FileLoggerOptions) Export() options.LoggerProducer {
+func (opts *FileLoggerOptions) Export() options.LoggerProducer {
 	return &options.FileLoggerOptions{
 		Filename: opts.Filename,
 		Base:     opts.Base.Export(),
@@ -423,7 +430,7 @@ func (opts FileLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC InheritedLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts InheritedLoggerOptions) Export() options.LoggerProducer {
+func (opts *InheritedLoggerOptions) Export() options.LoggerProducer {
 	return &options.InheritedLoggerOptions{
 		Base: opts.Base.Export(),
 	}
@@ -431,7 +438,7 @@ func (opts InheritedLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC SumoLogicLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts SumoLogicLoggerOptions) Export() options.LoggerProducer {
+func (opts *SumoLogicLoggerOptions) Export() options.LoggerProducer {
 	return &options.SumoLogicLoggerOptions{
 		SumoEndpoint: opts.SumoEndpoint,
 		Base:         opts.Base.Export(),
@@ -440,7 +447,7 @@ func (opts SumoLogicLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC InMemoryLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts InMemoryLoggerOptions) Export() options.LoggerProducer {
+func (opts *InMemoryLoggerOptions) Export() options.LoggerProducer {
 	return &options.InMemoryLoggerOptions{
 		InMemoryCap: int(opts.InMemoryCap),
 		Base:        opts.Base.Export(),
@@ -449,7 +456,7 @@ func (opts InMemoryLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC SplunkInfo struct and returns the analogous
 // grip send.SplunkConnectionInfo struct.
-func (opts SplunkInfo) Export() send.SplunkConnectionInfo {
+func (opts *SplunkInfo) Export() send.SplunkConnectionInfo {
 	return send.SplunkConnectionInfo{
 		ServerURL: opts.Url,
 		Token:     opts.Token,
@@ -470,7 +477,7 @@ func ConvertSplunkInfo(opts send.SplunkConnectionInfo) *SplunkInfo {
 
 // Export takes a protobuf RPC SplunkLoggerOptions struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts SplunkLoggerOptions) Export() options.LoggerProducer {
+func (opts *SplunkLoggerOptions) Export() options.LoggerProducer {
 	return &options.SplunkLoggerOptions{
 		Splunk: opts.Splunk.Export(),
 		Base:   opts.Base.Export(),
@@ -479,7 +486,7 @@ func (opts SplunkLoggerOptions) Export() options.LoggerProducer {
 
 // Export takes a protobuf RPC BuildloggerV2Info struct and returns the
 // analogous grip send.BuildloggerConfig struct.
-func (opts BuildloggerV2Info) Export() send.BuildloggerConfig {
+func (opts *BuildloggerV2Info) Export() send.BuildloggerConfig {
 	return send.BuildloggerConfig{
 		CreateTest: opts.CreateTest,
 		URL:        opts.Url,
@@ -508,7 +515,7 @@ func ConvertBuildloggerOptions(opts send.BuildloggerConfig) *BuildloggerV2Info {
 
 // Export takes a protobuf RPC BuildloggerV2Options struct and returns the
 // analogous Jasper options.LoggerProducer.
-func (opts BuildloggerV2Options) Export() options.LoggerProducer {
+func (opts *BuildloggerV2Options) Export() options.LoggerProducer {
 	return &options.BuildloggerV2Options{
 		Buildlogger: opts.Buildlogger.Export(),
 		Base:        opts.Base.Export(),
@@ -517,7 +524,7 @@ func (opts BuildloggerV2Options) Export() options.LoggerProducer {
 
 // Export takes the protobuf RPC BuildloggerV3Options struct and returns the
 // analogous Jasper options.LoggerConfig.
-func (opts BuildloggerV3Options) Export() (*options.LoggerConfig, error) {
+func (opts *BuildloggerV3Options) Export() (*options.LoggerConfig, error) {
 	data, err := json.Marshal(&opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marshaling buildlogger v3 options")
@@ -555,7 +562,7 @@ func ConvertRawLoggerConfigFormat(f options.RawLoggerConfigFormat) RawLoggerConf
 
 // Export takes a protobuf RPC RawLoggerConfig struct and returns the
 // analogous Jasper options.LoggerConfig
-func (logger RawLoggerConfig) Export() (*options.LoggerConfig, error) {
+func (logger *RawLoggerConfig) Export() (*options.LoggerConfig, error) {
 	config := &options.LoggerConfig{}
 	if err := logger.Format.Export().Unmarshal(logger.ConfigData, config); err != nil {
 		return nil, errors.Wrap(err, "problem unmarshalling raw config")
@@ -725,7 +732,7 @@ func ConvertArchiveFormat(format options.ArchiveFormat) ArchiveFormat {
 
 // Export takes a protobuf RPC ArchiveOptions struct and returns the analogous
 // Jasper ArchiveOptions struct.
-func (opts ArchiveOptions) Export() options.Archive {
+func (opts *ArchiveOptions) Export() options.Archive {
 	return options.Archive{
 		ShouldExtract: opts.ShouldExtract,
 		Format:        opts.Format.Export(),
@@ -746,7 +753,7 @@ func ConvertArchiveOptions(opts options.Archive) *ArchiveOptions {
 
 // Export takes a protobuf RPC SignalTriggerParams struct and returns the analogous
 // Jasper process ID and SignalTriggerID.
-func (t SignalTriggerParams) Export() (string, jasper.SignalTriggerID) {
+func (t *SignalTriggerParams) Export() (string, jasper.SignalTriggerID) {
 	return t.ProcessID.Value, t.SignalTriggerID.Export()
 }
 
@@ -945,13 +952,20 @@ func ConvertScriptingTestResults(res []scripting.TestResult) ([]*ScriptingHarnes
 func (r *ScriptingHarnessTestResponse) Export() ([]scripting.TestResult, error) {
 	out := make([]scripting.TestResult, len(r.Results))
 	for idx, res := range r.Results {
-		startAt, err := ptypes.Timestamp(res.StartAt)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not convert start time from equivalent protobuf RPC time for script '%s'", res.Name)
+		var startAt time.Time
+		var err error
+		if res.StartAt != nil {
+			startAt, err = ptypes.Timestamp(res.StartAt)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not convert start time from equivalent protobuf RPC time for script '%s'", res.Name)
+			}
 		}
-		duration, err := ptypes.Duration(res.Duration)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not convert script duration from equivalent protobuf RPC duration for script '%s'", res.Name)
+		var duration time.Duration
+		if res.Duration != nil {
+			duration, err = ptypes.Duration(res.Duration)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not convert script duration from equivalent protobuf RPC duration for script '%s'", res.Name)
+			}
 		}
 
 		out[idx] = scripting.TestResult{
@@ -1149,9 +1163,9 @@ func (l *LoggingCacheInstance) Export() (*options.CachedLogger, error) {
 	}
 
 	return &options.CachedLogger{
-		Accessed: accessed,
-		ID:       l.Id,
-		Manager:  l.Manager,
+		Accessed:  accessed,
+		ID:        l.Id,
+		ManagerID: l.ManagerID,
 	}, nil
 }
 
@@ -1167,9 +1181,9 @@ func ConvertCachedLogger(opts *options.CachedLogger) (*LoggingCacheInstance, err
 		Outcome: &OperationOutcome{
 			Success: true,
 		},
-		Id:       opts.ID,
-		Manager:  opts.Manager,
-		Accessed: accessed,
+		Id:        opts.ID,
+		ManagerID: opts.ManagerID,
+		Accessed:  accessed,
 	}, nil
 }
 
@@ -1181,7 +1195,7 @@ func ConvertLoggingCreateArgs(id string, opts *options.Output) (*LoggingCacheCre
 		return nil, errors.Wrap(err, "problem converting output options")
 	}
 	return &LoggingCacheCreateArgs{
-		Name:    id,
+		Id:      id,
 		Options: &o,
 	}, nil
 }

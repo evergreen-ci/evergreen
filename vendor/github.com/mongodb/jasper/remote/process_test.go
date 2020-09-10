@@ -17,14 +17,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type ProcessTestCase struct {
+type processTestCase struct {
 	Name       string
 	Case       func(context.Context, *testing.T, *options.Create, jasper.ProcessConstructor)
 	ShouldSkip bool
 }
 
-func AddBasicProcessTests(tests ...ProcessTestCase) []ProcessTestCase {
-	return append([]ProcessTestCase{
+// addBasicProcessTests contains all the process tests found in the root package
+// TestProcessImplementations, minus the ones that are not compatible with
+// remote interfaces. Other than incompatible tests, these tests should exactly
+// mirror the ones in the root package.
+func addBasicProcessTests(tests ...processTestCase) []processTestCase {
+	return append([]processTestCase{
 		{
 			Name: "WithPopulatedArgsCommandCreationPasses",
 			Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep jasper.ProcessConstructor) {
@@ -243,7 +247,7 @@ func AddBasicProcessTests(tests ...ProcessTestCase) []ProcessTestCase {
 				require.NotNil(t, proc)
 
 				newProc, err := proc.Respawn(ctx)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = newProc.Wait(ctx)
 				require.NoError(t, err)
 				assert.True(t, newProc.Info(ctx).Successful)
@@ -475,41 +479,7 @@ func TestProcessImplementations(t *testing.T) {
 				},
 			} {
 				t.Run(modify.Name, func(t *testing.T) {
-					for _, test := range AddBasicProcessTests(
-						ProcessTestCase{
-							Name:       "CompleteReturnsFalseForProcessThatDoesntExist",
-							ShouldSkip: !strings.Contains(cname, "RPC"),
-							Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep jasper.ProcessConstructor) {
-								proc, err := makep(ctx, opts)
-								require.NoError(t, err)
-
-								firstID := proc.ID()
-								_, err = proc.Wait(ctx)
-								assert.NoError(t, err)
-								assert.True(t, proc.Complete(ctx))
-								proc.(*rpcProcess).info.Id += "_foo"
-								proc.(*rpcProcess).info.Complete = false
-								require.NotEqual(t, firstID, proc.ID())
-								assert.False(t, proc.Complete(ctx), proc.ID())
-							},
-						},
-						ProcessTestCase{
-							Name:       "RunningReturnsFalseForProcessThatDoesntExist",
-							ShouldSkip: !strings.Contains(cname, "RPC"),
-							Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep jasper.ProcessConstructor) {
-								proc, err := makep(ctx, opts)
-								require.NoError(t, err)
-
-								firstID := proc.ID()
-								_, err = proc.Wait(ctx)
-								assert.NoError(t, err)
-								proc.(*rpcProcess).info.Id += "_foo"
-								proc.(*rpcProcess).info.Complete = false
-								require.NotEqual(t, firstID, proc.ID())
-								assert.False(t, proc.Running(ctx), proc.ID())
-							},
-						},
-					) {
+					for _, test := range addBasicProcessTests() {
 						if test.ShouldSkip {
 							continue
 						}

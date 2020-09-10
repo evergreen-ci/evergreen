@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogging(t *testing.T) {
+func TestLoggingCacheImplementation(t *testing.T) {
 	for _, test := range []struct {
 		Name string
 		Case func(*testing.T, LoggingCache)

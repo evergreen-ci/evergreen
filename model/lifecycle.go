@@ -881,7 +881,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			continue
 		}
 		execTaskIds := []string{}
-		for _, et := range dt.ExecutionTasks {
+		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(b.BuildVariant, et)
 			if execTaskId == "" {
 				grip.Error(message.Fields{

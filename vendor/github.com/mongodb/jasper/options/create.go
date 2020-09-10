@@ -322,14 +322,10 @@ func (opts *Create) Close() error {
 }
 
 // RegisterCloser adds the closer function to the processes closer
-// functions, which are called when the process is closed.
+// functions, which are called when the process finishes running.
 func (opts *Create) RegisterCloser(fn func() error) {
 	if fn == nil {
 		return
-	}
-
-	if opts.closers == nil {
-		opts.closers = []func() error{}
 	}
 
 	opts.closers = append(opts.closers, fn)

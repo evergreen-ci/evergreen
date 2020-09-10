@@ -77,7 +77,6 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error applying new settings"))
 	}
-
 	if err = newSettings.Validate(); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
 	}

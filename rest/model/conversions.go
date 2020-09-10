@@ -31,9 +31,10 @@ type convertFuncs struct {
 }
 
 type convertFnOpts struct {
-	in       types.Type
-	outIsPtr bool
-	outType  string
+	in           types.Type
+	nameOverride string
+	outIsPtr     bool
+	outType      string
 }
 
 // conversionFn uses the specific naming conventions of type conversion funcs in conversions.gotmpl
@@ -46,6 +47,7 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 		OutType:  opts.outType,
 		OutIsPtr: opts.outIsPtr,
 	}
+	typeName := opts.nameOverride
 	switch in := opts.in.(type) {
 	case *types.Basic:
 		info.InType = opts.in.String()
@@ -59,7 +61,10 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 		}
 		underlyingStruct, isStruct := in.Elem().(*types.Named)
 		if isStruct {
-			return objectTypeFnName(underlyingStruct, opts.outIsPtr)
+			if typeName == "" {
+				typeName = underlyingStruct.String()
+			}
+			return objectTypeFnName(typeName, opts.outIsPtr)
 		}
 		return convertFuncs{}, errors.New("complex pointers not implemented yet")
 	case *types.Named:
@@ -67,7 +72,15 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 		case "time.Time":
 			return simplePtrs(info, generatedConversions)
 		default:
-			return objectTypeFnName(in, opts.outIsPtr)
+			if underlying := in.Underlying(); underlying != nil {
+				opts.in = underlying
+				opts.nameOverride = in.String()
+				return conversionFn(opts, generatedConversions)
+			}
+			if typeName == "" {
+				typeName = in.String()
+			}
+			return objectTypeFnName(typeName, opts.outIsPtr)
 		}
 	case *types.Map:
 		switch in.String() {
@@ -98,6 +111,11 @@ func conversionFn(opts convertFnOpts, generatedConversions map[typeInfo]string) 
 			converter: fmt.Sprintf("%s%s", inName, outName),
 			inverter:  fmt.Sprintf("%s%s", outName, inName),
 		}, nil
+	case *types.Struct:
+		if typeName == "" {
+			typeName = in.String()
+		}
+		return objectTypeFnName(typeName, opts.outIsPtr)
 	default:
 		return convertFuncs{}, errors.Errorf("converting type %s is not supported", opts.in.String())
 	}
@@ -204,14 +222,14 @@ func arrayConversionFn(opts convertFnOpts, generatedConversions map[typeInfo]str
 // objectTypeFnName takes a data type and returns the names of the functions
 // used to convert to/from that type in a way that is callable directly in code,
 // using the very specific naming conventions defined in this file
-func objectTypeFnName(in types.Type, outIsPtr bool) (convertFuncs, error) {
+func objectTypeFnName(in string, outIsPtr bool) (convertFuncs, error) {
 	funcs := convertFuncs{}
 	fnName := ""
 	if !outIsPtr {
 		fnName = "*"
 	}
 	fnName += "API"
-	fnName += stripPackage(in.String())
+	fnName += stripPackage(in)
 	funcs.converter = fnName + buildFromService
 	funcs.inverter = fnName + toService
 	return funcs, nil

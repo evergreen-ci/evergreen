@@ -619,10 +619,10 @@ func (s *projectSuite) SetupTest() {
 						Patchable: boolPtr(false),
 					},
 				},
-				DisplayTasks: []DisplayTask{
+				DisplayTasks: []patch.DisplayTask{
 					{
 						Name:           "memes",
-						ExecutionTasks: []string{"9001_task", "very_task", "another_disabled_task"},
+						ExecTasks: []string{"9001_task", "very_task", "another_disabled_task"},
 					},
 				},
 			},
@@ -1489,18 +1489,18 @@ func TestGetAllVariantTasks(t *testing.T) {
 				BuildVariants: []BuildVariant{
 					{
 						Name: "bv1",
-						DisplayTasks: []DisplayTask{
+						DisplayTasks: []patch.DisplayTask{
 							{
 								Name:           "dt1",
-								ExecutionTasks: []string{"et1", "et2"},
+								ExecTasks: []string{"et1", "et2"},
 							},
 						},
 					}, {
 						Name: "bv2",
-						DisplayTasks: []DisplayTask{
+						DisplayTasks: []patch.DisplayTask{
 							{
 								Name:           "dt2",
-								ExecutionTasks: []string{"et2", "et3"},
+								ExecTasks: []string{"et2", "et3"},
 							},
 						},
 					},

@@ -86,14 +86,14 @@ func TestWriteOutputInvalidOutput(t *testing.T) {
 	assert.Error(t, writeOutput(output, input))
 }
 
-func TestMakeRemoteClientInvalidService(t *testing.T) {
+func TestMakeRemoteManagerInvalidService(t *testing.T) {
 	ctx := context.Background()
-	client, err := newRemoteClient(ctx, "invalid", "localhost", testutil.GetPortNumber(), "")
+	client, err := newRemoteManager(ctx, "invalid", "localhost", testutil.GetPortNumber(), "")
 	require.Error(t, err)
 	require.Nil(t, client)
 }
 
-func TestMakeRemoteClient(t *testing.T) {
+func TestMakeRemoteManager(t *testing.T) {
 	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (util.CloseFunc, remote.Manager){
 		RESTService: makeTestRESTServiceAndClient,
 		RPCService:  makeTestRPCServiceAndClient,

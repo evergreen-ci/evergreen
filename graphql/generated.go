@@ -375,7 +375,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AwsRegions         func(childComplexity int) int
-		BuildBaron         func(childComplexity int, taskID string, execution string) int
+		BuildBaron         func(childComplexity int, taskID string, execution int) int
 		ClientConfig       func(childComplexity int) int
 		CommitQueue        func(childComplexity int, id string) int
 		DistroTaskQueue    func(childComplexity int, distroID string) int
@@ -707,7 +707,7 @@ type QueryResolver interface {
 	InstanceTypes(ctx context.Context) ([]string, error)
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
-	BuildBaron(ctx context.Context, taskID string, execution string) (*BuildBaron, error)
+	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -2317,7 +2317,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BuildBaron(childComplexity, args["taskId"].(string), args["execution"].(string)), true
+		return e.complexity.Query.BuildBaron(childComplexity, args["taskId"].(string), args["execution"].(int)), true
 
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
@@ -3799,7 +3799,7 @@ var sources = []*ast.Source{
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  buildBaron(taskId: String!, execution: String!): BuildBaron!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -4996,9 +4996,9 @@ func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, raw
 		}
 	}
 	args["taskId"] = arg0
-	var arg1 string
+	var arg1 int
 	if tmp, ok := rawArgs["execution"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -13359,7 +13359,7 @@ func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildBaron(rctx, args["taskId"].(string), args["execution"].(string))
+		return ec.resolvers.Query().BuildBaron(rctx, args["taskId"].(string), args["execution"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

@@ -67,7 +67,7 @@ type Query {
   instanceTypes: [String!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
-  buildBaron(taskId: String!, execution: String!): BuildBaron!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!

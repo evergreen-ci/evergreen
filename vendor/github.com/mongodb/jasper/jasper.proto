@@ -302,7 +302,6 @@ message EventName {
 
 message ScriptingHarnessID {
   string id = 1;
-  bool setup = 2;
 }
 
 message ScriptingOptionsGolang {
@@ -387,18 +386,18 @@ message ScriptingHarnessTestResponse {
 }
 
 message LoggingCacheCreateArgs {
-  string name = 1;
+  string id = 1;
   OutputOptions options = 2;
 }
 
 message LoggingCacheArgs {
-  string name = 1;
+  string id = 1;
 }
 
 message LoggingCacheInstance {
   OperationOutcome outcome = 1 ;
   string id = 2;
-  string manager = 3;
+  string managerID = 3;
   google.protobuf.Timestamp accessed = 4;
 }
 
@@ -442,6 +441,7 @@ service JasperProcessManager {
   rpc Signal(SignalProcess) returns (OperationOutcome);
   rpc Clear(google.protobuf.Empty) returns (OperationOutcome);
   rpc Close(google.protobuf.Empty) returns (OperationOutcome);
+  rpc WriteFile(stream WriteFileInfo) returns (OperationOutcome);
 
   // Process functions
   rpc TagProcess(ProcessTags) returns (OperationOutcome);
@@ -451,9 +451,7 @@ service JasperProcessManager {
   rpc Wait(JasperProcessID) returns (OperationOutcome);
   rpc Respawn(JasperProcessID) returns (ProcessInfo);
 
-  // ScriptingHarness functions
-  rpc ScriptingHarnessCreate(ScriptingOptions) returns (ScriptingHarnessID);
-  rpc ScriptingHarnessCheck(ScriptingHarnessID) returns (OperationOutcome);
+  // scripting.Harness functions
   rpc ScriptingHarnessSetup(ScriptingHarnessID) returns (OperationOutcome);
   rpc ScriptingHarnessCleanup(ScriptingHarnessID) returns (OperationOutcome);
   rpc ScriptingHarnessRun(ScriptingHarnessRunArgs) returns (OperationOutcome);
@@ -461,7 +459,7 @@ service JasperProcessManager {
   rpc ScriptingHarnessRunScript(ScriptingHarnessRunScriptArgs) returns (OperationOutcome);
   rpc ScriptingHarnessTest(ScriptingHarnessTestArgs) returns (ScriptingHarnessTestResponse);
 
-  // Logging functions
+  // LoggingCache functions
   rpc LoggingCacheCreate(LoggingCacheCreateArgs) returns (LoggingCacheInstance);
   rpc LoggingCacheGet(LoggingCacheArgs) returns (LoggingCacheInstance);
   rpc LoggingCacheRemove(LoggingCacheArgs) returns (OperationOutcome);
@@ -469,6 +467,8 @@ service JasperProcessManager {
   rpc LoggingCachePrune(google.protobuf.Timestamp) returns (OperationOutcome);
 
   // Remote specific functions
+  rpc ScriptingHarnessCreate(ScriptingOptions) returns (ScriptingHarnessID);
+  rpc ScriptingHarnessGet(ScriptingHarnessID) returns (OperationOutcome);
   rpc Status(google.protobuf.Empty) returns (StatusResponse);
   rpc ConfigureCache(CacheOptions) returns (OperationOutcome);
   rpc DownloadFile(DownloadInfo) returns (OperationOutcome);
@@ -476,6 +476,5 @@ service JasperProcessManager {
   rpc GetLogStream(LogRequest) returns (LogStream);
   rpc GetBuildloggerURLs(JasperProcessID) returns (BuildloggerURLs);
   rpc SignalEvent(EventName) returns (OperationOutcome);
-  rpc WriteFile(stream WriteFileInfo) returns (OperationOutcome);
   rpc SendMessages(LoggingPayload) returns (OperationOutcome);
 }
