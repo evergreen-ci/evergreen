@@ -648,7 +648,7 @@ func TestAddNewPatch(t *testing.T) {
 				},
 				DisplayTasks: []patch.DisplayTask{
 					patch.DisplayTask{
-						Name:           "displaytask1",
+						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
 				},
@@ -718,7 +718,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 				},
 				DisplayTasks: []patch.DisplayTask{
 					patch.DisplayTask{
-						Name:           "displaytask1",
+						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
 				},
