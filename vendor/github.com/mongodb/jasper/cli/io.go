@@ -2,10 +2,12 @@ package cli
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
+	"github.com/mongodb/jasper/scripting"
 	"github.com/pkg/errors"
 )
 
@@ -45,8 +47,8 @@ func (resp OutcomeResponse) ErrorMessage() string {
 
 // ExtractOutcomeResponse unmarshals the input bytes into an OutcomeResponse and
 // checks if the request was successful.
-func ExtractOutcomeResponse(input []byte) (OutcomeResponse, error) {
-	resp := OutcomeResponse{}
+func ExtractOutcomeResponse(input json.RawMessage) (OutcomeResponse, error) {
+	var resp OutcomeResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -76,8 +78,8 @@ type InfoResponse struct {
 
 // ExtractInfoResponse unmarshals the input bytes into an InfoResponse and
 // checks if the request was successful.
-func ExtractInfoResponse(input []byte) (InfoResponse, error) {
-	resp := InfoResponse{}
+func ExtractInfoResponse(input json.RawMessage) (InfoResponse, error) {
+	var resp InfoResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -93,8 +95,8 @@ type InfosResponse struct {
 
 // ExtractInfosResponse unmarshals the input bytes into a TagsResponse and
 // checks if the request was successful.
-func ExtractInfosResponse(input []byte) (InfosResponse, error) {
-	resp := InfosResponse{}
+func ExtractInfosResponse(input json.RawMessage) (InfosResponse, error) {
+	var resp InfosResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -110,8 +112,8 @@ type TagsResponse struct {
 
 // ExtractTagsResponse unmarshals the input bytes into a TagsResponse and checks
 // if the request was successful.
-func ExtractTagsResponse(input []byte) (TagsResponse, error) {
-	resp := TagsResponse{}
+func ExtractTagsResponse(input json.RawMessage) (TagsResponse, error) {
+	var resp TagsResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -127,8 +129,8 @@ type RunningResponse struct {
 
 // ExtractRunningResponse unmarshals the input bytes into a RunningResponse and
 // checks if the request was successful.
-func ExtractRunningResponse(input []byte) (RunningResponse, error) {
-	resp := RunningResponse{}
+func ExtractRunningResponse(input json.RawMessage) (RunningResponse, error) {
+	var resp RunningResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -144,8 +146,8 @@ type CompleteResponse struct {
 
 // ExtractCompleteResponse unmarshals the input bytes into a CompleteResponse and
 // checks if the request was successful.
-func ExtractCompleteResponse(input []byte) (CompleteResponse, error) {
-	resp := CompleteResponse{}
+func ExtractCompleteResponse(input json.RawMessage) (CompleteResponse, error) {
+	var resp CompleteResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -162,8 +164,8 @@ type WaitResponse struct {
 
 // ExtractWaitResponse unmarshals the input bytes into a WaitResponse and checks if the
 // request was successful.
-func ExtractWaitResponse(input []byte) (WaitResponse, error) {
-	resp := WaitResponse{}
+func ExtractWaitResponse(input json.RawMessage) (WaitResponse, error) {
+	var resp WaitResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -183,8 +185,8 @@ type ServiceStatusResponse struct {
 
 // ExtractServiceStatusResponse unmarshals the input bytes into a
 // ServiceStatusResponse and checks if the request was successful.
-func ExtractServiceStatusResponse(input []byte) (ServiceStatusResponse, error) {
-	resp := ServiceStatusResponse{}
+func ExtractServiceStatusResponse(input json.RawMessage) (ServiceStatusResponse, error) {
+	var resp ServiceStatusResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -200,8 +202,8 @@ type LogStreamResponse struct {
 
 // ExtractLogStreamResponse unmarshals the input bytes into a LogStreamResponse
 // and checks if the request was successful.
-func ExtractLogStreamResponse(input []byte) (LogStreamResponse, error) {
-	resp := LogStreamResponse{}
+func ExtractLogStreamResponse(input json.RawMessage) (LogStreamResponse, error) {
+	var resp LogStreamResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
@@ -217,101 +219,41 @@ type BuildloggerURLsResponse struct {
 
 // ExtractBuildloggerURLsResponse unmarshals the input bytes into a
 // BuildloggerURLsResponse and checks if the request was successful.
-func ExtractBuildloggerURLsResponse(input []byte) (BuildloggerURLsResponse, error) {
-	resp := BuildloggerURLsResponse{}
+func ExtractBuildloggerURLsResponse(input json.RawMessage) (BuildloggerURLsResponse, error) {
+	var resp BuildloggerURLsResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
 	return resp, resp.successOrError()
 }
 
-// IDResponse describes the structure of a wrapped Jasper process ID
-// specific command as a response for the CLI.
+// IDResponse represents represents CLI-specific output containing the ID of the
+// resources requested (e.g. a Jasper process ID).
 type IDResponse struct {
 	OutcomeResponse `json:"outcome"`
 	ID              string `json:"id,omitempty"`
 }
 
-// ExtractIDResponse unmarshells an ID response from an unprocessed
-// slice of bytes.
-func ExtractIDResponse(input []byte) (IDResponse, error) {
-	resp := IDResponse{}
+// ExtractIDResponse unmarshals the input bytes into an IDResponse and checks if
+// the request was successful.
+func ExtractIDResponse(input json.RawMessage) (IDResponse, error) {
+	var resp IDResponse
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
 	return resp, resp.successOrError()
 }
 
-// IDInput represents CLI-specific input representing a Jasper process ID.
+// IDInput represents CLI-specific input representing a single ID (e.g. a Jasper
+// process ID).
 type IDInput struct {
 	ID string `json:"id"`
-}
-
-// ScriptingOptions is a way to serialize implementations of the
-// options.ScriptingHarness type by wrapping a type name for the
-// implementation name to pass to the factory.
-type ScriptingOptions struct {
-	ImplementationType string          `json:"type"`
-	Payload            json.RawMessage `json:"payload"`
-}
-
-// Validate ensures that the ScriptingOptions instance is
-// validated.
-func (opts *ScriptingOptions) Validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(opts.ImplementationType == "", "implementation type must be defined")
-	catcher.NewWhen(opts.Payload == nil, "implementation type must be defined")
-
-	return catcher.Resolve()
-}
-
-// BuildScriptingOptions constructs a ScriptingOptions value.
-func BuildScriptingOptions(in options.ScriptingHarness) (*ScriptingOptions, error) {
-	out := &ScriptingOptions{}
-
-	switch opts := in.(type) {
-	case *options.ScriptingPython:
-		if opts.LegacyPython {
-			out.ImplementationType = options.Python2ScriptingType
-		} else {
-			out.ImplementationType = options.Python3ScriptingType
-		}
-	case *options.ScriptingGolang:
-		out.ImplementationType = options.GolangScriptingType
-	case *options.ScriptingRoswell:
-		out.ImplementationType = options.RoswellScriptingType
-	default:
-		return nil, errors.Errorf("unsupported scripting type [%T]", in)
-	}
-
-	var err error
-	out.Payload, err = json.Marshal(in)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem building message payload")
-	}
-
-	return out, nil
-}
-
-// Export builds a native scripting harness container.
-func (opts *ScriptingOptions) Export() (options.ScriptingHarness, error) {
-	harness, err := options.NewScriptingHarness(opts.ImplementationType)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	err = json.Unmarshal(opts.Payload, harness)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return harness, nil
 }
 
 // Validate checks that the Jasper process ID is non-empty.
 func (in *IDInput) Validate() error {
 	if len(in.ID) == 0 {
-		return errors.New("Jasper process ID must not be empty")
+		return errors.New("ID must not be empty")
 	}
 	return nil
 }
@@ -422,4 +364,196 @@ func (e *EventInput) Validate() error {
 		return errors.New("event name cannot be empty")
 	}
 	return nil
+}
+
+// ScriptingCreateInput represents CLI-specific input to create a scripting
+// harness. The Type signifies the kind of harness that will be created and the
+// Payload is the JSON-serialized options to construct the harness.
+type ScriptingCreateInput struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+// Validate checks that a scripting type and payload to populate the harness
+// have been given.
+func (in *ScriptingCreateInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.Type == "", "scripting type must be defined")
+	catcher.NewWhen(in.Payload == nil, "scripting payload must be given")
+
+	return catcher.Resolve()
+}
+
+// BuildScriptingCreateInput constructs a ScriptingCreateInput value.
+func BuildScriptingCreateInput(in options.ScriptingHarness) (*ScriptingCreateInput, error) {
+	out := &ScriptingCreateInput{}
+	out.Type = in.Type()
+
+	var err error
+	out.Payload, err = json.Marshal(in)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building message payload")
+	}
+
+	return out, nil
+}
+
+// Export builds a native scripting harness container.
+func (in *ScriptingCreateInput) Export() (options.ScriptingHarness, error) {
+	harness, err := options.NewScriptingHarness(in.Type)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating scripting harness")
+	}
+
+	err = json.Unmarshal(in.Payload, harness)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshalling scripting harness payload")
+	}
+
+	return harness, nil
+}
+
+// ScriptingRunInput represents CLI-specific input to run a scripting harness.
+type ScriptingRunInput struct {
+	ID   string   `json:"id"`
+	Args []string `json:"args"`
+}
+
+// ScriptingRunScriptInput represents CLI-specific input to run a script in
+// a scripting harness.
+type ScriptingRunScriptInput struct {
+	ID     string `json:"id"`
+	Script string `json:"script"`
+}
+
+// Validate checks that a scripting harness ID and the script to run have been
+// given.
+func (in *ScriptingRunScriptInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.ID == "", "must specify scripting harness ID")
+	catcher.NewWhen(in.Script == "", "must specify script to run")
+	return catcher.Resolve()
+}
+
+// ScriptingBuildInput represents CLI-specific input to run a build in a
+// scripting harness.
+type ScriptingBuildInput struct {
+	ID        string   `json:"id"`
+	Directory string   `json:"directory"`
+	Args      []string `json:"args"`
+}
+
+// Validate checks that a scripting harness ID has been given.
+func (in *ScriptingBuildInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.ID == "", "must specify scripting harness ID")
+	return catcher.Resolve()
+}
+
+// ScriptingBuildResponse represents CLI-specific output describing the output
+// path, if applicable.
+type ScriptingBuildResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Path            string `json:"path"`
+}
+
+// ExtractScriptingBuildResponse unmarshals the input bytes into a
+// ScriptingBuildResponse and checks if the request was successful.
+func ExtractScriptingBuildResponse(input json.RawMessage) (ScriptingBuildResponse, error) {
+	var resp ScriptingBuildResponse
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+// ScriptingTestInput represents CLI-specific input to run tests in a scripting
+// harness.
+type ScriptingTestInput struct {
+	ID        string                  `json:"id"`
+	Directory string                  `json:"directory"`
+	Options   []scripting.TestOptions `json:"options"`
+}
+
+// Validate checks that a scripting harness ID has been given.
+func (in *ScriptingTestInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.ID == "", "must specify scripting harness ID")
+	return catcher.Resolve()
+}
+
+// ScriptingTestResponse represents CLI-specific output describing the results
+// of a test run.
+type ScriptingTestResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Results         []scripting.TestResult `json:"results"`
+}
+
+// ExtractScriptingTestResponse unmarshals the input bytes into a
+// ScriptingTestResponse and checks if the request was successful.
+func ExtractScriptingTestResponse(input json.RawMessage) (ScriptingTestResponse, error) {
+	var resp ScriptingTestResponse
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+// LoggingCacheCreateInput represents CLI-specific input to create a cached
+// logger.
+type LoggingCacheCreateInput struct {
+	ID     string         `json:"id"`
+	Output options.Output `json:"options"`
+}
+
+// Validate checks that a cached logger ID has been given and the logger options
+// are valid.
+func (in *LoggingCacheCreateInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.ID == "", "ID must not be empty")
+	catcher.Wrap(in.Output.Validate(), "invalid output options")
+	return catcher.Resolve()
+}
+
+// CachedLoggerResponse represents CLI-specific output describing the logger
+// that has been cached in the remote service.
+type CachedLoggerResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Logger          options.CachedLogger `json:"logger"`
+}
+
+// ExtractCachedLoggerResponse unmarshals the input bytes into a
+// CachedLoggerResponse and checks if the request was successful.
+func ExtractCachedLoggerResponse(input json.RawMessage) (CachedLoggerResponse, error) {
+	var resp CachedLoggerResponse
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+// LoggingCachePruneInput represents CLI-specific input to prune the loggers
+// that were accessed before the given time.
+type LoggingCachePruneInput struct {
+	LastAccessed time.Time `json:"last_accessed"`
+}
+
+// Validate is a no-op.
+func (in *LoggingCachePruneInput) Validate() error { return nil }
+
+// LoggingCacheLenResponse represents CLI-specific output describing the
+// number of cached loggers.
+type LoggingCacheLenResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Length          int `json:"length"`
+}
+
+// ExtractLoggingCacheLenResponse unmarshals the input bytes into a
+// LoggingCacheLenResponse and checks if the request was successful.
+func ExtractLoggingCacheLenResponse(input json.RawMessage) (LoggingCacheLenResponse, error) {
+	var resp LoggingCacheLenResponse
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }

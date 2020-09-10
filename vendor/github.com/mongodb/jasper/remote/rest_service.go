@@ -87,12 +87,12 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/scripting/{id}/script").Version(1).Post().Handler(s.scriptingRunScript)
 	app.AddRoute("/scripting/{id}/build").Version(1).Post().Handler(s.scriptingBuild)
 	app.AddRoute("/scripting/{id}/test").Version(1).Post().Handler(s.scriptingTest)
-	app.AddRoute("/logging/size").Version(1).Get().Handler(s.loggingCacheSize)
+	app.AddRoute("/logging/id/{id}").Version(1).Post().Handler(s.loggingCacheCreate)
+	app.AddRoute("/logging/id/{id}").Version(1).Get().Handler(s.loggingCacheGet)
+	app.AddRoute("/logging/id/{id}").Version(1).Delete().Handler(s.loggingCacheRemove)
 	app.AddRoute("/logging/prune/{time}").Version(1).Delete().Handler(s.loggingCachePrune)
-	app.AddRoute("/logging/{id}").Version(1).Post().Handler(s.loggingCacheCreate)
-	app.AddRoute("/logging/{id}").Version(1).Delete().Handler(s.loggingCacheDelete)
-	app.AddRoute("/logging/{id}").Version(1).Get().Handler(s.loggingCacheGet)
-	app.AddRoute("/logging/{id}/send").Version(1).Post().Handler(s.loggingSend)
+	app.AddRoute("/logging/len").Version(1).Get().Handler(s.loggingCacheLen)
+	app.AddRoute("/logging/id/{id}/send").Version(1).Post().Handler(s.sendMessages)
 	app.AddRoute("/file/write").Version(1).Put().Handler(s.writeFile)
 	app.AddRoute("/clear").Version(1).Post().Handler(s.clearManager)
 	app.AddRoute("/close").Version(1).Delete().Handler(s.closeManager)
@@ -760,62 +760,17 @@ func (s *Service) registerSignalTriggerID(rw http.ResponseWriter, r *http.Reques
 	gimlet.WriteJSON(rw, struct{}{})
 }
 
-type restLoggingCacheSize struct {
-	Size int `json:"size"`
-}
-
-func (s *Service) loggingCacheSize(rw http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(rw, &restLoggingCacheSize{Size: s.manager.LoggingCache(r.Context()).Len()})
-}
-
-func (s *Service) loggingCacheCreate(rw http.ResponseWriter, r *http.Request) {
-	args := &options.Output{}
+func (s *Service) sendMessages(rw http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["id"]
-	if err := gimlet.GetJSON(r.Body, args); err != nil {
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
 		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem parsing options").Error(),
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
 		})
 		return
 	}
-
-	cl, err := s.manager.LoggingCache(r.Context()).Create(id, args)
-	if err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem creating loggers").Error(),
-		})
-		return
-	}
-
-	gimlet.WriteJSON(rw, cl)
-}
-
-func (s *Service) loggingCacheDelete(rw http.ResponseWriter, r *http.Request) {
-	s.manager.LoggingCache(r.Context()).Remove(gimlet.GetVars(r)["id"])
-}
-
-func (s *Service) loggingCachePrune(rw http.ResponseWriter, r *http.Request) {
-	ts, err := time.Parse(time.RFC3339, gimlet.GetVars(r)["time"])
-	if err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrapf(err, "problem parsing timestamp").Error(),
-		})
-		return
-	}
-
-	s.manager.LoggingCache(r.Context()).Prune(ts)
-}
-
-func (s *Service) loggingCacheGet(rw http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(rw, s.manager.LoggingCache(r.Context()).Get(gimlet.GetVars(r)["id"]))
-}
-
-func (s *Service) loggingSend(rw http.ResponseWriter, r *http.Request) {
-	id := gimlet.GetVars(r)["id"]
-	cache := s.manager.LoggingCache(r.Context())
-	logger := cache.Get(id)
+	logger := lc.Get(id)
 	if logger == nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -833,8 +788,7 @@ func (s *Service) loggingSend(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := logger.Send(payload)
-	if err != nil {
+	if err := logger.Send(payload); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -845,26 +799,122 @@ func (s *Service) loggingSend(rw http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(rw, struct{}{})
 }
 
-func (s *Service) oomTrackerClear(rw http.ResponseWriter, r *http.Request) {
-	resp := jasper.NewOOMTracker()
-
-	if err := resp.Clear(r.Context()); err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
-		return
-	}
-
-	gimlet.WriteJSON(rw, resp)
+type restLoggingCacheLen struct {
+	Len int `json:"len"`
 }
 
-func (s *Service) oomTrackerList(rw http.ResponseWriter, r *http.Request) {
-	resp := jasper.NewOOMTracker()
+func (s *Service) loggingCacheLen(rw http.ResponseWriter, r *http.Request) {
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+	gimlet.WriteJSON(rw, &restLoggingCacheLen{Len: lc.Len()})
+}
 
-	if err := resp.Check(r.Context()); err != nil {
-		gimlet.WriteJSONInternalError(rw, err.Error())
+func (s *Service) loggingCacheCreate(rw http.ResponseWriter, r *http.Request) {
+	opts := &options.Output{}
+	id := gimlet.GetVars(r)["id"]
+	if err := gimlet.GetJSON(r.Body, opts); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem parsing options").Error(),
+		})
 		return
 	}
 
-	gimlet.WriteJSON(rw, resp)
+	if err := opts.Validate(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "invalid options").Error(),
+		})
+		return
+	}
+
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+
+	logger, err := lc.Create(id, opts)
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "problem creating loggers").Error(),
+		})
+		return
+	}
+	logger.ManagerID = s.manager.ID()
+
+	gimlet.WriteJSON(rw, logger)
+}
+
+func (s *Service) loggingCacheGet(rw http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["id"]
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+	logger := lc.Get(id)
+	if logger == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("logger '%s' does not exist", id),
+		})
+		return
+	}
+	gimlet.WriteJSON(rw, logger)
+}
+
+func (s *Service) loggingCacheRemove(rw http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["id"]
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+
+	lc.Remove(id)
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) loggingCachePrune(rw http.ResponseWriter, r *http.Request) {
+	ts, err := time.Parse(time.RFC3339, gimlet.GetVars(r)["time"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrapf(err, "problem parsing timestamp").Error(),
+		})
+		return
+	}
+
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+
+	lc.Prune(ts)
+
+	gimlet.WriteJSON(rw, struct{}{})
 }
 
 func (s *Service) scriptingCreate(rw http.ResponseWriter, r *http.Request) {
@@ -879,7 +929,15 @@ func (s *Service) scriptingCreate(rw http.ResponseWriter, r *http.Request) {
 
 	if err = gimlet.GetJSON(r.Body, seopt); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	if err = seopt.Validate(); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		})
 		return
@@ -1100,4 +1158,26 @@ func (s *Service) scriptingCleanup(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) oomTrackerClear(rw http.ResponseWriter, r *http.Request) {
+	resp := jasper.NewOOMTracker()
+
+	if err := resp.Clear(r.Context()); err != nil {
+		gimlet.WriteJSONInternalError(rw, err.Error())
+		return
+	}
+
+	gimlet.WriteJSON(rw, resp)
+}
+
+func (s *Service) oomTrackerList(rw http.ResponseWriter, r *http.Request) {
+	resp := jasper.NewOOMTracker()
+
+	if err := resp.Check(r.Context()); err != nil {
+		gimlet.WriteJSONInternalError(rw, err.Error())
+		return
+	}
+
+	gimlet.WriteJSON(rw, resp)
 }

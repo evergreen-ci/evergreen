@@ -10,9 +10,9 @@ type TestOutcome string
 
 // Constants representing test outcomes.
 const (
-	TestOutcomeSuccess = "success"
-	TestOutcomeFailure = "failure"
-	TestOutcomeTimeout = "timeout"
+	TestOutcomeSuccess TestOutcome = "success"
+	TestOutcomeFailure TestOutcome = "failure"
+	TestOutcomeTimeout TestOutcome = "timeout"
 )
 
 // TestOptions describe settings that modify how tests are executed.

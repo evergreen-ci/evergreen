@@ -12,16 +12,16 @@ import (
 
 // Constants representing the Jasper Manager interface as CLI commands.
 const (
-	ManagerCommand         = "manager"
-	IDCommand              = "id"
-	CreateProcessCommand   = "create-process"
-	CreateScriptingCommand = "create-scripting"
-	CreateCommand          = "create-command"
-	GetCommand             = "get"
-	GroupCommand           = "group"
-	ListCommand            = "list"
-	ClearCommand           = "clear"
-	CloseCommand           = "close"
+	ManagerCommand       = "manager"
+	IDCommand            = "id"
+	CreateProcessCommand = "create-process"
+	CreateCommand        = "create-command"
+	GetCommand           = "get"
+	GroupCommand         = "group"
+	ListCommand          = "list"
+	ClearCommand         = "clear"
+	CloseCommand         = "close"
+	WriteFileCommand     = "write-file"
 )
 
 // Manager creates a cli.Command that interfaces with a Jasper manager. Each
@@ -40,7 +40,7 @@ func Manager() cli.Command {
 			managerGroup(),
 			managerClear(),
 			managerClose(),
-			managerCreateScripting(),
+			managerWriteFile(),
 		},
 	}
 }
@@ -72,29 +72,6 @@ func managerCreateProcess() cli.Command {
 					return &InfoResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error creating process"))}
 				}
 				return &InfoResponse{Info: proc.Info(ctx), OutcomeResponse: *makeOutcomeResponse(nil)}
-			})
-		},
-	}
-}
-
-func managerCreateScripting() cli.Command {
-	return cli.Command{
-		Name:   CreateScriptingCommand,
-		Flags:  clientFlags(),
-		Before: clientBefore(),
-		Action: func(c *cli.Context) error {
-			opts := &ScriptingOptions{}
-			return doPassthroughInputOutput(c, opts, func(ctx context.Context, client remote.Manager) interface{} {
-				harnessOpts, err := opts.Export()
-				if err != nil {
-					return &IDResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error creating scripting harness"))}
-				}
-
-				env, err := client.CreateScripting(ctx, harnessOpts)
-				if err != nil {
-					return &IDResponse{ID: harnessOpts.ID(), OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error creating scripting harness"))}
-				}
-				return &IDResponse{ID: env.ID(), OutcomeResponse: *makeOutcomeResponse(nil)}
 			})
 		},
 	}
@@ -210,6 +187,20 @@ func managerClose() cli.Command {
 		Action: func(c *cli.Context) error {
 			return doPassthroughOutput(c, func(ctx context.Context, client remote.Manager) interface{} {
 				return makeOutcomeResponse(client.Close(ctx))
+			})
+		},
+	}
+}
+
+func managerWriteFile() cli.Command {
+	return cli.Command{
+		Name:   WriteFileCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			input := options.WriteFile{}
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
+				return makeOutcomeResponse(client.WriteFile(ctx, input))
 			})
 		},
 	}

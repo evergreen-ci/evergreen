@@ -327,18 +327,18 @@ func TestSSHProcess(t *testing.T) {
 		// "": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *mock.Manager) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			client, err := NewSSHClient(mockRemoteOptions(), mockClientOptions(), false)
+			client, err := NewSSHClient(mockClientOptions(), mockRemoteOptions())
 			require.NoError(t, err)
 			sshClient, ok := client.(*sshClient)
 			require.True(t, ok)
 
 			mockManager := &mock.Manager{}
-			sshClient.manager = jasper.Manager(mockManager)
+			sshClient.client.manager = jasper.Manager(mockManager)
 
 			tctx, cancel := context.WithTimeout(ctx, testutil.TestTimeout)
 			defer cancel()
 
-			proc, err := newSSHProcess(sshClient.runClientCommand, jasper.ProcessInfo{ID: "foo"})
+			proc, err := newSSHProcess(sshClient.client, jasper.ProcessInfo{ID: "foo"})
 			require.NoError(t, err)
 			sshProc, ok := proc.(*sshProcess)
 			require.True(t, ok)

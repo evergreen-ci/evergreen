@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/jasper/scripting"
 )
 
-// RemoteClient implements the RemoteClient interface with exported fields
+// RemoteManager implements the remote.Manager interface with exported fields
 // to configure and introspect the mock's behavior.
-type RemoteClient struct {
+type RemoteManager struct {
 	Manager
 	FailCloseConnection    bool
 	FailConfigureCache     bool
@@ -47,7 +47,7 @@ type RemoteClient struct {
 
 // CloseConnection is a no-op. If FailCloseConnection is set, it returns an
 // error.
-func (c *RemoteClient) CloseConnection() error {
+func (c *RemoteManager) CloseConnection() error {
 	if c.FailCloseConnection {
 		return mockFail()
 	}
@@ -56,7 +56,7 @@ func (c *RemoteClient) CloseConnection() error {
 
 // ConfigureCache stores the given cache options. If FailConfigureCache is set,
 // it returns an error.
-func (c *RemoteClient) ConfigureCache(ctx context.Context, opts options.Cache) error {
+func (c *RemoteManager) ConfigureCache(ctx context.Context, opts options.Cache) error {
 	if c.FailConfigureCache {
 		return mockFail()
 	}
@@ -68,7 +68,7 @@ func (c *RemoteClient) ConfigureCache(ctx context.Context, opts options.Cache) e
 
 // DownloadFile stores the given download options. If FailDownloadFile is set,
 // it returns an error.
-func (c *RemoteClient) DownloadFile(ctx context.Context, opts options.Download) error {
+func (c *RemoteManager) DownloadFile(ctx context.Context, opts options.Download) error {
 	if c.FailDownloadFile {
 		return mockFail()
 	}
@@ -80,7 +80,7 @@ func (c *RemoteClient) DownloadFile(ctx context.Context, opts options.Download) 
 
 // DownloadMongoDB stores the given download options. If FailDownloadMongoDB is
 // set, it returns an error.
-func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
+func (c *RemoteManager) DownloadMongoDB(ctx context.Context, opts options.MongoDBDownload) error {
 	if c.FailDownloadMongoDB {
 		return mockFail()
 	}
@@ -92,7 +92,7 @@ func (c *RemoteClient) DownloadMongoDB(ctx context.Context, opts options.MongoDB
 
 // GetBuildloggerURLs returns the BuildloggerURLs field. If
 // FailGetBuildloggerURLs is set, it returns an error.
-func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
+func (c *RemoteManager) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
 	if c.FailGetBuildloggerURLs {
 		return nil, mockFail()
 	}
@@ -103,7 +103,7 @@ func (c *RemoteClient) GetBuildloggerURLs(ctx context.Context, id string) ([]str
 // GetLogStream stores the given log stream ID and count and returns a
 // jasper.LogStream indicating that it is done. If FailGetLogStream is set, it
 // returns an error.
-func (c *RemoteClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
+func (c *RemoteManager) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
 	if c.FailGetLogStream {
 		return jasper.LogStream{Done: true}, mockFail()
 	}
@@ -116,7 +116,7 @@ func (c *RemoteClient) GetLogStream(ctx context.Context, id string, count int) (
 
 // SignalEvent stores the given event name. If FailSignalEvent is set, it
 // returns an error.
-func (c *RemoteClient) SignalEvent(ctx context.Context, name string) error {
+func (c *RemoteManager) SignalEvent(ctx context.Context, name string) error {
 	if c.FailSignalEvent {
 		return mockFail()
 	}
@@ -128,7 +128,7 @@ func (c *RemoteClient) SignalEvent(ctx context.Context, name string) error {
 
 // SendMessages stores the given logging payload. If FailSendMessages is set, it
 // returns an error.
-func (c *RemoteClient) SendMessages(ctx context.Context, opts options.LoggingPayload) error {
+func (c *RemoteManager) SendMessages(ctx context.Context, opts options.LoggingPayload) error {
 	if c.FailSendMessages {
 		return mockFail()
 	}
@@ -139,7 +139,7 @@ func (c *RemoteClient) SendMessages(ctx context.Context, opts options.LoggingPay
 
 // GetScripting returns a cached scripting environment. If FailGetScripting is
 // set, it returns an error.
-func (c *RemoteClient) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
+func (c *RemoteManager) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
 	if c.FailGetScripting {
 		return nil, mockFail()
 	}
@@ -148,7 +148,7 @@ func (c *RemoteClient) GetScripting(ctx context.Context, id string) (scripting.H
 
 // CreateScripting constructs an attached scripting environment. If
 // FailCreateScripting is set, it returns an error.
-func (c *RemoteClient) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
+func (c *RemoteManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
 	if c.FailCreateScripting {
 		return nil, mockFail()
 	}

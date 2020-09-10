@@ -15,18 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogging(t *testing.T) {
+func TestLoggingCache(t *testing.T) {
 	t.Run("LoggingSendErrors", func(t *testing.T) {
 		lp := &LoggingPayload{}
 		cl := &CachedLogger{}
 		t.Run("Unconfigured", func(t *testing.T) {
 			err := cl.Send(lp)
-			require.Error(t, err)
-			require.Equal(t, "no output configured", err.Error())
+			assert.Error(t, err)
 		})
 		t.Run("IvalidMessage", func(t *testing.T) {
 			lp.Format = LoggingPayloadFormatJSON
 			lp.Data = "hello, world!"
+			lp.Priority = level.Trace
 			logger := &CachedLogger{Output: grip.GetSender()}
 			require.Error(t, logger.Send(lp))
 		})

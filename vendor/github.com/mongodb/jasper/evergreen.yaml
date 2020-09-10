@@ -67,14 +67,6 @@ tasks:
     tags: ["test"]
     name: test-remote
 
-  - <<: *run-build
-    tags: ["test"]
-    name: test-metabuild-generator
-
-  - <<: *run-build
-    tags: ["test"]
-    name: test-metabuild-model
-
   - name: compile-base
     tags: ["legacy-check"]
     commands:
@@ -100,14 +92,6 @@ tasks:
 
   - <<: *run-build
     tags: ["report"]
-    name: lint-metabuild-generator
-
-  - <<: *run-build
-    tags: ["report"]
-    name: lint-metabuild-model
-
-  - <<: *run-build
-    tags: ["report"]
     name: lint-mock
 
   - <<: *run-build
@@ -125,6 +109,10 @@ tasks:
   - <<: *run-build
     tags: ["report"]
     name: lint-testutil
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-util
 
 task_groups:
   - name: lintGroup

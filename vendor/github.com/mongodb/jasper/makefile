@@ -2,14 +2,10 @@ name := jasper
 buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*" -not -path "./vendor/*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
-testPackages := $(name) cli remote options mock metabuild-generator metabuild-model
-allPackages := $(testPackages) internal-executor remote-internal testutil benchmarks
+testPackages := $(name) cli remote options mock
+allPackages := $(testPackages) internal-executor remote-internal testutil benchmarks util
 lintPackages := $(allPackages)
 projectPath := github.com/mongodb/jasper
-
-_compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(lintPackages),./$(target))))
-coverageOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage)
-coverageHtmlOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage.html)
 
 # start environment setup
 gobin := $(GO_BIN_PATH)
@@ -18,20 +14,34 @@ gobin := go
 endif
 gopath := $(GOPATH)
 gocache := $(abspath $(buildDir)/.cache)
+goroot := $(GOROOT)
 ifeq ($(OS),Windows_NT)
 gocache := $(shell cygpath -m $(gocache))
 gopath := $(shell cygpath -m $(gopath))
+goroot := $(shell cygpath -m $(goroot))
 endif
 
-goEnv := GOPATH=$(gopath) GOCACHE=$(gocache)$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
+export GOPATH := $(gopath)
+export GOCACHE := $(gocache)
+export GOROOT := $(goroot)
 # end environment setup
 
+
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
+
+
+_compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(allPackages),./$(target))))
+testOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
+lintOutput := $(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
+coverageOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage)
+coverageHtmlOutput := $(foreach target,$(testPackages),$(buildDir)/output.$(target).coverage.html)
+
+
 compile $(buildDir): $(srcFiles)
-	@mkdir -p $(buildDir)
-	@touch $(buildDir)
-	$(goEnv) $(gobin) build $(_compilePackages)
+	$(gobin) build $(_compilePackages)
 compile-base:
-	$(goEnv) $(gobin) build ./
+	$(gobin) build ./
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
@@ -47,21 +57,21 @@ lint-%: $(buildDir)/output.%.lint
 
 # start lint setup targets
 lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
-$(buildDir)/golangci-lint: $(buildDir)
-	@curl --retry 10 --retry-max-time 60 -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.28.1 >/dev/null 2>&1
+$(buildDir)/golangci-lint:
+	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1
 $(buildDir)/run-linter: cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
-	@$(goEnv) $(gobin) build -o $@ $<
+	@$(gobin) build -o $@ $<
 # end lint setup targets
 
 # benchmark setup targets
-$(buildDir)/run-benchmarks: cmd/run-benchmarks/run_benchmarks.go $(buildDir)
-	$(goEnv) $(gobin) build -o $@ $<
+$(buildDir)/run-benchmarks: cmd/run-benchmarks/run_benchmarks.go
+	$(gobin) build -o $@ $<
 # end benchmark setup targets
 
-# cli targets
+# start cli targets
 $(name) cli: $(buildDir)/$(name)
-$(buildDir)/$(name): cmd/$(name)/$(name).go $(buildDir)
-	$(goEnv) $(gobin) build -o $@ $<
+$(buildDir)/$(name): cmd/$(name)/$(name).go $(srcFiles)
+	$(gobin) build -o $@ $<
 # end cli targets
 
 # start test and coverage artifacts
@@ -85,21 +95,37 @@ ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif
 # test execution and output handlers
-$(buildDir)/output.%.test: $(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
+$(buildDir)/output.%.test: .FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
 	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
-$(buildDir)/output.%.coverage: $(buildDir) .FORCE
-	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+$(buildDir)/output.%.coverage: .FORCE
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html: $(buildDir)/output.%.coverage .FORCE
-	$(goEnv) $(gobin) tool cover -html=$< -o $@
+	$(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint: $(buildDir)/run-linter $(buildDir) .FORCE
-	@$(goEnv) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
+# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
+$(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
+	@$(if $(GO_BIN_PATH), PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 #  targets to process and generate coverage reports
 # end test and coverage artifacts
 
+# user-facing targets for basic build and development operations
+proto:
+	@mkdir -p remote/internal
+	protoc --go_out=plugins=grpc:remote/internal *.proto
+lint:$(lintOutput)
+test:$(testOutput)
+benchmarks: $(buildDir)/run-benchmarks .FORCE
+	./$(buildDir)/run-benchmarks $(run-benchmark)
+coverage: $(coverageOutput)
+coverage-html: $(coverageHtmlOutput)
+phony += compile lint test coverage coverage-html docker-setup docker-cleanup
+.PHONY: $(phony) .FORCE
+.PRECIOUS: $(coverageOutput) $(coverageHtmlOutput) $(lintOutput) $(testOutput)
+# end front-ends
+#
 # Docker-related
 docker_image := $(DOCKER_IMAGE)
 ifeq ($(docker_image),)
@@ -116,31 +142,12 @@ ifeq (,$(SKIP_DOCKER_TESTS))
 	docker rm -f $(docker ps -a -q)
 	docker rmi -f $(docker_image)
 endif
-
 # end Docker
-
-# user-facing targets for basic build and development operations
-proto:
-	@mkdir -p remote/internal
-	protoc --go_out=plugins=grpc:remote/internal *.proto
-lint: $(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
-test: $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
-benchmarks: $(buildDir)/run-benchmarks .FORCE
-	@mkdir -p $(buildDir)
-	$(goEnv) ./$(buildDir)/run-benchmarks $(run-benchmark)
-coverage: $(coverageOutput)
-coverage-html: $(coverageHtmlOutput)
-phony += compile lint test coverage coverage-html docker-setup docker-cleanup
-.PHONY: $(phony) .FORCE
-.PRECIOUS: $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS: $(foreach target,$(testPackages),$(buildDir)/output.$(target).test)
-.PRECIOUS: $(foreach target,$(lintPackages),$(buildDir)/output.$(target).lint)
-# end front-ends
 
 .FORCE:
 
 clean:
-	rm -rf $(lintDeps) *.pb.go 
+	rm -rf $(buildDir)/$(name) $(lintDeps) $(buildDir)/run-benchmarks $(buildDir)/run-linter *.pb.go
 
 clean-results:
 	rm -rf $(buildDir)/output.*

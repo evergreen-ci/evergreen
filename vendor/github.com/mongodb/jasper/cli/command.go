@@ -207,7 +207,10 @@ func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, 
 		}
 	}()
 
-	<-logDone
+	select {
+	case <-logDone:
+	case <-ctx.Done():
+	}
 	return cmd.Wait(ctx)
 }
 
