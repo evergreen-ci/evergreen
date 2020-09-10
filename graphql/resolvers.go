@@ -1891,6 +1891,33 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 	return task.GetLatestExecution(*obj.Id)
 }
 
+func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if obj.GeneratedBy == "" {
+		return nil, nil
+	}
+	generator, err := task.FindOneIdWithFields(obj.GeneratedBy, task.DisplayNameKey)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unable to find generator: %s", err.Error()))
+	}
+	if generator == nil {
+		return nil, nil
+	}
+	name := generator.DisplayName
+
+	return &name, nil
+}
+
+func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
+	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
+	}
+	if position < 0 {
+		return 0, nil
+	}
+	return position, nil
+}
+
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
 	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
@@ -1923,17 +1950,6 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 }
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
-
-func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
-	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
-	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
-	}
-	if position < 0 {
-		return 0, nil
-	}
-	return position, nil
-}
 
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {

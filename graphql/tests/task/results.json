@@ -346,6 +346,17 @@
     {
       "query_file": "blocked-true.graphql",
       "result": { "data": { "task": { "blocked": true } } }
+    },
+    {
+      "query_file": "generate.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "generatedBy": "generator_task",
+            "generatedByName": "i am a generator"
+          }
+        }
+      }
     }
   ]
 }
