@@ -281,10 +281,10 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
-		Convey("user data hosts that have run tasks before provisioning should be returned if they have communicated recently", func() {
+		Convey("user data hosts that have run tasks before provisioning should be returned if they haven't communicated recently", func() {
 			h1 := &host.Host{
 				Id:          "h1",
-				Status:      evergreen.HostProvisioning,
+				Status:      evergreen.HostStarting,
 				Provisioned: false,
 				Distro: distro.Distro{
 					BootstrapSettings: distro.BootstrapSettings{

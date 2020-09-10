@@ -1217,23 +1217,23 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NoError(t, h.SetUserDataHostProvisioned())
-			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, evergreen.HostStarting, h.Status)
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
-			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
 		"IgnoresHostsNeverProvisioned": func(t *testing.T, h *Host) {
 			h.Provisioned = false
 
 			require.NoError(t, h.SetUserDataHostProvisioned())
-			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.Equal(t, evergreen.HostStarting, h.Status)
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
-			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
-		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
+		"IgnoresNonStartingHosts": func(t *testing.T, h *Host) {
 			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
 
 			require.NoError(t, h.SetUserDataHostProvisioned())
@@ -1254,7 +1254,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{
 					Method: distro.BootstrapMethodUserData,
 				}},
-				Status:      evergreen.HostProvisioning,
+				Status:      evergreen.HostStarting,
 				Provisioned: true,
 			}
 			require.NoError(t, h.Insert())

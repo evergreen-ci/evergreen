@@ -966,10 +966,9 @@ func TestNextTask(t *testing.T) {
 				Convey("should get next task when provisioning", func() {
 					// setup host
 					So(db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}), ShouldBeNil)
-					So(nonLegacyHost.SetProvisioning(), ShouldBeNil)
 					dbHost, err := host.FindOneId(nonLegacyHost.Id)
 					So(err, ShouldBeNil)
-					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+					So(dbHost.Status, ShouldEqual, evergreen.HostStarting)
 
 					// next task action
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
