@@ -1050,10 +1050,10 @@ func validateParameters(p *model.Project) ValidationErrors {
 				Message: fmt.Sprintf("parameter '%s' cannot contain `=`", param.Parameter.Key),
 			})
 		}
-		if param.Parameter.Value == "" {
+		if param.Parameter.Key == "" {
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("parameter '%s' has no default value given", param.Parameter.Key),
+				Message: "parameter name is missing",
 			})
 		}
 	}

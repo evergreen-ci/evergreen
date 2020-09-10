@@ -2146,12 +2146,13 @@ func TestValidateParameters(t *testing.T) {
 		},
 	}
 
-	assert.Len(t, validateParameters(p), 2)
-	p.Parameters[0].Parameter.Key = "iter_count"
 	assert.Len(t, validateParameters(p), 1)
-	p.Parameters[0].Parameter.Value = "3"
+	p.Parameters[0].Parameter.Key = ""
+	assert.Len(t, validateParameters(p), 1)
+	p.Parameters[0].Parameter.Key = "iter_count"
 	assert.Len(t, validateParameters(p), 0)
 	p.Parameters[0].Description = "not validated"
+	p.Parameters[0].Value = "also not"
 	assert.Len(t, validateParameters(p), 0)
 }
 
