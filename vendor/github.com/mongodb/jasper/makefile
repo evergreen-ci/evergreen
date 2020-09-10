@@ -238,41 +238,6 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/text/
 	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/genproto/
 	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/grpc/
-	rm -rf vendor/google.golang.org/genproto/googleapis/ads/
-	rm -rf vendor/google.golang.org/genproto/googleapis/analytics/
-	rm -rf vendor/google.golang.org/genproto/googleapis/api/
-	rm -rf vendor/google.golang.org/genproto/googleapis/appengine/
-	rm -rf vendor/google.golang.org/genproto/googleapis/area120/
-	rm -rf vendor/google.golang.org/genproto/googleapis/assistant/
-	rm -rf vendor/google.golang.org/genproto/googleapis/bigtable/
-	rm -rf vendor/google.golang.org/genproto/googleapis/bytestream/
-	rm -rf vendor/google.golang.org/genproto/googleapis/chromeos/
-	rm -rf vendor/google.golang.org/genproto/googleapis/cloud/
-	rm -rf vendor/google.golang.org/genproto/googleapis/container/
-	rm -rf vendor/google.golang.org/genproto/googleapis/datastore/
-	rm -rf vendor/google.golang.org/genproto/googleapis/devtools/
-	rm -rf vendor/google.golang.org/genproto/googleapis/example/
-	rm -rf vendor/google.golang.org/genproto/googleapis/firebase/
-	rm -rf vendor/google.golang.org/genproto/googleapis/firestore/
-	rm -rf vendor/google.golang.org/genproto/googleapis/genomics/
-	rm -rf vendor/google.golang.org/genproto/googleapis/geo/
-	rm -rf vendor/google.golang.org/genproto/googleapis/grafeas/
-	rm -rf vendor/google.golang.org/genproto/googleapis/home/
-	rm -rf vendor/google.golang.org/genproto/googleapis/iam/
-	rm -rf vendor/google.golang.org/genproto/googleapis/identity/
-	rm -rf vendor/google.golang.org/genproto/googleapis/logging/
-	rm -rf vendor/google.golang.org/genproto/googleapis/longrunning/
-	rm -rf vendor/google.golang.org/genproto/googleapis/maps/
-	rm -rf vendor/google.golang.org/genproto/googleapis/monitoring/
-	rm -rf vendor/google.golang.org/genproto/googleapis/privacy/
-	rm -rf vendor/google.golang.org/genproto/googleapis/pubsub/
-	rm -rf vendor/google.golang.org/genproto/googleapis/search
-	rm -rf vendor/google.golang.org/genproto/googleapis/spanner/
-	rm -rf vendor/google.golang.org/genproto/googleapis/storage/
-	rm -rf vendor/google.golang.org/genproto/googleapis/storagetransfer/
-	rm -rf vendor/google.golang.org/genproto/googleapis/streetview/
-	rm -rf vendor/google.golang.org/genproto/googleapis/type/
-	rm -rf vendor/google.golang.org/genproto/googleapis/watcher/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*testdata*" | xargs rm -rf
 	find vendor/ -type d -empty | xargs rm -rf
 	find vendor/ -type d -name '.git' | xargs rm -rf
