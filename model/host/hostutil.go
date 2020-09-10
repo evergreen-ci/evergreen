@@ -885,7 +885,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			return nil, errors.Wrap(err, "could not get host's SSH options")
 		}
 
-		remoteOpts := options.Remote{}
+		var remoteOpts options.Remote
 		remoteOpts.Host = hostInfo.Hostname
 		remoteOpts.User = hostInfo.User
 		remoteOpts.Args = sshOpts
@@ -896,7 +896,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			CredentialsFilePath: h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath),
 		}
 
-		return jcli.NewSSHClient(remoteOpts, clientOpts, true)
+		return jcli.NewSSHClient(clientOpts, remoteOpts)
 	}
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC {
 		creds, err := h.JasperClientCredentials(ctx, env)
