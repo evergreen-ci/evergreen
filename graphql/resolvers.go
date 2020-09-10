@@ -247,13 +247,14 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		return false, err
 	}
 	var updateOptions restModel.VolumeModifyOptions
-	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == true {
-		// this value should only ever be true or nil
-		updateOptions.NoExpiration = true
-	}
-	if updateVolumeInput.NoExpiration != nil && *updateVolumeInput.NoExpiration == false {
-		// this value should only ever be true or nil
-		updateOptions.HasExpiration = true
+	if updateVolumeInput.NoExpiration != nil {
+		if *updateVolumeInput.NoExpiration == true {
+			// this value should only ever be true or nil
+			updateOptions.NoExpiration = true
+		} else {
+			// this value should only ever be true or nil
+			updateOptions.HasExpiration = true
+		}
 	}
 	if updateVolumeInput.Expiration != nil {
 		var newExpiration time.Time
@@ -270,6 +271,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
 	}
+
 	return true, nil
 }
 
