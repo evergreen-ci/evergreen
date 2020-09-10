@@ -970,7 +970,7 @@ func validateVolumeName(ctx context.Context, name *string) error {
 	if *name == "" {
 		return InputValidationError.Send(ctx, "Name cannot be empty.")
 	}
-	myVolumes, err := GetMyVolumes(route.MustHaveUser(ctx))
+	myVolumes, err := GetMyVolumes(MustHaveUser(ctx))
 	if err != nil {
 		return err
 	}
