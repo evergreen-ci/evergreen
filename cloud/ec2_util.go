@@ -127,9 +127,9 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	}
 }
 
-// ExpireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
+// expireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
 // in the future.
-func ExpireInDays(numDays int) string {
+func expireInDays(numDays int) string {
 	return time.Now().AddDate(0, 0, numDays).Format(evergreen.ExpireOnFormat)
 }
 
@@ -156,10 +156,10 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// and if that tag is passed the reaper terminates the host. This reaping occurs to
 	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
 	// forever.
-	expireOn := ExpireInDays(evergreen.HostExpireDays)
+	expireOn := expireInDays(evergreen.HostExpireDays)
 	if intentHost.UserHost {
 		// If this is a spawn host, use a different expiration date.
-		expireOn = ExpireInDays(evergreen.SpawnHostExpireDays)
+		expireOn = expireInDays(evergreen.SpawnHostExpireDays)
 	}
 
 	systemTags := []host.Tag{

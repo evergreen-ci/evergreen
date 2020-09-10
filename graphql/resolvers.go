@@ -307,11 +307,11 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 	}
 	if editSpawnHostInput.NoExpiration != nil {
-
-		if *editSpawnHostInput.NoExpiration {
-			h.MarkShouldNotExpire(cloud.ExpireInDays(evergreen.SpawnHostExpireDays))
-		} else {
-			h.MarkShouldExpire(cloud.ExpireInDays(evergreen.SpawnHostExpireDays))
+		opts := host.HostModifyOptions{
+			NoExpiration: editSpawnHostInput.NoExpiration,
+		}
+		if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating No expiration: %s", err))
 		}
 	}
 	if editSpawnHostInput.Expiration != nil {
