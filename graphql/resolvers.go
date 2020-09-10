@@ -194,8 +194,9 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
-	if spawnVolumeInput.Expiration != nil && spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
-		return false, InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	err := validateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
+	if err != nil {
+		return false, err
 	}
 	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
 	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
@@ -212,18 +213,12 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		}
 		additionalOptions.Expiration = newExpiration
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
-	// modify volume if additional options is not empty
-	if additionalOptions != (restModel.VolumeModifyOptions{}) {
-		mgr, err := getEC2Manager(ctx, &volume)
-		if err != nil {
-			return false, err
-		}
-		err = mgr.ModifyVolume(ctx, vol, &additionalOptions)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
-		}
+	err = applyVolumeOptions(ctx, volume, additionalOptions)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
@@ -233,6 +228,51 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	}
 
 	return success, nil
+}
+
+func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
+	volume, err := r.sc.FindVolumeById(updateVolumeInput.VolumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
+	}
+	if volume == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
+	}
+	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
+	if err != nil {
+		return false, err
+	}
+	err = validateVolumeName(ctx, updateVolumeInput.Name)
+	if err != nil {
+		return false, err
+	}
+	var updateOptions restModel.VolumeModifyOptions
+	if updateVolumeInput.NoExpiration != nil {
+		if *updateVolumeInput.NoExpiration == true {
+			// this value should only ever be true or nil
+			updateOptions.NoExpiration = true
+		} else {
+			// this value should only ever be true or nil
+			updateOptions.HasExpiration = true
+		}
+	}
+	if updateVolumeInput.Expiration != nil {
+		var newExpiration time.Time
+		newExpiration, err = restModel.FromTimePtr(updateVolumeInput.Expiration)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error parsing time %s", err))
+		}
+		updateOptions.Expiration = newExpiration
+	}
+	if updateVolumeInput.Name != nil {
+		updateOptions.NewName = *updateVolumeInput.Name
+	}
+	err = applyVolumeOptions(ctx, *volume, updateOptions)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
+	}
+
+	return true, nil
 }
 
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
@@ -1593,7 +1633,6 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 }
 
 func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
-
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))

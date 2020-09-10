@@ -955,3 +955,44 @@ func RequestNewVolume(ctx context.Context, volume host.Volume) (bool, int, GqlEr
 	}
 	return true, http.StatusOK, "", nil, vol
 }
+
+func validateVolumeExpirationInput(ctx context.Context, expirationTime *time.Time, noExpiration *bool) error {
+	if expirationTime != nil && noExpiration != nil && *noExpiration == true {
+		return InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+	}
+	return nil
+}
+
+func validateVolumeName(ctx context.Context, name *string) error {
+	if name == nil {
+		return nil
+	}
+	if *name == "" {
+		return InputValidationError.Send(ctx, "Name cannot be empty.")
+	}
+	myVolumes, err := GetMyVolumes(MustHaveUser(ctx))
+	if err != nil {
+		return err
+	}
+	for _, vol := range myVolumes {
+		if *name == *vol.ID || *name == *vol.DisplayName {
+			return InputValidationError.Send(ctx, "The provided volume name is already in use")
+		}
+	}
+	return nil
+}
+
+func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions restModel.VolumeModifyOptions) error {
+	// modify volume if volume options is not empty
+	if volumeOptions != (restModel.VolumeModifyOptions{}) {
+		mgr, err := getEC2Manager(ctx, &volume)
+		if err != nil {
+			return err
+		}
+		err = mgr.ModifyVolume(ctx, &volume, &volumeOptions)
+		if err != nil {
+			return InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		}
+	}
+	return nil
+}
