@@ -339,7 +339,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 		opts.AddInstanceTags = addedTags
 		opts.DeleteInstanceTags = deletedTags
-
+	}
+	if editSpawnHostInput.Volume != nil {
+		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
