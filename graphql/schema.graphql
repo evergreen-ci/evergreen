@@ -264,6 +264,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
+  homeVolumeDisplayName: String
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -395,6 +396,7 @@ type Volume {
   expiration: Time
   deviceName: String
   hostID: String!
+  hostDisplayName: String
   noExpiration: Boolean!
   homeVolume: Boolean!
 }

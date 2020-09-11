@@ -47,13 +47,20 @@ func (r *Resolver) Query() QueryResolver {
 func (r *Resolver) Task() TaskResolver {
 	return &taskResolver{r}
 }
-func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
-
-func (r *Resolver) TaskQueueItem() TaskQueueItemResolver { return &taskQueueItemResolver{r} }
+func (r *Resolver) Host() HostResolver {
+	return &hostResolver{r}
+}
+func (r *Resolver) Volume() VolumeResolver {
+	return &volumeResolver{r}
+}
+func (r *Resolver) TaskQueueItem() TaskQueueItemResolver {
+	return &taskQueueItemResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
+type volumeResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -65,6 +72,37 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+func (r *hostResolver) HomeVolumeDisplayName(ctx context.Context, obj *restModel.APIHost) (*string, error) {
+	if obj.HomeVolumeID == nil || *obj.HomeVolumeID == "" {
+		return nil, nil
+	}
+	volume, err := r.sc.FindVolumeById(*obj.HomeVolumeID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume %s: %s", *obj.HomeVolumeID, err.Error()))
+	}
+	if volume == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", *obj.HomeVolumeID))
+	}
+	if volume.DisplayName == "" {
+		return obj.HomeVolumeID, nil
+	}
+	return &volume.DisplayName, nil
+}
+
+func (r *volumeResolver) HostDisplayName(ctx context.Context, obj *restModel.APIVolume) (*string, error) {
+	if obj.HostID == nil || *obj.HostID == "" {
+		return nil, nil
+	}
+	host, err := r.sc.FindHostById(*obj.HostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", *obj.HostID, err.Error()))
+	}
+	if host.DisplayName == "" {
+		return &host.Id, nil
+	}
+	return &host.DisplayName, nil
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {

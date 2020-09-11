@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Task() TaskResolver
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
+	Volume() VolumeResolver
 }
 
 type DirectiveRoot struct {
@@ -152,6 +153,7 @@ type ComplexityRoot struct {
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		Expiration            func(childComplexity int) int
+		HomeVolumeDisplayName func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
 		HostURL               func(childComplexity int) int
 		Id                    func(childComplexity int) int
@@ -624,6 +626,7 @@ type ComplexityRoot struct {
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
 		HomeVolume       func(childComplexity int) int
+		HostDisplayName  func(childComplexity int) int
 		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
@@ -637,6 +640,8 @@ type HostResolver interface {
 
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+
+	HomeVolumeDisplayName(ctx context.Context, obj *model.APIHost) (*string, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -741,6 +746,9 @@ type TaskQueueItemResolver interface {
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
+}
+type VolumeResolver interface {
+	HostDisplayName(ctx context.Context, obj *model.APIVolume) (*string, error)
 }
 
 type executableSchema struct {
@@ -1135,6 +1143,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Expiration(childComplexity), true
+
+	case "Host.homeVolumeDisplayName":
+		if e.complexity.Host.HomeVolumeDisplayName == nil {
+			break
+		}
+
+		return e.complexity.Host.HomeVolumeDisplayName(childComplexity), true
 
 	case "Host.homeVolumeID":
 		if e.complexity.Host.HomeVolumeID == nil {
@@ -3631,6 +3646,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
 
+	case "Volume.hostDisplayName":
+		if e.complexity.Volume.HostDisplayName == nil {
+			break
+		}
+
+		return e.complexity.Volume.HostDisplayName(childComplexity), true
+
 	case "Volume.hostID":
 		if e.complexity.Volume.HostID == nil {
 			break
@@ -3996,6 +4018,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
+  homeVolumeDisplayName: String
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -4127,6 +4150,7 @@ type Volume {
   expiration: Time
   deviceName: String
   hostID: String!
+  hostDisplayName: String
   noExpiration: Boolean!
   homeVolume: Boolean!
 }
@@ -7589,6 +7613,37 @@ func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphq
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.HomeVolumeID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_homeVolumeDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().HomeVolumeDisplayName(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18449,6 +18504,37 @@ func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.Co
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Volume_hostDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Volume",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Volume().HostDisplayName(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Volume_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20655,6 +20741,17 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
 		case "homeVolumeID":
 			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
+		case "homeVolumeDisplayName":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_homeVolumeDisplayName(ctx, field, obj)
+				return res
+			})
 		case "user":
 			out.Values[i] = ec._Host_user(ctx, field, obj)
 		case "distro":
@@ -23452,32 +23549,32 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "id":
 			out.Values[i] = ec._Volume_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._Volume_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "createdBy":
 			out.Values[i] = ec._Volume_createdBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "type":
 			out.Values[i] = ec._Volume_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "availabilityZone":
 			out.Values[i] = ec._Volume_availabilityZone(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "size":
 			out.Values[i] = ec._Volume_size(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "expiration":
 			out.Values[i] = ec._Volume_expiration(ctx, field, obj)
@@ -23486,17 +23583,28 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "hostID":
 			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "hostDisplayName":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Volume_hostDisplayName(ctx, field, obj)
+				return res
+			})
 		case "noExpiration":
 			out.Values[i] = ec._Volume_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "homeVolume":
 			out.Values[i] = ec._Volume_homeVolume(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
