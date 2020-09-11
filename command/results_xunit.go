@@ -136,11 +136,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		if err != nil {
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
-		defer file.Close() // nolint
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
-			return errors.Wrap(err, "error parsing xunit file")
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "error parsing xunit file")
+			catcher.Wrap(file.Close(), "closing xunit file")
+			return catcher.Resolve()
 		}
 
 		if err = file.Close(); err != nil {
