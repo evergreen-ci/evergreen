@@ -621,7 +621,7 @@ func (s *projectSuite) SetupTest() {
 				},
 				DisplayTasks: []patch.DisplayTask{
 					{
-						Name:           "memes",
+						Name:      "memes",
 						ExecTasks: []string{"9001_task", "very_task", "another_disabled_task"},
 					},
 				},
@@ -1491,7 +1491,7 @@ func TestGetAllVariantTasks(t *testing.T) {
 						Name: "bv1",
 						DisplayTasks: []patch.DisplayTask{
 							{
-								Name:           "dt1",
+								Name:      "dt1",
 								ExecTasks: []string{"et1", "et2"},
 							},
 						},
@@ -1499,7 +1499,7 @@ func TestGetAllVariantTasks(t *testing.T) {
 						Name: "bv2",
 						DisplayTasks: []patch.DisplayTask{
 							{
-								Name:           "dt2",
+								Name:      "dt2",
 								ExecTasks: []string{"et2", "et3"},
 							},
 						},
