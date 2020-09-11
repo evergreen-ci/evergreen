@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/anser/bsonutil"
@@ -40,6 +41,8 @@ type Version struct {
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
 	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
 
+	// Parameters stores both user-defined parameters and default parameters
+	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
 
@@ -107,7 +110,7 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
-	tasks, err := task.FindAllFirstExecution(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey))
+	tasks, err := task.FindAllFirstExecution(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
 	}

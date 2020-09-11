@@ -58,9 +58,10 @@ func TestAtomicGQLQueries(t *testing.T) {
 	}
 }
 
+const apiUser = "testuser"
+
 func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicGraphQLState {
 	const apiKey = "testapikey"
-	const apiUser = "testuser"
 	const slackUsername = "testslackuser"
 	state := atomicGraphQLState{taskLogDB: model.TaskLogDB, taskLogColl: model.TaskLogCollection}
 	server, err := service.CreateTestServer(settings, nil, true)
@@ -198,6 +199,7 @@ func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
 		"detachVolumeFromHost": {spawnTestHostAndVolume},
 		"removeVolume":         {spawnTestHostAndVolume},
 		"spawnVolume":          {spawnTestHostAndVolume, addSubnets},
+		"updateVolume":         {spawnTestHostAndVolume},
 		"schedulePatch":        {persistTestSettings},
 	}
 	if m[state.directory] != nil {
@@ -227,7 +229,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	volume := host.Volume{
 		ID:               "vol-0603934da6f024db5",
 		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
-		CreatedBy:        "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+		CreatedBy:        apiUser,
 		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
 		Size:             500,
 		AvailabilityZone: "us-east-1a",
@@ -241,7 +243,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",
-		User:   "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
+		User:   apiUser,
 		Secret: "",
 		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{

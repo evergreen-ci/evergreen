@@ -160,7 +160,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, mciCo
       if (v.DisplayTasks && v.DisplayTasks.length > 0) {
         v.DisplayTasks.forEach(function(task) {
           tasks[task.Name] = {checked: false, displayOnly: true, execTasks: []};
-          task.ExecutionTasks.forEach(function(execTask) {
+          task.ExecTasks.forEach(function(execTask) {
             execTasks[execTask] = "";
             tasks[task.Name].execTasks.push(execTask);
           });

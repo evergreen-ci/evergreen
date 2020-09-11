@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/birch"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -50,9 +51,32 @@ func TestCloudStatusJob(t *testing.T) {
 			Provider: evergreen.ProviderNameMock,
 			Status:   evergreen.HostProvisioning,
 		},
+		{
+			Id:       "host-5",
+			Provider: evergreen.ProviderNameMock,
+			Status:   evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:             evergreen.ProviderNameMock,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-3"))},
+				BootstrapSettings:    distro.BootstrapSettings{Method: distro.BootstrapMethodNone},
+			},
+		},
+		{
+			Id:       "host-6",
+			Provider: evergreen.ProviderNameMock,
+			Status:   evergreen.HostStarting,
+			Distro: distro.Distro{
+				Provider:             evergreen.ProviderNameMock,
+				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-4"))},
+				BootstrapSettings:    distro.BootstrapSettings{Method: distro.BootstrapMethodUserData},
+			},
+		},
 	}
+	mockState := cloud.GetMockProvider()
+	mockState.Reset()
 	for _, h := range hosts {
 		require.NoError(h.Insert())
+		mockState.Set(h.Id, cloud.MockInstance{DNSName: "dns_name"})
 	}
 
 	j := NewCloudHostReadyJob(&mock.Environment{}, "id")
@@ -60,20 +84,27 @@ func TestCloudStatusJob(t *testing.T) {
 	assert.NoError(j.Error())
 
 	hosts, err := host.Find(db.Query(bson.M{}))
-	assert.Len(hosts, 4)
+	assert.Len(hosts, 6)
 	assert.NoError(err)
 	for _, h := range hosts {
 		if h.Id == "host-1" {
-			assert.Equal(h.Status, evergreen.HostProvisioning)
+			assert.Equal(evergreen.HostProvisioning, h.Status)
 		}
 		if h.Id == "host-2" {
-			assert.Equal(h.Status, evergreen.HostProvisioning)
+			assert.Equal(evergreen.HostProvisioning, h.Status)
 		}
 		if h.Id == "host-3" {
-			assert.Equal(h.Status, evergreen.HostTerminated)
+			assert.Equal(evergreen.HostTerminated, h.Status)
 		}
 		if h.Id == "host-4" {
-			assert.Equal(h.Status, evergreen.HostProvisioning)
+			assert.Equal(evergreen.HostProvisioning, h.Status)
+		}
+		if h.Id == "host-5" {
+			assert.Equal(evergreen.HostRunning, h.Status)
+		}
+		if h.Id == "host-6" {
+			assert.Equal(evergreen.HostStarting, h.Status)
+			assert.True(h.Provisioned)
 		}
 	}
 }

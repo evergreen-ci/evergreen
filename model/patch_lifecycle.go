@@ -328,6 +328,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
+		Parameters:          p.Parameters,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 

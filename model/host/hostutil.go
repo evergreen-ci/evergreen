@@ -1246,7 +1246,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
-	if h.Status != evergreen.HostProvisioning {
+	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 
@@ -1254,7 +1254,7 @@ func (h *Host) SetUserDataHostProvisioned() error {
 		return nil
 	}
 
-	if err := h.UpdateProvisioningToRunning(); err != nil {
+	if err := h.UpdateStartingToRunning(); err != nil {
 		return errors.Wrapf(err, "could not mark host %s as done provisioning itself and now running", h.Id)
 	}
 

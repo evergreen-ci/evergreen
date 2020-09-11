@@ -89,7 +89,7 @@ func TestUserDataDoneJob(t *testing.T) {
 						ShellPath:       "/shell_path",
 					},
 				},
-				Status:      evergreen.HostProvisioning,
+				Status:      evergreen.HostStarting,
 				Provisioned: true,
 			}
 			require.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, mngr, h, func(env evergreen.Environment) {

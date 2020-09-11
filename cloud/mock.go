@@ -430,6 +430,12 @@ func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volum
 		v.NoExpiration = false
 		volume.NoExpiration = false
 	}
+	if opts.NewName != "" {
+		err := volume.SetDisplayName(opts.NewName)
+		if err != nil {
+			return err
+		}
+	}
 
 	if ok {
 		mockMgr.Volumes[volume.ID] = v

@@ -34,6 +34,7 @@ type APIPatch struct {
 	Alias                   *string          `json:"alias,omitempty"`
 	GithubPatchData         githubPatch      `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges       []APIModulePatch `json:"module_code_changes"`
+	Parameters              []APIParameter   `json:"parameters"`
 	PatchedConfig           *string          `json:"patched_config"`
 	Project                 *string          `json:"project"`
 	CanEnqueueToCommitQueue bool             `json:"can_enqueue_to_commit_queue"`
@@ -55,6 +56,11 @@ type APIModulePatch struct {
 	HTMLLink   *string    `json:"html_link"`
 	RawLink    *string    `json:"raw_link"`
 	FileDiffs  []FileDiff `json:"file_diffs"`
+}
+
+type APIParameter struct {
+	Key   *string `json:"key"`
+	Value *string `json:"value"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -101,6 +107,14 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 
+	params := []APIParameter{}
+	for _, param := range v.Parameters {
+		params = append(params, APIParameter{
+			Key:   ToStringPtr(param.Key),
+			Value: ToStringPtr(param.Value),
+		})
+	}
+	apiPatch.Parameters = params
 	codeChanges := []APIModulePatch{}
 	apiURL := evergreen.GetEnvironment().Settings().ApiUrl
 	for patchNumber, modPatch := range v.Patches {
@@ -171,6 +185,14 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 		tasks[i] = FromStringPtr(t)
 	}
 	res.Tasks = tasks
+	params := []patch.Parameter{}
+	for _, param := range apiPatch.Parameters {
+		params = append(params, patch.Parameter{
+			Key:   FromStringPtr(param.Key),
+			Value: FromStringPtr(param.Value),
+		})
+	}
+	res.Parameters = params
 	i, err := apiPatch.GithubPatchData.ToService()
 	catcher.Add(err)
 	data, ok := i.(thirdparty.GithubPatch)

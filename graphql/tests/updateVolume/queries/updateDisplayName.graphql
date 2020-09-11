@@ -1,0 +1,8 @@
+mutation {
+  updateVolume(
+    updateVolumeInput: {
+      name: "i like turtles"
+      volumeId: "vol-0603934da6f024db5"
+    }
+  )
+}

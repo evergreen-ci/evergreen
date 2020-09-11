@@ -70,7 +70,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.Status != evergreen.HostProvisioning {
+	if j.host.Status != evergreen.HostStarting {
 		return
 	}
 
