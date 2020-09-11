@@ -77,5 +77,5 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
 	}
 
-	return errors.WithStack(sendResults(ctx, conf, logger, comm, results))
+	return errors.WithStack(sendTestResults(ctx, conf, logger, comm, results))
 }

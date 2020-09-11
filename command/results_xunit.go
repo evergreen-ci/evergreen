@@ -205,5 +205,5 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	}
 	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(logs))
 
-	return sendResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
+	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
 }
