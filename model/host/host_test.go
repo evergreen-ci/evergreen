@@ -4614,6 +4614,15 @@ func TestStartingHostsByClient(t *testing.T) {
 				ProviderSettingsList: []*birch.Document{doc3},
 			},
 		},
+		{
+			Id:          "h6",
+			Status:      evergreen.HostStarting,
+			Provisioned: true,
+			Distro: distro.Distro{
+				Provider:             evergreen.ProviderNameEc2Spot,
+				ProviderSettingsList: []*birch.Document{doc3},
+			},
+		},
 	}
 	for _, h := range startingHosts {
 		require.NoError(t, h.Insert())
