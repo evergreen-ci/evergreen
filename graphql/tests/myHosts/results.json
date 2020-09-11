@@ -8,18 +8,14 @@
             {
               "id": "i-06f80fa6e28f93b7d",
               "distroId": "ubuntu1604-small",
-              "distro": {
-                "workDir": "/data/mci",
-                "id": "ubuntu1604-small"
-              }
+              "distro": { "workDir": "/data/mci", "id": "ubuntu1604-small" },
+              "homeVolumeDisplayName": "real display name"
             },
             {
               "id": "i-0f81a2d39744003dd",
               "distroId": "ubuntu1604-large",
-              "distro": {
-                "workDir": "/data/mci",
-                "id": "ubuntu1604-large"
-              }
+              "distro": { "workDir": "/data/mci", "id": "ubuntu1604-large" },
+              "homeVolumeDisplayName": "vol-2-id"
             }
           ]
         }

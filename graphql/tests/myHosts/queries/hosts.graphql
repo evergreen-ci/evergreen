@@ -6,5 +6,6 @@
       workDir
       id
     }
+    homeVolumeDisplayName
   }
 }
