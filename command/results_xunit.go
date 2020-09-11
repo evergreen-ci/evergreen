@@ -159,7 +159,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 					Error: suite.Error,
 				}
 				if tc.Name == "" {
-					tc.Name = fmt.Sprintf("Unamed Test-%d", idx)
+					tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
 				}
 				suite.TestCases = append(suite.TestCases, tc)
 			}
