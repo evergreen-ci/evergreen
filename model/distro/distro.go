@@ -256,6 +256,8 @@ const (
 
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
+
+	unconfiguredAmi = "ami-1234"
 )
 
 // validBootstrapMethods includes all recognized bootstrap methods.
@@ -576,7 +578,7 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 			if val == region {
 				// TODO: remove once the build script has configured all AMIs.
 				ami, _ := s.Lookup("ami").StringValueOK()
-				if ami == "ami-1234" {
+				if ami == unconfiguredAmi {
 					return nil, errors.Errorf("distro '%s' has unfinished settings for region '%s'", d.Id, region)
 				}
 				return s, nil
@@ -598,13 +600,13 @@ func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 			})
 			continue
 		}
-		// this region isn't allowed to be spawned by admins
+		// admins don't allow this region
 		if !utility.StringSliceContains(allowedRegions, region) {
 			continue
 		}
 		// TODO: remove once the build script has configured all AMIs.
 		ami, _ := doc.Lookup("ami").StringValueOK()
-		if ami == "ami-1234" {
+		if ami == unconfiguredAmi {
 			continue
 		}
 		regions = append(regions, region)
