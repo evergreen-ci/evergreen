@@ -837,7 +837,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	}
 
 	// ensure the appropriate version is marked as started if necessary
-	if err = MarkVersionStarted(t.Version, startTime); err != nil {
+	if err = TryMarkVersionStarted(t.Version, startTime); err != nil {
 		return errors.WithStack(err)
 	}
 
