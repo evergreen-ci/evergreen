@@ -306,7 +306,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	}
 	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
 	if err != nil {
-		return errors.Wrap(err, "error getting project vars")
+		return errors.Wrap(err, "error getting task-specific expansions")
 	}
 	exp.Update(expVars.Vars)
 	tc.taskModel = taskModel
@@ -366,7 +366,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
 	}
-	taskConfig.Redacted = tc.expVars.PrivateVars
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	tc.setTaskConfig(taskConfig)
 

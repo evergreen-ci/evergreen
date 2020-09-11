@@ -259,8 +259,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
-	// TODO: only add if it hasn't already been added from CLI or user-config
-	patchDoc.Parameters = project.GetParameters()
+	// TODO: add only user-defined parameters to patch/version
 	patchDoc.PatchedConfig = projectYaml
 	if patchDoc.Patches[0].ModuleName != "" {
 		// is there a module? validate it.

@@ -357,7 +357,12 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	grip.Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	taskConfig, err := model.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	if err != nil {
+		return nil, err
+	}
+	taskConfig.Redacted = tc.expVars.PrivateVars
+	return taskConfig, nil
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {
