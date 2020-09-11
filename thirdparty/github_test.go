@@ -2,12 +2,14 @@ package thirdparty
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -288,4 +290,22 @@ func TestValidatePR(t *testing.T) {
 
 	pr.Base = nil
 	assert.Error(ValidatePR(pr))
+}
+
+func TestParseGithubErrorResponse(t *testing.T) {
+	message := "my message"
+	url := "www.github.com"
+	resp := &github.Response{
+		Response: &http.Response{
+			StatusCode: http.StatusNotFound,
+			Body:       ioutil.NopCloser(strings.NewReader(fmt.Sprintf(`{"message": "%s", "documentation_url": "%s"}`, message, url))),
+		},
+	}
+
+	err := parseGithubErrorResponse(resp)
+	apiRequestErr, ok := err.(APIRequestError)
+	assert.True(t, ok)
+	assert.Equal(t, message, apiRequestErr.Message)
+	assert.Equal(t, http.StatusNotFound, apiRequestErr.StatusCode)
+	assert.Equal(t, url, apiRequestErr.DocumentationUrl)
 }

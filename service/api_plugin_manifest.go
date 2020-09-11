@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -55,6 +56,10 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	// attempt to insert a manifest after making GitHub API calls
 	manifest, err := repotracker.CreateManifest(*v, project, projectRef, &as.Settings)
 	if err != nil {
+		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "manifest resource not found"))
+			return
+		}
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error storing new manifest"))
 		return
 	}
