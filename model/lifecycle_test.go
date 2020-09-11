@@ -688,7 +688,6 @@ func TestBuildSetActivated(t *testing.T) {
 }
 
 func TestBuildMarkStarted(t *testing.T) {
-
 	Convey("With a build", t, func() {
 
 		require.NoError(t, db.Clear(build.Collection), "Error clearing"+

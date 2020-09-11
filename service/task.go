@@ -300,7 +300,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if uiTask.GeneratedById != "" {
-		generator, err := task.FindOneIdWithFields(uiTask.GeneratedById, task.DisplayNameKey)
+		var generator *task.Task
+		generator, err = task.FindOneIdWithFields(uiTask.GeneratedById, task.DisplayNameKey)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
