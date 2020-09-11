@@ -314,7 +314,8 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 	}
 	if editSpawnHostInput.InstanceType != nil {
-		config, err := evergreen.GetConfig()
+		var config *evergreen.Settings
+		config, err = evergreen.GetConfig()
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
 		}
