@@ -1962,8 +1962,8 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
 	if projectNotFound {
 		return &BuildBaron{
-			SearchReturnInfo:     nil,
-			BuildBaronConfigured: !projectNotFound,
+			SearchReturnInfo:     searchReturnInfo,
+			BuildBaronConfigured: false,
 		}, nil
 	}
 	if err != nil {
@@ -1971,7 +1971,7 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	}
 	return &BuildBaron{
 		SearchReturnInfo:     searchReturnInfo,
-		BuildBaronConfigured: !projectNotFound,
+		BuildBaronConfigured: true,
 	}, nil
 }
 
