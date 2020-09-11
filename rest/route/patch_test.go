@@ -687,6 +687,7 @@ buildvariants:
 		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
+	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
 	assert.NoError(t, err)
@@ -717,6 +718,7 @@ buildvariants:
 		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
 	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
 	assert.NoError(t, err)
