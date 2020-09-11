@@ -300,19 +300,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
 
+	opts := host.HostModifyOptions{}
 	if editSpawnHostInput.DisplayName != nil {
-		err = h.SetDisplayName(*editSpawnHostInput.DisplayName)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost name: %s", err))
-		}
+		opts.NewName = *editSpawnHostInput.DisplayName
 	}
 	if editSpawnHostInput.NoExpiration != nil {
-		opts := host.HostModifyOptions{
-			NoExpiration: editSpawnHostInput.NoExpiration,
-		}
-		if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating No expiration: %s", err))
-		}
+		opts.NoExpiration = editSpawnHostInput.NoExpiration
 	}
 	if editSpawnHostInput.Expiration != nil {
 		err = h.SetExpirationTime(*editSpawnHostInput.Expiration)
@@ -329,9 +322,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 
 		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *editSpawnHostInput.InstanceType, allowedTypes)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting instance type: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error validating instance type: %s", err))
 		}
-		h.SetInstanceType(*editSpawnHostInput.InstanceType)
+		opts.InstanceType = *editSpawnHostInput.InstanceType
 	}
 	if editSpawnHostInput.AddedInstanceTags != nil || editSpawnHostInput.DeletedInstanceTags != nil {
 		addedTags := []host.Tag{}
@@ -343,14 +336,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		for _, tag := range editSpawnHostInput.DeletedInstanceTags {
 			deletedTags = append(deletedTags, tag.Key)
 		}
-		opts := host.HostModifyOptions{
-			AddInstanceTags:    addedTags,
-			DeleteInstanceTags: deletedTags,
-		}
-		if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating tags on db: %s", err))
-		}
+		opts.AddInstanceTags = addedTags
+		opts.DeleteInstanceTags = deletedTags
 
+	}
+	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
 
 	apiHost := restModel.APIHost{}
