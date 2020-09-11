@@ -1,6 +1,5 @@
 package command
 
-// sendJSONResults is responsible for sending the
 import (
 	"context"
 
@@ -10,8 +9,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// specified file to the API Server
-func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
+// sendResults sends the specified test results to the API server. For test
+// results that use raw logs, it also sends the test logs.
+func sendResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator,
 	results *task.LocalTestResults) error {
 
