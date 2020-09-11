@@ -99,6 +99,9 @@ func (r *volumeResolver) HostDisplayName(ctx context.Context, obj *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", *obj.HostID, err.Error()))
 	}
+	if host == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", *obj.HostID))
+	}
 	if host.DisplayName == "" {
 		return &host.Id, nil
 	}
