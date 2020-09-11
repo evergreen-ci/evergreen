@@ -161,18 +161,22 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, 0, ResponseReadError{err.Error()}
-		}
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, 0, APIRequestError{Message: string(respBody)}
-		}
-		return nil, 0, requestError
+		return nil, 0, parseGithubErrorResponse(resp)
 	}
 
 	return commits, resp.NextPage, nil
+}
+
+func parseGithubErrorResponse(resp *github.Response) error {
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ResponseReadError{err.Error()}
+	}
+	requestError := APIRequestError{StatusCode: resp.StatusCode}
+	if err = json.Unmarshal(respBody, &requestError); err != nil {
+		return APIRequestError{StatusCode: resp.StatusCode, Message: string(respBody)}
+	}
+	return requestError
 }
 
 // GetGithubFile returns a struct that contains the contents of files within
@@ -207,16 +211,7 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 		return nil, APIResponseError{errMsg}
 	}
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, ResponseReadError{err.Error()}
-		}
-
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, APIRequestError{Message: string(respBody)}
-		}
-		return nil, requestError
+		return nil, parseGithubErrorResponse(resp)
 	}
 
 	if file == nil || file.Content == nil {
@@ -246,15 +241,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", ResponseReadError{err.Error()}
-		}
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return "", APIRequestError{Message: string(respBody)}
-		}
-		return "", requestError
+		return "", parseGithubErrorResponse(resp)
 	}
 
 	if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
@@ -302,15 +289,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	grip.Debug(msg)
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, ResponseReadError{err.Error()}
-		}
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, APIRequestError{Message: string(respBody)}
-		}
-		return nil, requestError
+		return nil, parseGithubErrorResponse(resp)
 	}
 	if commit == nil {
 		return nil, errors.New("commit not found in github")
@@ -341,15 +320,7 @@ func GetRawPatchCommit(ctx context.Context, oauthToken, repoOwner, repo, sha str
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", ResponseReadError{err.Error()}
-		}
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return "", APIRequestError{Message: string(respBody)}
-		}
-		return "", requestError
+		return "", parseGithubErrorResponse(resp)
 	}
 
 	return commit, nil
@@ -374,15 +345,7 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, ResponseReadError{err.Error()}
-		}
-		requestError := APIRequestError{}
-		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, APIRequestError{Message: string(respBody)}
-		}
-		return nil, requestError
+		return nil, parseGithubErrorResponse(resp)
 	}
 
 	return branchEvent, nil

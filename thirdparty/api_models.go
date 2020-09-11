@@ -67,6 +67,7 @@ func (y YAMLFormatError) Error() string {
 // For example, see https://developer.github.com/v3/#authentication.
 // This struct should be used for errors in fetching a requested remote config.
 type APIRequestError struct {
+	StatusCode       int
 	Message          string `json:"message"`
 	DocumentationUrl string `json:"documentation_url"`
 }
