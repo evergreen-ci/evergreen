@@ -1961,7 +1961,10 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	execString := strconv.Itoa(exec)
 	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
 	if projectNotFound {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return &BuildBaron{
+			SearchReturnInfo:     nil,
+			BuildBaronConfigured: !projectNotFound,
+		}, nil
 	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
