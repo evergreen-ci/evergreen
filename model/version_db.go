@@ -26,6 +26,7 @@ var (
 	VersionAuthorEmailKey         = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
 	VersionMessageKey             = bsonutil.MustHaveTag(Version{}, "Message")
 	VersionStatusKey              = bsonutil.MustHaveTag(Version{}, "Status")
+	VersionParametersKey          = bsonutil.MustHaveTag(Version{}, "Parameters")
 	VersionBuildIdsKey            = bsonutil.MustHaveTag(Version{}, "BuildIds")
 	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")

@@ -99,6 +99,10 @@ type uiTaskData struct {
 	PartOfDisplay  bool         `json:"in_display"`
 	DisplayTaskID  string       `json:"display_task,omitempty"`
 
+	// generated task info
+	GeneratedById   string `json:"generated_by_id"`
+	GeneratedByName string `json:"generated_by_name"`
+
 	// CanSync indicates that the task can sync its working directory.
 	CanSync bool `json:"can_sync"`
 }
@@ -269,6 +273,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
 		CanSync:              projCtx.Task.CanSync,
+		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
@@ -293,6 +298,14 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+	}
+	if uiTask.GeneratedById != "" {
+		generator, err := task.FindOneIdWithFields(uiTask.GeneratedById, task.DisplayNameKey)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		uiTask.GeneratedByName = generator.DisplayName
 	}
 
 	var taskHost *host.Host
@@ -574,7 +587,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: true,
@@ -634,7 +647,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	// check buildlogger logs first
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.LoggerConfig.BuildloggerBaseURL,
+		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
 		Execution:     execution,
 		PrintPriority: !raw,

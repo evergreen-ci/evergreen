@@ -148,6 +148,9 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
+	if v == nil {
+		return nil, errors.New("version doesn't exist")
+	}
 	proj, _, err := LoadProjectForVersion(v, v.Identifier, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading project")
@@ -185,13 +188,34 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error making TaskConfig")
 	}
-	projVars, err := FindOneProjectVars(t.Project)
+	// project parameters are listed first to give version parameters higher priority
+	params := append(proj.GetParameters(), v.Parameters...)
+	if err := tc.updateExpansions(t.Project, params); err != nil {
+		return nil, errors.Wrap(err, "error updating expansions")
+	}
+	return tc, nil
+}
+
+// updateExpansions first updates expansions with project variables, and then updates
+// parameters in list order to maintain priority.
+func (tc *TaskConfig) updateExpansions(projectId string, params []patch.Parameter) error {
+	projVars, err := FindOneProjectVars(projectId)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project vars")
+		return errors.Wrap(err, "error finding project vars")
+	}
+	if projVars == nil {
+		return errors.New("project vars not found")
 	}
 
 	tc.Expansions.Update(projVars.GetUnrestrictedVars())
 	tc.RestrictedExpansions.Update(projVars.GetRestrictedVars())
 	tc.Redacted = projVars.PrivateVars
-	return tc, nil
+
+	for _, param := range params {
+		tc.Expansions.Put(param.Key, param.Value)
+		// params do not support restricted or redacted
+		tc.RestrictedExpansions.Remove(param.Key)
+		tc.Redacted[param.Key] = false
+	}
+	return nil
 }

@@ -95,6 +95,9 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 		Githash:       patchedRevision,
 		Tasks:         []string{"taskTwo", "taskOne"},
 		BuildVariants: []string{"linux-64-duroff"},
+		Parameters: []patch.Parameter{
+			{Key: "my_param", Value: "is_this"},
+		},
 		Patches: []patch.ModulePatch{
 			{
 				Githash: "revision",
@@ -227,6 +230,7 @@ func TestFinalizePatch(t *testing.T) {
 				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
+				So(version.Parameters, ShouldHaveLength, 1)
 				// ensure the relevant builds/tasks were created
 				builds, err := build.Find(build.All)
 				So(err, ShouldBeNil)
@@ -642,10 +646,10 @@ func TestAddNewPatch(t *testing.T) {
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
-				DisplayTasks: []DisplayTask{
-					DisplayTask{
-						Name:           "displaytask1",
-						ExecutionTasks: []string{"task1", "task2"},
+				DisplayTasks: []patch.DisplayTask{
+					patch.DisplayTask{
+						Name:      "displaytask1",
+						ExecTasks: []string{"task1", "task2"},
 					},
 				},
 			},
@@ -712,10 +716,10 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
-				DisplayTasks: []DisplayTask{
-					DisplayTask{
-						Name:           "displaytask1",
-						ExecutionTasks: []string{"task1", "task2"},
+				DisplayTasks: []patch.DisplayTask{
+					patch.DisplayTask{
+						Name:      "displaytask1",
+						ExecTasks: []string{"task1", "task2"},
 					},
 				},
 			},

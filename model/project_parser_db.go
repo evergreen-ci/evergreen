@@ -31,6 +31,7 @@ var (
 	ParserProjectDisplayNameKey       = bsonutil.MustHaveTag(ParserProject{}, "DisplayName")
 	ParserProjectCommandTypeKey       = bsonutil.MustHaveTag(ParserProject{}, "CommandType")
 	ParserProjectIgnoreKey            = bsonutil.MustHaveTag(ParserProject{}, "Ignore")
+	ParserProjectParametersKey        = bsonutil.MustHaveTag(ParserProject{}, "Parameters")
 	ParserProjectPreKey               = bsonutil.MustHaveTag(ParserProject{}, "Pre")
 	ParserProjectPostKey              = bsonutil.MustHaveTag(ParserProject{}, "Post")
 	ParserProjectTimeoutKey           = bsonutil.MustHaveTag(ParserProject{}, "Timeout")
@@ -93,6 +94,7 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 			ParserProjectDisplayNameKey:       pp.DisplayName,
 			ParserProjectCommandTypeKey:       pp.CommandType,
 			ParserProjectIgnoreKey:            pp.Ignore,
+			ParserProjectParametersKey:        pp.Parameters,
 			ParserProjectPreKey:               pp.Pre,
 			ParserProjectPostKey:              pp.Post,
 			ParserProjectTimeoutKey:           pp.Timeout,

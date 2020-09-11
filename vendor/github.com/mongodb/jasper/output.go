@@ -39,7 +39,7 @@ type LogStream struct {
 // Process.Wait(), this is not guaranteed to produce all the logs. This function
 // assumes that there is exactly one in-memory logger attached to this process's
 // output. It returns io.EOF if the stream is done. For remote interfaces, this
-// function will not work; use (RemoteClient).GetLogStream() instead.
+// function will not work; use (remote.Manager).GetLogStream() instead.
 func GetInMemoryLogStream(ctx context.Context, proc Process, count int) ([]string, error) {
 	if proc == nil {
 		return nil, errors.New("cannot get output logs from nil process")

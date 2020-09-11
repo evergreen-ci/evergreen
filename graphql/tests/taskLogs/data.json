@@ -1,4 +1,10 @@
 {
+  "admin": [
+    {
+      "_id": "jira",
+      "host": "jira.mongodb.org"
+    }
+  ],
   "project_ref": [
     {
       "_id": { "$oid": "572cf4126685d46c3c16a704" },

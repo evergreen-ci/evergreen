@@ -9,22 +9,23 @@ import (
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id            *string       `json:"version_id"`
-	CreateTime    *time.Time    `json:"create_time"`
-	StartTime     *time.Time    `json:"start_time"`
-	FinishTime    *time.Time    `json:"finish_time"`
-	Revision      *string       `json:"revision"`
-	Order         int           `json:"order"`
-	Project       *string       `json:"project"`
-	Author        *string       `json:"author"`
-	AuthorEmail   *string       `json:"author_email"`
-	Message       *string       `json:"message"`
-	Status        *string       `json:"status"`
-	Repo          *string       `json:"repo"`
-	Branch        *string       `json:"branch"`
-	BuildVariants []buildDetail `json:"build_variants_status"`
-	Requester     *string       `json:"requester"`
-	Errors        []*string     `json:"errors"`
+	Id            *string        `json:"version_id"`
+	CreateTime    *time.Time     `json:"create_time"`
+	StartTime     *time.Time     `json:"start_time"`
+	FinishTime    *time.Time     `json:"finish_time"`
+	Revision      *string        `json:"revision"`
+	Order         int            `json:"order"`
+	Project       *string        `json:"project"`
+	Author        *string        `json:"author"`
+	AuthorEmail   *string        `json:"author_email"`
+	Message       *string        `json:"message"`
+	Status        *string        `json:"status"`
+	Repo          *string        `json:"repo"`
+	Branch        *string        `json:"branch"`
+	Parameters    []APIParameter `json:"parameters"`
+	BuildVariants []buildDetail  `json:"build_variants_status"`
+	Requester     *string        `json:"requester"`
+	Errors        []*string      `json:"errors"`
 }
 
 type buildDetail struct {
@@ -63,6 +64,15 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 		}
 		apiVersion.BuildVariants = append(apiVersion.BuildVariants, bd)
 	}
+
+	params := []APIParameter{}
+	for _, param := range v.Parameters {
+		params = append(params, APIParameter{
+			Key:   ToStringPtr(param.Key),
+			Value: ToStringPtr(param.Value),
+		})
+	}
+	apiVersion.Parameters = params
 
 	return nil
 }

@@ -871,22 +871,22 @@ func (h *Host) SetProvisionedNotRunning() error {
 	return nil
 }
 
-// UpdateProvisioningToRunning changes the host status from provisioning to
+// UpdateStartingToRunning changes the host status from provisioning to
 // running, as well as logging that the host has finished provisioning.
-func (h *Host) UpdateProvisioningToRunning() error {
-	if h.Status != evergreen.HostProvisioning {
+func (h *Host) UpdateStartingToRunning() error {
+	if h.Status != evergreen.HostStarting {
 		return nil
 	}
 
 	if err := UpdateOne(
 		bson.M{
 			IdKey:          h.Id,
-			StatusKey:      evergreen.HostProvisioning,
+			StatusKey:      evergreen.HostStarting,
 			ProvisionedKey: true,
 		},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
 	); err != nil {
-		return errors.Wrap(err, "problem changing host status from provisioning to running")
+		return errors.Wrap(err, "problem changing host status from starting to running")
 	}
 
 	h.Status = evergreen.HostRunning
@@ -1118,7 +1118,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		statuses = append(statuses, evergreen.HostStarting, evergreen.HostProvisioning)
+		statuses = append(statuses, evergreen.HostStarting)
 	}
 	selector := bson.M{
 		IdKey:          h.Id,
@@ -1549,7 +1549,7 @@ func FindHostsToTerminate() ([]Host, error) {
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
 						{ProvisionedKey: false},
-						{StatusKey: evergreen.HostProvisioning},
+						{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
 					}},
 					{"$or": []bson.M{
 						{

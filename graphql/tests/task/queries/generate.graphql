@@ -1,0 +1,6 @@
+{
+  task(taskId: "generated_task") {
+    generatedBy
+    generatedByName
+  }
+}

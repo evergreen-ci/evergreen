@@ -175,7 +175,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 						StatusKey: evergreen.HostRunning,
 					},
 					{
-						StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}},
+						StatusKey:    evergreen.HostStarting,
 						bootstrapKey: distro.BootstrapMethodUserData,
 						// User data hosts have a grace period between creation
 						// and provisioning during which they are not considered
@@ -388,7 +388,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 func ByTaskSpec(group, buildVariant, project, version string) db.Q {
 	return db.Query(
 		bson.M{
-			StatusKey: bson.M{"$in": evergreen.CanRunTaskStatus},
+			StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
 			"$or": []bson.M{
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
@@ -909,7 +909,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
 	hosts, err := Find(db.Query(bson.M{
-		StatusKey:      evergreen.HostProvisioning,
+		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
 		StartedByKey:   bson.M{"$ne": evergreen.User},
 		bootstrapKey:   distro.BootstrapMethodUserData,
@@ -1341,7 +1341,10 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{StatusKey: evergreen.HostStarting},
+			"$match": bson.M{
+				StatusKey:      evergreen.HostStarting,
+				ProvisionedKey: false,
+			},
 		},
 		{
 			"$sort": bson.M{

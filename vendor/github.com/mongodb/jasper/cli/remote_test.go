@@ -73,10 +73,10 @@ func TestCLIRemote(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"GetLogStreamSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					inMemLogger, err := jasper.NewInMemoryLogger(10)
+					logger, err := jasper.NewInMemoryLogger(10)
 					require.NoError(t, err)
 					opts := testutil.TrueCreateOpts()
-					opts.Output.Loggers = []*options.LoggerConfig{inMemLogger}
+					opts.Output.Loggers = []*options.LoggerConfig{logger}
 					createInput, err := json.Marshal(opts)
 					require.NoError(t, err)
 					createResp := &InfoResponse{}
@@ -89,26 +89,31 @@ func TestCLIRemote(t *testing.T) {
 
 					assert.True(t, resp.Successful())
 				},
-				"WriteFileSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					tmpFile, err := ioutil.TempFile(testutil.BuildDirectory(), "write_file")
+				"CreateScriptingSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					opts := testutil.ValidScriptingHarnessOptions(testutil.BuildDirectory())
+					convertedOpts, err := BuildScriptingCreateInput(opts)
 					require.NoError(t, err)
-					defer func() {
-						assert.NoError(t, tmpFile.Close())
-						assert.NoError(t, os.RemoveAll(tmpFile.Name()))
-					}()
+					input, err := json.Marshal(convertedOpts)
+					require.NoError(t, err)
+					resp := &IDResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, remoteCreateScripting(), input, resp))
+					assert.NotZero(t, resp.ID)
+				},
+				"GetScriptingSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					opts := testutil.ValidScriptingHarnessOptions(testutil.BuildDirectory())
+					convertedOpts, err := BuildScriptingCreateInput(opts)
+					require.NoError(t, err)
+					createInput, err := json.Marshal(convertedOpts)
+					require.NoError(t, err)
+					createResp := &IDResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, remoteCreateScripting(), createInput, createResp))
+					assert.NotZero(t, createResp.ID)
 
-					opts := options.WriteFile{Path: tmpFile.Name(), Content: []byte("foo")}
-					input, err := json.Marshal(opts)
+					input, err := json.Marshal(IDInput{ID: createResp.ID})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
-
-					require.NoError(t, execCLICommandInputOutput(t, c, remoteWriteFile(), input, resp))
-
+					require.NoError(t, execCLICommandInputOutput(t, c, remoteGetScripting(), input, resp))
 					assert.True(t, resp.Successful())
-
-					data, err := ioutil.ReadFile(opts.Path)
-					require.NoError(t, err)
-					assert.Equal(t, opts.Content, data)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

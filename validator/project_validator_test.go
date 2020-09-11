@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -2074,7 +2075,7 @@ buildvariants:
 	assert.NotNil(pp)
 	assert.NoError(err)
 
-	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
+	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
 	syntaxErrs := CheckProjectSyntax(&proj)
@@ -2131,6 +2132,28 @@ func TestValidateCreateHosts(t *testing.T) {
 	require.NotNil(pp)
 	errs = validateHostCreates(&p)
 	assert.Len(errs, 1)
+}
+
+func TestValidateParameters(t *testing.T) {
+	p := &model.Project{
+		Parameters: []model.ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "iter=count",
+					Value: "",
+				},
+			},
+		},
+	}
+
+	assert.Len(t, validateParameters(p), 1)
+	p.Parameters[0].Parameter.Key = ""
+	assert.Len(t, validateParameters(p), 1)
+	p.Parameters[0].Parameter.Key = "iter_count"
+	assert.Len(t, validateParameters(p), 0)
+	p.Parameters[0].Description = "not validated"
+	p.Parameters[0].Value = "also not"
+	assert.Len(t, validateParameters(p), 0)
 }
 
 func TestDuplicateTaskInBV(t *testing.T) {

@@ -44,24 +44,27 @@ type atomicGraphQLState struct {
 	directory   string
 	taskLogDB   string
 	taskLogColl string
+	settings    *evergreen.Settings
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, evergreen.GetEnvironment().Settings(), "TestAtomicGQLQueries")
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
 	for _, dir := range testDirectories {
-		state := setup(t, dir.Name())
+		state := setup(t, dir.Name(), settings)
 		runTestsInDirectory(t, state)
 	}
 }
 
-func setup(t *testing.T, directory string) atomicGraphQLState {
+const apiUser = "testuser"
+
+func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicGraphQLState {
 	const apiKey = "testapikey"
-	const apiUser = "testuser"
 	const slackUsername = "testslackuser"
 	state := atomicGraphQLState{taskLogDB: model.TaskLogDB, taskLogColl: model.TaskLogCollection}
-	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
+	server, err := service.CreateTestServer(settings, nil, true)
 	require.NoError(t, err)
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
@@ -72,11 +75,11 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 		Settings:    user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
 		SystemRoles: []string{"unrestrictedTaskAccess", "modify_host"},
 		PubKeys: []user.PubKey{
-			user.PubKey{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
-			user.PubKey{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
+			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
+			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
+			{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
+			{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
+			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 		}}
 	require.NoError(t, testUser.Insert())
 	modifyHostRole := gimlet.Role{
@@ -96,11 +99,11 @@ func setup(t *testing.T, directory string) atomicGraphQLState {
 	}
 	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
 	require.NoError(t, err)
-	directorySpecificTestSetup(t, directory)
 	state.url = server.URL
 	state.apiKey = apiKey
 	state.apiUser = apiUser
 	state.directory = directory
+	state.settings = settings
 
 	return state
 }
@@ -139,6 +142,7 @@ func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
 	}
 
 	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), testData, state))
+	directorySpecificTestSetup(t, state)
 
 	for _, testCase := range tests.Tests {
 		singleTest := func(t *testing.T) {
@@ -184,17 +188,22 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 	return catcher.Resolve()
 }
 
-func directorySpecificTestSetup(t *testing.T, directory string) {
+func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
+	persistTestSettings := func(t *testing.T) {
+		require.NoError(t, state.settings.Set())
+	}
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
-		"attachVolumeToHost":   []setupFn{spawnTestHostAndVolume},
-		"detachVolumeFromHost": []setupFn{spawnTestHostAndVolume},
-		"removeVolume":         []setupFn{spawnTestHostAndVolume},
-		"spawnVolume":          []setupFn{spawnTestHostAndVolume, addSubnets},
+		"attachVolumeToHost":   {spawnTestHostAndVolume},
+		"detachVolumeFromHost": {spawnTestHostAndVolume},
+		"removeVolume":         {spawnTestHostAndVolume},
+		"spawnVolume":          {spawnTestHostAndVolume, addSubnets},
+		"updateVolume":         {spawnTestHostAndVolume},
+		"schedulePatch":        {persistTestSettings},
 	}
-	if m[directory] != nil {
-		for _, exec := range m[directory] {
+	if m[state.directory] != nil {
+		for _, exec := range m[state.directory] {
 			exec(t)
 		}
 	}
@@ -203,7 +212,7 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"spawnVolume": []cleanupFn{clearSubnets},
+		"spawnVolume": {clearSubnets},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
@@ -220,7 +229,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	volume := host.Volume{
 		ID:               "vol-0603934da6f024db5",
 		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
-		CreatedBy:        "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
+		CreatedBy:        apiUser,
 		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
 		Size:             500,
 		AvailabilityZone: "us-east-1a",
@@ -234,7 +243,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",
-		User:   "b17ff2bce48644cfd2f8c8b9ea72c6a302f617273f56be515b3db0df0c76cb5b",
+		User:   apiUser,
 		Secret: "",
 		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{

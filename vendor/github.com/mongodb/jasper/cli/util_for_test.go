@@ -91,7 +91,7 @@ func withMockStdout(t *testing.T, operation func(*os.File) error) error {
 
 // execCLICommandInputOutput runs the CLI command with the given input to stdin
 // and writes the result from stdout to output.
-func execCLICommandInputOutput(t *testing.T, c *cli.Context, cmd cli.Command, input []byte, output interface{}) error {
+func execCLICommandInputOutput(t *testing.T, c *cli.Context, cmd cli.Command, input json.RawMessage, output interface{}) error {
 	return withMockStdin(t, string(input), func(*os.File) error {
 		return execCLICommandOutput(t, c, cmd, output)
 	})
@@ -128,7 +128,7 @@ func makeTestRESTService(ctx context.Context, t *testing.T, port int, manager ja
 // purposes on localhost.
 func makeTestRESTServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
 	closeService := makeTestRESTService(ctx, t, port, manager)
-	client, err := newRemoteClient(ctx, RESTService, "localhost", port, "")
+	client, err := newRemoteManager(ctx, RESTService, "localhost", port, "")
 	require.NoError(t, err)
 	return closeService, client
 }
@@ -145,7 +145,7 @@ func makeTestRPCService(ctx context.Context, t *testing.T, port int, manager jas
 // purposes on localhost with no credentials.
 func makeTestRPCServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
 	closeService := makeTestRPCService(ctx, t, port, manager)
-	client, err := newRemoteClient(ctx, RPCService, "localhost", port, "")
+	client, err := newRemoteManager(ctx, RPCService, "localhost", port, "")
 	require.NoError(t, err)
 	return closeService, client
 }

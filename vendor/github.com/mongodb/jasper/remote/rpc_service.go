@@ -65,7 +65,7 @@ func StartRPCService(ctx context.Context, manager jasper.Manager, addr net.Addr,
 // StartRPCServiceWithFile is the same as StartService, but the credentials will be
 // read from the file given by filePath if the filePath is non-empty. The
 // credentials file should contain the JSON-encoded bytes from
-// (*Credentials).Export().
+// (*certdepot.Credentials).Export().
 func StartRPCServiceWithFile(ctx context.Context, manager jasper.Manager, addr net.Addr, filePath string) (util.CloseFunc, error) {
 	var creds *certdepot.Credentials
 	if filePath != "" {

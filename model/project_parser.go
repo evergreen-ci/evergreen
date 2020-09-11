@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -64,6 +65,7 @@ type ParserProject struct {
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
 	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
@@ -578,6 +580,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		DisplayName:       pp.DisplayName,
 		CommandType:       pp.CommandType,
 		Ignore:            pp.Ignore,
+		Parameters:        pp.Parameters,
 		Pre:               pp.Pre,
 		Post:              pp.Post,
 		Timeout:           pp.Timeout,
@@ -791,7 +794,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 		// save display task if it contains valid execution tasks
 		for _, dt := range pbv.DisplayTasks {
-			projectDt := DisplayTask{Name: dt.Name}
+			projectDt := patch.DisplayTask{Name: dt.Name}
 			if _, exists := bvTasks[dt.Name]; exists {
 				errs = append(errs, fmt.Errorf("display task %s cannot have the same name as an execution task", dt.Name))
 				continue
@@ -811,11 +814,11 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				if _, exists := bvTasks[et]; !exists {
 					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
 				} else {
-					projectDt.ExecutionTasks = append(projectDt.ExecutionTasks, et)
+					projectDt.ExecTasks = append(projectDt.ExecTasks, et)
 					displayTaskContents[et]++
 				}
 			}
-			if len(projectDt.ExecutionTasks) > 0 {
+			if len(projectDt.ExecTasks) > 0 {
 				bv.DisplayTasks = append(bv.DisplayTasks, projectDt)
 			}
 		}

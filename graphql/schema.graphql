@@ -95,6 +95,7 @@ type Mutation {
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
+  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
   updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
   removePublicKey(keyName: String!): [PublicKey!]!
   updatePublicKey(
@@ -241,6 +242,13 @@ input SpawnVolumeInput {
   expiration: Time
   noExpiration: Boolean
   host: String
+}
+
+input UpdateVolumeInput {
+  expiration: Time
+  noExpiration: Boolean
+  name: String
+  volumeId: String!
 }
 
 type TaskQueueItem {
@@ -535,6 +543,7 @@ type Task {
   failedTestCount: Int!
   finishTime: Time
   generatedBy: String
+  generatedByName: String
   generateTask: Boolean
   hostId: String
   hostLink: String

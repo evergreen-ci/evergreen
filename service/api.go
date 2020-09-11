@@ -301,9 +301,9 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, "test results successfully attached")
 }
 
-// FetchProjectVars is an API hook for returning the unrestricted project variables
-// associated with a task's project.
-func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
+// FetchExpansionsForTask is an API hook for returning the
+// unrestricted project variables and parameters associated with a task.
+func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	projectVars, err := model.FindOneProjectVars(t.Project)
 	if err != nil {
@@ -318,6 +318,25 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 	res := apimodels.ExpansionVars{}
 	res.Vars = projectVars.GetUnrestrictedVars()
 	res.PrivateVars = projectVars.PrivateVars
+
+	v, err := model.VersionFindOne(model.VersionById(t.Version).WithFields(model.VersionParametersKey))
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	proj, _, err := model.LoadProjectForVersion(v, t.Project, false)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	params := append(proj.GetParameters(), v.Parameters...)
+	for _, param := range params {
+		res.Vars[param.Key] = param.Value
+		// parameters aren't private
+		res.PrivateVars[param.Key] = false
+	}
+
 	gimlet.WriteJSON(w, res)
 }
 
@@ -556,12 +575,13 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	// Agent routes
 	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
-	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Buildlogger).Get()
+	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Cedar).Get()
+	app.Route().Version(2).Route("/agent/cedar_config").Wrap(checkHost).Handler(as.Cedar).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/").Wrap(checkTaskSecret).Handler(as.FetchTask).Get()
-	app.Route().Version(2).Route("/task/{taskId}/fetch_vars").Wrap(checkTaskSecret).Handler(as.FetchProjectVars).Get()
+	app.Route().Version(2).Route("/task/{taskId}/fetch_vars").Wrap(checkTaskSecret).Handler(as.FetchExpansionsForTask).Get()
 	app.Route().Version(2).Route("/task/{taskId}/heartbeat").Wrap(checkTaskSecret, checkHost).Handler(as.Heartbeat).Post()
 	app.Route().Version(2).Route("/task/{taskId}/results").Wrap(checkTaskSecret, checkHost).Handler(as.AttachResults).Post()
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()

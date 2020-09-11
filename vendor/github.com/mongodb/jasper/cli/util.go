@@ -60,7 +60,7 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
-func requireOneFlag(names ...string) cli.BeforeFunc {
+func requireOneFlag(names ...string) cli.BeforeFunc { //nolint: deadcode
 	return func(c *cli.Context) error {
 		var count int
 		for _, name := range names {
@@ -70,18 +70,6 @@ func requireOneFlag(names ...string) cli.BeforeFunc {
 		}
 		if count != 1 {
 			return errors.Errorf("must specify exactly one flag from the following: %s", names)
-		}
-		return nil
-	}
-}
-
-// cleanupFilePathSeparators fixes the file path separators to ensure they are
-// forward slashes (i.e. to clean up Windows file paths).
-func cleanupFilePathSeparators(names ...string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		for _, name := range names {
-			cleanPath := util.ConsistentFilepath(c.String(name))
-			return errors.Wrapf(c.Set(name, cleanPath), "cleaning up flag '%s'", name)
 		}
 		return nil
 	}
@@ -155,26 +143,26 @@ func writeOutput(output io.Writer, input interface{}) error {
 	return nil
 }
 
-// newRemoteClient returns a remote client that connects to the service at the
+// newRemoteManager returns a remote.Manager that connects to the service at the
 // given host and port, with the optional TLS credentials file for RPC
 // communication.
-func newRemoteClient(ctx context.Context, service, host string, port int, credsFilePath string) (remote.Manager, error) {
+func newRemoteManager(ctx context.Context, service, host string, port int, credsFilePath string) (remote.Manager, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve address")
 	}
 
 	if service == RESTService {
-		return remote.NewRestClient(addr), nil
+		return remote.NewRESTClient(addr), nil
 	} else if service == RPCService {
 		return remote.NewRPCClientWithFile(ctx, addr, credsFilePath)
 	}
 	return nil, errors.Errorf("unrecognized service type '%s'", service)
 }
 
-// doPassthroughInputOutput passes input from standard input to the input validator,
-// validates the input, runs the request, and writes the response of the request
-// to standard output.
+// doPassthroughInputOutput passes input from standard input to the input
+// validator, validates the input, runs the request, and writes the response of
+// the request to standard output.
 func doPassthroughInputOutput(c *cli.Context, input Validator, request func(context.Context, remote.Manager) (response interface{})) error {
 	ctx, cancel := context.WithTimeout(context.Background(), clientConnectionTimeout)
 	defer cancel()
@@ -210,7 +198,7 @@ func withConnection(ctx context.Context, c *cli.Context, operation func(remote.M
 	service := c.String(serviceFlagName)
 	credsFilePath := c.String(credsFilePathFlagName)
 
-	client, err := newRemoteClient(ctx, service, host, port, credsFilePath)
+	client, err := newRemoteManager(ctx, service, host, port, credsFilePath)
 	if err != nil {
 		return errors.Wrap(err, "error setting up remote client")
 	}

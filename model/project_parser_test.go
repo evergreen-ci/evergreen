@@ -502,6 +502,25 @@ tasks:
 	assert.Equal("execTask4", p.BuildVariants[0].Tasks[2].Name)
 }
 
+func TestParameterParsing(t *testing.T) {
+	yml := `
+parameters:
+- key: "iter_count"
+  value: "3"
+  description: "you know it"
+- key: buggy
+  value: driver
+`
+	p, err := createIntermediateProject([]byte(yml))
+	assert.NoError(t, err)
+	require.Len(t, p.Parameters, 2)
+	assert.Equal(t, "iter_count", p.Parameters[0].Key)
+	assert.Equal(t, "3", p.Parameters[0].Value)
+	assert.Equal(t, "you know it", p.Parameters[0].Description)
+	assert.Equal(t, "buggy", p.Parameters[1].Key)
+	assert.Equal(t, "driver", p.Parameters[1].Value)
+}
+
 func TestDisplayTaskValidation(t *testing.T) {
 	assert := assert.New(t)
 
@@ -534,7 +553,7 @@ tasks:
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 
 	// test that a display task listing a nonexistent task errors
@@ -567,7 +586,7 @@ tasks:
 	assert.NotNil(proj)
 	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 
 	// test that a display task with duplicate task errors
@@ -655,7 +674,7 @@ tasks:
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 3)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 3)
 
 	// test that tag selectors are resolved correctly
 	tagYml := `
@@ -689,12 +708,12 @@ tasks:
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
-	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
-	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
-	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecTasks, 2)
+	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
+	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[0])
+	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[1])
 }
 
 func TestTranslateProjectDoesNotModifyParserProject(t *testing.T) {
@@ -747,12 +766,12 @@ tasks:
 
 	//assert project is correct
 	require.Len(proj.BuildVariants[0].DisplayTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
-	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
-	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
-	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecTasks, 2)
+	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
+	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[0])
+	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecTasks[1])
 }
 
 func TestTaskGroupParsing(t *testing.T) {
@@ -942,9 +961,9 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
 }
 
 func TestTaskGroupWithDisplayTaskWithDisplayTaskTag(t *testing.T) {
@@ -978,9 +997,9 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
 }
 
 func TestTaskGroupWithDisplayTaskWithTaskGroupTag(t *testing.T) {
@@ -1014,9 +1033,9 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
 }
 
 func TestTaskGroupWithDisplayTaskWithTaskGroupTagAndDisplayTaskTag(t *testing.T) {
@@ -1049,9 +1068,9 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("task_group_1", tg.Name)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
-	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
-	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
-	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecTasks[1])
 }
 
 func TestBVDependenciesOverrideTaskDependencies(t *testing.T) {
@@ -1322,6 +1341,10 @@ loggers:
     - type: something
       splunk_token: idk
     - type: somethingElse
+parameters:
+- key: iter_count
+  value: 3
+  description: "used for something"
 tasks:
 - name: task_1
   depends_on:

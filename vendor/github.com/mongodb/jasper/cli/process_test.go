@@ -112,7 +112,7 @@ func TestCLIProcess(t *testing.T) {
 					require.NoError(t, err)
 					assert.Error(t, execCLICommandInputOutput(t, c, processWait(), input, &WaitResponse{}))
 				},
-				"Respawn": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"RespawnSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					input, err := json.Marshal(IDInput{jasperProcID})
 					require.NoError(t, err)
 					resp := &InfoResponse{}
@@ -128,13 +128,10 @@ func TestCLIProcess(t *testing.T) {
 					require.NoError(t, execCLICommandInputOutput(t, c, processRegisterSignalTriggerID(), input, resp))
 					require.True(t, resp.Successful())
 				},
-				"Tag": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"TagSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					require.True(t, tagProcess(t, c, jasperProcID, "foo").Successful())
 				},
 				"TagNonexistentIDFails": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
-					require.False(t, tagProcess(t, c, nonexistentID, "foo").Successful())
-				},
-				"TagEmptyIDFails": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					require.False(t, tagProcess(t, c, nonexistentID, "foo").Successful())
 				},
 				"TagEmptyTagFails": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
@@ -142,7 +139,7 @@ func TestCLIProcess(t *testing.T) {
 					require.NoError(t, err)
 					assert.Error(t, execCLICommandInputOutput(t, c, processTag(), input, &OutcomeResponse{}))
 				},
-				"GetTags": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"GetTagsSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					tag := "foo"
 					require.True(t, tagProcess(t, c, jasperProcID, tag).Successful())
 
@@ -154,7 +151,7 @@ func TestCLIProcess(t *testing.T) {
 					require.Len(t, resp.Tags, 1)
 					assert.Equal(t, tag, resp.Tags[0])
 				},
-				"ResetTags": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"ResetTagsSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					tag := "foo"
 					require.True(t, tagProcess(t, c, jasperProcID, tag).Successful())
 

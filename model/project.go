@@ -46,6 +46,7 @@ type Project struct {
 	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type"`
 	Ignore            []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters        []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
 	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
@@ -112,11 +113,6 @@ func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 
 	return BuildVariantTaskUnit{}, errors.Errorf("could not find task %s in build variant %s",
 		name, b.Name)
-}
-
-type DisplayTask struct {
-	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
-	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
 }
 
 type BuildVariants []BuildVariant
@@ -230,7 +226,13 @@ type BuildVariant struct {
 
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
-	DisplayTasks []DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+}
+
+// ParameterInfo is used to provide extra information about a parameter.
+type ParameterInfo struct {
+	patch.Parameter `yaml:",inline" bson:",inline"`
+	Description     string `yaml:"description" bson:"description"`
 }
 
 type Module struct {
@@ -944,6 +946,14 @@ func (p *Project) GetVariantMappings() map[string]string {
 	return mappings
 }
 
+func (p *Project) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range p.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
+}
+
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || utility.StringSliceContains(p.Variants, variant)
@@ -1134,7 +1144,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 
 func (bv *BuildVariant) GetDisplayTaskName(execTask string) string {
 	for _, dt := range bv.DisplayTasks {
-		for _, et := range dt.ExecutionTasks {
+		for _, et := range dt.ExecTasks {
 			if et == execTask {
 				return dt.Name
 			}
@@ -1335,7 +1345,7 @@ func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 		for _, dt := range bv.DisplayTasks {
 			vt.DisplayTasks = append(vt.DisplayTasks, patch.DisplayTask{
 				Name:      dt.Name,
-				ExecTasks: dt.ExecutionTasks,
+				ExecTasks: dt.ExecTasks,
 			})
 		}
 		vts = append(vts, vt)
@@ -1400,7 +1410,7 @@ func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants [
 		for _, dt := range bv.DisplayTasks {
 			if utility.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
-				for _, et := range dt.ExecutionTasks {
+				for _, et := range dt.ExecTasks {
 					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
 				}
 			}
@@ -1493,6 +1503,20 @@ func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []Pl
 		}
 	}
 	return matchingCmds
+}
+
+func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
+	bv := p.FindBuildVariant(variant)
+	if bv == nil {
+		return nil
+	}
+	for _, dt := range bv.DisplayTasks {
+		if dt.Name == name {
+			return &dt
+		}
+	}
+
+	return nil
 }
 
 // FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.

@@ -183,6 +183,13 @@ type TaskTestResult struct {
 	TestResults       []*model.APITest `json:"testResults"`
 }
 
+type UpdateVolumeInput struct {
+	Expiration   *time.Time `json:"expiration"`
+	NoExpiration *bool      `json:"noExpiration"`
+	Name         *string    `json:"name"`
+	VolumeID     string     `json:"volumeId"`
+}
+
 type UserConfig struct {
 	User          string `json:"user"`
 	APIKey        string `json:"api_key"`
