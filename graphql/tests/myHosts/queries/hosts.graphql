@@ -6,6 +6,8 @@
       workDir
       id
     }
-    homeVolumeDisplayName
+    volumes {
+      id
+    }
   }
 }

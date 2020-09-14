@@ -1,7 +1,6 @@
 {
   "hosts": [
     {
-      "home_volume_id": "vol-thangthang",
       "_id": "i-06f80fa6e28f93b7d",
       "host_id": "ec2-34-207-222-84.compute-1.amazonaws.com",
       "user": "ubuntu",
@@ -533,11 +532,13 @@
   ],
   "volumes": [
     {
-      "display_name": "real display name",
-      "_id": "vol-thangthang"
+      "_id": "vol-2-id"
     },
     {
-      "_id": "vol-2-id"
+      "_id": "vol-0b5ec54a106c6e976"
+    },
+    {
+      "_id": "vol-015b745bb69a2a16b"
     }
   ]
 }
