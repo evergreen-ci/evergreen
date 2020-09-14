@@ -48,7 +48,7 @@ type SystemMetricsSuite struct {
 	suite.Suite
 	task   *task.Task
 	conn   *grpc.ClientConn
-	server *timbertestutil.MockMetricsServer
+	server *timberutil.MockMetricsServer
 	cancel context.CancelFunc
 }
 
@@ -61,7 +61,7 @@ func (s *SystemMetricsSuite) SetupTest() {
 	s.cancel = cancel
 
 	var err error
-	s.server, err = timbertestutil.NewMockMetricsServer(ctx, testutil.NextPort())
+	s.server, err = timberutil.NewMockMetricsServer(ctx, testutil.NextPort())
 	s.Require().NoError(err)
 
 	s.conn, err = grpc.DialContext(ctx, s.server.Address(), grpc.WithInsecure())
