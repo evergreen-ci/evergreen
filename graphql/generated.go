@@ -149,6 +149,7 @@ type ComplexityRoot struct {
 
 	Host struct {
 		AvailabilityZone      func(childComplexity int) int
+		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
@@ -1117,6 +1118,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.AvailabilityZone(childComplexity), true
+
+	case "Host.displayName":
+		if e.complexity.Host.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.Host.DisplayName(childComplexity), true
 
 	case "Host.distro":
 		if e.complexity.Host.Distro == nil {
@@ -4029,6 +4037,7 @@ type Host {
   hostUrl: String!
   tag: String!
   distroId: String
+  displayName: String!
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
@@ -7307,6 +7316,40 @@ func (ec *executionContext) _Host_distroId(ctx context.Context, field graphql.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_status(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -20805,6 +20848,11 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Host_distroId(ctx, field, obj)
 				return res
 			})
+		case "displayName":
+			out.Values[i] = ec._Host_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "status":
 			out.Values[i] = ec._Host_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

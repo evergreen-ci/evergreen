@@ -12,6 +12,7 @@
     homeVolume
     host {
       id
+      displayName
     }
   }
 }

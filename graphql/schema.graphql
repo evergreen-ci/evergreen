@@ -261,6 +261,7 @@ type Host {
   hostUrl: String!
   tag: String!
   distroId: String
+  displayName: String!
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
