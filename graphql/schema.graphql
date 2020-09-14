@@ -227,7 +227,7 @@ input SpawnHostInput {
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -273,7 +273,6 @@ type Host {
   hostUrl: String!
   tag: String!
   distroId: String
-  displayName: String!
   status: String!
   runningTask: TaskInfo
   totalIdleTime: Duration
@@ -302,7 +301,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String
