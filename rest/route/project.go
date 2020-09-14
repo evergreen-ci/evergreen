@@ -802,3 +802,44 @@ func (h *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 
 	return gimlet.NewJSONResponse(variantTasks)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for the most recent parameters of a project
+//
+//    /projects/{project_id}/parameters
+
+type projectParametersGetHandler struct {
+	projectId string
+	sc        data.Connector
+}
+
+func makeFetchParameters(sc data.Connector) gimlet.RouteHandler {
+	return &projectParametersGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectParametersGetHandler) Factory() gimlet.RouteHandler {
+	return &projectParametersGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectParametersGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectId = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder {
+	p, err := dbModel.FindLastKnownGoodProject(h.projectId)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
+			"error finding project config for project '%s'", h.projectId))
+	}
+	if p == nil {
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' not found", h.projectId))
+	}
+
+	return gimlet.NewJSONResponse(p.Parameters)
+}

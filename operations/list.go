@@ -25,6 +25,7 @@ func List() cli.Command {
 		tasksFlagName       = "tasks"
 		distrosFlagName     = "distros"
 		spawnableFlagName   = "spawnable"
+		parametersFlagName  = "parameters"
 		aliasesFlagName     = "aliases"
 		projectTagsFlagName = "taggedProjects"
 	)
@@ -50,6 +51,10 @@ func List() cli.Command {
 				Usage: "list all tasks for the specified file",
 			},
 			cli.BoolFlag{
+				Name:  parametersFlagName,
+				Usage: "list all parameters for a project",
+			},
+			cli.BoolFlag{
 				Name:  aliasesFlagName,
 				Usage: "list all patch aliases for a project",
 			},
@@ -61,7 +66,7 @@ func List() cli.Command {
 				Name:  projectTagsFlagName,
 				Usage: "list all projects with this tag",
 			})...),
-		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName),
+		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)
@@ -78,6 +83,8 @@ func List() cli.Command {
 				return listVariants(ctx, confPath, project, filename)
 			case c.Bool(tasksFlagName):
 				return listTasks(ctx, confPath, project, filename)
+			case c.Bool(parametersFlagName):
+				return listParameters(ctx, confPath, project, filename)
 			case c.Bool(aliasesFlagName):
 				return listAliases(ctx, confPath, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
@@ -251,6 +258,43 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	}
 
 	return w.Flush()
+}
+func listParameters(ctx context.Context, confPath, project, filename string) error {
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	comm := conf.setupRestCommunicator(ctx)
+	defer comm.Close()
+
+	var params []model.ParameterInfo
+	if project != "" {
+		params, err = comm.GetParameters(ctx, project)
+		if err != nil {
+			return errors.Wrapf(err, "error getting parameters")
+		}
+	} else if filename != "" {
+		project, err := loadLocalConfig(filename)
+		if err != nil {
+			return err
+		}
+		params = project.Parameters
+	} else {
+		return errors.New("no project specified")
+	}
+
+	if len(params) == 0 {
+		fmt.Println("No parameters to list for project")
+		return nil
+	}
+	for _, param := range params {
+		// list
+		fmt.Printf("Parameter '%s': Default '%s'\n", param.Key, param.Value)
+		if param.Description != "" {
+			fmt.Printf("\tDescription: %s\n", param.Description)
+		}
+	}
+	return nil
 }
 
 func listAliases(ctx context.Context, confPath, project, filename string) error {

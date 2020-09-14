@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -979,6 +980,34 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	}
 
 	return &config, nil
+}
+
+func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([]serviceModel.ParameterInfo, error) {
+	grip.Error(project)
+	path := fmt.Sprintf("projects/%s/parameters", project)
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		grip.Error(resp.Body)
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+
+	params := []serviceModel.ParameterInfo{}
+	if err = utility.ReadJSON(resp.Body, &params); err != nil {
+		return nil, errors.Wrap(err, "error parsing parameters")
+	}
+	return params, nil
 }
 
 func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscription, error) {
