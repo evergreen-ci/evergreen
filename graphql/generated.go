@@ -153,7 +153,6 @@ type ComplexityRoot struct {
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		Expiration            func(childComplexity int) int
-		HomeVolumeDisplayName func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
 		HostURL               func(childComplexity int) int
 		Id                    func(childComplexity int) int
@@ -169,6 +168,7 @@ type ComplexityRoot struct {
 		TotalIdleTime         func(childComplexity int) int
 		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
+		Volumes               func(childComplexity int) int
 	}
 
 	HostEventLogData struct {
@@ -627,7 +627,7 @@ type ComplexityRoot struct {
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
 		HomeVolume       func(childComplexity int) int
-		HostDisplayName  func(childComplexity int) int
+		Host             func(childComplexity int) int
 		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
@@ -642,7 +642,7 @@ type HostResolver interface {
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
-	HomeVolumeDisplayName(ctx context.Context, obj *model.APIHost) (*string, error)
+	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -750,7 +750,7 @@ type TicketFieldsResolver interface {
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 }
 type VolumeResolver interface {
-	HostDisplayName(ctx context.Context, obj *model.APIVolume) (*string, error)
+	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
 type executableSchema struct {
@@ -1146,13 +1146,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Expiration(childComplexity), true
 
-	case "Host.homeVolumeDisplayName":
-		if e.complexity.Host.HomeVolumeDisplayName == nil {
-			break
-		}
-
-		return e.complexity.Host.HomeVolumeDisplayName(childComplexity), true
-
 	case "Host.homeVolumeID":
 		if e.complexity.Host.HomeVolumeID == nil {
 			break
@@ -1257,6 +1250,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.User(childComplexity), true
+
+	case "Host.volumes":
+		if e.complexity.Host.Volumes == nil {
+			break
+		}
+
+		return e.complexity.Host.Volumes(childComplexity), true
 
 	case "HostEventLogData.agentBuild":
 		if e.complexity.HostEventLogData.AgentBuild == nil {
@@ -3660,12 +3660,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
 
-	case "Volume.hostDisplayName":
-		if e.complexity.Volume.HostDisplayName == nil {
+	case "Volume.host":
+		if e.complexity.Volume.Host == nil {
 			break
 		}
 
-		return e.complexity.Volume.HostDisplayName(childComplexity), true
+		return e.complexity.Volume.Host(childComplexity), true
 
 	case "Volume.hostID":
 		if e.complexity.Volume.HostID == nil {
@@ -4040,7 +4040,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
-  homeVolumeDisplayName: String
+  volumes: [Volume!]!
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -4172,9 +4172,9 @@ type Volume {
   expiration: Time
   deviceName: String
   hostID: String!
-  hostDisplayName: String
   noExpiration: Boolean!
   homeVolume: Boolean!
+  host: Host
 }
 
 type PatchProject {
@@ -7662,7 +7662,7 @@ func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphq
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Host_homeVolumeDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -7679,18 +7679,21 @@ func (ec *executionContext) _Host_homeVolumeDisplayName(ctx context.Context, fie
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().HomeVolumeDisplayName(rctx, obj)
+		return ec.resolvers.Host().Volumes(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.([]*model.APIVolume)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -18581,37 +18584,6 @@ func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.Co
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Volume_hostDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Volume",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Volume().HostDisplayName(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Volume_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18678,6 +18650,37 @@ func (ec *executionContext) _Volume_homeVolume(ctx context.Context, field graphq
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Volume",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Volume().Host(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -20854,7 +20857,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
 		case "homeVolumeID":
 			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
-		case "homeVolumeDisplayName":
+		case "volumes":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -20862,7 +20865,10 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Host_homeVolumeDisplayName(ctx, field, obj)
+				res = ec._Host_volumes(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "user":
@@ -23703,17 +23709,6 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "hostDisplayName":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Volume_hostDisplayName(ctx, field, obj)
-				return res
-			})
 		case "noExpiration":
 			out.Values[i] = ec._Volume_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -23724,6 +23719,17 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "host":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Volume_host(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -74,24 +74,27 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 	return obj.RunningTask.StartTime, nil
 }
 
-func (r *hostResolver) HomeVolumeDisplayName(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	if obj.HomeVolumeID == nil || *obj.HomeVolumeID == "" {
-		return nil, nil
+func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
+	volumes := []*restModel.APIVolume{}
+	for _, volId := range obj.AttachedVolumeIDs {
+		volume, err := r.sc.FindVolumeById(volId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volume.ID))
+		}
+		if volume == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
+		}
+		apiVolume := restModel.APIVolume{}
+		if err := apiVolume.BuildFromService(volume); err != nil {
+			return nil, errors.Wrapf(err, "error building volume '%s' from service", volume.ID)
+		}
+		volumes = append(volumes, &apiVolume)
 	}
-	volume, err := r.sc.FindVolumeById(*obj.HomeVolumeID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume %s: %s", *obj.HomeVolumeID, err.Error()))
-	}
-	if volume == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", *obj.HomeVolumeID))
-	}
-	if volume.DisplayName == "" {
-		return obj.HomeVolumeID, nil
-	}
-	return &volume.DisplayName, nil
+
+	return volumes, nil
 }
 
-func (r *volumeResolver) HostDisplayName(ctx context.Context, obj *restModel.APIVolume) (*string, error) {
+func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*restModel.APIHost, error) {
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
 	}
@@ -102,10 +105,12 @@ func (r *volumeResolver) HostDisplayName(ctx context.Context, obj *restModel.API
 	if host == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", *obj.HostID))
 	}
-	if host.DisplayName == "" {
-		return &host.Id, nil
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(host)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost %s from service: %s", host.Id, err))
 	}
-	return &host.DisplayName, nil
+	return &apiHost, nil
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
