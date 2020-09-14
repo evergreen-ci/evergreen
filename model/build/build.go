@@ -181,12 +181,12 @@ func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration)
 	)
 }
 
-// TryMarkBuildStarted attempts to mark a b as started if it
+// TryMarkStarted attempts to mark a build as started if it
 // isn't already marked as such
 func TryMarkStarted(buildId string, startTime time.Time) error {
 	selector := bson.M{
 		IdKey:     buildId,
-		StatusKey: evergreen.BuildCreated,
+		StatusKey: bson.M{"$ne": evergreen.BuildStarted},
 	}
 	update := bson.M{"$set": bson.M{
 		StatusKey:    evergreen.BuildStarted,

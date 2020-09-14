@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
+	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -962,15 +963,23 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 // If we abort successfully and the error is a transient transaction error, we retry using the same session.
 func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx mongo.SessionContext) error) error {
 	const retryCount = 5
+	const minBackoffInterval = 1 * time.Second
+	const maxBackoffInterval = 60 * time.Second
 
 	client := evergreen.GetEnvironment().Client()
 	errs := grip.NewBasicCatcher()
+	interval := backoff.Backoff{
+		Min:    minBackoffInterval,
+		Max:    maxBackoffInterval,
+		Factor: 2,
+	}
 	for i := 0; i < retryCount; i++ {
 		err := client.UseSession(ctx, sessionFunc)
 		if err == nil {
 			return nil
 		}
 		errs.Add(err)
+		time.Sleep(interval.Duration())
 	}
 	return errors.Wrapf(errs.Resolve(), "hit max client retries for version '%s'", versionId)
 }

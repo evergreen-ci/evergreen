@@ -833,12 +833,12 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 
 	// ensure the appropriate build is marked as started if necessary
 	if err = build.TryMarkStarted(t.BuildId, startTime); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "error marking build started")
 	}
 
 	// ensure the appropriate version is marked as started if necessary
-	if err = MarkVersionStarted(t.Version, startTime); err != nil {
-		return errors.WithStack(err)
+	if err = TryMarkVersionStarted(t.Version, startTime); err != nil {
+		return errors.Wrap(err, "error marking version started")
 	}
 
 	// if it's a patch, mark the patch as started if necessary

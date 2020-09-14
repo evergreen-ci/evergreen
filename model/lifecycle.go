@@ -152,14 +152,21 @@ func AbortBuild(buildId string, caller string) error {
 	return errors.Wrapf(task.AbortBuild(buildId, task.AbortInfo{User: caller}), "can't abort tasks for build '%s'", buildId)
 }
 
-func MarkVersionStarted(versionId string, startTime time.Time) error {
-	return VersionUpdateOne(
-		bson.M{VersionIdKey: versionId},
+func TryMarkVersionStarted(versionId string, startTime time.Time) error {
+	err := VersionUpdateOne(
+		bson.M{
+			VersionIdKey:     versionId,
+			VersionStatusKey: bson.M{"$ne": evergreen.VersionStarted},
+		},
 		bson.M{"$set": bson.M{
 			VersionStartTimeKey: startTime,
 			VersionStatusKey:    evergreen.VersionStarted,
 		}},
 	)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // MarkVersionCompleted updates the status of a completed version to reflect its correct state by

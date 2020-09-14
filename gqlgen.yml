@@ -106,6 +106,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
+  InstanceTagInput:
+    model: github.com/evergreen-ci/evergreen/model/host.Tag
   PublicKey:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
   DistroInfo:
