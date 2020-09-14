@@ -529,14 +529,14 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	p.patch = dbPatch.(patch.Patch)
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	patchTasks := patchTasks{}
-	if err = utility.ReadJSON(body, &patchTasks); err != nil {
+	tasks := patchTasks{}
+	if err = utility.ReadJSON(body, &tasks); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
-	if len(patchTasks.Variants) == 0 {
+	if len(tasks.Variants) == 0 {
 		return errors.New("no variants specified")
 	}
-	p.variantTasks = patchTasks
+	p.variantTasks = tasks
 	return nil
 }
 
