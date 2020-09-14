@@ -250,6 +250,7 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
+		BbFileTicket               func(childComplexity int, taskID string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
 		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -377,34 +378,35 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AwsRegions         func(childComplexity int) int
-		BuildBaron         func(childComplexity int, taskID string, execution int) int
-		ClientConfig       func(childComplexity int) int
-		CommitQueue        func(childComplexity int, id string) int
-		DistroTaskQueue    func(childComplexity int, distroID string) int
-		Distros            func(childComplexity int, onlySpawnable bool) int
-		Host               func(childComplexity int, hostID string) int
-		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
-		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
-		InstanceTypes      func(childComplexity int) int
-		MyHosts            func(childComplexity int) int
-		MyPublicKeys       func(childComplexity int) int
-		MyVolumes          func(childComplexity int) int
-		Patch              func(childComplexity int, id string) int
-		PatchBuildVariants func(childComplexity int, patchID string) int
-		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
-		Projects           func(childComplexity int) int
-		SiteBanner         func(childComplexity int) int
-		Task               func(childComplexity int, taskID string, execution *int) int
-		TaskAllExecutions  func(childComplexity int, taskID string) int
-		TaskFiles          func(childComplexity int, taskID string, execution *int) int
-		TaskLogs           func(childComplexity int, taskID string) int
-		TaskQueueDistros   func(childComplexity int) int
-		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
-		User               func(childComplexity int, userID *string) int
-		UserConfig         func(childComplexity int) int
-		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
-		UserSettings       func(childComplexity int) int
+		AwsRegions          func(childComplexity int) int
+		BbGetCreatedTickets func(childComplexity int, taskID string) int
+		BuildBaron          func(childComplexity int, taskID string, execution int) int
+		ClientConfig        func(childComplexity int) int
+		CommitQueue         func(childComplexity int, id string) int
+		DistroTaskQueue     func(childComplexity int, distroID string) int
+		Distros             func(childComplexity int, onlySpawnable bool) int
+		Host                func(childComplexity int, hostID string) int
+		HostEvents          func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+		Hosts               func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes       func(childComplexity int) int
+		MyHosts             func(childComplexity int) int
+		MyPublicKeys        func(childComplexity int) int
+		MyVolumes           func(childComplexity int) int
+		Patch               func(childComplexity int, id string) int
+		PatchBuildVariants  func(childComplexity int, patchID string) int
+		PatchTasks          func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
+		Projects            func(childComplexity int) int
+		SiteBanner          func(childComplexity int) int
+		Task                func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions   func(childComplexity int, taskID string) int
+		TaskFiles           func(childComplexity int, taskID string, execution *int) int
+		TaskLogs            func(childComplexity int, taskID string) int
+		TaskQueueDistros    func(childComplexity int) int
+		TaskTests           func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
+		User                func(childComplexity int, userID *string) int
+		UserConfig          func(childComplexity int) int
+		UserPatches         func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
+		UserSettings        func(childComplexity int) int
 	}
 
 	RecentTaskLogs struct {
@@ -671,6 +673,7 @@ type MutationResolver interface {
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
+	BbFileTicket(ctx context.Context, taskID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -713,6 +716,7 @@ type QueryResolver interface {
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
+	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -1611,6 +1615,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumeAndHost"].(VolumeHost)), true
 
+	case "Mutation.bbFileTicket":
+		if e.complexity.Mutation.BbFileTicket == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bbFileTicket_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BbFileTicket(childComplexity, args["taskId"].(string)), true
+
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
 			break
@@ -2342,6 +2358,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.AwsRegions(childComplexity), true
+
+	case "Query.bbGetCreatedTickets":
+		if e.complexity.Query.BbGetCreatedTickets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bbGetCreatedTickets_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BbGetCreatedTickets(childComplexity, args["taskId"].(string)), true
 
 	case "Query.buildBaron":
 		if e.complexity.Query.BuildBaron == nil {
@@ -3836,6 +3864,7 @@ var sources = []*ast.Source{
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -3874,6 +3903,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbFileTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -3995,7 +4025,7 @@ input SpawnHostInput {
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -4068,7 +4098,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String
@@ -4608,6 +4638,20 @@ func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_bbFileTicket_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -5071,6 +5115,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bbGetCreatedTickets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -10576,6 +10634,47 @@ func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field g
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_bbFileTicket(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_bbFileTicket_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BbFileTicket(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13576,6 +13675,47 @@ func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql
 	res := resTmp.(*BuildBaron)
 	fc.Result = res
 	return ec.marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_bbGetCreatedTickets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_bbGetCreatedTickets_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BbGetCreatedTickets(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*thirdparty.JiraTicket)
+	fc.Result = res
+	return ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -21556,6 +21696,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "bbFileTicket":
+			out.Values[i] = ec._Mutation_bbFileTicket(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22556,6 +22701,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_buildBaron(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "bbGetCreatedTickets":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bbGetCreatedTickets(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -24749,6 +24908,53 @@ func (ec *executionContext) marshalNJiraTicket2ᚕgithubᚗcomᚋevergreenᚑci�
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx context.Context, sel ast.SelectionSet, v []*thirdparty.JiraTicket) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraTicket) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._JiraTicket(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNLogMessage2githubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessage(ctx context.Context, sel ast.SelectionSet, v apimodels.LogMessage) graphql.Marshaler {

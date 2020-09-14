@@ -68,6 +68,7 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -106,6 +107,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbFileTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -227,7 +229,7 @@ input SpawnHostInput {
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -300,7 +302,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String

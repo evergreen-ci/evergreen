@@ -2042,6 +2042,29 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	}, nil
 }
 
+func (r *mutationResolver) BbFileTicket(ctx context.Context, taskId string) (bool, error) {
+	taskNotFound, err := BbFileTicket(taskId)
+	successful := true
+
+	if err != nil {
+		return !successful, InternalServerError.Send(ctx, err.Error())
+	}
+	if taskNotFound == true {
+		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskId))
+	}
+
+	return successful, nil
+}
+
+func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
+	createdTickets, err := BbGetCreatedTicketsPointers(taskId)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdTickets, nil
+}
+
 type ticketFieldsResolver struct{ *Resolver }
 
 func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {

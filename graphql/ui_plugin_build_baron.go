@@ -8,16 +8,112 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/trigger"
+	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 const (
-	jiraSource = "JIRA"
+	jiraSource    = "JIRA"
+	jiraIssueType = "Build Failure"
 )
+
+// bbFileTicket creates a JIRA ticket for a task with the given test failures.
+func BbFileTicket(taskId string) (bool, error) {
+	taskNotFound := false
+	// Find information about the task
+	t, err := task.FindOne(task.ById(taskId))
+	if err != nil {
+		return taskNotFound, err
+
+	}
+	if t == nil {
+		taskNotFound = true
+		return taskNotFound, errors.Wrap(err, fmt.Sprintf("task not found for id %s", taskId))
+	}
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	queue := env.RemoteQueue()
+	buildBaronProjects := BbGetConfig(settings)
+	n, err := makeNotification(settings, buildBaronProjects[t.Project].TicketCreateProject, t)
+	if err != nil {
+		return taskNotFound, err
+	}
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	err = queue.Put(context.TODO(), units.NewEventSendJob(n.ID, ts))
+	if err != nil {
+		return taskNotFound, errors.Wrap(err, fmt.Sprintf("error inserting notification job: %s", err.Error()))
+
+	}
+
+	return taskNotFound, nil
+}
+
+func makeNotification(settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
+	payload, err := trigger.JIRATaskPayload("", project, settings.Ui.Url, "", "", t)
+	if err != nil {
+		return nil, err
+	}
+	sub := event.Subscriber{
+		Type: event.JIRAIssueSubscriberType,
+		Target: event.JIRAIssueSubscriber{
+			Project:   project,
+			IssueType: jiraIssueType,
+		},
+	}
+	n, err := notification.New("", utility.RandomString(), &sub, payload)
+	if err != nil {
+		return nil, err
+	}
+	if n == nil {
+		return nil, errors.New("unexpected error creating notification")
+	}
+	n.SetTaskMetadata(t.Id, t.Execution)
+
+	err = notification.InsertMany(*n)
+	if err != nil {
+		return nil, errors.Wrap(err, "error inserting notification")
+	}
+	return n, nil
+}
+
+func BbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
+
+	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
+	if err != nil {
+		return nil, err
+	}
+
+	var results []*thirdparty.JiraTicket
+	var searchTickets []string
+	for _, evt := range events {
+		data := evt.Data.(*event.TaskEventData)
+		if evt.EventType == event.TaskJiraAlertCreated {
+			searchTickets = append(searchTickets, data.JiraIssue)
+		}
+	}
+	settings := evergreen.GetEnvironment().Settings()
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	for _, ticket := range searchTickets {
+		jiraIssue, err := jiraHandler.GetJIRATicket(ticket)
+		if err != nil {
+			return nil, err
+		}
+		if jiraIssue == nil {
+			continue
+		}
+		results = append(results, jiraIssue)
+	}
+
+	return results, nil
+}
 
 func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error) {
 	projectNotFoundError := false

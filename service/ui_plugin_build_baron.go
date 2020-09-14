@@ -1,29 +1,21 @@
 package service
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/trigger"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 const (
-	msPerNS       = 1000 * 1000
-	maxNoteSize   = 16 * 1024 // 16KB
-	jiraSource    = "JIRA"
-	jiraIssueType = "Build Failure"
+	msPerNS     = 1000 * 1000
+	maxNoteSize = 16 * 1024 // 16KB
+	jiraSource  = "JIRA"
 )
 
 // saveNote reads a request containing a note's content along with the last seen
@@ -142,60 +134,16 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		TestIds []string `json:"tests"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		gimlet.WriteJSONInternalError(w, err.Error())
-	}
+	taskNotFound, err := graphql.BbFileTicket(input.TaskId)
 
-	// Find information about the task
-	t, err := task.FindOne(task.ById(input.TaskId))
+	if taskNotFound {
+		gimlet.WriteJSON(w, err.Error())
+		return
+	}
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
-		return
-	}
-	if t == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("task not found for id %s", input.TaskId))
-		return
-	}
-
-	n, err := uis.makeNotification(uis.buildBaronProjects[t.Project].TicketCreateProject, t)
-	if err != nil {
-		gimlet.WriteJSONInternalError(w, err.Error())
-		return
-	}
-	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = uis.queue.Put(r.Context(), units.NewEventSendJob(n.ID, ts))
-	if err != nil {
-		gimlet.WriteJSONInternalError(w, fmt.Sprintf("error inserting notification job: %s", err.Error()))
 		return
 	}
 
 	gimlet.WriteJSON(w, nil)
-}
-
-func (uis *UIServer) makeNotification(project string, t *task.Task) (*notification.Notification, error) {
-	payload, err := trigger.JIRATaskPayload("", project, uis.Settings.Ui.Url, "", "", t)
-	if err != nil {
-		return nil, err
-	}
-	sub := event.Subscriber{
-		Type: event.JIRAIssueSubscriberType,
-		Target: event.JIRAIssueSubscriber{
-			Project:   project,
-			IssueType: jiraIssueType,
-		},
-	}
-	n, err := notification.New("", utility.RandomString(), &sub, payload)
-	if err != nil {
-		return nil, err
-	}
-	if n == nil {
-		return nil, errors.New("unexpected error creating notification")
-	}
-	n.SetTaskMetadata(t.Id, t.Execution)
-
-	err = notification.InsertMany(*n)
-	if err != nil {
-		return nil, errors.Wrap(err, "error inserting notification")
-	}
-	return n, nil
 }
