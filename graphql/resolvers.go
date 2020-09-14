@@ -329,7 +329,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 }
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
-	usr := route.MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
