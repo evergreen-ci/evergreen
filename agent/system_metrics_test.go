@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/service/testutil"
 	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
-	"github.com/evergreen-ci/timber/testutil"
+	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/ftdc"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +48,7 @@ type SystemMetricsSuite struct {
 	suite.Suite
 	task   *task.Task
 	conn   *grpc.ClientConn
-	server *testutil.MockMetricsServer
+	server *timbertestutil.MockMetricsServer
 	cancel context.CancelFunc
 }
 
@@ -60,7 +61,7 @@ func (s *SystemMetricsSuite) SetupTest() {
 	s.cancel = cancel
 
 	var err error
-	s.server, err = testutil.NewMockMetricsServer(ctx, 5000)
+	s.server, err = timbertestutil.NewMockMetricsServer(ctx, testutil.NextPort())
 	s.Require().NoError(err)
 
 	s.conn, err = grpc.DialContext(ctx, s.server.Address(), grpc.WithInsecure())
@@ -374,7 +375,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, err := testutil.NewMockMetricsServer(ctx, 12345)
+	srv, err := timberutil.NewMockMetricsServer(ctx, testutil.NextPort())
 	require.NoError(t, err)
 
 	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
