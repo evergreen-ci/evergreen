@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
@@ -34,6 +35,17 @@ type Dependency struct {
 type DisplayTask struct {
 	Name      string   `json:"Name"`
 	ExecTasks []string `json:"ExecTasks"`
+}
+
+type EditSpawnHostInput struct {
+	HostID              string      `json:"hostId"`
+	DisplayName         *string     `json:"displayName"`
+	Expiration          *time.Time  `json:"expiration"`
+	NoExpiration        *bool       `json:"noExpiration"`
+	InstanceType        *string     `json:"instanceType"`
+	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
+	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
+	Volume              *string     `json:"volume"`
 }
 
 type GroupedFiles struct {

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -321,6 +322,72 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(spawnHost)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+	}
+	return &apiHost, nil
+}
+
+func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
+	usr := MustHaveUser(ctx)
+	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+
+	if !CanUpdateSpawnHost(h, usr) {
+		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
+	}
+
+	opts := host.HostModifyOptions{}
+	if editSpawnHostInput.DisplayName != nil {
+		opts.NewName = *editSpawnHostInput.DisplayName
+	}
+	if editSpawnHostInput.NoExpiration != nil {
+		opts.NoExpiration = editSpawnHostInput.NoExpiration
+	}
+	if editSpawnHostInput.Expiration != nil {
+		err = h.SetExpirationTime(*editSpawnHostInput.Expiration)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost expiration time: %s", err))
+		}
+	}
+	if editSpawnHostInput.InstanceType != nil {
+		var config *evergreen.Settings
+		config, err = evergreen.GetConfig()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
+		}
+		allowedTypes := config.Providers.AWS.AllowedInstanceTypes
+
+		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *editSpawnHostInput.InstanceType, allowedTypes)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error validating instance type: %s", err))
+		}
+		opts.InstanceType = *editSpawnHostInput.InstanceType
+	}
+	if editSpawnHostInput.AddedInstanceTags != nil || editSpawnHostInput.DeletedInstanceTags != nil {
+		addedTags := []host.Tag{}
+		deletedTags := []string{}
+		for _, tag := range editSpawnHostInput.AddedInstanceTags {
+			tag.CanBeModified = true
+			addedTags = append(addedTags, *tag)
+		}
+		for _, tag := range editSpawnHostInput.DeletedInstanceTags {
+			deletedTags = append(deletedTags, tag.Key)
+		}
+		opts.AddInstanceTags = addedTags
+		opts.DeleteInstanceTags = deletedTags
+	}
+	if editSpawnHostInput.Volume != nil {
+		opts.AttachVolume = *editSpawnHostInput.Volume
+	}
+	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
+	}
+
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(h)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 	}

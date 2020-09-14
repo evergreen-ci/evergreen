@@ -148,6 +148,7 @@ type ComplexityRoot struct {
 
 	Host struct {
 		AvailabilityZone      func(childComplexity int) int
+		DisplayName           func(childComplexity int) int
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
@@ -251,6 +252,7 @@ type ComplexityRoot struct {
 		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
+		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch               func(childComplexity int, patchID string) int
 		RemoveFavoriteProject      func(childComplexity int, identifier string) int
 		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
@@ -668,6 +670,7 @@ type MutationResolver interface {
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
+	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1109,6 +1112,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.AvailabilityZone(childComplexity), true
+
+	case "Host.displayName":
+		if e.complexity.Host.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.Host.DisplayName(childComplexity), true
 
 	case "Host.distro":
 		if e.complexity.Host.Distro == nil {
@@ -1624,6 +1634,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DetachVolumeFromHost(childComplexity, args["volumeId"].(string)), true
+
+	case "Mutation.editSpawnHost":
+		if e.complexity.Mutation.EditSpawnHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editSpawnHost_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditSpawnHost(childComplexity, args["spawnHost"].(*EditSpawnHostInput)), true
 
 	case "Mutation.enqueuePatch":
 		if e.complexity.Mutation.EnqueuePatch == nil {
@@ -3851,6 +3873,7 @@ type Mutation {
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
 }
 
 enum SpawnHostStatusActions {
@@ -3969,6 +3992,17 @@ input SpawnHostInput {
   homeVolumeSize: Int
 }
 
+input EditSpawnHostInput {
+  hostId: String!
+  displayName: String
+  expiration: Time 
+  noExpiration: Boolean
+  instanceType: String
+  addedInstanceTags: [InstanceTagInput!]
+  deletedInstanceTags: [InstanceTagInput!]
+  volume: String
+}
+
 input SpawnVolumeInput {
   availabilityZone: String!
   size: Int!
@@ -4023,6 +4057,7 @@ type Host {
   availabilityZone: String
   instanceTags: [InstanceTag]
   expiration: Time
+  displayName: String
 }
 
 type InstanceTag {
@@ -4031,6 +4066,10 @@ type InstanceTag {
   canBeModified: Boolean
 }
 
+input InstanceTagInput {
+  key: String!
+  value: String! 
+}
 type DistroInfo {
   id: String
   workDir: String
@@ -4594,6 +4633,20 @@ func (ec *executionContext) field_Mutation_detachVolumeFromHost_args(ctx context
 		}
 	}
 	args["volumeId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_editSpawnHost_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *EditSpawnHostInput
+	if tmp, ok := rawArgs["spawnHost"]; ok {
+		arg0, err = ec.unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["spawnHost"] = arg0
 	return args, nil
 }
 
@@ -7793,6 +7846,37 @@ func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Host_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _HostEventLogData_agentRevision(ctx context.Context, field graphql.CollectedField, obj *model.HostAPIEventData) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10449,6 +10533,47 @@ func (ec *executionContext) _Mutation_removeVolume(ctx context.Context, field gr
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_editSpawnHost_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditSpawnHost(rctx, args["spawnHost"].(*EditSpawnHostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
@@ -19673,6 +19798,66 @@ func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj i
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context, obj interface{}) (EditSpawnHostInput, error) {
+	var it EditSpawnHostInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "hostId":
+			var err error
+			it.HostID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "displayName":
+			var err error
+			it.DisplayName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "expiration":
+			var err error
+			it.Expiration, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "noExpiration":
+			var err error
+			it.NoExpiration, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "instanceType":
+			var err error
+			it.InstanceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "addedInstanceTags":
+			var err error
+			it.AddedInstanceTags, err = ec.unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "deletedInstanceTags":
+			var err error
+			it.DeletedInstanceTags, err = ec.unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "volume":
+			var err error
+			it.Volume, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, obj interface{}) (model.APIGithubUser, error) {
 	var it model.APIGithubUser
 	var asMap = obj.(map[string]interface{})
@@ -19682,6 +19867,30 @@ func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, o
 		case "lastKnownAs":
 			var err error
 			it.LastKnownAs, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputInstanceTagInput(ctx context.Context, obj interface{}) (host.Tag, error) {
+	var it host.Tag
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "key":
+			var err error
+			it.Key, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "value":
+			var err error
+			it.Value, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -20778,6 +20987,8 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceTags(ctx, field, obj)
 		case "expiration":
 			out.Values[i] = ec._Host_expiration(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._Host_displayName(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -21337,6 +21548,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removeVolume":
 			out.Values[i] = ec._Mutation_removeVolume(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "editSpawnHost":
+			out.Values[i] = ec._Mutation_editSpawnHost(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -24440,6 +24656,18 @@ func (ec *executionContext) marshalNID2ᚖstring(ctx context.Context, sel ast.Se
 	return ec.marshalNID2string(ctx, sel, *v)
 }
 
+func (ec *executionContext) unmarshalNInstanceTagInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, v interface{}) (host.Tag, error) {
+	return ec.unmarshalInputInstanceTagInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNInstanceTagInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, v interface{}) (*host.Tag, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNInstanceTagInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
 	return graphql.UnmarshalInt(v)
 }
@@ -26092,6 +26320,18 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, sel, *v)
 }
 
+func (ec *executionContext) unmarshalOEditSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx context.Context, v interface{}) (EditSpawnHostInput, error) {
+	return ec.unmarshalInputEditSpawnHostInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx context.Context, v interface{}) (*EditSpawnHostInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOEditSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIFile) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -26263,6 +26503,26 @@ func (ec *executionContext) marshalOInstanceTag2ᚕgithubᚗcomᚋevergreenᚑci
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx context.Context, v interface{}) ([]*host.Tag, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*host.Tag, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNInstanceTagInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
