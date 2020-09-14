@@ -95,7 +95,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.String("region", "us-east-1"),
-		birch.EC.String("ami", "ami-1234"),
+		birch.EC.String("ami", "ami-123456"),
 		birch.EC.String("vpc_name", "my_vpc"),
 		birch.EC.String("key_name", "myKey"),
 		birch.EC.String("instance_type", "t1.micro"),

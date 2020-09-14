@@ -500,7 +500,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 		Id:       "rainbow-lollipop",
 		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{
-			birch.NewDocument().Set(birch.EC.String("ami", "ami-1234")),
+			birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")),
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
