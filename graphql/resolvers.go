@@ -75,6 +75,9 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 }
 
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
+	if obj == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("host is nil"))
+	}
 	volumes := []*restModel.APIVolume{}
 	for _, volId := range obj.AttachedVolumeIDs {
 		volume, err := r.sc.FindVolumeById(volId)
@@ -552,7 +555,6 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
 	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
 	for i, _ := range volumes {
 		volumePointers = append(volumePointers, &volumes[i])
