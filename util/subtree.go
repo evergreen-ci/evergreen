@@ -10,6 +10,7 @@ import (
 const (
 	MarkerTaskID   = "EVR_TASK_ID"
 	MarkerAgentPID = "EVR_AGENT_PID"
+	MarkerCI       = "CI"
 )
 
 func envHasMarkers(key string, env []string) bool {
@@ -31,7 +32,7 @@ func envHasMarkers(key string, env []string) bool {
 
 	// Otherwise, kill any proc started by any agent
 	for _, envVar := range env {
-		if strings.HasPrefix(envVar, MarkerTaskID) || strings.HasPrefix(envVar, MarkerAgentPID) {
+		if strings.HasPrefix(envVar, MarkerTaskID) || strings.HasPrefix(envVar, MarkerAgentPID) || strings.HasPrefix(envVar, MarkerCI) {
 			return true
 		}
 	}

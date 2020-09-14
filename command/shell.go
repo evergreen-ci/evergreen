@@ -119,8 +119,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	env := map[string]string{
 		util.MarkerTaskID:   conf.Task.Id,
 		util.MarkerAgentPID: strconv.Itoa(os.Getpid()),
+		util.MarkerCI:       "true",
 		"GOCACHE":           filepath.Join(c.WorkingDir, ".gocache"),
-		"CI":                "true",
 	}
 	addTempDirs(env, taskTmpDir)
 
