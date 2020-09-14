@@ -61,6 +61,8 @@ type Mock struct {
 	GetSubscriptionsFail        bool
 	CreatedHost                 apimodels.CreateHost
 
+	CedarGRPCConn *grpc.ClientConn
+
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults *task.LocalTestResults
@@ -266,9 +268,12 @@ func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, erro
 	}, nil
 }
 
-// GetCedarGRPCConn returns a nil gRPC connection.
+// GetCedarGRPCConn returns gRPC connection if it is set.
 func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	return nil, errors.New("(*Mock) GetCedarGRPCConn is not implemented")
+	if c.CedarGRPCConn == nil {
+		return nil, errors.New("Cedar gRPC connection is unset")
+	}
+	return c.CedarGRPCConn, nil
 }
 
 // SendTaskLogMessages posts tasks messages to the api server
