@@ -75,23 +75,21 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 }
 
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
-	if obj == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("host is nil"))
-	}
-	volumes := []*restModel.APIVolume{}
+	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
 	for _, volId := range obj.AttachedVolumeIDs {
 		volume, err := r.sc.FindVolumeById(volId)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volume.ID))
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
 		}
 		if volume == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
+			return volumes, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volId))
 		}
-		apiVolume := restModel.APIVolume{}
-		if err := apiVolume.BuildFromService(volume); err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", volume.ID)
+		apiVolume := &restModel.APIVolume{}
+		err = apiVolume.BuildFromService(volume)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error building volume '%s' from service", volId)
 		}
-		volumes = append(volumes, &apiVolume)
+		volumes = append(volumes, apiVolume)
 	}
 
 	return volumes, nil
