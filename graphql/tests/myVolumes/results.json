@@ -16,7 +16,9 @@
               "hostID": "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc",
               "noExpiration": false,
               "homeVolume": true,
-              "hostDisplayName": "turtles rule"
+              "host": {
+                "id": "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc"
+              }
             },
             {
               "id": "1da2d18d7fea548ed83a05895764056bc7437d6cac1c13d78f5fd2f27eb40a84",
@@ -29,7 +31,9 @@
               "hostID": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479",
               "noExpiration": false,
               "homeVolume": true,
-              "hostDisplayName": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479"
+              "host": {
+                "id": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479"
+              }
             },
             {
               "id": "randomid",
@@ -42,7 +46,7 @@
               "hostID": "",
               "noExpiration": false,
               "homeVolume": true,
-              "hostDisplayName": null
+              "host": null
             }
           ]
         }
