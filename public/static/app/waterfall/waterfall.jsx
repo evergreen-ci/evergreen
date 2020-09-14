@@ -76,8 +76,9 @@ class JiraLink extends React.PureComponent {
       contents = _.map(tokens, function(token, i){
         let hasSpace = i !== (tokens.length - 1);
         let maybeSpace = hasSpace ? ' ': '';
-        if(token.match(JIRA_REGEX)) {
-          let jiraLink = "https://"+jiraHost+"/browse/"+token;
+        let capture = '';
+        if(capture = token.match(JIRA_REGEX)) {
+          let jiraLink = "https://"+jiraHost+"/browse/"+capture;
           return (
              <a href={jiraLink}>{token+maybeSpace}</a>
           );

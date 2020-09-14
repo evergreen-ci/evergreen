@@ -18,7 +18,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			distroId := "distro_id"
 			userId := "user_id"
 			// simulate ProviderSettingsMap from DistroData
-			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-1234")).ExportMap()
+			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
 			// log some events, sleeping in between to make sure the times are different
 			LogDistroAdded(distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
@@ -56,7 +56,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			doc.ExtendInterface(eventData.Data)
 			ami, ok := doc.Lookup("ami").StringValueOK()
 			So(ok, ShouldBeTrue)
-			So(ami, ShouldEqual, "ami-1234")
+			So(ami, ShouldEqual, "ami-123456")
 
 			event = eventsForDistro[2]
 			So(event.EventType, ShouldEqual, EventDistroRemoved)

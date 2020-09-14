@@ -67,6 +67,11 @@ func (self *Expansions) Exists(expansion string) bool {
 	return ok
 }
 
+// Remove deletes a value from the expansions.
+func (self *Expansions) Remove(expansion string) {
+	delete(*self, expansion)
+}
+
 // Apply the expansions to a single string.
 // Return the expanded string, or an error if the input string is malformed.
 func (self *Expansions) ExpandString(toExpand string) (string, error) {

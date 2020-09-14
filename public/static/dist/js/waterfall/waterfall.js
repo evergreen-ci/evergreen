@@ -96,8 +96,9 @@ var JiraLink = function (_React$PureComponent) {
         contents = _.map(tokens, function (token, i) {
           var hasSpace = i !== tokens.length - 1;
           var maybeSpace = hasSpace ? ' ' : '';
-          if (token.match(JIRA_REGEX)) {
-            var jiraLink = "https://" + jiraHost + "/browse/" + token;
+          var capture = '';
+          if (capture = token.match(JIRA_REGEX)) {
+            var jiraLink = "https://" + jiraHost + "/browse/" + capture;
             return React.createElement(
               "a",
               { href: jiraLink },

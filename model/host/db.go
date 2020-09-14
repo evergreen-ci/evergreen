@@ -1341,7 +1341,10 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{StatusKey: evergreen.HostStarting},
+			"$match": bson.M{
+				StatusKey:      evergreen.HostStarting,
+				ProvisionedKey: false,
+			},
 		},
 		{
 			"$sort": bson.M{
