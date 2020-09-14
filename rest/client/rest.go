@@ -983,7 +983,6 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 }
 
 func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([]serviceModel.ParameterInfo, error) {
-	grip.Error(project)
 	path := fmt.Sprintf("projects/%s/parameters", project)
 	info := requestInfo{
 		method:  get,

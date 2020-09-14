@@ -287,13 +287,13 @@ func listParameters(ctx context.Context, confPath, project, filename string) err
 		fmt.Println("No parameters to list for project")
 		return nil
 	}
+	t := tabby.New()
+	t.AddHeader("Name", "Default", "Description")
+
 	for _, param := range params {
-		// list
-		fmt.Printf("Parameter '%s': Default '%s'\n", param.Key, param.Value)
-		if param.Description != "" {
-			fmt.Printf("\tDescription: %s\n", param.Description)
-		}
+		t.AddLine(param.Key, param.Value, param.Description)
 	}
+	t.Print()
 	return nil
 }
 
