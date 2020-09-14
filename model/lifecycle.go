@@ -153,7 +153,7 @@ func AbortBuild(buildId string, caller string) error {
 }
 
 func TryMarkVersionStarted(versionId string, startTime time.Time) error {
-	return VersionUpdateOne(
+	err := VersionUpdateOne(
 		bson.M{
 			VersionIdKey:     versionId,
 			VersionStatusKey: bson.M{"$ne": evergreen.VersionStarted},
@@ -163,6 +163,10 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 			VersionStatusKey:    evergreen.VersionStarted,
 		}},
 	)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // MarkVersionCompleted updates the status of a completed version to reflect its correct state by
