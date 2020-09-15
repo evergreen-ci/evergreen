@@ -175,8 +175,8 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 		c.Env["GOCACHE"] = filepath.Join(c.WorkingDir, ".gocache")
 	}
 
-	if _, alreadyDefined := c.Env[util.MarkerCI]; !alreadyDefined {
-		c.Env[util.MarkerCI] = "true"
+	if _, alreadyDefined := c.Env["CI"]; !alreadyDefined {
+		c.Env["CI"] = "true"
 	}
 
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
