@@ -568,6 +568,7 @@ type Task {
   timeTaken: Duration
   version: String!
   minQueuePosition: Int!
+  isPerfPluginEnabled: Boolean!
 }
 
 type Projects {

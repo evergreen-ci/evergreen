@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/mitchellh/mapstructure"
 	"net/http"
 	"sort"
 	"strconv"
@@ -2011,6 +2013,22 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	name := generator.DisplayName
 
 	return &name, nil
+}
+
+func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) bool {
+	var perfPlugin *plugin.PerfPlugin
+	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
+		err := mapstructure.Decode(perfPluginSettings, perfPlugin)
+		if err != nil {
+			return false
+		}
+		for _, projectName := range perfPlugin.Projects {
+			if projectName == *obj.ProjectId {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
