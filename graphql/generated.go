@@ -4055,7 +4055,7 @@ type Host {
   user: String
   distro: DistroInfo
   availabilityZone: String
-  instanceTags: [InstanceTag]!
+  instanceTags: [InstanceTag!]!
   expiration: Time
   displayName: String
 }
@@ -7815,7 +7815,7 @@ func (ec *executionContext) _Host_instanceTags(ctx context.Context, field graphq
 	}
 	res := resTmp.([]host.Tag)
 	fc.Result = res
-	return ec.marshalNInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, field.Selections, res)
+	return ec.marshalNInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -24662,7 +24662,11 @@ func (ec *executionContext) marshalNID2ᚖstring(ctx context.Context, sel ast.Se
 	return ec.marshalNID2string(ctx, sel, *v)
 }
 
-func (ec *executionContext) marshalNInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v []host.Tag) graphql.Marshaler {
+func (ec *executionContext) marshalNInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {
+	return ec._InstanceTag(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInstanceTag2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx context.Context, sel ast.SelectionSet, v []host.Tag) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -24686,7 +24690,7 @@ func (ec *executionContext) marshalNInstanceTag2ᚕgithubᚗcomᚋevergreenᚑci
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, sel, v[i])
+			ret[i] = ec.marshalNInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -26502,10 +26506,6 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 		return graphql.Null
 	}
 	return ec.marshalOID2string(ctx, sel, *v)
-}
-
-func (ec *executionContext) marshalOInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {
-	return ec._InstanceTag(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTagᚄ(ctx context.Context, v interface{}) ([]*host.Tag, error) {
