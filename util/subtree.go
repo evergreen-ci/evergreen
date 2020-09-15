@@ -40,8 +40,8 @@ func envHasMarkers(key string, env []string) bool {
 }
 
 // KillSpawnedProcs cleans up any tasks that were spawned by the given task.
-func KillSpawnedProcs(key string, logger grip.Journaler) error {
+func KillSpawnedProcs(key, workingDir string, logger grip.Journaler) error {
 	// Clean up all shell processes spawned during the execution of this task by this agent,
 	// by calling the platform-specific "cleanup" function
-	return cleanup(key, logger)
+	return cleanup(key, workingDir, logger)
 }
