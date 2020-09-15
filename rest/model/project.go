@@ -198,6 +198,35 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
+type APIParameterInfo struct {
+	Key         *string `json:"key"`
+	Value       *string `json:"value"`
+	Description *string `json:"description"`
+}
+
+func (c *APIParameterInfo) ToService() (interface{}, error) {
+	res := model.ParameterInfo{}
+	res.Key = FromStringPtr(c.Key)
+	res.Value = FromStringPtr(c.Value)
+	res.Description = FromStringPtr(c.Description)
+	return res, nil
+}
+
+func (c *APIParameterInfo) BuildFromService(h interface{}) error {
+	var info model.ParameterInfo
+	switch h.(type) {
+	case model.ParameterInfo:
+		info = h.(model.ParameterInfo)
+	case *model.ParameterInfo:
+		info = *h.(*model.ParameterInfo)
+	}
+
+	c.Key = ToStringPtr(info.Key)
+	c.Value = ToStringPtr(info.Value)
+	c.Description = ToStringPtr(info.Description)
+	return nil
+}
+
 type APIProjectRef struct {
 	Owner                       *string              `json:"owner_name"`
 	Repo                        *string              `json:"repo_name"`

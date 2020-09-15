@@ -841,5 +841,16 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' not found", h.projectId))
 	}
 
-	return gimlet.NewJSONResponse(p.Parameters)
+	// convert to API structure
+	res := make([]model.APIParameterInfo, len(p.Parameters))
+	for i, param := range p.Parameters {
+		var apiParam model.APIParameterInfo
+		if err = apiParam.BuildFromService(param); err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
+				"error converting to API structure"))
+		}
+		res[i] = apiParam
+	}
+
+	return gimlet.NewJSONResponse(res)
 }
