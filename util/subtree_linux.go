@@ -146,7 +146,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 }
 
 func processHasMarkers(pid int, key string, logger grip.Journaler) bool {
-	env, err = getEnv(pid)
+	env, err := getEnv(pid)
 	if err != nil {
 		if !os.IsPermission(err) {
 			logger.Infof("Could not get environment for process %d", pid)
@@ -156,7 +156,7 @@ func processHasMarkers(pid int, key string, logger grip.Journaler) bool {
 	return envHasMarkers(key, env)
 }
 
-func executableInWorkingDir(pid, workingDir string, logger grip.Journaler) bool {
+func executableInWorkingDir(pid int, workingDir string, logger grip.Journaler) bool {
 	executablePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
 		if !os.IsPermission(err) {
