@@ -288,7 +288,7 @@ type Host {
   user: String
   distro: DistroInfo
   availabilityZone: String
-  instanceTags: [InstanceTag]
+  instanceTags: [InstanceTag!]!
   expiration: Time
   displayName: String
 }
