@@ -2016,7 +2016,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	return &name, nil
 }
 
-func (r *patchResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
+func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	var perfPlugin *plugin.PerfPlugin
 	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
 		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
