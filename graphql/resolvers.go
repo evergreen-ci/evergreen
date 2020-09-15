@@ -3,13 +3,14 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/mitchellh/mapstructure"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
