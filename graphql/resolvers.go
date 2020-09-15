@@ -2015,20 +2015,20 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	return &name, nil
 }
 
-func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) bool {
+func (r *patchResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
 	var perfPlugin *plugin.PerfPlugin
 	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-		err := mapstructure.Decode(perfPluginSettings, perfPlugin)
+		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
 		if err != nil {
-			return false
+			return false, err
 		}
 		for _, projectName := range perfPlugin.Projects {
 			if projectName == *obj.ProjectId {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {

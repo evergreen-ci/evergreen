@@ -25,6 +25,9 @@ models:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    fields:
+      isPerfPluginEnabled:
+        resolver: true
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   VariantTask:
@@ -47,8 +50,6 @@ models:
       spawnHostLink:
         resolver: true
       status:
-        resolver: true
-      isPerfPluginEnabled:
         resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
