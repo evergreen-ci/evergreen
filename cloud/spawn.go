@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -24,20 +26,21 @@ import (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	DistroId             string
-	Userdata             string
-	UserName             string
-	PublicKey            string
-	ProvisionOptions     *host.ProvisionOptions
-	InstanceTags         []host.Tag
-	InstanceType         string
-	Region               string
-	NoExpiration         bool
-	IsVirtualWorkstation bool
-	IsCluster            bool
-	HomeVolumeSize       int
-	HomeVolumeID         string
-	Expiration           *time.Time
+	DistroId              string
+	Userdata              string
+	UserName              string
+	PublicKey             string
+	ProvisionOptions      *host.ProvisionOptions
+	UseProjectSetupScript bool
+	InstanceTags          []host.Tag
+	InstanceType          string
+	Region                string
+	NoExpiration          bool
+	IsVirtualWorkstation  bool
+	IsCluster             bool
+	HomeVolumeSize        int
+	HomeVolumeID          string
+	Expiration            *time.Time
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -136,6 +139,17 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 		if AztoRegion(volume.AvailabilityZone) != so.Region {
 			return nil, errors.Errorf("cannot use volume in zone '%s' with host in region '%s'", volume.AvailabilityZone, so.Region)
+		}
+	}
+	if so.UseProjectSetupScript {
+		so.ProvisionOptions.SetupScript, err = model.GetSetupScriptForTask(ctx, so.ProvisionOptions.TaskId)
+		if err != nil {
+			// still spawn the host if the setup script is buggy
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "failed to get setup script for host",
+				"task_id": so.ProvisionOptions.TaskId,
+				"user_id": so.UserName,
+			}))
 		}
 	}
 

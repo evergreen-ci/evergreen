@@ -281,6 +281,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
         config.data['task_id'] = spawnInfo.task_id;
         config.data['task_sync'] = spawnInfo.task_sync;
         config.data['setup_script'] = spawnInfo.setup_script;
+        config.data['use_project_setup_script'] = spawnInfo.use_project_setup_script;
         config.data['distro'] = spawnInfo.distroId;
         config.data['region'] = spawnInfo.region;
         config.data['save_key'] = spawnInfo.saveKey;
