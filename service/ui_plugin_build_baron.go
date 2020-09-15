@@ -134,7 +134,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		TestIds []string `json:"tests"`
 	}
 
-	taskNotFound, err := graphql.BbFileTicket(input.TaskId)
+	taskNotFound, err := graphql.BbFileTicket(input.TaskId, r.Context())
 
 	if taskNotFound {
 		gimlet.WriteJSON(w, err.Error())

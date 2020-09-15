@@ -2042,8 +2042,8 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	}, nil
 }
 
-func (r *mutationResolver) BbFileTicket(ctx context.Context, taskId string) (bool, error) {
-	taskNotFound, err := BbFileTicket(taskId)
+func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskId string) (bool, error) {
+	taskNotFound, err := BbFileTicket(taskId, ctx)
 	successful := true
 
 	if err != nil {

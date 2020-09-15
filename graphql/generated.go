@@ -250,7 +250,7 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
-		BbFileTicket               func(childComplexity int, taskID string) int
+		BbCreateTicket             func(childComplexity int, taskID string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
 		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -673,7 +673,7 @@ type MutationResolver interface {
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
-	BbFileTicket(ctx context.Context, taskID string) (bool, error)
+	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1615,17 +1615,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumeAndHost"].(VolumeHost)), true
 
-	case "Mutation.bbFileTicket":
-		if e.complexity.Mutation.BbFileTicket == nil {
+	case "Mutation.bbCreateTicket":
+		if e.complexity.Mutation.BbCreateTicket == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_bbFileTicket_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_bbCreateTicket_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.BbFileTicket(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -3903,7 +3903,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
-  bbFileTicket(taskId: String!): Boolean!
+  bbCreateTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -4638,7 +4638,7 @@ func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_bbFileTicket_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -10634,7 +10634,7 @@ func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field g
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_bbFileTicket(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10650,7 +10650,7 @@ func (ec *executionContext) _Mutation_bbFileTicket(ctx context.Context, field gr
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_bbFileTicket_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_bbCreateTicket_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -10658,7 +10658,7 @@ func (ec *executionContext) _Mutation_bbFileTicket(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().BbFileTicket(rctx, args["taskId"].(string))
+		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21696,8 +21696,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "bbFileTicket":
-			out.Values[i] = ec._Mutation_bbFileTicket(ctx, field)
+		case "bbCreateTicket":
+			out.Values[i] = ec._Mutation_bbCreateTicket(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

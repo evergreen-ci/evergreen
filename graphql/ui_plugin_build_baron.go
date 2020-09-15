@@ -26,7 +26,7 @@ const (
 )
 
 // bbFileTicket creates a JIRA ticket for a task with the given test failures.
-func BbFileTicket(taskId string) (bool, error) {
+func BbFileTicket(taskId string, context context.Context) (bool, error) {
 	taskNotFound := false
 	// Find information about the task
 	t, err := task.FindOne(task.ById(taskId))
@@ -47,7 +47,7 @@ func BbFileTicket(taskId string) (bool, error) {
 		return taskNotFound, err
 	}
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	err = queue.Put(context.TODO(), units.NewEventSendJob(n.ID, ts))
+	err = queue.Put(context, units.NewEventSendJob(n.ID, ts))
 	if err != nil {
 		return taskNotFound, errors.Wrap(err, fmt.Sprintf("error inserting notification job: %s", err.Error()))
 
