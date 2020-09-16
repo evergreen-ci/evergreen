@@ -74,33 +74,33 @@ func TestSendTestResultsToCedar(t *testing.T) {
 			assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
 		}
 	}
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock, logger client.LoggerProducer){
-		"Succeeds": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock, logger client.LoggerProducer) {
-			require.NoError(t, sendTestResultsToCedar(ctx, tsk, comm, results, logger))
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock){
+		"Succeeds": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+			require.NoError(t, sendTestResultsToCedar(ctx, tsk, comm, results))
 
 			checkRecord(t, srv)
 			checkResults(t, srv)
 			assert.NotZero(t, srv.Close.TestResultsRecordId)
 		},
-		"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock, logger client.LoggerProducer) {
+		"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 			srv.CreateErr = true
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results, logger))
+			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results))
 			assert.Empty(t, srv.Results)
 			assert.Zero(t, srv.Close)
 		},
-		"FailsIfAddingResultsFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock, logger client.LoggerProducer) {
+		"FailsIfAddingResultsFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 			srv.AddErr = true
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results, logger))
+			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results))
 			checkRecord(t, srv)
 			assert.Empty(t, srv.Results)
 			assert.Zero(t, srv.Close)
 		},
-		"FailsIfClosingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock, logger client.LoggerProducer) {
+		"FailsIfClosingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 			srv.CloseErr = true
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results, logger))
+			require.Error(t, sendTestResultsToCedar(ctx, tsk, comm, results))
 			checkRecord(t, srv)
 			checkResults(t, srv)
 			assert.Zero(t, srv.Close)
@@ -109,14 +109,10 @@ func TestSendTestResultsToCedar(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			comm := client.NewMock("http://localhost.com")
+			comm := client.NewMock("url")
 			srv := setupCedarTestResults(ctx, t, comm)
 
-			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: tsk.Id, Secret: tsk.Secret}, nil)
-			require.NoError(t, err)
-
-			testCase(ctx, t, srv, comm, logger)
+			testCase(ctx, t, srv, comm)
 		})
 	}
-
 }

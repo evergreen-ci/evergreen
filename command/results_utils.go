@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/timber/testresults"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -27,9 +26,10 @@ func sendTestResults(ctx context.Context, conf *model.TaskConfig,
 		return errors.WithStack(err)
 	}
 
-	if err := sendTestResultsToCedar(ctx, conf.Task, comm, results, logger); err != nil {
-		return errors.Wrap(err, "sending test results to Cedar")
-	}
+	// TODO (EVG-7780): send test results for projects that enable it.
+	// if err := sendTestResultsToCedar(ctx, conf.Task, comm, results); err != nil {
+	//     return errors.Wrap(err, "sending test results to Cedar")
+	// }
 
 	logger.Task().Info("Attach test results succeeded")
 
@@ -72,9 +72,10 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		return errors.Wrap(err, "problem sending test results")
 	}
 
-	if err := sendTestResultsToCedar(ctx, conf.Task, comm, &allResults, logger); err != nil {
-		return errors.Wrap(err, "sending test results to Cedar")
-	}
+	// TODO (EVG-7780): send test results for projects that enable it.
+	// if err := sendTestResultsToCedar(ctx, conf.Task, comm, &allResults); err != nil {
+	//     return errors.Wrap(err, "sending test results to Cedar")
+	// }
 
 	logger.Task().Info("Successfully sent parsed results to server")
 
@@ -82,8 +83,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 }
 
 // sendTestResultsToCedar sends the given test results to Cedar.
-// kim: TODO: remove logger once tested in staging
-func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Communicator, results *task.LocalTestResults, logger client.LoggerProducer) error {
+func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Communicator, results *task.LocalTestResults) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting cedar connection")
@@ -93,45 +93,20 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Commu
 		return errors.Wrap(err, "creating test results client")
 	}
 
-	opts := makeCedarTestResultsRecord(t)
-	logger.Task().Info(message.Fields{
-		"message":       "kim: creating test results record",
-		"create_record": opts,
-	})
-
-	id, err := client.CreateRecord(ctx, opts)
+	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t))
 	if err != nil {
 		return errors.Wrap(err, "creating test results record")
 	}
-	logger.Task().Info(message.Fields{
-		"message":   "kim: created test results record",
-		"record_id": id,
-	})
 
 	rs := makeCedarTestResults(id, t, results)
-	logger.Task().Info(message.Fields{
-		"message":      "kim: sending test results to Cedar",
-		"test_results": rs,
-		"record_id":    id,
-	})
 
 	if err = client.AddResults(ctx, rs); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}
 
-	logger.Task().Info(message.Fields{
-		"message":   "closing test results record",
-		"record_id": id,
-	})
-
 	if err = client.CloseRecord(ctx, id); err != nil {
 		return errors.Wrap(err, "closing test results record")
 	}
-
-	logger.Task().Info(message.Fields{
-		"message":   "finished recording test results",
-		"record_id": id,
-	})
 
 	return nil
 }
@@ -154,7 +129,7 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 	for _, r := range results.Results {
 		rs.Results = append(rs.Results, testresults.Result{
 			Name:        r.TestFile,
-			Trial:       int32(r.Execution), // kim: TODO: verify if this is actually set
+			Trial:       int32(t.Execution), // kim: TODO: what does this field mean?
 			Status:      r.Status,
 			LogURL:      r.URL,
 			LineNum:     int32(r.LineNum),

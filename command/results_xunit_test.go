@@ -144,7 +144,8 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("/dev/null")
-	cedarSrv := setupCedarTestResults(ctx, t, comm)
+	// TODO (EVG-7780): add this line once test results are being sent to Cedar.
+	// cedarSrv := setupCedarTestResults(ctx, t, comm)
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err, "failed to setup test data")
 
@@ -167,16 +168,17 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	}
 	assert.True(found)
 
-	require.NotEmpty(t, cedarSrv.Results)
-	for id, results := range cedarSrv.Results {
-		assert.NotEmpty(id)
-		assert.NotEmpty(results)
-		for _, res := range results {
-			assert.NotEmpty(res.Results)
-			for _, r := range res.Results {
-				assert.NotEmpty(r.TestName)
-				assert.NotEmpty(r.Status)
-			}
-		}
-	}
+	// TODO (EVG-7780): add this test once test results are being sent to Cedar.
+	// require.NotEmpty(t, cedarSrv.Results)
+	// for id, results := range cedarSrv.Results {
+	//     assert.NotEmpty(id)
+	//     assert.NotEmpty(results)
+	//     for _, res := range results {
+	//         assert.NotEmpty(res.Results)
+	//         for _, r := range res.Results {
+	//             assert.NotEmpty(r.TestName)
+	//             assert.NotEmpty(r.Status)
+	//         }
+	//     }
+	// }
 }
