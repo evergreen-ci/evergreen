@@ -127,7 +127,6 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 	for _, r := range results.Results {
 		rs.Results = append(rs.Results, testresults.Result{
 			Name:        r.TestFile,
-			Trial:       int32(t.Execution), // kim: TODO: what does this field mean?
 			Status:      r.Status,
 			LogURL:      r.URL,
 			LineNum:     int32(r.LineNum),
