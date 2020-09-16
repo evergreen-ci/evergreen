@@ -98,9 +98,7 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Commu
 		return errors.Wrap(err, "creating test results record")
 	}
 
-	rs := makeCedarTestResults(id, t, results)
-
-	if err = client.AddResults(ctx, rs); err != nil {
+	if err = client.AddResults(ctx, makeCedarTestResults(id, t, results)); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}
 
