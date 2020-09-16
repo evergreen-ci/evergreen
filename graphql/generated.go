@@ -395,6 +395,7 @@ type ComplexityRoot struct {
 		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Projects           func(childComplexity int) int
 		SiteBanner         func(childComplexity int) int
+		SpruceConfig       func(childComplexity int) int
 		Task               func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions  func(childComplexity int, taskID string) int
 		TaskFiles          func(childComplexity int, taskID string, execution *int) int
@@ -424,6 +425,11 @@ type ComplexityRoot struct {
 	SiteBanner struct {
 		Text  func(childComplexity int) int
 		Theme func(childComplexity int) int
+	}
+
+	SpruceConfig struct {
+		SiteBanner   func(childComplexity int) int
+		UserVoiceURL func(childComplexity int) int
 	}
 
 	Task struct {
@@ -699,6 +705,7 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
+	SpruceConfig(ctx context.Context) (*SpruceConfig, error)
 	AwsRegions(ctx context.Context) ([]string, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
@@ -2514,6 +2521,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SiteBanner(childComplexity), true
 
+	case "Query.spruceConfig":
+		if e.complexity.Query.SpruceConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.SpruceConfig(childComplexity), true
+
 	case "Query.task":
 		if e.complexity.Query.Task == nil {
 			break
@@ -2688,6 +2702,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SiteBanner.Theme(childComplexity), true
+
+	case "SpruceConfig.siteBanner":
+		if e.complexity.SpruceConfig.SiteBanner == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.SiteBanner(childComplexity), true
+
+	case "SpruceConfig.userVoiceUrl":
+		if e.complexity.SpruceConfig.UserVoiceURL == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.UserVoiceURL(childComplexity), true
 
 	case "Task.aborted":
 		if e.complexity.Task.Aborted == nil {
@@ -3815,6 +3843,7 @@ var sources = []*ast.Source{
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  spruceConfig: SpruceConfig
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
@@ -4493,6 +4522,11 @@ type ClientBinary {
   os: String
   url: String
   displayName: String
+}
+
+type SpruceConfig {
+  userVoiceUrl: String
+  siteBanner: SiteBanner
 }
 
 type SiteBanner {
@@ -13051,6 +13085,37 @@ func (ec *executionContext) _Query_userSettings(ctx context.Context, field graph
 	return ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_spruceConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SpruceConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*SpruceConfig)
+	fc.Result = res
+	return ec.marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpruceConfig(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13998,6 +14063,68 @@ func (ec *executionContext) _SiteBanner_theme(ctx context.Context, field graphql
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_userVoiceUrl(ctx context.Context, field graphql.CollectedField, obj *SpruceConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserVoiceURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_siteBanner(ctx context.Context, field graphql.CollectedField, obj *SpruceConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SiteBanner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIBanner)
+	fc.Result = res
+	return ec.marshalOSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -22413,6 +22540,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_userSettings(ctx, field)
 				return res
 			})
+		case "spruceConfig":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_spruceConfig(ctx, field)
+				return res
+			})
 		case "awsRegions":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -22731,6 +22869,32 @@ func (ec *executionContext) _SiteBanner(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var spruceConfigImplementors = []string{"SpruceConfig"}
+
+func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.SelectionSet, obj *SpruceConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spruceConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpruceConfig")
+		case "userVoiceUrl":
+			out.Values[i] = ec._SpruceConfig_userVoiceUrl(ctx, field, obj)
+		case "siteBanner":
+			out.Values[i] = ec._SpruceConfig_siteBanner(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26786,6 +26950,17 @@ func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreen
 	return ec._SearchReturnInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOSiteBanner2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx context.Context, sel ast.SelectionSet, v model.APIBanner) graphql.Marshaler {
+	return ec._SiteBanner(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOSiteBanner2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBanner(ctx context.Context, sel ast.SelectionSet, v *model.APIBanner) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SiteBanner(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
 	var res SortDirection
 	return res, res.UnmarshalGQL(v)
@@ -26820,6 +26995,17 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 	}
 	res, err := ec.unmarshalOSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx, v)
 	return &res, err
+}
+
+func (ec *executionContext) marshalOSpruceConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpruceConfig(ctx context.Context, sel ast.SelectionSet, v SpruceConfig) graphql.Marshaler {
+	return ec._SpruceConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpruceConfig(ctx context.Context, sel ast.SelectionSet, v *SpruceConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpruceConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

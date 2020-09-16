@@ -38,6 +38,7 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  spruceConfig: SpruceConfig
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
@@ -716,6 +717,11 @@ type ClientBinary {
   os: String
   url: String
   displayName: String
+}
+
+type SpruceConfig {
+  userVoiceUrl: String
+  siteBanner: SiteBanner
 }
 
 type SiteBanner {

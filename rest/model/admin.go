@@ -87,6 +87,7 @@ type APIAdminSettings struct {
 	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost          *APISpawnHostConfig               `json:"spawnhost,omitempty"`
+	UserVoice          *string                           `json:"user_voice,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -133,6 +134,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.GithubOrgs = v.GithubOrgs
 		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
+		as.UserVoice = ToStringPtr(v.UserVoice)
 		for _, pair := range v.SSHKeyPairs {
 			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
 				Name:    ToStringPtr(pair.Name),
@@ -229,6 +231,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 			Private: FromStringPtr(pair.Private),
 		})
 	}
+	settings.UserVoice = FromStringPtr(as.UserVoice)
 	return settings, nil
 }
 
@@ -1817,6 +1820,7 @@ type APIUIConfig struct {
 	CORSOrigins             []string `json:"cors_origins"`
 	LoginDomain             *string  `json:"login_domain"`
 	ExpireLoginCookieDomain *string  `json:"expire_domain"`
+	UserVoice               *string  `json:"user_voice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1833,6 +1837,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = ToStringPtr(v.LoginDomain)
 		a.ExpireLoginCookieDomain = ToStringPtr(v.ExpireLoginCookieDomain)
+		a.UserVoice = ToStringPtr(v.UserVoice)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1852,6 +1857,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		CORSOrigins:             a.CORSOrigins,
 		LoginDomain:             FromStringPtr(a.LoginDomain),
 		ExpireLoginCookieDomain: FromStringPtr(a.ExpireLoginCookieDomain),
+		UserVoice:               FromStringPtr(a.UserVoice),
 	}, nil
 }
 
