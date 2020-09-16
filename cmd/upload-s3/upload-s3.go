@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/evergreen-ci/pail"
@@ -71,8 +72,10 @@ func uploadToS3(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	bucketName := c.String("bucket")
+
 	b, err := pail.NewS3Bucket(pail.S3Options{
-		Name:                      c.String("bucket"),
+		Name:                      bucketName,
 		Credentials:               pail.CreateAWSCredentials(c.String("key"), c.String("secret"), ""),
 		SharedCredentialsFilepath: c.String("credentials_file"),
 		Region:                    "us-east-1",
@@ -84,8 +87,15 @@ func uploadToS3(c *cli.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, file := range c.StringSlice("file") {
-		remote := filepath.Join(c.String("prefix"), filepath.Base(file))
-		catcher.Wrapf(b.Upload(ctx, remote, file), "uploading file '%s'", file)
+		remotePath := path.Join(c.String("prefix"), filepath.Base(file))
+		fmt.Printf("Uploading '%s' to '%s'\n", file, path.Join(bucketName, remotePath}))
+		if err := b.Upload(ctx, remotePath, file); err != nil {
+			catcher.Wrapf(err, "uploading file '%s'", file)
+			continue
+		}
+		url := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucketName, remotePath)
+		fmt.Printf("Object URL: %s\n", url)
 	}
+
 	return catcher.Resolve()
 }
