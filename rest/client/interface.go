@@ -185,6 +185,9 @@ type Communicator interface {
 	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
+	// Get parameters for project
+	GetParameters(context.Context, string) ([]model.ParameterInfo, error)
+
 	// GetClientConfig fetches the ClientConfig for the evergreen server
 	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
 

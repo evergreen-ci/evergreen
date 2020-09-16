@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -2057,6 +2060,22 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	name := generator.DisplayName
 
 	return &name, nil
+}
+
+func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	var perfPlugin *plugin.PerfPlugin
+	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
+		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
+		if err != nil {
+			return false, err
+		}
+		for _, projectName := range perfPlugin.Projects {
+			if projectName == *obj.ProjectId {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
