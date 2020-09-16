@@ -212,6 +212,10 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
+# Helper to upload distribution (or other arbitrary files) to S3.
+$(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
+	@mkdir -p $(buildDir)
+	$(gobin) build -o $@ $<
 
 dist-staging: export STAGING_ONLY := 1
 dist-staging:
@@ -219,6 +223,7 @@ dist-staging:
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+upload-s3:$(buildDir)/upload-s3
 # end main build
 
 
