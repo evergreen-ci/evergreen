@@ -3,7 +3,6 @@ package buildlogger
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/timber/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -406,7 +406,7 @@ func TestSend(t *testing.T) {
 				size = b.opts.MaxBufferSize - b.bufferSize
 			}
 
-			m := message.ConvertToComposer(level.Debug, newRandString(size))
+			m := message.ConvertToComposer(level.Debug, utility.MakeRandomString(size/2))
 			b.Send(m)
 			require.Empty(t, ms.lastMessage)
 
@@ -451,7 +451,7 @@ func TestSend(t *testing.T) {
 				size = b.opts.MaxBufferSize - b.bufferSize
 			}
 
-			m := message.ConvertToComposer(level.Info, newRandString(size))
+			m := message.ConvertToComposer(level.Info, utility.MakeRandomString(size/2))
 			b.Send(m)
 			require.Empty(t, ms.lastMessage)
 
@@ -486,7 +486,7 @@ func TestSend(t *testing.T) {
 		size := 256
 
 		// flushes after interval
-		m := message.ConvertToComposer(level.Debug, newRandString(size))
+		m := message.ConvertToComposer(level.Debug, utility.MakeRandomString(size/2))
 		b.Send(m)
 		require.NotEmpty(t, b.buffer)
 		go b.timedFlush()
@@ -499,7 +499,7 @@ func TestSend(t *testing.T) {
 		assert.EqualValues(t, m.Priority(), mc.logLines.Lines[0].Priority)
 
 		// flush resets timer
-		m = message.ConvertToComposer(level.Emergency, newRandString(size))
+		m = message.ConvertToComposer(level.Emergency, utility.MakeRandomString(size/2))
 		b.Send(m)
 		b.mu.Lock()
 		require.NotEmpty(t, b.buffer)
@@ -721,12 +721,6 @@ func createSender(ctx context.Context, mc internal.BuildloggerClient, ms send.Se
 		buffer: []*internal.LogLine{},
 		Base:   send.NewBase("test"),
 	}
-}
-
-func newRandString(size int) string {
-	b := make([]byte, size)
-	_, _ = rand.Read(b)
-	return string(b)
 }
 
 func startRPCService(ctx context.Context, service internal.BuildloggerServer, port int) error {

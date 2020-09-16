@@ -77,5 +77,43 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
 	}
 
-	return errors.WithStack(sendJSONResults(ctx, conf, logger, comm, results))
+	if err := c.sendTestLogs(ctx, conf, logger, comm, results); err != nil {
+		return errors.Wrap(err, "sending test logs")
+	}
+
+	return errors.WithStack(sendTestResults(ctx, conf, logger, comm, results))
+}
+
+func (c *attachResults) sendTestLogs(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	for i, res := range results.Results {
+		if ctx.Err() != nil {
+			return errors.Errorf("operation canceled during uploading")
+		}
+
+		if res.LogRaw != "" {
+			logger.Execution().Info("Attaching raw test logs")
+			testLogs := &model.TestLog{
+				Name:          res.TestFile,
+				Task:          conf.Task.Id,
+				TaskExecution: conf.Task.Execution,
+				Lines:         []string{res.LogRaw},
+			}
+
+			id, err := comm.SendTestLog(ctx, td, testLogs)
+			if err != nil {
+				logger.Execution().Errorf("problem posting raw logs from results %s", err.Error())
+			} else {
+				results.Results[i].LogId = id
+			}
+
+			// clear the logs from the TestResult struct after it has been saved in the test logs. Since they are
+			// being saved in the test_logs collection, we can clear them to prevent them from being saved in the task
+			// collection.
+			results.Results[i].LogRaw = ""
+		}
+	}
+
+	return nil
 }

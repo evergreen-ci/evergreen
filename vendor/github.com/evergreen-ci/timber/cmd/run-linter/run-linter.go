@@ -103,7 +103,9 @@ func main() {
 
 		for _, linter := range customLinters {
 			customLinterStart := time.Now()
-			cmd := exec.Command(linter, pkgDir)
+			linterArgs := (strings.Split(linter, " "))
+			linterArgs = append(linterArgs, pkgDir)
+			cmd := exec.Command(linterArgs[0], linterArgs[1:]...)
 			cmd.Dir = dirname
 			out, err := cmd.CombinedOutput()
 			r.passed = r.passed && err == nil

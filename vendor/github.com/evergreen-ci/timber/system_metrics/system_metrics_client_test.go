@@ -2,13 +2,14 @@ package systemmetrics
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/timber/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,14 +74,18 @@ func (mc *mockClient) GetData() *internal.SystemMetricsData {
 	return &ref
 }
 
+const basePort = 3000
+
 func TestNewSystemMetricsClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	srv, err := testutil.NewMockMetricsServer(ctx, testutil.GetPortNumber(basePort))
 	require.NoError(t, err)
 	t.Run("ValidOptions", func(t *testing.T) {
-		connOpts := ConnectionOptions{
-			Client:   http.Client{},
+		httpClient := utility.GetHTTPClient()
+		defer utility.PutHTTPClient(httpClient)
+		connOpts := timber.ConnectionOptions{
+			Client:   *httpClient,
 			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
@@ -92,17 +97,17 @@ func TestNewSystemMetricsClient(t *testing.T) {
 		assert.NotNil(t, srv.Close)
 	})
 	t.Run("InvalidOptions", func(t *testing.T) {
-		connOpts := ConnectionOptions{}
+		connOpts := timber.ConnectionOptions{}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
 		assert.Error(t, err)
 		assert.Nil(t, client)
 	})
 }
 
-func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
+func TestNewSystemMetricsClientWithExistingConnection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	srv, err := testutil.NewMockMetricsServer(ctx, testutil.GetPortNumber(basePort))
 	require.NoError(t, err)
 	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
 	require.NoError(t, err)
@@ -126,11 +131,13 @@ func TestNewSystemMetricsClientWithExistingClient(t *testing.T) {
 func TestCloseClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv, err := testutil.NewMockMetricsServer(ctx, 3000)
+	srv, err := testutil.NewMockMetricsServer(ctx, testutil.GetPortNumber(basePort))
 	require.NoError(t, err)
 	t.Run("WithoutExistingConnection", func(t *testing.T) {
-		connOpts := ConnectionOptions{
-			Client:   http.Client{},
+		httpClient := utility.GetHTTPClient()
+		defer utility.PutHTTPClient(httpClient)
+		connOpts := timber.ConnectionOptions{
+			Client:   *httpClient,
 			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
@@ -159,8 +166,10 @@ func TestCloseClient(t *testing.T) {
 		require.NoError(t, conn.Close())
 	})
 	t.Run("AlreadyClosed", func(t *testing.T) {
-		connOpts := ConnectionOptions{
-			Client:   http.Client{},
+		httpClient := utility.GetHTTPClient()
+		defer utility.PutHTTPClient(httpClient)
+		connOpts := timber.ConnectionOptions{
+			Client:   *httpClient,
 			DialOpts: srv.DialOpts,
 		}
 		client, err := NewSystemMetricsClient(ctx, connOpts)
