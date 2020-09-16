@@ -40,15 +40,15 @@ func makeApp() *cli.App {
 		cli.StringFlag{
 			Name:   "key, k",
 			Usage:  "The AWS key for uploading to S3. If this is not given, the AWS credentials file must be given.",
-			EnvVar: "AWS_KEY",
+			EnvVar: "AWS_UPLOAD_KEY",
 		},
 		cli.StringFlag{
 			Name:   "secret, s",
 			Usage:  "The AWS secret for uploading to S3. If this is not given, the AWS credentials file must be given.",
-			EnvVar: "AWS_SECRET",
+			EnvVar: "AWS_UPLOAD_SECRET",
 		},
 		cli.StringFlag{
-			Name:  "credentials_file,c",
+			Name:  "credentials_file, c",
 			Usage: "The file containing the AWS credentials. If this is not given, the AWS key and secret must both be given.",
 		},
 	}
@@ -88,7 +88,7 @@ func uploadToS3(c *cli.Context) error {
 	catcher := grip.NewBasicCatcher()
 	for _, file := range c.StringSlice("file") {
 		remotePath := path.Join(c.String("prefix"), filepath.Base(file))
-		fmt.Printf("Uploading '%s' to '%s'\n", file, path.Join(bucketName, remotePath}))
+		fmt.Printf("Uploading '%s' to '%s'\n", file, path.Join(bucketName, remotePath))
 		if err := b.Upload(ctx, remotePath, file); err != nil {
 			catcher.Wrapf(err, "uploading file '%s'", file)
 			continue
