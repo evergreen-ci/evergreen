@@ -3,8 +3,10 @@ package operations
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -22,6 +24,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addPatchFinalizeFlag(),
 		addVariantsFlag(),
 		addTasksFlag(),
+		addParametersFlag(),
 		addPatchAliasFlag(),
 		addPatchBrowseFlag(),
 		addSyncBuildVariantsFlag(),
@@ -86,6 +89,13 @@ func Patch() cli.Command {
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 			}
 
+			var err error
+			paramsPairs := utility.SplitCommas(c.StringSlice(parametersFlagName))
+			params.Parameters, err = getParametersFromInput(paramsPairs)
+			if err != nil {
+				return err
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -138,6 +148,21 @@ func Patch() cli.Command {
 			return params.displayPatch(conf, newPatch)
 		},
 	}
+}
+
+func getParametersFromInput(params []string) ([]patch.Parameter, error) {
+	res := []patch.Parameter{}
+	catcher := grip.NewBasicCatcher()
+	for _, param := range params {
+		pair := strings.Split(param, "=")
+		if len(pair) != 2 {
+			catcher.Add(errors.Errorf("problem parsing parameter '%s'", param))
+			continue
+		}
+
+		res = append(res, patch.Parameter{Key: pair[0], Value: pair[1]})
+	}
+	return res, catcher.Resolve()
 }
 
 func PatchFile() cli.Command {

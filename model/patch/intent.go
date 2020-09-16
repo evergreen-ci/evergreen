@@ -44,7 +44,6 @@ type Intent interface {
 func FindIntent(id, intentType string) (Intent, error) {
 	intent, ok := GetIntent(intentType)
 	if !ok {
-
 		return nil, errors.Errorf("no intent of type '%s' registered", intentType)
 	}
 
