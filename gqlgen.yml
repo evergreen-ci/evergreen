@@ -48,6 +48,8 @@ models:
         resolver: true
       status:
         resolver: true
+      isPerfPluginEnabled:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:
