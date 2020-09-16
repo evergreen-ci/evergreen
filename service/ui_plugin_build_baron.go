@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -132,6 +133,10 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		TaskId  string   `json:"task"`
 		TestIds []string `json:"tests"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
 	}
 
 	taskNotFound, err := graphql.BbFileTicket(r.Context(), input.TaskId)
