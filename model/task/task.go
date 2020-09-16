@@ -63,6 +63,8 @@ type Task struct {
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
+	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
+
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
 	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
@@ -70,6 +72,7 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
+	UnblockedTime time.Time `bson:"unblocked_time" json:"unblocked_time"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -658,7 +661,47 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 			return t.DisplayTask.MarkAsDispatched("", "", "", dispatchTime)
 		}
 	}
+
+	// update task unblocked field
+	t.CalculateUnblockedTime()
 	return nil
+}
+
+func (t *Task) CalculateUnblockedTime() error {
+	//get all immediate dependencies
+	directDependencies := t.DependsOn
+
+	//if dependencies exist, get the max of their finish times
+	if len(directDependencies) > 0 {
+		latestTime := t.ScheduledTime
+		for _, dep := range directDependencies {
+			depID := dep.TaskId
+
+			depTask, err := FindOne(ById(depID).WithFields(FinishTimeKey, ExecutionKey))
+
+			if err != nil {
+				return err
+			}
+
+			if depTask.Execution > 0 {
+				// we can't calculate unblocked time without looking at
+				// oldtasks collection, so we won't calculate at all
+				return nil
+			}
+			if depTask.FinishTime.After(latestTime) {
+				latestTime = depTask.FinishTime
+			}
+			if depTask.FinishTime.After(t.StartTime) {
+				return errors.Errorf(
+					"unexpected task finish time %s after dependent start time %s",
+					depTask.FinishTime.String(), t.StartTime.String())
+			}
+		}
+		t.UnblockedTime = latestTime
+		return nil
+	} else {
+		return nil
+	}
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
