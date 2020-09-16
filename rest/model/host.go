@@ -191,6 +191,7 @@ type APIVolume struct {
 	HostID           *string    `json:"host_id"`
 	NoExpiration     bool       `json:"no_expiration"`
 	HomeVolume       bool       `json:"home_volume"`
+	CreationTime     *time.Time `json:"creation_time"`
 }
 
 type VolumePostRequest struct {
@@ -237,6 +238,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.Expiration = ToTimePtr(v.Expiration)
 	apiVolume.NoExpiration = v.NoExpiration
 	apiVolume.HomeVolume = v.HomeVolume
+	apiVolume.CreationTime = ToTimePtr(v.CreationDate)
 	return nil
 }
 

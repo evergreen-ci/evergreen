@@ -10,6 +10,7 @@
     hostID
     noExpiration
     homeVolume
+    creationTime
     host {
       id
       displayName
