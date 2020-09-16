@@ -376,6 +376,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message": "successfully started host",
 		"host_id": j.host.Id,
+		"distro":  j.host.Distro.Id,
 		"job":     j.ID(),
 		"runtime": time.Since(hostStartTime),
 	})
