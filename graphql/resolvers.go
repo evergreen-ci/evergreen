@@ -51,13 +51,20 @@ func (r *Resolver) Query() QueryResolver {
 func (r *Resolver) Task() TaskResolver {
 	return &taskResolver{r}
 }
-func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
-
-func (r *Resolver) TaskQueueItem() TaskQueueItemResolver { return &taskQueueItemResolver{r} }
+func (r *Resolver) Host() HostResolver {
+	return &hostResolver{r}
+}
+func (r *Resolver) Volume() VolumeResolver {
+	return &volumeResolver{r}
+}
+func (r *Resolver) TaskQueueItem() TaskQueueItemResolver {
+	return &taskQueueItemResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
+type volumeResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -69,6 +76,46 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
+	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
+	for _, volId := range obj.AttachedVolumeIDs {
+		volume, err := r.sc.FindVolumeById(volId)
+		if err != nil {
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
+		}
+		if volume == nil {
+			return volumes, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volId))
+		}
+		apiVolume := &restModel.APIVolume{}
+		err = apiVolume.BuildFromService(volume)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error building volume '%s' from service", volId)
+		}
+		volumes = append(volumes, apiVolume)
+	}
+
+	return volumes, nil
+}
+
+func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*restModel.APIHost, error) {
+	if obj.HostID == nil || *obj.HostID == "" {
+		return nil, nil
+	}
+	host, err := r.sc.FindHostById(*obj.HostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", *obj.HostID, err.Error()))
+	}
+	if host == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", *obj.HostID))
+	}
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(host)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost %s from service: %s", host.Id, err))
+	}
+	return &apiHost, nil
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
@@ -576,7 +623,6 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
 	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
 	for i, _ := range volumes {
 		volumePointers = append(volumePointers, &volumes[i])

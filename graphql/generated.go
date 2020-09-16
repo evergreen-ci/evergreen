@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Task() TaskResolver
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
+	Volume() VolumeResolver
 }
 
 type DirectiveRoot struct {
@@ -168,6 +169,7 @@ type ComplexityRoot struct {
 		TotalIdleTime         func(childComplexity int) int
 		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
+		Volumes               func(childComplexity int) int
 	}
 
 	HostEventLogData struct {
@@ -628,6 +630,7 @@ type ComplexityRoot struct {
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
 		HomeVolume       func(childComplexity int) int
+		Host             func(childComplexity int) int
 		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
@@ -641,6 +644,8 @@ type HostResolver interface {
 
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+
+	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -748,6 +753,9 @@ type TaskQueueItemResolver interface {
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
+}
+type VolumeResolver interface {
+	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
 type executableSchema struct {
@@ -1254,6 +1262,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.User(childComplexity), true
+
+	case "Host.volumes":
+		if e.complexity.Host.Volumes == nil {
+			break
+		}
+
+		return e.complexity.Host.Volumes(childComplexity), true
 
 	case "HostEventLogData.agentBuild":
 		if e.complexity.HostEventLogData.AgentBuild == nil {
@@ -3676,6 +3691,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
 
+	case "Volume.host":
+		if e.complexity.Volume.Host == nil {
+			break
+		}
+
+		return e.complexity.Volume.Host(childComplexity), true
+
 	case "Volume.hostID":
 		if e.complexity.Volume.HostID == nil {
 			break
@@ -4004,7 +4026,7 @@ input SpawnHostInput {
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -4061,6 +4083,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
+  volumes: [Volume!]!
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -4077,7 +4100,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String
@@ -4199,6 +4222,7 @@ type Volume {
   hostID: String!
   noExpiration: Boolean!
   homeVolume: Boolean!
+  host: Host
 }
 
 type PatchProject {
@@ -7699,6 +7723,40 @@ func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphq
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Volumes(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIVolume)
+	fc.Result = res
+	return ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -18766,6 +18824,37 @@ func (ec *executionContext) _Volume_homeVolume(ctx context.Context, field graphq
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Volume",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Volume().Host(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21024,6 +21113,20 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
 		case "homeVolumeID":
 			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
+		case "volumes":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_volumes(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "user":
 			out.Values[i] = ec._Host_user(ctx, field, obj)
 		case "distro":
@@ -23850,32 +23953,32 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "id":
 			out.Values[i] = ec._Volume_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._Volume_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "createdBy":
 			out.Values[i] = ec._Volume_createdBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "type":
 			out.Values[i] = ec._Volume_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "availabilityZone":
 			out.Values[i] = ec._Volume_availabilityZone(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "size":
 			out.Values[i] = ec._Volume_size(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "expiration":
 			out.Values[i] = ec._Volume_expiration(ctx, field, obj)
@@ -23884,18 +23987,29 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "hostID":
 			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "noExpiration":
 			out.Values[i] = ec._Volume_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "homeVolume":
 			out.Values[i] = ec._Volume_homeVolume(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "host":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Volume_host(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -6,5 +6,8 @@
       workDir
       id
     }
+    volumes {
+      id
+    }
   }
 }

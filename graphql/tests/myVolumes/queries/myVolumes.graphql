@@ -10,5 +10,9 @@
     hostID
     noExpiration
     homeVolume
+    host {
+      id
+      displayName
+    }
   }
 }
