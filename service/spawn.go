@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	graphql "github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
