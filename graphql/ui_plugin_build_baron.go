@@ -26,7 +26,7 @@ const (
 )
 
 // bbFileTicket creates a JIRA ticket for a task with the given test failures.
-func BbFileTicket(taskId string, context context.Context) (bool, error) {
+func BbFileTicket(context context.Context, taskId string) (bool, error) {
 	taskNotFound := false
 	// Find information about the task
 	t, err := task.FindOne(task.ById(taskId))

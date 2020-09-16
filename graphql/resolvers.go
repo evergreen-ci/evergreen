@@ -2043,13 +2043,13 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 }
 
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskId string) (bool, error) {
-	taskNotFound, err := BbFileTicket(taskId, ctx)
+	taskNotFound, err := BbFileTicket(ctx, taskId)
 	successful := true
 
 	if err != nil {
 		return !successful, InternalServerError.Send(ctx, err.Error())
 	}
-	if taskNotFound == true {
+	if taskNotFound {
 		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskId))
 	}
 
