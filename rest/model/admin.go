@@ -87,7 +87,6 @@ type APIAdminSettings struct {
 	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost          *APISpawnHostConfig               `json:"spawnhost,omitempty"`
-	UserVoice          *string                           `json:"user_voice,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -134,7 +133,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.GithubOrgs = v.GithubOrgs
 		as.SSHKeyDirectory = ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
-		as.UserVoice = ToStringPtr(v.UserVoice)
 		for _, pair := range v.SSHKeyPairs {
 			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
 				Name:    ToStringPtr(pair.Name),
@@ -231,7 +229,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 			Private: FromStringPtr(pair.Private),
 		})
 	}
-	settings.UserVoice = FromStringPtr(as.UserVoice)
 	return settings, nil
 }
 
