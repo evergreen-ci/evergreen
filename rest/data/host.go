@@ -107,19 +107,20 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 		return nil, errors.New("invalid key")
 	}
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:             options.DistroID,
-		Userdata:             options.UserData,
-		UserName:             user.Username(),
-		PublicKey:            keyVal,
-		InstanceTags:         options.InstanceTags,
-		InstanceType:         options.InstanceType,
-		NoExpiration:         options.NoExpiration,
-		IsVirtualWorkstation: options.IsVirtualWorkstation,
-		IsCluster:            options.IsCluster,
-		HomeVolumeSize:       options.HomeVolumeSize,
-		HomeVolumeID:         options.HomeVolumeID,
-		Region:               options.Region,
-		Expiration:           options.Expiration,
+		DistroId:              options.DistroID,
+		Userdata:              options.UserData,
+		UserName:              user.Username(),
+		PublicKey:             keyVal,
+		InstanceTags:          options.InstanceTags,
+		InstanceType:          options.InstanceType,
+		NoExpiration:          options.NoExpiration,
+		IsVirtualWorkstation:  options.IsVirtualWorkstation,
+		IsCluster:             options.IsCluster,
+		HomeVolumeSize:        options.HomeVolumeSize,
+		HomeVolumeID:          options.HomeVolumeID,
+		Region:                options.Region,
+		Expiration:            options.Expiration,
+		UseProjectSetupScript: options.UseProjectSetupScript,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
 			TaskSync:    options.TaskSync,
@@ -319,12 +320,13 @@ func (hc *MockHostConnector) NewIntentHost(ctx context.Context, options *restmod
 	keyVal := strings.Join([]string{"ssh-rsa", base64.StdEncoding.EncodeToString([]byte("foo"))}, " ")
 
 	spawnOptions := cloud.SpawnOptions{
-		DistroId:     options.DistroID,
-		Userdata:     options.UserData,
-		UserName:     user.Username(),
-		PublicKey:    keyVal,
-		InstanceTags: options.InstanceTags,
-		InstanceType: options.InstanceType,
+		DistroId:              options.DistroID,
+		Userdata:              options.UserData,
+		UserName:              user.Username(),
+		PublicKey:             keyVal,
+		InstanceTags:          options.InstanceTags,
+		InstanceType:          options.InstanceType,
+		UseProjectSetupScript: options.UseProjectSetupScript,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
 			TaskSync:    options.TaskSync,

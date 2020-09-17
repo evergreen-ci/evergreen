@@ -133,9 +133,13 @@
         <textarea placeholder="Enter Userdata script" ng-model="$parent.userdata"></textarea>
       </p>
     </div>
+    <div id="projectSetupScript" style="padding-bottom:5px;" ng-show="!!$parent.setupScriptPath" >
+      <input type="checkbox" ng-disabled="$parent.add_setup_script" ng-model="$parent.use_project_setup_script"\>
+      Use project-specific setup script defined at [[ $parent.setupScriptPath ]]
+    </div>
     <div id="setupScript" style="padding-bottom:5px;">
-      <input type="checkbox" ng-model="$parent.add_setup_script" /> Run setup script after host is configured (i.e. task data and artifacts are loaded)
-      <p class="textarea" ng-show="$parent.add_setup_script">
+      <input type="checkbox" ng-model="$parent.add_setup_script" ng-disabled="$parent.use_project_setup_script"/> Define setup script to run after host is configured (i.e. task data and artifacts are loaded)
+      <p class="textarea" ng-show="$parent.add_setup_script && !$parent.use_project_setup_script">
         <textarea placeholder="Enter Setup script" ng-model="$parent.setup_script"></textarea>
       </p>
     </div>
