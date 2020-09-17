@@ -530,10 +530,22 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, build.TasksKey),
 	)
 	if err != nil {
-		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
+		msg := fmt.Sprintf("Error finding builds for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
+	}
+
+	tasks, err := task.FindAll(task.ByVersion(versionId).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	if err != nil {
+		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
+		grip.Errorf("%s: %+v", msg, err)
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+		return
+	}
+	taskMap := make(map[string]task.Task)
+	for _, t := range tasks {
+		taskMap[t.Id] = t
 	}
 
 	result := versionStatusByBuildContent{
@@ -544,12 +556,16 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	for _, build := range builds {
 		statuses := make(versionStatusByBuild, len(build.Tasks))
 		for _, task := range build.Tasks {
-			status := versionStatus{
-				Id:        task.Id,
-				Status:    task.Status,
-				TimeTaken: task.TimeTaken,
+			t, ok := taskMap[task.Id]
+			if !ok {
+				continue
 			}
-			statuses[task.DisplayName] = status
+			status := versionStatus{
+				Id:        t.Id,
+				Status:    t.Status,
+				TimeTaken: t.TimeTaken,
+			}
+			statuses[t.DisplayName] = status
 		}
 		result.Builds[build.BuildVariant] = statuses
 	}
