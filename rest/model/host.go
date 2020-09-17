@@ -33,7 +33,7 @@ type APIHost struct {
 	TotalIdleTime         APIDuration `json:"total_idle_time"`
 	CreationTime          *time.Time  `json:"creation_time"`
 	Expiration            *time.Time  `json:"expiration_time"`
-	AttachedVolumeIDs     []string    `json:"attached_volume_ids`
+	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
