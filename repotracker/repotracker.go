@@ -816,7 +816,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
-	pairsToCreate = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
+	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies",
+		"project": projectInfo.Project.Identifier,
+		"version": v.Id,
+	}))
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{

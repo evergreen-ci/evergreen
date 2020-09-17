@@ -144,8 +144,8 @@ var sampleGeneratedProject = []string{`
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection))
-	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -267,4 +267,106 @@ func TestParseProjects(t *testing.T) {
 	assert.Len(parsed[0].Tasks, 2)
 	assert.Equal(parsed[0].Tasks[0].Name, "lint-command")
 	assert.Equal(parsed[0].Tasks[1].Name, "lint-rest-route")
+}
+
+func TestGenerateSkipsInvalidDependency(t *testing.T) {
+	var sampleBaseProject = `
+tasks:
+  - name: generator
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - example/path/to/generate.json
+  - name: patch_only_task
+    patch_only: true
+    commands:
+    - command: shell.exec
+  - name: new_task
+    depends_on:
+    - name: "*"
+      variant: "*"
+      status: "*"
+
+buildvariants:
+  - name: generator
+    display_name: generator
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: "generator"
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: "patch_only_task"
+`
+	var sampleGeneratedProject = []string{`
+{
+  "buildvariants": [
+    {
+      "name": "ubuntu1604",
+      "tasks": [
+        {
+          "name": "new_task"
+        }
+      ]
+    }
+  ]
+}`}
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	sampleVersion := model.Version{
+		Id:         "sample_version",
+		Identifier: "mci",
+		Config:     sampleBaseProject,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildIds:   []string{"sample_build_id"},
+	}
+	require.NoError(sampleVersion.Insert())
+	sampleBuild := build.Build{
+		Id:           "sample_build_id",
+		BuildVariant: "race-detector",
+		Version:      "sample_version",
+		Requester:    evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(sampleBuild.Insert())
+	sampleTask := task.Task{
+		Id:                    "generator",
+		Version:               sampleVersion.Id,
+		BuildId:               "sample_build_id",
+		Project:               "mci",
+		DisplayName:           "generator",
+		GeneratedJSONAsString: sampleGeneratedProject,
+		Status:                evergreen.TaskStarted,
+		Requester:             evergreen.RepotrackerVersionRequester,
+	}
+	sampleDistros := []distro.Distro{
+		distro.Distro{
+			Id: "ubuntu1604-test",
+		},
+	}
+	for _, d := range sampleDistros {
+		require.NoError(d.Insert())
+	}
+	require.NoError(sampleTask.Insert())
+	projectRef := model.ProjectRef{Identifier: "mci"}
+	require.NoError(projectRef.Insert())
+
+	j := NewGenerateTasksJob("generator", "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+
+	tasks, err := task.Find(task.ByVersion(sampleVersion.Id))
+	assert.NoError(err)
+	foundGeneratedtask := false
+	for _, dbTask := range tasks {
+		if dbTask.DisplayName == "new_task" {
+			foundGeneratedtask = true
+			assert.Len(dbTask.DependsOn, 2)
+		}
+	}
+	assert.True(foundGeneratedtask)
 }
