@@ -122,10 +122,17 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		// diff all patch builds with their original build
 		diffs := []model.TaskStatusDiff{}
 		for i := range dbBuilds {
-			diff := model.StatusDiffBuilds(
+			var diff model.BuildStatusDiff
+			diff, err = model.StatusDiffBuilds(
 				baseBuildsByVariant[dbBuilds[i].BuildVariant],
 				&dbBuilds[i],
 			)
+			if err != nil {
+				http.Error(w,
+					fmt.Sprintf("error calculating status diff for patch: %s", err),
+					http.StatusInternalServerError)
+				return
+			}
 			if diff.Name != "" {
 				// append the tasks instead of the build for better usability
 				diffs = append(diffs, diff.Tasks...)
@@ -152,7 +159,6 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
-
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
 		for _, t := range build.Tasks {
 			uiT := uiTask{

@@ -208,6 +208,13 @@ func ByBuildId(buildId string) db.Q {
 	})
 }
 
+// ByBuildIds creates a query to return tasks in buildsIds
+func ByBuildIds(buildIds []string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey: bson.M{"$in": buildIds},
+	})
+}
+
 // ByAborted creates a query to return tasks with an aborted state
 func ByAborted(aborted bool) db.Q {
 	return db.Query(bson.M{

@@ -102,7 +102,11 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 			grip.Warningln("Could not find build for base commit of patch build:",
 				projCtx.Build.Id)
 		}
-		diffs := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
+		diffs, err := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		baseId := ""
 		if buildOnBaseCommit != nil {
