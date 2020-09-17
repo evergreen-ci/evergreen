@@ -35,7 +35,7 @@ type APIBuild struct {
 	ActivatedBy         *string        `json:"activated_by"`
 	ActivatedTime       *time.Time     `json:"activated_time"`
 	RevisionOrderNumber int            `json:"order"`
-	TaskCache           []APITaskCache `json:"task_cache"`
+	TaskCache           []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
 	Tasks             []string             `json:"tasks"`
 	TimeTaken         APIDuration          `json:"time_taken_ms"`
@@ -43,7 +43,7 @@ type APIBuild struct {
 	PredictedMakespan APIDuration          `json:"predicted_makespan_ms"`
 	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
 	Origin            *string              `json:"origin"`
-	StatusCounts      task.TaskStatusCount `json:"status_counts"`
+	StatusCounts      task.TaskStatusCount `json:"status_counts,omitempty"`
 }
 
 // BuildFromService converts from service level structs to an APIBuild.
@@ -91,20 +91,32 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		origin = gitTagOrigin
 	}
 	apiBuild.Origin = ToStringPtr(origin)
+	return nil
+}
+
+func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
+	taskMap := make(map[string]task.Task)
+	for _, t := range tasks {
+		taskMap[t.Id] = t
+	}
+
 	apiBuild.TaskCache = []APITaskCache{}
-	for _, t := range v.Tasks {
+	for _, taskID := range apiBuild.Tasks {
+		t, ok := taskMap[taskID]
+		if !ok {
+			continue
+		}
 		apiBuild.TaskCache = append(apiBuild.TaskCache, APITaskCache{
 			Id:            t.Id,
 			DisplayName:   t.DisplayName,
 			Status:        t.Status,
-			StatusDetails: t.StatusDetails,
+			StatusDetails: t.Details,
 			StartTime:     ToTimePtr(t.StartTime),
 			TimeTaken:     t.TimeTaken,
 			Activated:     t.Activated,
 		})
-		apiBuild.StatusCounts.IncrementStatus(t.Status, t.StatusDetails)
+		apiBuild.StatusCounts.IncrementStatus(t.Status, t.Details)
 	}
-	return nil
 }
 
 // ToService returns a service layer build using the data from the APIBuild.

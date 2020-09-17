@@ -235,6 +235,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 				if err != nil {
 					return nil, errors.Wrapf(err, "error converting build %s from DB model", b.Id)
 				}
+				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
 				currentRow.Builds[versionFromDB.Id] = buildsForRow
 				buildList[b.BuildVariant] = currentRow
