@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -409,11 +410,12 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 				}
 				mgrCache[mgrOpts] = mgr
 			}
-			reason := fmt.Sprintf("clearing hosts for user '%s'", ch.user)
-			if err = mgr.TerminateInstance(ctx, &h, usr.Username(), reason); err != nil {
-				if h.NoExpiration {
-					catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
-				}
+			if h.NoExpiration {
+				noExpiration := false
+				err := mgr.ModifyHost(ctx, &h, host.HostModifyOptions{
+					NoExpiration: &noExpiration,
+				})
+				catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
 				continue
 			}
 		}
@@ -437,11 +439,10 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 				}
 				mgrCache[mgrOpts] = mgr
 			}
-
-			if err = mgr.DeleteVolume(ctx, &v); err != nil {
-				if v.NoExpiration {
-					catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
-				}
+			if v.NoExpiration {
+				opts := model.VolumeModifyOptions{NoExpiration: false}
+				err := mgr.ModifyVolume(ctx, &v, &opts)
+				catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
 				continue
 			}
 		}
