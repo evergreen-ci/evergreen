@@ -24,7 +24,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addPatchFinalizeFlag(),
 		addVariantsFlag(),
 		addTasksFlag(),
-		addParametersFlag(),
+		addParameterFlag(),
 		addPatchAliasFlag(),
 		addPatchBrowseFlag(),
 		addSyncBuildVariantsFlag(),
@@ -90,7 +90,7 @@ func Patch() cli.Command {
 			}
 
 			var err error
-			paramsPairs := utility.SplitCommas(c.StringSlice(parametersFlagName))
+			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
 			if err != nil {
 				return err

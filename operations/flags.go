@@ -19,7 +19,7 @@ const (
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
 	tasksFlagName             = "tasks"
-	parametersFlagName        = "parameters"
+	parameterFlagName         = "param"
 	patchAliasFlagName        = "alias"
 	patchFinalizeFlagName     = "finalize"
 	patchBrowseFlagName       = "browse"
@@ -106,10 +106,10 @@ func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func addParametersFlag(flags ...cli.Flag) []cli.Flag {
+func addParameterFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
-		Name:  parametersFlagName,
-		Usage: "specify parameters as comma-separated KEY=VALUE pairs",
+		Name:  parameterFlagName,
+		Usage: "specify a parameter as a KEY=VALUE pair",
 	})
 }
 
