@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -20,14 +21,14 @@ func init() {
 	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildStateChange, makeBuildTriggers)
 }
 
-func taskStatusToDesc(b *build.Build) string {
+func (t *buildTriggers) taskStatusToDesc() string {
 	success := 0
 	failed := 0
 	systemError := 0
 	other := 0
 	noReport := 0
-	for _, task := range b.Tasks {
-		switch task.Status {
+	for _, t := range t.tasks {
+		switch t.Status {
 		case evergreen.TaskSucceeded:
 			success++
 
@@ -52,7 +53,7 @@ func taskStatusToDesc(b *build.Build) string {
 	grip.ErrorWhen(other > 0, message.Fields{
 		"source":   "status updates",
 		"message":  "unknown task status",
-		"build_id": b.Id,
+		"build_id": t.build.Id,
 	})
 
 	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
@@ -68,7 +69,7 @@ func taskStatusToDesc(b *build.Build) string {
 		desc += fmt.Sprintf(", %d other", other)
 	}
 
-	return appendTime(b, desc)
+	return appendTime(t.build, desc)
 }
 
 func taskStatusSubformat(n int, verb string) string {
@@ -90,6 +91,7 @@ type buildTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.BuildEventData
 	build    *build.Build
+	tasks    []task.Task
 	uiConfig evergreen.UIConfig
 
 	base
@@ -119,6 +121,18 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 	if t.build == nil {
 		return errors.New("couldn't find build")
+	}
+
+	tasks, err := task.FindAll(task.ByBuildId(t.build.Id))
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch tasks")
+	}
+	taskMap := make(map[string]task.Task)
+	for _, t := range tasks {
+		taskMap[t.Id] = t
+	}
+	for _, taskCache := range t.build.Tasks {
+		t.tasks = append(t.tasks, taskMap[taskCache.Id])
 	}
 
 	var ok bool
@@ -264,7 +278,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	if t.build.Requester == evergreen.GithubPRRequester && t.build.Status == t.data.Status {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
 		data.githubState = message.GithubStateFailure
-		data.githubDescription = taskStatusToDesc(t.build)
+		data.githubDescription = t.taskStatusToDesc()
 	}
 	if t.data.Status == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
@@ -284,7 +298,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
-		Text:      taskStatusToDesc(t.build),
+		Text:      t.taskStatusToDesc(),
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Version",
@@ -307,22 +321,22 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	}
 
 	attachmentsCount := 0
-	for i := range t.build.Tasks {
+	for i := range t.tasks {
 		if attachmentsCount == slackAttachmentsLimit {
 			break
 		}
-		if t.build.Tasks[i].Status == evergreen.TaskSucceeded {
+		if t.tasks[i].Status == evergreen.TaskSucceeded {
 			continue
 		}
 		attachments = append(attachments, message.SlackAttachment{
-			Title:     fmt.Sprintf("Task: %s", t.build.Tasks[i].DisplayName),
-			TitleLink: taskLink(t.uiConfig.Url, t.build.Tasks[i].Id, -1),
+			Title:     fmt.Sprintf("Task: %s", t.tasks[i].DisplayName),
+			TitleLink: taskLink(t.uiConfig.Url, t.tasks[i].Id, -1),
 			Color:     evergreenFailColor,
-			Text:      taskFormatFromCache(&t.build.Tasks[i]),
+			Text:      taskFormatFromCache(t.tasks[i]),
 			Fields: []*message.SlackAttachmentField{
 				{
 					Title: "Duration",
-					Value: t.build.Tasks[i].TimeTaken.String(),
+					Value: t.tasks[i].TimeTaken.String(),
 				},
 			},
 		})
@@ -346,10 +360,10 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func taskFormatFromCache(t *build.TaskCache) string {
+func taskFormatFromCache(t task.Task) string {
 	if t.Status == evergreen.TaskSucceeded {
 		return fmt.Sprintf("took %s", t.TimeTaken)
 	}
 
-	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.StatusDetails.Status))
+	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.Details.Status))
 }
