@@ -33,6 +33,7 @@ type APIHost struct {
 	TotalIdleTime         APIDuration `json:"total_idle_time"`
 	CreationTime          *time.Time  `json:"creation_time"`
 	Expiration            *time.Time  `json:"expiration_time"`
+	AttachedVolumeIDs     []string    `json:"attached_volume_ids`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -132,6 +133,11 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 	apiHost.LastCommunicationTime = v.LastCommunicationTime
 	apiHost.Expiration = ToTimePtr(v.ExpirationTime)
+	attachedVolumeIds := []string{}
+	for _, volAttachment := range v.Volumes {
+		attachedVolumeIds = append(attachedVolumeIds, volAttachment.VolumeID)
+	}
+	apiHost.AttachedVolumeIDs = attachedVolumeIds
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId

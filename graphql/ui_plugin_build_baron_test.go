@@ -1,4 +1,4 @@
-package service
+package graphql
 
 import (
 	"testing"
@@ -35,15 +35,14 @@ func TestMakeTicket(t *testing.T) {
 		Identifier: "proj",
 	}
 	assert.NoError(p.Insert())
-	uis := UIServer{
-		Settings: evergreen.Settings{
-			Ui: evergreen.UIConfig{
-				Url: "www.example.com",
-			},
+
+	evgSettings := evergreen.Settings{
+		Ui: evergreen.UIConfig{
+			Url: "www.example.com",
 		},
 	}
 
-	n, err := uis.makeNotification("MCI", &t1)
+	n, err := makeNotification(&evgSettings, "MCI", &t1)
 	assert.NoError(err)
 	assert.NotNil(n)
 	assert.EqualValues(event.JIRAIssueSubscriber{
@@ -51,7 +50,7 @@ func TestMakeTicket(t *testing.T) {
 		IssueType: jiraIssueType,
 	}, n.Subscriber.Target)
 	// test that creating another ticket creates another notification
-	n, err = uis.makeNotification("MCI", &t1)
+	n, err = makeNotification(&evgSettings, "MCI", &t1)
 	assert.NoError(err)
 	assert.NotNil(n)
 }
