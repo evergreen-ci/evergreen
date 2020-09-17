@@ -918,11 +918,7 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 		for _, h := range expiringHosts {
 			if err = h.SetNeedsJasperRestart(evergreen.User); err != nil {
 				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
-				continue
 			}
-		}
-		if catcher.HasErrors() {
-			return errors.Wrap(catcher.Resolve(), "error updating hosts with expiring credentials")
 		}
 
 		hosts, err := host.FindByNeedsJasperRestart()
@@ -940,10 +936,14 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			expiration, err := h.JasperCredentialsExpiration(ctx, env)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
-				continue
+				// If we cannot get the credentials for some reason (e.g. the
+				// host's credentials were deleted), assume the credentials have
+				// expired.
+				expiration = time.Now()
 			}
+			foundExpiration := err == nil
 
-			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)))
+			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)))
 		}
 
 		return catcher.Resolve()
