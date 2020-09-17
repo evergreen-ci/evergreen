@@ -663,7 +663,11 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 	}
 
 	// update task unblocked field
-	t.CalculateUnblockedTime()
+	err = t.CalculateUnblockedTime()
+
+	if err != nil {
+		return errors.Wrapf(err, "error calculating unblocked_time for task %s", t.Id)
+	}
 	return nil
 }
 
