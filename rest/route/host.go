@@ -365,7 +365,6 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
-	usr := gimlet.GetUser(ctx)
 	opts := model.APIHostParams{
 		UserSpawned: true,
 	}
