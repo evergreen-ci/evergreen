@@ -78,7 +78,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// if we can't find the setup script path, don't fail the request
-		pRef, err := model.GetProjectRefForTask(spawnTask.Id)
+		var pRef *model.ProjectRef
+		pRef, err = model.GetProjectRefForTask(spawnTask.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "project can't be found",
