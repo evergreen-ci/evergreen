@@ -1519,10 +1519,10 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	return nil
 }
 
-// FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
+// FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
-func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, error) {
+func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
 	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
@@ -1540,7 +1540,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 		).Sort([]string{"-" + VersionCreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching versions from database")
+		return nil, nil, nil, errors.Wrap(err, "error fetching versions from database")
 	}
 
 	// create a slice of the version ids (used to fetch the builds)
@@ -1552,9 +1552,9 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	// fetch all of the builds (with only relevant fields)
 	buildsFromDb, err := build.Find(
 		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey, build.DisplayNameKey))
+			WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey), build.VersionKey, build.DisplayNameKey))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching builds from database")
+		return nil, nil, nil, errors.Wrap(err, "error fetching builds from database")
 	}
 
 	// group the builds by version
@@ -1563,7 +1563,25 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
-	return versionsFromDB, buildsByVersion, nil
+	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(
+		task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyUnattainableKey),
+	))
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
+	}
+	taskMap := make(map[string]task.Task)
+	for _, t := range tasksFromDb {
+		taskMap[t.Id] = t
+	}
+
+	tasksByBuild := map[string][]task.Task{}
+	for _, b := range buildsFromDb {
+		for _, t := range b.Tasks {
+			tasksByBuild[b.Id] = append(tasksByBuild[b.Id], taskMap[t.Id])
+		}
+	}
+
+	return versionsFromDB, buildsByVersion, tasksByBuild, nil
 }
 
 func (tg *TaskGroup) InjectInfo(t *task.Task) {
