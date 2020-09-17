@@ -157,11 +157,6 @@ type SpawnVolumeInput struct {
 	Host             *string    `json:"host"`
 }
 
-type SpruceConfig struct {
-	UserVoiceURL *string          `json:"userVoiceUrl"`
-	SiteBanner   *model.APIBanner `json:"siteBanner"`
-}
-
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`

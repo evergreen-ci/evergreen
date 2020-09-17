@@ -724,8 +724,13 @@ type ClientBinary {
 }
 
 type SpruceConfig {
-  userVoiceUrl: String
-  siteBanner: SiteBanner
+  ui: UIConfig
+  banner: String
+  bannerTheme: String
+}
+
+type UIConfig {
+  uservoice: String
 }
 
 type SiteBanner {

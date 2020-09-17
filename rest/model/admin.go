@@ -1817,7 +1817,7 @@ type APIUIConfig struct {
 	CORSOrigins             []string `json:"cors_origins"`
 	LoginDomain             *string  `json:"login_domain"`
 	ExpireLoginCookieDomain *string  `json:"expire_domain"`
-	UserVoice               *string  `json:"user_voice"`
+	UserVoice               *string  `json:"uservoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {

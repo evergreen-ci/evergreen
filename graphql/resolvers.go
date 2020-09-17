@@ -1403,20 +1403,23 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 	return &banner, nil
 }
 
-func (r *queryResolver) SpruceConfig(ctx context.Context) (*SpruceConfig, error) {
+func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
 	}
-	bannerTheme := string(config.BannerTheme)
-	banner := restModel.APIBanner{
-		Text:  &config.Banner,
-		Theme: &bannerTheme,
+
+	spruceConfig := restModel.APIAdminSettings{}
+	err = spruceConfig.BuildFromService(config)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api admin settings from service: %s", err.Error()))
 	}
-	spruceConfig := SpruceConfig{}
-	spruceConfig.SiteBanner = &banner
-	userVoice := string(config.Ui.UserVoice)
-	spruceConfig.UserVoiceURL = &userVoice
+	uiConfig := restModel.APIUIConfig{}
+	err = uiConfig.BuildFromService(config.Ui)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api UI Config from service: %s", err.Error()))
+	}
+	spruceConfig.Ui = &uiConfig
 	return &spruceConfig, nil
 }
 
