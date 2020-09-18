@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -55,6 +54,14 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
+			existingPatch, err := ac.GetPatch(patchID)
+			if err != nil {
+				return errors.Wrapf(err, "problem getting patch '%s'", existingPatch.Id)
+			}
+			if existingPatch.IsCommitQueuePatch() {
+				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit-queue patches")
+			}
+
 			preserveCommits = preserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 			if err != nil {
@@ -94,10 +101,6 @@ func PatchSetModule() cli.Command {
 				return err
 			}
 			if !preserveCommits {
-				var existingPatch *patch.Patch
-				if existingPatch, err = ac.GetPatch(patchID); err != nil {
-					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
-				}
 				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
 				if err != nil {
 					return err
