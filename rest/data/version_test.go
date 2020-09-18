@@ -360,16 +360,75 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		BuildVariant: "bv2",
 		Tasks: []build.TaskCache{
 			{
-				Id:     "t212",
+				Id:     "t221",
 				Status: evergreen.TaskUnstarted,
 			},
 			{
-				Id:     "t212",
+				Id:     "t222",
 				Status: evergreen.TaskUnstarted,
 			},
 		},
 	}
 	s.NoError(b22.Insert())
+	tasks := []task.Task{
+		{
+			Id:        "t111",
+			Activated: true,
+			Status:    evergreen.TaskFailed,
+			Details: apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			},
+		},
+		{
+			Id:        "t112",
+			Activated: true,
+			Status:    evergreen.TaskSucceeded,
+			Details: apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+				Type:   "test",
+			},
+		},
+		{
+			Id:        "t121",
+			Activated: true,
+			Status:    evergreen.TaskSucceeded,
+			Details: apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+				Type:   "test",
+			},
+		},
+		{
+			Id:        "t122",
+			Activated: true,
+			Status:    evergreen.TaskSucceeded,
+			Details: apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+				Type:   "test",
+			},
+		},
+		{
+			Id:     "t211",
+			Status: evergreen.TaskUnstarted,
+		},
+		{
+			Id:     "t212",
+			Status: evergreen.TaskUnstarted,
+		},
+		{
+			Id:     "t221",
+			Status: evergreen.TaskUnstarted,
+		},
+		{
+			Id:     "t222",
+			Status: evergreen.TaskUnstarted,
+		},
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
 
 	results, err := s.ctx.GetVersionsAndVariants(0, 10, &proj)
 	s.NoError(err)
