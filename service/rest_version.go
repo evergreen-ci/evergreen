@@ -440,59 +440,46 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // variant.
 func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter) {
 	id := "_id"
-	taskName := "task_name"
-	statuses := "statuses"
 
 	pipeline := []bson.M{
-		// 1. Find only builds corresponding to the specified version
+		// Find only tasks corresponding to the specified version
 		{
 			"$match": bson.M{
-				build.VersionKey: versionId,
+				task.VersionKey: versionId,
 			},
 		},
-		// 2. Loop through each task run on a particular build variant
-		{
-			"$unwind": fmt.Sprintf("$%v", build.TasksKey),
-		},
-		// 3. Group on the task name and construct a new document containing
-		//    all of the relevant info about the task status
+		// Group on the task display name and construct a new task document containing
+		// all of the relevant info about the task status
 		{
 			"$group": bson.M{
-				id: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheDisplayNameKey),
-				statuses: bson.M{
+				id: fmt.Sprintf("$%s", task.DisplayNameKey),
+				"tasks": bson.M{
 					"$push": bson.M{
-						build.BuildVariantKey:       fmt.Sprintf("$%v", build.BuildVariantKey),
-						build.TaskCacheIdKey:        fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheIdKey),
-						build.TaskCacheStatusKey:    fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStatusKey),
-						build.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStartTimeKey),
-						build.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheTimeTakenKey),
-						build.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheActivatedKey),
-						build.TaskCacheBlockedKey:   fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheBlockedKey),
+						task.BuildVariantKey: fmt.Sprintf("$%s", task.BuildVariantKey),
+						task.IdKey:           fmt.Sprintf("$%s", task.IdKey),
+						task.StatusKey:       fmt.Sprintf("$%s", task.StatusKey),
+						task.TimeTakenKey:    fmt.Sprintf("$%s", task.TimeTakenKey),
 					},
 				},
 			},
 		},
-		// 4. Rename the "_id" field to "task_name"
+		// Rename the "_id" field to "task_name"
 		{
 			"$project": bson.M{
-				id:       0,
-				taskName: fmt.Sprintf("$%v", id),
-				statuses: 1,
+				id:          0,
+				"task_name": fmt.Sprintf("$%s", id),
+				"tasks":     1,
 			},
 		},
 	}
 
 	// Anonymous struct used to unmarshal output from the aggregation pipeline
-	var tasks []struct {
-		DisplayName string `bson:"task_name"`
-		Statuses    []struct {
-			BuildVariant string `bson:"build_variant"`
-			// Use an anonyous field to make the semantics of inlining
-			build.TaskCache `bson:",inline"`
-		} `bson:"statuses"`
+	var groupedTasks []struct {
+		DisplayName string      `bson:"task_name"`
+		Tasks       []task.Task `bson:"tasks"`
 	}
 
-	err := db.Aggregate(build.Collection, pipeline, &tasks)
+	err := db.Aggregate(task.Collection, pipeline, &groupedTasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)
@@ -502,12 +489,12 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 
 	result := versionStatusByTaskContent{
 		Id:    versionId,
-		Tasks: make(map[string]versionStatusByTask, len(tasks)),
+		Tasks: make(map[string]versionStatusByTask, len(groupedTasks)),
 	}
 
-	for _, task := range tasks {
-		statuses := make(versionStatusByTask, len(task.Statuses))
-		for _, task := range task.Statuses {
+	for _, t := range groupedTasks {
+		statuses := make(versionStatusByTask, len(t.Tasks))
+		for _, task := range t.Tasks {
 			status := versionStatus{
 				Id:        task.Id,
 				Status:    task.Status,
@@ -515,7 +502,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 			}
 			statuses[task.BuildVariant] = status
 		}
-		result.Tasks[task.DisplayName] = statuses
+		result.Tasks[t.DisplayName] = statuses
 	}
 
 	gimlet.WriteJSON(w, result)
