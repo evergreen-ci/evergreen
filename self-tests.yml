@@ -5,6 +5,11 @@ ignore:
   - "scripts/*" # our scripts are untested, so don't schedule tests for them
   - ".github/*" # github CODEOWNERS configuration
 
+
+parameters:
+  - key: my_param
+    value: hello world!
+
 post:
   - func: attach-test-results
   - command: s3.put
@@ -568,6 +573,11 @@ tasks:
       - func: run-make
         vars:
           target: get-go-imports
+      - command: shell.exec
+        params:
+          script: |
+            echo "my_param: ${my_param}"
+
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
