@@ -23,15 +23,17 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(build *build.Build, tasks []task.Task) ([]uiTask, error) {
-	idToTask := make(map[string]task.Task)
-	for _, task := range tasks {
-		idToTask[task.Id] = task
-	}
+	idToTask := task.TaskSliceToMap(tasks)
 
 	// Insert the tasks in the same order as the task cache
 	uiTasks := make([]uiTask, 0, len(build.Tasks))
 	for _, taskCache := range build.Tasks {
-		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
+		t, ok := idToTask[taskCache.Id]
+		if !ok {
+			continue
+		}
+
+		taskAsUI := uiTask{Task: t}
 		uiTasks = append(uiTasks, taskAsUI)
 	}
 

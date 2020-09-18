@@ -129,7 +129,11 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 	taskMap := task.TaskSliceToMap(tasks)
 	for _, taskCache := range t.build.Tasks {
-		t.tasks = append(t.tasks, taskMap[taskCache.Id])
+		dbTask, ok := taskMap[taskCache.Id]
+		if !ok {
+			continue
+		}
+		t.tasks = append(t.tasks, dbTask)
 	}
 
 	var ok bool
