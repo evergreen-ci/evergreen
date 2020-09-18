@@ -23,6 +23,7 @@ type UIConfig struct {
 	CORSOrigins             []string `bson:"cors_origins" json:"cors_origins" yaml:"cors_origins"`         // allowed request origins for some UI Routes
 	LoginDomain             string   `bson:"login_domain" json:"login_domain" yaml:"login_domain"`         // domain for the login cookie (defaults to domain of app)
 	ExpireLoginCookieDomain string   `bson:"expire_domain" json:"expire_domain" yaml:"expire_domain"`      // expire login token for this domain when the user logs in
+	UserVoice               string   `bson:"userVoice" json:"userVoice" yaml:"userVoice"`
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -65,6 +66,7 @@ func (c *UIConfig) Set() error {
 			"cors_origins":     c.CORSOrigins,
 			"login_domain":     c.LoginDomain,
 			"expire_domain":    c.ExpireLoginCookieDomain,
+			"userVoice":       c.UserVoice,
 		},
 	}, options.Update().SetUpsert(true))
 
