@@ -176,7 +176,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.ActivatedKey, build.StatusKey, build.TasksKey),
+		build.ByVersion(versionId).WithFields(build.ActivatedKey, build.StatusKey),
 	)
 	if err != nil {
 		return err
@@ -996,7 +996,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	}
 
 	// ensure all builds for this patch are finished as well
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey, build.TasksKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
 	if err != nil {
 		return err
 	}

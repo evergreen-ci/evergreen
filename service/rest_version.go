@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -527,7 +528,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.BuildVariantKey, build.TasksKey),
+		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
 	)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding builds for version '%v'", versionId)
