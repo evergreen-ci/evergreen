@@ -36,6 +36,9 @@ type cliIntent struct {
 	// Tasks is a list of tasks associated with the patch
 	Tasks []string `bson:"tasks"`
 
+	// Parameters is a list of parameters to use with the task
+	Parameters []Parameter `bson:"parameters,omitempty"`
+
 	// SyncAtEndOpts describe behavior for task sync at the end of the task.
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 
@@ -153,6 +156,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Githash:       c.BaseHash,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: c.BuildVariants,
+		Parameters:    c.Parameters,
 		Alias:         c.Alias,
 		Tasks:         c.Tasks,
 		SyncAtEndOpts: c.SyncAtEndOpts,
@@ -178,6 +182,7 @@ type CLIIntentParams struct {
 	Description  string
 	Finalize     bool
 	BackportOf   BackportInfo
+	Parameters   []Parameter
 	Variants     []string
 	Tasks        []string
 	Alias        string
@@ -227,6 +232,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Description:   params.Description,
 		BuildVariants: params.Variants,
 		Tasks:         params.Tasks,
+		Parameters:    params.Parameters,
 		SyncAtEndOpts: params.SyncParams,
 		User:          params.User,
 		ProjectID:     params.Project,

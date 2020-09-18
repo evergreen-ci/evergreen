@@ -71,6 +71,7 @@ type patchParams struct {
 	PreserveCommits   bool
 	Ref               string
 	BackportOf        patch.BackportInfo
+	Parameters        []patch.Parameter
 }
 
 type patchSubmission struct {
@@ -86,6 +87,7 @@ type patchSubmission struct {
 	syncStatuses      []string
 	syncTimeout       time.Duration
 	finalize          bool
+	parameters        []patch.Parameter
 	backportOf        patch.BackportInfo
 }
 
@@ -104,6 +106,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		syncTimeout:       p.SyncTimeout,
 		finalize:          p.Finalize,
 		backportOf:        p.BackportOf,
+		parameters:        p.Parameters,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -201,6 +204,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
+	}
+
+	if err := p.loadParameters(conf); err != nil {
+		grip.Warningf("warning - failed to set default parameters: %v\n", err)
 	}
 
 	if p.Uncommitted || conf.UncommittedChanges {
@@ -301,6 +308,23 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 	}
 
+	return nil
+}
+
+func (p *patchParams) loadParameters(conf *ClientSettings) error {
+	defaultParameters := conf.FindDefaultParameters(p.Project)
+	if len(p.Parameters) != 0 {
+		if len(defaultParameters) == 0 && !p.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default parameters for project '%v'?",
+				p.Parameters, p.Project), false) {
+			conf.SetDefaultParameters(p.Project, p.Parameters)
+			if err := conf.Write(""); err != nil {
+				return err
+			}
+		}
+	} else {
+		p.Parameters = defaultParameters
+	}
 	return nil
 }
 
