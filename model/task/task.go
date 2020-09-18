@@ -686,7 +686,6 @@ func (t *Task) CalculateUnblockedTime() error {
 			if depTask.Execution > 0 {
 				// we can't calculate unblocked time without looking at
 				// oldtasks collection, so we won't calculate at all
-				grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": "Execution > 0"})
 				return nil
 			}
 			if depTask.FinishTime.After(latestTime) {
@@ -699,11 +698,10 @@ func (t *Task) CalculateUnblockedTime() error {
 			}
 
 		}
-		grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": latestTime})
 		// record in the in-memory task
 		t.UnblockedTime = latestTime
 		// update the db
-		UpdateOne(
+		err := UpdateOne(
 			bson.M{
 				IdKey: t.Id,
 			},
@@ -714,6 +712,11 @@ func (t *Task) CalculateUnblockedTime() error {
 				},
 			},
 		)
+		if err != nil {
+			grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": err})
+			return err
+		}
+
 		return nil
 	} else {
 		return nil
