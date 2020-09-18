@@ -367,7 +367,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			// does not exist, we treat this the same as when the remote config
 			// is invalid - but add a different error message
 			msg := message.ConvertToComposer(level.Error, message.Fields{
-				"message":  fmt.Sprintf("problem with project configuration: %s", errors.Cause(err).Error()),
+				"message":  fmt.Sprintf("problem with project configuration: %s", errors.Cause(err)),
 				"runner":   RunnerName,
 				"project":  projectRef.Identifier,
 				"revision": revision,
