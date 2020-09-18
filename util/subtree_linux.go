@@ -157,6 +157,10 @@ func processHasMarkers(pid int, key string, logger grip.Journaler) bool {
 }
 
 func executableInWorkingDir(pid int, workingDir string, logger grip.Journaler) bool {
+	if workingDir == "" {
+		return false
+	}
+
 	executablePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
 		if !os.IsPermission(err) {

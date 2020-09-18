@@ -52,7 +52,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 		if pid == myPid {
 			continue
 		}
-		if !envHasMarkers(key, env) && !strings.HasPrefix(command, workingDir) {
+		if !envHasMarkers(key, env) && !commandInWorkingDir(command, workingDir) {
 			continue
 		}
 
@@ -78,4 +78,12 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 	}
 	return nil
 
+}
+
+func commandInWorkingDir(command, workingDir string) bool {
+	if workingDir == "" {
+		return false
+	}
+
+	return strings.HasPrefix(command, workingDir)
 }
