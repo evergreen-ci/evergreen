@@ -1414,12 +1414,6 @@ func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSe
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api admin settings from service: %s", err.Error()))
 	}
-	uiConfig := restModel.APIUIConfig{}
-	err = uiConfig.BuildFromService(config.Ui)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api UI Config from service: %s", err.Error()))
-	}
-	spruceConfig.Ui = &uiConfig
 	return &spruceConfig, nil
 }
 

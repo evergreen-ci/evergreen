@@ -140,6 +140,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				Private: ToStringPtr(pair.Private),
 			})
 		}
+		uiConfig := APIUIConfig{}
+		err := uiConfig.BuildFromService(v.Ui)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiUiConfig %s", err)
+		}
+
+		as.Ui = &uiConfig
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
