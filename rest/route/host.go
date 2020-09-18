@@ -411,7 +411,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 			if h.NoExpiration {
 				noExpiration := false
-				err := mgr.ModifyHost(ctx, &h, host.HostModifyOptions{
+				err = mgr.ModifyHost(ctx, &h, host.HostModifyOptions{
 					NoExpiration: &noExpiration,
 				})
 				catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
@@ -440,7 +440,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 			if v.NoExpiration {
 				opts := model.VolumeModifyOptions{NoExpiration: false}
-				err := mgr.ModifyVolume(ctx, &v, &opts)
+				err = mgr.ModifyVolume(ctx, &v, &opts)
 				catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
 				continue
 			}
