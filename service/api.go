@@ -560,7 +560,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/patches").Route("/mine").Wrap(checkUser).Handler(as.listPatches).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, viewTasks).Handler(as.summarizePatch).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, submitPatch).Handler(as.existingPatchRequest).Post()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId:\\w+}/modules").Wrap(checkUser, checkProject, viewTasks).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject, viewTasks).Handler(as.listPatchModules).Get()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.deletePatchModule).Delete()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.updatePatchModule).Post()
 
