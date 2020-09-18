@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
@@ -155,12 +154,29 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
+	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	taskMap := task.TaskSliceToMap(dbTasks)
 	failedTaskIds := []string{}
 	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
-		for _, t := range build.Tasks {
+		for _, taskCache := range build.Tasks {
+			t, ok := taskMap[taskCache.Id]
+			if !ok {
+				grip.Error(message.Fields{
+					"task_id": taskCache.Id,
+					"version": projCtx.Version.Id,
+					"request": gimlet.GetRequestID(ctx),
+					"message": "build references task that does not exist",
+				})
+				continue
+			}
+
 			uiT := uiTask{
 				Task: task.Task{
 					Id:          t.Id,
@@ -168,30 +184,15 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					StartTime:   t.StartTime,
 					TimeTaken:   t.TimeTaken,
 					Status:      t.Status,
-					Details:     t.StatusDetails,
+					Details:     t.Details,
 					DisplayName: t.DisplayName,
 				}}
 
-			// TODO: this loop would probably work better
-			// as an aggregation.
 			if t.Status == evergreen.TaskStarted {
-				var taskFromDb *task.Task
-				taskFromDb, err = task.FindOne(task.ById(t.Id))
-				if err != nil {
-					uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				} else if taskFromDb != nil {
-					uiT.ExpectedDuration = taskFromDb.ExpectedDuration
-				}
-
-				grip.ErrorWhen(taskFromDb == nil, message.Fields{
-					"task_id": t.Id,
-					"version": projCtx.Version.Id,
-					"request": gimlet.GetRequestID(ctx),
-					"message": "build references task that does not exist",
-				})
+				uiT.ExpectedDuration = t.ExpectedDuration
 			}
 			uiTasks = append(uiTasks, uiT)
-			buildAsUI.TaskStatusCount.IncrementStatus(t.Status, t.StatusDetails)
+			buildAsUI.TaskStatusCount.IncrementStatus(t.Status, t.Details)
 			if t.Status == evergreen.TaskFailed {
 				failedTaskIds = append(failedTaskIds, t.Id)
 			}
@@ -202,7 +203,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Tasks = uiTasks
 		uiBuilds = append(uiBuilds, buildAsUI)
 	}
-	err = addFailedTests(failedTaskIds, uiBuilds)
+	err = addFailedTests(failedTaskIds, uiBuilds, taskMap)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -278,17 +279,33 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	taskMap := task.TaskSliceToMap(dbTasks)
 
 	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
-		for _, t := range build.Tasks {
+		for _, taskCache := range build.Tasks {
+			t, ok := taskMap[taskCache.Id]
+			if !ok {
+				grip.Error(message.Fields{
+					"task_id": taskCache.Id,
+					"version": projCtx.Version.Id,
+					"request": gimlet.GetRequestID(r.Context()),
+					"message": "build references task that does not exist",
+				})
+				continue
+			}
 			uiTasks = append(uiTasks,
 				uiTask{
 					Task: task.Task{Id: t.Id, Activated: t.Activated,
 						StartTime: t.StartTime, TimeTaken: t.TimeTaken, Status: t.Status,
-						Details: t.StatusDetails, DisplayName: t.DisplayName},
+						Details: t.Details, DisplayName: t.DisplayName},
 				})
 			if t.Activated {
 				versionAsUI.ActiveTasks++
@@ -303,18 +320,19 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 // addFailedTests fetches the tasks that failed from the database and attaches
 // the associated failed tests to the uiBuilds.
-func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
+func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild, taskMap map[string]task.Task) error {
 	if len(failedTaskIds) == 0 {
 		return nil
 	}
-	failedTasks, err := task.Find(task.ByIds(failedTaskIds))
-	if err != nil {
-		return errors.Wrap(err, "error fetching failed tasks")
-	}
 
 	failedTestsByTaskId := map[string][]string{}
-	for _, t := range failedTasks {
+	for _, tID := range failedTaskIds {
 		failedTests := []string{}
+
+		t, ok := taskMap[tID]
+		if !ok {
+			continue
+		}
 		for _, r := range t.LocalTestResults {
 			if r.Status == evergreen.TestFailedStatus {
 				failedTests = append(failedTests, r.TestFile)
@@ -365,12 +383,28 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		taskMap := task.TaskSliceToMap(dbTasks)
 
 		uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
 		for _, b := range dbBuilds {
 			buildAsUI := uiBuild{Build: b}
 			uiTasks := make([]uiTask, 0, len(b.Tasks))
-			for _, t := range b.Tasks {
+			for _, taskCache := range b.Tasks {
+				t, ok := taskMap[taskCache.Id]
+				if !ok {
+					grip.Error(message.Fields{
+						"task_id": taskCache.Id,
+						"version": projCtx.Version.Id,
+						"request": gimlet.GetRequestID(r.Context()),
+						"message": "build references task that does not exist",
+					})
+					continue
+				}
 				uiTasks = append(uiTasks,
 					uiTask{
 						Task: task.Task{
