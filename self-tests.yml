@@ -405,6 +405,7 @@ tasks:
           shell: bash
           script: |
             echo "bar"
+            sleep 300
     depends_on: 
         - name: foo
           status: '*'

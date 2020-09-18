@@ -700,7 +700,20 @@ func (t *Task) CalculateUnblockedTime() error {
 
 		}
 		grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": latestTime})
+		// record in the in-memory task
 		t.UnblockedTime = latestTime
+		// update the db
+		UpdateOne(
+			bson.M{
+				IdKey: t.Id,
+			},
+			bson.M{
+				"$set": bson.M{
+					LastHeartbeatKey: latestTime,
+					UnblockedTimeKey: latestTime,
+				},
+			},
+		)
 		return nil
 	} else {
 		return nil
