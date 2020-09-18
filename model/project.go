@@ -1563,9 +1563,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
-	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(
-		task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyUnattainableKey),
-	))
+	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(task.StatusFields...))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}

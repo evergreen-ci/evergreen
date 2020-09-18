@@ -179,6 +179,17 @@ var (
 	}
 )
 
+var StatusFields = []string{
+	BuildIdKey,
+	DisplayNameKey,
+	StatusKey,
+	DetailsKey,
+	StartTimeKey,
+	TimeTakenKey,
+	ActivatedKey,
+	bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey),
+}
+
 // ById creates a query that finds a task by its _id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{

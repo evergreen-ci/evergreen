@@ -2377,6 +2377,15 @@ func AnyActiveTasks(tasks []Task) bool {
 	return false
 }
 
+func TaskSliceToMap(tasks []Task) map[string]Task {
+	taskMap := make(map[string]Task, len(tasks))
+	for _, t := range tasks {
+		taskMap[t.Id] = t
+	}
+
+	return taskMap
+}
+
 func GetLatestExecution(taskId string) (int, error) {
 	var t *Task
 	var err error
