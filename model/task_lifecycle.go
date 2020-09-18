@@ -843,7 +843,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 
 	// if it's a patch, mark the patch as started if necessary
 	if evergreen.IsPatchRequester(t.Requester) {
-		err := patch.TryMarkStarted(t.Version, startTime)
+		err = patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
 			updates.PatchNewStatus = evergreen.PatchStarted
 
