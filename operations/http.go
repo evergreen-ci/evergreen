@@ -524,6 +524,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Finalize          bool               `json:"finalize"`
 		BackportOf        string             `json:"backport_of"`
 		BackportInfo      patch.BackportInfo `json:"backport_info"`
+		Parameters        []patch.Parameter  `json:"parameters"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectId,
@@ -539,6 +540,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Finalize:          incomingPatch.finalize,
 		BackportOf:        incomingPatch.backportOf.PatchID,
 		BackportInfo:      incomingPatch.backportOf,
+		Parameters:        incomingPatch.parameters,
 	}
 
 	rPipe, wPipe := io.Pipe()

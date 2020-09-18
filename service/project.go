@@ -202,6 +202,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Identifier            string                         `json:"identifier"`
 		DisplayName           string                         `json:"display_name"`
 		RemotePath            string                         `json:"remote_path"`
+		SpawnHostScriptPath   string                         `json:"spawn_host_script_path"`
 		BatchTime             int                            `json:"batch_time"`
 		DeactivatePrevious    bool                           `json:"deactivate_previous"`
 		Branch                string                         `json:"branch_name"`
@@ -455,6 +456,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
+	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled

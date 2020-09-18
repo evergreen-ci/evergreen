@@ -236,6 +236,7 @@ type APIProjectRef struct {
 	Private                     bool                 `json:"private"`
 	BatchTime                   int                  `json:"batch_time"`
 	RemotePath                  *string              `json:"remote_path"`
+	SpawnHostScriptPath         *string              `json:"spawn_host_script_path"`
 	Identifier                  *string              `json:"identifier"`
 	DisplayName                 *string              `json:"display_name"`
 	DeactivatePrevious          bool                 `json:"deactivate_previous"`
@@ -305,6 +306,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		RepotrackerDisabled:   p.RepotrackerDisabled,
 		DispatchingDisabled:   p.DispatchingDisabled,
 		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
+		SpawnHostScriptPath:   FromStringPtr(p.SpawnHostScriptPath),
 		Admins:                FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		Tags:                  FromStringPtrSlice(p.Tags),
@@ -376,6 +378,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.DispatchingDisabled = projectRef.DispatchingDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
+	p.SpawnHostScriptPath = ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.Admins = ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.Tags = ToStringPtrSlice(projectRef.Tags)

@@ -68,6 +68,7 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -106,6 +107,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbCreateTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {

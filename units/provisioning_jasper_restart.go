@@ -415,9 +415,13 @@ func (j *jasperRestartJob) populateIfUnset(ctx context.Context) error {
 	if j.CredentialsExpiration.IsZero() {
 		expiration, err := j.host.JasperCredentialsExpiration(ctx, j.env)
 		if err != nil {
-			return errors.Wrapf(err, "could not get credentials expiration time for host %s in job %s", j.HostID, j.ID())
+			grip.Error(errors.Wrapf(err, "could not get credentials expiration time for host %s in job %s", j.HostID, j.ID()))
+			// If we cannot get the credentials for some reason (e.g. the host's
+			// credentials were deleted), assume the credentials have expired.
+			j.CredentialsExpiration = time.Now()
+		} else {
+			j.CredentialsExpiration = expiration
 		}
-		j.CredentialsExpiration = expiration
 	}
 
 	return nil

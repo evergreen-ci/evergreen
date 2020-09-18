@@ -96,6 +96,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		conf := modelData.TaskConfig
 		comm := client.NewMock("http://localhost.com")
+
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
 
