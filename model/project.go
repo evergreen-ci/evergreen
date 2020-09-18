@@ -1567,10 +1567,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasksFromDb {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasksFromDb)
 
 	tasksByBuild := map[string][]task.Task{}
 	for _, b := range buildsFromDb {

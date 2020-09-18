@@ -95,10 +95,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 }
 
 func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasks)
 
 	apiBuild.TaskCache = []APITaskCache{}
 	for _, taskID := range apiBuild.Tasks {

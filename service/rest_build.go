@@ -57,10 +57,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
 	}
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasks)
 
 	destBuild := &restBuild{}
 	destBuild.Id = b.Id
@@ -112,10 +109,7 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
 	}
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasks)
 
 	result := buildStatusContent{
 		Id:           b.Id,

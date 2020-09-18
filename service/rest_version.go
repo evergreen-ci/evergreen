@@ -543,10 +543,7 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasks)
 
 	result := versionStatusByBuildContent{
 		Id:     versionId,

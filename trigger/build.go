@@ -127,10 +127,7 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch tasks")
 	}
-	taskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
+	taskMap := task.TaskSliceToMap(tasks)
 	for _, taskCache := range t.build.Tasks {
 		t.tasks = append(t.tasks, taskMap[taskCache.Id])
 	}
