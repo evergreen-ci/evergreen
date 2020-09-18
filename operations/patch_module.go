@@ -18,7 +18,7 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
@@ -35,7 +35,6 @@ func PatchSetModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			large := c.Bool(largeFlagName)
 			skipConfirm := c.Bool(yesFlagName)
-			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
@@ -80,7 +79,7 @@ func PatchSetModule() cli.Command {
 			moduleBranch, err := getModuleBranch(module, proj)
 			if err != nil {
 				grip.Error(err)
-				mods, merr := ac.GetPatchModules(patchID, proj.Identifier)
+				mods, merr := ac.GetPatchModules(patchID, existingPatch.Project)
 				if merr != nil {
 					return errors.Wrap(merr, "errors fetching list of available modules")
 				}
@@ -131,7 +130,7 @@ func PatchSetModule() cli.Command {
 			}
 			err = ac.UpdatePatchModule(params)
 			if err != nil {
-				mods, err := ac.GetPatchModules(patchID, project)
+				mods, err := ac.GetPatchModules(patchID, existingPatch.Project)
 				var msg string
 				if err != nil {
 					msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",
