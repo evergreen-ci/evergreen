@@ -4051,6 +4051,7 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+  volumeId: String
 }
 
 input EditSpawnHostInput {
@@ -20359,6 +20360,12 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		case "homeVolumeSize":
 			var err error
 			it.HomeVolumeSize, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "volumeId":
+			var err error
+			it.VolumeID, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

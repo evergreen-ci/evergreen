@@ -224,6 +224,7 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+  volumeId: String
 }
 
 input EditSpawnHostInput {
