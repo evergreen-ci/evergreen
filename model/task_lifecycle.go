@@ -852,6 +852,13 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 		}
 	}
 
+	// update task unblocked field
+	err = t.CalculateUnblockedTime()
+
+	if err != nil {
+		return errors.Wrapf(err, "error calculating unblocked_time for task %s", t.Id)
+	}
+
 	if t.IsPartOfDisplay() {
 		return updateDisplayTaskAndCache(t)
 	}

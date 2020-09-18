@@ -72,7 +72,7 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
-	UnblockedTime time.Time `bson:"unblocked_time" json:"unblocked_time"`
+	UnblockedTime time.Time `bson:"unblocked_time,omitempty" json:"unblocked_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -662,12 +662,6 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 		}
 	}
 
-	// update task unblocked field
-	err = t.CalculateUnblockedTime()
-
-	if err != nil {
-		return errors.Wrapf(err, "error calculating unblocked_time for task %s", t.Id)
-	}
 	return nil
 }
 
@@ -677,6 +671,7 @@ func (t *Task) CalculateUnblockedTime() error {
 
 	//if dependencies exist, get the max of their finish times
 	if len(directDependencies) > 0 {
+		grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": "Entered for loop"})
 		latestTime := t.ScheduledTime
 		for _, dep := range directDependencies {
 			depID := dep.TaskId
@@ -684,12 +679,14 @@ func (t *Task) CalculateUnblockedTime() error {
 			depTask, err := FindOne(ById(depID).WithFields(FinishTimeKey, ExecutionKey))
 
 			if err != nil {
+				grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": err})
 				return err
 			}
 
 			if depTask.Execution > 0 {
 				// we can't calculate unblocked time without looking at
 				// oldtasks collection, so we won't calculate at all
+				grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": "Execution > 0"})
 				return nil
 			}
 			if depTask.FinishTime.After(latestTime) {
@@ -700,7 +697,9 @@ func (t *Task) CalculateUnblockedTime() error {
 					"unexpected task finish time %s after dependent start time %s",
 					depTask.FinishTime.String(), t.StartTime.String())
 			}
+
 		}
+		grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": latestTime})
 		t.UnblockedTime = latestTime
 		return nil
 	} else {

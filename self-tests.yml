@@ -390,6 +390,25 @@ tasks:
           make_args: "-k"
           tz: "America/New_York"
 
+  - name: foo
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "foo"
+            sleep 300
+  - name: bar
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "bar"
+    depends_on: 
+        - name: foo
+          status: '*'
+
   - <<: *run-build
     name: dist-staging
     patch_only: true
@@ -407,6 +426,7 @@ tasks:
 
   - <<: *run-go-test-suite
     name: js-test
+
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -597,6 +617,8 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
+      - name: "foo"
+      - name: "bar"
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
