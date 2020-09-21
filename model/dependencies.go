@@ -72,13 +72,13 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
 		di.included[pair] = false
-		return false, errors.Errorf("task %s does not exist in project '%s' for variant '%s'", pair.TaskName,
+		return false, errors.Errorf("task '%s' does not exist in project '%s' for variant '%s'", pair.TaskName,
 			di.Project.Identifier, pair.Variant)
 	}
 
 	if bvt.SkipOnRequester(di.requester) {
 		di.included[pair] = false
-		return false, errors.Errorf("task %s in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
+		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
 	}
 	di.included[pair] = true
 
