@@ -358,6 +358,9 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if spawnHostInput.HomeVolumeSize != nil {
 		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
 	}
+	if spawnHostInput.VolumeID != nil {
+		options.HomeVolumeID = *spawnHostInput.VolumeID
+	}
 	if spawnHostInput.Expiration != nil {
 		options.Expiration = spawnHostInput.Expiration
 	}
