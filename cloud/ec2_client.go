@@ -204,6 +204,11 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 						return false, EC2InsufficientCapacityError
 					}
 					grip.Debug(message.WrapError(ec2err, msg))
+					grip.Debug(message.Fields{
+						"message":    "no match found for EC2 error code",
+						"err_code":   ec2err.Code(),
+						"err_search": EC2InsufficientCapacity,
+					})
 				}
 				return true, err
 			}
