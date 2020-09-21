@@ -151,33 +151,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 
 		// go through all the tests
 		for idx, suite := range testSuites {
-			if len(suite.TestCases) == 0 && suite.Error != nil {
-				// if no test cases but an error, generate a default test case
-				tc := testCase{
-					Name:  suite.Name,
-					Time:  suite.Time,
-					Error: suite.Error,
-				}
-				if tc.Name == "" {
-					tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
-				}
-				suite.TestCases = append(suite.TestCases, tc)
-			}
-			for _, tc := range suite.TestCases {
-				// logs are only created when a test case does not succeed
-				test, log := tc.toModelTestResultAndLog(conf.Task)
-				if log != nil {
-					if suite.SysOut != "" {
-						log.Lines = append(log.Lines, "system-out:", suite.SysOut)
-					}
-					if suite.SysErr != "" {
-						log.Lines = append(log.Lines, "system-err:", suite.SysErr)
-					}
-					logs = append(logs, log)
-					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
-				}
-				tests = append(tests, test)
-			}
+			addTestCasesForSuite(suite, idx, conf.Task, &tests, &logs, &logIdxToTestIdx)
 		}
 	}
 
@@ -206,4 +180,37 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(logs))
 
 	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
+}
+
+func addTestCasesForSuite(suite testSuite, idx int, t *task.Task, tests *[]task.TestResult, logs *[]*model.TestLog, logIdxToTestIdx *[]int) {
+	if len(suite.TestCases) == 0 && suite.Error != nil {
+		// if no test cases but an error, generate a default test case
+		tc := testCase{
+			Name:  suite.Name,
+			Time:  suite.Time,
+			Error: suite.Error,
+		}
+		if tc.Name == "" {
+			tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
+		}
+		suite.TestCases = append(suite.TestCases, tc)
+	}
+	for _, tc := range suite.TestCases {
+		// logs are only created when a test case does not succeed
+		test, log := tc.toModelTestResultAndLog(t)
+		if log != nil {
+			if suite.SysOut != "" {
+				log.Lines = append(log.Lines, "system-out:", suite.SysOut)
+			}
+			if suite.SysErr != "" {
+				log.Lines = append(log.Lines, "system-err:", suite.SysErr)
+			}
+			*logs = append(*logs, log)
+			*logIdxToTestIdx = append(*logIdxToTestIdx, len(*tests))
+		}
+		*tests = append(*tests, test)
+	}
+	if suite.NestedSuites != nil {
+		addTestCasesForSuite(*suite.NestedSuites, idx, t, tests, logs, logIdxToTestIdx)
+	}
 }

@@ -39,16 +39,17 @@ type testSuites struct {
 }
 
 type testSuite struct {
-	Errors    int             `xml:"errors,attr"`
-	Failures  int             `xml:"failures,attr"`
-	Skip      int             `xml:"skip,attr"`
-	Name      string          `xml:"name,attr"`
-	Tests     int             `xml:"tests,attr"`
-	TestCases []testCase      `xml:"testcase"`
-	Time      customFloat     `xml:"time,attr"`
-	Error     *failureDetails `xml:"error"`
-	SysOut    string          `xml:"system-out"`
-	SysErr    string          `xml:"system-err"`
+	Errors       int             `xml:"errors,attr"`
+	Failures     int             `xml:"failures,attr"`
+	Skip         int             `xml:"skip,attr"`
+	Name         string          `xml:"name,attr"`
+	Tests        int             `xml:"tests,attr"`
+	TestCases    []testCase      `xml:"testcase"`
+	Time         customFloat     `xml:"time,attr"`
+	Error        *failureDetails `xml:"error"`
+	SysOut       string          `xml:"system-out"`
+	SysErr       string          `xml:"system-err"`
+	NestedSuites *testSuite      `xml:"testsuite"`
 }
 
 type testCase struct {

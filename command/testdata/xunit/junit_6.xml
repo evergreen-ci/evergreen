@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="depth1" tests="11" assertions="75" errors="0" warnings="0" failures="0" skipped="0" time="0.395416">
+    <testsuite name="depth2" tests="11" assertions="75" errors="0" warnings="0" failures="0" skipped="0" time="0.395416">
+      <testsuite name="depth3" file="/test" tests="11" assertions="75" errors="0" warnings="0" failures="0" skipped="0" time="0.395416">
+        <testsuite name="depth4" tests="7" assertions="44" errors="0" warnings="0" failures="0" skipped="0" time="0.107693">
+          <testcase name="test1" line="64" assertions="5" time="0.040159"/>
+        </testsuite>
+        <testcase name="test2" class="class1" classname="class2" file="/test2" line="131" assertions="22" time="0.003594"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>
