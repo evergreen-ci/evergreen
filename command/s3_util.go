@@ -17,8 +17,6 @@ const (
 	s3HTTPClientTimeout = 60 * time.Minute
 	s3OpSleep           = 2 * time.Second
 	s3OpRetryMaxSleep   = 20 * time.Second
-	// kim: TODO: remove
-	// s3baseURL           = "https://s3.amazonaws.com/"
 )
 
 var (

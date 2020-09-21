@@ -255,8 +255,6 @@ func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pa
 		return errors.Wrapf(err, "error uploading %s to S3", localPath)
 	}
 	remoteURL := util.S3DefaultURL(a.opts.S3Opts.Name, strings.Join([]string{remotePath, file}, "/"))
-	// kim: TODO: remove
-	// remoteURL := fmt.Sprintf("%s/%s/%s/%s", a.opts.S3BaseURL, a.opts.S3Opts.Name, remotePath, file)
 	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
 	switch file {
 	case agentLogFileName:

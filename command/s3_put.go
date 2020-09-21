@@ -381,6 +381,8 @@ retryLoop:
 		return err
 	}
 
+	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
+
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
 		logger.Task().Infof("%d requested, %d uploaded", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
@@ -401,8 +403,6 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		}
 
 		fileLink := util.S3DefaultURL(s3pc.Bucket, remoteFileName)
-		// kim: TODO: handle different S3 URL styles
-		// fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
 
 		displayName := s3pc.ResourceDisplayName
 		if s3pc.isMulti() || displayName == "" {

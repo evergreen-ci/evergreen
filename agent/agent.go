@@ -37,13 +37,11 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	HostID       string
-	HostSecret   string
-	StatusPort   int
-	LogPrefix    string
-	LogkeeperURL string
-	// kim: TODO: remove
-	// S3BaseURL             string
+	HostID                string
+	HostSecret            string
+	StatusPort            int
+	LogPrefix             string
+	LogkeeperURL          string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration
 	AgentSleepInterval    time.Duration
@@ -101,8 +99,6 @@ func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, e
 	if setupData, err := comm.GetAgentSetupData(ctx); err == nil {
 		opts.SetupData = *setupData
 		opts.LogkeeperURL = setupData.LogkeeperURL
-		// kim: TODO: remove
-		// opts.S3BaseURL = setupData.S3Base
 		opts.S3Opts = pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
 			Region:      endpoints.UsEast1RegionID,

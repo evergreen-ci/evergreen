@@ -84,9 +84,6 @@ type AWSConfig struct {
 	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
 	// TaskSyncRead stores credentials for reading task data in S3.
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
-	// kim: TODO: remove S3BaseURL from everywhere, since it's not compatible
-	// with both URLs styles.
-	// S3BaseURL string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 

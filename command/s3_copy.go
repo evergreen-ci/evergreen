@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -169,6 +170,8 @@ func (c *s3copy) s3Copy(ctx context.Context,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
+	var foundDottedBucketName bool
+
 	for _, s3CopyFile := range c.S3CopyFiles {
 		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
@@ -222,7 +225,12 @@ func (c *s3copy) s3Copy(ctx context.Context,
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		if !foundDottedBucketName && strings.Contains(s3CopyReq.S3DestinationBucket, ".") {
+			logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
+			foundDottedBucketName = true
+		}
 	}
+
 	return nil
 }
 
@@ -233,8 +241,6 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 
 	remotePath := filepath.ToSlash(request.S3DestinationPath)
 	fileLink := util.S3DefaultURL(request.S3DestinationBucket, remotePath)
-	// kim: TODO: handle different S3 URL styles
-	// fileLink := s3baseURL + request.S3DestinationBucket + "/" + remotePath
 
 	displayName := request.S3DisplayName
 
