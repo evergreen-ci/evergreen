@@ -141,7 +141,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Key, FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Key))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Secret, FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Secret))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Bucket, FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
-	assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, FromStringPtr(apiSettings.Providers.AWS.S3BaseURL))
+	// kim: TODO: remove
+	// assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, FromStringPtr(apiSettings.Providers.AWS.S3BaseURL))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromStringPtr(apiSettings.Providers.GCE.ClientEmail))
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, FromStringPtr(apiSettings.Providers.OpenStack.IdentityEndpoint))
@@ -207,7 +208,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Key, dbSettings.Providers.AWS.TaskSyncRead.Key)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Secret, dbSettings.Providers.AWS.TaskSyncRead.Secret)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Bucket, dbSettings.Providers.AWS.TaskSyncRead.Bucket)
-	assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, dbSettings.Providers.AWS.S3BaseURL)
+	// kim: TODO: remove
+	// assert.EqualValues(testSettings.Providers.AWS.S3BaseURL, dbSettings.Providers.AWS.S3BaseURL)
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, dbSettings.Providers.Docker.APIVersion)
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, dbSettings.Providers.GCE.ClientEmail)
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, dbSettings.Providers.OpenStack.IdentityEndpoint)

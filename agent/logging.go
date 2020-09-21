@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -253,7 +254,9 @@ func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pa
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s to S3", localPath)
 	}
-	remoteURL := fmt.Sprintf("%s/%s/%s/%s", a.opts.S3BaseURL, a.opts.S3Opts.Name, remotePath, file)
+	remoteURL := util.S3DefaultURL(a.opts.S3Opts.Name, strings.Join([]string{remotePath, file}, "/"))
+	// kim: TODO: remove
+	// remoteURL := fmt.Sprintf("%s/%s/%s/%s", a.opts.S3BaseURL, a.opts.S3Opts.Name, remotePath, file)
 	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
 	switch file {
 	case agentLogFileName:

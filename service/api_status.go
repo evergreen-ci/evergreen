@@ -192,8 +192,9 @@ func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 		S3Secret:          as.Settings.Providers.AWS.S3.Secret,
 		S3Bucket:          as.Settings.Providers.AWS.S3.Bucket,
 		TaskSync:          as.Settings.Providers.AWS.TaskSync,
-		S3Base:            as.Settings.Providers.AWS.S3BaseURL,
-		LogkeeperURL:      as.Settings.LoggerConfig.LogkeeperURL,
+		// kim: TODO: remove
+		// S3Base:            as.Settings.Providers.AWS.S3BaseURL,
+		LogkeeperURL: as.Settings.LoggerConfig.LogkeeperURL,
 	}
 	gimlet.WriteJSON(w, out)
 }
