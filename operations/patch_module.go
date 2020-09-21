@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -19,12 +18,13 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
 			})),
 		Before: mergeBeforeFuncs(
+			setPlainLogger,
 			requirePatchIDFlag,
 			requireModuleFlag,
 			mutuallyExclusiveArgs(false, uncommittedChangesFlag, preserveCommitsFlag),
@@ -35,7 +35,6 @@ func PatchSetModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			large := c.Bool(largeFlagName)
 			skipConfirm := c.Bool(yesFlagName)
-			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
@@ -55,6 +54,14 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
+			existingPatch, err := ac.GetPatch(patchID)
+			if err != nil {
+				return errors.Wrapf(err, "problem getting patch '%s'", existingPatch.Id)
+			}
+			if existingPatch.IsCommitQueuePatch() {
+				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit-queue patches")
+			}
+
 			preserveCommits = preserveCommits || conf.PreserveCommits
 			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 			if err != nil {
@@ -72,7 +79,7 @@ func PatchSetModule() cli.Command {
 			moduleBranch, err := getModuleBranch(module, proj)
 			if err != nil {
 				grip.Error(err)
-				mods, merr := ac.GetPatchModules(patchID, proj.Identifier)
+				mods, merr := ac.GetPatchModules(patchID, existingPatch.Project)
 				if merr != nil {
 					return errors.Wrap(merr, "errors fetching list of available modules")
 				}
@@ -94,10 +101,6 @@ func PatchSetModule() cli.Command {
 				return err
 			}
 			if !preserveCommits {
-				var existingPatch *patch.Patch
-				if existingPatch, err = ac.GetPatch(patchID); err != nil {
-					return errors.Wrapf(err, "can't get existing patch '%s'", patchID)
-				}
 				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
 				if err != nil {
 					return err
@@ -127,7 +130,7 @@ func PatchSetModule() cli.Command {
 			}
 			err = ac.UpdatePatchModule(params)
 			if err != nil {
-				mods, err := ac.GetPatchModules(patchID, project)
+				mods, err := ac.GetPatchModules(patchID, existingPatch.Project)
 				var msg string
 				if err != nil {
 					msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",
@@ -155,7 +158,7 @@ func PatchRemoveModule() cli.Command {
 		Name:    "patch-remove-module",
 		Aliases: []string{"rm-module", "patch-rm-module"},
 		Usage:   "remove a module from an existing patch",
-		Flags:   mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag()),
+		Flags:   mergeFlagSlices(addPatchIDFlag(), addModuleFlag()),
 		Before:  mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
