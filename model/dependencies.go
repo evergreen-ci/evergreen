@@ -110,12 +110,12 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			// and add them to the list of tasks and variants.
 			for _, v := range di.Project.BuildVariants {
 				for _, t := range v.Tasks {
+					if t.Name == pair.TaskName && v.Name == pair.Variant {
+						continue
+					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v.Name)
 					if projectTask != nil {
 						if projectTask.SkipOnRequester(di.requester) {
-							continue
-						}
-						if t.Name == pair.TaskName && v.Name == pair.Variant {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
@@ -131,12 +131,12 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					if t.Name != d.Name {
 						continue
 					}
+					if t.Name == pair.TaskName && v.Name == pair.Variant {
+						continue
+					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v.Name)
 					if projectTask != nil {
 						if projectTask.SkipOnRequester(di.requester) {
-							continue
-						}
-						if t.Name == pair.TaskName && v.Name == pair.Variant {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
@@ -154,12 +154,12 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			variant := di.Project.FindBuildVariant(v)
 			if variant != nil {
 				for _, t := range variant.Tasks {
+					if t.Name == pair.TaskName {
+						continue
+					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v)
 					if projectTask != nil {
 						if projectTask.SkipOnRequester(di.requester) {
-							continue
-						}
-						if t.Name == pair.TaskName && variant.Name == pair.Variant {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: variant.Name})
