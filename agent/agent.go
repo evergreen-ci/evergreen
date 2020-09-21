@@ -42,7 +42,6 @@ type Options struct {
 	StatusPort            int
 	LogPrefix             string
 	LogkeeperURL          string
-	S3BaseURL             string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration
 	AgentSleepInterval    time.Duration
@@ -100,7 +99,6 @@ func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, e
 	if setupData, err := comm.GetAgentSetupData(ctx); err == nil {
 		opts.SetupData = *setupData
 		opts.LogkeeperURL = setupData.LogkeeperURL
-		opts.S3BaseURL = setupData.S3Base
 		opts.S3Opts = pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
 			Region:      endpoints.UsEast1RegionID,

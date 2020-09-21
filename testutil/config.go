@@ -232,7 +232,6 @@ func MockConfig() *evergreen.Settings {
 					Secret: "task_sync_read_secret",
 					Bucket: "task_sync_bucket",
 				},
-				S3BaseURL: "s3_base_url",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
