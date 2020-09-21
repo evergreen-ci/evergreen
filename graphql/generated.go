@@ -3591,7 +3591,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TicketFields.Updated(childComplexity), true
 
-	case "UIConfig.uservoice":
+	case "UIConfig.userVoice":
 		if e.complexity.UIConfig.UserVoice == nil {
 			break
 		}
@@ -4604,7 +4604,7 @@ type SpruceConfig {
 }
 
 type UIConfig {
-  uservoice: String
+  userVoice: String
 }
 
 type SiteBanner {
@@ -18190,7 +18190,7 @@ func (ec *executionContext) _TicketFields_status(ctx context.Context, field grap
 	return ec.marshalNJiraStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _UIConfig_uservoice(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -24163,8 +24163,8 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UIConfig")
-		case "uservoice":
-			out.Values[i] = ec._UIConfig_uservoice(ctx, field, obj)
+		case "userVoice":
+			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

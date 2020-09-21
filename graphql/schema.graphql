@@ -730,7 +730,7 @@ type SpruceConfig {
 }
 
 type UIConfig {
-  uservoice: String
+  userVoice: String
 }
 
 type SiteBanner {
