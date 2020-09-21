@@ -66,7 +66,7 @@ func (c *UIConfig) Set() error {
 			"cors_origins":     c.CORSOrigins,
 			"login_domain":     c.LoginDomain,
 			"expire_domain":    c.ExpireLoginCookieDomain,
-			"userVoice":       c.UserVoice,
+			"userVoice":        c.UserVoice,
 		},
 	}, options.Update().SetUpsert(true))
 
