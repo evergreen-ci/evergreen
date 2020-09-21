@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -217,7 +216,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
-	newTVPairs.ExecTasks = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	var err error
+	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies for generator",
+		"task":    g.TaskID,
+	}))
 
 	// group into new builds and new tasks for existing builds
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
@@ -332,13 +336,6 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	for key, val := range g.Functions {
 		intermediateProject.Functions[key] = val
 	}
-	if strings.HasPrefix(g.TaskID, "mms_") {
-		grip.Info(message.Fields{
-			"ticket":    "EVG-12967",
-			"generator": g.TaskID,
-			"variants":  g.BuildVariants,
-		})
-	}
 	for _, bv := range g.BuildVariants {
 		// If the buildvariant already exists, append tasks to it.
 		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
@@ -352,13 +349,6 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 			// If the buildvariant does not exist, create it.
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
-	}
-	if strings.HasPrefix(g.TaskID, "mms_") {
-		grip.Info(message.Fields{
-			"ticket":          "EVG-12967",
-			"generator":       g.TaskID,
-			"merged_variants": intermediateProject.BuildVariants,
-		})
 	}
 	return intermediateProject, nil
 }

@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -313,7 +314,28 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
-		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
+		if strings.Contains(err.Error(), cloud.EC2InsufficientCapacity) && j.host.ShouldFallbackToOnDemand() {
+			event.LogHostFallback(j.host.Id)
+			// create a new cloud manager for on demand, and re-attempt to spawn
+			j.host.Provider = evergreen.ProviderNameEc2OnDemand
+			j.host.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+			mgrOpts.Provider = j.host.Provider
+			cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "problem getting cloud provider for host",
+					"operation": "fallback to EC2 on-demand",
+					"host_id":   j.host.Id,
+					"job":       j.ID(),
+				}))
+				return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
+			}
+			if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
+				return errors.Wrapf(err, "error falling back to on-demand for host '%s'", j.host.Id)
+			}
+		} else {
+			return errors.Wrapf(err, "error spawning host '%s'", j.host.Id)
+		}
 	}
 	// Don't mark containers as starting. SpawnHost already marks containers as
 	// running.
@@ -340,6 +362,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 				"host_id":     j.host.Id,
 				"intent_host": j.HostID,
 				"distro":      j.host.Distro.Id,
+				"provider":    j.host.Provider,
 				"job":         j.ID(),
 			}))
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -355,10 +378,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
-				"message": "problem terminating instance after cloud host was spawned",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
+				"message":  "problem terminating instance after cloud host was spawned",
+				"host_id":  j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"provider": j.host.Provider,
+				"job":      j.ID(),
 			}))
 			return errors.Wrapf(err, "error inserting host %s", j.host.Id)
 		}
@@ -374,11 +398,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
-		"message": "successfully started host",
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"job":     j.ID(),
-		"runtime": time.Since(hostStartTime),
+		"message":   "successfully started host",
+		"operation": "fallback to EC2 on-demand",
+		"host_id":   j.host.Id,
+		"distro":    j.host.Distro.Id,
+		"provider":  j.host.Provider,
+		"job":       j.ID(),
+		"runtime":   time.Since(hostStartTime),
 	})
 
 	return nil

@@ -70,6 +70,10 @@ type EC2ProviderSettings struct {
 	// IsVpc is set to true if the security group is part of a VPC.
 	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc,omitempty" bson:"is_vpc,omitempty"`
 
+	// FallbackToOnDemand is set to true if on-demand should be tried in the case of capacity errors
+	// from spot/fleet instance creation.
+	FallbackToOnDemand bool `mapstructure:"fallback" json:"fallback" bson:"fallback"`
+
 	// BidPrice is the price we are willing to pay for a spot instance.
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 

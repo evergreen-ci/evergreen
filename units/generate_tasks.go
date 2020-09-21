@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -130,13 +129,6 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 	start = time.Now()
 
-	if strings.HasPrefix(t.Project, "mms_") {
-		grip.Info(message.Fields{
-			"ticket":    "EVG-12967",
-			"generator": t.Id,
-			"projects":  projects,
-		})
-	}
 	g, err := model.MergeGeneratedProjects(projects)
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",

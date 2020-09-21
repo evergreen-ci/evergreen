@@ -18,6 +18,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
     $scope.maxUnexpirableHostsPerUser = $window.maxUnexpirableHostsPerUser;
     $scope.maxUnexpirableVolumesPerUser = $window.maxUnexpirableVolumesPerUser;
     $scope.maxVolumeSizePerUser = $window.maxVolumeSizePerUser;
+    $scope.setupScriptPath = $window.setupScriptPath;
     $scope.spawnReqSent = false;
     $scope.volumeReqSent = false;
     $scope.useTaskConfig = false;
@@ -505,7 +506,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope', '$window', '$timeout', '$q',
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
-      $scope.spawnInfo.setup_script = $scope.setup_script;
+      $scope.spawnInfo.use_project_setup_script = $scope.use_project_setup_script;
+      if (!$scope.use_project_setup_script) { // don't set both scripts
+          $scope.spawnInfo.setup_script = $scope.setup_script;
+      }
       $scope.spawnInfo.is_virtual_workstation = $scope.isVirtualWorkstation;
       if ($scope.isVirtualWorkstation) {
           $scope.spawnInfo.no_expiration = $scope.noExpiration;

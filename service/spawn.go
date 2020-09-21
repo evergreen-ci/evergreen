@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	graphql "github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -63,12 +64,36 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var setupScriptPath string
 	if len(r.FormValue("task_id")) > 0 {
 		spawnTask, err = task.FindOne(task.ById(r.FormValue("task_id")))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest,
-				errors.Wrapf(err, "Error finding task %v", r.FormValue("task_id")))
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrapf(err, "Error finding task '%s'", r.FormValue("task_id")))
 			return
+		}
+		if spawnTask == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest,
+				errors.Errorf("can't find task '%s'", r.FormValue("task_id")))
+			return
+		}
+		// if we can't find the setup script path, don't fail the request
+		var pRef *model.ProjectRef
+		pRef, err = model.GetProjectRefForTask(spawnTask.Id)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "project can't be found",
+				"project_id": spawnTask.Project,
+				"task_id":    spawnTask.Id,
+			}))
+		} else if pRef == nil {
+			grip.Error(message.Fields{
+				"message":    "project is nil",
+				"project_id": spawnTask.Project,
+				"task_id":    spawnTask.Id,
+			})
+		} else {
+			setupScriptPath = pRef.SpawnHostScriptPath
 		}
 	}
 	maxHosts := evergreen.DefaultMaxSpawnHostsPerUser
@@ -88,9 +113,10 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxUnexpirableHostsPerUser   int
 		MaxUnexpirableVolumesPerUser int
 		MaxVolumeSizePerUser         int
+		SetupScriptPath              string
 		ViewData
 	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
-		uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+		setupScriptPath, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -177,23 +203,24 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task                 string     `json:"task_id"`
-		TaskSync             bool       `json:"task_sync"`
-		Distro               string     `json:"distro"`
-		KeyName              string     `json:"key_name"`
-		PublicKey            string     `json:"public_key"`
-		SaveKey              bool       `json:"save_key"`
-		UserData             string     `json:"userdata"`
-		SetupScript          string     `json:"setup_script"`
-		UseTaskConfig        bool       `json:"use_task_config"`
-		IsVirtualWorkstation bool       `json:"is_virtual_workstation"`
-		IsCluster            bool       `json:"is_cluster"`
-		NoExpiration         bool       `json:"no_expiration"`
-		HomeVolumeSize       int        `json:"home_volume_size"`
-		HomeVolumeID         string     `json:"home_volume_id"`
-		InstanceTags         []host.Tag `json:"instance_tags"`
-		InstanceType         string     `json:"instance_type"`
-		Region               string     `json:"region"`
+		Task                  string     `json:"task_id"`
+		TaskSync              bool       `json:"task_sync"`
+		Distro                string     `json:"distro"`
+		KeyName               string     `json:"key_name"`
+		PublicKey             string     `json:"public_key"`
+		SaveKey               bool       `json:"save_key"`
+		UserData              string     `json:"userdata"`
+		SetupScript           string     `json:"setup_script"`
+		UseProjectSetupScript bool       `json:"use_project_setup_script"`
+		UseTaskConfig         bool       `json:"use_task_config"`
+		IsVirtualWorkstation  bool       `json:"is_virtual_workstation"`
+		IsCluster             bool       `json:"is_cluster"`
+		NoExpiration          bool       `json:"no_expiration"`
+		HomeVolumeSize        int        `json:"home_volume_size"`
+		HomeVolumeID          string     `json:"home_volume_id"`
+		InstanceTags          []host.Tag `json:"instance_tags"`
+		InstanceType          string     `json:"instance_type"`
+		Region                string     `json:"region"`
 	}{}
 
 	err := utility.ReadJSON(util.NewRequestReader(r), &putParams)
@@ -217,20 +244,21 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 	hc := &data.DBConnector{}
 	options := &restModel.HostRequestOptions{
-		DistroID:             putParams.Distro,
-		Region:               putParams.Region,
-		KeyName:              putParams.PublicKey,
-		TaskID:               putParams.Task,
-		TaskSync:             putParams.TaskSync,
-		SetupScript:          putParams.SetupScript,
-		UserData:             putParams.UserData,
-		InstanceTags:         putParams.InstanceTags,
-		InstanceType:         putParams.InstanceType,
-		IsVirtualWorkstation: putParams.IsVirtualWorkstation,
-		IsCluster:            putParams.IsCluster,
-		NoExpiration:         putParams.NoExpiration,
-		HomeVolumeSize:       putParams.HomeVolumeSize,
-		HomeVolumeID:         putParams.HomeVolumeID,
+		DistroID:              putParams.Distro,
+		Region:                putParams.Region,
+		KeyName:               putParams.PublicKey,
+		TaskID:                putParams.Task,
+		TaskSync:              putParams.TaskSync,
+		SetupScript:           putParams.SetupScript,
+		UseProjectSetupScript: putParams.UseProjectSetupScript,
+		UserData:              putParams.UserData,
+		InstanceTags:          putParams.InstanceTags,
+		InstanceType:          putParams.InstanceType,
+		IsVirtualWorkstation:  putParams.IsVirtualWorkstation,
+		IsCluster:             putParams.IsCluster,
+		NoExpiration:          putParams.NoExpiration,
+		HomeVolumeSize:        putParams.HomeVolumeSize,
+		HomeVolumeID:          putParams.HomeVolumeID,
 	}
 	ctx, cancel := uis.env.Context()
 	defer cancel()

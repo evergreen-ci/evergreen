@@ -32,6 +32,7 @@ const (
 	EventHostStarted                     = "HOST_STARTED"
 	EventHostStopped                     = "HOST_STOPPED"
 	EventHostModified                    = "HOST_MODIFIED"
+	EventHostFallback                    = "HOST_FALLBACK"
 	EventHostAgentDeployed               = "HOST_AGENT_DEPLOYED"
 	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
@@ -109,6 +110,10 @@ func LogHostCreated(hostId string) {
 
 func LogHostStartFinished(hostId string, successful bool) {
 	LogHostEvent(hostId, EventHostStarted, HostEventData{Successful: successful})
+}
+
+func LogHostFallback(hostId string) {
+	LogHostEvent(hostId, EventHostFallback, HostEventData{})
 }
 
 func LogHostStopFinished(hostId string, successful bool) {

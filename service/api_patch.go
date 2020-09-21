@@ -44,6 +44,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		BackportOf        string             `json:"backport_of"`
 		PatchBytes        []byte             `json:"patch_bytes"`
 		Githash           string             `json:"githash"`
+		Parameters        []patch.Parameter  `json:"parameters"`
 		Variants          []string           `json:"buildvariants_new"`
 		Tasks             []string           `json:"tasks"`
 		SyncBuildVariants []string           `json:"sync_build_variants"`
@@ -116,6 +117,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		PatchContent: patchString,
 		Description:  data.Description,
 		Finalize:     data.Finalize,
+		Parameters:   data.Parameters,
 		Variants:     data.Variants,
 		Tasks:        data.Tasks,
 		Alias:        data.Alias,

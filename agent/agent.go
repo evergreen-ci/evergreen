@@ -391,7 +391,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
-	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
+	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, tc.taskConfig.Distro.Provider) {
 		go a.startSpotTerminationWatcher(tskCtx)
 	}
 

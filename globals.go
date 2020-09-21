@@ -329,7 +329,7 @@ var (
 		GitTagRequester,
 	}
 
-	ProviderEc2Type = []string{
+	ProviderSpotEc2Type = []string{
 		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,

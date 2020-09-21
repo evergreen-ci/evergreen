@@ -136,11 +136,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		if err != nil {
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
-		defer file.Close() // nolint
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
-			return errors.Wrap(err, "error parsing xunit file")
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "error parsing xunit file")
+			catcher.Wrap(file.Close(), "closing xunit file")
+			return catcher.Resolve()
 		}
 
 		if err = file.Close(); err != nil {
@@ -157,7 +159,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 					Error: suite.Error,
 				}
 				if tc.Name == "" {
-					tc.Name = fmt.Sprintf("Unamed Test-%d", idx)
+					tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
 				}
 				suite.TestCases = append(suite.TestCases, tc)
 			}
@@ -203,5 +205,5 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	}
 	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(logs))
 
-	return sendJSONResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
+	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
 }

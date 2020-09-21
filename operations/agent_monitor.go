@@ -408,7 +408,7 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
-			if utility.StringSliceContains(evergreen.ProviderEc2Type, m.provider) {
+			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.provider) {
 				if util.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
 				}

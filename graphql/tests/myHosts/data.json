@@ -7,10 +7,7 @@
       "tag": "evg-ubuntu1604-small-20200720144805-8687799505734220270",
       "distro": {
         "_id": "ubuntu1604-small",
-        "aliases": [
-          "ubuntu1604",
-          "ubuntu1604-test"
-        ],
+        "aliases": ["ubuntu1604", "ubuntu1604-test"],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
@@ -81,19 +78,14 @@
       "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "distro": {
         "_id": "ubuntu1604-large",
-        "aliases": [
-          "ubuntu1604",
-          "ubuntu1604-build"
-        ],
+        "aliases": ["ubuntu1604", "ubuntu1604-build"],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
         "provider_settings": [
           {
             "region": "us-east-1",
-            "security_group_ids": [
-              "sg-1a636869"
-            ],
+            "security_group_ids": ["sg-1a636869"],
             "key_name": "mci",
             "bid_price": 0.84,
             "instance_type": "c4.4xlarge",
@@ -284,7 +276,7 @@
       ],
       "is_virtual_workstation": false,
       "home_volume_size": 0,
-      "home_volume_id": "",
+      "home_volume_id": "vol-2-id",
       "compute_cost_per_hour": 0.261,
       "volumes": [
         {
@@ -322,10 +314,7 @@
   "distro": [
     {
       "_id": "ubuntu1604-large",
-      "aliases": [
-        "ubuntu1604",
-        "ubuntu1604-build"
-      ],
+      "aliases": ["ubuntu1604", "ubuntu1604-build"],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -426,10 +415,7 @@
     },
     {
       "_id": "ubuntu1604-small",
-      "aliases": [
-        "ubuntu1604",
-        "ubuntu1604-test"
-      ],
+      "aliases": ["ubuntu1604", "ubuntu1604-test"],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -439,9 +425,7 @@
           "subnet_id": "subnet-50f3fe0a",
           "is_vpc": true,
           "instance_type": "c4.xlarge",
-          "security_group_ids": [
-            "sg-1a636869"
-          ],
+          "security_group_ids": ["sg-1a636869"],
           "ami": "ami-0fe75f64f45d15c4c",
           "mount_points": [
             {
@@ -544,6 +528,17 @@
         "format_command": ""
       },
       "icecream_settings": {}
+    }
+  ],
+  "volumes": [
+    {
+      "_id": "vol-2-id"
+    },
+    {
+      "_id": "vol-0b5ec54a106c6e976"
+    },
+    {
+      "_id": "vol-015b745bb69a2a16b"
     }
   ]
 }

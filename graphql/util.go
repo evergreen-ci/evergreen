@@ -194,7 +194,11 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		}
 	}
 
-	tasks.ExecTasks = model.IncludeDependencies(project, tasks.ExecTasks, p.GetRequester())
+	tasks.ExecTasks, err = model.IncludeDependencies(project, tasks.ExecTasks, p.GetRequester())
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies for patch",
+		"patch":   patchId,
+	}))
 
 	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
 		return err, http.StatusBadRequest, "", ""

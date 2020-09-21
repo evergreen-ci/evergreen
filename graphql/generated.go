@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Task() TaskResolver
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
+	Volume() VolumeResolver
 }
 
 type DirectiveRoot struct {
@@ -168,6 +169,7 @@ type ComplexityRoot struct {
 		TotalIdleTime         func(childComplexity int) int
 		Uptime                func(childComplexity int) int
 		User                  func(childComplexity int) int
+		Volumes               func(childComplexity int) int
 	}
 
 	HostEventLogData struct {
@@ -250,6 +252,7 @@ type ComplexityRoot struct {
 		AbortTask                  func(childComplexity int, taskID string) int
 		AddFavoriteProject         func(childComplexity int, identifier string) int
 		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
+		BbCreateTicket             func(childComplexity int, taskID string) int
 		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
 		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -377,34 +380,36 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AwsRegions         func(childComplexity int) int
-		BuildBaron         func(childComplexity int, taskID string, execution int) int
-		ClientConfig       func(childComplexity int) int
-		CommitQueue        func(childComplexity int, id string) int
-		DistroTaskQueue    func(childComplexity int, distroID string) int
-		Distros            func(childComplexity int, onlySpawnable bool) int
-		Host               func(childComplexity int, hostID string) int
-		HostEvents         func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
-		Hosts              func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
-		InstanceTypes      func(childComplexity int) int
-		MyHosts            func(childComplexity int) int
-		MyPublicKeys       func(childComplexity int) int
-		MyVolumes          func(childComplexity int) int
-		Patch              func(childComplexity int, id string) int
-		PatchBuildVariants func(childComplexity int, patchID string) int
-		PatchTasks         func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
-		Projects           func(childComplexity int) int
-		SiteBanner         func(childComplexity int) int
-		Task               func(childComplexity int, taskID string, execution *int) int
-		TaskAllExecutions  func(childComplexity int, taskID string) int
-		TaskFiles          func(childComplexity int, taskID string, execution *int) int
-		TaskLogs           func(childComplexity int, taskID string) int
-		TaskQueueDistros   func(childComplexity int) int
-		TaskTests          func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
-		User               func(childComplexity int, userID *string) int
-		UserConfig         func(childComplexity int) int
-		UserPatches        func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
-		UserSettings       func(childComplexity int) int
+		AwsRegions          func(childComplexity int) int
+		BbGetCreatedTickets func(childComplexity int, taskID string) int
+		BuildBaron          func(childComplexity int, taskID string, execution int) int
+		ClientConfig        func(childComplexity int) int
+		CommitQueue         func(childComplexity int, id string) int
+		DistroTaskQueue     func(childComplexity int, distroID string) int
+		Distros             func(childComplexity int, onlySpawnable bool) int
+		Host                func(childComplexity int, hostID string) int
+		HostEvents          func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+		Hosts               func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes       func(childComplexity int) int
+		MyHosts             func(childComplexity int) int
+		MyPublicKeys        func(childComplexity int) int
+		MyVolumes           func(childComplexity int) int
+		Patch               func(childComplexity int, id string) int
+		PatchBuildVariants  func(childComplexity int, patchID string) int
+		PatchTasks          func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
+		Projects            func(childComplexity int) int
+		SiteBanner          func(childComplexity int) int
+		SpruceConfig        func(childComplexity int) int
+		Task                func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions   func(childComplexity int, taskID string) int
+		TaskFiles           func(childComplexity int, taskID string, execution *int) int
+		TaskLogs            func(childComplexity int, taskID string) int
+		TaskQueueDistros    func(childComplexity int) int
+		TaskTests           func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
+		User                func(childComplexity int, userID *string) int
+		UserConfig          func(childComplexity int) int
+		UserPatches         func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
+		UserSettings        func(childComplexity int) int
 	}
 
 	RecentTaskLogs struct {
@@ -424,6 +429,12 @@ type ComplexityRoot struct {
 	SiteBanner struct {
 		Text  func(childComplexity int) int
 		Theme func(childComplexity int) int
+	}
+
+	SpruceConfig struct {
+		Banner      func(childComplexity int) int
+		BannerTheme func(childComplexity int) int
+		Ui          func(childComplexity int) int
 	}
 
 	Task struct {
@@ -585,6 +596,10 @@ type ComplexityRoot struct {
 		Updated             func(childComplexity int) int
 	}
 
+	UIConfig struct {
+		UserVoice func(childComplexity int) int
+	}
+
 	UseSpruceOptions struct {
 		HasUsedSpruceBefore func(childComplexity int) int
 		SpruceV1            func(childComplexity int) int
@@ -628,6 +643,7 @@ type ComplexityRoot struct {
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
 		HomeVolume       func(childComplexity int) int
+		Host             func(childComplexity int) int
 		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
@@ -641,6 +657,8 @@ type HostResolver interface {
 
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+
+	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
 }
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
@@ -672,6 +690,7 @@ type MutationResolver interface {
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
+	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -699,6 +718,7 @@ type QueryResolver interface {
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
+	SpruceConfig(ctx context.Context) (*model.APIAdminSettings, error)
 	AwsRegions(ctx context.Context) ([]string, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
@@ -714,6 +734,7 @@ type QueryResolver interface {
 	DistroTaskQueue(ctx context.Context, distroID string) ([]*model.APITaskQueueItem, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
+	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 }
 type TaskResolver interface {
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -748,6 +769,9 @@ type TaskQueueItemResolver interface {
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
+}
+type VolumeResolver interface {
+	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
 type executableSchema struct {
@@ -1255,6 +1279,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.User(childComplexity), true
 
+	case "Host.volumes":
+		if e.complexity.Host.Volumes == nil {
+			break
+		}
+
+		return e.complexity.Host.Volumes(childComplexity), true
+
 	case "HostEventLogData.agentBuild":
 		if e.complexity.HostEventLogData.AgentBuild == nil {
 			break
@@ -1612,6 +1643,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AttachVolumeToHost(childComplexity, args["volumeAndHost"].(VolumeHost)), true
+
+	case "Mutation.bbCreateTicket":
+		if e.complexity.Mutation.BbCreateTicket == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bbCreateTicket_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -2345,6 +2388,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AwsRegions(childComplexity), true
 
+	case "Query.bbGetCreatedTickets":
+		if e.complexity.Query.BbGetCreatedTickets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bbGetCreatedTickets_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BbGetCreatedTickets(childComplexity, args["taskId"].(string)), true
+
 	case "Query.buildBaron":
 		if e.complexity.Query.BuildBaron == nil {
 			break
@@ -2513,6 +2568,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.SiteBanner(childComplexity), true
+
+	case "Query.spruceConfig":
+		if e.complexity.Query.SpruceConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.SpruceConfig(childComplexity), true
 
 	case "Query.task":
 		if e.complexity.Query.Task == nil {
@@ -2688,6 +2750,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SiteBanner.Theme(childComplexity), true
+
+	case "SpruceConfig.banner":
+		if e.complexity.SpruceConfig.Banner == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Banner(childComplexity), true
+
+	case "SpruceConfig.bannerTheme":
+		if e.complexity.SpruceConfig.BannerTheme == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
+
+	case "SpruceConfig.ui":
+		if e.complexity.SpruceConfig.Ui == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Ui(childComplexity), true
 
 	case "Task.aborted":
 		if e.complexity.Task.Aborted == nil {
@@ -3508,6 +3591,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TicketFields.Updated(childComplexity), true
 
+	case "UIConfig.userVoice":
+		if e.complexity.UIConfig.UserVoice == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.UserVoice(childComplexity), true
+
 	case "UseSpruceOptions.hasUsedSpruceBefore":
 		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
 			break
@@ -3676,6 +3766,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.HomeVolume(childComplexity), true
 
+	case "Volume.host":
+		if e.complexity.Volume.Host == nil {
+			break
+		}
+
+		return e.complexity.Volume.Host(childComplexity), true
+
 	case "Volume.hostID":
 		if e.complexity.Volume.HostID == nil {
 			break
@@ -3815,6 +3912,7 @@ var sources = []*ast.Source{
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  spruceConfig: SpruceConfig
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
@@ -3845,6 +3943,7 @@ var sources = []*ast.Source{
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -3883,6 +3982,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbCreateTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -3999,12 +4099,13 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+  volumeId: String
 }
 
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -4061,6 +4162,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
+  volumes: [Volume!]!
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -4077,7 +4179,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String
@@ -4199,6 +4301,7 @@ type Volume {
   hostID: String!
   noExpiration: Boolean!
   homeVolume: Boolean!
+  host: Host
 }
 
 type PatchProject {
@@ -4495,6 +4598,16 @@ type ClientBinary {
   displayName: String
 }
 
+type SpruceConfig {
+  ui: UIConfig
+  banner: String
+  bannerTheme: String
+}
+
+type UIConfig {
+  userVoice: String
+}
+
 type SiteBanner {
   text: String!
   theme: String!
@@ -4615,6 +4728,20 @@ func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.C
 		}
 	}
 	args["volumeAndHost"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -5081,6 +5208,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bbGetCreatedTickets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -7699,6 +7840,40 @@ func (ec *executionContext) _Host_homeVolumeID(ctx context.Context, field graphq
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_volumes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Volumes(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIVolume)
+	fc.Result = res
+	return ec.marshalNVolume2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolumeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_user(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -10589,6 +10764,47 @@ func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field g
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_bbCreateTicket_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13051,6 +13267,37 @@ func (ec *executionContext) _Query_userSettings(ctx context.Context, field graph
 	return ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_spruceConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SpruceConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAdminSettings)
+	fc.Result = res
+	return ec.marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13591,6 +13838,47 @@ func (ec *executionContext) _Query_buildBaron(ctx context.Context, field graphql
 	return ec.marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildBaron(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_bbGetCreatedTickets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_bbGetCreatedTickets_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BbGetCreatedTickets(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*thirdparty.JiraTicket)
+	fc.Result = res
+	return ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13998,6 +14286,99 @@ func (ec *executionContext) _SiteBanner_theme(ctx context.Context, field graphql
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_ui(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ui, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIUIConfig)
+	fc.Result = res
+	return ec.marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_bannerTheme(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BannerTheme, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -17810,6 +18191,37 @@ func (ec *executionContext) _TicketFields_status(ctx context.Context, field grap
 	return ec.marshalNJiraStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UIConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserVoice, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18764,6 +19176,37 @@ func (ec *executionContext) _Volume_homeVolume(ctx context.Context, field graphq
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Volume",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Volume().Host(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIHost)
+	fc.Result = res
+	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -20133,6 +20576,12 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "volumeId":
+			var err error
+			it.VolumeID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -21024,6 +21473,20 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_instanceType(ctx, field, obj)
 		case "homeVolumeID":
 			out.Values[i] = ec._Host_homeVolumeID(ctx, field, obj)
+		case "volumes":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_volumes(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "user":
 			out.Values[i] = ec._Host_user(ctx, field, obj)
 		case "distro":
@@ -21603,6 +22066,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "editSpawnHost":
 			out.Values[i] = ec._Mutation_editSpawnHost(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "bbCreateTicket":
+			out.Values[i] = ec._Mutation_bbCreateTicket(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -22413,6 +22881,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_userSettings(ctx, field)
 				return res
 			})
+		case "spruceConfig":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_spruceConfig(ctx, field)
+				return res
+			})
 		case "awsRegions":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -22611,6 +23090,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "bbGetCreatedTickets":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bbGetCreatedTickets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -22731,6 +23224,34 @@ func (ec *executionContext) _SiteBanner(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var spruceConfigImplementors = []string{"SpruceConfig"}
+
+func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAdminSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spruceConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpruceConfig")
+		case "ui":
+			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
+		case "banner":
+			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
+		case "bannerTheme":
+			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23638,6 +24159,30 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var uIConfigImplementors = []string{"UIConfig"}
+
+func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIUIConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, uIConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UIConfig")
+		case "userVoice":
+			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var useSpruceOptionsImplementors = []string{"UseSpruceOptions"}
 
 func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APIUseSpruceOptions) graphql.Marshaler {
@@ -23850,32 +24395,32 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "id":
 			out.Values[i] = ec._Volume_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._Volume_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "createdBy":
 			out.Values[i] = ec._Volume_createdBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "type":
 			out.Values[i] = ec._Volume_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "availabilityZone":
 			out.Values[i] = ec._Volume_availabilityZone(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "size":
 			out.Values[i] = ec._Volume_size(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "expiration":
 			out.Values[i] = ec._Volume_expiration(ctx, field, obj)
@@ -23884,18 +24429,29 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 		case "hostID":
 			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "noExpiration":
 			out.Values[i] = ec._Volume_noExpiration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "homeVolume":
 			out.Values[i] = ec._Volume_homeVolume(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "host":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Volume_host(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24854,6 +25410,53 @@ func (ec *executionContext) marshalNJiraTicket2ᚕgithubᚗcomᚋevergreenᚑci�
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx context.Context, sel ast.SelectionSet, v []*thirdparty.JiraTicket) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraTicket) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._JiraTicket(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNLogMessage2githubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessage(ctx context.Context, sel ast.SelectionSet, v apimodels.LogMessage) graphql.Marshaler {
@@ -26822,6 +27425,17 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 	return &res, err
 }
 
+func (ec *executionContext) marshalOSpruceConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v model.APIAdminSettings) graphql.Marshaler {
+	return ec._SpruceConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpruceConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -26997,6 +27611,17 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 		return graphql.Null
 	}
 	return ec.marshalOTime2timeᚐTime(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOUIConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v model.APIUIConfig) graphql.Marshaler {
+	return ec._UIConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIUIConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UIConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUseSpruceOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v model.APIUseSpruceOptions) graphql.Marshaler {

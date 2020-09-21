@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
 	homedir "github.com/mitchellh/go-homedir"
@@ -21,11 +22,12 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name     string   `json:"name" yaml:"name,omitempty"`
-	Default  bool     `json:"default" yaml:"default,omitempty"`
-	Alias    string   `json:"alias" yaml:"alias,omitempty"`
-	Variants []string `json:"variants" yaml:"variants,omitempty"`
-	Tasks    []string `json:"tasks" yaml:"tasks,omitempty"`
+	Name       string            `json:"name" yaml:"name,omitempty"`
+	Default    bool              `json:"default" yaml:"default,omitempty"`
+	Alias      string            `json:"alias" yaml:"alias,omitempty"`
+	Variants   []string          `json:"variants" yaml:"variants,omitempty"`
+	Tasks      []string          `json:"tasks" yaml:"tasks,omitempty"`
+	Parameters map[string]string `json:"parameters" yaml:"parameters,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -241,6 +243,47 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 		Variants: variants,
 		Tasks:    nil,
 	})
+}
+
+func (s *ClientSettings) FindDefaultParameters(project string) []patch.Parameter {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return parametersFromMap(p.Parameters)
+		}
+	}
+	return nil
+}
+
+func (s *ClientSettings) SetDefaultParameters(project string, parameters []patch.Parameter) {
+	params := parametersToMap(parameters)
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].Parameters = params
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:       project,
+		Default:    true,
+		Parameters: params,
+	})
+}
+
+func parametersFromMap(params map[string]string) []patch.Parameter {
+	res := []patch.Parameter{}
+	for key, val := range params {
+		res = append(res, patch.Parameter{Key: key, Value: val})
+	}
+	return res
+}
+
+func parametersToMap(params []patch.Parameter) map[string]string {
+	res := map[string]string{}
+	for _, param := range params {
+		res[param.Key] = param.Value
+	}
+	return res
 }
 
 func (s *ClientSettings) FindDefaultTasks(project string) []string {

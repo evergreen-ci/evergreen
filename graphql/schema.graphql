@@ -38,6 +38,7 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  spruceConfig: SpruceConfig
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
@@ -68,6 +69,7 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -106,6 +108,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbCreateTicket(taskId: String!): Boolean!
 }
 
 enum SpawnHostStatusActions {
@@ -222,12 +225,13 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+  volumeId: String
 }
 
 input EditSpawnHostInput {
   hostId: String!
   displayName: String
-  expiration: Time 
+  expiration: Time
   noExpiration: Boolean
   instanceType: String
   addedInstanceTags: [InstanceTagInput!]
@@ -284,6 +288,7 @@ type Host {
   noExpiration: Boolean!
   instanceType: String
   homeVolumeID: String
+  volumes: [Volume!]!
   user: String
   distro: DistroInfo
   availabilityZone: String
@@ -300,7 +305,7 @@ type InstanceTag {
 
 input InstanceTagInput {
   key: String!
-  value: String! 
+  value: String!
 }
 type DistroInfo {
   id: String
@@ -422,6 +427,7 @@ type Volume {
   hostID: String!
   noExpiration: Boolean!
   homeVolume: Boolean!
+  host: Host
 }
 
 type PatchProject {
@@ -716,6 +722,16 @@ type ClientBinary {
   os: String
   url: String
   displayName: String
+}
+
+type SpruceConfig {
+  ui: UIConfig
+  banner: String
+  bannerTheme: String
+}
+
+type UIConfig {
+  userVoice: String
 }
 
 type SiteBanner {

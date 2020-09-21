@@ -3,6 +3,7 @@ package repotracker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -360,12 +361,13 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
 		_, ymlFmtErr := errors.Cause(err).(thirdparty.YAMLFormatError)
 		_, noFileErr := errors.Cause(err).(thirdparty.FileNotFoundError)
-		if apiReqErr || noFileErr || ymlFmtErr {
+		parsingErr := strings.Contains(err.Error(), "translating project")
+		if apiReqErr || noFileErr || ymlFmtErr || parsingErr {
 			// If there's an error getting the remote config, e.g. because it
 			// does not exist, we treat this the same as when the remote config
 			// is invalid - but add a different error message
 			msg := message.ConvertToComposer(level.Error, message.Fields{
-				"message":  "problem finding project configuration",
+				"message":  fmt.Sprintf("problem with project configuration: %s", errors.Cause(err)),
 				"runner":   RunnerName,
 				"project":  projectRef.Identifier,
 				"revision": revision,
@@ -816,7 +818,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
-	pairsToCreate = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
+	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies",
+		"project": projectInfo.Project.Identifier,
+		"version": v.Id,
+	}))
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{

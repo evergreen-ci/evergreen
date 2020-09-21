@@ -140,6 +140,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				Private: ToStringPtr(pair.Private),
 			})
 		}
+		uiConfig := APIUIConfig{}
+		err := uiConfig.BuildFromService(v.Ui)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiUiConfig %s", err)
+		}
+
+		as.Ui = &uiConfig
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -1817,6 +1824,7 @@ type APIUIConfig struct {
 	CORSOrigins             []string `json:"cors_origins"`
 	LoginDomain             *string  `json:"login_domain"`
 	ExpireLoginCookieDomain *string  `json:"expire_domain"`
+	UserVoice               *string  `json:"userVoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1833,6 +1841,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = ToStringPtr(v.LoginDomain)
 		a.ExpireLoginCookieDomain = ToStringPtr(v.ExpireLoginCookieDomain)
+		a.UserVoice = ToStringPtr(v.UserVoice)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1852,6 +1861,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		CORSOrigins:             a.CORSOrigins,
 		LoginDomain:             FromStringPtr(a.LoginDomain),
 		ExpireLoginCookieDomain: FromStringPtr(a.ExpireLoginCookieDomain),
+		UserVoice:               FromStringPtr(a.UserVoice),
 	}, nil
 }
 

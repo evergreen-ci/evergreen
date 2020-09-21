@@ -81,46 +81,6 @@ func (c *goTestResults) Execute(ctx context.Context,
 	return nil
 }
 
-func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	// ship all of the test logs off to the server
-	logger.Task().Info("Sending test logs to server...")
-
-	allResults := task.LocalTestResults{}
-	for idx, log := range logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
-		}
-
-		logId, err := comm.SendTestLog(ctx, td, &log)
-		if err != nil {
-			// continue on error to let the other logs be posted
-			logger.Task().Errorf("problem posting log: %v", err)
-		}
-
-		// add all of the test results that correspond to that log to the
-		// full list of results
-		for _, result := range results[idx] {
-			result.LogId = logId
-
-			allResults.Results = append(allResults.Results, result)
-		}
-	}
-	logger.Task().Info("Finished posting logs to server")
-
-	// ship the parsed results off to the server
-	logger.Task().Info("Sending parsed results to server...")
-
-	if err := comm.SendTestResults(ctx, td, &allResults); err != nil {
-		logger.Task().Errorf("problem posting parsed results to the server: %+v", err)
-		return errors.Wrap(err, "problem sending test results")
-	}
-
-	logger.Task().Info("Successfully sent parsed results to server")
-
-	return nil
-}
-
 // globFiles returns a unique set of files that match the given glob patterns.
 func globFiles(patterns ...string) ([]string, error) {
 	var matchedFiles []string

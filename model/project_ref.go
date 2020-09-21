@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -68,6 +71,9 @@ type ProjectRef struct {
 	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
 
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
+
+	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
+	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
@@ -193,6 +199,7 @@ var (
 	projectRefPatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefNotifyOnFailureKey       = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefSpawnHostScriptPathKey   = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey              = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPeriodicBuildsKey        = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefTagsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
@@ -719,6 +726,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefRepotrackerDisabledKey:   projectRef.RepotrackerDisabled,
 				projectRefDispatchingDisabledKey:   projectRef.DispatchingDisabled,
 				projectRefNotifyOnFailureKey:       projectRef.NotifyOnBuildFailure,
+				projectRefSpawnHostScriptPathKey:   projectRef.SpawnHostScriptPath,
 				projectRefTriggersKey:              projectRef.Triggers,
 				projectRefPeriodicBuildsKey:        projectRef.PeriodicBuilds,
 				projectRefWorkstationConfigKey:     projectRef.WorkstationConfig,
@@ -1030,6 +1038,47 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	}
 
 	return catcher.Resolve()
+}
+
+func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
+	projectId, err := task.FindProjectForTask(taskId)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project")
+	}
+	pRef, err := FindOneProjectRef(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
+	}
+	return pRef, nil
+}
+
+func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
+	conf, err := evergreen.GetConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "can't get evergreen configuration")
+	}
+	token, err := conf.GetGithubOauthToken()
+	if err != nil {
+		return "", errors.Wrap(err, "error getting github token")
+	}
+
+	pRef, err := GetProjectRefForTask(taskId)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting project")
+	}
+
+	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, "")
+	if err != nil {
+		return "", errors.Wrapf(err,
+			"error fetching spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+	}
+	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
+	if err != nil {
+		return "", errors.Wrapf(err,
+			"unable to spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+	}
+
+	return string(fileContents), nil
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {
