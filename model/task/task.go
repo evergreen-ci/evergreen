@@ -64,6 +64,8 @@ type Task struct {
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
+	// unblocked - for tasks that have dependencies, the time all dependencies of the task were fulfilled,
+	//             i.e. the latest of the dependencies' finish times.
 
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
 	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
@@ -665,62 +667,57 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 	return nil
 }
 
-func (t *Task) CalculateUnblockedTime() error {
-	//get all immediate dependencies
-	directDependencies := t.DependsOn
+func (t *Task) UpdateUnblockedTime() error {
 
 	//if dependencies exist, get the max of their finish times
-	if len(directDependencies) > 0 {
-		grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": "Entered for loop"})
-		latestTime := t.ScheduledTime
-		for _, dep := range directDependencies {
-			depID := dep.TaskId
-
-			depTask, err := FindOne(ById(depID).WithFields(FinishTimeKey, ExecutionKey))
-
-			if err != nil {
-				grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": err})
-				return err
-			}
-
-			if depTask.Execution > 0 {
-				// we can't calculate unblocked time without looking at
-				// oldtasks collection, so we won't calculate at all
-				return nil
-			}
-			if depTask.FinishTime.After(latestTime) {
-				latestTime = depTask.FinishTime
-			}
-			if depTask.FinishTime.After(t.StartTime) {
-				return errors.Errorf(
-					"unexpected task finish time %s after dependent start time %s",
-					depTask.FinishTime.String(), t.StartTime.String())
-			}
-
-		}
-		// record in the in-memory task
-		t.UnblockedTime = latestTime
-		// update the db
-		err := UpdateOne(
-			bson.M{
-				IdKey: t.Id,
-			},
-			bson.M{
-				"$set": bson.M{
-					LastHeartbeatKey: latestTime,
-					UnblockedTimeKey: latestTime,
-				},
-			},
-		)
-		if err != nil {
-			grip.Debug(message.Fields{"message": "unblocked time debug", "task_id": t.Id, "event": err})
-			return err
-		}
-
-		return nil
-	} else {
+	if len(t.DependsOn) == 0 {
 		return nil
 	}
+	latestTime := t.ScheduledTime
+	for _, dep := range t.DependsOn {
+
+		depTask, err := FindOne(ById(dep.TaskId).WithFields(FinishTimeKey, ExecutionKey))
+		if err != nil {
+			return errors.Wrapf(err, "error finding dependency task document")
+		}
+		if depTask == nil {
+			return nil
+		}
+
+		if depTask.Execution > 0 {
+			// we can't calculate unblocked time without looking at
+			// oldtasks collection, so we won't calculate at all
+			return nil
+		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
+		}
+		if depTask.FinishTime.After(t.StartTime) {
+			return errors.Errorf(
+				"unexpected task finish time %s after dependent start time %s",
+				depTask.FinishTime.String(), t.StartTime.String())
+		}
+
+	}
+	// record in the in-memory task
+	t.UnblockedTime = latestTime
+	// update the db
+	err := UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				LastHeartbeatKey: latestTime,
+				UnblockedTimeKey: latestTime,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	// our work is done
+	return nil
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
