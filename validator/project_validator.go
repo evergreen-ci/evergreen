@@ -956,6 +956,13 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 					bvtu.Name),
 			})
 		}
+		if bvtu.SkipOnGitTagBuild() && bvtu.SkipOnNonGitTagBuild() {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' will never run because it skips both git tag builds and non git tag builds",
+					bvtu.Name),
+			})
+		}
 		// Git-tag-only builds cannot run in patches.
 		if bvtu.SkipOnNonGitTagBuild() && bvtu.SkipOnNonPatchBuild() {
 			errs = append(errs, ValidationError{
@@ -1570,7 +1577,7 @@ func dependencyMustRun(target model.TVPair, current model.TVPair, depReqs depend
 	if depReqs.requireOnNonPatches && (taskUnit.SkipOnNonPatchBuild() || taskUnit.SkipOnNonGitTagBuild()) {
 		return false, nil
 	}
-	if depReqs.requireOnGitTag && (taskUnit.SkipOnNonPatchBuild()) {
+	if depReqs.requireOnGitTag && (taskUnit.SkipOnNonPatchBuild() || taskUnit.SkipOnGitTagBuild()) {
 		return false, nil
 	}
 

@@ -615,6 +615,24 @@ func TestValidateTaskRuns(t *testing.T) {
 		project.Tasks[0].GitTagOnly = util.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
+	Convey("When a task is not allowed for git tags and git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].AllowForGitTag = util.FalsePtr()
+		project.Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is not allowed for git tags and the variant is git-tag-only, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].AllowForGitTag = util.FalsePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
+	Convey("When a task is git-tag-only and the variant is not allowed for git tags, an error should be thrown", t, func() {
+		project := makeProject()
+		project.Tasks[0].GitTagOnly = util.TruePtr()
+		project.BuildVariants[0].Tasks[0].AllowForGitTag = util.FalsePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+	})
 	Convey("When a task is patch-only and the build variant task unit is not patchable, an error should be thrown", t, func() {
 		project := makeProject()
 		project.Tasks[0].PatchOnly = util.TruePtr()
@@ -3280,6 +3298,28 @@ func TestDependencyMustRun(t *testing.T) {
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
 					GitTagOnly: truePtr,
+				},
+			},
+			expectDependencyFound: false,
+		},
+		"DependencySkipsGitTagsIfNotAllowedForGitTags": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: false,
+				requireOnGitTag:     true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					Patchable: falsePtr,
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					AllowForGitTag: falsePtr,
 				},
 			},
 			expectDependencyFound: false,

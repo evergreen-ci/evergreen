@@ -1624,9 +1624,29 @@ func TestSkipOnNonPatch(t *testing.T) {
 	assert.False(t, bvt.SkipOnRequester(b.Requester))
 }
 
+func TestSkipOnGitTagBuild(t *testing.T) {
+	bvt := BuildVariantTaskUnit{AllowForGitTag: boolPtr(false)}
+	r := evergreen.GitTagRequester
+	assert.True(t, evergreen.IsGitTagRequester(r) && bvt.SkipOnGitTagBuild())
+	assert.False(t, evergreen.IsGitTagRequester(r) && !bvt.SkipOnGitTagBuild())
+	assert.True(t, bvt.SkipOnRequester(r))
+
+	r = evergreen.PatchVersionRequester
+	assert.False(t, evergreen.IsGitTagRequester(r) && bvt.SkipOnGitTagBuild())
+	assert.False(t, bvt.SkipOnRequester(r))
+
+	r = evergreen.GithubPRRequester
+	assert.False(t, evergreen.IsGitTagRequester(r) && bvt.SkipOnGitTagBuild())
+	assert.False(t, bvt.SkipOnRequester(r))
+
+	bvt.AllowForGitTag = nil
+	r = evergreen.GitTagRequester
+	assert.False(t, evergreen.IsGitTagRequester(r) && bvt.SkipOnGitTagBuild())
+	assert.False(t, bvt.SkipOnRequester(r))
+}
+
 func TestSkipOnNonGitTagBuild(t *testing.T) {
-	boolTmp := true
-	bvt := BuildVariantTaskUnit{GitTagOnly: &boolTmp}
+	bvt := BuildVariantTaskUnit{GitTagOnly: boolPtr(true)}
 	r := evergreen.GitTagRequester
 	assert.False(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
 	assert.False(t, !evergreen.IsGitTagRequester(r) && !bvt.SkipOnNonGitTagBuild())

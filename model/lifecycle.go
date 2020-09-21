@@ -705,6 +705,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GroupName:        in.Name,
 			Patchable:        in.Patchable,
 			PatchOnly:        in.PatchOnly,
+			AllowForGitTag:   in.AllowForGitTag,
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
