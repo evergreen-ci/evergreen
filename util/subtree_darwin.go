@@ -17,6 +17,26 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {
 }
 
 func cleanup(key, workingDir string, logger grip.Journaler) error {
+	pidsToKill, err := getPidsToKill(key, workingDir, logger)
+	if err != nil {
+		return errors.Wrap(err, "problem getting list of PIDs to kill")
+	}
+
+	for _, pid := range pidsToKill {
+		p := os.Process{}
+		p.Pid = pid
+		err := p.Kill()
+		if err != nil {
+			logger.Errorf("Cleanup got error killing pid %d: %v", pid, err)
+		} else {
+			logger.Infof("Cleanup killed pid %d", pid)
+		}
+	}
+	return nil
+
+}
+
+func getPidsToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
 	/*
 		Usage of ps on OSX for extracting environment variables:
 		-E: print the environment of the process (VAR1=FOO VAR2=BAR ...)
@@ -32,7 +52,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 	if err != nil {
 		m := "cleanup failed to get output of 'ps'"
 		logger.Errorf("%s: %v", m, err)
-		return errors.Wrap(err, m)
+		return nil, errors.Wrap(err, m)
 	}
 	myPid := fmt.Sprintf("%v", os.Getpid())
 
@@ -65,19 +85,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 		pidsToKill = append(pidsToKill, pidAsInt)
 	}
 
-	// Iterate through the list of processes to kill that we just built, and actually kill them.
-	for _, pid := range pidsToKill {
-		p := os.Process{}
-		p.Pid = pid
-		err := p.Kill()
-		if err != nil {
-			logger.Errorf("Cleanup got error killing pid %d: %v", pid, err)
-		} else {
-			logger.Infof("Cleanup killed pid %d", pid)
-		}
-	}
-	return nil
-
+	return pidsToKill, nil
 }
 
 func commandInWorkingDir(command, workingDir string) bool {
