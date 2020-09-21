@@ -48,12 +48,14 @@ func TestGetBuildInfo(t *testing.T) {
 
 		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
 
-		task := build.TaskCache{
+		task := task.Task{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
 			TimeTaken:   100 * time.Millisecond,
+			BuildId:     buildId,
 		}
+		So(task.Insert(), ShouldBeNil)
 		build := &build.Build{
 			Id:                  buildId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -68,7 +70,7 @@ func TestGetBuildInfo(t *testing.T) {
 			Activated:           true,
 			ActivatedTime:       time.Now().Add(-15 * time.Minute),
 			RevisionOrderNumber: rand.Int(),
-			Tasks:               []build.TaskCache{task},
+			Tasks:               []build.TaskCache{{Id: task.Id}},
 			TimeTaken:           10 * time.Minute,
 			DisplayName:         "My build",
 			Requester:           evergreen.RepotrackerVersionRequester,
