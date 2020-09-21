@@ -166,6 +166,25 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 				}
 			}
 
+			// if it is inactive, roll up the version and don't create any
+			// builds for it
+			if !versionActive {
+				if lastRolledUpVersion == nil {
+					lastRolledUpVersion = &restModel.APIVersions{RolledUp: true, Versions: []restModel.APIVersion{}}
+				}
+
+				// add the version data into the last rolled-up version
+				newVersion := restModel.APIVersion{}
+				err = newVersion.BuildFromService(&versionFromDB)
+				if err != nil {
+					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
+				}
+				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
+
+				// move on to the next version
+				continue
+			}
+
 			// add any represented build variants to the set and initialize rows
 			for _, b := range buildsInVersion {
 				displayName := buildVariantMappings[b.BuildVariant]
@@ -187,25 +206,6 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 					}
 				}
 
-			}
-
-			// if it is inactive, roll up the version and don't create any
-			// builds for it
-			if !versionActive {
-				if lastRolledUpVersion == nil {
-					lastRolledUpVersion = &restModel.APIVersions{RolledUp: true, Versions: []restModel.APIVersion{}}
-				}
-
-				// add the version data into the last rolled-up version
-				newVersion := restModel.APIVersion{}
-				err = newVersion.BuildFromService(&versionFromDB)
-				if err != nil {
-					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
-				}
-				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
-
-				// move on to the next version
-				continue
 			}
 
 			// add a pending rolled-up version, if it exists
