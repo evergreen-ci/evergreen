@@ -360,9 +360,15 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2
                   key name is required</div>
               </div>
+              <div class="distro-label">
+                <div ng-show="activeDistro.provider == 'ec2-spot' || activeDistro.provider == 'ec2-fleet'">
+                  <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
+                    name="fallback" ng-model="activeDistro.settings.fallback">Fallback to EC2 On-Demand in the case of insufficient capacity </label> <br>
+                </div>
+                <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
+                  name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
+              </div>
               <div>
-                <label class="distro-label"><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
-                    name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
                 <label class="distro-label">Security Groups:</label>
                 <textarea ng-readonly="readOnly" placeholder="List 1 security group per line" ng-required="isDefaultRegion() && activeDistro.provider.startsWith('ec2')"
                   type="text" wrap="off" class="form-control" rows="3" name="securityGroups" ng-model="activeDistro.settings.security_group_ids"
