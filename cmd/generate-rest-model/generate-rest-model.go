@@ -43,4 +43,6 @@ func main() {
 	grip.EmergencyFatal(errors.Wrap(err, "error writing to model file"))
 	err = ioutil.WriteFile(helperFile, helper, 0644)
 	grip.EmergencyFatal(errors.Wrap(err, "error writing to helper file"))
+
+	grip.Infof("%s and %s have been updated with the generated code", modelFile, helperFile)
 }
