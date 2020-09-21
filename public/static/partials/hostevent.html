@@ -5,6 +5,7 @@
     <span ng-switch-when="HOST_STARTED">Host start attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
     <span ng-switch-when="HOST_STOPPED">Host stop attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
     <span ng-switch-when="HOST_MODIFIED">Host modify attempt[[eventLogObj.data.successful | conditional:' succeeded':'']]</span>
+    <span ng-switch-when="HOST_FALLBACK">Host start attempt failed, attempting to fallback to EC2 On-Demand</span>
     <span ng-switch-when="HOST_PROVISION_ERROR">Host encountered error during provisioning</span>
     <span ng-switch-when="HOST_AGENT_DEPLOY_FAILED">New agent deploy failed</span>
     <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent deployed with revision <b>[[eventLogObj.data.agent_revision]]</b> from <b>[[eventLogObj.data.agent_build]]</b></span>
