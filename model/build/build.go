@@ -222,16 +222,6 @@ func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
 }
 
-// Checks if the build is active (has any active task)
-func (b *Build) IsActive() bool {
-	for _, task := range b.Tasks {
-		if task.Activated {
-			return true
-		}
-	}
-	return false
-}
-
 func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
 	if err := SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken); err != nil {
 		return err

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/require"
@@ -47,12 +48,14 @@ func TestGetBuildInfo(t *testing.T) {
 
 		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
 
-		task := build.TaskCache{
+		task := task.Task{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
 			TimeTaken:   100 * time.Millisecond,
+			BuildId:     buildId,
 		}
+		So(task.Insert(), ShouldBeNil)
 		build := &build.Build{
 			Id:                  buildId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -67,7 +70,7 @@ func TestGetBuildInfo(t *testing.T) {
 			Activated:           true,
 			ActivatedTime:       time.Now().Add(-15 * time.Minute),
 			RevisionOrderNumber: rand.Int(),
-			Tasks:               []build.TaskCache{task},
+			Tasks:               []build.TaskCache{{Id: task.Id}},
 			TimeTaken:           10 * time.Minute,
 			DisplayName:         "My build",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -180,25 +183,29 @@ func TestGetBuildStatus(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular build", t, func() {
-		require.NoError(t, db.Clear(build.Collection), "Error clearing '%v' collection", build.Collection)
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection), "Error clearing collections")
 
 		buildId := "my-build"
 		versionId := "my-version"
+		taskId := "some-task-id"
 
-		task := build.TaskCache{
-			Id:          "some-task-id",
-			DisplayName: "some-task-name",
-			Status:      "success",
-			TimeTaken:   100 * time.Millisecond,
-		}
 		build := &build.Build{
 			Id:           buildId,
 			Version:      versionId,
 			BuildVariant: "some-build-variant",
 			DisplayName:  "Some Build Variant",
-			Tasks:        []build.TaskCache{task},
+			Tasks:        []build.TaskCache{{Id: taskId}},
 		}
 		So(build.Insert(), ShouldBeNil)
+
+		task := task.Task{
+			Id:          taskId,
+			BuildId:     build.Id,
+			DisplayName: "some-task-name",
+			Status:      "success",
+			TimeTaken:   100 * time.Millisecond,
+		}
+		So(task.Insert(), ShouldBeNil)
 
 		url := "/rest/v1/builds/" + buildId + "/status"
 

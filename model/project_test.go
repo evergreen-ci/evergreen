@@ -518,7 +518,7 @@ func TestProject(t *testing.T) {
 }
 
 func (s *projectSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection, VersionCollection, build.Collection))
+	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection, VersionCollection, build.Collection, task.Collection))
 	s.vars = ProjectVars{
 		Id: "project",
 	}
@@ -1101,7 +1101,7 @@ tasks:
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 
-func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
+func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v1 := Version{
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
@@ -1129,6 +1129,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 	b1 := build.Build{
 		Id:      "b1",
 		Version: v1.Id,
+		Tasks:   []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
 	}
 	s.NoError(b1.Insert())
 	b2 := build.Build{
@@ -1141,8 +1142,20 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		Version: v3.Id,
 	}
 	s.NoError(b3.Insert())
+	t1 := task.Task{
+		Id:      "t1",
+		BuildId: b1.Id,
+		Version: v1.Id,
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:      "t2",
+		BuildId: b1.Id,
+		Version: v1.Id,
+	}
+	s.NoError(t2.Insert())
 
-	versions, builds, err := FetchVersionsAndAssociatedBuilds(s.project, 0, 10, false)
+	versions, builds, tasks, err := FetchVersionsBuildsAndTasks(s.project, 0, 10, false)
 	s.NoError(err)
 	s.Equal(v3.Id, versions[0].Id)
 	s.Equal(v2.Id, versions[1].Id)
@@ -1150,6 +1163,8 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 	s.Equal(b1.Id, builds[v1.Id][0].Id)
 	s.Equal(b2.Id, builds[v2.Id][0].Id)
 	s.Equal(b3.Id, builds[v3.Id][0].Id)
+	s.Equal(t1.Id, tasks[b1.Id][0].Id)
+	s.Equal(t2.Id, tasks[b1.Id][1].Id)
 }
 
 func (s *projectSuite) TestIsGenerateTask() {
