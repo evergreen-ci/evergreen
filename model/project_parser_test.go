@@ -1181,10 +1181,10 @@ tasks:
 buildvariants:
 - name: bv_1
   display_name: "bv_display"
-  allow_for_git_tag: false
   tasks:
   - name: task_1
   - name: task_2
+    allow_for_git_tag: false
 - name: bv_2
   display_name: "bv_display"
   tasks:
@@ -1202,11 +1202,13 @@ buildvariants:
 	_, err := LoadProjectInto([]byte(yml), "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
-	assert.Len(t, proj.BuildVariants, 3)
+	assert.Len(t, proj.Tasks, 2)
+	assert.True(t, *proj.Tasks[0].AllowForGitTag)
 
+	assert.Len(t, proj.BuildVariants, 3)
 	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
 	assert.Nil(t, proj.BuildVariants[0].Tasks[0].AllowForGitTag)
-	assert.True(t, *proj.BuildVariants[0].Tasks[1].AllowForGitTag)
+	assert.False(t, *proj.BuildVariants[0].Tasks[1].AllowForGitTag)
 
 	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
 	assert.True(t, *proj.BuildVariants[1].Tasks[0].AllowForGitTag)

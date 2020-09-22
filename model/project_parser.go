@@ -663,6 +663,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Tags:            pt.Tags,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
+			AllowForGitTag:  pt.AllowForGitTag,
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 		}
