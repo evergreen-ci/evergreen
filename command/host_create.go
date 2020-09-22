@@ -97,6 +97,8 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 		}
 	}
 	startTime := time.Now()
+
+	c.logAMI(ctx, comm, logger, taskData)
 	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
 	if err != nil {
 		return errors.Wrap(err, "error creating host")
@@ -107,6 +109,26 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	}
 
 	return nil
+}
+
+func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logger client.LoggerProducer,
+	taskData client.TaskData) {
+	if c.CreateHost.CloudProvider != apimodels.ProviderEC2 {
+		return
+	}
+	if c.CreateHost.AMI != "" {
+		logger.Task().Infof("host.create: using given AMI '%s'\n", c.CreateHost.AMI)
+		return
+	}
+
+	ami, err := comm.GetDistroAMI(ctx, c.CreateHost.Distro, c.CreateHost.Region, taskData)
+	if err != nil {
+		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'",
+			c.CreateHost.Distro))
+		return
+	}
+
+	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s')\n", ami, c.CreateHost.Distro)
 }
 
 type logBatchInfo struct {

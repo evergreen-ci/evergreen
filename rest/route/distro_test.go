@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -226,6 +230,65 @@ func (s *DistroByIDSuite) TestFindByIdFail() {
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
 	s.NotEqual(resp.Status(), http.StatusOK)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for GET /rest/v2/distros/{distro_id}/ami
+
+func TestDistroAMIHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(distro.Collection))
+	d := distro.Distro{
+		Id:       "d1",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument(
+				birch.EC.String("ami", "ami-1234"),
+				birch.EC.String("region", "us-east-1"),
+			),
+			birch.NewDocument(
+				birch.EC.String("ami", "ami-5678"),
+				birch.EC.String("region", "us-west-1"),
+			),
+		},
+	}
+	assert.NoError(t, d.Insert())
+	h := makeGetDistroAMI(&data.DBConnector{}).(*DistroAMIHandler)
+
+	// default region
+	r, err := http.NewRequest("GET", "/distros/d1/ami", nil)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
+	assert.NoError(t, h.Parse(context.TODO(), r))
+	assert.Equal(t, "d1", h.distroID)
+
+	resp := h.Run(context.TODO())
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	ami, ok := resp.Data().(string)
+	assert.True(t, ok)
+	assert.Equal(t, "ami-1234", ami)
+
+	// provided region
+	r, err = http.NewRequest("GET", "/distros/d1/ami?region=us-west-1", nil)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
+	assert.NoError(t, h.Parse(context.TODO(), r))
+	assert.Equal(t, "d1", h.distroID)
+	assert.Equal(t, "us-west-1", h.region)
+
+	resp = h.Run(context.TODO())
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	ami, ok = resp.Data().(string)
+	assert.True(t, ok)
+	assert.Equal(t, "ami-5678", ami)
+
+	// fake region
+	h.region = "fake"
+	resp = h.Run(context.TODO())
+	assert.NotNil(t, resp)
+	assert.NotEqual(t, http.StatusOK, resp.Status())
 }
 
 ///////////////////////////////////////////////////////////////////////

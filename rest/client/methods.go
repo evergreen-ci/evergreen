@@ -184,6 +184,32 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 	return d, nil
 }
 
+// GetDistroAMI returns the distro for the task.
+func (c *communicatorImpl) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion2,
+	}
+	info.path = fmt.Sprintf("distros/%s/ami", distro)
+	if region != "" {
+		info.path = fmt.Sprintf("%s?region=%s", info.path, region)
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusConflict {
+		return "", errors.New("conflict; wrong secret")
+	}
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
+	}
+	return string(out), nil
+}
+
 func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
 		method:   get,
@@ -752,7 +778,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    fmt.Sprintf("distro/%s", id),
+		path:    fmt.Sprintf("distros/%s", id),
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
