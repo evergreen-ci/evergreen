@@ -146,6 +146,7 @@ type SpawnHostInput struct {
 	SetUpScript          *string         `json:"setUpScript"`
 	IsVirtualWorkStation bool            `json:"isVirtualWorkStation"`
 	HomeVolumeSize       *int            `json:"homeVolumeSize"`
+	VolumeID             *string         `json:"volumeId"`
 }
 
 type SpawnVolumeInput struct {

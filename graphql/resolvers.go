@@ -358,6 +358,9 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if spawnHostInput.HomeVolumeSize != nil {
 		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
 	}
+	if spawnHostInput.VolumeID != nil {
+		options.HomeVolumeID = *spawnHostInput.VolumeID
+	}
 	if spawnHostInput.Expiration != nil {
 		options.Expiration = spawnHostInput.Expiration
 	}
@@ -1389,6 +1392,7 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
+// Will be deleted when sitebanner query in spruce is updated
 func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -1400,6 +1404,20 @@ func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, e
 		Theme: &bannerTheme,
 	}
 	return &banner, nil
+}
+
+func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
+	}
+
+	spruceConfig := restModel.APIAdminSettings{}
+	err = spruceConfig.BuildFromService(config)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api admin settings from service: %s", err.Error()))
+	}
+	return &spruceConfig, nil
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {

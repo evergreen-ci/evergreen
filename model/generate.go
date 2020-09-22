@@ -216,7 +216,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
-	newTVPairs.ExecTasks = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	var err error
+	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies for generator",
+		"task":    g.TaskID,
+	}))
 
 	// group into new builds and new tasks for existing builds
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))

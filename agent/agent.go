@@ -42,7 +42,6 @@ type Options struct {
 	StatusPort            int
 	LogPrefix             string
 	LogkeeperURL          string
-	S3BaseURL             string
 	WorkingDirectory      string
 	HeartbeatInterval     time.Duration
 	AgentSleepInterval    time.Duration
@@ -100,7 +99,6 @@ func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, e
 	if setupData, err := comm.GetAgentSetupData(ctx); err == nil {
 		opts.SetupData = *setupData
 		opts.LogkeeperURL = setupData.LogkeeperURL
-		opts.S3BaseURL = setupData.S3Base
 		opts.S3Opts = pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
 			Region:      endpoints.UsEast1RegionID,
@@ -391,7 +389,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
-	if utility.StringSliceContains(evergreen.ProviderEc2Type, tc.taskConfig.Distro.Provider) {
+	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, tc.taskConfig.Distro.Provider) {
 		go a.startSpotTerminationWatcher(tskCtx)
 	}
 

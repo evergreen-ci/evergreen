@@ -72,7 +72,9 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	isRSA := strings.HasPrefix(so.PublicKey, rsa)
 	isDSS := strings.HasPrefix(so.PublicKey, dss)
 	if !isRSA && !isDSS {
-		return errors.New("Invalid spawn options: key does not start with ssh-rsa or ssh-dss")
+		return errors.Errorf("Invalid spawn options: "+
+			"either an invalid Evergreen-managed key name has been provided,"+
+			"or the key value does not start with %s or %s", rsa, dss)
 	}
 
 	sections := strings.Split(so.PublicKey, " ")

@@ -1,0 +1,27 @@
+{
+    "tests": [
+        {
+            "query_file": "uservoice.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "ui": {
+                            "userVoice": "https://uservoice.com"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "banner.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "banner": "This is an important notification",
+                        "bannerTheme": "important"
+                    }
+                }
+            }
+        }
+    ]
+}

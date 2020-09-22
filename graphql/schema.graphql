@@ -38,6 +38,7 @@ type Query {
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
+  spruceConfig: SpruceConfig
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
@@ -224,6 +225,7 @@ input SpawnHostInput {
   setUpScript: String
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
+  volumeId: String
 }
 
 input EditSpawnHostInput {
@@ -721,6 +723,16 @@ type ClientBinary {
   os: String
   url: String
   displayName: String
+}
+
+type SpruceConfig {
+  ui: UIConfig
+  banner: String
+  bannerTheme: String
+}
+
+type UIConfig {
+  userVoice: String
 }
 
 type SiteBanner {

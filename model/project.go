@@ -1128,6 +1128,8 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
 				bvt.Populate(*projectTask)
 				return &bvt
+			} else if _, exists := tgMap[task]; exists {
+				return &bvt
 			}
 		}
 		if tg, ok := tgMap[bvt.Name]; ok {
@@ -1325,7 +1327,12 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 
 	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
 	if includeDeps {
-		tvPairs.ExecTasks = IncludeDependencies(p, tvPairs.ExecTasks, requester)
+		var err error
+		tvPairs.ExecTasks, err = IncludeDependencies(p, tvPairs.ExecTasks, requester)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error including dependencies",
+			"project": p.Identifier,
+		}))
 	}
 
 	vts = tvPairs.TVPairsToVariantTasks()

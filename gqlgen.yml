@@ -126,3 +126,7 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   JiraStatus:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
+  SpruceConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  UIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig

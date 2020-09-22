@@ -101,10 +101,14 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	// Get key value if PublicKey is a name
 	keyVal, err := user.GetPublicKey(options.KeyName)
 	if err != nil {
+		// if the keyname is populated but isn't a valid name, it may be the key value itself
+		if options.KeyName == "" {
+			return nil, err
+		}
 		keyVal = options.KeyName
 	}
 	if keyVal == "" {
-		return nil, errors.New("invalid key")
+		return nil, errors.Errorf("the value for key name '%s' is empty", options.KeyName)
 	}
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:              options.DistroID,

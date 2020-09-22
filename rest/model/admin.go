@@ -140,6 +140,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				Private: ToStringPtr(pair.Private),
 			})
 		}
+		uiConfig := APIUIConfig{}
+		err := uiConfig.BuildFromService(v.Ui)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiUiConfig %s", err)
+		}
+
+		as.Ui = &uiConfig
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -1283,7 +1290,6 @@ type APIAWSConfig struct {
 	S3                   *APIS3Credentials `json:"s3_credentials"`
 	TaskSync             *APIS3Credentials `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials `json:"task_sync_read"`
-	S3BaseURL            *string           `json:"s3_base_url"`
 	DefaultSecurityGroup *string           `json:"default_security_group"`
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
 	AllowedRegions       []*string         `json:"allowed_regions"`
@@ -1356,7 +1362,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		}
 		a.TaskSyncRead = taskSyncRead
 
-		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
 		a.AllowedInstanceTypes = ToStringPtrSlice(v.AllowedInstanceTypes)
@@ -1373,7 +1378,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3BaseURL:            FromStringPtr(a.S3BaseURL),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
 	}
@@ -1817,6 +1821,7 @@ type APIUIConfig struct {
 	CORSOrigins             []string `json:"cors_origins"`
 	LoginDomain             *string  `json:"login_domain"`
 	ExpireLoginCookieDomain *string  `json:"expire_domain"`
+	UserVoice               *string  `json:"userVoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1833,6 +1838,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = ToStringPtr(v.LoginDomain)
 		a.ExpireLoginCookieDomain = ToStringPtr(v.ExpireLoginCookieDomain)
+		a.UserVoice = ToStringPtr(v.UserVoice)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1852,6 +1858,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		CORSOrigins:             a.CORSOrigins,
 		LoginDomain:             FromStringPtr(a.LoginDomain),
 		ExpireLoginCookieDomain: FromStringPtr(a.ExpireLoginCookieDomain),
+		UserVoice:               FromStringPtr(a.UserVoice),
 	}, nil
 }
 
