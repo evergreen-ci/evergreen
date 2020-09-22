@@ -398,13 +398,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
-		"message":   "successfully started host",
-		"operation": "fallback to EC2 on-demand",
-		"host_id":   j.host.Id,
-		"distro":    j.host.Distro.Id,
-		"provider":  j.host.Provider,
-		"job":       j.ID(),
-		"runtime":   time.Since(hostStartTime),
+		"message":  "successfully started host",
+		"host_id":  j.host.Id,
+		"distro":   j.host.Distro.Id,
+		"provider": j.host.Provider,
+		"job":      j.ID(),
+		"runtime":  time.Since(hostStartTime),
 	})
 
 	return nil
