@@ -253,9 +253,23 @@
                 "baseStatus": "success",
                 "displayName": "lint",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
