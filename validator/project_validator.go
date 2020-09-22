@@ -1518,7 +1518,7 @@ func validateTVDependsOnTV(source, target model.TVPair, tvToTaskUnit map[model.T
 		lastDepNeedsSuccess: true,
 		requireOnPatches:    !sourceTask.SkipOnPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
 		requireOnNonPatches: !sourceTask.SkipOnNonPatchBuild() && !sourceTask.SkipOnNonGitTagBuild(),
-		requireOnGitTag:     !sourceTask.SkipOnNonPatchBuild(),
+		requireOnGitTag:     !sourceTask.SkipOnNonPatchBuild() && !sourceTask.SkipOnGitTagBuild(),
 	}
 	depFound, err := dependencyMustRun(target, source, depReqs, allTVs, visited, tvToTaskUnit)
 	if err != nil {

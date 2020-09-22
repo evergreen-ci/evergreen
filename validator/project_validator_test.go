@@ -3324,6 +3324,27 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			expectDependencyFound: false,
 		},
+		"DependencyIncludesGitTagsIfAllowed": {
+			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
+			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
+			depReqs: dependencyRequirements{
+				lastDepNeedsSuccess: true,
+				requireOnPatches:    false,
+				requireOnNonPatches: false,
+				requireOnGitTag:     true,
+			},
+			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
+				{TaskName: "A", Variant: "ubuntu"}: {
+					DependsOn: []model.TaskUnitDependency{
+						{Name: "B", Variant: "ubuntu"},
+					},
+				},
+				{TaskName: "B", Variant: "ubuntu"}: {
+					AllowForGitTag: truePtr,
+				},
+			},
+			expectDependencyFound: true,
+		},
 		"DependencySkipsPatchIfSourceIncludesGitTags": {
 			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
 			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
@@ -3345,7 +3366,7 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			expectDependencyFound: false,
 		},
-		"DependencyIncludesGitTags": {
+		"DependencyIncludesGitTagsForGitTagOnly": {
 			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
 			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
 			depReqs: dependencyRequirements{
