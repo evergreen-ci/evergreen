@@ -843,13 +843,19 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 
 	// if it's a patch, mark the patch as started if necessary
 	if evergreen.IsPatchRequester(t.Requester) {
-		err := patch.TryMarkStarted(t.Version, startTime)
+		err = patch.TryMarkStarted(t.Version, startTime)
 		if err == nil {
 			updates.PatchNewStatus = evergreen.PatchStarted
 
 		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)
 		}
+	}
+
+	// update task unblocked field
+
+	if err = t.UpdateUnblockedTime(); err != nil {
+		return errors.Wrapf(err, "error calculating unblocked_time for task '%s'", t.Id)
 	}
 
 	if t.IsPartOfDisplay() {

@@ -407,6 +407,7 @@ tasks:
 
   - <<: *run-go-test-suite
     name: js-test
+
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
