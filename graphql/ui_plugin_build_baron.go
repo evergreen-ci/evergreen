@@ -115,19 +115,20 @@ func BbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error
 	return results, nil
 }
 
-func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error) {
+func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error, string) {
 	projectNotFoundError := false
 	t, err := BbGetTask(taskId, exec)
 	if err != nil {
-		return nil, projectNotFoundError, err
+		return nil, projectNotFoundError, err, ""
 	}
 	settings := evergreen.GetEnvironment().Settings()
 	buildBaronProjects := BbGetConfig(settings)
 	bbProj, ok := buildBaronProjects[t.Project]
+	jiraHost := settings.Jira.Host
 
 	if !ok {
 		projectNotFoundError = true
-		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
+		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project)), jiraHost
 	}
 
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
@@ -139,7 +140,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error())), jiraHost
 	}
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	var featuresURL string
@@ -150,7 +151,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	} else {
 		featuresURL = ""
 	}
-	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectNotFoundError, nil
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectNotFoundError, nil, jiraHost
 }
 
 func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
