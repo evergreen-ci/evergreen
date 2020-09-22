@@ -3366,7 +3366,7 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			expectDependencyFound: false,
 		},
-		"DependencyIncludesGitTagsForGitTagOnly": {
+		"DependencyIncludesGitTagsWithGitTagOnly": {
 			source: model.TVPair{TaskName: "A", Variant: "ubuntu"},
 			target: model.TVPair{TaskName: "B", Variant: "ubuntu"},
 			depReqs: dependencyRequirements{
