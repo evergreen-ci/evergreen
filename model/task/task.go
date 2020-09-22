@@ -713,11 +713,7 @@ func (t *Task) UpdateUnblockedTime() error {
 			},
 		},
 	)
-	if err != nil {
-		return err
-	}
-	// our work is done
-	return nil
+	return err
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
