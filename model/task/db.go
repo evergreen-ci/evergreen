@@ -187,7 +187,7 @@ var StatusFields = []string{
 	StartTimeKey,
 	TimeTakenKey,
 	ActivatedKey,
-	bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey),
+	DependsOnKey,
 }
 
 // ById creates a query that finds a task by its _id.
