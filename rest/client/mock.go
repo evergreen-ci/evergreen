@@ -181,6 +181,10 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 	}, nil
 }
 
+func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, error) {
+	return "ami-mock", nil
+}
+
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
 	var err error
 	var data []byte

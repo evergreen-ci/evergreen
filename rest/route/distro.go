@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -380,6 +381,61 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/distros/{distro_id}/ami
+
+type distroAMIHandler struct {
+	distroID string
+	region   string
+
+	sc data.Connector
+}
+
+func makeGetDistroAMI(sc data.Connector) gimlet.RouteHandler {
+	return &distroAMIHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroAMIHandler) Factory() gimlet.RouteHandler {
+	return &distroAMIHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+	vals := r.URL.Query()
+	h.region = vals.Get("region")
+	if h.region == "" {
+		h.region = evergreen.DefaultEC2Region
+	}
+	return nil
+}
+
+func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+	}
+	if !strings.HasPrefix(d.Provider, "ec2") {
+		return gimlet.NewJSONResponse("")
+	}
+
+	for _, ec2Settings := range d.ProviderSettingsList {
+		curRegion, ok := ec2Settings.Lookup("region").StringValueOK()
+		if !ok || curRegion != h.region {
+			continue
+		}
+
+		ami, _ := ec2Settings.Lookup("ami").StringValueOK()
+		return gimlet.NewTextResponse(ami)
+	}
+	return gimlet.MakeJSONErrorResponder(errors.Errorf(
+		"no settings available for region '%s' for distro '%s'", h.region, h.distroID))
 }
 
 ////////////////////////////////////////////////////////////////////////

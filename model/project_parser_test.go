@@ -1172,6 +1172,52 @@ buildvariants:
 	assert.Nil(proj.BuildVariants[2].Tasks[0].PatchOnly)
 }
 
+func TestAllowForGitTagTasks(t *testing.T) {
+	yml := `
+tasks:
+- name: task_1
+  allow_for_git_tag: true
+- name: task_2
+buildvariants:
+- name: bv_1
+  display_name: "bv_display"
+  tasks:
+  - name: task_1
+  - name: task_2
+    allow_for_git_tag: false
+- name: bv_2
+  display_name: "bv_display"
+  tasks:
+  - name: task_1
+    allow_for_git_tag: true
+  - name: task_2
+    allow_for_git_tag: false
+- name: bv_3
+  display_name: "bv_display"
+  tasks:
+  - name: task_2
+`
+
+	proj := &Project{}
+	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	assert.NotNil(t, proj)
+	assert.Nil(t, err)
+	assert.Len(t, proj.Tasks, 2)
+	assert.True(t, *proj.Tasks[0].AllowForGitTag)
+
+	assert.Len(t, proj.BuildVariants, 3)
+	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
+	assert.Nil(t, proj.BuildVariants[0].Tasks[0].AllowForGitTag)
+	assert.False(t, *proj.BuildVariants[0].Tasks[1].AllowForGitTag)
+
+	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
+	assert.True(t, *proj.BuildVariants[1].Tasks[0].AllowForGitTag)
+	assert.False(t, *proj.BuildVariants[1].Tasks[1].AllowForGitTag)
+
+	assert.Len(t, proj.BuildVariants[2].Tasks, 1)
+	assert.Nil(t, proj.BuildVariants[2].Tasks[0].AllowForGitTag)
+}
+
 func TestGitTagOnlyTasks(t *testing.T) {
 	yml := `
 tasks:
@@ -1374,7 +1420,7 @@ functions:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       binary: make
       env:
-        CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+        CLIENT_URL: https://mciuploads.s3.amazonaws.com/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
 buildvariants:
 - matrix_name: "my-matrix"
   matrix_spec: { version: ["4.0", "4.2"], os: "linux" }

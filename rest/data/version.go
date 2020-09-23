@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -128,8 +127,8 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 	for len(finalVersions) < numVersionElements {
 
 		// fetch the versions and associated builds
-		versionsFromDB, buildsByVersion, err :=
-			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements, true)
+		versionsFromDB, buildsByVersion, tasksByBuild, err :=
+			model.FetchVersionsBuildsAndTasks(project, skip, numVersionElements, true)
 
 		if err != nil {
 			return nil, errors.Wrap(err,
@@ -143,7 +142,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 		// to fetch started tasks and failed tests for providing additional context
 		// in a tooltip
-		failedAndStartedTaskIds := []string{}
+		failedAndStartedTasks := []task.Task{}
 
 		// update the amount skipped
 		skip += len(versionsFromDB)
@@ -160,7 +159,31 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 			buildsInVersion := buildsByVersion[versionFromDB.Id]
 
 			// see if there are any active tasks in the version
-			versionActive := anyActiveTasks(buildsInVersion)
+			versionActive := false
+			for _, b := range buildsInVersion {
+				if task.AnyActiveTasks(tasksByBuild[b.Id]) {
+					versionActive = true
+				}
+			}
+
+			// if it is inactive, roll up the version and don't create any
+			// builds for it
+			if !versionActive {
+				if lastRolledUpVersion == nil {
+					lastRolledUpVersion = &restModel.APIVersions{RolledUp: true, Versions: []restModel.APIVersion{}}
+				}
+
+				// add the version data into the last rolled-up version
+				newVersion := restModel.APIVersion{}
+				err = newVersion.BuildFromService(&versionFromDB)
+				if err != nil {
+					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
+				}
+				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
+
+				// move on to the next version
+				continue
+			}
 
 			// add any represented build variants to the set and initialize rows
 			for _, b := range buildsInVersion {
@@ -183,25 +206,6 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 					}
 				}
 
-			}
-
-			// if it is inactive, roll up the version and don't create any
-			// builds for it
-			if !versionActive {
-				if lastRolledUpVersion == nil {
-					lastRolledUpVersion = &restModel.APIVersions{RolledUp: true, Versions: []restModel.APIVersion{}}
-				}
-
-				// add the version data into the last rolled-up version
-				newVersion := restModel.APIVersion{}
-				err = newVersion.BuildFromService(&versionFromDB)
-				if err != nil {
-					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
-				}
-				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
-
-				// move on to the next version
-				continue
 			}
 
 			// add a pending rolled-up version, if it exists
@@ -231,12 +235,13 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 				if err != nil {
 					return nil, errors.Wrapf(err, "error converting build %s from DB model", b.Id)
 				}
+				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
 				currentRow.Builds[versionFromDB.Id] = buildsForRow
 				buildList[b.BuildVariant] = currentRow
-				for _, task := range buildsForRow.TaskCache {
+				for _, task := range tasksByBuild[b.Id] {
 					if task.Status == evergreen.TaskFailed || task.Status == evergreen.TaskStarted {
-						failedAndStartedTaskIds = append(failedAndStartedTaskIds, task.Id)
+						failedAndStartedTasks = append(failedAndStartedTasks, task)
 					}
 				}
 			}
@@ -246,7 +251,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 		}
 
-		if err = addFailedAndStartedTests(buildList, failedAndStartedTaskIds); err != nil {
+		if err = addFailedAndStartedTests(buildList, failedAndStartedTasks); err != nil {
 			return nil, err
 		}
 	}
@@ -264,27 +269,8 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 }
 
-// Takes in a slice of tasks, and determines whether any of the tasks in
-// any of the builds are active.
-func anyActiveTasks(builds []build.Build) bool {
-	for _, build := range builds {
-		for _, task := range build.Tasks {
-			if task.Activated {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // addFailedAndStartedTests adds all of the failed tests associated with a task
-func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTaskIds []string) error {
-	failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
-	if err != nil {
-		return errors.Wrap(err, "error fetching failed tasks")
-
-	}
-
+func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTasks []task.Task) error {
 	for i := range failedAndStartedTasks {
 		if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
 			return errors.Wrap(err, "error merging test results")

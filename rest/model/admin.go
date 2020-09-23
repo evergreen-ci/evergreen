@@ -1290,7 +1290,6 @@ type APIAWSConfig struct {
 	S3                   *APIS3Credentials `json:"s3_credentials"`
 	TaskSync             *APIS3Credentials `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials `json:"task_sync_read"`
-	S3BaseURL            *string           `json:"s3_base_url"`
 	DefaultSecurityGroup *string           `json:"default_security_group"`
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
 	AllowedRegions       []*string         `json:"allowed_regions"`
@@ -1363,7 +1362,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		}
 		a.TaskSyncRead = taskSyncRead
 
-		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 		a.DefaultSecurityGroup = ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
 		a.AllowedInstanceTypes = ToStringPtrSlice(v.AllowedInstanceTypes)
@@ -1380,7 +1378,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, nil
 	}
 	config := evergreen.AWSConfig{
-		S3BaseURL:            FromStringPtr(a.S3BaseURL),
 		DefaultSecurityGroup: FromStringPtr(a.DefaultSecurityGroup),
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
 	}

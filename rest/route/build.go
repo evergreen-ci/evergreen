@@ -47,12 +47,21 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
+	taskIDs := make([]string, 0, len(foundBuild.Tasks))
+	for _, t := range foundBuild.Tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	tasks, err := b.sc.FindTasksByIds(taskIDs)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	}
 
 	buildModel := &model.APIBuild{}
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
+	buildModel.SetTaskCache(tasks)
 
 	return gimlet.NewJSONResponse(buildModel)
 }

@@ -253,8 +253,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 			logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
 				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 		} else {
-			logger.Task().Infof("Putting %s into %s/%s/%s",
-				s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
+			logger.Task().Infof("Putting %s into %s", util.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 		}
 	}
 
@@ -382,6 +381,8 @@ retryLoop:
 		return err
 	}
 
+	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
+
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
 		logger.Task().Infof("%d requested, %d uploaded", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
@@ -401,7 +402,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
 		}
 
-		fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
+		fileLink := util.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
 		if s3pc.isMulti() || displayName == "" {
