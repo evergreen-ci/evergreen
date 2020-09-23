@@ -187,6 +187,13 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $<
 #end generated config
 
+# generate rest model
+generate-rest-model:$(buildDir)/generate-rest-model
+	./$(buildDir)/generate-rest-model --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
+$(buildDir)/generate-rest-model:cmd/generate-rest-model/generate-rest-model.go
+	$(gobin) build -o $@ $<
+#end generate rest model
+
 # parse a host.create file and set expansions
 parse-host-file:$(buildDir)/parse-host-file
 	./$(buildDir)/parse-host-file --file $(HOST_FILE)
