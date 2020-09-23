@@ -88,6 +88,7 @@ type parserTaskGroup struct {
 	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag        *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly            *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -118,6 +119,7 @@ type parserTask struct {
 	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
@@ -365,6 +367,7 @@ type parserBVTaskUnit struct {
 	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
 	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag   *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn        parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
@@ -660,6 +663,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Tags:            pt.Tags,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
+			AllowForGitTag:  pt.AllowForGitTag,
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 		}
@@ -873,6 +877,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				Name:             name,
 				Patchable:        pt.Patchable,
 				PatchOnly:        pt.PatchOnly,
+				AllowForGitTag:   pt.AllowForGitTag,
 				GitTagOnly:       pt.GitTagOnly,
 				Priority:         pt.Priority,
 				ExecTimeoutSecs:  pt.ExecTimeoutSecs,
