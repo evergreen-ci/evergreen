@@ -8,13 +8,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -24,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -253,7 +251,7 @@ func TestDistroAMIHandler(t *testing.T) {
 		},
 	}
 	assert.NoError(t, d.Insert())
-	h := makeGetDistroAMI(&data.DBConnector{}).(*DistroAMIHandler)
+	h := makeGetDistroAMI(&data.DBConnector{}).(*distroAMIHandler)
 
 	// default region
 	r, err := http.NewRequest("GET", "/distros/d1/ami", nil)

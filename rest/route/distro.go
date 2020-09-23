@@ -387,7 +387,7 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/distros/{distro_id}/ami
 
-type DistroAMIHandler struct {
+type distroAMIHandler struct {
 	distroID string
 	region   string
 
@@ -395,18 +395,18 @@ type DistroAMIHandler struct {
 }
 
 func makeGetDistroAMI(sc data.Connector) gimlet.RouteHandler {
-	return &DistroAMIHandler{
+	return &distroAMIHandler{
 		sc: sc,
 	}
 }
 
-func (h *DistroAMIHandler) Factory() gimlet.RouteHandler {
-	return &DistroAMIHandler{
+func (h *distroAMIHandler) Factory() gimlet.RouteHandler {
+	return &distroAMIHandler{
 		sc: h.sc,
 	}
 }
 
-func (h *DistroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
 	vals := r.URL.Query()
 	h.region = vals.Get("region")
@@ -416,7 +416,7 @@ func (h *DistroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (h *DistroAMIHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
