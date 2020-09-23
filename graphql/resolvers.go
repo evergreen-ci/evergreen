@@ -2109,7 +2109,7 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
+	searchReturnInfo, projectNotFound, err, jiraHost := GetSearchReturnInfo(taskId, execString)
 	if projectNotFound {
 		return &BuildBaron{
 			SearchReturnInfo:     searchReturnInfo,
@@ -2122,6 +2122,7 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	return &BuildBaron{
 		SearchReturnInfo:     searchReturnInfo,
 		BuildBaronConfigured: true,
+		JiraHost:             &jiraHost,
 	}, nil
 }
 

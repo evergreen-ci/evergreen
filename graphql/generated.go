@@ -68,6 +68,7 @@ type ComplexityRoot struct {
 
 	BuildBaron struct {
 		BuildBaronConfigured func(childComplexity int) int
+		JiraHost             func(childComplexity int) int
 		SearchReturnInfo     func(childComplexity int) int
 	}
 
@@ -845,6 +846,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BuildBaron.BuildBaronConfigured(childComplexity), true
+
+	case "BuildBaron.jiraHost":
+		if e.complexity.BuildBaron.JiraHost == nil {
+			break
+		}
+
+		return e.complexity.BuildBaron.JiraHost(childComplexity), true
 
 	case "BuildBaron.searchReturnInfo":
 		if e.complexity.BuildBaron.SearchReturnInfo == nil {
@@ -4659,6 +4667,7 @@ type HostEventLogData {
 type BuildBaron {
   searchReturnInfo: SearchReturnInfo
   buildBaronConfigured: Boolean!
+  jiraHost: String
 }
 
 # build baron plugin
@@ -6078,6 +6087,37 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaron_jiraHost(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "BuildBaron",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraHost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
@@ -21027,6 +21067,8 @@ func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "jiraHost":
+			out.Values[i] = ec._BuildBaron_jiraHost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

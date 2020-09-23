@@ -86,11 +86,12 @@ type BuildVariantTaskUnit struct {
 	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
-	Patchable  *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly  *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	GitTagOnly *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Priority   int64                `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn  []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Patchable      *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly      *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag *bool                `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly     *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Priority       int64                `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn      []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
 	Distros []string `yaml:"distros,omitempty" bson:"distros"`
@@ -146,6 +147,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = pt.PatchOnly
 	}
+	if bvt.AllowForGitTag == nil {
+		bvt.AllowForGitTag = pt.AllowForGitTag
+	}
 	if bvt.GitTagOnly == nil {
 		bvt.GitTagOnly = pt.GitTagOnly
 	}
@@ -183,6 +187,7 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
 		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
+		evergreen.IsGitTagRequester(requester) && bvt.SkipOnGitTagBuild() ||
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
@@ -191,6 +196,10 @@ func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
 	return util.IsPtrSetToTrue(bvt.PatchOnly)
+}
+
+func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
+	return util.IsPtrSetToFalse(bvt.AllowForGitTag)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
@@ -481,10 +490,11 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Patchable  *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly  *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	GitTagOnly *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Stepback   *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Patchable      *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly      *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly     *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Stepback       *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 type LoggerConfig struct {
@@ -1526,10 +1536,10 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	return nil
 }
 
-// FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
-// Returns the versions themselves, as well as a map of version id -> the
-// builds that are a part of the version (unsorted).
-func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, error) {
+// FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.
+// Returns the versions themselves, a map of version id -> the builds that are a part of the version (unsorted)
+// and a map of build ID -> each build's tasks
+func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
 	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
@@ -1547,7 +1557,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 		).Sort([]string{"-" + VersionCreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching versions from database")
+		return nil, nil, nil, errors.Wrap(err, "error fetching versions from database")
 	}
 
 	// create a slice of the version ids (used to fetch the builds)
@@ -1559,9 +1569,14 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	// fetch all of the builds (with only relevant fields)
 	buildsFromDb, err := build.Find(
 		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey, build.DisplayNameKey))
+			WithFields(
+				build.BuildVariantKey,
+				bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey),
+				build.VersionKey,
+				build.DisplayNameKey,
+			))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching builds from database")
+		return nil, nil, nil, errors.Wrap(err, "error fetching builds from database")
 	}
 
 	// group the builds by version
@@ -1570,7 +1585,20 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
-	return versionsFromDB, buildsByVersion, nil
+	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(task.StatusFields...))
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
+	}
+	taskMap := task.TaskSliceToMap(tasksFromDb)
+
+	tasksByBuild := map[string][]task.Task{}
+	for _, b := range buildsFromDb {
+		for _, t := range b.Tasks {
+			tasksByBuild[b.Id] = append(tasksByBuild[b.Id], taskMap[t.Id])
+		}
+	}
+
+	return versionsFromDB, buildsByVersion, tasksByBuild, nil
 }
 
 func (tg *TaskGroup) InjectInfo(t *task.Task) {

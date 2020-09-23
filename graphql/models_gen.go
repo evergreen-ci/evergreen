@@ -22,6 +22,7 @@ type BaseTaskMetadata struct {
 type BuildBaron struct {
 	SearchReturnInfo     *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
 	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
+	JiraHost             *string                      `json:"jiraHost"`
 }
 
 type Dependency struct {

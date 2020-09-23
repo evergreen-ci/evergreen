@@ -6,6 +6,7 @@ import (
 	"go/importer"
 	"go/types"
 	"io/ioutil"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -17,6 +18,8 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 	"golang.org/x/tools/imports"
 )
+
+var pathPrefix = ""
 
 const (
 	fileTemplatePath           = "templates/file.gotmpl"
@@ -78,6 +81,12 @@ type arrayConversionInfo struct {
 
 // ModelMapping maps schema type names to their respective DB model
 type ModelMapping map[string]string
+
+// SetGeneratePathPrefix allows callers outside this package to set the path to this package,
+// since it uses relative paths for all the templates
+func SetGeneratePathPrefix(prefix string) {
+	pathPrefix = prefix
+}
 
 // Codegen takes a GraphQL schema as well as a mapping file of GQL structs to
 // DB structs, then returns a generated REST model with conversion code, as well
@@ -210,12 +219,12 @@ func dbField(gqlDefinition ast.FieldDefinition) string {
 
 // getTemplate is a utility function that takes a filepath (relative to the directory of this file)
 // and returns a parsed go template from it
-func getTemplate(filepath string) (*template.Template, error) {
-	f, err := ioutil.ReadFile(filepath)
+func getTemplate(file string) (*template.Template, error) {
+	f, err := ioutil.ReadFile(filepath.Join(pathPrefix, file))
 	if err != nil {
 		return nil, err
 	}
-	return template.New(filepath).Funcs(template.FuncMap{
+	return template.New(file).Funcs(template.FuncMap{
 		"shortenpackage": shortenPackage,
 		"cleanName":      cleanName,
 		"mustBePtr":      mustBePtr,

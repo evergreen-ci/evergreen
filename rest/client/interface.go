@@ -63,6 +63,8 @@ type Communicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
+	// GetDistroAMI gets the AMI for the given distro/region
+	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID
 	GetProject(context.Context, TaskData) (*model.Project, error)
 	// GetExpansions returns all expansions for the task known by the app server
