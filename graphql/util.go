@@ -299,10 +299,12 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, TaskFromVariant := range variant.Tasks {
-			if TaskFromVariant.IsGroup {
-				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
-			} else {
-				tasksForVariant = append(tasksForVariant, TaskFromVariant)
+			if *TaskFromVariant.Patchable {
+				if TaskFromVariant.IsGroup {
+					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
+				} else {
+					tasksForVariant = append(tasksForVariant, TaskFromVariant)
+				}
 			}
 		}
 		variant.Tasks = tasksForVariant
