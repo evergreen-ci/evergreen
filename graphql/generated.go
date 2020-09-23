@@ -291,6 +291,11 @@ type ComplexityRoot struct {
 		SpawnHostOutcome    func(childComplexity int) int
 	}
 
+	OomTrackerInfo struct {
+		Detected func(childComplexity int) int
+		Pids     func(childComplexity int) int
+	}
+
 	Patch struct {
 		Activated               func(childComplexity int) int
 		Alias                   func(childComplexity int) int
@@ -496,6 +501,7 @@ type ComplexityRoot struct {
 
 	TaskEndDetail struct {
 		Description func(childComplexity int) int
+		OOMTracker  func(childComplexity int) int
 		Status      func(childComplexity int) int
 		TimedOut    func(childComplexity int) int
 		Type        func(childComplexity int) int
@@ -2018,6 +2024,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.SpawnHostOutcome(childComplexity), true
 
+	case "OomTrackerInfo.detected":
+		if e.complexity.OomTrackerInfo.Detected == nil {
+			break
+		}
+
+		return e.complexity.OomTrackerInfo.Detected(childComplexity), true
+
+	case "OomTrackerInfo.pids":
+		if e.complexity.OomTrackerInfo.Pids == nil {
+			break
+		}
+
+		return e.complexity.OomTrackerInfo.Pids(childComplexity), true
+
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
 			break
@@ -3157,6 +3177,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.Description(childComplexity), true
+
+	case "TaskEndDetail.oomTracker":
+		if e.complexity.TaskEndDetail.OOMTracker == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.OOMTracker(childComplexity), true
 
 	case "TaskEndDetail.status":
 		if e.complexity.TaskEndDetail.Status == nil {
@@ -4362,6 +4389,12 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  oomTracker: OomTrackerInfo!
+}
+
+type OomTrackerInfo {
+  detected: Boolean!
+  pids: [Int]
 }
 
 type TaskTestResult {
@@ -11031,6 +11064,71 @@ func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, fiel
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _OomTrackerInfo_detected(ctx context.Context, field graphql.CollectedField, obj *model.APIOomTrackerInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OomTrackerInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Detected, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OomTrackerInfo_pids(ctx context.Context, field graphql.CollectedField, obj *model.APIOomTrackerInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OomTrackerInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pids, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalOInt2ᚕint(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -16261,6 +16359,40 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEndDetail_oomTracker(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEndDetail",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OOMTracker, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIOomTrackerInfo)
+	fc.Result = res
+	return ec.marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEventLogData_hostId(ctx context.Context, field graphql.CollectedField, obj *model.TaskEventData) (ret graphql.Marshaler) {
@@ -22161,6 +22293,35 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var oomTrackerInfoImplementors = []string{"OomTrackerInfo"}
+
+func (ec *executionContext) _OomTrackerInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APIOomTrackerInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oomTrackerInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OomTrackerInfo")
+		case "detected":
+			out.Values[i] = ec._OomTrackerInfo_detected(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "pids":
+			out.Values[i] = ec._OomTrackerInfo_pids(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var patchImplementors = []string{"Patch"}
 
 func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatch) graphql.Marshaler {
@@ -23671,6 +23832,11 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
 		case "timedOut":
 			out.Values[i] = ec._TaskEndDetail_timedOut(ctx, field, obj)
+		case "oomTracker":
+			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25606,6 +25772,10 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 	return ret
 }
 
+func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
+	return ec._OomTrackerInfo(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -27245,6 +27415,38 @@ func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v interface
 
 func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	return graphql.MarshalInt64(v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚕint(ctx context.Context, v interface{}) ([]int, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOInt2ᚕint(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOInt2int(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {

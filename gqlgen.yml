@@ -54,6 +54,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
+  OomTrackerInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
   TestLog:

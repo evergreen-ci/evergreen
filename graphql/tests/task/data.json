@@ -215,6 +215,18 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "host_id": "i-0bb70e2ac4c1a9ac8",
       "distro": "archlinux-small",
+      "execution": 0,
+      "details": {
+        "oom_killer": {
+          "detected": true,
+          "pids": [
+            1234,
+            5678,
+            9101,
+            1235
+          ]
+        }
+      },
       "depends_on": [
         {
           "_id": "dep1",
@@ -286,7 +298,11 @@
       "r": "github_pull_request",
       "status": "success",
       "depends_on": [
-        { "_id": "random_thang", "status": "failed", "unattainable": true }
+        {
+          "_id": "random_thang",
+          "status": "failed",
+          "unattainable": true
+        }
       ]
     },
     {
@@ -463,7 +479,9 @@
             "ami": "ami-049df09df40fc2c1c",
             "docker_registry_pw": "",
             "region": "us-east-1",
-            "security_group_ids": ["sg-601a6c13"],
+            "security_group_ids": [
+              "sg-601a6c13"
+            ],
             "curator_dir": "/usr/local/bin",
             "mount_points": [
               {
@@ -1031,7 +1049,10 @@
   "distro": [
     {
       "_id": "archlinux-small",
-      "aliases": ["archlinux", "archlinux-test"],
+      "aliases": [
+        "archlinux",
+        "archlinux-test"
+      ],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -1046,7 +1067,9 @@
           "ami": "ami-049df09df40fc2c1c",
           "docker_registry_pw": "",
           "region": "us-east-1",
-          "security_group_ids": ["sg-601a6c13"],
+          "security_group_ids": [
+            "sg-601a6c13"
+          ],
           "curator_dir": "/usr/local/bin",
           "mount_points": [
             {
