@@ -684,18 +684,20 @@ func (t *Task) UpdateUnblockedTime() error {
 			return nil
 		}
 
-		if depTask.Execution > 0 {
-			// we can't calculate unblocked time without looking at
-			// oldtasks collection, so we won't calculate at all
-			return nil
-		}
-		if depTask.FinishTime.After(latestTime) {
-			latestTime = depTask.FinishTime
-		}
 		if depTask.FinishTime.After(t.StartTime) {
+
+			if depTask.Execution > 0 {
+				// we can't calculate unblocked time without looking at
+				// old_tasks collection, so we won't calculate at all
+				return nil
+			}
+
 			return errors.Errorf(
 				"unexpected task finish time %s after dependent start time %s",
 				depTask.FinishTime.String(), t.StartTime.String())
+		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
 		}
 
 	}
