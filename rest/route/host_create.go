@@ -26,6 +26,11 @@ type hostCreateHandler struct {
 	sc data.Connector
 }
 
+type HostCreateResults struct {
+	hostID string
+	AMI    string
+}
+
 func makeHostCreateRouteManager(sc data.Connector) gimlet.RouteHandler {
 	return &hostCreateHandler{sc: sc}
 }
