@@ -56,9 +56,23 @@
                 "baseStatus": "success",
                 "displayName": "lint",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 2
+            "count": 4
           }
         }
       }
@@ -82,9 +96,23 @@
                 "baseStatus": "success",
                 "displayName": "lint",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 2
+            "count": 4
           }
         }
       }
@@ -133,9 +161,23 @@
                 "baseStatus": "success",
                 "displayName": "lint",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -147,8 +189,22 @@
           "patchTasks": {
             "tasks": [
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "4",
                 "status": "failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -175,7 +231,7 @@
                 "buildVariant": "ubuntu1604"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -201,6 +257,13 @@
                 "buildVariant": "ubuntu1604"
               },
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "3",
                 "status": "success",
                 "baseStatus": "success",
@@ -213,9 +276,16 @@
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -295,6 +365,13 @@
                 "buildVariant": "ubuntu1604"
               },
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "3",
                 "status": "success",
                 "baseStatus": "success",
@@ -307,9 +384,16 @@
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -328,6 +412,13 @@
                 "buildVariant": "ubuntu1604"
               },
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "3",
                 "status": "success",
                 "baseStatus": "success",
@@ -342,6 +433,13 @@
                 "buildVariant": "windows"
               },
               {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "2",
                 "status": "failed",
                 "baseStatus": "failed",
@@ -349,7 +447,7 @@
                 "buildVariant": "ubuntu1604"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -360,6 +458,20 @@
         "data": {
           "patchTasks": {
             "tasks": [
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
               {
                 "id": "1",
                 "status": "success",
@@ -389,7 +501,7 @@
                 "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -500,7 +612,7 @@
                 "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -526,7 +638,7 @@
                 "buildVariant": "windows"
               }
             ],
-            "count": 4
+            "count": 6
           }
         }
       }
@@ -556,7 +668,7 @@
       "result": {
         "data": {
           "patchTasks": {
-            "count": 4
+            "count": 6
           }
         }
       }
