@@ -117,7 +117,7 @@ func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logge
 		return
 	}
 	if c.CreateHost.AMI != "" {
-		logger.Task().Infof("host.create: using given AMI '%s'\n", c.CreateHost.AMI)
+		logger.Task().Infof("host.create: using given AMI '%s'", c.CreateHost.AMI)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logge
 		return
 	}
 
-	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s')\n", ami, c.CreateHost.Distro)
+	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s')", ami, c.CreateHost.Distro)
 }
 
 type logBatchInfo struct {
