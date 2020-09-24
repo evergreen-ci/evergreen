@@ -299,7 +299,7 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, TaskFromVariant := range variant.Tasks {
-			if !util.IsPtrSetToFalse(TaskFromVariant.Patchable) {
+			if !util.IsPtrSetToFalse(TaskFromVariant.Patchable) && !util.IsPtrSetToTrue(TaskFromVariant.GitTagOnly) {
 				if TaskFromVariant.IsGroup {
 					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
 				} else {
