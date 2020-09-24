@@ -481,6 +481,12 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  oomTracker: OomTrackerInfo!
+}
+
+type OomTrackerInfo {
+  detected: Boolean!
+  pids: [Int]
 }
 
 type TaskTestResult {
