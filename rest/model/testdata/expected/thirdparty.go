@@ -9,6 +9,8 @@ type APIGithubOptions struct {
 	Repo    string `json:"repo"`
 }
 
+// APIGithubOptionsBuildFromService takes the send.GithubOptions DB struct and
+// returns the REST struct *APIGithubOptions with the corresponding fields populated
 func APIGithubOptionsBuildFromService(t send.GithubOptions) *APIGithubOptions {
 	m := APIGithubOptions{}
 	m.Account = StringString(t.Account)
@@ -16,6 +18,8 @@ func APIGithubOptionsBuildFromService(t send.GithubOptions) *APIGithubOptions {
 	return &m
 }
 
+// APIGithubOptionsToService takes the APIGithubOptions REST struct and returns the DB struct
+// *send.GithubOptions with the corresponding fields populated
 func APIGithubOptionsToService(m APIGithubOptions) *send.GithubOptions {
 	out := &send.GithubOptions{}
 	out.Account = StringString(m.Account)

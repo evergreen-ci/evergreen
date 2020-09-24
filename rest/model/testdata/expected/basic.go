@@ -9,6 +9,8 @@ type APIRevision struct {
 	AuthorGithubUID int     `json:"author_github_u_i_d"`
 }
 
+// APIRevisionBuildFromService takes the model.Revision DB struct and
+// returns the REST struct *APIRevision with the corresponding fields populated
 func APIRevisionBuildFromService(t model.Revision) *APIRevision {
 	m := APIRevision{}
 	m.Author = StringStringPtr(t.Author)
@@ -16,6 +18,8 @@ func APIRevisionBuildFromService(t model.Revision) *APIRevision {
 	return &m
 }
 
+// APIRevisionToService takes the APIRevision REST struct and returns the DB struct
+// *model.Revision with the corresponding fields populated
 func APIRevisionToService(m APIRevision) *model.Revision {
 	out := &model.Revision{}
 	out.Author = StringPtrString(m.Author)

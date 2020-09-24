@@ -14,36 +14,48 @@ type APIMockLayerTwo struct {
 	SomeField *string `json:"some_field"`
 }
 
+// APIMockEmbeddedBuildFromService takes the model.MockEmbedded DB struct and
+// returns the REST struct *APIMockEmbedded with the corresponding fields populated
 func APIMockEmbeddedBuildFromService(t model.MockEmbedded) *APIMockEmbedded {
 	m := APIMockEmbedded{}
 	m.One = *APIMockLayerOneBuildFromService(t.One)
 	return &m
 }
 
+// APIMockEmbeddedToService takes the APIMockEmbedded REST struct and returns the DB struct
+// *model.MockEmbedded with the corresponding fields populated
 func APIMockEmbeddedToService(m APIMockEmbedded) *model.MockEmbedded {
 	out := &model.MockEmbedded{}
 	out.One = *APIMockLayerOneToService(m.One)
 	return out
 }
 
+// APIMockLayerOneBuildFromService takes the model.MockLayerOne DB struct and
+// returns the REST struct *APIMockLayerOne with the corresponding fields populated
 func APIMockLayerOneBuildFromService(t model.MockLayerOne) *APIMockLayerOne {
 	m := APIMockLayerOne{}
 	m.Two = *APIMockLayerTwoBuildFromService(t.Two)
 	return &m
 }
 
+// APIMockLayerOneToService takes the APIMockLayerOne REST struct and returns the DB struct
+// *model.MockLayerOne with the corresponding fields populated
 func APIMockLayerOneToService(m APIMockLayerOne) *model.MockLayerOne {
 	out := &model.MockLayerOne{}
 	out.Two = *APIMockLayerTwoToService(m.Two)
 	return out
 }
 
+// APIMockLayerTwoBuildFromService takes the model.MockLayerTwo DB struct and
+// returns the REST struct *APIMockLayerTwo with the corresponding fields populated
 func APIMockLayerTwoBuildFromService(t model.MockLayerTwo) *APIMockLayerTwo {
 	m := APIMockLayerTwo{}
 	m.SomeField = StringPtrStringPtr(t.SomeField)
 	return &m
 }
 
+// APIMockLayerTwoToService takes the APIMockLayerTwo REST struct and returns the DB struct
+// *model.MockLayerTwo with the corresponding fields populated
 func APIMockLayerTwoToService(m APIMockLayerTwo) *model.MockLayerTwo {
 	out := &model.MockLayerTwo{}
 	out.SomeField = StringPtrStringPtr(m.SomeField)

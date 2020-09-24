@@ -19,6 +19,8 @@ type APIMockTypes struct {
 	RunePtrType    *int     `json:"rune_ptr_type"`
 }
 
+// APIMockTypesBuildFromService takes the model.MockTypes DB struct and
+// returns the REST struct *APIMockTypes with the corresponding fields populated
 func APIMockTypesBuildFromService(t model.MockTypes) *APIMockTypes {
 	m := APIMockTypes{}
 	m.BoolType = BoolBool(t.BoolType)
@@ -36,6 +38,8 @@ func APIMockTypesBuildFromService(t model.MockTypes) *APIMockTypes {
 	return &m
 }
 
+// APIMockTypesToService takes the APIMockTypes REST struct and returns the DB struct
+// *model.MockTypes with the corresponding fields populated
 func APIMockTypesToService(m APIMockTypes) *model.MockTypes {
 	out := &model.MockTypes{}
 	out.BoolType = BoolBool(m.BoolType)

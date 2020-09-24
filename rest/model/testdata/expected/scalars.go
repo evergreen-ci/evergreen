@@ -14,6 +14,8 @@ type APIMockScalars struct {
 	AnyType  interface{}            `json:"any_type"`
 }
 
+// APIMockScalarsBuildFromService takes the model.MockScalars DB struct and
+// returns the REST struct *APIMockScalars with the corresponding fields populated
 func APIMockScalarsBuildFromService(t model.MockScalars) *APIMockScalars {
 	m := APIMockScalars{}
 	m.TimeType = TimeTimeTimeTimePtr(t.TimeType)
@@ -22,6 +24,8 @@ func APIMockScalarsBuildFromService(t model.MockScalars) *APIMockScalars {
 	return &m
 }
 
+// APIMockScalarsToService takes the APIMockScalars REST struct and returns the DB struct
+// *model.MockScalars with the corresponding fields populated
 func APIMockScalarsToService(m APIMockScalars) *model.MockScalars {
 	out := &model.MockScalars{}
 	out.TimeType = TimeTimePtrTimeTime(m.TimeType)

@@ -9,6 +9,8 @@ type APIDisplayTask struct {
 	ExecTasks []*string `json:"exec_tasks"`
 }
 
+// APIDisplayTaskBuildFromService takes the patch.DisplayTask DB struct and
+// returns the REST struct *APIDisplayTask with the corresponding fields populated
 func APIDisplayTaskBuildFromService(t patch.DisplayTask) *APIDisplayTask {
 	m := APIDisplayTask{}
 	m.ExecTasks = ArrstringArrstringPtr(t.ExecTasks)
@@ -16,6 +18,8 @@ func APIDisplayTaskBuildFromService(t patch.DisplayTask) *APIDisplayTask {
 	return &m
 }
 
+// APIDisplayTaskToService takes the APIDisplayTask REST struct and returns the DB struct
+// *patch.DisplayTask with the corresponding fields populated
 func APIDisplayTaskToService(m APIDisplayTask) *patch.DisplayTask {
 	out := &patch.DisplayTask{}
 	out.ExecTasks = ArrstringPtrArrstring(m.ExecTasks)

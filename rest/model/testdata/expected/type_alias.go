@@ -9,6 +9,8 @@ type APIStructWithAliased struct {
 	Bar *string `json:"bar"`
 }
 
+// APIStructWithAliasedBuildFromService takes the model.StructWithAliased DB struct and
+// returns the REST struct *APIStructWithAliased with the corresponding fields populated
 func APIStructWithAliasedBuildFromService(t model.StructWithAliased) *APIStructWithAliased {
 	m := APIStructWithAliased{}
 	m.Foo = StringStringPtr(t.Foo)
@@ -16,6 +18,8 @@ func APIStructWithAliasedBuildFromService(t model.StructWithAliased) *APIStructW
 	return &m
 }
 
+// APIStructWithAliasedToService takes the APIStructWithAliased REST struct and returns the DB struct
+// *model.StructWithAliased with the corresponding fields populated
 func APIStructWithAliasedToService(m APIStructWithAliased) *model.StructWithAliased {
 	out := &model.StructWithAliased{}
 	out.Foo = StringPtrString(m.Foo)
