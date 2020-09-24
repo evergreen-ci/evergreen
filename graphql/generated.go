@@ -640,6 +640,7 @@ type ComplexityRoot struct {
 	Volume struct {
 		AvailabilityZone func(childComplexity int) int
 		CreatedBy        func(childComplexity int) int
+		CreationTime     func(childComplexity int) int
 		DeviceName       func(childComplexity int) int
 		DisplayName      func(childComplexity int) int
 		Expiration       func(childComplexity int) int
@@ -3746,6 +3747,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.CreatedBy(childComplexity), true
 
+	case "Volume.creationTime":
+		if e.complexity.Volume.CreationTime == nil {
+			break
+		}
+
+		return e.complexity.Volume.CreationTime(childComplexity), true
+
 	case "Volume.deviceName":
 		if e.complexity.Volume.DeviceName == nil {
 			break
@@ -4310,6 +4318,7 @@ type Volume {
   noExpiration: Boolean!
   homeVolume: Boolean!
   host: Host
+  creationTime: Time!
 }
 
 type PatchProject {
@@ -19249,6 +19258,40 @@ func (ec *executionContext) _Volume_host(ctx context.Context, field graphql.Coll
 	return ec.marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Volume_creationTime(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Volume",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreationTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24494,6 +24537,11 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 				res = ec._Volume_host(ctx, field, obj)
 				return res
 			})
+		case "creationTime":
+			out.Values[i] = ec._Volume_creationTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
