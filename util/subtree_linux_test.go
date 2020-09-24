@@ -29,7 +29,7 @@ func TestGetPidsToKill(t *testing.T) {
 	require.NoError(t, inWorkingDirCmd.Start())
 	inWorkingDirPid := inWorkingDirCmd.Process.Pid
 
-	pids, err := getPidsToKill("", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+	pids, err := processesToKill("", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
 	assert.NoError(t, err)
 	assert.Contains(t, pids, inEvergreenPid)
 	assert.Contains(t, pids, inWorkingDirPid)
