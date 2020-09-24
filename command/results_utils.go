@@ -128,7 +128,6 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 		rs.Results = append(rs.Results, testresults.Result{
 			Name:        r.TestFile,
 			Status:      r.Status,
-			LogURL:      r.URL,
 			LineNum:     int32(r.LineNum),
 			TaskCreated: t.CreateTime,
 			TestStarted: time.Unix(int64(r.StartTime), 0),

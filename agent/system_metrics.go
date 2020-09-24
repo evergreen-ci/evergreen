@@ -24,11 +24,11 @@ import (
 // metricCollector is an interface representing an object that can collect
 // a single system metric over a series of time steps.
 type metricCollector interface {
-	// Name returns a string indicating the type of metric collected, such as "uptime".
+	// name returns a string indicating the type of metric collected, such as "uptime".
 	name() string
-	// Format returns the format of the collected data.
+	// format returns the format of the collected data.
 	format() sysmetrics.DataFormat
-	// Collect returns the value of the collected metric when the function is called.
+	// collect returns the value of the collected metric when the function is called.
 	collect(context.Context) ([]byte, error)
 }
 
