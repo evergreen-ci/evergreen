@@ -954,7 +954,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	if sortBy != nil {
 		switch *sortBy {
 		case TaskSortCategoryStatus:
-			sorter = task.StatusKey
+			sorter = task.DisplayStatusKey
 			break
 		case TaskSortCategoryName:
 			sorter = task.DisplayNameKey
