@@ -733,10 +733,14 @@ type ClientBinary {
 
 type SpruceConfig {
   ui: UIConfig
+  jira: JiraConfig
   banner: String
   bannerTheme: String
 }
 
+type JiraConfig {
+  host: String
+}
 type UIConfig {
   userVoice: String
 }

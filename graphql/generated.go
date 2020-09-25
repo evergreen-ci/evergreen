@@ -219,6 +219,10 @@ type ComplexityRoot struct {
 		Value         func(childComplexity int) int
 	}
 
+	JiraConfig struct {
+		Host func(childComplexity int) int
+	}
+
 	JiraStatus struct {
 		Id   func(childComplexity int) int
 		Name func(childComplexity int) int
@@ -440,6 +444,7 @@ type ComplexityRoot struct {
 	SpruceConfig struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
+		Jira        func(childComplexity int) int
 		Ui          func(childComplexity int) int
 	}
 
@@ -1517,6 +1522,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InstanceTag.Value(childComplexity), true
+
+	case "JiraConfig.host":
+		if e.complexity.JiraConfig.Host == nil {
+			break
+		}
+
+		return e.complexity.JiraConfig.Host(childComplexity), true
 
 	case "JiraStatus.id":
 		if e.complexity.JiraStatus.Id == nil {
@@ -2793,6 +2805,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
+
+	case "SpruceConfig.jira":
+		if e.complexity.SpruceConfig.Jira == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Jira(childComplexity), true
 
 	case "SpruceConfig.ui":
 		if e.complexity.SpruceConfig.Ui == nil {
@@ -4650,10 +4669,14 @@ type ClientBinary {
 
 type SpruceConfig {
   ui: UIConfig
+  jira: JiraConfig
   banner: String
   bannerTheme: String
 }
 
+type JiraConfig {
+  host: String
+}
 type UIConfig {
   userVoice: String
 }
@@ -9181,6 +9204,37 @@ func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, fiel
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "JiraConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Host, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _JiraStatus_id(ctx context.Context, field graphql.CollectedField, obj *thirdparty.JiraStatus) (ret graphql.Marshaler) {
@@ -14464,6 +14518,37 @@ func (ec *executionContext) _SpruceConfig_ui(ctx context.Context, field graphql.
 	res := resTmp.(*model.APIUIConfig)
 	fc.Result = res
 	return ec.marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_jira(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Jira, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIJiraConfig)
+	fc.Result = res
+	return ec.marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _SpruceConfig_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
@@ -21977,6 +22062,30 @@ func (ec *executionContext) _InstanceTag(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var jiraConfigImplementors = []string{"JiraConfig"}
+
+func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIJiraConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, jiraConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("JiraConfig")
+		case "host":
+			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var jiraStatusImplementors = []string{"JiraStatus"}
 
 func (ec *executionContext) _JiraStatus(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.JiraStatus) graphql.Marshaler {
@@ -23494,6 +23603,8 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("SpruceConfig")
 		case "ui":
 			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
+		case "jira":
+			out.Values[i] = ec._SpruceConfig_jira(ctx, field, obj)
 		case "banner":
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
@@ -27510,6 +27621,17 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return ec.marshalOInt2int(ctx, sel, *v)
+}
+
+func (ec *executionContext) marshalOJiraConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v model.APIJiraConfig) graphql.Marshaler {
+	return ec._JiraConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIJiraConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._JiraConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModule) graphql.Marshaler {
