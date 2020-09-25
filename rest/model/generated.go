@@ -2,8 +2,15 @@
 
 package model
 
-import "github.com/evergreen-ci/evergreen/model/user"
+import (
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+)
 
+type APIDisplayTask struct {
+	Name           *string  `json:"name"`
+	ExecutionTasks []string `json:"execution_tasks"`
+}
 type APIDBUser struct {
 	UserID      *string  `json:"user_id"`
 	DisplayName *string  `json:"display_name"`
@@ -11,6 +18,26 @@ type APIDBUser struct {
 	Roles       []string `json:"roles"`
 }
 
+// APIDisplayTaskBuildFromService takes the patch.DisplayTask DB struct and
+// returns the REST struct *APIDisplayTask with the corresponding fields populated
+func APIDisplayTaskBuildFromService(t patch.DisplayTask) *APIDisplayTask {
+	m := APIDisplayTask{}
+	m.ExecutionTasks = ArrstringArrstring(t.ExecTasks)
+	m.Name = StringStringPtr(t.Name)
+	return &m
+}
+
+// APIDisplayTaskToService takes the APIDisplayTask REST struct and returns the DB struct
+// *patch.DisplayTask with the corresponding fields populated
+func APIDisplayTaskToService(m APIDisplayTask) *patch.DisplayTask {
+	out := &patch.DisplayTask{}
+	out.ExecTasks = ArrstringArrstring(m.ExecutionTasks)
+	out.Name = StringPtrString(m.Name)
+	return out
+}
+
+// APIDBUserBuildFromService takes the user.DBUser DB struct and
+// returns the REST struct *APIDBUser with the corresponding fields populated
 func APIDBUserBuildFromService(t user.DBUser) *APIDBUser {
 	m := APIDBUser{}
 	m.DisplayName = StringStringPtr(t.DispName)
@@ -20,6 +47,8 @@ func APIDBUserBuildFromService(t user.DBUser) *APIDBUser {
 	return &m
 }
 
+// APIDBUserToService takes the APIDBUser REST struct and returns the DB struct
+// *user.DBUser with the corresponding fields populated
 func APIDBUserToService(m APIDBUser) *user.DBUser {
 	out := &user.DBUser{}
 	out.DispName = StringPtrString(m.DisplayName)

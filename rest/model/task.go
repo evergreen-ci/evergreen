@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -438,25 +437,4 @@ func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 }
 func (ad *APIDependency) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APIDependency")
-}
-
-type APIDisplayTask struct {
-	Name           *string
-	ExecutionTasks []string
-}
-
-func APIDisplayTaskBuildFromService(v patch.DisplayTask) APIDisplayTask {
-	out := APIDisplayTask{}
-	out.Name = &v.Name
-	out.ExecutionTasks = v.ExecTasks
-	return out
-}
-
-func APIDisplayTaskToService(v APIDisplayTask) patch.DisplayTask {
-	out := patch.DisplayTask{}
-	if v.Name != nil {
-		out.Name = *v.Name
-	}
-	out.ExecTasks = v.ExecutionTasks
-	return out
 }

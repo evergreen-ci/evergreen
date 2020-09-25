@@ -751,11 +751,11 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type GetProjectAliasResultsHandler struct {
-	sc data.Connector
-
 	version             string
 	alias               string
 	includeDependencies bool
+
+	sc data.Connector
 }
 
 func makeGetProjectAliasResultsHandler(sc data.Connector) gimlet.RouteHandler {
@@ -764,30 +764,30 @@ func makeGetProjectAliasResultsHandler(sc data.Connector) gimlet.RouteHandler {
 	}
 }
 
-func (h *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
+func (p *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
 	return &GetProjectAliasResultsHandler{
-		sc: h.sc,
+		sc: p.sc,
 	}
 }
 
-func (h *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	params := r.URL.Query()
 
-	h.version = params.Get("version")
-	if h.version == "" {
+	p.version = params.Get("version")
+	if p.version == "" {
 		return errors.New("'version' parameter must be specified")
 	}
-	h.alias = params.Get("alias")
-	if h.alias == "" {
+	p.alias = params.Get("alias")
+	if p.alias == "" {
 		return errors.New("'alias' parameter must be specified")
 	}
-	h.includeDependencies = (params.Get("include_deps") == "true")
+	p.includeDependencies = (params.Get("include_deps") == "true")
 
 	return nil
 }
 
-func (h *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindProjectFromVersionID(h.version)
+func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	proj, err := dbModel.FindProjectFromVersionID(p.version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project for version",
@@ -795,7 +795,7 @@ func (h *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get project from version"))
 	}
 
-	variantTasks, err := h.sc.GetProjectAliasResults(proj, h.alias, h.includeDependencies)
+	variantTasks, err := p.sc.GetProjectAliasResults(proj, p.alias, p.includeDependencies)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
