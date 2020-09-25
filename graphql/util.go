@@ -167,6 +167,10 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}
 
+	if p.IsCommitQueuePatch() {
+		return errors.New("can't schedule commit queue patch"), http.StatusBadRequest, "", ""
+	}
+
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
 	if _, err = model.LoadProjectInto([]byte(p.PatchedConfig), p.Project, project); err != nil {
