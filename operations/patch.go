@@ -105,12 +105,15 @@ func Patch() cli.Command {
 			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
-			keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
-			if err != nil {
-				return errors.Wrap(err, "can't test for uncommitted changes")
-			}
-			if !keepGoing {
-				return errors.New("patch aborted")
+			if !params.SkipConfirm {
+				var keepGoing bool
+				keepGoing, err = confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
+				if err != nil {
+					return errors.Wrap(err, "can't test for uncommitted changes")
+				}
+				if !keepGoing {
+					return errors.New("patch aborted")
+				}
 			}
 
 			comm := conf.setupRestCommunicator(ctx)

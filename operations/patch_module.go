@@ -63,12 +63,15 @@ func PatchSetModule() cli.Command {
 			}
 
 			preserveCommits = preserveCommits || conf.PreserveCommits
-			keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
-			if err != nil {
-				return errors.Wrap(err, "can't test for uncommitted changes")
-			}
-			if !keepGoing {
-				return errors.New("patch aborted")
+			if !skipConfirm {
+				var keepGoing bool
+				keepGoing, err = confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
+				if err != nil {
+					return errors.Wrap(err, "can't test for uncommitted changes")
+				}
+				if !keepGoing {
+					return errors.New("patch aborted")
+				}
 			}
 
 			proj, err := rc.GetPatchedConfig(patchID)
