@@ -132,3 +132,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   UIConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
+  JiraConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig

@@ -145,8 +145,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		if err != nil {
 			return errors.Wrapf(err, "error building apiUiConfig %s", err)
 		}
-
 		as.Ui = &uiConfig
+		jiraConfig := APIJiraConfig{}
+		err = jiraConfig.BuildFromService(v.Jira)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiJiraConfig %s", err)
+		}
+		as.Jira = &jiraConfig
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}

@@ -22,6 +22,18 @@
                     }
                 }
             }
+        },
+        {
+            "query_file": "jira.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "jira": {
+                            "host": "jira.mongodb.org"
+                        }
+                    }
+                }
+            }
         }
     ]
 }

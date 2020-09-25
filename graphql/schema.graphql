@@ -42,7 +42,6 @@ type Query {
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
-  siteBanner: SiteBanner!
   host(hostId: String!): Host
   hostEvents(
     hostId: String!
@@ -733,17 +732,17 @@ type ClientBinary {
 
 type SpruceConfig {
   ui: UIConfig
+  jira: JiraConfig
   banner: String
   bannerTheme: String
 }
 
-type UIConfig {
-  userVoice: String
+type JiraConfig {
+  host: String
 }
 
-type SiteBanner {
-  text: String!
-  theme: String!
+type UIConfig {
+  userVoice: String
 }
 
 type HostEvents {
