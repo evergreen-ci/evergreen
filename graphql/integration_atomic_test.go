@@ -31,6 +31,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,34 +40,44 @@ import (
 )
 
 type atomicGraphQLState struct {
-	url         string
+	server      *service.TestServer
 	apiUser     string
 	apiKey      string
 	directory   string
 	taskLogDB   string
 	taskLogColl string
+	testData    map[string]json.RawMessage
 	settings    *evergreen.Settings
 }
 
 func TestAtomicGQLQueries(t *testing.T) {
+	grip.Warning(grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
 	testDirectories, err := ioutil.ReadDir("tests")
 	require.NoError(t, err)
+	server, err := service.CreateTestServer(settings, nil, true)
+	require.NoError(t, err)
+	defer server.Close()
+
 	for _, dir := range testDirectories {
-		state := setup(t, dir.Name(), settings)
-		runTestsInDirectory(t, state)
+		state := atomicGraphQLState{
+			taskLogDB:   model.TaskLogDB,
+			taskLogColl: model.TaskLogCollection,
+			directory:   dir.Name(),
+			settings:    settings,
+			server:      server,
+		}
+		t.Run(state.directory, makeTestsInDirectory(t, &state))
 	}
 }
 
 const apiUser = "testuser"
 
-func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicGraphQLState {
+func setup(t *testing.T, state *atomicGraphQLState) {
 	const apiKey = "testapikey"
 	const slackUsername = "testslackuser"
-	state := atomicGraphQLState{taskLogDB: model.TaskLogDB, taskLogColl: model.TaskLogCollection}
-	server, err := service.CreateTestServer(settings, nil, true)
-	require.NoError(t, err)
+
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
@@ -88,7 +100,7 @@ func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicG
 		Scope:       "modify_host_scope",
 		Permissions: map[string]int{"distro_hosts": 20},
 	}
-	_, err = env.DB().Collection("roles").InsertOne(ctx, modifyHostRole)
+	_, err := env.DB().Collection("roles").InsertOne(ctx, modifyHostRole)
 	require.NoError(t, err)
 
 	modifyHostScope := gimlet.Scope{
@@ -99,73 +111,84 @@ func setup(t *testing.T, directory string, settings *evergreen.Settings) atomicG
 	}
 	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
 	require.NoError(t, err)
-	state.url = server.URL
 	state.apiKey = apiKey
 	state.apiUser = apiUser
-	state.directory = directory
-	state.settings = settings
 
-	return state
+	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), state.testData, *state))
+	directorySpecificTestSetup(t, *state)
 }
 
 type testsCases struct {
 	Tests []test `json:"tests"`
 }
 
-func runTestsInDirectory(t *testing.T, state atomicGraphQLState) {
-	dataFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "data.json"))
-	require.NoError(t, err)
-
-	resultsFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "results.json"))
-	require.NoError(t, err)
-
-	var testData map[string]json.RawMessage
-	err = json.Unmarshal(dataFile, &testData)
-	require.NoError(t, err)
-
-	var tests testsCases
-	err = json.Unmarshal(resultsFile, &tests)
-	require.NoError(t, err)
-
-	// Delete exactly the documents added to the task_logg coll instead of dropping task log db
-	// we do this to minimize deleting data that was not added from this test suite
-	if testData[state.taskLogColl] != nil {
-		logsDb := evergreen.GetEnvironment().Client().Database(state.taskLogDB)
-		idArr := []string{}
-		var docs []model.TaskLog
-		require.NoError(t, bson.UnmarshalExtJSON(testData[state.taskLogColl], false, &docs))
-		for _, d := range docs {
-			idArr = append(idArr, d.Id)
-		}
-		_, err := logsDb.Collection(state.taskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
+func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testing.T) {
+	return func(t *testing.T) {
+		dataFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "data.json"))
 		require.NoError(t, err)
-	}
 
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), testData, state))
-	directorySpecificTestSetup(t, state)
+		resultsFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "results.json"))
+		require.NoError(t, err)
 
-	for _, testCase := range tests.Tests {
-		singleTest := func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "queries", testCase.QueryFile))
+		var testData map[string]json.RawMessage
+		err = json.Unmarshal(dataFile, &testData)
+		require.NoError(t, err)
+		state.testData = testData
+
+		var tests testsCases
+		err = json.Unmarshal(resultsFile, &tests)
+		require.NoError(t, err)
+
+		// Delete exactly the documents added to the task_logg coll instead of dropping task log db
+		// we do this to minimize deleting data that was not added from this test suite
+		if testData[state.taskLogColl] != nil {
+			logsDb := evergreen.GetEnvironment().Client().Database(state.taskLogDB)
+			idArr := []string{}
+			var docs []model.TaskLog
+			require.NoError(t, bson.UnmarshalExtJSON(testData[state.taskLogColl], false, &docs))
+			for _, d := range docs {
+				idArr = append(idArr, d.Id)
+			}
+			_, err := logsDb.Collection(state.taskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
 			require.NoError(t, err)
-			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
-			body := bytes.NewBuffer([]byte(jsonQuery))
-			client := http.Client{}
-			r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.url), body)
-			require.NoError(t, err)
-			r.Header.Add(evergreen.APIKeyHeader, state.apiKey)
-			r.Header.Add(evergreen.APIUserHeader, state.apiUser)
-			r.Header.Add("content-type", "application/json")
-			resp, err := client.Do(r)
-			require.NoError(t, err)
-			b, err := ioutil.ReadAll(resp.Body)
-			require.NoError(t, err)
-			assert.JSONEq(t, string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
 		}
 
-		t.Run(fmt.Sprintf("%s/%s", state.directory, testCase.QueryFile), singleTest)
+		setup(t, state)
+		for _, testCase := range tests.Tests {
+			singleTest := func(t *testing.T) {
+				f, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "queries", testCase.QueryFile))
+				require.NoError(t, err)
+				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
+				body := bytes.NewBuffer([]byte(jsonQuery))
+				client := http.Client{}
+				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.server.URL), body)
+				require.NoError(t, err)
+				r.Header.Add(evergreen.APIKeyHeader, state.apiKey)
+				r.Header.Add(evergreen.APIUserHeader, state.apiUser)
+				r.Header.Add("content-type", "application/json")
+				resp, err := client.Do(r)
+				require.NoError(t, err)
+				b, err := ioutil.ReadAll(resp.Body)
+				require.NoError(t, err)
+				pass := assert.JSONEq(t, string(testCase.Result), string(b), "test failure, more details below (whitespace will not line up)")
+				if !pass {
+					var actual bytes.Buffer
+					err = json.Indent(&actual, b, "", "  ")
+					if err != nil {
+						grip.Error(errors.Wrap(err, "actual value was not json"))
+						return
+					}
+					grip.Info("=== expected ===")
+					grip.Info(string(testCase.Result))
+					grip.Info("=== actual ===")
+					grip.Info(actual.Bytes())
+				}
+			}
+
+			t.Run(testCase.QueryFile, singleTest)
+		}
+		directorySpecificTestCleanup(t, state.directory)
 	}
-	directorySpecificTestCleanup(t, state.directory)
 }
 
 func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state atomicGraphQLState) error {
