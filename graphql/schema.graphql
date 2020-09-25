@@ -782,7 +782,6 @@ type HostEventLogData {
 type BuildBaron {
   searchReturnInfo: SearchReturnInfo
   buildBaronConfigured: Boolean!
-  jiraHost: String
 }
 
 # build baron plugin
