@@ -741,6 +741,7 @@ type SpruceConfig {
 type JiraConfig {
   host: String
 }
+
 type UIConfig {
   userVoice: String
 }
