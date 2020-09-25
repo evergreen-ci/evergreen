@@ -1392,20 +1392,6 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
-// Will be deleted when sitebanner query in spruce is updated
-func (r *queryResolver) SiteBanner(ctx context.Context) (*restModel.APIBanner, error) {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
-	}
-	bannerTheme := string(settings.BannerTheme)
-	banner := restModel.APIBanner{
-		Text:  &settings.Banner,
-		Theme: &bannerTheme,
-	}
-	return &banner, nil
-}
-
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {

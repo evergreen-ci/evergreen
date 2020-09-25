@@ -42,7 +42,6 @@ type Query {
   awsRegions: [String!]
   userConfig: UserConfig
   clientConfig: ClientConfig
-  siteBanner: SiteBanner!
   host(hostId: String!): Host
   hostEvents(
     hostId: String!
@@ -744,11 +743,6 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
-}
-
-type SiteBanner {
-  text: String!
-  theme: String!
 }
 
 type HostEvents {
