@@ -561,7 +561,6 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool) error {
 			"message": "unblocked task group dependent tasks",
 			"ticket":  "EVG-12923",
 			"task":    t.Id,
-			"stack":   debug.Stack(),
 		})
 	}
 
