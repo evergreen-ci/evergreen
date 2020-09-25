@@ -6,3 +6,8 @@ type User {
   OnlyApi: Boolean! @aliases(db: OnlyAPI)
   Roles: [String!]! @aliases(db: SystemRoles)
 }
+
+type DisplayTask {
+  Name: String
+  ExecutionTasks: [String!]! @aliases(db: ExecTasks)
+}
