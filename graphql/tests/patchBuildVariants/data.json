@@ -20,11 +20,7 @@
       "finish_time": {
         "$date": "2020-02-21T15:29:54.869Z"
       },
-      "build_variants": [
-        "ubuntu1604",
-        "osx",
-        "windows"
-      ],
+      "build_variants": ["ubuntu1604", "osx", "windows"],
       "tasks": [
         "test-thirdparty-docker",
         "test-cloud",
@@ -135,7 +131,7 @@
         }
       ],
       "time_taken": 0,
-      "display_name": "OSX",
+      "display_name": "X",
       "predicted_makespan": 0,
       "actual_makespan": 0,
       "r": "ad_hoc"

@@ -1331,7 +1331,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	}
 	// sort variants by name
 	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].Variant < result[j].Variant
+		return result[i].DisplayName < result[j].DisplayName
 	})
 	return result, nil
 }
