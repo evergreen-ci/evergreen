@@ -527,7 +527,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.isDirty = false;
       },
       function (resp) {
-        $scope.saveMessage = "Couldn't save project: " + resp.data;
+        $scope.saveMessage = "Couldn't save project: " + resp.data.error;
         console.log(resp.status);
       });
   };

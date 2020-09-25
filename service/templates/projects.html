@@ -489,9 +489,14 @@ Evergreen Projects
             <div class="form-group">
               <div class="col-header col-lg-6 form-control-static"> <h4> Git Tag Version Definitions </h4>
                 <div class="muted small">
-                  If an authorized user pushes a tag that matches a regex, the version will be fully populated from the given config file,
-                  OR have all variants and tasks that match the variant and task regex pair. If multiple regexes match and a config file has been
-                  defined for one or more of them, the version is ambiguous and so no version will be created.
+                  If an authorized user pushes a tag that matches a regex a version can be created from this alias.
+                </div>
+                <div class="muted small" style="padding-top: 5px;">
+                  Either the version will be fully populated from a new file, OR variants and tasks can be defined for the default config file using variant and task regexes/tags.
+                </div>
+                <div class="muted small" style="padding-top: 5px;">
+                  If multiple regexes match and a config file has been defined for one or more of them,
+                  the version is ambiguous and so no version will be created.
                 </div>
               </div>
             </div>
@@ -514,13 +519,13 @@ Evergreen Projects
               </div>
               <div ng-disabled="obj.remote_path">
                 <div class="col-lg-2">
-                  <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
+                  <input class="form-control" ng-model="obj.variant" ng-disabled="obj.remote_path" type="text" placeholder="variant regex">
                 </div>
                 <div class="col-lg-2">
-                  <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
+                  <input class="form-control" ng-model="obj.task" ng-disabled="obj.remote_path" type="text" placeholder="task regex">
                 </div>
                 <div class="col-lg-2">
-                  <tag-input klass="form-control" items="obj.tags" placeholder="tags (comma-delimited)" />
+                  <tag-input klass="form-control" disabled="obj.remote_path" items="obj.tags" placeholder="tags (comma-delimited)" />
                 </div>
               </div>
               <div class="col-lg-2">
