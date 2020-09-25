@@ -106,7 +106,8 @@ func Patch() cli.Command {
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
-				keepGoing, err := confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
+				var keepGoing bool
+				keepGoing, err = confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 				if err != nil {
 					return errors.Wrap(err, "can't test for uncommitted changes")
 				}

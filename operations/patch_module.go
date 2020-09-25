@@ -64,7 +64,8 @@ func PatchSetModule() cli.Command {
 
 			preserveCommits = preserveCommits || conf.PreserveCommits
 			if !skipConfirm {
-				keepGoing, err := confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
+				var keepGoing bool
+				keepGoing, err = confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 				if err != nil {
 					return errors.Wrap(err, "can't test for uncommitted changes")
 				}
