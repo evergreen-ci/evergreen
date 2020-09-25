@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -48,10 +49,9 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
-// listProc() returns a list of active pids on the system, by listing the
-// contents of /proc and looking for entries that appear to be valid pids. Only
-// usable on systems with a /proc filesystem.
-func listProc() ([]int, error) {
+// processesToKill returns a list of pids that should be killed.
+// Only usable on systems with a /proc filesystem.
+func processesToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
 	d, err := os.Open("/proc")
 	if err != nil {
 		return nil, err
@@ -59,6 +59,7 @@ func listProc() ([]int, error) {
 	defer d.Close()
 
 	results := make([]int, 0, 50)
+	myPid := os.Getpid()
 	for {
 		fis, err := d.Readdir(10)
 		if err == io.EOF {
@@ -79,37 +80,35 @@ func listProc() ([]int, error) {
 			if err != nil {
 				continue
 			}
+
+			if pid == myPid {
+				continue
+			}
+
+			if !processHasMarkers(pid, key, logger) && !executableInWorkingDir(pid, workingDir, logger) {
+				continue
+			}
+
 			results = append(results, pid)
 		}
 	}
 	return results, nil
 }
 
-func cleanup(key string, logger grip.Journaler) error {
-	myPid := os.Getpid()
-	pids, err := listProc()
+func cleanup(key, workingDir string, logger grip.Journaler) error {
+	pids, err := processesToKill(key, workingDir, logger)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "can't get list of processes to kill")
 	}
 
-	var env []string
 	// Kill processes
 	for _, pid := range pids {
-		env, err = getEnv(pid)
-		if err != nil {
-			if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
-				logger.Infof("Could not get environment for process %d", pid)
-			}
-			continue
-		}
-		if pid != myPid && envHasMarkers(key, env) {
-			p := os.Process{}
-			p.Pid = pid
-			if err = p.Kill(); err != nil {
-				logger.Infof("Killing %d failed: %s", pid, err.Error())
-			} else {
-				logger.Infof("Killed process %d", pid)
-			}
+		p := os.Process{}
+		p.Pid = pid
+		if err = p.Kill(); err != nil {
+			logger.Infof("Killing %d failed: %s", pid, err.Error())
+		} else {
+			logger.Infof("Killed process %d", pid)
 		}
 	}
 
@@ -121,21 +120,12 @@ func cleanup(key string, logger grip.Journaler) error {
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
-			pids, err = listProc()
+			pids, err = processesToKill(key, workingDir, logger)
 			if err != nil {
-				return false, err
+				return false, errors.Wrap(err, "can't get list of processes to kill")
 			}
 			for _, pid := range pids {
-				env, err = getEnv(pid)
-				if err != nil {
-					if !strings.Contains(err.Error(), os.ErrPermission.Error()) {
-						logger.Infof("Could not get environment for process %s", pid)
-					}
-					continue
-				}
-				if pid != myPid && envHasMarkers(key, env) {
-					unkilledPids = append(unkilledPids, pid)
-				}
+				unkilledPids = append(unkilledPids, pid)
 			}
 			return len(unkilledPids) != 0, nil
 		},
@@ -153,4 +143,31 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	return nil
+}
+
+func processHasMarkers(pid int, key string, logger grip.Journaler) bool {
+	env, err := getEnv(pid)
+	if err != nil {
+		if !os.IsPermission(err) {
+			logger.Infof("Could not get environment for process %d", pid)
+		}
+		return false
+	}
+	return envHasMarkers(key, env)
+}
+
+func executableInWorkingDir(pid int, workingDir string, logger grip.Journaler) bool {
+	if workingDir == "" {
+		return false
+	}
+
+	executablePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	if err != nil {
+		if !os.IsPermission(err) {
+			logger.Infof("Could not get executable path for process %d", pid)
+		}
+		return false
+	}
+
+	return strings.HasPrefix(executablePath, workingDir)
 }

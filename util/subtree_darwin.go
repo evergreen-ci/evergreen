@@ -16,7 +16,27 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {
 	// cleanup() and we don't need to do any special bookkeeping up-front.
 }
 
-func cleanup(key string, logger grip.Journaler) error {
+func cleanup(key, workingDir string, logger grip.Journaler) error {
+	pidsToKill, err := getPidsToKill(key, workingDir, logger)
+	if err != nil {
+		return errors.Wrap(err, "problem getting list of PIDs to kill")
+	}
+
+	for _, pid := range pidsToKill {
+		p := os.Process{}
+		p.Pid = pid
+		err := p.Kill()
+		if err != nil {
+			logger.Errorf("Cleanup got error killing pid %d: %v", pid, err)
+		} else {
+			logger.Infof("Cleanup killed pid %d", pid)
+		}
+	}
+	return nil
+
+}
+
+func getPidsToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
 	/*
 		Usage of ps on OSX for extracting environment variables:
 		-E: print the environment of the process (VAR1=FOO VAR2=BAR ...)
@@ -32,7 +52,7 @@ func cleanup(key string, logger grip.Journaler) error {
 	if err != nil {
 		m := "cleanup failed to get output of 'ps'"
 		logger.Errorf("%s: %v", m, err)
-		return errors.Wrap(err, m)
+		return nil, errors.Wrap(err, m)
 	}
 	myPid := fmt.Sprintf("%v", os.Getpid())
 
@@ -46,30 +66,32 @@ func cleanup(key string, logger grip.Journaler) error {
 		}
 		splitLine := strings.Fields(line)
 		pid := splitLine[0]
+		command := splitLine[1]
 		env := splitLine[2:]
 
-		if pid != myPid && envHasMarkers(key, env) {
-			// add it to the list of processes to clean up
-			pidAsInt, err := strconv.Atoi(pid)
-			if err != nil {
-				logger.Errorf("cleanup failed to convert from string to int: %v", err)
-				continue
-			}
-			pidsToKill = append(pidsToKill, pidAsInt)
+		if pid == myPid {
+			continue
 		}
-	}
+		if !envHasMarkers(key, env) && !commandInWorkingDir(command, workingDir) {
+			continue
+		}
 
-	// Iterate through the list of processes to kill that we just built, and actually kill them.
-	for _, pid := range pidsToKill {
-		p := os.Process{}
-		p.Pid = pid
-		err := p.Kill()
+		// add it to the list of processes to clean up
+		pidAsInt, err := strconv.Atoi(pid)
 		if err != nil {
-			logger.Errorf("Cleanup got error killing pid %d: %v", pid, err)
-		} else {
-			logger.Infof("Cleanup killed pid %d", pid)
+			logger.Errorf("cleanup failed to convert from string to int: %v", err)
+			continue
 		}
+		pidsToKill = append(pidsToKill, pidAsInt)
 	}
-	return nil
 
+	return pidsToKill, nil
+}
+
+func commandInWorkingDir(command, workingDir string) bool {
+	if workingDir == "" {
+		return false
+	}
+
+	return strings.HasPrefix(command, workingDir)
 }

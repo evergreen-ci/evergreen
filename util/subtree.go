@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	MarkerTaskID   = "EVR_TASK_ID"
-	MarkerAgentPID = "EVR_AGENT_PID"
+	MarkerTaskID      = "EVR_TASK_ID"
+	MarkerAgentPID    = "EVR_AGENT_PID"
+	MarkerInEvergreen = "IN_EVERGREEN"
 )
 
 func envHasMarkers(key string, env []string) bool {
@@ -31,7 +32,7 @@ func envHasMarkers(key string, env []string) bool {
 
 	// Otherwise, kill any proc started by any agent
 	for _, envVar := range env {
-		if strings.HasPrefix(envVar, MarkerTaskID) || strings.HasPrefix(envVar, MarkerAgentPID) {
+		if strings.HasPrefix(envVar, MarkerTaskID) || strings.HasPrefix(envVar, MarkerAgentPID) || strings.HasPrefix(envVar, MarkerInEvergreen) {
 			return true
 		}
 	}
@@ -39,8 +40,8 @@ func envHasMarkers(key string, env []string) bool {
 }
 
 // KillSpawnedProcs cleans up any tasks that were spawned by the given task.
-func KillSpawnedProcs(key string, logger grip.Journaler) error {
+func KillSpawnedProcs(key, workingDir string, logger grip.Journaler) error {
 	// Clean up all shell processes spawned during the execution of this task by this agent,
 	// by calling the platform-specific "cleanup" function
-	return cleanup(key, logger)
+	return cleanup(key, workingDir, logger)
 }

@@ -635,7 +635,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
 			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
-			if err := util.KillSpawnedProcs(tc.task.ID, logger); err != nil {
+			if err := util.KillSpawnedProcs(tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				logger.Critical(msg)
 			}
