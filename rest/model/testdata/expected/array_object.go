@@ -9,6 +9,8 @@ type APIEntry struct {
 	Files  []APIFile `json:"files"`
 }
 
+// APIEntryBuildFromService takes the artifact.Entry DB struct and
+// returns the REST struct *APIEntry with the corresponding fields populated
 func APIEntryBuildFromService(t artifact.Entry) *APIEntry {
 	m := APIEntry{}
 	m.Files = ArrartifactFileArrAPIFile(t.Files)
@@ -16,6 +18,8 @@ func APIEntryBuildFromService(t artifact.Entry) *APIEntry {
 	return &m
 }
 
+// APIEntryToService takes the APIEntry REST struct and returns the DB struct
+// *artifact.Entry with the corresponding fields populated
 func APIEntryToService(m APIEntry) *artifact.Entry {
 	out := &artifact.Entry{}
 	out.Files = ArrAPIFileArrartifactFile(m.Files)

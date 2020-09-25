@@ -13,6 +13,8 @@ type APIUserSettings struct {
 	GithubUser APIGithubUser `json:"github_user"`
 }
 
+// APIGithubUserBuildFromService takes the user.GithubUser DB struct and
+// returns the REST struct *APIGithubUser with the corresponding fields populated
 func APIGithubUserBuildFromService(t user.GithubUser) *APIGithubUser {
 	m := APIGithubUser{}
 	m.UID = IntInt(t.UID)
@@ -20,6 +22,8 @@ func APIGithubUserBuildFromService(t user.GithubUser) *APIGithubUser {
 	return &m
 }
 
+// APIGithubUserToService takes the APIGithubUser REST struct and returns the DB struct
+// *user.GithubUser with the corresponding fields populated
 func APIGithubUserToService(m APIGithubUser) *user.GithubUser {
 	out := &user.GithubUser{}
 	out.UID = IntInt(m.UID)
@@ -27,6 +31,8 @@ func APIGithubUserToService(m APIGithubUser) *user.GithubUser {
 	return out
 }
 
+// APIUserSettingsBuildFromService takes the user.UserSettings DB struct and
+// returns the REST struct *APIUserSettings with the corresponding fields populated
 func APIUserSettingsBuildFromService(t user.UserSettings) *APIUserSettings {
 	m := APIUserSettings{}
 	m.GithubUser = *APIGithubUserBuildFromService(t.GithubUser)
@@ -34,6 +40,8 @@ func APIUserSettingsBuildFromService(t user.UserSettings) *APIUserSettings {
 	return &m
 }
 
+// APIUserSettingsToService takes the APIUserSettings REST struct and returns the DB struct
+// *user.UserSettings with the corresponding fields populated
 func APIUserSettingsToService(m APIUserSettings) *user.UserSettings {
 	out := &user.UserSettings{}
 	out.GithubUser = *APIGithubUserToService(m.GithubUser)
