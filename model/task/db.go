@@ -244,22 +244,31 @@ func ByIdsAndStatus(taskIds []string, statuses []string) db.Q {
 	})
 }
 
+type StaleReason int
+
+const (
+	HeartbeatPastCutoff StaleReason = iota
+	NoHeartbeatSinceDispatch
+)
+
 // ByStaleRunningTask creates a query that finds any running tasks
 // whose last heartbeat was at least the specified threshold ago, or
 // that has been dispatched but hasn't started in twice that long.
-func ByStaleRunningTask(staleness time.Duration) db.Q {
-	return db.Query(bson.M{
-		"$or": []bson.M{
-			{
-				StatusKey:        SelectorTaskInProgress,
-				LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
-			},
-			{
-				StatusKey:       evergreen.TaskDispatched,
-				DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * staleness)},
-			},
-		},
-	})
+func ByStaleRunningTask(staleness time.Duration, reason StaleReason) db.Q {
+	var reasonQuery bson.M
+	switch reason {
+	case HeartbeatPastCutoff:
+		reasonQuery = bson.M{
+			StatusKey:        SelectorTaskInProgress,
+			LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
+		}
+	case NoHeartbeatSinceDispatch:
+		reasonQuery = bson.M{
+			StatusKey:       evergreen.TaskDispatched,
+			DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * staleness)},
+		}
+	}
+	return db.Query(reasonQuery)
 }
 
 // ByCommit creates a query on Evergreen as the requester on a revision, buildVariant, displayName and project.
