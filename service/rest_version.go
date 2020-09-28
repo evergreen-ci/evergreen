@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -440,46 +439,59 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // variant.
 func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter) {
 	id := "_id"
+	taskName := "task_name"
+	statuses := "statuses"
 
 	pipeline := []bson.M{
-		// Find only tasks corresponding to the specified version
+		// 1. Find only builds corresponding to the specified version
 		{
 			"$match": bson.M{
-				task.VersionKey: versionId,
+				build.VersionKey: versionId,
 			},
 		},
-		// Group on the task display name and construct a new task document containing
-		// all of the relevant info about the task status
+		// 2. Loop through each task run on a particular build variant
+		{
+			"$unwind": fmt.Sprintf("$%v", build.TasksKey),
+		},
+		// 3. Group on the task name and construct a new document containing
+		//    all of the relevant info about the task status
 		{
 			"$group": bson.M{
-				id: fmt.Sprintf("$%s", task.DisplayNameKey),
-				"tasks": bson.M{
+				id: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheDisplayNameKey),
+				statuses: bson.M{
 					"$push": bson.M{
-						task.BuildVariantKey: fmt.Sprintf("$%s", task.BuildVariantKey),
-						task.IdKey:           fmt.Sprintf("$%s", task.IdKey),
-						task.StatusKey:       fmt.Sprintf("$%s", task.StatusKey),
-						task.TimeTakenKey:    fmt.Sprintf("$%s", task.TimeTakenKey),
+						build.BuildVariantKey:       fmt.Sprintf("$%v", build.BuildVariantKey),
+						build.TaskCacheIdKey:        fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheIdKey),
+						build.TaskCacheStatusKey:    fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStatusKey),
+						build.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStartTimeKey),
+						build.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheTimeTakenKey),
+						build.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheActivatedKey),
+						build.TaskCacheBlockedKey:   fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheBlockedKey),
 					},
 				},
 			},
 		},
-		// Rename the "_id" field to "task_name"
+		// 4. Rename the "_id" field to "task_name"
 		{
 			"$project": bson.M{
-				id:          0,
-				"task_name": fmt.Sprintf("$%s", id),
-				"tasks":     1,
+				id:       0,
+				taskName: fmt.Sprintf("$%v", id),
+				statuses: 1,
 			},
 		},
 	}
 
 	// Anonymous struct used to unmarshal output from the aggregation pipeline
-	var groupedTasks []struct {
-		DisplayName string      `bson:"task_name"`
-		Tasks       []task.Task `bson:"tasks"`
+	var tasks []struct {
+		DisplayName string `bson:"task_name"`
+		Statuses    []struct {
+			BuildVariant string `bson:"build_variant"`
+			// Use an anonyous field to make the semantics of inlining
+			build.TaskCache `bson:",inline"`
+		} `bson:"statuses"`
 	}
 
-	err := db.Aggregate(task.Collection, pipeline, &groupedTasks)
+	err := db.Aggregate(build.Collection, pipeline, &tasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)
@@ -489,12 +501,12 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 
 	result := versionStatusByTaskContent{
 		Id:    versionId,
-		Tasks: make(map[string]versionStatusByTask, len(groupedTasks)),
+		Tasks: make(map[string]versionStatusByTask, len(tasks)),
 	}
 
-	for _, t := range groupedTasks {
-		statuses := make(versionStatusByTask, len(t.Tasks))
-		for _, task := range t.Tasks {
+	for _, task := range tasks {
+		statuses := make(versionStatusByTask, len(task.Statuses))
+		for _, task := range task.Statuses {
 			status := versionStatus{
 				Id:        task.Id,
 				Status:    task.Status,
@@ -502,7 +514,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 			}
 			statuses[task.BuildVariant] = status
 		}
-		result.Tasks[t.DisplayName] = statuses
+		result.Tasks[task.DisplayName] = statuses
 	}
 
 	gimlet.WriteJSON(w, result)
@@ -515,23 +527,14 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
+		build.ByVersion(versionId).WithFields(build.BuildVariantKey, build.TasksKey),
 	)
 	if err != nil {
-		msg := fmt.Sprintf("Error finding builds for version '%v'", versionId)
+		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
-
-	tasks, err := task.FindAll(task.ByVersion(versionId).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
-	if err != nil {
-		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
-		grip.Errorf("%s: %+v", msg, err)
-		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
-		return
-	}
-	taskMap := task.TaskSliceToMap(tasks)
 
 	result := versionStatusByBuildContent{
 		Id:     versionId,
@@ -541,16 +544,12 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	for _, build := range builds {
 		statuses := make(versionStatusByBuild, len(build.Tasks))
 		for _, task := range build.Tasks {
-			t, ok := taskMap[task.Id]
-			if !ok {
-				continue
-			}
 			status := versionStatus{
-				Id:        t.Id,
-				Status:    t.Status,
-				TimeTaken: t.TimeTaken,
+				Id:        task.Id,
+				Status:    task.Status,
+				TimeTaken: task.TimeTaken,
 			}
-			statuses[t.DisplayName] = status
+			statuses[task.DisplayName] = status
 		}
 		result.Builds[build.BuildVariant] = statuses
 	}

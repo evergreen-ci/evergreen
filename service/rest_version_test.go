@@ -531,26 +531,23 @@ func TestGetVersionStatus(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular version", t, func() {
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
+		require.NoError(t, db.Clear(build.Collection),
 			"Error clearing '%v' collection", build.Collection)
 
 		versionId := "my-version"
 
-		task := task.Task{
-			Id:           "some-task-id",
-			DisplayName:  "some-task-name",
-			Status:       "success",
-			TimeTaken:    100 * time.Millisecond,
-			BuildVariant: "some-build-variant",
-			Version:      versionId,
+		task := build.TaskCache{
+			Id:          "some-task-id",
+			DisplayName: "some-task-name",
+			Status:      "success",
+			TimeTaken:   100 * time.Millisecond,
 		}
-		So(task.Insert(), ShouldBeNil)
 		build := &build.Build{
 			Id:           "some-build-id",
 			Version:      versionId,
 			BuildVariant: "some-build-variant",
 			DisplayName:  "Some Build Variant",
-			Tasks:        []build.TaskCache{{Id: task.Id}},
+			Tasks:        []build.TaskCache{task},
 		}
 		So(build.Insert(), ShouldBeNil)
 
@@ -587,7 +584,7 @@ func TestGetVersionStatus(t *testing.T) {
 				jsonTask, ok := _jsonTask.(map[string]interface{})
 				So(ok, ShouldBeTrue)
 
-				_jsonBuild, ok := jsonTask[task.BuildVariant]
+				_jsonBuild, ok := jsonTask[build.BuildVariant]
 				So(ok, ShouldBeTrue)
 				jsonBuild, ok := _jsonBuild.(map[string]interface{})
 				So(ok, ShouldBeTrue)

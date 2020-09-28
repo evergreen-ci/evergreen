@@ -55,13 +55,14 @@ type UITask struct {
 
 //UIBuild has the fields that are necessary to send over the wire for builds
 type UIBuild struct {
-	Id         string    `json:"id"`
-	CreateTime time.Time `json:"create_time"`
-	StartTime  time.Time `json:"start_time"`
-	FinishTime time.Time `json:"finish_time"`
-	Version    string    `json:"version"`
-	Status     string    `json:"status"`
-	TimeTaken  int64     `json:"time_taken"`
+	Id         string            `json:"id"`
+	CreateTime time.Time         `json:"create_time"`
+	StartTime  time.Time         `json:"start_time"`
+	FinishTime time.Time         `json:"finish_time"`
+	Version    string            `json:"version"`
+	Status     string            `json:"status"`
+	Tasks      []build.TaskCache `json:"tasks"`
+	TimeTaken  int64             `json:"time_taken"`
 }
 
 // UIStats is all of the data that the stats page might need.
@@ -166,7 +167,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
-				build.TimeTakenKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
+				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.CreateTimeKey}).
 			Limit(limit))
 		if err != nil {
@@ -177,7 +178,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		uiBuilds := []*UIBuild{}
 		// get the versions for every single task that was returned
 		for _, build := range builds {
-			// create a UIBuild
+
+			// create a UITask
 			b := &UIBuild{
 				Id:         build.Id,
 				CreateTime: build.CreateTime,
@@ -186,8 +188,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				Version:    build.Version,
 				Status:     build.Status,
 				TimeTaken:  int64(build.TimeTaken),
+				Tasks:      build.Tasks,
 			}
-
 			uiBuilds = append(uiBuilds, b)
 			versionIds = append(versionIds, b.Version)
 		}

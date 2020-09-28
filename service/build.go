@@ -23,17 +23,15 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(build *build.Build, tasks []task.Task) ([]uiTask, error) {
-	idToTask := task.TaskSliceToMap(tasks)
+	idToTask := make(map[string]task.Task)
+	for _, task := range tasks {
+		idToTask[task.Id] = task
+	}
 
 	// Insert the tasks in the same order as the task cache
 	uiTasks := make([]uiTask, 0, len(build.Tasks))
 	for _, taskCache := range build.Tasks {
-		t, ok := idToTask[taskCache.Id]
-		if !ok {
-			continue
-		}
-
-		taskAsUI := uiTask{Task: t}
+		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
 		uiTasks = append(uiTasks, taskAsUI)
 	}
 
@@ -104,11 +102,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 			grip.Warningln("Could not find build for base commit of patch build:",
 				projCtx.Build.Id)
 		}
-		diffs, err := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		diffs := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
 
 		baseId := ""
 		if buildOnBaseCommit != nil {

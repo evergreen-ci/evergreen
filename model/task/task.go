@@ -2425,24 +2425,6 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
-func AnyActiveTasks(tasks []Task) bool {
-	for _, t := range tasks {
-		if t.Activated {
-			return true
-		}
-	}
-	return false
-}
-
-func TaskSliceToMap(tasks []Task) map[string]Task {
-	taskMap := make(map[string]Task, len(tasks))
-	for _, t := range tasks {
-		taskMap[t.Id] = t
-	}
-
-	return taskMap
-}
-
 func GetLatestExecution(taskId string) (int, error) {
 	var t *Task
 	var err error

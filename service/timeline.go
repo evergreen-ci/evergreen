@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -188,25 +187,16 @@ func getBuildInfo(buildIds []string) ([]BuildInfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}
-	dbTasks, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.DisplayNameKey, task.StatusKey, task.DetailsKey))
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get tasks")
-	}
-	taskMap := task.TaskSliceToMap(dbTasks)
 
 	builds := make([]BuildInfo, 0, len(dbBuilds))
 	for _, dbBuild := range dbBuilds {
 		tasks := make([]TaskInfo, 0, len(dbBuild.Tasks))
 		for _, task := range dbBuild.Tasks {
-			t, ok := taskMap[task.Id]
-			if !ok {
-				continue
-			}
 			tasks = append(tasks, TaskInfo{
-				Id:          t.Id,
-				DisplayName: t.DisplayName,
-				Status:      t.Status,
-				Details:     t.Details,
+				Id:          task.Id,
+				DisplayName: task.DisplayName,
+				Status:      task.Status,
+				Details:     task.StatusDetails,
 			})
 		}
 		builds = append(builds, BuildInfo{

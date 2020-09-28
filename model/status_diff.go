@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/pkg/errors"
 )
 
 // StatusDiff stores a pairing of status strings
@@ -55,11 +54,11 @@ var (
 
 // StatusDiffBuilds takes two builds and returns a diff of their results
 // for easy comparison and analysis.
-func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
+func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	// return an empty diff if one of builds is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
 	if original == nil || patch == nil {
-		return BuildStatusDiff{}, nil
+		return BuildStatusDiff{}
 	}
 
 	diff := BuildStatusDiff{
@@ -67,36 +66,21 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 		Diff: StatusDiff{original.Status, patch.Status},
 	}
 
-	tasks, err := task.FindAll(
-		task.ByBuildIds([]string{original.Id, patch.Id}).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey))
-	if err != nil {
-		return BuildStatusDiff{}, errors.Wrap(err, "can't get tasks")
-	}
-
-	// build maps of tasks, for matching
-	originalTaskMap := make(map[string]task.Task)
-	patchTaskMap := make(map[string]task.Task)
-	for _, t := range tasks {
-		if t.BuildId == patch.Id {
-			patchTaskMap[t.Id] = t
-		} else {
-			originalTaskMap[t.DisplayName] = t
-		}
+	// build maps of task statuses, for matching
+	originalTasks := make(map[string]build.TaskCache)
+	for _, task := range original.Tasks {
+		originalTasks[task.DisplayName] = task
 	}
 
 	// iterate through all patch tasks and create diffs
 	// NOTE: this implicitly skips all tasks not present in the patch
 	for _, task := range patch.Tasks {
-		patchTask, ok := patchTaskMap[task.Id]
-		if !ok {
-			return BuildStatusDiff{}, errors.Errorf("patch task '%s' doesn't exist", task.Id)
-		}
-		baseTask := originalTaskMap[patchTask.DisplayName]
+		baseTask := originalTasks[task.DisplayName]
 		newDiff := TaskStatusDiff{
-			Name:         patchTask.DisplayName,
-			Diff:         StatusDetailsDiff{Original: baseTask.Details, Patch: patchTask.Details},
+			Name:         task.DisplayName,
+			Diff:         StatusDetailsDiff{Original: baseTask.StatusDetails, Patch: task.StatusDetails},
 			Original:     baseTask.Id,
-			Patch:        patchTask.Id,
+			Patch:        task.Id,
 			BuildVariant: diff.Name,
 		}
 		// handle if the status details do not contain a status, such as in display tasks
@@ -104,11 +88,11 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 			newDiff.Diff.Original.Status = baseTask.Status
 		}
 		if newDiff.Diff.Patch.Status == "" {
-			newDiff.Diff.Patch.Status = patchTask.Status
+			newDiff.Diff.Patch.Status = task.Status
 		}
 		diff.Tasks = append(diff.Tasks, newDiff)
 	}
-	return diff, nil
+	return diff
 }
 
 // getTestUrl returns the correct relative URL to a test log, given a

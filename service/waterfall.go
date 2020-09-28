@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -157,8 +158,8 @@ func (wfv waterfallVersions) Swap(i, j int) {
 	wfv[i], wfv[j] = wfv[j], wfv[i]
 }
 
-// createWaterfallTasks takes in a list of tasks returns a list of waterfallTasks.
-func createWaterfallTasks(tasks []task.Task) ([]waterfallTask, task.TaskStatusCount) {
+// createWaterfallTasks takes ina  build's task cache returns a list of waterfallTasks.
+func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskStatusCount) {
 	//initialize and set TaskStatusCount fields to zero
 	statusCount := task.TaskStatusCount{}
 	waterfallTasks := []waterfallTask{}
@@ -168,10 +169,10 @@ func createWaterfallTasks(tasks []task.Task) ([]waterfallTask, task.TaskStatusCo
 		taskForWaterfall := waterfallTask{
 			Id:            t.Id,
 			Status:        t.Status,
-			StatusDetails: t.Details,
+			StatusDetails: t.StatusDetails,
 			DisplayName:   t.DisplayName,
 			Activated:     t.Activated,
-			Blocked:       t.Blocked(),
+			Blocked:       t.Blocked,
 			TimeTaken:     t.TimeTaken,
 			StartTime:     t.StartTime.UnixNano(),
 		}
@@ -186,10 +187,10 @@ func createWaterfallTasks(tasks []task.Task) ([]waterfallTask, task.TaskStatusCo
 
 // For given build variant, variant display name and variant search query
 // checks if matched variant has active tasks
-func variantHasActiveTasks(bvDisplayName, variantQuery string, tasks []task.Task) bool {
+func variantHasActiveTasks(b build.Build, bvDisplayName string, variantQuery string) bool {
 	return strings.Contains(
 		strings.ToUpper(bvDisplayName), strings.ToUpper(variantQuery),
-	) && task.AnyActiveTasks(tasks)
+	) && b.IsActive()
 }
 
 // Fetch versions until 'numVersionElements' elements are created, including
@@ -218,8 +219,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 	for len(finalVersions) < numVersionElements {
 
 		// fetch the versions and associated builds
-		versionsFromDB, buildsByVersion, tasksByBuild, err :=
-			model.FetchVersionsBuildsAndTasks(project, skip, numVersionElements, showTriggered)
+		versionsFromDB, buildsByVersion, err :=
+			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements, showTriggered)
 
 		if err != nil {
 			return versionVariantData{}, errors.Wrap(err,
@@ -230,6 +231,10 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 		if len(versionsFromDB) == 0 {
 			break
 		}
+
+		// to fetch started tasks and failed tests for providing additional context
+		// in a tooltip
+		failedAndStartedTaskIds := []string{}
 
 		// update the amount skipped
 		skip += len(versionsFromDB)
@@ -246,12 +251,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			buildsInVersion := buildsByVersion[versionFromDB.Id]
 
 			// see if there are any active tasks in the version
-			versionActive := false
-			for _, b := range buildsInVersion {
-				if task.AnyActiveTasks(tasksByBuild[b.Id]) {
-					versionActive = true
-				}
-			}
+			versionActive := anyActiveTasks(buildsInVersion)
 
 			variantMatched := false
 
@@ -273,7 +273,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				if variantQuery != "" {
 					if versionActive && !variantMatched {
 						variantMatched = variantHasActiveTasks(
-							buildVariant.DisplayName, variantQuery, tasksByBuild[b.Id],
+							b, buildVariant.DisplayName, variantQuery,
 						)
 					}
 				} else {
@@ -361,11 +361,16 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 					Version: versionFromDB.Id,
 				}
 
-				tasks, statusCount := createWaterfallTasks(tasksByBuild[b.Id])
+				tasks, statusCount := createWaterfallTasks(b.Tasks)
 				buildForWaterfall.Tasks = tasks
 				buildForWaterfall.TaskStatusCount = statusCount
 				currentRow.Builds[versionFromDB.Id] = buildForWaterfall
 				waterfallRows[b.BuildVariant] = currentRow
+				for _, task := range buildForWaterfall.Tasks {
+					if task.Status == evergreen.TaskFailed || task.Status == evergreen.TaskStarted {
+						failedAndStartedTaskIds = append(failedAndStartedTaskIds, task.Id)
+					}
+				}
 			}
 
 			// add the version
@@ -373,15 +378,15 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		}
 
-		failedAndStartedTasks := []task.Task{}
-		for _, tasks := range tasksByBuild {
-			for _, t := range tasks {
-				if t.Status == evergreen.TaskFailed || t.Status == evergreen.TaskStarted {
-					if err = t.MergeNewTestResults(); err != nil {
-						return versionVariantData{}, errors.Wrap(err, "error merging test results")
-					}
-					failedAndStartedTasks = append(failedAndStartedTasks, t)
-				}
+		failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
+		if err != nil {
+			return versionVariantData{}, errors.Wrap(err, "error fetching failed tasks")
+
+		}
+
+		for i := range failedAndStartedTasks {
+			if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
+				return versionVariantData{}, errors.Wrap(err, "error merging test results")
 			}
 		}
 
@@ -446,6 +451,17 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 	}
 }
 
+// Takes in a slice of tasks, and determines whether any of the tasks in
+// any of the builds are active.
+func anyActiveTasks(builds []build.Build) bool {
+	for _, build := range builds {
+		if build.IsActive() {
+			return true
+		}
+	}
+	return false
+}
+
 // Calculates how many actual versions would appear on the previous page, given
 // the starting skip for the current page as well as the number of version
 // elements per page (including elements containing rolled-up versions).
@@ -478,8 +494,8 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 	for {
 
 		// fetch the versions and builds
-		versionsFromDB, buildsByVersion, tasksByBuild, err :=
-			model.FetchVersionsBuildsAndTasks(project, stepBack, toFetch, showTriggered)
+		versionsFromDB, buildsByVersion, err :=
+			model.FetchVersionsAndAssociatedBuilds(project, stepBack, toFetch, showTriggered)
 
 		if err != nil {
 			return 0, errors.Wrap(err, "error fetching versions and builds")
@@ -499,13 +515,7 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 
 			variantMatched := false
 
-			versionActive := false
-			for _, b := range buildsInVersion {
-				if task.AnyActiveTasks(tasksByBuild[b.Id]) {
-					versionActive = true
-				}
-			}
-			if versionActive {
+			if anyActiveTasks(buildsInVersion) {
 
 				for _, b := range buildsInVersion {
 					bvDisplayName := buildVariantMappings[b.BuildVariant]
@@ -519,7 +529,7 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 					if variantQuery != "" {
 						if !variantMatched {
 							variantMatched = variantHasActiveTasks(
-								bvDisplayName, variantQuery, tasksByBuild[b.Id],
+								b, bvDisplayName, variantQuery,
 							)
 						}
 					} else {
