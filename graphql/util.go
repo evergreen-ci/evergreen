@@ -411,6 +411,9 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 }
 
 func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
+	if baseTaskStatuses == nil {
+		return taskResults
+	}
 	tasksFilteredByBaseStatus := []*TaskResult{}
 	for _, taskResult := range taskResults {
 		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
@@ -428,8 +431,10 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Version:      task.Version,
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
-			BaseStatus:   baseTaskStatuses[task.BuildVariant][task.DisplayName],
 			Blocked:      task.Blocked(),
+		}
+		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
+			t.BaseStatus = baseTaskStatuses[task.BuildVariant][task.DisplayName]
 		}
 		taskResults = append(taskResults, &t)
 	}
