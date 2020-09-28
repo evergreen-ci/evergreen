@@ -359,13 +359,13 @@ func (at *APITask) GetArtifacts() error {
 	var err error
 	var entries []artifact.Entry
 	if at.DisplayOnly {
-		ets := []string{}
+		ets := []artifact.TaskIDAndExecution{}
 		for _, t := range at.ExecutionTasks {
-			ets = append(ets, FromStringPtr(t))
+			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
-		entries, err = artifact.FindAll(artifact.ByTaskIds(ets))
+		entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
 	} else {
-		entries, err = artifact.FindAll(artifact.ByTaskId(FromStringPtr(at.Id)))
+		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "error retrieving artifacts")
