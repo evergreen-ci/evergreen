@@ -133,8 +133,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"status":               j.task.ResultStatus(),
 		"task":                 j.task.DisplayName,
 		"task_id":              j.task.Id,
-		"start_time":           j.task.StartTime,
-		"scheduled_time":       j.task.ScheduledTime,
+		"total_wait_secs":      j.task.FinishTime.Sub(j.task.ActivatedTime).Seconds(),
 		"variant":              j.task.BuildVariant,
 		"version":              j.task.Version,
 	}
@@ -143,9 +142,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["cost"] = cost
 	}
 
-	if !j.task.UnblockedTime.IsZero() {
-		msg["unblocked_time"] = j.task.UnblockedTime
-	}
 	historicRuntime, err := j.task.GetHistoricRuntime()
 	if err != nil {
 		msg[message.FieldsMsgName] = "problem computing historic runtime"
