@@ -86,7 +86,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
 		}
 		if volume == nil {
-			return volumes, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volId))
+			continue
 		}
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
