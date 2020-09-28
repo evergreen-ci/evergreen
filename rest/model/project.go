@@ -283,6 +283,15 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		return nil, errors.Errorf("expected task sync options but was actually '%T'", i)
 	}
 
+	i, err = p.WorkstationConfig.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert API workstation config")
+	}
+	workstationConfig, ok := i.(model.WorkstationConfig)
+	if !ok {
+		return nil, errors.Errorf("expected workstation config but was actually '%T'", i)
+	}
+
 	projectRef := model.ProjectRef{
 		Owner:                 FromStringPtr(p.Owner),
 		Repo:                  FromStringPtr(p.Repo),
@@ -301,6 +310,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
+		WorkstationConfig:     workstationConfig,
 		Tracked:               p.Tracked,
 		PatchingDisabled:      p.PatchingDisabled,
 		RepotrackerDisabled:   p.RepotrackerDisabled,
@@ -356,6 +366,11 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.Wrap(err, "cannot convert task sync options to API representation")
 	}
 
+	workstationConfig := APIWorkstationConfig{}
+	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
+		return errors.Wrap(err, "cannot convert workstation config")
+	}
+
 	p.Owner = ToStringPtr(projectRef.Owner)
 	p.Repo = ToStringPtr(projectRef.Repo)
 	p.Branch = ToStringPtr(projectRef.Branch)
@@ -373,6 +388,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
+	p.WorkstationConfig = workstationConfig
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
