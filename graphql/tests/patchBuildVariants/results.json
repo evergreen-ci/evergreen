@@ -6,17 +6,6 @@
         "data": {
           "patchBuildVariants": [
             {
-              "variant": "osx",
-              "displayName": "OSX",
-              "tasks": [
-                {
-                  "id": "9",
-                  "name": "lint-graphql",
-                  "status": "started"
-                }
-              ]
-            },
-            {
               "variant": "ubuntu1604",
               "displayName": "Ubuntu 16.04",
               "tasks": [
@@ -52,6 +41,17 @@
                   "status": "success"
                 }
               ]
+            },
+            {
+              "variant": "osx",
+              "displayName": "X",
+              "tasks": [
+                {
+                  "id": "9",
+                  "name": "lint-graphql",
+                  "status": "started"
+                }
+              ]
             }
           ]
         }
@@ -63,9 +63,7 @@
         "errors": [
           {
             "message": "Error finding patch `5e4ff3abe3c3317e352962e4`: 404 (Not Found): patch with id 5e4ff3abe3c3317e352962e4 not found",
-            "path": [
-              "patchBuildVariants"
-            ],
+            "path": ["patchBuildVariants"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
