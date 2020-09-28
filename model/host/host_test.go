@@ -3745,9 +3745,13 @@ func TestStaleRunningTasks(t *testing.T) {
 	}
 	assert.NoError(t3.Insert())
 
-	tasks, err := FindStaleRunningTasks(10 * time.Minute)
+	tasks, err := FindStaleRunningTasks(10*time.Minute, TaskHeartbeatPastCutoff)
 	assert.NoError(err)
-	assert.Len(tasks, 2)
+	assert.Len(tasks, 1)
+
+	tasks, err = FindStaleRunningTasks(10*time.Minute, TaskNoHeartbeatSinceDispatch)
+	assert.NoError(err)
+	assert.Len(tasks, 1)
 }
 
 func TestNumNewParentsNeeded(t *testing.T) {
