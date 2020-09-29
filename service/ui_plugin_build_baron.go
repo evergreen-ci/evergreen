@@ -114,7 +114,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	taskId := vars["task_id"]
 	exec := vars["execution"]
 
-	searchReturnInfo, projectNotFound, err, _ := graphql.GetSearchReturnInfo(taskId, exec)
+	searchReturnInfo, projectNotFound, err := graphql.GetSearchReturnInfo(taskId, exec)
 	if projectNotFound {
 		gimlet.WriteJSON(rw, err.Error())
 		return
