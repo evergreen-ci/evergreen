@@ -404,8 +404,12 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsHostsPlanning(env.Settings().ContainerPools.Pools))
+		distros, err := distro.Find(distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -436,6 +440,10 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 			})
 			return nil
 		}
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
 		catcher := grip.NewBasicCatcher()
 
@@ -446,7 +454,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -463,8 +471,14 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}))
 
 		ts := utility.RoundPartOfMinute(0)
-		settings := env.Settings()
-
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			grip.Critical(message.WrapError(err, message.Fields{
+				"cron":      schedulerJobName,
+				"operation": "retrieving settings object",
+			}))
+			return catcher.Resolve()
+		}
 		for _, d := range distros {
 			// do not create scheduler jobs for parent distros
 			if d.IsParent(settings) {
@@ -502,25 +516,26 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 			})
 			return nil
 		}
-
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 		catcher := grip.NewBasicCatcher()
 
 		lastPlanned, err := model.FindTaskAliasQueueLastGenerationTimes()
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(env.Settings().ContainerPools.Pools))
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
 		catcher.Add(err)
 
 		lastRuntime, err := model.FindTaskQueueGenerationRuntime()
 		catcher.Add(err)
 
-		settings := env.Settings()
 		ts := utility.RoundPartOfMinute(0)
-
 		for _, d := range distros {
 			// do not create scheduler jobs for parent distros
-			if d.IsParent(settings) {
+			if d.IsParent(config) {
 				continue
 			}
 
@@ -550,7 +565,7 @@ func PopulateDuplicateTaskCheckJobs() amboy.QueueOperation {
 func PopulateHostStatJobs(parts int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
-		return (queue.Put(ctx, NewHostStatsJob(ts)))
+		return queue.Put(ctx, NewHostStatsJob(ts))
 	}
 }
 

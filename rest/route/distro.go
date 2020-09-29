@@ -128,20 +128,17 @@ type distroIDPutHandler struct {
 	distroID string
 	body     []byte
 	sc       data.Connector
-	settings *evergreen.Settings
 }
 
-func makePutDistro(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makePutDistro(sc data.Connector) gimlet.RouteHandler {
 	return &distroIDPutHandler{
-		sc:       sc,
-		settings: settings,
+		sc: sc,
 	}
 }
 
 func (h *distroIDPutHandler) Factory() gimlet.RouteHandler {
 	return &distroIDPutHandler{
-		sc:       h.sc,
-		settings: h.settings,
+		sc: h.sc,
 	}
 }
 
@@ -195,9 +192,13 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+	}
 	// Existing resource
 	if original != nil {
-		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
+		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 		if respErr != nil {
 			return respErr
 		}
@@ -209,7 +210,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
-	newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, true)
+	newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, true)
 	if respErr != nil {
 		return respErr
 	}
@@ -276,20 +277,17 @@ type distroIDPatchHandler struct {
 	distroID string
 	body     []byte
 	sc       data.Connector
-	settings *evergreen.Settings
 }
 
-func makePatchDistroByID(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makePatchDistroByID(sc data.Connector) gimlet.RouteHandler {
 	return &distroIDPatchHandler{
-		sc:       sc,
-		settings: settings,
+		sc: sc,
 	}
 }
 
 func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &distroIDPatchHandler{
-		sc:       h.sc,
-		settings: h.settings,
+		sc: h.sc,
 	}
 }
 
@@ -328,7 +326,11 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		apiDistro.ProviderSettingsList = oldSettingsList
 	}
 
-	d, respErr := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+	}
+	d, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 	if respErr != nil {
 		return respErr
 	}

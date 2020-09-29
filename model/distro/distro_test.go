@@ -94,11 +94,8 @@ func TestIsParent(t *testing.T) {
 	assert.NoError(d3.Insert())
 
 	assert.True(d1.IsParent(settings))
-	assert.True(d1.IsParent(nil))
 	assert.False(d2.IsParent(settings))
-	assert.False(d2.IsParent(nil))
 	assert.False(d3.IsParent(settings))
-	assert.False(d3.IsParent(nil))
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {

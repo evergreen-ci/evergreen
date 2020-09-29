@@ -69,7 +69,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "Can't get evergreen configuration"))
@@ -107,7 +106,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	var containerPool *evergreen.ContainerPool
 	if distro.ContainerPool != "" {
-		containerPool = settings.ContainerPools.GetContainerPool(distro.ContainerPool)
+		containerPool = config.ContainerPools.GetContainerPool(distro.ContainerPool)
 		if containerPool == nil {
 			j.AddError(errors.Wrapf(err, "Distro container pool not found for distro id '%s'", j.DistroID))
 			return
