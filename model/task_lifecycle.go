@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"time"
@@ -529,7 +528,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 			"message": "blocked task group dependent tasks",
 			"ticket":  "EVG-12923",
 			"task":    t.Id,
-			"stack":   debug.Stack(),
+			"stack":   message.NewStack(2, ""),
 		})
 	}
 
