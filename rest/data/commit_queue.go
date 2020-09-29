@@ -189,6 +189,25 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	return apiPatch, nil
 }
 
+func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
+	requestedPatch, err := patch.FindOneId(patchID)
+	if err != nil {
+		return "", errors.Wrap(err, "error finding patch")
+	}
+	if requestedPatch == nil {
+		return "", errors.New("no patch found")
+	}
+	project, err := model.FindOneProjectRef(requestedPatch.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to find project for patch")
+	}
+	if project == nil {
+		return "", errors.New("patch has nonexistent project")
+	}
+
+	return project.CommitQueue.Message, nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -275,4 +294,7 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context,
 
 func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
 	return nil, nil
+}
+func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
+	return "", nil
 }

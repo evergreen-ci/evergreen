@@ -734,3 +734,6 @@ func (c *Mock) DeleteServiceUser(context.Context, string) error {
 func (c *Mock) GetServiceUsers(context.Context) ([]model.APIDBUser, error) {
 	return nil, nil
 }
+func (c *Mock) GetMessageForPatch(context.Context, string) (string, error) {
+	return "", nil
+}

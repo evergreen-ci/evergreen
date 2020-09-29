@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -165,4 +168,27 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
+}
+
+func TestCqMessageForPatch(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection))
+	project := dbModel.ProjectRef{
+		Identifier:  "mci",
+		CommitQueue: dbModel.CommitQueueParams{Message: "you found me!"},
+	}
+	assert.NoError(t, project.Insert())
+	p := patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: "mci",
+	}
+	assert.NoError(t, p.Insert())
+	handler := makecqMessageForPatch(&data.DBConnector{})
+	ctx := context.Background()
+
+	request, err := http.NewRequest(http.MethodGet, "", nil)
+	assert.NoError(t, err)
+	request = gimlet.SetURLVars(request, map[string]string{"patch_id": p.Id.Hex()})
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.Equal(t, project.CommitQueue.Message, resp.Data().(string))
 }

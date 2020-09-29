@@ -74,6 +74,7 @@ func listQueue() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
+			showCQMessageForProject(ac, projectID)
 
 			return listCommitQueue(ctx, client, ac, projectID, conf.UIServerHost)
 		},
@@ -107,6 +108,11 @@ func deleteItem() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+			showCQMessageForProject(ac, projectID)
 			return deleteCommitQueueItem(ctx, client, projectID, item)
 		},
 	}
@@ -164,6 +170,7 @@ func mergeCommand() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
+			showCQMessageForProject(ac, params.projectID)
 			return params.mergeBranch(ctx, conf, client, ac)
 		},
 	}
@@ -198,6 +205,10 @@ func setModuleCommand() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
+			ctx := context.Background()
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+			showCQMessageForPatch(ctx, client, params.patchID)
 
 			return errors.WithStack(params.addModule(ac, rc))
 		},
@@ -255,6 +266,8 @@ func enqueuePatch() cli.Command {
 			if multipleCommits && !skipConfirm && !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
 				return errors.New("enqueue aborted")
 			}
+
+			showCQMessageForPatch(ctx, client, patchID)
 
 			// create the new merge patch
 			mergePatch, err := client.CreatePatchForMerge(ctx, patchID)
@@ -334,6 +347,7 @@ func backport() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
+			showCQMessageForProject(ac, patchParams.Project)
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
@@ -385,6 +399,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	}
 	grip.Infof("Project: %s\n", projectID)
 	grip.Infof("Type of queue: %s\n", projectRef.CommitQueue.PatchType)
+	grip.Infof("Message: %s\n", projectRef.CommitQueue.Message)
 
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		grip.Infof("Owner: %s\n", projectRef.Owner)
@@ -644,4 +659,22 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 	grip.Info("Module updated")
 	return nil
+}
+
+func showCQMessageForProject(ac *legacyClient, projectID string) {
+	projectRef, err := ac.GetProjectRef(projectID)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "unable to retrieve project '%s'", projectID))
+		return
+	}
+	grip.Info(projectRef.CommitQueue.Message)
+}
+
+func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchID string) {
+	message, err := comm.GetMessageForPatch(ctx, patchID)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "unable to retrieve patch '%s'", patchID))
+		return
+	}
+	grip.Info(message)
 }

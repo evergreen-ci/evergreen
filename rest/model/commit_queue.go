@@ -11,6 +11,7 @@ import (
 
 type APICommitQueue struct {
 	ProjectID *string              `json:"queue_id"`
+	Message   *string              `json:"message"` // note: this field is not populated by the conversion methods
 	Queue     []APICommitQueueItem `json:"queue"`
 }
 

@@ -210,3 +210,38 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 
 	return gimlet.NewJSONResponse(model.APICommitQueuePosition{Position: position})
 }
+
+type cqMessageForPatch struct {
+	patchID string
+	sc      data.Connector
+}
+
+func makecqMessageForPatch(sc data.Connector) gimlet.RouteHandler {
+	return &cqMessageForPatch{
+		sc: sc,
+	}
+}
+
+func (p *cqMessageForPatch) Factory() gimlet.RouteHandler {
+	return &cqMessageForPatch{
+		sc: p.sc,
+	}
+}
+
+func (p *cqMessageForPatch) Parse(ctx context.Context, r *http.Request) error {
+	p.patchID = gimlet.GetVars(r)["patch_id"]
+	if p.patchID == "" {
+		return errors.New("patch_id must be specified")
+	}
+
+	return nil
+}
+
+func (p *cqMessageForPatch) Run(ctx context.Context) gimlet.Responder {
+	message, err := p.sc.GetMessageForPatch(p.patchID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewTextResponse(message)
+}

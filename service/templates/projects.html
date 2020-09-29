@@ -581,6 +581,14 @@ Evergreen Projects
                   <label for="cq-merging-checkbox">Enable Commit Queue</label>
               </div>
           </div>
+          <div class="form-group" ng-show="commitQueueConflicts.length === 0">
+            <div class="col-lg-2 col-header">
+              <label class="control-label">Commit Queue Message</label>
+            </div>
+            <div class="col-lg-4">
+              <input class="form-control" type="text" ng-model="settingsFormData.commit_queue.message" placeholder="Shown in commit queue CLI commands & web UI">
+            </div>
+        </div>
 
 
           <!-- COMMIT QUEUE PATCH DEFINITIONS -->
