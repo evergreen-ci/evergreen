@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -22,13 +21,10 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -529,39 +525,6 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 		return "", errors.New(message)
 	}
 	logID := logReply.ID
-
-	// Send to buildlogger.
-	tk, err := c.GetTask(ctx, taskData)
-	if err != nil {
-		return logID, errors.Wrapf(err, "problem getting task info for test %s", log.Name)
-	}
-
-	if err = c.createCedarGRPCConn(ctx); err != nil {
-		return logID, errors.Wrapf(err, "problem setting up cedar grpc connection for test %s", log.Name)
-	}
-
-	timberOpts := &buildlogger.LoggerOptions{
-		Project:    tk.Project,
-		Version:    tk.Version,
-		Variant:    tk.BuildVariant,
-		TaskName:   tk.DisplayName,
-		TaskID:     tk.Id,
-		Execution:  int32(tk.Execution),
-		TestName:   log.Name,
-		Mainline:   !evergreen.IsPatchRequester(tk.Requester),
-		Storage:    buildlogger.LogStorageS3,
-		ClientConn: c.cedarGRPCClient,
-	}
-	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
-	sender, err := buildlogger.NewLoggerWithContext(ctx, log.Name, levelInfo, timberOpts)
-	if err != nil {
-		return logID, errors.Wrapf(err, "error creating buildlogger logger for test result %s", log.Name)
-	}
-
-	sender.Send(message.ConvertToComposer(level.Info, taskData))
-	if err = sender.Close(); err != nil {
-		return logID, errors.Wrapf(err, "error closing buildlogger logger for test result %s", log.Name)
-	}
 
 	return logID, nil
 }

@@ -156,8 +156,6 @@ func TestClient(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotZero(t, resp.TestResultsRecordId)
 		},
-		// "": func(ctx context.Context, t *testing.T, srv *testutil.MockTestResultsServer, client *Client) { },
-		// "": func(ctx context.Context, t *testing.T, srv *testutil.MockTestResultsServer, client *Client) { },
 	} {
 		t.Run(testName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -195,7 +193,6 @@ func validResults(id string) Results {
 			{
 				Name:        "name",
 				Status:      "status",
-				LogURL:      "log_url",
 				TaskCreated: time.Now().Add(-time.Hour),
 				TestStarted: time.Now().Add(-time.Minute),
 				TestEnded:   time.Now(),

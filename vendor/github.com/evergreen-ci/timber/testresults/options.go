@@ -67,7 +67,6 @@ type Result struct {
 	Name        string
 	Trial       int32
 	Status      string
-	LogURL      string
 	LineNum     int32
 	TaskCreated time.Time
 	TestStarted time.Time
@@ -92,7 +91,6 @@ func (r Result) export() (*internal.TestResult, error) {
 		TestName:       r.Name,
 		Trial:          r.Trial,
 		Status:         r.Status,
-		LogUrl:         r.LogURL,
 		LineNum:        r.LineNum,
 		TaskCreateTime: created,
 		TestStartTime:  started,
