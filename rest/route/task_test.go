@@ -115,7 +115,6 @@ func TestFetchArtifacts(t *testing.T) {
 	}
 	assert.NoError(entry.Upsert())
 	entry.Execution = 0
-	entry.TaskId = "task1_0"
 	assert.NoError(entry.Upsert())
 
 	task2 := task.Task{
