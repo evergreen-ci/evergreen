@@ -438,7 +438,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not mark task finished")
 	}
 
-	if err = UpdateUnblockedDependencies(t, true); err != nil {
+	if err = UpdateUnblockedDependencies(t, true, "MarkEnd"); err != nil {
 		return errors.Wrap(err, "could not update unblocked dependencies")
 	}
 
@@ -550,7 +550,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 	return nil
 }
 
-func UpdateUnblockedDependencies(t *task.Task, logIDs bool) error {
+func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
 		return errors.Wrap(err, "can't get dependencies marked unattainable")
@@ -561,6 +561,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool) error {
 			"message": "unblocked task group dependent tasks",
 			"ticket":  "EVG-12923",
 			"task":    t.Id,
+			"caller":  caller,
 		})
 	}
 
@@ -568,7 +569,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool) error {
 		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
-		if err = UpdateUnblockedDependencies(&blockedTask, logIDs); err != nil {
+		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -936,7 +937,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		}
 	}
 
-	if err := UpdateUnblockedDependencies(t, logIDs); err != nil {
+	if err := UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"); err != nil {
 		return errors.Wrap(err, "can't clear cached unattainable dependencies")
 	}
 	return errors.Wrap(t.Reset(), "error resetting task in database")
@@ -951,7 +952,7 @@ func MarkTasksReset(taskIds []string) error {
 		if t.DisplayOnly {
 			taskIds = append(taskIds, t.Id)
 		}
-		if err = UpdateUnblockedDependencies(&t, false); err != nil {
+		if err = UpdateUnblockedDependencies(&t, false, ""); err != nil {
 			return errors.Wrap(err, "can't clear cached unattainable dependencies")
 		}
 	}
