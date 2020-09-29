@@ -363,7 +363,9 @@ func (at *APITask) GetArtifacts() error {
 		for _, t := range at.ExecutionTasks {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
-		entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
+		if len(ets) > 0 {
+			entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
+		}
 	} else {
 		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(FromStringPtr(at.Id), at.Execution))
 	}
