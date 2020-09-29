@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -205,7 +206,8 @@ func (s *buildSuite) TestOutcome() {
 }
 
 func (s *buildSuite) TestTaskStatusToDesc() {
-	b := &build.Build{
+	buildTrigger := makeBuildTriggers().(*buildTriggers)
+	buildTrigger.build = &build.Build{
 		Id:           mgobson.NewObjectId().Hex(),
 		BuildVariant: "testvariant",
 		Version:      "testversion",
@@ -214,28 +216,28 @@ func (s *buildSuite) TestTaskStatusToDesc() {
 		FinishTime:   time.Time{}.Add(10 * time.Second),
 	}
 
-	s.Equal("no tasks were run", taskStatusToDesc(b))
+	s.Equal("no tasks were run", buildTrigger.taskStatusToDesc())
 
-	b.Tasks = []build.TaskCache{
+	buildTrigger.tasks = []task.Task{
 		{
 			Status: evergreen.TaskSucceeded,
 		},
 	}
-	s.Equal("1 succeeded, none failed in 10s", taskStatusToDesc(b))
+	s.Equal("1 succeeded, none failed in 10s", buildTrigger.taskStatusToDesc())
 
-	b.Tasks = []build.TaskCache{
+	buildTrigger.tasks = []task.Task{
 		{
 			Status: evergreen.TaskSystemFailed,
 		},
 	}
-	s.Equal("none succeeded, none failed, 1 internal errors in 10s", taskStatusToDesc(b))
+	s.Equal("none succeeded, none failed, 1 internal errors in 10s", buildTrigger.taskStatusToDesc())
 
-	b.Tasks = []build.TaskCache{
+	buildTrigger.tasks = []task.Task{
 		{
 			Status: evergreen.TaskFailed,
 		},
 	}
-	s.Equal("none succeeded, 1 failed in 10s", taskStatusToDesc(b))
+	s.Equal("none succeeded, 1 failed in 10s", buildTrigger.taskStatusToDesc())
 }
 
 func (s *buildSuite) TestBuildExceedsTime() {

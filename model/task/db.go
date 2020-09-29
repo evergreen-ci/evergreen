@@ -179,6 +179,17 @@ var (
 	}
 )
 
+var StatusFields = []string{
+	BuildIdKey,
+	DisplayNameKey,
+	StatusKey,
+	DetailsKey,
+	StartTimeKey,
+	TimeTakenKey,
+	ActivatedKey,
+	DependsOnKey,
+}
+
 // ById creates a query that finds a task by its _id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{
@@ -205,6 +216,13 @@ func ByIds(ids []string) db.Q {
 func ByBuildId(buildId string) db.Q {
 	return db.Query(bson.M{
 		BuildIdKey: buildId,
+	})
+}
+
+// ByBuildIds creates a query to return tasks in buildsIds
+func ByBuildIds(buildIds []string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey: bson.M{"$in": buildIds},
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -51,6 +52,13 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
+		return
+	}
+	taskMap := task.TaskSliceToMap(tasks)
+
 	destBuild := &restBuild{}
 	destBuild.Id = b.Id
 	destBuild.CreateTime = b.CreateTime
@@ -71,12 +79,16 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 
 	destBuild.Tasks = make(buildStatusByTask, len(b.Tasks))
 	for _, task := range b.Tasks {
-		status := buildStatus{
-			Id:        task.Id,
-			Status:    task.Status,
-			TimeTaken: task.TimeTaken,
+		t, ok := taskMap[task.Id]
+		if !ok {
+			continue
 		}
-		destBuild.Tasks[task.DisplayName] = status
+		status := buildStatus{
+			Id:        t.Id,
+			Status:    t.Status,
+			TimeTaken: t.TimeTaken,
+		}
+		destBuild.Tasks[t.DisplayName] = status
 	}
 
 	gimlet.WriteJSON(w, destBuild)
@@ -92,6 +104,13 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
+		return
+	}
+	taskMap := task.TaskSliceToMap(tasks)
+
 	result := buildStatusContent{
 		Id:           b.Id,
 		BuildVariant: b.BuildVariant,
@@ -99,12 +118,16 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, task := range b.Tasks {
-		status := buildStatus{
-			Id:        task.Id,
-			Status:    task.Status,
-			TimeTaken: task.TimeTaken,
+		t, ok := taskMap[task.Id]
+		if !ok {
+			continue
 		}
-		result.Tasks[task.DisplayName] = status
+		status := buildStatus{
+			Id:        t.Id,
+			Status:    t.Status,
+			TimeTaken: t.TimeTaken,
+		}
+		result.Tasks[t.DisplayName] = status
 	}
 
 	gimlet.WriteJSON(w, result)
