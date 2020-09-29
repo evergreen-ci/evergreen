@@ -153,7 +153,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 
 		// go through all the tests
 		for idx, suite := range testSuites {
-			addTestCasesForSuite(suite, idx, conf.Task, cumulative)
+			cumulative = addTestCasesForSuite(suite, idx, conf.Task, cumulative)
 		}
 	}
 
