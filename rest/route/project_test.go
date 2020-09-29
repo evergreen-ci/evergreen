@@ -297,10 +297,32 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	h.projectID = "dimoxinil"
 
 	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
+	s.Require().NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	s.Equal(model.ToStringPtr("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
+	projectRef, ok := resp.Data().(*model.APIProjectRef)
+	s.Require().True(ok)
+	cachedProject := s.sc.MockProjectConnector.CachedProjects[0]
+	s.Equal(cachedProject.Repo, model.FromStringPtr(projectRef.Repo))
+	s.Equal(cachedProject.Owner, model.FromStringPtr(projectRef.Owner))
+	s.Equal(cachedProject.Branch, model.FromStringPtr(projectRef.Branch))
+	s.Equal(cachedProject.RepoKind, model.FromStringPtr(projectRef.RepoKind))
+	s.Equal(cachedProject.Enabled, projectRef.Enabled)
+	s.Equal(cachedProject.Private, projectRef.Private)
+	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
+	s.Equal(cachedProject.RemotePath, model.FromStringPtr(projectRef.RemotePath))
+	s.Equal(cachedProject.Identifier, model.FromStringPtr(projectRef.Identifier))
+	s.Equal(cachedProject.DisplayName, model.FromStringPtr(projectRef.DisplayName))
+	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
+	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
+	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
+	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
+	s.Equal(cachedProject.Tracked, projectRef.Tracked)
+	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
+	s.Equal(cachedProject.Admins, model.FromStringPtrSlice(projectRef.Admins))
+	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
+	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
+	s.Equal(cachedProject.FilesIgnoredFromCache, model.FromStringPtrSlice(projectRef.FilesIgnoredFromCache))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -424,14 +446,16 @@ func getMockProjectsConnector() *data.MockConnector {
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: false,
 					},
-					Tracked:              true,
-					PatchingDisabled:     false,
-					Admins:               []string{"langdon.alger"},
-					NotifyOnBuildFailure: false,
+					Tracked:               true,
+					PatchingDisabled:      false,
+					Admins:                []string{"langdon.alger"},
+					NotifyOnBuildFailure:  false,
+					DisabledStatsCache:    true,
+					FilesIgnoredFromCache: []string{"ignored"},
 				},
 			},
 			CachedVars: []*serviceModel.ProjectVars{
-				&serviceModel.ProjectVars{
+				{
 					Id:   "dimoxinil",
 					Vars: map[string]string{"apple": "green", "banana": "yellow"},
 				},

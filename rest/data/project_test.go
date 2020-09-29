@@ -46,7 +46,7 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 			Vars:        map[string]string{},
 			PrivateVars: map[string]bool{},
 		},
-		Aliases: []model.ProjectAlias{model.ProjectAlias{
+		Aliases: []model.ProjectAlias{{
 			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
@@ -54,7 +54,7 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 			Task:      "subcommand",
 		},
 		},
-		Subscriptions: []event.Subscription{event.Subscription{
+		Subscriptions: []event.Subscription{{
 			ID:           "subscription1",
 			ResourceType: "project",
 			Owner:        "admin",
@@ -171,13 +171,13 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				Vars:        map[string]string{},
 				PrivateVars: map[string]bool{},
 			},
-			Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
+			Aliases: []restModel.APIProjectAlias{{
 				Alias:   restModel.ToStringPtr("alias1"),
 				Variant: restModel.ToStringPtr("ubuntu"),
 				Task:    restModel.ToStringPtr("subcommand"),
 			},
 			},
-			Subscriptions: []restModel.APISubscription{restModel.APISubscription{
+			Subscriptions: []restModel.APISubscription{{
 				ID:           restModel.ToStringPtr("subscription1"),
 				ResourceType: restModel.ToStringPtr("project"),
 				Owner:        restModel.ToStringPtr("admin"),
