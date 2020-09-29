@@ -323,7 +323,7 @@ func (s *DistroPutSuite) SetupTest() {
 	s.sc = &data.MockConnector{
 		MockDistroConnector: s.data,
 	}
-	s.settings = &evergreen.Settings{
+	settings := &evergreen.Settings{
 		SSHKeyPairs: []evergreen.SSHKeyPair{
 			{
 				Name:    "SSH Key",
@@ -332,7 +332,8 @@ func (s *DistroPutSuite) SetupTest() {
 			},
 		},
 	}
-	s.rm = makePutDistro(s.sc, s.settings)
+	s.NoError(evergreen.UpdateConfig(settings))
+	s.rm = makePutDistro(s.sc)
 }
 
 func (s *DistroPutSuite) TestParse() {
@@ -604,7 +605,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			},
 		},
 	}
-	s.settings = &evergreen.Settings{
+	settings := &evergreen.Settings{
 		SSHKeyPairs: []evergreen.SSHKeyPair{
 			{
 				Name:    sshKey,
@@ -618,10 +619,12 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			},
 		},
 	}
+	s.NoError(evergreen.UpdateConfig(settings))
+
 	s.sc = &data.MockConnector{
 		MockDistroConnector: s.data,
 	}
-	s.rm = makePatchDistroByID(s.sc, s.settings)
+	s.rm = makePatchDistroByID(s.sc)
 }
 
 func (s *DistroPatchByIDSuite) TestParse() {

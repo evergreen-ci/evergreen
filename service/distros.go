@@ -143,8 +143,13 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		newDistro.PlannerSettings.Version = evergreen.FinderVersionLegacy
 	}
 
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	// check that the resulting distro is valid
-	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, &uis.Settings, false)
+	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, settings, false)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -321,7 +326,12 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 	if hasId {
 		d.Id = id
 	}
-	vErrs, err := validator.CheckDistro(r.Context(), &d, &uis.Settings, true)
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	vErrs, err := validator.CheckDistro(r.Context(), &d, settings, true)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
