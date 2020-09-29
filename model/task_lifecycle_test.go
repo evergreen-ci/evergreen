@@ -3436,7 +3436,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	}
 	assert.NoError(b.Insert())
 
-	assert.NoError(UpdateUnblockedDependencies(&tasks[0]))
+	assert.NoError(UpdateUnblockedDependencies(&tasks[0], false, ""))
 	dbBuild, err := build.FindOneId(b.Id)
 	assert.NoError(err)
 	require.Len(t, dbBuild.Tasks, 6)

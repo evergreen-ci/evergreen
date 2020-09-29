@@ -45,7 +45,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != utility.ZeroTime && t.Status == evergreen.TaskUndispatched {
-			if err := resetTask(t.Id, caller); err != nil {
+			if err := resetTask(t.Id, caller, false); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
 		} else {
@@ -114,16 +114,16 @@ func ActivatePreviousTask(taskId, caller string) error {
 	return errors.WithStack(SetActiveState(prevTask, caller, true))
 }
 
-func resetManyTasks(tasks []task.Task, caller string) error {
+func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Add(resetTask(t.Id, caller))
+		catcher.Add(resetTask(t.Id, caller, logIDs))
 	}
 	return catcher.Resolve()
 }
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
-func resetTask(taskId, caller string) error {
+func resetTask(taskId, caller string, logIDs bool) error {
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
@@ -135,7 +135,7 @@ func resetTask(taskId, caller string) error {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = MarkOneTaskReset(t); err != nil {
+	if err = MarkOneTaskReset(t, logIDs); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -245,7 +245,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return errors.Wrap(checkResetSingleHostTaskGroup(t, caller), "can't reset single host task group")
 	}
 
-	return errors.WithStack(resetTask(t.Id, caller))
+	return errors.WithStack(resetTask(t.Id, caller, false))
 }
 
 func AbortTask(taskId, caller string) error {
@@ -437,7 +437,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not mark task finished")
 	}
 
-	if err = UpdateUnblockedDependencies(t); err != nil {
+	if err = UpdateUnblockedDependencies(t, true, "MarkEnd"); err != nil {
 		return errors.Wrap(err, "could not update unblocked dependencies")
 	}
 
@@ -523,6 +523,15 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
 	}
 
+	if t.IsPartOfSingleHostTaskGroup() && len(dependentTasks) > 0 {
+		grip.Info(message.Fields{
+			"message": "blocked task group dependent tasks",
+			"ticket":  "EVG-12923",
+			"task":    t.Id,
+			"stack":   message.NewStack(2, ""),
+		})
+	}
+
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
@@ -540,17 +549,26 @@ func UpdateBlockedDependencies(t *task.Task) error {
 	return nil
 }
 
-func UpdateUnblockedDependencies(t *task.Task) error {
+func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
 		return errors.Wrap(err, "can't get dependencies marked unattainable")
+	}
+
+	if logIDs && t.IsPartOfSingleHostTaskGroup() && len(blockedTasks) > 0 {
+		grip.Info(message.Fields{
+			"message": "unblocked task group dependent tasks",
+			"ticket":  "EVG-12923",
+			"task":    t.Id,
+			"caller":  caller,
+		})
 	}
 
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
-		if err = UpdateUnblockedDependencies(&blockedTask); err != nil {
+		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -899,20 +917,20 @@ func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	return nil
 }
 
-func MarkOneTaskReset(t *task.Task) error {
+func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
 			execTask, err := task.FindOneId(et)
 			if err != nil {
 				return errors.Wrap(err, "error retrieving execution task")
 			}
-			if err = MarkOneTaskReset(execTask); err != nil {
+			if err = MarkOneTaskReset(execTask, logIDs); err != nil {
 				return errors.Wrap(err, "error resetting execution task")
 			}
 		}
 	}
 
-	if err := UpdateUnblockedDependencies(t); err != nil {
+	if err := UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"); err != nil {
 		return errors.Wrap(err, "can't clear cached unattainable dependencies")
 	}
 	return errors.Wrap(t.Reset(), "error resetting task in database")
@@ -927,7 +945,7 @@ func MarkTasksReset(taskIds []string) error {
 		if t.DisplayOnly {
 			taskIds = append(taskIds, t.Id)
 		}
-		if err = UpdateUnblockedDependencies(&t); err != nil {
+		if err = UpdateUnblockedDependencies(&t, false, ""); err != nil {
 			return errors.Wrap(err, "can't clear cached unattainable dependencies")
 		}
 	}
@@ -1240,7 +1258,29 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		return nil
 	}
 
-	return resetManyTasks(tasks, caller)
+	if err = resetManyTasks(tasks, caller, true); err != nil {
+		return errors.Wrap(err, "can't reset task group tasks")
+	}
+
+	tasks, err = task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+	if err != nil {
+		return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
+	}
+	taskSet := map[string]bool{}
+	for _, t := range tasks {
+		taskSet[t.Id] = true
+		for _, dep := range t.DependsOn {
+			if taskSet[dep.TaskId] && dep.Unattainable {
+				grip.Info(message.Fields{
+					"message": "task group task was blocked on an earlier task group task after reset",
+					"task":    t.Id,
+					"ticket":  "EVG-12923",
+				})
+			}
+		}
+	}
+
+	return nil
 }
 
 func checkResetDisplayTask(t *task.Task) error {
