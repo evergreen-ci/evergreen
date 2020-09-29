@@ -256,7 +256,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
 	viewDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsView)
 	editDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
-	removeDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsRemove)
+	removeDistroSettings := route.RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	viewHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsView)
 	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 

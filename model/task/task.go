@@ -661,7 +661,6 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 	return nil
 }
 
-
 // MarkAsUndispatched marks that the task has been undispatched from a
 // particular host. Unsets the running task field on the host and the
 // host id field on the task

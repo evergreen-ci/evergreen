@@ -766,7 +766,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		Owners: []string{creator.Id},
 		Scope:  newScope.ID,
 		Permissions: map[string]int{
-			evergreen.PermissionDistroSettings: evergreen.DistroSettingsRemove.Value,
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 		},
 	}

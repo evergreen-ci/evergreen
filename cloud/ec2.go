@@ -123,13 +123,7 @@ func (s *EC2ProviderSettings) FromDistroSettings(d distro.Distro, region string)
 		if err != nil {
 			return errors.Wrapf(err, "providers list doesn't contain region '%s'", region)
 		}
-		bytes, err := settingsDoc.MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
-		}
-		if err := bson.Unmarshal(bytes, s); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
-		}
+		return s.FromDocument(settingsDoc)
 	}
 	return nil
 }
@@ -145,6 +139,17 @@ func (s *EC2ProviderSettings) ToDocument() (*birch.Document, error) {
 		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
 	}
 	return &doc, nil
+}
+
+func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
+	bytes, err := doc.MarshalBSON()
+	if err != nil {
+		return errors.Wrap(err, "error marshalling provider setting into bson")
+	}
+	if err := bson.Unmarshal(bytes, s); err != nil {
+		return errors.Wrap(err, "error unmarshalling bson into provider settings")
+	}
+	return nil
 }
 
 func (s *EC2ProviderSettings) getSecurityGroups() []*string {
