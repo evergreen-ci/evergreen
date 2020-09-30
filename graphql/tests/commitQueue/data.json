@@ -132,6 +132,10 @@
       "deactivate_previous": false,
       "tracked": true,
       "repotracker_error": null
+    },
+    {
+      "_id": "1",
+      "identifier": "mongodb-mongo-master"
     }
   ]
 }
