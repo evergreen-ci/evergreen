@@ -95,6 +95,12 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		logger.Task().Errorf("failed to post log: %v", err)
 		return errors.Wrap(err, "failed to post log")
 	}
+
+	// TODO (EVG-7780): send test results for projects that enable it.
+	// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
+	// 	logger.Task().Errorf("problem posting test log: %v", err)
+	//      return errors.Wrap(err, "failed to post log")
+	// }
 	logger.Task().Info("Finished posting logs to server")
 
 	if len(results.Tests) == 0 {
