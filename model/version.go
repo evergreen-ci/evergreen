@@ -41,7 +41,7 @@ type Version struct {
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
 	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
 
-	// Parameters stores both user-defined parameters and default parameters
+	// Parameters stores user-defined parameters
 	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`

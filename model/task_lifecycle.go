@@ -32,24 +32,33 @@ type StatusChanges struct {
 
 func SetActiveState(t *task.Task, caller string, active bool) error {
 	var modifiedTasks []task.Task
+	originalTasks := []task.Task{*t}
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "error getting execution tasks")
+		}
+		originalTasks = append(originalTasks, execTasks...)
+	}
+
 	if active {
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
 		tasksToActivate := []task.Task{}
 		if !t.OverrideDependencies {
-			deps, err := task.GetRecursiveDependenciesUp([]task.Task{*t}, nil)
+			deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
 			tasksToActivate = append(tasksToActivate, deps...)
 		}
 
-		if t.DispatchTime != utility.ZeroTime && t.Status == evergreen.TaskUndispatched {
+		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 			if err := resetTask(t.Id, caller, false); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
 		} else {
-			tasksToActivate = append(tasksToActivate, *t)
+			tasksToActivate = append(tasksToActivate, originalTasks...)
 		}
 		var err error
 		modifiedTasks, err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
@@ -73,7 +82,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		// Otherwise, if it was originally activated by evergreen, anything can
 		// deactivate it.
 		var err error
-		modifiedTasks, err = t.DeactivateTask(caller)
+		modifiedTasks, err = task.DeactivateTasks(originalTasks, caller)
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}

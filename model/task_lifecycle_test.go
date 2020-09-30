@@ -228,6 +228,8 @@ func TestSetActiveState(t *testing.T) {
 	})
 
 	Convey("with a task that is part of a display task", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
+			"Error clearing task and build collections")
 		b := &build.Build{
 			Id: "displayBuild",
 			Tasks: []build.TaskCache{
@@ -252,17 +254,31 @@ func TestSetActiveState(t *testing.T) {
 			Status:    evergreen.TaskUndispatched,
 		}
 		So(t1.Insert(), ShouldBeNil)
-
-		So(SetActiveState(dt, "test", true), ShouldBeNil)
-		t1FromDb, err := task.FindOne(task.ById(t1.Id))
-		So(err, ShouldBeNil)
-		So(t1FromDb.Activated, ShouldBeTrue)
-		dtFromDb, err := task.FindOne(task.ById(dt.Id))
-		So(err, ShouldBeNil)
-		So(dtFromDb.Activated, ShouldBeTrue)
-		dbBuild, err := build.FindOne(build.ById(b.Id))
-		So(err, ShouldBeNil)
-		So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
+		Convey("that should not restart", func() {
+			So(SetActiveState(dt, "test", true), ShouldBeNil)
+			t1FromDb, err := task.FindOne(task.ById(t1.Id))
+			So(err, ShouldBeNil)
+			So(t1FromDb.Activated, ShouldBeTrue)
+			dtFromDb, err := task.FindOne(task.ById(dt.Id))
+			So(err, ShouldBeNil)
+			So(dtFromDb.Activated, ShouldBeTrue)
+			dbBuild, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
+		})
+		Convey("that should restart", func() {
+			dt.DispatchTime = time.Now()
+			So(SetActiveState(dt, "test", true), ShouldBeNil)
+			t1FromDb, err := task.FindOne(task.ById(t1.Id))
+			So(err, ShouldBeNil)
+			So(t1FromDb.Activated, ShouldBeTrue)
+			dtFromDb, err := task.FindOne(task.ById(dt.Id))
+			So(err, ShouldBeNil)
+			So(dtFromDb.Activated, ShouldBeTrue)
+			dbBuild, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
+		})
 	})
 }
 
