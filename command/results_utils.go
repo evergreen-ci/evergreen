@@ -7,7 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/timber/testresults"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -55,6 +59,11 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 			logger.Task().Errorf("problem posting log: %v", err)
 		}
 
+		// TODO (EVG-7780): send test results for projects that enable it.
+		// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
+		// 	logger.Task().Errorf("problem posting test log: %v", err)
+		// }
+
 		// add all of the test results that correspond to that log to the
 		// full list of results
 		for _, result := range results[idx] {
@@ -82,7 +91,6 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return nil
 }
 
-// sendTestResultsToCedar sends the given test results to Cedar.
 func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Communicator, results *task.LocalTestResults) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
@@ -109,6 +117,38 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Commu
 	return nil
 }
 
+func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *model.TestLog) error {
+	conn, err := comm.GetCedarGRPCConn(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "problem setting up cedar grpc connection for test %s", log.Name)
+	}
+
+	timberOpts := &buildlogger.LoggerOptions{
+		Project:    t.Project,
+		Version:    t.Version,
+		Variant:    t.BuildVariant,
+		TaskName:   t.DisplayName,
+		TaskID:     t.Id,
+		Execution:  int32(t.Execution),
+		TestName:   log.Name,
+		Mainline:   !t.IsPatchRequest(),
+		Storage:    buildlogger.LogStorageS3,
+		ClientConn: conn,
+	}
+	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
+	sender, err := buildlogger.NewLoggerWithContext(ctx, log.Name, levelInfo, timberOpts)
+	if err != nil {
+		return errors.Wrapf(err, "error creating buildlogger logger for test result %s", log.Name)
+	}
+
+	sender.Send(message.ConvertToComposer(level.Info, log.Lines))
+	if err = sender.Close(); err != nil {
+		return errors.Wrapf(err, "error closing buildlogger logger for test result %s", log.Name)
+	}
+
+	return nil
+}
+
 func makeCedarTestResultsRecord(t *task.Task) testresults.CreateOptions {
 	return testresults.CreateOptions{
 		Project:     t.Project,
@@ -128,7 +168,6 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 		rs.Results = append(rs.Results, testresults.Result{
 			Name:        r.TestFile,
 			Status:      r.Status,
-			LogURL:      r.URL,
 			LineNum:     int32(r.LineNum),
 			TaskCreated: t.CreateTime,
 			TestStarted: time.Unix(int64(r.StartTime), 0),

@@ -525,6 +525,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 		return "", errors.New(message)
 	}
 	logID := logReply.ID
+
 	return logID, nil
 }
 

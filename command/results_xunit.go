@@ -169,6 +169,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.New("operation canceled")
 		}
 
+		// TODO (EVG-7780): send test results for projects that enable it.
+		// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
+		// 	logger.Task().Errorf("problem posting test log: %v", err)
+		//      continue
+		// } else {
+		//      succeeded++
+		// }
 		logID, err := comm.SendTestLog(ctx, td, log)
 		if err != nil {
 			logger.Task().Warningf("problem uploading logs for %s", log.Name)

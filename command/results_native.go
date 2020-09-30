@@ -101,6 +101,10 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *model.TaskConfig
 				Lines:         []string{res.LogRaw},
 			}
 
+			// TODO (EVG-7780): send test results for projects that enable it.
+			// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
+			// 	logger.Task().Errorf("problem posting test log: %v", err)
+			// }
 			id, err := comm.SendTestLog(ctx, td, testLogs)
 			if err != nil {
 				logger.Execution().Errorf("problem posting raw logs from results %s", err.Error())
