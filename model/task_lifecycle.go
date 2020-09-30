@@ -528,7 +528,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 			"message": "blocked task group dependent tasks",
 			"ticket":  "EVG-12923",
 			"task":    t.Id,
-			"stack":   message.NewStack(2, ""),
+			"stack":   message.NewStack(2, "").Raw().(message.StackTrace).Frames,
 		})
 	}
 
