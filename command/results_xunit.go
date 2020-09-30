@@ -103,9 +103,11 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator) error {
 
-	tests := []task.TestResult{}
-	logs := []*model.TestLog{}
-	logIdxToTestIdx := []int{}
+	cumulative := testcaseAccumulator{
+		tests:           []task.TestResult{},
+		logs:            []*model.TestLog{},
+		logIdxToTestIdx: []int{},
+	}
 
 	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
 	if err != nil {
@@ -151,44 +153,18 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 
 		// go through all the tests
 		for idx, suite := range testSuites {
-			if len(suite.TestCases) == 0 && suite.Error != nil {
-				// if no test cases but an error, generate a default test case
-				tc := testCase{
-					Name:  suite.Name,
-					Time:  suite.Time,
-					Error: suite.Error,
-				}
-				if tc.Name == "" {
-					tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
-				}
-				suite.TestCases = append(suite.TestCases, tc)
-			}
-			for _, tc := range suite.TestCases {
-				// logs are only created when a test case does not succeed
-				test, log := tc.toModelTestResultAndLog(conf.Task)
-				if log != nil {
-					if suite.SysOut != "" {
-						log.Lines = append(log.Lines, "system-out:", suite.SysOut)
-					}
-					if suite.SysErr != "" {
-						log.Lines = append(log.Lines, "system-err:", suite.SysErr)
-					}
-					logs = append(logs, log)
-					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
-				}
-				tests = append(tests, test)
-			}
+			cumulative = addTestCasesForSuite(suite, idx, conf.Task, cumulative)
 		}
 	}
 
-	if len(tests) == 0 {
+	if len(cumulative.tests) == 0 {
 		return errors.New("no test results found")
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	succeeded := 0
-	for i, log := range logs {
+	for i, log := range cumulative.logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
@@ -200,10 +176,50 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		} else {
 			succeeded++
 		}
-		tests[logIdxToTestIdx[i]].LogId = logID
-		tests[logIdxToTestIdx[i]].LineNum = 1
+		cumulative.tests[cumulative.logIdxToTestIdx[i]].LogId = logID
+		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
-	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(logs))
+	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
 
-	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: tests})
+	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: cumulative.tests})
+}
+
+type testcaseAccumulator struct {
+	tests           []task.TestResult
+	logs            []*model.TestLog
+	logIdxToTestIdx []int
+}
+
+func addTestCasesForSuite(suite testSuite, idx int, t *task.Task, cumulative testcaseAccumulator) testcaseAccumulator {
+	if len(suite.TestCases) == 0 && suite.Error != nil {
+		// if no test cases but an error, generate a default test case
+		tc := testCase{
+			Name:  suite.Name,
+			Time:  suite.Time,
+			Error: suite.Error,
+		}
+		if tc.Name == "" {
+			tc.Name = fmt.Sprintf("Unnamed Test-%d", idx)
+		}
+		suite.TestCases = append(suite.TestCases, tc)
+	}
+	for _, tc := range suite.TestCases {
+		// logs are only created when a test case does not succeed
+		test, log := tc.toModelTestResultAndLog(t)
+		if log != nil {
+			if suite.SysOut != "" {
+				log.Lines = append(log.Lines, "system-out:", suite.SysOut)
+			}
+			if suite.SysErr != "" {
+				log.Lines = append(log.Lines, "system-err:", suite.SysErr)
+			}
+			cumulative.logs = append(cumulative.logs, log)
+			cumulative.logIdxToTestIdx = append(cumulative.logIdxToTestIdx, len(cumulative.tests))
+		}
+		cumulative.tests = append(cumulative.tests, test)
+	}
+	if suite.NestedSuites != nil {
+		cumulative = addTestCasesForSuite(*suite.NestedSuites, idx, t, cumulative)
+	}
+	return cumulative
 }
