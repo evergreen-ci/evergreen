@@ -136,7 +136,6 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 
 // GetDisplayTaskNameFromExecution returns the name of the display task
 // associated with the execution task.
-// kim: TODO: test
 func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, td TaskData) (string, error) {
 	info := requestInfo{
 		method:   get,

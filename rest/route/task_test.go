@@ -202,6 +202,72 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 	s.Equal(time.Time{}, s.h.finishedBefore)
 }
 
+func TestGetDisplayTaskName(t *testing.T) {
+	for testName, testCase := range map[string]func(context.Context, *testing.T){
+		"SucceedsWithTaskInDisplayTask": func(ctx context.Context, t *testing.T) {
+			tsk := task.Task{Id: "task_id"}
+			displayTask := task.Task{
+				DisplayName:    "display_task_name",
+				ExecutionTasks: []string{tsk.Id},
+			}
+			require.NoError(t, displayTask.Insert())
+
+			h := makeGetDisplayTaskHandler(&data.MockConnector{
+				MockTaskConnector: data.MockTaskConnector{
+					CachedTasks: []task.Task{tsk},
+				},
+			})
+			rh, ok := h.(*displayTaskGetHandler)
+			require.True(t, ok)
+			rh.taskID = tsk.Id
+
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			res, ok := resp.Data().(displayTaskName)
+			require.True(t, ok)
+			assert.Equal(t, displayTask.DisplayName, res.DisplayTaskName)
+		},
+		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T) {
+			h := makeGetDisplayTaskHandler(&data.MockConnector{})
+			rh, ok := h.(*displayTaskGetHandler)
+			require.True(t, ok)
+			rh.taskID = "nonexistent"
+
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+		},
+		"ReturnsNotFoundIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
+			tsk := task.Task{Id: "task_id"}
+			h := makeGetDisplayTaskHandler(&data.MockConnector{
+				MockTaskConnector: data.MockTaskConnector{
+					CachedTasks: []task.Task{tsk},
+				},
+			})
+			rh, ok := h.(*displayTaskGetHandler)
+			require.True(t, ok)
+			rh.taskID = tsk.Id
+
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(task.Collection))
+			}()
+
+			testCase(ctx, t)
+		})
+	}
+
+}
+
 func TestGetTaskSyncReadCredentials(t *testing.T) {
 	creds := evergreen.S3Credentials{
 		Key:    "key",
