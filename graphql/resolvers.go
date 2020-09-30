@@ -1944,6 +1944,14 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 
 type taskResolver struct{ *Resolver }
 
+func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
+	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err.Error()))
+	}
+	return tests, nil
+}
+
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
