@@ -134,6 +134,36 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 	return task, nil
 }
 
+// GetDisplayTaskNameFromExecution returns the name of the display task
+// associated with the execution task.
+// kim: TODO: test
+func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, td TaskData) (string, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &td,
+		version:  apiVersion2,
+	}
+	info.setTaskPathSuffix("display_task")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get display task of task %s", td.ID)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", respErrorf(resp, "getting display task of task %s", td.ID)
+	}
+	var res struct {
+		DisplayTaskName string `json:"display_task_name"`
+	}
+	if err := utility.ReadJSON(resp.Body, &res); err != nil {
+		return "", errors.Wrapf(err, "reading JSON for display task of task %s", td.ID)
+	}
+	return res.DisplayTaskName, nil
+}
+
 // GetProjectRef loads the task's project.
 func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
