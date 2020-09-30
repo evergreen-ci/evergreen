@@ -522,7 +522,8 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 
 			d.ProviderSettingsList[i] = doc
 			// validate distro with new settings
-			vErrors, err := validator.CheckDistro(ctx, &d, settings, false)
+			vErrors := validator.ValidationErrors{}
+			vErrors, err = validator.CheckDistro(ctx, &d, settings, false)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "error validating distro '%s'", d.Id))
 				continue
@@ -558,6 +559,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		"message":    "updated distro provider settings",
 		"route":      "/distros/settings",
 		"update_doc": h.settings,
+		"dry_run":    h.dryRun,
 		"distros":    modifiedIDs,
 	})
 	return gimlet.NewJSONResponse(modifiedIDs)
