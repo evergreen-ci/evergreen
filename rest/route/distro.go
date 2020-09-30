@@ -8,10 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mongodb/grip/message"
-
 	"github.com/evergreen-ci/birch"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -23,6 +20,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -449,9 +447,9 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/distros/settings modifies provider settings across all distros for the given region
 
 type modifyDistrosSettingsHandler struct {
-	//settings *cloud.EC2ProviderSettings
 	settings *birch.Document
 	region   string
+	dryRun   bool
 
 	sc data.Connector
 }
@@ -489,6 +487,9 @@ func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Reques
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+
+	vals := r.URL.Query()
+	h.dryRun = vals.Get("dry_run") == "true"
 
 	return nil
 }
@@ -540,11 +541,14 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 
 	modifiedIDs := []string{}
 	for _, d := range modifiedDistros {
-		if err = d.Update(); err != nil {
-			catcher.Add(errors.Wrapf(err, "error updating distro '%s'", d.Id))
-			continue
+		if !h.dryRun {
+			if err = d.Update(); err != nil {
+				catcher.Add(errors.Wrapf(err, "error updating distro '%s'", d.Id))
+				continue
+			}
+			event.LogDistroModified(d.Id, u.Username(), d.NewDistroData())
 		}
-		event.LogDistroModified(d.Id, u.Username(), d.NewDistroData())
+
 		modifiedIDs = append(modifiedIDs, d.Id)
 	}
 	if catcher.HasErrors() {
@@ -556,7 +560,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		"update_doc": h.settings,
 		"distros":    modifiedIDs,
 	})
-	return gimlet.NewJSONResponse(nil)
+	return gimlet.NewJSONResponse(modifiedIDs)
 }
 
 ////////////////////////////////////////////////////////////////////////
