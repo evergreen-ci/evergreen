@@ -335,6 +335,7 @@ type Connector interface {
 	CreatePatchForMerge(context.Context, string) (*restModel.APIPatch, error)
 	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
+	GetMessageForPatch(string) (string, error)
 
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (io.Reader, error)

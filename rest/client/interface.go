@@ -206,6 +206,7 @@ type Communicator interface {
 	// if enqueueNext is true then allow item to be processed next
 	EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error)
 	CreatePatchForMerge(ctx context.Context, patchID string) (*restmodel.APIPatch, error)
+	GetMessageForPatch(ctx context.Context, patchID string) (string, error)
 
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error

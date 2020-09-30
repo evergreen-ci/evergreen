@@ -1338,6 +1338,13 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 	}
+	project, err := r.sc.FindProjectById(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+	}
+	if project.CommitQueue.Message != "" {
+		commitQueue.Message = &project.CommitQueue.Message
+	}
 	patchIds := []string{}
 	for _, item := range commitQueue.Queue {
 		issue := *item.Issue

@@ -648,6 +648,7 @@ type LogMessage {
 
 type CommitQueue {
   projectId: String
+  message: String
   queue: [CommitQueueItem!]
 }
 
