@@ -11,10 +11,11 @@ message TestResultsInfo {
   string version = 2;
   string variant = 3;
   string task_name = 4;
-  string task_id = 5;
-  int32 execution = 6;
-  string request_type = 7;
-  bool mainline = 8;
+  string display_task_name = 5;
+  string task_id = 6;
+  int32 execution = 7;
+  string request_type = 8;
+  bool mainline = 9;
 }
 
 message TestResults {
