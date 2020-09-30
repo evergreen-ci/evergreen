@@ -661,7 +661,6 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 	return nil
 }
 
-
 // MarkAsUndispatched marks that the task has been undispatched from a
 // particular host. Unsets the running task field on the host and the
 // host id field on the task
@@ -799,7 +798,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes tasks older than the unscheduable threshold (e.g. two
+// Removes tasks older than the unscheduable threshold (e.g. one
 // weeks) from the scheduler queue.
 //
 // If you pass an empty string as an argument to this function, this

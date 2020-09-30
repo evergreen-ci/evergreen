@@ -177,6 +177,30 @@ func TestXMLParsing(t *testing.T) {
 				})
 			})
 		})
+
+		Convey("with nested suites", func() {
+			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_6.xml"))
+			require.NoError(t, err, "Error reading file")
+			defer file.Close()
+
+			Convey("the file should parse without error", func() {
+				res, err := parseXMLResults(file)
+				So(err, ShouldBeNil)
+				So(len(res), ShouldEqual, 1)
+
+				Convey("and have correct nested data", func() {
+					So(res[0].NestedSuites, ShouldNotBeNil)
+					So(res[0].NestedSuites.Name, ShouldEqual, "depth2")
+					So(res[0].NestedSuites.NestedSuites, ShouldNotBeNil)
+					So(res[0].NestedSuites.NestedSuites.Name, ShouldEqual, "depth3")
+					So(res[0].NestedSuites.NestedSuites.TestCases, ShouldHaveLength, 1)
+					So(res[0].NestedSuites.NestedSuites.NestedSuites, ShouldNotBeNil)
+					So(res[0].NestedSuites.NestedSuites.NestedSuites.Name, ShouldEqual, "depth4")
+					So(res[0].NestedSuites.NestedSuites.NestedSuites.TestCases, ShouldHaveLength, 1)
+					So(res[0].NestedSuites.NestedSuites.NestedSuites.NestedSuites, ShouldBeNil)
+				})
+			})
+		})
 	})
 }
 

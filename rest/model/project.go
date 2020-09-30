@@ -253,6 +253,8 @@ type APIProjectRef struct {
 	PatchingDisabled            bool                 `json:"patching_disabled"`
 	RepotrackerDisabled         bool                 `json:"repotracker_disabled"`
 	DispatchingDisabled         bool                 `json:"dispatching_disabled"`
+	DisabledStatsCache          bool                 `json:"disabled_stats_cache"`
+	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache,omitempty"`
 	Admins                      []*string            `json:"admins"`
 	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
 	GitTagAuthorizedUsers       []*string            `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
@@ -318,6 +320,8 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		PatchingDisabled:      p.PatchingDisabled,
 		RepotrackerDisabled:   p.RepotrackerDisabled,
 		DispatchingDisabled:   p.DispatchingDisabled,
+		DisabledStatsCache:    p.DisabledStatsCache,
+		FilesIgnoredFromCache: FromStringPtrSlice(p.FilesIgnoredFromCache),
 		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
 		SpawnHostScriptPath:   FromStringPtr(p.SpawnHostScriptPath),
 		Admins:                FromStringPtrSlice(p.Admins),
@@ -396,6 +400,8 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.DispatchingDisabled = projectRef.DispatchingDisabled
+	p.DisabledStatsCache = projectRef.DisabledStatsCache
+	p.FilesIgnoredFromCache = ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
 	p.SpawnHostScriptPath = ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.Admins = ToStringPtrSlice(projectRef.Admins)
