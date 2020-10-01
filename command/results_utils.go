@@ -92,7 +92,6 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return nil
 }
 
-// sendTestResultsToCedar sends the given test results to Cedar.
 func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
