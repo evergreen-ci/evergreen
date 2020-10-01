@@ -40,7 +40,6 @@ type APITask struct {
 	DependsOn          []APIDependency     `json:"depends_on"`
 	DisplayName        *string             `json:"display_name"`
 	HostId             *string             `json:"host_id"`
-	HostLink           *string             `json:"host_link"`
 	Restarts           int                 `json:"restarts"`
 	Execution          int                 `json:"execution"`
 	Order              int                 `json:"order"`
