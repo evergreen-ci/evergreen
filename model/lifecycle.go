@@ -220,6 +220,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		"message":       "slow operation",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"num_builds":    len(builds),
 	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
@@ -361,15 +362,30 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
+		startAbortAt := time.Now()
 		if err := task.AbortTasksForVersion(versionId, taskIds, caller); err != nil {
 			return errors.WithStack(err)
 		}
+		grip.Info(message.Fields{
+			"message":       "Abort tasks for version",
+			"version":       versionId,
+			"ticket":        "EVG-12549",
+			"duration_secs": time.Since(startAbortAt).Seconds(),
+		})
 	}
+	startPhaseAt := time.Now()
 	finishedTasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	grip.Info(message.Fields{
+		"message":       "Find completed tasks",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
 	if err != nil && !adb.ResultsNotFound(err) {
 		return errors.WithStack(err)
 	}
 	// archive all the finished tasks
+	startPhaseAt = time.Now()
 	for _, t := range finishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
 			if err = t.Archive(); err != nil {
@@ -377,6 +393,12 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			}
 		}
 	}
+	grip.Info(message.Fields{
+		"message":       "Archive finished tasks",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
 
 	type taskGroupAndBuild struct {
 		Build     string
@@ -392,6 +414,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 	restartIds := []string{}
+	startPhaseAt = time.Now()
 	for _, t := range tasksToRestart {
 		if t.IsPartOfSingleHostTaskGroup() {
 			if err = t.SetResetWhenFinished(); err != nil {
@@ -410,26 +433,61 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
+	grip.Info(message.Fields{
+		"message":       "Mark tasks for restart when finished & build restart id array.",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
+	startPhaseAt = time.Now()
 	for tg, t := range taskGroupsToCheck {
 		if err = checkResetSingleHostTaskGroup(&t, caller); err != nil {
 			return errors.Wrapf(err, "error resetting task group '%s' for build '%s'", tg.TaskGroup, tg.Build)
 		}
 	}
+	grip.Info(message.Fields{
+		"message":       "Reset task group for builds",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
 
 	// Set all the task fields to indicate restarted
+	startPhaseAt = time.Now()
 	if err = MarkTasksReset(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
+	grip.Info(message.Fields{
+		"message":       "Mark tasks reset",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
+	startPhaseAt = time.Now()
 	for _, t := range tasksToRestart {
 		if !t.IsPartOfSingleHostTaskGroup() { // this will be logged separately if task group is restarted
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
+	grip.Info(message.Fields{
+		"message":       "Log task event",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
 	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
 	// document.
-	return errors.Wrapf(build.SetBuildStartedForTasks(tasksToRestart, caller), "error setting builds started")
+	startPhaseAt = time.Now()
+	err = build.SetBuildStartedForTasks(tasksToRestart, caller)
+	grip.Info(message.Fields{
+		"message":       "Set build started for tasks",
+		"version":       versionId,
+		"ticket":        "EVG-12549",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+	})
+	return errors.Wrapf(err, "error setting builds started")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.
