@@ -115,7 +115,7 @@ func startWebService() cli.Command {
 			}()
 
 			gracefulWait := make(chan struct{})
-			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher)
+			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher, env)
 
 			<-apiWait
 			<-uiWait
@@ -134,12 +134,15 @@ func startWebService() cli.Command {
 	}
 }
 
-func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {
+func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher, env evergreen.Environment) {
 	defer recovery.LogStackTraceAndContinue("graceful shutdown")
 	sigChan := make(chan os.Signal, len(servers))
 	signal.Notify(sigChan, syscall.SIGTERM)
 
 	<-sigChan
+	// we got the signal, so modify the status endpoint and wait
+	env.SetShutdown()
+	time.Sleep(20 * time.Second)
 	waiters := make([]chan struct{}, 0)
 
 	grip.Info("received SIGTERM, terminating web service")
