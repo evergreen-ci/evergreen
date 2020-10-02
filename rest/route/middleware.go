@@ -430,7 +430,6 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
-
 }
 
 func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -19,6 +20,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -438,6 +440,129 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.MakeJSONErrorResponder(errors.Errorf(
 		"no settings available for region '%s' for distro '%s'", h.region, h.distroID))
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/distros/settings modifies provider settings across all distros for the given region
+
+type modifyDistrosSettingsHandler struct {
+	settings *birch.Document
+	region   string
+	dryRun   bool
+
+	sc data.Connector
+}
+
+func makeModifyDistrosSettings(sc data.Connector) gimlet.RouteHandler {
+	return &modifyDistrosSettingsHandler{
+		settings: &birch.Document{},
+		sc:       sc,
+	}
+}
+
+func (h *modifyDistrosSettingsHandler) Factory() gimlet.RouteHandler {
+	return &modifyDistrosSettingsHandler{
+		settings: &birch.Document{},
+		sc:       h.sc,
+	}
+}
+
+func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	if err = json.Unmarshal(b, h.settings); err != nil {
+		return errors.Wrap(err, "API error while unmarshalling JSON")
+	}
+
+	var ok bool
+	h.region, ok = h.settings.Lookup("region").StringValueOK()
+	if !ok || h.region == "" {
+		return gimlet.ErrorResponse{
+			Message:    "region must be explicitly defined",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	vals := r.URL.Query()
+	h.dryRun = vals.Get("dry_run") == "true"
+
+	return nil
+}
+
+func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+	allDistros, err := h.sc.FindAllDistros()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding distros"))
+	}
+	modifiedDistros := []distro.Distro{}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding settings"))
+	}
+	catcher := grip.NewBasicCatcher()
+	for _, d := range allDistros {
+		if !strings.HasPrefix(d.Provider, "ec2") || len(d.ProviderSettingsList) <= 1 {
+			continue
+		}
+		for i, doc := range d.ProviderSettingsList {
+			if region, ok := doc.Lookup("region").StringValueOK(); !ok || region != h.region {
+				continue
+			}
+
+			// update doc with new changes
+			for _, elem := range h.settings.Elements() {
+				doc = doc.Set(elem)
+			}
+
+			d.ProviderSettingsList[i] = doc
+			// validate distro with new settings
+			vErrors := validator.ValidationErrors{}
+			vErrors, err = validator.CheckDistro(ctx, &d, settings, false)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "error validating distro '%s'", d.Id))
+				continue
+			}
+			if len(vErrors) != 0 {
+				catcher.Add(errors.New(vErrors.String()))
+				continue
+			}
+
+			modifiedDistros = append(modifiedDistros, d)
+		}
+	}
+	if catcher.HasErrors() {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(catcher.Resolve(), "no distros updated"))
+	}
+
+	modifiedIDs := []string{}
+	for _, d := range modifiedDistros {
+		if !h.dryRun {
+			if err = d.Update(); err != nil {
+				catcher.Add(errors.Wrapf(err, "error updating distro '%s'", d.Id))
+				continue
+			}
+			event.LogDistroModified(d.Id, u.Username(), d.NewDistroData())
+		}
+
+		modifiedIDs = append(modifiedIDs, d.Id)
+	}
+	if catcher.HasErrors() {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(catcher.Resolve(), "not all distros updated"))
+	}
+	grip.Info(message.Fields{
+		"message":    "updated distro provider settings",
+		"route":      "/distros/settings",
+		"update_doc": h.settings,
+		"dry_run":    h.dryRun,
+		"distros":    modifiedIDs,
+	})
+	return gimlet.NewJSONResponse(modifiedIDs)
 }
 
 ////////////////////////////////////////////////////////////////////////

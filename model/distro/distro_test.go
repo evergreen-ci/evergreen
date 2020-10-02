@@ -480,7 +480,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	role, err := rm.FindRoleWithPermissions(evergreen.DistroResourceType, []string{d.Id}, map[string]int{
-		evergreen.PermissionDistroSettings: evergreen.DistroSettingsRemove.Value,
+		evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 		evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 	})
 	assert.NoError(t, err)

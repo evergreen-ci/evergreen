@@ -14,11 +14,13 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -291,7 +293,129 @@ func TestDistroAMIHandler(t *testing.T) {
 
 ///////////////////////////////////////////////////////////////////////
 //
-// Tests for PUT /rest/v2/distro/{distro_id}
+// Tests for GET /rest/v2/distros/settings
+
+func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(distro.Collection))
+	d := distro.Distro{
+		Id:       "d1",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument(
+				birch.EC.String("ami", "ami-1234"),
+				birch.EC.String("region", "us-east-1"),
+			),
+			birch.NewDocument(
+				birch.EC.String("ami", "ami-5678"),
+				birch.EC.String("region", "us-west-1"),
+			),
+		},
+	}
+	assert.NoError(t, d.Insert())
+	h := makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+
+	jsonChanges := `{"region": ""}`
+	body := bytes.NewBuffer([]byte(jsonChanges))
+	r, err := http.NewRequest("PATCH", "/distros/settings", body)
+	assert.NoError(t, err)
+	assert.Error(t, h.Parse(context.TODO(), r))
+
+	h = makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+	jsonChanges = `{"region": "us-east-1", "ami": "ami-new"}`
+	body = bytes.NewBuffer([]byte(jsonChanges))
+	r, err = http.NewRequest("PATCH", "/distros/settings", body)
+	assert.NoError(t, err)
+
+	assert.NoError(t, h.Parse(context.TODO(), r))
+	assert.Equal(t, "us-east-1", h.region)
+
+	assert.NotNil(t, h.settings)
+	assert.Equal(t, "ami-new", h.settings.Lookup("ami").StringValue())
+}
+
+func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(distro.Collection, event.AllLogCollection))
+	conf := testutil.TestConfig()
+	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
+	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
+	assert.NoError(t, evergreen.UpdateConfig(conf))
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
+
+	d := &distro.Distro{Id: "d1", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument(
+				birch.EC.String("region", "us-east-1"),
+				birch.EC.String("ami", "ami-123"),
+				birch.EC.String("key_name", "a"),
+				birch.EC.String("instance_type", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a"}),
+			),
+			birch.NewDocument(
+				birch.EC.String("region", "us-west-1"),
+				birch.EC.String("ami", "ami-234"),
+				birch.EC.String("key_name", "a"),
+				birch.EC.String("instance_type", "a"),
+				birch.EC.SliceString("security_group_ids", []string{"a1", "b1"}),
+			),
+		},
+		PlannerSettings: distro.PlannerSettings{
+			Version: evergreen.PlannerVersionTunable,
+		},
+		BootstrapSettings: distro.BootstrapSettings{
+			Method:        distro.BootstrapMethodLegacySSH,
+			Communication: distro.CommunicationMethodLegacySSH,
+		},
+		CloneMethod: distro.CloneMethodLegacySSH,
+		FinderSettings: distro.FinderSettings{
+			Version: evergreen.FinderVersionLegacy,
+		},
+		DispatcherSettings: distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionLegacy,
+		},
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			Version:      evergreen.HostAllocatorUtilization,
+			MinimumHosts: 10,
+			MaximumHosts: 20,
+		},
+	}
+	assert.NoError(t, d.Insert())
+	h := makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+
+	h.settings = birch.NewDocument(
+		birch.EC.String("region", "us-west-1"),
+		birch.EC.SliceString("security_group_ids", []string{"c1", "d1"}),
+	)
+	h.region = "us-west-1"
+
+	resp := h.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	distroFromDB, err := distro.FindByID("d1")
+	assert.NoError(t, err)
+	assert.NotNil(t, distroFromDB)
+	assert.Len(t, distroFromDB.ProviderSettingsList, 2)
+
+	for _, s := range distroFromDB.ProviderSettingsList {
+		settings := cloud.EC2ProviderSettings{}
+		assert.NoError(t, settings.FromDocument(s))
+		if settings.Region == "us-east-1" {
+			assert.Equal(t, "ami-123", settings.AMI)
+		} else if settings.Region == "us-west-1" {
+			assert.Equal(t, "ami-234", settings.AMI)
+			assert.Equal(t, []string{"c1", "d1"}, settings.SecurityGroupIDs)
+		}
+	}
+
+	events, err := event.FindAllByResourceID("d1")
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT /rest/v2/distros/{distro_id}
 
 type DistroPutSuite struct {
 	sc       *data.MockConnector

@@ -689,7 +689,7 @@ var (
 		Description: "Not able to view logs",
 		Value:       0,
 	}
-	DistroSettingsRemove = PermissionLevel{
+	DistroSettingsAdmin = PermissionLevel{
 		Description: "Remove distro and edit distro settings",
 		Value:       30,
 	}
