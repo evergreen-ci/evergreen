@@ -220,6 +220,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		"message":       "slow operation",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"num_builds":    len(builds),
 	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
@@ -368,6 +369,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		grip.Info(message.Fields{
 			"message":       "Abort tasks for version",
 			"version":       versionId,
+			"ticket":        "EVG-12549",
 			"duration_secs": time.Since(startAbortAt).Seconds(),
 		})
 	}
@@ -376,6 +378,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Find completed tasks",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 	if err != nil && !adb.ResultsNotFound(err) {
@@ -393,6 +396,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Archive finished tasks",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 
@@ -432,6 +436,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Mark tasks for restart when finished & build restart id array.",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 	startPhaseAt = time.Now()
@@ -443,6 +448,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Reset task group for builds",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 
@@ -454,6 +460,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Mark tasks reset",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 	startPhaseAt = time.Now()
@@ -465,6 +472,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Log task event",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
@@ -476,6 +484,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	grip.Info(message.Fields{
 		"message":       "Set build started for tasks",
 		"version":       versionId,
+		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 	return errors.Wrapf(err, "error setting builds started")
