@@ -29,22 +29,23 @@ import (
 var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
-	Remote               amboy.Queue
-	Local                amboy.Queue
-	JasperProcessManager jasper.Manager
-	RemoteGroup          amboy.QueueGroup
-	Depot                certdepot.Depot
-	Closers              map[string]func(context.Context) error
-	DBSession            *anserMock.Session
-	EvergreenSettings    *evergreen.Settings
-	MongoClient          *mongo.Client
-	mu                   sync.RWMutex
-	DatabaseName         string
-	EnvContext           context.Context
-	InternalSender       *send.InternalSender
-	roleManager          gimlet.RoleManager
-	userManager          gimlet.UserManager
-	userManagerInfo      evergreen.UserManagerInfo
+	Remote                  amboy.Queue
+	Local                   amboy.Queue
+	JasperProcessManager    jasper.Manager
+	RemoteGroup             amboy.QueueGroup
+	Depot                   certdepot.Depot
+	Closers                 map[string]func(context.Context) error
+	DBSession               *anserMock.Session
+	EvergreenSettings       *evergreen.Settings
+	MongoClient             *mongo.Client
+	mu                      sync.RWMutex
+	DatabaseName            string
+	EnvContext              context.Context
+	InternalSender          *send.InternalSender
+	roleManager             gimlet.RoleManager
+	userManager             gimlet.UserManager
+	userManagerInfo         evergreen.UserManagerInfo
+	shutdownSequenceStarted bool
 }
 
 // Configure sets default values on the Environment, except for the user manager
@@ -106,6 +107,18 @@ func (e *Environment) Context() (context.Context, context.CancelFunc) {
 	return context.WithCancel(e.EnvContext)
 }
 
+func (e *Environment) SetShutdown() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.shutdownSequenceStarted = true
+	return nil
+}
+
+func (e *Environment) ShutdownSequenceStarted() bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.shutdownSequenceStarted
+}
 func (e *Environment) RemoteQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
