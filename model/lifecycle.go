@@ -389,6 +389,23 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	for _, t := range finishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
 			if err = t.Archive(); err != nil {
+				type idAndExecution struct {
+					Id        string `json:"id"`
+					Execution int    `json:"execution"`
+				}
+				dbTasks := []idAndExecution{}
+				for _, dbTask := range finishedTasks {
+					dbTasks = append(dbTasks, idAndExecution{Id: dbTask.Id, Execution: dbTask.Execution})
+				}
+				grip.Debug(message.WrapError(err, message.Fields{
+					"ticket":          "EVG-12942",
+					"message":         "error archiving task",
+					"task_id":         t.Id,
+					"execution_after": t.Execution,
+					"display_only":    t.DisplayOnly,
+					"query_results":   dbTasks,
+					"requested_tasks": taskIds,
+				}))
 				return errors.Wrap(err, "failed to archive task")
 			}
 		}
