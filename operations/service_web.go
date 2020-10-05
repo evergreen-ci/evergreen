@@ -141,7 +141,11 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 
 	<-sigChan
 	// we got the signal, so modify the status endpoint and wait
-	env.SetShutdown()
+	err := env.SetShutdown()
+	if err != nil {
+		grip.Error(err)
+	}
+
 	time.Sleep(20 * time.Second)
 	waiters := make([]chan struct{}, 0)
 
