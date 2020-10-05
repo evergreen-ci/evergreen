@@ -511,6 +511,14 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 			continue
 		}
 		for i, doc := range d.ProviderSettingsList {
+			// validate distro with old settings
+			originalErrors := validator.ValidationErrors{}
+			originalErrors, err = validator.CheckDistro(ctx, &d, settings, false)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "error validating original distro '%s'", d.Id))
+				continue
+			}
+
 			if region, ok := doc.Lookup("region").StringValueOK(); !ok || region != h.region {
 				continue
 			}
@@ -529,7 +537,19 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 				continue
 			}
 			if len(vErrors) != 0 {
-				catcher.Add(errors.New(vErrors.String()))
+				if len(originalErrors) != 0 {
+					grip.Info(message.Fields{
+						"message":         "not updating settings for invalid distro",
+						"route":           "/distros/settings",
+						"update_doc":      h.settings,
+						"dry_run":         h.dryRun,
+						"distro":          d.Id,
+						"original_errors": originalErrors.String(),
+						"new_errors":      vErrors.String(),
+					})
+					continue
+				}
+				catcher.Add(errors.Errorf("distro '%s' is not valid: %s", d.Id, vErrors.String()))
 				continue
 			}
 
