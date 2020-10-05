@@ -298,6 +298,55 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(taskModel)
 }
 
+// GET /tasks/{task_id}/display_task
+
+type displayTaskGetHandler struct {
+	taskID string
+	sc     data.Connector
+}
+
+func makeGetDisplayTaskHandler(sc data.Connector) gimlet.RouteHandler {
+	return &displayTaskGetHandler{
+		sc: sc,
+	}
+}
+
+func (rh *displayTaskGetHandler) Factory() gimlet.RouteHandler {
+	return &displayTaskGetHandler{
+		sc: rh.sc,
+	}
+}
+
+func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	if rh.taskID = gimlet.GetVars(r)["task_id"]; rh.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	return nil
+}
+
+func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := rh.sc.FindTaskById(rh.taskID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task with ID %s", rh.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("task with ID %s not found", rh.taskID))
+	}
+
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task %s", rh.taskID))
+	}
+	if dt == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with ID %s is not part of a display task", rh.taskID),
+		})
+	}
+
+	return gimlet.NewTextResponse(dt.DisplayName)
+}
+
 // GET /tasks/{task_id}/sync_path
 
 type taskSyncPathGetHandler struct {
@@ -330,7 +379,7 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
-	return gimlet.NewJSONResponse(t.S3Path(t.BuildVariant, t.DisplayName))
+	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
 // GET /task/sync_read_credentials

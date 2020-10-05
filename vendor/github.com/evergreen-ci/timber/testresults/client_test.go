@@ -177,12 +177,13 @@ func TestClient(t *testing.T) {
 
 func validCreateOptions() CreateOptions {
 	return CreateOptions{
-		Project:     "project",
-		Version:     "version",
-		Variant:     "variant",
-		TaskID:      "task",
-		TaskName:    "name",
-		RequestType: "request_type",
+		Project:         "project",
+		Version:         "version",
+		Variant:         "variant",
+		TaskID:          "task",
+		TaskName:        "name",
+		DisplayTaskName: "display_task_name",
+		RequestType:     "request_type",
 	}
 }
 

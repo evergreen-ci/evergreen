@@ -26,12 +26,13 @@ func sendTestResults(ctx context.Context, conf *model.TaskConfig,
 
 	logger.Execution().Info("attaching test results")
 
-	if err := comm.SendTestResults(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, results); err != nil {
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	if err := comm.SendTestResults(ctx, td, results); err != nil {
 		return errors.WithStack(err)
 	}
 
 	// TODO (EVG-7780): send test results for projects that enable it.
-	// if err := sendTestResultsToCedar(ctx, conf.Task, comm, results); err != nil {
+	// if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, results); err != nil {
 	//     return errors.Wrap(err, "sending test results to Cedar")
 	// }
 
@@ -82,7 +83,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	}
 
 	// TODO (EVG-7780): send test results for projects that enable it.
-	// if err := sendTestResultsToCedar(ctx, conf.Task, comm, &allResults); err != nil {
+	// if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, &allResults); err != nil {
 	//     return errors.Wrap(err, "sending test results to Cedar")
 	// }
 
@@ -91,7 +92,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return nil
 }
 
-func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Communicator, results *task.LocalTestResults) error {
+func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting cedar connection")
@@ -100,8 +101,12 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, comm client.Commu
 	if err != nil {
 		return errors.Wrap(err, "creating test results client")
 	}
+	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(ctx, td)
+	if err != nil {
+		return errors.Wrap(err, "getting this task's display task")
+	}
 
-	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t))
+	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t, displayTaskName))
 	if err != nil {
 		return errors.Wrap(err, "creating test results record")
 	}
@@ -149,16 +154,17 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 	return nil
 }
 
-func makeCedarTestResultsRecord(t *task.Task) testresults.CreateOptions {
+func makeCedarTestResultsRecord(t *task.Task, displayTaskName string) testresults.CreateOptions {
 	return testresults.CreateOptions{
-		Project:     t.Project,
-		Version:     t.Version,
-		Variant:     t.BuildVariant,
-		TaskID:      t.Id,
-		TaskName:    t.DisplayName,
-		Execution:   int32(t.Execution),
-		RequestType: t.Requester,
-		Mainline:    !t.IsPatchRequest(),
+		Project:         t.Project,
+		Version:         t.Version,
+		Variant:         t.BuildVariant,
+		TaskID:          t.Id,
+		TaskName:        t.DisplayName,
+		DisplayTaskName: displayTaskName,
+		Execution:       int32(t.Execution),
+		RequestType:     t.Requester,
+		Mainline:        !t.IsPatchRequest(),
 	}
 }
 

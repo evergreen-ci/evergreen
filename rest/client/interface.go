@@ -59,6 +59,10 @@ type Communicator interface {
 	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
+	// GetDisplayTaskNameFromExecution returns the display task name of an
+	// execution task, if it exists. It will return an empty string and no error
+	// if the task is not part of a display task.
+	GetDisplayTaskNameFromExecution(context.Context, TaskData) (string, error)
 	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
