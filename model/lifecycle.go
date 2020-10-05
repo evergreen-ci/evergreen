@@ -401,9 +401,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 					"ticket":          "EVG-12942",
 					"message":         "error archiving task",
 					"task_id":         t.Id,
-					"execution":       t.Execution,
+					"execution_after": t.Execution,
 					"display_only":    t.DisplayOnly,
-					"query_resuts":    dbTasks,
+					"query_results":   dbTasks,
 					"requested_tasks": taskIds,
 				}))
 				return errors.Wrap(err, "failed to archive task")
