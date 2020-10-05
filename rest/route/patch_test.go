@@ -682,8 +682,9 @@ buildvariants:
 
 	// valid request, scheduling patch for the first time
 	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	description := "some text"
 	body := patchTasks{
-		Description: "some text",
+		Description: description,
 		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"compile", "passing_test"}}},
 	}
 	jsonBody, err := json.Marshal(&body)
@@ -695,6 +696,7 @@ buildvariants:
 	resp := handler.Run(ctx)
 	respVersion := resp.Data().(model.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, description, *respVersion.Message)
 	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 2)
@@ -714,8 +716,7 @@ buildvariants:
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
 	body = patchTasks{
-		Description: "some text",
-		Variants:    []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
+		Variants: []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(t, err)
@@ -726,6 +727,7 @@ buildvariants:
 	resp = handler.Run(ctx)
 	respVersion = resp.Data().(model.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, description, *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
@@ -746,4 +748,30 @@ buildvariants:
 	assert.True(t, foundFailing)
 	assert.True(t, foundPassing)
 	assert.True(t, foundCompile)
+
+	// * should select all tasks
+	patch2 := patch.Patch{
+		Id:            mgobson.NewObjectId(),
+		Project:       projectRef.Identifier,
+		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		PatchedConfig: config,
+	}
+	assert.NoError(t, patch2.Insert())
+	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	body = patchTasks{
+		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patch2.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp = handler.Run(ctx)
+	respVersion = resp.Data().(model.APIVersion)
+	assert.Equal(t, patch2.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, "", *respVersion.Message)
+	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 4)
 }

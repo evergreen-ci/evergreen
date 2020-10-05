@@ -562,15 +562,31 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from version"))
 		}
 	}
-	variantTasks := graphql.PatchVariantsTasksRequest{}
+	variantTasks := graphql.PatchVariantsTasksRequest{
+		Description: p.variantTasks.Description,
+	}
+	if variantTasks.Description == "" && dbVersion != nil {
+		variantTasks.Description = dbVersion.Message
+	}
 	for _, v := range p.variantTasks.Variants {
 		variantToSchedule := patch.VariantTasks{Variant: v.Id}
-		for _, t := range v.Tasks {
-			dt := project.GetDisplayTask(v.Id, t)
-			if dt != nil {
-				variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
-			} else {
-				variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
+		if len(v.Tasks) > 0 && v.Tasks[0] == "*" {
+			projectVariant := project.FindBuildVariant(v.Id)
+			if projectVariant == nil {
+				return gimlet.MakeJSONErrorResponder(errors.Errorf("variant not found: %s", v.Id))
+			}
+			variantToSchedule.DisplayTasks = projectVariant.DisplayTasks
+			for _, projectTask := range projectVariant.Tasks {
+				variantToSchedule.Tasks = append(variantToSchedule.Tasks, projectTask.Name)
+			}
+		} else {
+			for _, t := range v.Tasks {
+				dt := project.GetDisplayTask(v.Id, t)
+				if dt != nil {
+					variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
+				} else {
+					variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
+				}
 			}
 		}
 		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, variantToSchedule)
