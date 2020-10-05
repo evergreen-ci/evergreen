@@ -154,13 +154,13 @@ func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, 
 	if resp.StatusCode != http.StatusOK {
 		return "", respErrorf(resp, "getting display task of task %s", td.ID)
 	}
-	var res struct {
-		DisplayTaskName string `json:"display_task_name"`
+
+	name, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrapf(err, "reading display task name of task %s", td.ID)
 	}
-	if err := utility.ReadJSON(resp.Body, &res); err != nil {
-		return "", errors.Wrapf(err, "reading JSON for display task of task %s", td.ID)
-	}
-	return res.DisplayTaskName, nil
+
+	return string(name), nil
 }
 
 // GetProjectRef loads the task's project.

@@ -300,10 +300,6 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 
 // GET /tasks/{task_id}/display_task
 
-type displayTaskName struct {
-	DisplayTaskName string `json:"display_task_name"`
-}
-
 type displayTaskGetHandler struct {
 	taskID string
 	sc     data.Connector
@@ -348,7 +344,7 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	return gimlet.NewJSONResponse(displayTaskName{DisplayTaskName: dt.DisplayName})
+	return gimlet.NewTextResponse(dt.DisplayName)
 }
 
 // GET /tasks/{task_id}/sync_path
@@ -383,7 +379,7 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
-	return gimlet.NewJSONResponse(t.S3Path(t.BuildVariant, t.DisplayName))
+	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
 // GET /task/sync_read_credentials

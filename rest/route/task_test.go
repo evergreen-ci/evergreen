@@ -223,9 +223,9 @@ func TestGetDisplayTaskName(t *testing.T) {
 
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
-			res, ok := resp.Data().(displayTaskName)
+			name, ok := resp.Data().(string)
 			require.True(t, ok)
-			assert.Equal(t, displayTask.DisplayName, res.DisplayTaskName)
+			assert.Equal(t, displayTask.DisplayName, name)
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T) {
 			h := makeGetDisplayTaskHandler(&data.MockConnector{})

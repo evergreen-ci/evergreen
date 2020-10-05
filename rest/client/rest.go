@@ -1512,10 +1512,10 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 	if resp.StatusCode != http.StatusOK {
 		return "", respErrorf(resp, "getting task sync path")
 	}
-	var path string
-	if err = utility.ReadJSON(resp.Body, &path); err != nil {
+	path, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		return "", errors.Wrap(err, "reading task sync path from response body")
 	}
 
-	return path, nil
+	return string(path), nil
 }

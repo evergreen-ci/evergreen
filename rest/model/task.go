@@ -425,7 +425,7 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 
 // ToService returns a service layer version cost using the data from APIVersionCost.
 func (atc *APITaskCost) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APITaskCost")
+	return nil, errors.New("ToService() is not implemented for APITaskCost")
 }
 
 type APIDependency struct {
@@ -437,6 +437,7 @@ func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 	ad.TaskId = dep.TaskId
 	ad.Status = dep.Status
 }
+
 func (ad *APIDependency) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APIDependency")
+	return nil, errors.New("ToService() is not implemented for APIDependency")
 }
