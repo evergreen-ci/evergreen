@@ -877,6 +877,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasBatchTime() {
 					continue
 				}
+				bvt.Variant = buildvariant.Name
 				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
 				if err != nil {
 

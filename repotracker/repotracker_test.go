@@ -250,6 +250,123 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestBatchTimeForTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
+		build.Collection, task.Collection), ShouldBeNil)
+
+	simpleYml := `
+buildvariants:
+- name: bv1
+  display_name: "bv_display"
+  run_on: d1
+  tasks:
+  - name: t1
+    batchtime: 30
+  - name: t2
+- name: bv2
+  display_name: bv2_display
+  run_on: d2
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+- name: t2
+`
+
+	previouslyActivatedVersion := &model.Version{
+		Id:         "previously activated",
+		Identifier: "testproject",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant: "bv1",
+				BatchTimeTasks: []model.BatchTimeTaskStatus{
+					{
+						TaskName: "t1",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now(),
+						},
+					},
+				},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now(),
+				},
+			},
+			{
+				BuildVariant: "bv2",
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now(),
+				},
+			},
+		},
+	}
+	assert.NoError(t, previouslyActivatedVersion.Insert())
+
+	// insert distros used in testing.
+	d := distro.Distro{Id: "d1"}
+	assert.NoError(t, d.Insert())
+	d.Id = "d2"
+	assert.NoError(t, d.Insert())
+
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(simpleYml), "testproject", p)
+	assert.NoError(t, err)
+
+	// create new version to use for activating
+	revisions := []model.Revision{
+		*createTestRevision("yes", time.Now()),
+	}
+	repoTracker := RepoTracker{
+		testConfig,
+		&model.ProjectRef{
+			Identifier: "testproject",
+			BatchTime:  0,
+		},
+		NewMockRepoPoller(pp, revisions),
+	}
+	assert.NoError(t, repoTracker.StoreRevisions(context.TODO(), revisions))
+	v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+	assert.NoError(t, err)
+	assert.NotNil(t, v)
+	assert.Len(t, v.BuildVariants, 2)
+	assert.False(t, v.BuildVariants[0].Activated)
+	assert.False(t, v.BuildVariants[1].Activated)
+	bv, _ := findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.False(t, bv.BatchTimeTasks[0].Activated)
+
+	// should activate build variants and tasks except for the batchtime task
+	assert.NoError(t, model.ActivateElapsedBuildsAndTasks(v))
+	assert.Len(t, v.BuildVariants, 2)
+	assert.True(t, v.BuildVariants[0].Activated)
+	assert.True(t, v.BuildVariants[1].Activated)
+	bv, _ = findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.False(t, bv.BatchTimeTasks[0].Activated)
+
+	build1, err := build.FindOneId(bv.BuildId)
+	assert.NoError(t, err)
+
+	// now we should update just the task even though the build is activated already
+	for i, bv := range v.BuildVariants {
+		if bv.BuildVariant == "bv1" {
+			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now()
+		}
+	}
+	assert.NoError(t, model.ActivateElapsedBuildsAndTasks(v))
+	bv, _ = findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.True(t, bv.BatchTimeTasks[0].Activated)
+
+	// validate that the activation time of the entire build was not changed
+	build2, err := build.FindOneId(bv.BuildId)
+	assert.NoError(t, err)
+	assert.Equal(t, build1.ActivatedTime, build2.ActivatedTime)
+}
+
 func TestBatchTimes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

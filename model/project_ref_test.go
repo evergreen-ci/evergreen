@@ -122,6 +122,10 @@ func TestGetActivationTimeForTask(t *testing.T) {
 					},
 				},
 			},
+			{
+				BuildVariant:     "bv_unrelated",
+				ActivationStatus: ActivationStatus{Activated: true, ActivateAt: time.Now()},
+			},
 		},
 	}
 	assert.NoError(t, versionWithoutTask.Insert())
