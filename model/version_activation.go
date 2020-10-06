@@ -56,8 +56,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 		}
 
 		isElapsedBuild := bv.ShouldActivate(now)
-
-		// SHORT CIRCUIT
 		if !isElapsedBuild && len(readyTasks) == 0 {
 			continue
 		}
@@ -71,7 +69,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 		})
 
 		// we only get this far if something in the build is being updated
-		// UPDATE BUILD
 		if !bv.Activated {
 			grip.Info(message.Fields{
 				"message":       "activating build",
@@ -85,7 +82,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 			v.BuildVariants[i].Activated = true
 			v.BuildVariants[i].ActivateAt = now
 
-			// ONLY DO THIS IF WE'RE UPDATING BUILD
 			// Don't need to set the version in here since we do it ourselves in a single update
 			if err := build.UpdateActivation([]string{bv.BuildId}, true, evergreen.DefaultTaskActivator); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -98,7 +94,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 				continue
 			}
 		}
-		// if it's an elapsed build, update all tasks minus failed batch time tasks
+		// if it's an elapsed build, update all tasks for the build, minus batch time tasks that aren't ready
 		// if it's elapsed tasks, update only those tasks
 		if isElapsedBuild {
 			grip.Info(message.Fields{
