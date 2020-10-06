@@ -99,6 +99,17 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	return errors.WithStack(build.SetManyCachedTasksActivated(modifiedTasks, active))
 }
 
+func SetActiveStateById(id, user string, active bool) error {
+	t, err := task.FindOneId(id)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task '%s'", id)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", id)
+	}
+	return SetActiveState(t, user, active)
+}
+
 // ActivatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 func ActivatePreviousTask(taskId, caller string) error {

@@ -29,8 +29,10 @@ func createVersion(order int, project string, buildVariants []string) error {
 	for _, variant := range buildVariants {
 		v.BuildVariants = append(v.BuildVariants, VersionBuildStatus{
 			BuildVariant: variant,
-			Activated:    false,
-			ActivateAt:   testActivationTime,
+			ActivationStatus: ActivationStatus{
+				Activated:  false,
+				ActivateAt: testActivationTime,
+			},
 		})
 	}
 	v.RevisionOrderNumber = order

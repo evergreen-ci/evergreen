@@ -742,21 +742,31 @@ func (projectRef *ProjectRef) String() string {
 	return projectRef.Identifier
 }
 
-// getBatchTime returns the Batch Time of the ProjectRef
-func (p *ProjectRef) getBatchTime(variant *BuildVariant) int {
-	var val int = p.BatchTime
+// getBatchTimeForVariant returns the Batch Time to be used for this variant
+func (p *ProjectRef) getBatchTimeForVariant(variant *BuildVariant) int {
+	val := p.BatchTime
 	if variant.BatchTime != nil {
 		val = *variant.BatchTime
 	}
+	return handleBatchTimeOverflow(val)
+}
 
-	// BatchTime is in minutes, but it is stored/used internally as
-	// nanoseconds. We need to cap this value to prevent an
-	// overflow/wrap around to negative values of time.Duration
-	if val > maxBatchTime {
-		return maxBatchTime
-	} else {
-		return val
+func (p *ProjectRef) getBatchTimeForTask(t *BuildVariantTaskUnit) int {
+	val := p.BatchTime
+	if t.BatchTime != nil {
+		val = *t.BatchTime
 	}
+	return handleBatchTimeOverflow(val)
+}
+
+// BatchTime is in minutes, but it is stored/used internally as
+// nanoseconds. We need to cap this value to prevent an
+// overflow/wrap around to negative values of time.Duration
+func handleBatchTimeOverflow(in int) int {
+	if in > maxBatchTime {
+		return maxBatchTime
+	}
+	return in
 }
 
 // return the next valid batch time
@@ -773,7 +783,7 @@ func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Ti
 	return sched.Next(curTime), nil
 }
 
-func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
 	defaultRes := time.Now()
 	if variant.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
@@ -794,9 +804,40 @@ func (p *ProjectRef) GetActivationTime(variant *BuildVariant) (time.Time, error)
 			continue
 		}
 
-		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTime(variant))), nil
+		return buildStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForVariant(variant))), nil
 	}
 
+	return defaultRes, nil
+}
+
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+	defaultRes := time.Now()
+	if t == nil {
+		return defaultRes, nil
+	}
+	if t.CronBatchTime != "" {
+		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
+	}
+
+	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Identifier, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
+	if err != nil {
+		return defaultRes, errors.Wrap(err, "error finding version")
+	}
+	if lastActivated == nil {
+		return defaultRes, nil
+	}
+
+	for _, buildStatus := range lastActivated.BuildVariants {
+		if buildStatus.BuildVariant != t.Variant || !buildStatus.Activated {
+			continue
+		}
+		for _, taskStatus := range buildStatus.BatchTimeTasks {
+			if taskStatus.TaskName != t.Name || !taskStatus.Activated {
+				continue
+			}
+			return taskStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
+		}
+	}
 	return defaultRes, nil
 }
 

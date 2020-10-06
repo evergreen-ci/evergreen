@@ -132,8 +132,7 @@ func VersionByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
-			// TODO make this `Ignored: false` after EVG-764  has time to burn in
-			VersionIgnoredKey: bson.M{"$ne": true},
+			VersionIgnoredKey:    bson.M{"$ne": true},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
@@ -141,6 +140,30 @@ func VersionByLastVariantActivation(projectId, variant string) db.Q {
 				"$elemMatch": bson.M{
 					VersionBuildStatusActivatedKey: true,
 					VersionBuildStatusVariantKey:   variant,
+				},
+			},
+		},
+	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+}
+
+func VersionByLastTaskActivation(projectId, variant, taskName string) db.Q {
+	return db.Query(
+		bson.M{
+			VersionIdentifierKey: projectId,
+			VersionIgnoredKey:    bson.M{"$ne": true},
+			VersionRequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			VersionBuildVariantsKey: bson.M{
+				"$elemMatch": bson.M{
+					VersionBuildStatusActivatedKey: true,
+					VersionBuildStatusVariantKey:   variant,
+					VersionBuildStatusBatchTimeTasksKey: bson.M{
+						"$elemMatch": bson.M{
+							BatchTimeTaskStatusActivatedKey: true,
+							BatchTimeTaskStatusTaskNameKey:  taskName,
+						},
+					},
 				},
 			},
 		},

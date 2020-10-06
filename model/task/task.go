@@ -925,6 +925,27 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Tas
 	return append(tasks, activatedDependencies...), nil
 }
 
+func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
+	q := bson.M{
+		IdKey:     bson.M{"$in": ids},
+		StatusKey: evergreen.TaskUndispatched,
+	}
+
+	tasks, err := FindAll(db.Query(q).WithFields(IdKey, DependsOnKey, ExecutionKey))
+	if err != nil {
+		return errors.Wrap(err, "can't get tasks to deactivate")
+	}
+	dependOn, err := GetRecursiveDependenciesUp(tasks, nil)
+	if err != nil {
+		return errors.Wrap(err, "can't get recursive dependencies")
+	}
+
+	if _, err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		return errors.Wrap(err, "problem updating tasks for activation")
+	}
+	return nil
+}
+
 // ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
 func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, error) {

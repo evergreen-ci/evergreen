@@ -1427,6 +1427,7 @@ buildvariants:
   display_name: "${version} ${os} "
   tasks:
     - name: "task_1"
+      batchtime: 60
 `
 
 	for name, test := range map[string]func(t *testing.T){

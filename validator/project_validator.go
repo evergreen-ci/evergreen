@@ -747,6 +747,43 @@ func validateBVsContainTasks(project *model.Project) ValidationErrors {
 func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
+		taskHasBatchTime := false
+
+		// check task batchtimes first
+		for _, t := range buildVariant.Tasks {
+			if t.CronBatchTime == "" {
+				if t.BatchTime != nil {
+					taskHasBatchTime = true
+				}
+				continue
+			}
+			// otherwise, cron batchtime is set
+			taskHasBatchTime = true
+			if t.BatchTime != nil {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("task '%s' cannot specify cron and batchtime for variant '%s'", t.Name, buildVariant.Name),
+						Level:   Error,
+					})
+			}
+			if _, err := model.GetActivationTimeWithCron(time.Now(), t.CronBatchTime); err != nil {
+				errs = append(errs,
+					ValidationError{
+						Message: errors.Wrapf(err, "task cron batchtime '%s' has invalid syntax for task '%s' for build variant '%s'",
+							t.CronBatchTime, t.Name, buildVariant.Name).Error(),
+						Level: Error,
+					},
+				)
+			}
+		}
+
+		if taskHasBatchTime && (buildVariant.CronBatchTime != "" || buildVariant.BatchTime != nil) {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("cannot specify batchtime in both buildvariant '%s' and tasks", buildVariant.Name),
+					Level:   Error,
+				})
+		}
 		if buildVariant.CronBatchTime == "" {
 			continue
 		}

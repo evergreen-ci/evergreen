@@ -103,6 +103,14 @@ type BuildVariantTaskUnit struct {
 	Variant string `yaml:"-" bson:"-"`
 
 	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
+
+	// Use a *int for 2 possible states
+	// nil - not overriding the project setting
+	// non-nil - overriding the project setting with this BatchTime
+	BatchTime *int `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	// If CronBatchTime is not empty, then override the project settings with cron syntax,
+	// with BatchTime and CronBatchTime being mutually exclusive.
+	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -1120,6 +1128,18 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 
 	return nil, errors.Wrapf(err, "Error loading project from "+
 		"last good version for project, %s", lastGoodVersion.Identifier)
+}
+
+func (p *Project) IsBatchtimeTaskForVariant(task, variant string) bool {
+	bvt := p.FindTaskForVariant(task, variant)
+	if bvt != nil {
+		return bvt.HasBatchTime()
+	}
+	return false
+}
+
+func (bvt *BuildVariantTaskUnit) HasBatchTime() bool {
+	return bvt.CronBatchTime != "" || bvt.BatchTime != nil
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
