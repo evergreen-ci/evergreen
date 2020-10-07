@@ -69,10 +69,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 		j.MaxAttempts = maxAttempts
 	} else if j.host.SpawnOptions.Retries > 0 {
 		j.MaxAttempts = j.host.SpawnOptions.Retries
-	} else {
-		j.MaxAttempts = 1
 	}
-	return j
 }
 
 func (j *createHostJob) Run(ctx context.Context) {
