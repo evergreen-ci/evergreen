@@ -115,6 +115,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	j.AddError(err)
 
 	msg := message.Fields{
+		"abort":                j.task.Aborted,
 		"activated_by":         j.task.ActivatedBy,
 		"build":                j.task.BuildId,
 		"current_runtime_secs": j.task.FinishTime.Sub(j.task.StartTime).Seconds(),
