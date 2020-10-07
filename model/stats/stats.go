@@ -81,12 +81,11 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 //////////////////////////////////////////////////////
 
 type GenerateOptions struct {
-	ProjectID       string
-	Requester       string
-	Tasks           []string
-	Window          time.Time
-	Runtime         time.Time
-	DisableOldTasks bool
+	ProjectID string
+	Requester string
+	Tasks     []string
+	Window    time.Time
+	Runtime   time.Time
 }
 
 // GenerateHourlyTestStats aggregates task and testresults prsent in the database and saves the
@@ -109,21 +108,6 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
 
-	if !opts.DisableOldTasks {
-		grip.Info(message.Fields{
-			"message":   "Generating hourly test stats from old tasks",
-			"project":   opts.ProjectID,
-			"requester": opts.Requester,
-			"hour":      opts.Window,
-			"tasks":     opts.Tasks,
-		})
-		// Generate/Update the stats for old tasks.
-		pipeline = hourlyTestStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, HourlyTestStatsCollection)
-		if err != nil {
-			return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
-		}
-	}
 	return nil
 }
 
@@ -169,23 +153,6 @@ func GenerateDailyTaskStats(ctx context.Context, opts GenerateOptions) error {
 	err := aggregateIntoCollection(ctx, task.Collection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
-	}
-
-	if !opts.DisableOldTasks {
-		grip.Info(message.Fields{
-			"message":   "Generating daily task stats from old tasks",
-			"project":   opts.ProjectID,
-			"requester": opts.Requester,
-			"hour":      opts.Window,
-			"tasks":     opts.Tasks,
-		})
-		start = utility.GetUTCDay(opts.Window)
-		end = start.Add(24 * time.Hour)
-		pipeline = dailyTaskStatsForOldTasksPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-		err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, DailyTaskStatsCollection)
-		if err != nil {
-			return errors.Wrap(err, "Failed to aggregate daily task stats")
-		}
 	}
 
 	return nil
@@ -246,11 +213,10 @@ func containsTask(tasks []string, task string) bool {
 }
 
 type FindStatsOptions struct {
-	ProjectID       string
-	Requesters      []string
-	Start           time.Time
-	End             time.Time
-	DisableOldTasks bool
+	ProjectID  string
+	Requesters []string
+	Start      time.Time
+	End        time.Time
 }
 
 // FidnStatsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
@@ -269,52 +235,5 @@ func FindStatsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
 		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
 	}
 
-	statsListForOldTasks := []StatsToUpdate{}
-	if !opts.DisableOldTasks {
-		err = db.Aggregate(task.OldCollection, pipeline, &statsListForOldTasks)
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to aggregate finished old tasks")
-		}
-	}
-	return mergeStatsToUpdateLists(statsList, statsListForOldTasks), nil
-}
-
-// mergeStatsToUpdateLists takes 2 sorted lists of StatsToUpdate and merge their results.
-// The original list elements may be modified.
-func mergeStatsToUpdateLists(statsList []StatsToUpdate, statsListOld []StatsToUpdate) []StatsToUpdate {
-	length := len(statsList)
-	lengthOld := len(statsListOld)
-	if length == 0 {
-		return statsListOld
-	} else if lengthOld == 0 {
-		return statsList
-	}
-	mergedList := []StatsToUpdate{}
-	var element StatsToUpdate
-	var elementOld StatsToUpdate
-	index := 0
-	indexOld := 0
-	for index < length && indexOld < lengthOld {
-		element = statsList[index]
-		elementOld = statsListOld[indexOld]
-		if element.canMerge(&elementOld) {
-			mergedList = append(mergedList, element.merge(&elementOld))
-			index += 1
-			indexOld += 1
-		} else if element.lt(&elementOld) {
-			mergedList = append(mergedList, element)
-			index += 1
-		} else {
-			mergedList = append(mergedList, elementOld)
-			indexOld += 1
-		}
-		if index == length {
-			mergedList = append(mergedList, statsListOld[indexOld:]...)
-			break
-		} else if indexOld == lengthOld {
-			mergedList = append(mergedList, statsList[index:]...)
-			break
-		}
-	}
-	return mergedList
+	return statsList, nil
 }

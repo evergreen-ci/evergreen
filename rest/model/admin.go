@@ -1680,7 +1680,6 @@ type APIServiceFlags struct {
 	TaskLoggingDisabled           bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled         bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled    bool `json:"cache_stats_endpoint_disabled"`
-	CacheStatsOldTasksDisabled    bool `json:"cache_stats_old_tasks_disabled"`
 	TaskReliabilityDisabled       bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled           bool `json:"commit_queue_disabled"`
 	PlannerDisabled               bool `json:"planner_disabled"`
@@ -1947,7 +1946,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
-		as.CacheStatsOldTasksDisabled = v.CacheStatsOldTasksDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
@@ -1984,7 +1982,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskLoggingDisabled:           as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:         as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:    as.CacheStatsEndpointDisabled,
-		CacheStatsOldTasksDisabled:    as.CacheStatsOldTasksDisabled,
 		TaskReliabilityDisabled:       as.TaskReliabilityDisabled,
 		CommitQueueDisabled:           as.CommitQueueDisabled,
 		PlannerDisabled:               as.PlannerDisabled,
