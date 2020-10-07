@@ -270,7 +270,7 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.LogPath == "" {
 		c.LogPath = LocalLoggingOverride
 	}
-	if c.ShutdownWaitSeconds == 0 {
+	if c.ShutdownWaitSeconds <= 0 {
 		c.ShutdownWaitSeconds = DefaultShutdownWaitSeconds
 	}
 

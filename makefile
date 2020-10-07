@@ -46,6 +46,7 @@ goarch := $(shell $(gobin) env GOARCH)
 
 clientBuildDir := clients
 
+
 clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
