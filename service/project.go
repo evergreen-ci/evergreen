@@ -414,13 +414,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var cq *commitqueue.CommitQueue
-		cq, err = commitqueue.FindOneId(responseRef.Identifier)
+		cq, err = commitqueue.FindOneId(projectRef.Identifier)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		if cq == nil {
-			cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
 			if err = commitqueue.InsertQueue(cq); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -495,12 +495,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	projectRef.WorkstationConfig = config
 
-	projectVars, err := model.FindOneProjectVars(id)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	if responseRef.ForceRepotrackerRun {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
@@ -563,24 +557,43 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	projectVars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	if projectVars == nil {
 		projectVars = &model.ProjectVars{}
 	}
 	origProjectVars := *projectVars
-	// If the variable is private, and if the variable in the submission is
-	// empty, then do not modify it. This variable has been redacted and is
-	// therefore empty in the submission, since the client does not have
-	// access to it, and we should not overwrite it.
-	for k, v := range projectVars.Vars {
-		if _, ok := projectVars.PrivateVars[k]; ok {
-			if val, ok := responseRef.ProjVarsMap[k]; ok && val == "" {
-				responseRef.ProjVarsMap[k] = v
+
+	// if we're copying a project we should use the variables from the DB for that project,
+	// in order to get/store the correct values for private variables.
+	if responseRef.Identifier != id && responseRef.Identifier != "" {
+		projectVars, err = model.FindOneProjectVars(responseRef.Identifier)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrapf(err, "problem getting variables for project '%s'", responseRef.Identifier))
+			return
+		}
+		projectVars.Id = id
+	} else {
+		// If the variable is private, and if the variable in the submission is
+		// empty, then do not modify it. This variable has been redacted and is
+		// therefore empty in the submission, since the client does not have
+		// access to it, and we should not overwrite it.
+		for k, v := range projectVars.Vars {
+			if _, ok := projectVars.PrivateVars[k]; ok {
+				if val, ok := responseRef.ProjVarsMap[k]; ok && val == "" {
+					responseRef.ProjVarsMap[k] = v
+				}
 			}
 		}
+		projectVars.Vars = responseRef.ProjVarsMap
+		projectVars.PrivateVars = responseRef.PrivateVars
+		projectVars.RestrictedVars = responseRef.RestrictedVars
 	}
-	projectVars.Vars = responseRef.ProjVarsMap
-	projectVars.PrivateVars = responseRef.PrivateVars
-	projectVars.RestrictedVars = responseRef.RestrictedVars
+
 	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)

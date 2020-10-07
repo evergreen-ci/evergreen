@@ -282,14 +282,10 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           item.subscriptions = _.filter($scope.subscriptions, function (d) {
             return !d.changed;
           });
-          // don't copy private variables
-          for (let [k, v] of Object.entries($scope.privateVars)) {
-              if (v) {
-                  delete item.project_vars[k];
-                  delete item.private_vars[k];
-                  delete item.restricted_vars[k];
-              }
-          }
+          // project variables will be copied in the route, so that we get private variables correctly
+          item.project_vars = null;
+          item.private_vars = null;
+          item.restricted_vars = null;
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function (resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
