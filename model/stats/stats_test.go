@@ -3,7 +3,6 @@ package stats
 import (
 	"context"
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -43,7 +42,6 @@ func (s *statsSuite) SetupTest() {
 		DailyStatsStatusCollection,
 		DailyTaskStatsCollection,
 		task.Collection,
-		task.OldCollection,
 		testresult.Collection,
 	}
 
@@ -53,32 +51,30 @@ func (s *statsSuite) SetupTest() {
 }
 
 func (s *statsSuite) TestStatsStatus() {
-	require := s.Require()
 
 	// Check that we get a default status when there is no doc in the database.
 	status, err := GetStatsStatus("p1")
-	require.NoError(err)
-	require.NotNil(status)
+	s.NoError(err)
+	s.NotNil(status)
 	// The default value is rounded off to the day so use a delta of over one day to cover all cases.
 	oneDayOneMinute := 24*time.Hour + time.Minute
 	expected := time.Now().Add(-defaultBackFillPeriod)
-	require.WithinDuration(expected, status.LastJobRun, oneDayOneMinute)
-	require.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
+	s.WithinDuration(expected, status.LastJobRun, oneDayOneMinute)
+	s.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
 
 	// Check that we can update the status and read the new values.
 	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
-	require.NoError(err)
+	s.NoError(err)
 
 	status, err = GetStatsStatus("p1")
-	require.NoError(err)
-	require.NotNil(status)
-	require.Equal(baseHour.UTC(), status.LastJobRun.UTC())
-	require.Equal(baseDay.UTC(), status.ProcessedTasksUntil.UTC())
+	s.NoError(err)
+	s.NotNil(status)
+	s.Equal(baseHour.UTC(), status.LastJobRun.UTC())
+	s.Equal(baseDay.UTC(), status.ProcessedTasksUntil.UTC())
 }
 
 func (s *statsSuite) TestGenerateHourlyTestStats() {
 	rand.Seed(314159265)
-	require := s.Require()
 
 	// Insert task docs.
 	s.initTasks()
@@ -93,8 +89,8 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Window:    baseHour,
 		Tasks:     []string{"unknown_task"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(0, s.countHourlyTestDocs())
+	s.NoError(err)
+	s.Equal(0, s.countHourlyTestDocs())
 
 	// Generate hourly stats for project p1.
 	err = GenerateHourlyTestStats(ctx, GenerateOptions{
@@ -103,8 +99,8 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Window:    baseHour,
 		Tasks:     []string{"task1"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(5, s.countHourlyTestDocs())
+	s.NoError(err)
+	s.Equal(5, s.countHourlyTestDocs())
 
 	testStatsID := DbTestStatsId{
 		Project:      "p1",
@@ -117,24 +113,24 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	}
 	doc, err := GetHourlyTestDoc(testStatsID)
 
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal("p1", doc.Id.Project)
-	require.Equal("r1", doc.Id.Requester)
-	require.Equal("test1.js", doc.Id.TestFile)
-	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.BuildVariant)
-	require.Equal("d1", doc.Id.Distro)
-	require.Equal(baseHour.UTC(), doc.Id.Date.UTC())
-	require.Equal(0, doc.NumPass)
-	require.Equal(2, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal("p1", doc.Id.Project)
+	s.Equal("r1", doc.Id.Requester)
+	s.Equal("test1.js", doc.Id.TestFile)
+	s.Equal("task1", doc.Id.TaskName)
+	s.Equal("v1", doc.Id.BuildVariant)
+	s.Equal("d1", doc.Id.Distro)
+	s.Equal(baseHour.UTC(), doc.Id.Date.UTC())
+	s.Equal(0, doc.NumPass)
+	s.Equal(2, doc.NumFail)
+	s.Equal(float64(0), doc.AvgDurationPass)
+	s.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	var lastTestResult *testresult.TestResult
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	testStatsID = DbTestStatsId{
 		Project:      "p1",
@@ -146,15 +142,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(1, doc.NumPass)
+	s.Equal(1, doc.NumFail)
+	s.Equal(float64(120), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	testStatsID = DbTestStatsId{
 		Project:      "p1",
@@ -166,68 +162,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(2, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(12.5), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(2, doc.NumPass)
+	s.Equal(0, doc.NumFail)
+	s.Equal(float64(12.5), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	// Generate hourly stats for project p2
-	// Testing old tasks.
-	err = GenerateHourlyTestStats(ctx, GenerateOptions{
-		ProjectID: "p2",
-		Requester: "r1",
-		Window:    baseHour,
-		Tasks:     []string{"task1"},
-		Runtime:   jobTime,
-	})
-	require.NoError(err)
-	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
-
-	testStatsID = DbTestStatsId{
-		Project:      "p2",
-		Requester:    "r1",
-		TestFile:     "test1.js",
-		TaskName:     "task1",
-		BuildVariant: "v1",
-		Distro:       "d1",
-		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(3, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
-
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
-
-	testStatsID = DbTestStatsId{
-		Project:      "p2",
-		Requester:    "r1",
-		TestFile:     "test2.js",
-		TaskName:     "task1",
-		BuildVariant: "v1",
-		Distro:       "d1",
-		Date:         baseHour,
-	}
-	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.Equal(1, doc.NumPass)
-	require.Equal(2, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
-
-	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	// Generate hourly stats for project p3.
 	// Testing display task / execution task.
@@ -238,8 +181,8 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Tasks:     []string{"task_exec_1"},
 		Runtime:   jobTime,
 	})
-	require.NoError(err)
-	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
+	s.NoError(err)
+	s.Equal(7, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
 	testStatsID = DbTestStatsId{
 		Project:      "p3",
@@ -251,8 +194,8 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.Nil(doc)
+	s.NoError(err)
+	s.Nil(doc)
 
 	testStatsID = DbTestStatsId{
 		Project:      "p3",
@@ -264,15 +207,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(0, doc.NumPass)
+	s.Equal(1, doc.NumFail)
+	s.Equal(float64(0), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	testStatsID = DbTestStatsId{
 		Project:      "p3",
@@ -284,15 +227,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(1, doc.NumPass)
+	s.Equal(0, doc.NumFail)
+	s.Equal(float64(120), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	// Generate hourly stats for project p5.
 	// Testing tests with status 'skip'.
@@ -302,8 +245,8 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Window:    baseHour,
 		Tasks:     []string{"task1", "task2"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(12, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
+	s.NoError(err)
+	s.Equal(9, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
 
 	// test1.js passed once and was skipped once.
 	testStatsID = DbTestStatsId{
@@ -316,15 +259,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumPass)
-	require.Equal(0, doc.NumFail)
-	require.Equal(float64(60), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(1, doc.NumPass)
+	s.Equal(0, doc.NumFail)
+	s.Equal(float64(60), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 
 	// test2.js failed once and was skipped once.
 	testStatsID = DbTestStatsId{
@@ -337,20 +280,19 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	}
 	doc, err = GetHourlyTestDoc(testStatsID)
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(0, doc.NumPass)
-	require.Equal(1, doc.NumFail)
-	require.Equal(float64(0), doc.AvgDurationPass)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(0, doc.NumPass)
+	s.Equal(1, doc.NumFail)
+	s.Equal(float64(0), doc.AvgDurationPass)
 
 	lastTestResult, err = s.getLastTestResult(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.ID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.ID, doc.LastID)
 }
 
 func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	rand.Seed(314159265)
-	require := s.Require()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -364,13 +306,13 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 		Window:    baseDay,
 		Tasks:     []string{"unknown_task"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(0, s.countDailyTestDocs())
+	s.NoError(err)
+	s.Equal(0, s.countDailyTestDocs())
 
 	// Generate daily test stats for exiting task
 	err = GenerateDailyTestStatsFromHourly(ctx, GenerateOptions{ProjectID: "p1", Requester: "r1", Window: baseDay, Tasks: []string{"task1"}, Runtime: jobTime})
-	require.NoError(err)
-	require.Equal(1, s.countDailyTestDocs())
+	s.NoError(err)
+	s.Equal(1, s.countDailyTestDocs())
 
 	testStatsID := DbTestStatsId{
 		Project:      "p1",
@@ -382,28 +324,27 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 		Date:         baseDay,
 	}
 	doc, err := GetDailyTestDoc(testStatsID)
-	require.Nil(err)
-	require.NotNil(doc)
-	require.Equal("p1", doc.Id.Project)
-	require.Equal("r1", doc.Id.Requester)
-	require.Equal("test1.js", doc.Id.TestFile)
-	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.BuildVariant)
-	require.Equal("d1", doc.Id.Distro)
-	require.Equal(baseDay.UTC(), doc.Id.Date.UTC())
-	require.Equal(30, doc.NumPass)
-	require.Equal(5, doc.NumFail)
-	require.Equal(float64(4), doc.AvgDurationPass)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.Nil(err)
+	s.NotNil(doc)
+	s.Equal("p1", doc.Id.Project)
+	s.Equal("r1", doc.Id.Requester)
+	s.Equal("test1.js", doc.Id.TestFile)
+	s.Equal("task1", doc.Id.TaskName)
+	s.Equal("v1", doc.Id.BuildVariant)
+	s.Equal("d1", doc.Id.Distro)
+	s.Equal(baseDay.UTC(), doc.Id.Date.UTC())
+	s.Equal(30, doc.NumPass)
+	s.Equal(5, doc.NumFail)
+	s.Equal(float64(4), doc.AvgDurationPass)
+	s.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	var lastTestResult *dbTestStats
 	lastTestResult, err = s.getLastHourlyTestStat(testStatsID)
-	require.NoError(err)
-	require.Equal(lastTestResult.LastID, doc.LastID)
+	s.NoError(err)
+	s.Equal(lastTestResult.LastID, doc.LastID)
 }
 
 func (s *statsSuite) TestGenerateDailyTaskStats() {
-	require := s.Require()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -418,8 +359,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Window:    baseHour,
 		Tasks:     []string{"unknown_task"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(0, s.countDailyTaskDocs())
+	s.NoError(err)
+	s.Equal(0, s.countDailyTaskDocs())
 
 	// Generate task stats for project p1.
 	err = GenerateDailyTaskStats(ctx, GenerateOptions{
@@ -428,8 +369,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Window:    baseHour,
 		Tasks:     []string{"task1", "task2"},
 		Runtime:   jobTime})
-	require.NoError(err)
-	require.Equal(3, s.countDailyTaskDocs())
+	s.NoError(err)
+	s.Equal(3, s.countDailyTaskDocs())
 	doc, err := GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
 		Requester:    "r1",
@@ -438,8 +379,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	require.NoError(err)
-	require.NotNil(doc)
+	s.NoError(err)
+	s.NotNil(doc)
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
 		Requester:    "r1",
@@ -448,8 +389,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	require.NoError(err)
-	require.NotNil(doc)
+	s.NoError(err)
+	s.NotNil(doc)
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
 		Requester:    "r1",
@@ -458,13 +399,13 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	require.NoError(err)
-	require.NotNil(doc)
+	s.NoError(err)
+	s.NotNil(doc)
 
 	// Generate task stats for project p4 to check status aggregation
 	err = GenerateDailyTaskStats(ctx, GenerateOptions{ProjectID: "p4", Requester: "r1", Window: baseHour, Tasks: []string{"task1"}, Runtime: jobTime})
-	require.NoError(err)
-	require.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
+	s.NoError(err)
+	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p4",
 		Requester:    "r1",
@@ -473,21 +414,21 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(2, doc.NumSuccess)
-	require.Equal(8, doc.NumFailed)
-	require.Equal(1, doc.NumTestFailed)
-	require.Equal(2, doc.NumSystemFailed)
-	require.Equal(3, doc.NumSetupFailed)
-	require.Equal(2, doc.NumTimeout)
-	require.Equal(float64(150), doc.AvgDurationSuccess)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(2, doc.NumSuccess)
+	s.Equal(8, doc.NumFailed)
+	s.Equal(1, doc.NumTestFailed)
+	s.Equal(2, doc.NumSystemFailed)
+	s.Equal(3, doc.NumSetupFailed)
+	s.Equal(2, doc.NumTimeout)
+	s.Equal(float64(150), doc.AvgDurationSuccess)
+	s.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	// Generate task for project p2 to check we get data for old tasks
+	// Generate task for project p2
 	err = GenerateDailyTaskStats(ctx, GenerateOptions{ProjectID: "p2", Requester: "r1", Window: baseHour, Tasks: []string{"task1"}, Runtime: jobTime})
-	require.NoError(err)
-	require.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
+	s.NoError(err)
+	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p2",
 		Requester:    "r1",
@@ -496,20 +437,18 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	require.NoError(err)
-	require.NotNil(doc)
-	require.Equal(1, doc.NumSuccess) // 1 old task
-	require.Equal(3, doc.NumFailed)  // 2 tasks + 1 old tasks
-	require.Equal(3, doc.NumTestFailed)
-	require.Equal(0, doc.NumSystemFailed)
-	require.Equal(0, doc.NumSetupFailed)
-	require.Equal(0, doc.NumTimeout)
-	require.Equal(float64(100), doc.AvgDurationSuccess)
-	require.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.NoError(err)
+	s.NotNil(doc)
+	s.Equal(0, doc.NumSuccess)
+	s.Equal(2, doc.NumFailed)
+	s.Equal(2, doc.NumTestFailed)
+	s.Equal(0, doc.NumSystemFailed)
+	s.Equal(0, doc.NumSetupFailed)
+	s.Equal(0, doc.NumTimeout)
+	s.WithinDuration(jobTime, doc.LastUpdate, 0)
 }
 
 func (s *statsSuite) TestFindStatsToUpdate() {
-	require := s.Require()
 
 	// Insert task docs.
 	s.initTasksToUpdate()
@@ -518,56 +457,54 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	start := baseHour
 	end := baseHour.Add(time.Hour)
 	statsList, err := FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	require.NoError(err)
-	require.Len(statsList, 0)
+	s.NoError(err)
+	s.Len(statsList, 0)
 
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
 	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	require.NoError(err)
-	require.Len(statsList, 2)
+	s.NoError(err)
+	s.Len(statsList, 2)
 
 	// Find stats for p5 for a period around finished1, filtering
 	// by requester
 	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
-	require.NoError(err)
-	require.Len(statsList, 1)
+	s.NoError(err)
+	s.Len(statsList, 1)
 	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
-	require.NoError(err)
-	require.Len(statsList, 2)
+	s.NoError(err)
+	s.Len(statsList, 2)
 
 	// The results are sorted so we know the order
-	require.Equal("p5", statsList[0].ProjectId)
-	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
-	require.Equal([]string{"task1"}, statsList[0].Tasks)
+	s.Equal("p5", statsList[0].ProjectId)
+	s.Equal("r1", statsList[0].Requester)
+	s.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
+	s.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
+	s.Equal([]string{"task1"}, statsList[0].Tasks)
 
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
 	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	require.NoError(err)
-	require.Len(statsList, 2)
+	s.NoError(err)
+	s.Len(statsList, 2)
 	// The results are sorted so we know the order
-	require.Equal("p5", statsList[0].ProjectId)
-	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
-	require.Equal([]string{"task1"}, statsList[0].Tasks)
-	require.Equal("p5", statsList[1].ProjectId)
-	require.Equal("r2", statsList[1].Requester)
-	require.WithinDuration(utility.GetUTCHour(commit2), statsList[1].Hour, 0)
-	require.WithinDuration(utility.GetUTCDay(commit2), statsList[1].Day, 0)
-	require.Len(statsList[1].Tasks, 3)
-	require.Contains(statsList[1].Tasks, "task2")
-	require.Contains(statsList[1].Tasks, "task2bis")
-	require.Contains(statsList[1].Tasks, "task2old")
+	s.Equal("p5", statsList[0].ProjectId)
+	s.Equal("r1", statsList[0].Requester)
+	s.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
+	s.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
+	s.Equal([]string{"task1"}, statsList[0].Tasks)
+	s.Equal("p5", statsList[1].ProjectId)
+	s.Equal("r2", statsList[1].Requester)
+	s.WithinDuration(utility.GetUTCHour(commit2), statsList[1].Hour, 0)
+	s.WithinDuration(utility.GetUTCDay(commit2), statsList[1].Day, 0)
+	s.Len(statsList[1].Tasks, 2)
+	s.Contains(statsList[1].Tasks, "task2")
+	s.Contains(statsList[1].Tasks, "task2bis")
 }
 
 func (s *statsSuite) TestStatsToUpdate() {
-	require := s.Require()
 
 	stats1 := StatsToUpdate{"p1", "r1", baseHour, baseDay, []string{"task1", "task2"}}
 	stats1bis := StatsToUpdate{"p1", "r1", baseHour, baseDay, []string{"task1", "task"}}
@@ -576,27 +513,27 @@ func (s *statsSuite) TestStatsToUpdate() {
 	stats2 := StatsToUpdate{"p2", "r1", baseHour, baseDay, []string{"task1", "task2"}}
 
 	// canMerge
-	require.True(stats1.canMerge(&stats1))
-	require.True(stats1.canMerge(&stats1bis))
-	require.False(stats1.canMerge(&stats1later))
-	require.False(stats1.canMerge(&stats1r2))
+	s.True(stats1.canMerge(&stats1))
+	s.True(stats1.canMerge(&stats1bis))
+	s.False(stats1.canMerge(&stats1later))
+	s.False(stats1.canMerge(&stats1r2))
 	// comparison
-	require.True(stats1.lt(&stats2))
-	require.True(stats1.lt(&stats1later))
-	require.True(stats1.lt(&stats1r2))
-	require.False(stats1.lt(&stats1))
-	require.False(stats1.lt(&stats1bis))
+	s.True(stats1.lt(&stats2))
+	s.True(stats1.lt(&stats1later))
+	s.True(stats1.lt(&stats1r2))
+	s.False(stats1.lt(&stats1))
+	s.False(stats1.lt(&stats1bis))
 	// merge
 	merged := stats1.merge(&stats1bis)
-	require.Equal(merged.ProjectId, stats1.ProjectId)
-	require.Equal(merged.Requester, stats1.Requester)
-	require.Equal(merged.Hour, stats1.Hour)
-	require.Equal(merged.Day, stats1.Day)
+	s.Equal(merged.ProjectId, stats1.ProjectId)
+	s.Equal(merged.Requester, stats1.Requester)
+	s.Equal(merged.Hour, stats1.Hour)
+	s.Equal(merged.Day, stats1.Day)
 	for _, t := range stats1.Tasks {
-		require.Contains(merged.Tasks, t)
+		s.Contains(merged.Tasks, t)
 	}
 	for _, t := range stats1bis.Tasks {
-		require.Contains(merged.Tasks, t)
+		s.Contains(merged.Tasks, t)
 	}
 }
 
@@ -644,8 +581,6 @@ func (s *statsSuite) initTasks() {
 	t0 := baseTime
 	t0plus10m := baseTime.Add(10 * time.Minute)
 	t0plus1h := baseTime.Add(time.Hour)
-	t0min10m := baseTime.Add(-10 * time.Minute)
-	t0min1h := baseTime.Add(-1 * time.Hour)
 	success100 := taskStatus{"success", "test", false, 100 * 1000 * 1000 * 1000}
 	success200 := taskStatus{"success", "test", false, 200 * 1000 * 1000 * 1000}
 	testFailed := taskStatus{"failed", "test", false, 20}
@@ -687,11 +622,9 @@ func (s *statsSuite) initTasks() {
 	task = s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
 	s.insertTestResult("task_id_8", 2, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 2, "test2.js", evergreen.TestFailedStatus, 120, &task, nil)
-	task = s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
 	s.insertTestResult("task_id_8", 0, "test1.js", evergreen.TestFailedStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 0, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	s.insertTestResult("task_id_8", 0, "testOld.js", evergreen.TestFailedStatus, 120, &task, nil)
-	task = s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
 	s.insertTestResult("task_id_8", 1, "test1.js", evergreen.TestSucceededStatus, 60, &task, nil)
 	s.insertTestResult("task_id_8", 1, "test2.js", evergreen.TestSucceededStatus, 120, &task, nil)
 	// Execution task
@@ -724,7 +657,6 @@ func (s *statsSuite) initTasksToUpdate() {
 	s.insertFinishedTask("p5", "r1", "task1", commit1, finish1)
 	s.insertFinishedTask("p5", "r2", "task2", commit2, finish1)
 	s.insertFinishedTask("p5", "r2", "task2bis", commit2, finish1)
-	s.insertFinishedOldTask("p5", "r2", "task2old", commit2, finish1)
 	s.insertFinishedTask("p5", "r1", "task3", commit1, finish2)
 	s.insertFinishedTask("p5", "r1", "task4", commit2, finish2)
 }
@@ -749,32 +681,6 @@ func (s *statsSuite) insertTask(project string, requester string, taskId string,
 		TimeTaken:    status.TimeTaken,
 	}
 	err := newTask.Insert()
-	s.Require().NoError(err)
-	return newTask
-}
-
-func (s *statsSuite) insertOldTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) task.Task {
-	details := apimodels.TaskEndDetail{
-		Status:   status.Status,
-		Type:     status.DetailsType,
-		TimedOut: status.DetailsTimeout,
-	}
-	oldTaskId := taskId
-	taskId = taskId + "_" + strconv.Itoa(execution)
-	newTask := task.Task{
-		Id:           taskId,
-		Execution:    execution,
-		Project:      project,
-		DisplayName:  taskName,
-		Requester:    requester,
-		BuildVariant: variant,
-		DistroId:     distro,
-		CreateTime:   createTime,
-		Status:       status.Status,
-		Details:      details,
-		TimeTaken:    status.TimeTaken,
-		OldTaskId:    oldTaskId}
-	err := db.Insert(task.OldCollection, &newTask)
 	s.Require().NoError(err)
 	return newTask
 }
@@ -839,19 +745,6 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 		FinishTime:  finishTime,
 	}
 	err := newTask.Insert()
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertFinishedOldTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
-	newTask := task.Task{
-		Id:          mgobson.NewObjectId().String(),
-		DisplayName: taskName,
-		Project:     project,
-		Requester:   requester,
-		CreateTime:  createTime,
-		FinishTime:  finishTime,
-	}
-	err := db.Insert(task.OldCollection, &newTask)
 	s.Require().NoError(err)
 }
 
