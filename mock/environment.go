@@ -107,11 +107,11 @@ func (e *Environment) Context() (context.Context, context.CancelFunc) {
 	return context.WithCancel(e.EnvContext)
 }
 
-func (e *Environment) SetShutdown() error {
+func (e *Environment) SetShutdown() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.shutdownSequenceStarted = true
-	return nil
+	return
 }
 
 func (e *Environment) ShutdownSequenceStarted() bool {

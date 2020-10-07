@@ -140,13 +140,11 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	signal.Notify(sigChan, syscall.SIGTERM)
 
 	<-sigChan
-	// we got the signal, so modify the status endpoint and wait
-	err := env.SetShutdown()
-	if err != nil {
-		grip.Error(err)
-	}
+	// we got the signal, so modify the status endpoint and wait (EVG-12993)
+	// This allows the load balancer to detect shutoffs and route traffic with no downtime
+	env.SetShutdown()
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Duration(env.Settings().ShutdownWaitSeconds) * time.Second)
 	waiters := make([]chan struct{}, 0)
 
 	grip.Info("received SIGTERM, terminating web service")

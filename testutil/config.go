@@ -322,6 +322,7 @@ func MockConfig() *evergreen.Settings {
 			UnexpirableHostsPerUser:   2,
 			UnexpirableVolumesPerUser: 2,
 		},
+		ShutdownWaitSeconds: 15,
 	}
 }
 

@@ -143,3 +143,5 @@ spawnhost:
     unexpirable_hosts_per_user: 2
     unexpirable_volumes_per_user: 2
     spawn_hosts_per_user: 6
+
+shutdown_wait_seconds: 10

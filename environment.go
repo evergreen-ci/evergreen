@@ -148,7 +148,7 @@ type Environment interface {
 	SetUserManagerInfo(UserManagerInfo)
 	// ShutdownSequenceStarted is true iff the shutdown sequence has been started
 	ShutdownSequenceStarted() bool
-	SetShutdown() error
+	SetShutdown()
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -308,11 +308,11 @@ func (e *envState) Context() (context.Context, context.CancelFunc) {
 	return context.WithCancel(e.ctx)
 }
 
-func (e *envState) SetShutdown() error {
+func (e *envState) SetShutdown() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.shutdownSequenceStarted = true
-	return nil
+	return
 }
 
 func (e *envState) ShutdownSequenceStarted() bool {
