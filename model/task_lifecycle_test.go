@@ -2838,6 +2838,18 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		},
 	}
 	assert.NoError(dt2.Insert())
+	blockedDt := task.Task{
+		Id:          "blockedDt",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task7",
+			"task8",
+			"task9",
+		},
+	}
+	assert.NoError(blockedDt.Insert())
 	task1 := task.Task{
 		Id:     "task1",
 		Status: evergreen.TaskFailed,
@@ -2888,6 +2900,25 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		Status:    evergreen.TaskSucceeded,
 	}
 	assert.NoError(task6.Insert())
+	task7 := task.Task{
+		Id:        "task7",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+	}
+	assert.NoError(task7.Insert())
+	task8 := task.Task{
+		Id:        "task8",
+		Activated: true,
+		Status:    evergreen.TaskUndispatched,
+		DependsOn: []task.Dependency{{TaskId: "task9", Unattainable: true}},
+	}
+	assert.NoError(task8.Insert())
+	task9 := task.Task{
+		Id:        "task9",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(task9.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTask(&dt))
@@ -2918,6 +2949,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	events, err = event.Find(event.AllLogCollection, event.TaskEventsForId(dt2.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
+
+	// a blocked execution task should not contribute to the status
+	assert.NoError(UpdateDisplayTask(&blockedDt))
+	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {

@@ -278,11 +278,13 @@ func ByStaleRunningTask(staleness time.Duration, reason StaleReason) db.Q {
 	case HeartbeatPastCutoff:
 		reasonQuery = bson.M{
 			StatusKey:        SelectorTaskInProgress,
+			DisplayOnlyKey:   bson.M{"$ne": true},
 			LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
 		}
 	case NoHeartbeatSinceDispatch:
 		reasonQuery = bson.M{
 			StatusKey:       evergreen.TaskDispatched,
+			DisplayOnlyKey:  bson.M{"$ne": true},
 			DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * staleness)},
 		}
 	}

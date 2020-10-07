@@ -1165,9 +1165,14 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 	hasFinishedTasks := false
 	hasUnstartedTasks := false
+	hasBlockedtasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := utility.ZeroTime
 	for _, execTask := range execTasks {
+		if execTask.Blocked() {
+			hasBlockedtasks = true
+			continue
+		}
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			t.Activated = true
@@ -1193,8 +1198,8 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
-	if hasFinishedTasks && hasUnstartedTasks {
-		// if the display task has a mix of finished and unfinished tasks, the display task is still
+	if !hasBlockedtasks && hasFinishedTasks && hasUnstartedTasks {
+		// if an unblocked display task has a mix of finished and unfinished tasks, the display task is still
 		// "started" even if there aren't currently running tasks
 		statusTask.Status = evergreen.TaskStarted
 		statusTask.Details = apimodels.TaskEndDetail{}
