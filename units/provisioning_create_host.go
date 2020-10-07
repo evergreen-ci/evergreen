@@ -56,7 +56,7 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, currentAttempt int, maxAttempts int, buildImageStarted bool) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, currentAttempt int, buildImageStarted bool) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
@@ -65,11 +65,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
 	j.BuildImageStarted = buildImageStarted
 	j.CurrentAttempt = currentAttempt
-	if maxAttempts > 0 {
-		j.MaxAttempts = maxAttempts
-	} else if j.host.SpawnOptions.Retries > 0 {
-		j.MaxAttempts = j.host.SpawnOptions.Retries
-	}
+	j.MaxAttempts = j.host.SpawnOptions.Retries
 	return j
 }
 
@@ -409,7 +405,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 func (j *createHostJob) tryRequeue(ctx context.Context) {
 	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Info().Started {
-		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts, j.BuildImageStarted)
+		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.BuildImageStarted)
 		wait := time.Minute
 		if j.host.ParentID != "" {
 			wait = 10 * time.Second
