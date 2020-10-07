@@ -812,9 +812,6 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 
 func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
 	defaultRes := time.Now()
-	if t == nil {
-		return defaultRes, nil
-	}
 	if t.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
 	}

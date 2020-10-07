@@ -1130,14 +1130,6 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		"last good version for project, %s", lastGoodVersion.Identifier)
 }
 
-func (p *Project) IsBatchtimeTaskForVariant(task, variant string) bool {
-	bvt := p.FindTaskForVariant(task, variant)
-	if bvt != nil {
-		return bvt.HasBatchTime()
-	}
-	return false
-}
-
 func (bvt *BuildVariantTaskUnit) HasBatchTime() bool {
 	return bvt.CronBatchTime != "" || bvt.BatchTime != nil
 }

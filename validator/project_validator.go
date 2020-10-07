@@ -747,18 +747,12 @@ func validateBVsContainTasks(project *model.Project) ValidationErrors {
 func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
-		taskHasBatchTime := false
-
 		// check task batchtimes first
 		for _, t := range buildVariant.Tasks {
 			if t.CronBatchTime == "" {
-				if t.BatchTime != nil {
-					taskHasBatchTime = true
-				}
 				continue
 			}
 			// otherwise, cron batchtime is set
-			taskHasBatchTime = true
 			if t.BatchTime != nil {
 				errs = append(errs,
 					ValidationError{
@@ -777,13 +771,6 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 			}
 		}
 
-		if taskHasBatchTime && (buildVariant.CronBatchTime != "" || buildVariant.BatchTime != nil) {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("cannot specify batchtime in both buildvariant '%s' and tasks", buildVariant.Name),
-					Level:   Error,
-				})
-		}
 		if buildVariant.CronBatchTime == "" {
 			continue
 		}

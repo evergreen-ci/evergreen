@@ -870,18 +870,17 @@ func TestValidateBVBatchTimes(t *testing.T) {
 	p.BuildVariants[0].CronBatchTime = "@daily"
 	assert.Empty(t, validateBVBatchTimes(p))
 
-	// can't have task and variant batchtime set
+	// can have task and variant batchtime set
 	p.BuildVariants[0].Tasks = []model.BuildVariantTaskUnit{
 		{Name: "t1", BatchTime: &batchtime},
 		{Name: "t2"},
 	}
-	assert.Len(t, validateBVBatchTimes(p), 1)
+	assert.Len(t, validateBVBatchTimes(p), 0)
 
 	// can't set cron and batchtime for tasks
 	p.BuildVariants[0].Tasks[0].CronBatchTime = "@daily"
-	assert.Len(t, validateBVBatchTimes(p), 2)
+	assert.Len(t, validateBVBatchTimes(p), 1)
 
-	p.BuildVariants[0].CronBatchTime = ""
 	p.BuildVariants[0].Tasks[0].BatchTime = nil
 	assert.Len(t, validateBVBatchTimes(p), 0)
 }

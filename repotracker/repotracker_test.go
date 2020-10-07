@@ -259,6 +259,7 @@ buildvariants:
 - name: bv1
   display_name: "bv_display"
   run_on: d1
+  batchtime: 10
   tasks:
   - name: t1
     batchtime: 30
@@ -285,20 +286,20 @@ tasks:
 						TaskName: "t1",
 						ActivationStatus: model.ActivationStatus{
 							Activated:  true,
-							ActivateAt: time.Now(),
+							ActivateAt: time.Now().Add(-11 * time.Minute),
 						},
 					},
 				},
 				ActivationStatus: model.ActivationStatus{
 					Activated:  true,
-					ActivateAt: time.Now(),
+					ActivateAt: time.Now().Add(-11 * time.Minute),
 				},
 			},
 			{
 				BuildVariant: "bv2",
 				ActivationStatus: model.ActivationStatus{
 					Activated:  true,
-					ActivateAt: time.Now(),
+					ActivateAt: time.Now().Add(-11 * time.Minute),
 				},
 			},
 		},
