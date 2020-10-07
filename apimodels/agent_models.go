@@ -232,7 +232,7 @@ func (ch *CreateHost) validateAgentOptions() error {
 	if ch.Retries > 10 {
 		catcher.New("retries must not be greater than 10")
 	}
-	if ch.Retries == 0 {
+	if ch.Retries <= 0 {
 		ch.Retries = DefaultRetries
 	}
 	if ch.Scope == "" {
