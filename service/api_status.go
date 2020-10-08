@@ -179,6 +179,12 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 		AgentVersion: evergreen.AgentVersion,
 	}
 
+	env := evergreen.GetEnvironment()
+	if env.ShutdownSequenceStarted() {
+		gimlet.WriteJSONInternalError(w, &out)
+		return
+	}
+
 	gimlet.WriteJSON(w, &out)
 }
 

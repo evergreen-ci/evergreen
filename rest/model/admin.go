@@ -46,47 +46,48 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
-	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
-	Api                *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl             *string                           `json:"api_url,omitempty"`
-	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner             *string                           `json:"banner,omitempty"`
-	BannerTheme        *string                           `json:"banner_theme,omitempty"`
-	Backup             *APIBackupConfig                  `json:"backup,omitempty"`
-	Cedar              *APICedarConfig                   `json:"cedar,omitempty"`
-	ClientBinariesDir  *string                           `json:"client_binaries_dir,omitempty"`
-	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
-	ConfigDir          *string                           `json:"configdir,omitempty"`
-	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials        map[string]string                 `json:"credentials,omitempty"`
-	DomainName         *string                           `json:"domain_name,omitempty"`
-	Expansions         map[string]string                 `json:"expansions,omitempty"`
-	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org,omitempty"`
-	GithubOrgs         []string                          `json:"github_orgs,omitempty"`
-	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
-	HostJasper         *APIHostJasperConfig              `json:"host_jasper,omitempty"`
-	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
-	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys               map[string]string                 `json:"keys,omitempty"`
-	LDAPRoleMap        *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
-	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath            *string                           `json:"log_path,omitempty"`
-	NewRelic           *APINewRelicConfig                `json:"newrelic,omitempty"`
-	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
-	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort          *string                           `json:"pprof_port,omitempty"`
-	Providers          *APICloudProviders                `json:"providers,omitempty"`
-	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
-	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
-	Slack              *APISlackConfig                   `json:"slack,omitempty"`
-	SSHKeyDirectory    *string                           `json:"ssh_key_directory,omitempty"`
-	SSHKeyPairs        []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
-	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
-	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
-	Spawnhost          *APISpawnHostConfig               `json:"spawnhost,omitempty"`
+	Alerts              *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                 *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl              *string                           `json:"api_url,omitempty"`
+	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner              *string                           `json:"banner,omitempty"`
+	BannerTheme         *string                           `json:"banner_theme,omitempty"`
+	Backup              *APIBackupConfig                  `json:"backup,omitempty"`
+	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
+	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
+	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
+	ConfigDir           *string                           `json:"configdir,omitempty"`
+	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials         map[string]string                 `json:"credentials,omitempty"`
+	DomainName          *string                           `json:"domain_name,omitempty"`
+	Expansions          map[string]string                 `json:"expansions,omitempty"`
+	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
+	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
+	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
+	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
+	Keys                map[string]string                 `json:"keys,omitempty"`
+	LDAPRoleMap         *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
+	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath             *string                           `json:"log_path,omitempty"`
+	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
+	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort           *string                           `json:"pprof_port,omitempty"`
+	Providers           *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack               *APISlackConfig                   `json:"slack,omitempty"`
+	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
+	Splunk              *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
+	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
+	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
+	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -152,6 +153,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrapf(err, "error building apiJiraConfig %s", err)
 		}
 		as.Jira = &jiraConfig
+		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -240,6 +242,10 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 			Public:  FromStringPtr(pair.Public),
 			Private: FromStringPtr(pair.Private),
 		})
+	}
+
+	if as.ShutdownWaitSeconds != nil {
+		settings.ShutdownWaitSeconds = *as.ShutdownWaitSeconds
 	}
 	return settings, nil
 }

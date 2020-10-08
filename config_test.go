@@ -160,6 +160,7 @@ func (s *AdminSuite) TestBaseConfig() {
 			Token:     "token",
 			Channel:   "channel",
 		},
+		ShutdownWaitSeconds: 15,
 	}
 
 	err := config.Set()
@@ -189,6 +190,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		s.Equal(config.SSHKeyPairs[i].Private, settings.SSHKeyPairs[i].Private)
 		s.Empty(config.SSHKeyPairs[i].EC2Regions)
 	}
+	s.Equal(config.ShutdownWaitSeconds, settings.ShutdownWaitSeconds)
 }
 
 func (s *AdminSuite) TestServiceFlags() {

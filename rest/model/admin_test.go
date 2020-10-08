@@ -92,6 +92,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.SSHKeyPairs[i].Public, FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
 		assert.Equal(testSettings.SSHKeyPairs[i].Private, FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
 	}
+	assert.Equal(testSettings.ShutdownWaitSeconds, *apiSettings.ShutdownWaitSeconds)
 
 	assert.EqualValues(testSettings.Alerts.SMTP.From, FromStringPtr(apiSettings.Alerts.SMTP.From))
 	assert.EqualValues(testSettings.Alerts.SMTP.Port, apiSettings.Alerts.SMTP.Port)

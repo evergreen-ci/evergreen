@@ -146,6 +146,9 @@ type Environment interface {
 	// UserManagerInfo returns the information about the user manager.
 	UserManagerInfo() UserManagerInfo
 	SetUserManagerInfo(UserManagerInfo)
+	// ShutdownSequenceStarted is true iff the shutdown sequence has been started
+	ShutdownSequenceStarted() bool
+	SetShutdown()
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -162,8 +165,9 @@ type Environment interface {
 func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	e := &envState{
-		ctx:     ctx,
-		senders: map[SenderKey]send.Sender{},
+		ctx:                     ctx,
+		senders:                 map[SenderKey]send.Sender{},
+		shutdownSequenceStarted: false,
 	}
 	defer func() {
 		e.RegisterCloser("root-context", false, func(_ context.Context) error {
@@ -212,23 +216,24 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 }
 
 type envState struct {
-	remoteQueue        amboy.Queue
-	localQueue         amboy.Queue
-	remoteQueueGroup   amboy.QueueGroup
-	notificationsQueue amboy.Queue
-	ctx                context.Context
-	jasperManager      jasper.Manager
-	depot              certdepot.Depot
-	settings           *Settings
-	dbName             string
-	client             *mongo.Client
-	mu                 sync.RWMutex
-	clientConfig       *ClientConfig
-	closers            []closerOp
-	senders            map[SenderKey]send.Sender
-	roleManager        gimlet.RoleManager
-	userManager        gimlet.UserManager
-	userManagerInfo    UserManagerInfo
+	remoteQueue             amboy.Queue
+	localQueue              amboy.Queue
+	remoteQueueGroup        amboy.QueueGroup
+	notificationsQueue      amboy.Queue
+	ctx                     context.Context
+	jasperManager           jasper.Manager
+	depot                   certdepot.Depot
+	settings                *Settings
+	dbName                  string
+	client                  *mongo.Client
+	mu                      sync.RWMutex
+	clientConfig            *ClientConfig
+	closers                 []closerOp
+	senders                 map[SenderKey]send.Sender
+	roleManager             gimlet.RoleManager
+	userManager             gimlet.UserManager
+	userManagerInfo         UserManagerInfo
+	shutdownSequenceStarted bool
 }
 
 // UserManagerInfo lists properties of the UserManager regarding its support for
@@ -300,6 +305,19 @@ func (e *envState) Context() (context.Context, context.CancelFunc) {
 	defer e.mu.RUnlock()
 
 	return context.WithCancel(e.ctx)
+}
+
+func (e *envState) SetShutdown() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.shutdownSequenceStarted = true
+	return
+}
+
+func (e *envState) ShutdownSequenceStarted() bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.shutdownSequenceStarted
 }
 
 func (e *envState) Client() *mongo.Client {

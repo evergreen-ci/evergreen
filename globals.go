@@ -227,6 +227,8 @@ const (
 	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
 	// end of a patch.
 	DefaultTaskSyncAtEndTimeout = time.Hour
+
+	DefaultShutdownWaitSeconds = 10
 )
 
 func IsFinishedTaskStatus(status string) bool {
