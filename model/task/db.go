@@ -950,28 +950,6 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	return tasks, nil
 }
 
-func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
-	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
-	return findAllTaskIDs(q)
-}
-
-// FindTasksFromBuildWithDependencies finds tasks from a build that have dependencies.
-func FindTasksFromBuildWithDependencies(buildIds []string) ([]Task, error) {
-	q := db.Query(bson.M{
-		BuildIdKey:   bson.M{"$in": buildIds},
-		DependsOnKey: bson.M{"$not": bson.M{"$size": 0}},
-	}).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(Collection, q, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding task ids for versions")
-	}
-	return tasks, nil
-}
-
 func FindMergeTaskForVersion(versionId string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{

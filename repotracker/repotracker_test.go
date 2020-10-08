@@ -250,6 +250,124 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestBatchTimeForTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
+		build.Collection, task.Collection), ShouldBeNil)
+
+	simpleYml := `
+buildvariants:
+- name: bv1
+  display_name: "bv_display"
+  run_on: d1
+  batchtime: 10
+  tasks:
+  - name: t1
+    batchtime: 30
+  - name: t2
+- name: bv2
+  display_name: bv2_display
+  run_on: d2
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+- name: t2
+`
+
+	previouslyActivatedVersion := &model.Version{
+		Id:         "previously activated",
+		Identifier: "testproject",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant: "bv1",
+				BatchTimeTasks: []model.BatchTimeTaskStatus{
+					{
+						TaskName: "t1",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-11 * time.Minute),
+						},
+					},
+				},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+			{
+				BuildVariant: "bv2",
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+		},
+	}
+	assert.NoError(t, previouslyActivatedVersion.Insert())
+
+	// insert distros used in testing.
+	d := distro.Distro{Id: "d1"}
+	assert.NoError(t, d.Insert())
+	d.Id = "d2"
+	assert.NoError(t, d.Insert())
+
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(simpleYml), "testproject", p)
+	assert.NoError(t, err)
+
+	// create new version to use for activating
+	revisions := []model.Revision{
+		*createTestRevision("yes", time.Now()),
+	}
+	repoTracker := RepoTracker{
+		testConfig,
+		&model.ProjectRef{
+			Identifier: "testproject",
+			BatchTime:  0,
+		},
+		NewMockRepoPoller(pp, revisions),
+	}
+	assert.NoError(t, repoTracker.StoreRevisions(context.TODO(), revisions))
+	v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+	assert.NoError(t, err)
+	assert.NotNil(t, v)
+	assert.Len(t, v.BuildVariants, 2)
+	assert.False(t, v.BuildVariants[0].Activated)
+	assert.False(t, v.BuildVariants[1].Activated)
+	bv, _ := findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.False(t, bv.BatchTimeTasks[0].Activated)
+
+	// should activate build variants and tasks except for the batchtime task
+	assert.NoError(t, model.ActivateElapsedBuildsAndTasks(v))
+	assert.Len(t, v.BuildVariants, 2)
+	assert.True(t, v.BuildVariants[0].Activated)
+	assert.True(t, v.BuildVariants[1].Activated)
+	bv, _ = findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.False(t, bv.BatchTimeTasks[0].Activated)
+
+	build1, err := build.FindOneId(bv.BuildId)
+	assert.NoError(t, err)
+
+	// now we should update just the task even though the build is activated already
+	for i, bv := range v.BuildVariants {
+		if bv.BuildVariant == "bv1" {
+			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now()
+		}
+	}
+	assert.NoError(t, model.ActivateElapsedBuildsAndTasks(v))
+	bv, _ = findStatus(v, "bv1")
+	assert.Len(t, bv.BatchTimeTasks, 1)
+	assert.True(t, bv.BatchTimeTasks[0].Activated)
+
+	// validate that the activation time of the entire build was not changed
+	build2, err := build.FindOneId(bv.BuildId)
+	assert.NoError(t, err)
+	assert.Equal(t, build1.ActivatedTime, build2.ActivatedTime)
+}
+
 func TestBatchTimes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -263,13 +381,17 @@ func TestBatchTimes(t *testing.T) {
 			BuildVariants: []model.VersionBuildStatus{
 				{
 					BuildVariant: "bv1",
-					Activated:    true,
-					ActivateAt:   time.Now(),
+					ActivationStatus: model.ActivationStatus{
+						Activated:  true,
+						ActivateAt: time.Now(),
+					},
 				},
 				{
 					BuildVariant: "bv2",
-					Activated:    true,
-					ActivateAt:   time.Now(),
+					ActivationStatus: model.ActivationStatus{
+						Activated:  true,
+						ActivateAt: time.Now(),
+					},
 				},
 			},
 			RevisionOrderNumber: 0,
@@ -305,7 +427,7 @@ func TestBatchTimes(t *testing.T) {
 			So(v, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(v.BuildVariants), ShouldEqual, 2)
-			So(model.ActivateElapsedBuilds(v), ShouldBeNil)
+			So(model.ActivateElapsedBuildsAndTasks(v), ShouldBeNil)
 			So(v.BuildVariants[0].Activated, ShouldBeFalse)
 			So(v.BuildVariants[1].Activated, ShouldBeFalse)
 		})
@@ -329,7 +451,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuildsAndTasks(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -364,7 +486,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuildsAndTasks(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeFalse)
@@ -397,7 +519,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
-			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuildsAndTasks(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -419,8 +541,10 @@ func TestBatchTimes(t *testing.T) {
 			BuildVariants: []model.VersionBuildStatus{
 				{
 					BuildVariant: "bv1",
-					Activated:    true,
-					ActivateAt:   time.Now(),
+					ActivationStatus: model.ActivationStatus{
+						Activated:  true,
+						ActivateAt: time.Now(),
+					},
 				},
 				// "bv2" will be added in a later revision
 			},
@@ -453,7 +577,7 @@ func TestBatchTimes(t *testing.T) {
 		So(version, ShouldNotBeNil)
 
 		Convey("the new variant should activate immediately", func() {
-			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuildsAndTasks(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -492,13 +616,13 @@ func createTestRevision(revision string,
 
 func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp := &model.ParserProject{}
-	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"Unabhaengigkeitserklaerungen"})
+	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"t1"})
 	pp.BuildVariants[0].Tasks[0].Distros = []string{"test-distro-one"}
 
-	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"Unabhaengigkeitserklaerungen"})
+	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].Distros = []string{"test-distro-one"}
 
-	pp.AddTask("Unabhaengigkeitserklaerungen", nil)
+	pp.AddTask("t1", nil)
 
 	return pp
 }
@@ -778,6 +902,75 @@ tasks:
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Len(tasks, 0)
+}
+
+func (s *CreateVersionFromConfigSuite) TestWithTaskBatchTime() {
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+    batchtime: 30
+  - name: task2
+    cron: "@daily"
+  - name: task3
+- name: bv2
+  batchtime: 15
+  display_name: bv2_display
+  run_on: d
+  tasks:
+  - name: task1
+tasks:
+- name: task1
+- name: task2
+- name: task3
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	metadata := model.VersionMetadata{Revision: *s.rev}
+	now := time.Now()
+	tomorrow := now.Add(time.Hour * 24) // next day
+	y, m, d := tomorrow.Date()
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+	s.Len(v.Errors, 0)
+
+	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	s.NoError(err)
+	s.Len(tasks, 4)
+
+	s.Len(v.BuildVariants, 2)
+	for _, bv := range v.BuildVariants {
+		if bv.BuildVariant == "bv" {
+			s.InDelta(bv.ActivateAt.Unix(), now.Unix(), 1)
+			s.Require().Len(bv.BatchTimeTasks, 2)
+			for _, t := range bv.BatchTimeTasks {
+				if t.TaskName == "task1" { // activate time is now because their isn't a previous task
+					s.InDelta(t.ActivateAt.Unix(), now.Unix(), 1)
+				} else {
+					// ensure that "daily" cron is set for the next day
+					ty, tm, td := t.ActivateAt.Date()
+					s.Equal(y, ty)
+					s.Equal(m, tm)
+					s.Equal(d, td)
+				}
+
+			}
+		}
+		if bv.BuildVariant == "bv2" {
+			s.False(bv.Activated)
+			s.Len(bv.BatchTimeTasks, 0)
+		}
+	}
 }
 
 func (s *CreateVersionFromConfigSuite) TestVersionWithDependencies() {

@@ -53,19 +53,87 @@ func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 		Branch:     "master",
 		RepoKind:   "github",
 		Enabled:    true,
-		BatchTime:  maxBatchTime,
+		BatchTime:  maxBatchTime + 1,
 		Identifier: "ident",
 	}
 
 	emptyVariant := &BuildVariant{}
+	emptyTask := &BuildVariantTaskUnit{}
 
-	assert.Equal(projectRef.getBatchTime(emptyVariant), maxBatchTime,
-		"ProjectRef.getBatchTime() is not capping BatchTime to MaxInt32")
+	assert.Equal(projectRef.getBatchTimeForVariant(emptyVariant), maxBatchTime,
+		"ProjectRef.getBatchTimeForVariant() is not capping BatchTime to MaxInt32")
+
+	assert.Equal(projectRef.getBatchTimeForTask(emptyTask), maxBatchTime,
+		"ProjectRef.getBatchTimeForTask() is not capping BatchTime to MaxInt32")
 
 	projectRef.BatchTime = 55
-	assert.Equal(projectRef.getBatchTime(emptyVariant), 55,
-		"ProjectRef.getBatchTime() is not returning the correct BatchTime")
+	assert.Equal(projectRef.getBatchTimeForVariant(emptyVariant), 55,
+		"ProjectRef.getBatchTimeForVariant() is not returning the correct BatchTime")
 
+	assert.Equal(projectRef.getBatchTimeForTask(emptyTask), 55,
+		"ProjectRef.getBatchTimeForVariant() is not returning the correct BatchTime")
+
+}
+
+func TestGetActivationTimeForTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+	prevTime := time.Date(2020, time.June, 9, 0, 0, 0, 0, time.UTC) // Tuesday
+	batchTime := 60
+	projectRef := &ProjectRef{Identifier: "mci"}
+	bvt := &BuildVariantTaskUnit{
+		BatchTime: &batchTime,
+		Name:      "myTask",
+		Variant:   "bv1",
+	}
+
+	versionWithoutTask := Version{
+		Id:         "v1",
+		Identifier: projectRef.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:     "bv1",
+				ActivationStatus: ActivationStatus{Activated: true, ActivateAt: time.Now()},
+				BatchTimeTasks: []BatchTimeTaskStatus{
+					{
+						TaskName:         "a different task",
+						ActivationStatus: ActivationStatus{ActivateAt: time.Now(), Activated: true},
+					},
+				},
+			},
+		},
+	}
+	versionWithTask := Version{
+		Id:         "v2",
+		Identifier: projectRef.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant:     "bv1",
+				ActivationStatus: ActivationStatus{Activated: true, ActivateAt: prevTime.Add(-1 * time.Hour)},
+				BatchTimeTasks: []BatchTimeTaskStatus{
+					{
+						TaskName:         "myTask",
+						ActivationStatus: ActivationStatus{ActivateAt: prevTime, Activated: true},
+					},
+					{
+						TaskName:         "notMyTask",
+						ActivationStatus: ActivationStatus{ActivateAt: time.Now(), Activated: true},
+					},
+				},
+			},
+			{
+				BuildVariant:     "bv_unrelated",
+				ActivationStatus: ActivationStatus{Activated: true, ActivateAt: time.Now()},
+			},
+		},
+	}
+	assert.NoError(t, versionWithoutTask.Insert())
+	assert.NoError(t, versionWithTask.Insert())
+
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	assert.NoError(t, err)
+	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {

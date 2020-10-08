@@ -142,10 +142,25 @@ func VersionExistsForCommitQueueItem(cq *commitqueue.CommitQueue, issue, patchTy
 
 // VersionBuildStatus stores metadata relating to each build
 type VersionBuildStatus struct {
-	BuildVariant string    `bson:"build_variant" json:"id"`
-	Activated    bool      `bson:"activated" json:"activated"`
-	ActivateAt   time.Time `bson:"activate_at,omitempty" json:"activate_at,omitempty"`
-	BuildId      string    `bson:"build_id,omitempty" json:"build_id,omitempty"`
+	BuildVariant     string                `bson:"build_variant" json:"id"`
+	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
+	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
+	ActivationStatus `bson:",inline"`
+}
+
+type BatchTimeTaskStatus struct {
+	TaskName         string `bson:"task_name" json:"task_name"`
+	TaskId           string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	ActivationStatus `bson:",inline"`
+}
+
+type ActivationStatus struct {
+	Activated  bool      `bson:"activated" json:"activated"`
+	ActivateAt time.Time `bson:"activate_at,omitempty" json:"activate_at,omitempty"`
+}
+
+func (s *ActivationStatus) ShouldActivate(now time.Time) bool {
+	return !s.Activated && now.After(s.ActivateAt) && !s.ActivateAt.IsZero()
 }
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation
@@ -166,10 +181,14 @@ type VersionMetadata struct {
 }
 
 var (
-	VersionBuildStatusVariantKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
-	VersionBuildStatusActivatedKey  = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
-	VersionBuildStatusActivateAtKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "ActivateAt")
-	VersionBuildStatusBuildIdKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
+	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
+	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
+	VersionBuildStatusActivateAtKey     = bsonutil.MustHaveTag(VersionBuildStatus{}, "ActivateAt")
+	VersionBuildStatusBuildIdKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
+	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
+
+	BatchTimeTaskStatusTaskNameKey  = bsonutil.MustHaveTag(BatchTimeTaskStatus{}, "TaskName")
+	BatchTimeTaskStatusActivatedKey = bsonutil.MustHaveTag(BatchTimeTaskStatus{}, "Activated")
 )
 
 type DuplicateVersionsID struct {

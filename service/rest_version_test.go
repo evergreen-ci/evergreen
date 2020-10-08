@@ -263,9 +263,11 @@ func TestGetVersionInfo(t *testing.T) {
 			BuildIds:    []string{"some-build-id"},
 			BuildVariants: []model.VersionBuildStatus{{
 				BuildVariant: "some-build-variant",
-				Activated:    true,
-				ActivateAt:   time.Now().Add(-20 * time.Minute),
-				BuildId:      "some-build-id"}},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-20 * time.Minute),
+				},
+				BuildId: "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -345,9 +347,11 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			BuildIds:    []string{"some-build-id"},
 			BuildVariants: []model.VersionBuildStatus{{
 				BuildVariant: "some-build-variant",
-				Activated:    true,
-				ActivateAt:   time.Now().Add(-20 * time.Minute),
-				BuildId:      "some-build-id"}},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-20 * time.Minute),
+				},
+				BuildId: "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -421,17 +425,24 @@ func TestActivateVersion(t *testing.T) {
 		So(build.Insert(), ShouldBeNil)
 
 		v := &model.Version{
-			Id:                  versionId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			Revision:            fmt.Sprintf("%x", rand.Int()),
-			Author:              "some-author",
-			AuthorEmail:         "some-email",
-			Message:             "some-message",
-			Status:              "success",
-			BuildIds:            []string{build.Id},
-			BuildVariants:       []model.VersionBuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}}, // nolint
+			Id:          versionId,
+			CreateTime:  time.Now().Add(-20 * time.Minute),
+			StartTime:   time.Now().Add(-10 * time.Minute),
+			FinishTime:  time.Now().Add(-5 * time.Second),
+			Revision:    fmt.Sprintf("%x", rand.Int()),
+			Author:      "some-author",
+			AuthorEmail: "some-email",
+			Message:     "some-message",
+			Status:      "success",
+			BuildIds:    []string{build.Id},
+			BuildVariants: []model.VersionBuildStatus{{
+				BuildVariant: "some-build-variant",
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-20 * time.Minute),
+				},
+				BuildId: "some-build-id"},
+			}, // nolint
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",

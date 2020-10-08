@@ -833,7 +833,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskIDs:        taskIds,
 			TaskNames:      taskNames,
 			BuildName:      buildvariant.Name,
-			Activated:      false,
+			ActivateBuild:  false,
 			SourceRev:      sourceRev,
 			DefinitionID:   metadata.TriggerDefinitionID,
 			Aliases:        aliases,
@@ -853,20 +853,45 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			continue
 		}
 		buildsToCreate = append(buildsToCreate, *b)
+		taskNameToId := map[string]string{}
 		for _, t := range tasks {
+			taskNameToId[t.DisplayName] = t.Id
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
-		activateAt := time.Now()
+		activateVariantAt := time.Now()
+		taskStatuses := []model.BatchTimeTaskStatus{}
 		if metadata.TriggerID == "" && evergreen.ShouldConsiderBatchtime(v.Requester) {
-			res, err := projectInfo.Ref.GetActivationTime(&buildvariant)
+			res, err := projectInfo.Ref.GetActivationTimeForVariant(&buildvariant)
 			if err == nil {
-				activateAt = res
+				activateVariantAt = res
 			}
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error finding last activated",
 				"version": v.Id,
 			}))
+
+			// add only tasks that require activation times
+			for _, bvt := range buildvariant.Tasks {
+				tId, ok := taskNameToId[bvt.Name]
+				if !ok || !bvt.HasBatchTime() {
+					continue
+				}
+				bvt.Variant = buildvariant.Name
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
+				if err != nil {
+
+				}
+				taskStatuses = append(taskStatuses,
+					model.BatchTimeTaskStatus{
+						TaskName: bvt.Name,
+						TaskId:   tId,
+						ActivationStatus: model.ActivationStatus{
+							ActivateAt: activateTaskAt,
+							Activated:  false,
+						},
+					})
+			}
 		}
 
 		grip.Debug(message.Fields{
@@ -874,15 +899,18 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"name":    buildvariant.Name,
 			"project": projectInfo.Ref.Identifier,
 			"version": v.Id,
-			"time":    activateAt,
+			"time":    activateVariantAt,
 			"runner":  RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
-			BuildVariant: buildvariant.Name,
-			Activated:    false,
-			ActivateAt:   activateAt,
-			BuildId:      b.Id,
+			BuildVariant:   buildvariant.Name,
+			BuildId:        b.Id,
+			BatchTimeTasks: taskStatuses,
+			ActivationStatus: model.ActivationStatus{
+				ActivateAt: activateVariantAt,
+				Activated:  false,
+			},
 		})
 	}
 

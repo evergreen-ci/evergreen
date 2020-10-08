@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"sort"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,4 +161,44 @@ func TestVersionExistsForCommitQueueIssue(t *testing.T) {
 			assert.False(t, exists)
 		})
 	}
+}
+
+func TestBuildVariantsStatusUnmarshal(t *testing.T) {
+	str := `
+{
+	"id" : "myVersion",
+	"build_variants_status" : [
+		{
+			"id" : "b1_name",
+			"activated" : true,
+			"activate_at" : "2020-10-06T15:00:21.239Z",
+			"build_id" : "b1",
+            "batchtime_tasks": [
+                {
+                    "task_id": "t1",
+                    "task_name": "t1_name",
+                    "activated": false
+                }
+            ]
+		}
+	]
+}
+`
+	v := Version{}
+	assert.NoError(t, json.Unmarshal([]byte(str), &v))
+	assert.NotEmpty(t, v)
+	assert.Equal(t, "myVersion", v.Id)
+
+	require.Len(t, v.BuildVariants, 1)
+	bv := v.BuildVariants[0]
+	assert.Equal(t, "b1", bv.BuildId)
+	assert.Equal(t, "b1_name", bv.BuildVariant)
+	assert.True(t, bv.Activated)
+	assert.False(t, utility.IsZeroTime(bv.ActivateAt))
+
+	require.Len(t, bv.BatchTimeTasks, 1)
+	assert.Equal(t, bv.BatchTimeTasks[0].TaskId, "t1")
+	assert.Equal(t, bv.BatchTimeTasks[0].TaskName, "t1_name")
+	assert.Equal(t, bv.BatchTimeTasks[0].Activated, false)
+	assert.True(t, utility.IsZeroTime(bv.BatchTimeTasks[0].ActivateAt))
 }
