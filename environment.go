@@ -216,24 +216,23 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 }
 
 type envState struct {
-	remoteQueue        amboy.Queue
-	localQueue         amboy.Queue
-	remoteQueueGroup   amboy.QueueGroup
-	notificationsQueue amboy.Queue
-	ctx                context.Context
-	jasperManager      jasper.Manager
-	depot              certdepot.Depot
-	settings           *Settings
-	dbName             string
-	client             *mongo.Client
-	mu                 sync.RWMutex
-	clientConfig       *ClientConfig
-	closers            []closerOp
-	senders            map[SenderKey]send.Sender
-	roleManager        gimlet.RoleManager
-	userManager        gimlet.UserManager
-	userManagerInfo    UserManagerInfo
-	// ShutdownSequenceStarted is true iff the shutdown sequence has been started
+	remoteQueue             amboy.Queue
+	localQueue              amboy.Queue
+	remoteQueueGroup        amboy.QueueGroup
+	notificationsQueue      amboy.Queue
+	ctx                     context.Context
+	jasperManager           jasper.Manager
+	depot                   certdepot.Depot
+	settings                *Settings
+	dbName                  string
+	client                  *mongo.Client
+	mu                      sync.RWMutex
+	clientConfig            *ClientConfig
+	closers                 []closerOp
+	senders                 map[SenderKey]send.Sender
+	roleManager             gimlet.RoleManager
+	userManager             gimlet.UserManager
+	userManagerInfo         UserManagerInfo
 	shutdownSequenceStarted bool
 }
 
