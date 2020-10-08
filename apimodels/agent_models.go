@@ -19,6 +19,7 @@ const (
 	DefaultTeardownTimeoutSecs      = 21600
 	DefaultContainerWaitTimeoutSecs = 600
 	DefaultPollFrequency            = 30
+	DefaultRetries                  = 2
 )
 
 // TaskStartRequest holds information sent by the agent to the
@@ -231,8 +232,8 @@ func (ch *CreateHost) validateAgentOptions() error {
 	if ch.Retries > 10 {
 		catcher.New("retries must not be greater than 10")
 	}
-	if ch.Retries < 1 {
-		ch.Retries = 1
+	if ch.Retries <= 0 {
+		ch.Retries = DefaultRetries
 	}
 	if ch.Scope == "" {
 		ch.Scope = ScopeTask

@@ -798,7 +798,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				submitted++
 			}
 
-			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
+			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 0, false)))
 		}
 
 		if throttleCount > 0 {
