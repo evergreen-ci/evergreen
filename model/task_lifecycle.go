@@ -1175,7 +1175,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
-	hasUnstartedTasks := false
+	hasDispatchableTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := utility.ZeroTime
 	for _, execTask := range execTasks {
@@ -1186,8 +1186,8 @@ func UpdateDisplayTask(t *task.Task) error {
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		}
-		if execTask.IsDispatchable() {
-			hasUnstartedTasks = true
+		if execTask.IsDispatchable() && !execTask.Blocked() {
+			hasDispatchableTasks = true
 		}
 
 		// add up the duration of the execution tasks as the cumulative time taken
@@ -1204,8 +1204,8 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
-	if hasFinishedTasks && hasUnstartedTasks {
-		// if the display task has a mix of finished and unfinished tasks, the display task is still
+	if hasFinishedTasks && hasDispatchableTasks {
+		// if an unblocked display task has a mix of finished and unfinished tasks, the display task is still
 		// "started" even if there aren't currently running tasks
 		statusTask.Status = evergreen.TaskStarted
 		statusTask.Details = apimodels.TaskEndDetail{}
@@ -1221,7 +1221,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
-	if endTime != utility.ZeroTime && !hasUnstartedTasks {
+	if endTime != utility.ZeroTime && !hasDispatchableTasks {
 		update[task.FinishTimeKey] = endTime
 	}
 
