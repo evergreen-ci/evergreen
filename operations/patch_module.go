@@ -59,7 +59,7 @@ func PatchSetModule() cli.Command {
 				return errors.Wrapf(err, "problem getting patch '%s'", existingPatch.Id)
 			}
 			if existingPatch.IsCommitQueuePatch() {
-				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit-queue patches")
+				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")
 			}
 
 			preserveCommits = preserveCommits || conf.PreserveCommits

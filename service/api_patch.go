@@ -365,7 +365,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	if p.IsCommitQueuePatch() {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't modify a commit-queue patch"))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't modify a commit queue patch"))
 		return
 	}
 	// dispatch to handlers based on specified action
