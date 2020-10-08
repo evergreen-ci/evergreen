@@ -2847,6 +2847,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 			"task7",
 			"task8",
 			"task9",
+			"task10",
 		},
 	}
 	assert.NoError(blockedDt.Insert())
@@ -2919,6 +2920,12 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		Status:    evergreen.TaskFailed,
 	}
 	assert.NoError(task9.Insert())
+	task10 := task.Task{
+		Id:        "task10",
+		Activated: true,
+		Status:    evergreen.TaskUndispatched,
+	}
+	assert.NoError(task10.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTask(&dt))
@@ -2935,7 +2942,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	// test that you can't update an execution task
 	assert.Error(UpdateDisplayTask(&task1))
 
-	// test that a display task with a finished + unstarted task is "scheduled"
+	// test that a display task with a finished + unstarted task is "started"
 	assert.NoError(UpdateDisplayTask(&dt2))
 	dbTask, err = task.FindOne(task.ById(dt2.Id))
 	assert.NoError(err)
@@ -2950,7 +2957,15 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(events, 0)
 
+	// a blocked execution task + unblocked unfinshed tasks should still be "started"
+	assert.NoError(UpdateDisplayTask(&blockedDt))
+	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+
 	// a blocked execution task should not contribute to the status
+	assert.NoError(task10.MarkFailed())
 	assert.NoError(UpdateDisplayTask(&blockedDt))
 	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
 	assert.NoError(err)
