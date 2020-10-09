@@ -659,7 +659,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	// update the build to hold the new tasks
-	if err := RefreshTasksCache(b.Id); err != nil {
+	if err = RefreshTasksCache(b.Id); err != nil {
 		return nil, nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
 	}
 
