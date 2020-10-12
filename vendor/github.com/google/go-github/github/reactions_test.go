@@ -7,10 +7,58 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
 )
+
+func TestReaction_Marshal(t *testing.T) {
+	testJSONMarshal(t, &Reaction{}, "{}")
+
+	r := &Reaction{
+		ID:      Int64(1),
+		User:    nil,
+		NodeID:  String("n"),
+		Content: String("+1"),
+	}
+
+	want := `{
+		"id": 1,
+		"node_id": "n",
+		"content": "+1"
+	}`
+
+	testJSONMarshal(t, r, want)
+}
+
+func TestReactions_Marshal(t *testing.T) {
+	testJSONMarshal(t, &Reactions{}, "{}")
+
+	r := &Reactions{
+		TotalCount: Int(1),
+		PlusOne:    Int(1),
+		MinusOne:   Int(1),
+		Laugh:      Int(1),
+		Confused:   Int(1),
+		Heart:      Int(1),
+		Hooray:     Int(1),
+		URL:        String("u"),
+	}
+
+	want := `{
+		"total_count": 1,
+		"+1": 1,
+		"-1": 1,
+		"laugh": 1,
+		"confused": 1,
+		"heart": 1,
+		"hooray": 1,
+		"url": "u"
+	}`
+
+	testJSONMarshal(t, r, want)
+}
 
 func TestReactionsService_ListCommentReactions(t *testing.T) {
 	client, mux, _, teardown := setup()
@@ -20,17 +68,18 @@ func TestReactionsService_ListCommentReactions(t *testing.T) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
+		testFormValues(t, r, values{"content": "+1"})
+		fmt.Fprint(w, `[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`)
 	})
 
-	got, _, err := client.Reactions.ListCommentReactions(context.Background(), "o", "r", 1, nil)
+	opt := &ListCommentReactionOptions{Content: "+1"}
+	reactions, _, err := client.Reactions.ListCommentReactions(context.Background(), "o", "r", 1, opt)
 	if err != nil {
 		t.Errorf("ListCommentReactions returned error: %v", err)
 	}
 	want := []*Reaction{{ID: Int64(1), User: &User{Login: String("l"), ID: Int64(2)}, Content: String("+1")}}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("ListCommentReactions = %+v, want %+v", got, want)
+	if !reflect.DeepEqual(reactions, want) {
+		t.Errorf("ListCommentReactions = %+v, want %+v", reactions, want)
 	}
 }
 

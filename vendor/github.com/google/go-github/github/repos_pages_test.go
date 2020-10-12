@@ -7,10 +7,10 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -18,14 +18,29 @@ func TestRepositoriesService_EnablePages(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
+	input := &Pages{
+		Source: &PagesSource{
+			Branch: String("master"),
+			Path:   String("/"),
+		},
+		CNAME: String("www.my-domain.com"), // not passed along.
+	}
+
 	mux.HandleFunc("/repos/o/r/pages", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createPagesRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
 		testMethod(t, r, "POST")
-		wantAcceptHeaders := []string{mediaTypeEnablePagesAPIPreview, mediaTypePagesPreview}
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeEnablePagesAPIPreview)
+		want := &createPagesRequest{Source: &PagesSource{Branch: String("master"), Path: String("/")}}
+		if !reflect.DeepEqual(v, want) {
+			t.Errorf("Request body = %+v, want %+v", v, want)
+		}
+
 		fmt.Fprint(w, `{"url":"u","status":"s","cname":"c","custom_404":false,"html_url":"h", "source": {"branch":"master", "path":"/"}}`)
 	})
 
-	page, _, err := client.Repositories.EnablePages(context.Background(), "o", "r")
+	page, _, err := client.Repositories.EnablePages(context.Background(), "o", "r", input)
 	if err != nil {
 		t.Errorf("Repositories.EnablePages returned error: %v", err)
 	}
@@ -58,7 +73,6 @@ func TestRepositoriesService_GetPagesInfo(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/pages", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypePagesPreview)
 		fmt.Fprint(w, `{"url":"u","status":"s","cname":"c","custom_404":false,"html_url":"h"}`)
 	})
 
@@ -157,7 +171,6 @@ func TestRepositoriesService_RequestPageBuild(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/pages/builds", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypePagesPreview)
 		fmt.Fprint(w, `{"url":"u","status":"s"}`)
 	})
 

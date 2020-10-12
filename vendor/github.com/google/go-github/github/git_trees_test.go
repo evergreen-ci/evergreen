@@ -6,9 +6,10 @@
 package github
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
@@ -68,17 +69,16 @@ func TestGitService_CreateTree(t *testing.T) {
 	}
 
 	mux.HandleFunc("/repos/o/r/git/trees", func(w http.ResponseWriter, r *http.Request) {
-		v := new(createTree)
-		json.NewDecoder(r.Body).Decode(v)
+		got, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("unable to read body: %v", err)
+		}
 
 		testMethod(t, r, "POST")
 
-		want := &createTree{
-			BaseTree: "b",
-			Entries:  input,
-		}
-		if !reflect.DeepEqual(v, want) {
-			t.Errorf("Git.CreateTree request body: %+v, want %+v", v, want)
+		want := []byte(`{"base_tree":"b","tree":[{"sha":"7c258a9869f33c1e1e1f74fbb32f07c86cb5a75b","path":"file.rb","mode":"100644","type":"blob"}]}` + "\n")
+		if !bytes.Equal(got, want) {
+			t.Errorf("Git.CreateTree request body: %s, want %s", got, want)
 		}
 
 		fmt.Fprint(w, `{
@@ -132,17 +132,16 @@ func TestGitService_CreateTree_Content(t *testing.T) {
 	}
 
 	mux.HandleFunc("/repos/o/r/git/trees", func(w http.ResponseWriter, r *http.Request) {
-		v := new(createTree)
-		json.NewDecoder(r.Body).Decode(v)
+		got, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("unable to read body: %v", err)
+		}
 
 		testMethod(t, r, "POST")
 
-		want := &createTree{
-			BaseTree: "b",
-			Entries:  input,
-		}
-		if !reflect.DeepEqual(v, want) {
-			t.Errorf("Git.CreateTree request body: %+v, want %+v", v, want)
+		want := []byte(`{"base_tree":"b","tree":[{"path":"content.md","mode":"100644","content":"file content"}]}` + "\n")
+		if !bytes.Equal(got, want) {
+			t.Errorf("Git.CreateTree request body: %s, want %s", got, want)
 		}
 
 		fmt.Fprint(w, `{
@@ -175,6 +174,71 @@ func TestGitService_CreateTree_Content(t *testing.T) {
 				Type: String("blob"),
 				Size: Int(12),
 				SHA:  String("aad8feacf6f8063150476a7b2bd9770f2794c08b"),
+				URL:  String("https://api.github.com/repos/o/r/git/blobs/aad8feacf6f8063150476a7b2bd9770f2794c08b"),
+			},
+		},
+		nil,
+	}
+
+	if !reflect.DeepEqual(*tree, want) {
+		t.Errorf("Git.CreateTree returned %+v, want %+v", *tree, want)
+	}
+}
+
+func TestGitService_CreateTree_Delete(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	input := []TreeEntry{
+		{
+			Path: String("content.md"),
+			Mode: String("100644"),
+		},
+	}
+
+	mux.HandleFunc("/repos/o/r/git/trees", func(w http.ResponseWriter, r *http.Request) {
+		got, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("unable to read body: %v", err)
+		}
+
+		testMethod(t, r, "POST")
+
+		want := []byte(`{"base_tree":"b","tree":[{"sha":null,"path":"content.md","mode":"100644"}]}` + "\n")
+		if !bytes.Equal(got, want) {
+			t.Errorf("Git.CreateTree request body: %s, want %s", got, want)
+		}
+
+		fmt.Fprint(w, `{
+		  "sha": "5c6780ad2c68743383b740fd1dab6f6a33202b11",
+		  "url": "https://api.github.com/repos/o/r/git/trees/5c6780ad2c68743383b740fd1dab6f6a33202b11",
+		  "tree": [
+		    {
+			  "mode": "100644",
+			  "type": "blob",
+			  "sha":  null,
+			  "path": "content.md",
+			  "size": 12,
+			  "url": "https://api.github.com/repos/o/r/git/blobs/aad8feacf6f8063150476a7b2bd9770f2794c08b"
+		    }
+		  ]
+		}`)
+	})
+
+	tree, _, err := client.Git.CreateTree(context.Background(), "o", "r", "b", input)
+	if err != nil {
+		t.Errorf("Git.CreateTree returned error: %v", err)
+	}
+
+	want := Tree{
+		String("5c6780ad2c68743383b740fd1dab6f6a33202b11"),
+		[]TreeEntry{
+			{
+				Path: String("content.md"),
+				Mode: String("100644"),
+				Type: String("blob"),
+				Size: Int(12),
+				SHA:  nil,
 				URL:  String("https://api.github.com/repos/o/r/git/blobs/aad8feacf6f8063150476a7b2bd9770f2794c08b"),
 			},
 		},
