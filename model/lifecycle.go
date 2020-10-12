@@ -674,17 +674,13 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 			return nil, nil, errors.Errorf("project '%s' not found", project.Identifier)
 		}
 	}
+	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		if !utility.StringSliceContains(tasksWithBatchTime, t.DisplayName) {
 			continue
 		}
 		activateTaskAt, err := pRef.GetActivationTimeForTask(project.FindTaskForVariant(t.DisplayName, b.BuildVariant))
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to get activation time for task",
-			"variant": b.BuildVariant,
-			"task":    t.DisplayName,
-			"version": v.Id,
-		}))
+		batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s'", t.DisplayName))
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
 			TaskId:   t.Id,
@@ -701,6 +697,12 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		}
 		v.BuildVariants[i].BatchTimeTasks = append(v.BuildVariants[i].BatchTimeTasks, batchTimeTaskStatuses...)
 	}
+	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+		"message": "unable to get activation time for tasks",
+		"variant": b.BuildVariant,
+		"runner":  "addTasksToBuild",
+		"version": v.Id,
+	}))
 
 	return b, tasks, nil
 }
@@ -1455,7 +1457,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "can't get create time for tasks")
 	}
-
+	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range tasks.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
@@ -1464,7 +1466,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		activateVariant := !batchTimeInfo.isBatchTimeVariant(pair.Variant)
+		activateVariant := !batchTimeInfo.variantHasBatchTime(pair.Variant)
 		tasksWithBatchtime := batchTimeInfo.batchTimeTasks(pair.Variant)
 		buildArgs := BuildCreateArgs{
 			Project:            *p,
@@ -1520,20 +1522,11 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
 			activateVariantAt, err = projectRef.GetActivationTimeForVariant(p.FindBuildVariant(pair.Variant))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to get activation time for variant",
-				"variant": pair.Variant,
-				"version": v.Id,
-			}))
+			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", pair.Variant))
 		}
 		for taskName, id := range batchTimeTasksToIds {
 			activateTaskAt, err := projectRef.GetActivationTimeForTask(p.FindTaskForVariant(taskName, pair.Variant))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to get activation time for task",
-				"variant": pair.Variant,
-				"task":    taskName,
-				"version": v.Id,
-			}))
+			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", taskName, pair.Variant))
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,
 				TaskName: taskName,
@@ -1554,6 +1547,12 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 			},
 		)
 	}
+
+	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+		"message": "unable to get all activation times",
+		"runner":  "addNewBuilds",
+		"version": v.Id,
+	}))
 
 	return newBuildIds, newTaskIds, errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},

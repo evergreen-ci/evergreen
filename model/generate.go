@@ -288,7 +288,7 @@ func newBatchTimeTasksAndVariants() batchTimeTasksAndVariants {
 	}
 }
 
-func (b *batchTimeTasksAndVariants) isBatchTimeVariant(variant string) bool {
+func (b *batchTimeTasksAndVariants) variantHasBatchTime(variant string) bool {
 	return utility.StringSliceContains(b.variants, variant)
 }
 
@@ -297,12 +297,7 @@ func (b *batchTimeTasksAndVariants) batchTimeTasks(variant string) []string {
 }
 
 func (b *batchTimeTasksAndVariants) hasAnyBatchTimeTasks() bool {
-	for _, tasks := range b.tasks {
-		if len(tasks) > 0 {
-			return true
-		}
-	}
-	return false
+	return len(b.tasks) > 0
 }
 
 // given some list of tasks, returns the tasks that don't have batchtime
@@ -324,7 +319,9 @@ func (g *GeneratedProject) findTasksAndVariantsWithBatchTime() batchTimeTasksAnd
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}
-		res.tasks[bv.name()] = batchTimeTasks
+		if len(batchTimeTasks) > 0 {
+			res.tasks[bv.name()] = batchTimeTasks
+		}
 	}
 	return res
 }
