@@ -489,6 +489,9 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 			return nil, nil, errors.Wrap(err, "problem expanding user data")
 		}
 		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
+		if err = validateUserDataSize(userData, h.Distro.Id); err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
 		launchTemplate.UserData = &userData
 	}
 
