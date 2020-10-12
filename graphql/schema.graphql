@@ -559,7 +559,6 @@ type Task {
   generatedByName: String
   generateTask: Boolean
   hostId: String
-  hostLink: String
   id: String!
   ingestTime: Time
   latestExecution: Int!

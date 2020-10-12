@@ -40,7 +40,6 @@ type APITask struct {
 	DependsOn          []APIDependency     `json:"depends_on"`
 	DisplayName        *string             `json:"display_name"`
 	HostId             *string             `json:"host_id"`
-	HostLink           *string             `json:"host_link"`
 	Restarts           int                 `json:"restarts"`
 	Execution          int                 `json:"execution"`
 	Order              int                 `json:"order"`
@@ -226,8 +225,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 
 		if v.HostId != "" {
-			hostLink := fmt.Sprintf("%s/host/%s", evergreen.GetEnvironment().Settings().Ui.Url, v.HostId)
-			at.HostLink = &hostLink
 			h, err := host.FindOneId(v.HostId)
 			if err != nil {
 				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)

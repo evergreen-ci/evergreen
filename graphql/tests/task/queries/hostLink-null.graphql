@@ -1,6 +1,0 @@
-{
-  task(taskId: "1") {
-    hostId
-    hostLink
-  }
-}

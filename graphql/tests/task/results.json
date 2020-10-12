@@ -140,28 +140,6 @@
       }
     },
     {
-      "query_file": "hostLink.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "hostId": "i-0bb70e2ac4c1a9ac8",
-            "hostLink": "http://localhost/host/i-0bb70e2ac4c1a9ac8"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "hostLink-null.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "hostId": "",
-            "hostLink": null
-          }
-        }
-      }
-    },
-    {
       "query_file": "spawnHostLink.graphql",
       "result": {
         "data": {
