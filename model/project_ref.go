@@ -68,6 +68,7 @@ type ProjectRef struct {
 
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
+	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
 	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
 
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
@@ -190,6 +191,7 @@ var (
 	ProjectRefDisabledStatsCache       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
+	ProjectRefGitTagAuthorizedTeamsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
 	projectRefTracksPushEventsKey      = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefDefaultLogger            = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
@@ -717,6 +719,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefDisabledStatsCache:       projectRef.DisabledStatsCache,
 				ProjectRefAdminsKey:                projectRef.Admins,
 				ProjectRefGitTagAuthorizedUsersKey: projectRef.GitTagAuthorizedUsers,
+				ProjectRefGitTagAuthorizedTeamsKey: projectRef.GitTagAuthorizedTeams,
 				projectRefTracksPushEventsKey:      projectRef.TracksPushEvents,
 				projectRefDefaultLogger:            projectRef.DefaultLogger,
 				projectRefPRTestingEnabledKey:      projectRef.PRTestingEnabled,
@@ -970,6 +973,28 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token string) (bool, error) {
+	if utility.StringSliceContains(p.GitTagAuthorizedUsers, user) {
+		return true, nil
+	}
+	// check authorized teams
+	if token == "" {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return false, errors.Wrap(err, "error getting settings")
+		}
+		token, err = settings.GetGithubOauthToken()
+		if err != nil {
+			return false, errors.Wrap(err, "error getting github token")
+		}
+	}
+	isMember, err := thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, user, token)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	return isMember, nil
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands

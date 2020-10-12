@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
@@ -712,7 +711,14 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 			v.RevisionOrderNumber = num
 		}
 	} else if metadata.GitTag.Tag != "" {
-		if !utility.StringSliceContains(ref.GitTagAuthorizedUsers, metadata.GitTag.Pusher) {
+		if !ref.GitTagVersionsEnabled {
+			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Identifier)
+		}
+		authorized, err := ref.AuthorizedForGitTag(context.Background(), metadata.GitTag.Pusher, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "error checking if user is authorized")
+		}
+		if !authorized {
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Identifier)
 		}

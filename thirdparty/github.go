@@ -480,6 +480,42 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	return
 }
 
+func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) (bool, error) {
+	httpClient := getGithubClient(oauthToken)
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	catcher := grip.NewBasicCatcher()
+	for _, team := range teams {
+		membership, resp, err := client.Teams.GetTeamMembershipBySlug(ctx, org, team, user)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "error validating team '%s'", team))
+			continue
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			var respBody []byte
+			respBody, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				catcher.Add(ResponseReadError{err.Error()})
+				continue
+			}
+			catcher.Add(APIResponseError{string(respBody)})
+			continue
+		}
+		if membership != nil && membership.GetState() == "active" {
+			return true, nil
+		}
+	}
+
+	return false, catcher.Resolve()
+}
+
 // GetGithubTokenUser fetches a github user associated with an oauth token, and
 // if requiredOrg is specified, checks that it belongs to that org.
 // Returns user object, if it was a member of the specified org (or false if not specified),
