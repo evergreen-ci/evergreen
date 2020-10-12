@@ -1312,7 +1312,7 @@ func checkResetDisplayTask(t *task.Task) error {
 		return errors.Wrapf(err, "can't get exec tasks for '%s'", t.Id)
 	}
 	for _, execTask := range execTasks {
-		if !execTask.IsFinished() && execTask.Activated {
+		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
 		}
 	}
