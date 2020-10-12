@@ -266,7 +266,7 @@ func validateUserDataSize(userData, distroID string) error {
 		return nil
 	}
 	err := errors.New("user data size limit exceeded")
-	grip.Critical(message.WrapError(err, message.Fields{
+	grip.Error(message.WrapError(err, message.Fields{
 		"size":     len(userData),
 		"max_size": userDataSizeLimit,
 		"distro":   distroID,
