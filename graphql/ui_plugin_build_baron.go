@@ -146,8 +146,8 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		if len(tickets) > 150 {
-			tickets = tickets[:150]
+		if len(tickets) > 20 {
+			tickets = tickets[:20]
 		}
 		grip.Debug(message.Fields{
 			"ticket":   "EVG-13069",
