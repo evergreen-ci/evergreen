@@ -1427,8 +1427,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
-// (see AddNewTasksForPatch).
-// TODO: change comment
+// (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
 	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 
