@@ -111,6 +111,7 @@ func deleteItem() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
+			showCQMessageForProject(ac, projectID)
 			return deleteCommitQueueItem(ctx, client, projectID, item)
 		},
 	}
