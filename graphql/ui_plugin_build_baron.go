@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -127,6 +128,12 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	if !ok {
 		projectNotFoundError = true
+		grip.Debug(message.Fields{
+			"ticket":   "EVG-13069",
+			"function": "GetSearchReturnInfo",
+			"line":     "134",
+			"taskId":   taskId,
+		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
@@ -137,11 +144,25 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	var tickets []thirdparty.JiraTicket
 	var source string
 
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
+		if len(tickets) > 20 {
+			tickets = tickets[:20]
+		}
+		grip.Debug(message.Fields{
+			"ticket":   "EVG-13069",
+			"function": "GetSearchReturnInfo",
+			"line":     "147",
+			"taskId":   taskId,
+			"err":      err,
+			"tickets":  tickets,
+			"source":   source,
+			"jql":      jql,
+		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
-	jql := t.GetJQL(bbProj.TicketSearchProjects)
+
 	var featuresURL string
 	if bbProj.BFSuggestionFeaturesURL != "" {
 		featuresURL = bbProj.BFSuggestionFeaturesURL
