@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -127,6 +128,9 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	if !ok {
 		projectNotFoundError = true
+		grip.Debug(message.Fields{
+			"message": "Chaya, ui_plugin_build_baron.go, 132",
+		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
@@ -139,9 +143,19 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
+		grip.Debug(message.Fields{
+			"message": "Chaya, graphql/ui_plugin_build_baron.go, 147",
+			"err":     err,
+			"tickets": tickets,
+			"source":  source,
+		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
+	grip.Debug(message.Fields{
+		"message": "Chaya, graphql/ui_plugin_build_baron.go, 156",
+		"jql":     jql,
+	})
 	var featuresURL string
 	if bbProj.BFSuggestionFeaturesURL != "" {
 		featuresURL = bbProj.BFSuggestionFeaturesURL

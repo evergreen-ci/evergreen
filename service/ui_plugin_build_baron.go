@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -120,6 +122,10 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		grip.Debug(message.Fields{
+			"message": "Chaya, service/ui_plugin_build_baron.go, 131",
+			"err":     err,
+		})
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
