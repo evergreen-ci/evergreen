@@ -663,15 +663,15 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 }
 
 func showCQMessageForProject(ac *legacyClient, projectID string) {
-	projectRef, err := ac.GetProjectRef(projectID)
-	if err == nil && projectRef.CommitQueue.Message != "" {
+	projectRef, _ := ac.GetProjectRef(projectID)
+	if projectRef != nil && projectRef.CommitQueue.Message != "" {
 		grip.Info(projectRef.CommitQueue.Message)
 	}
 }
 
 func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchID string) {
-	message, err := comm.GetMessageForPatch(ctx, patchID)
-	if err == nil && message != "" {
+	message, _ := comm.GetMessageForPatch(ctx, patchID)
+	if message != "" {
 		grip.Info(message)
 	}
 }
