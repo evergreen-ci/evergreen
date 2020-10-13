@@ -789,7 +789,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
 	}
 
-	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name))
+	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "error finding version")
 	}
