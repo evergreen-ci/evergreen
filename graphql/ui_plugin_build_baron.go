@@ -132,6 +132,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 			"ticket":   "EVG-13069",
 			"function": "GetSearchReturnInfo",
 			"line":     "134",
+			"taskId":   taskId,
 		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
@@ -153,6 +154,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 			"ticket":   "EVG-13069",
 			"function": "GetSearchReturnInfo",
 			"line":     "147",
+			"taskId":   taskId,
 			"err":      err,
 			"tickets":  tickets,
 			"source":   source,
