@@ -129,7 +129,9 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	if !ok {
 		projectNotFoundError = true
 		grip.Debug(message.Fields{
-			"message": "Chaya, ui_plugin_build_baron.go, 132",
+			"ticket":   "EVG-13069",
+			"function": "GetSearchReturnInfo",
+			"line":     "134",
 		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
@@ -141,21 +143,24 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	var tickets []thirdparty.JiraTicket
 	var source string
 
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
+		if len(tickets) > 150 {
+			tickets = tickets[:150]
+		}
 		grip.Debug(message.Fields{
-			"message": "Chaya, graphql/ui_plugin_build_baron.go, 147",
-			"err":     err,
-			"tickets": tickets,
-			"source":  source,
+			"ticket":   "EVG-13069",
+			"function": "GetSearchReturnInfo",
+			"line":     "147",
+			"err":      err,
+			"tickets":  tickets,
+			"source":   source,
+			"jql":      jql,
 		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
-	jql := t.GetJQL(bbProj.TicketSearchProjects)
-	grip.Debug(message.Fields{
-		"message": "Chaya, graphql/ui_plugin_build_baron.go, 156",
-		"jql":     jql,
-	})
+
 	var featuresURL string
 	if bbProj.BFSuggestionFeaturesURL != "" {
 		featuresURL = bbProj.BFSuggestionFeaturesURL
