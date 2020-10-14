@@ -119,7 +119,7 @@ func Update() cli.Command {
 					// use to be deleted, wait 2 seconds for the CLI process to
 					// exit and then delete it.
 					cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
-					if err := cmd.Start(); err != nil {
+					if err = cmd.Start(); err != nil {
 						return err
 					}
 				}
