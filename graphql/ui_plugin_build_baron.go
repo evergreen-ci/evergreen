@@ -128,12 +128,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 
 	if !ok {
 		projectNotFoundError = true
-		grip.Debug(message.Fields{
-			"ticket":   "EVG-13069",
-			"function": "GetSearchReturnInfo",
-			"line":     "134",
-			"taskId":   taskId,
-		})
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
 
@@ -147,19 +141,16 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		if len(tickets) > 20 {
-			tickets = tickets[:20]
-		}
-		grip.Debug(message.Fields{
-			"ticket":   "EVG-13069",
-			"function": "GetSearchReturnInfo",
-			"line":     "147",
-			"taskId":   taskId,
-			"err":      err,
-			"tickets":  tickets,
-			"source":   source,
-			"jql":      jql,
-		})
+		grip.Debug(message.WrapError(err, message.Fields{
+			"ticket":        "EVG-13069",
+			"function":      "GetSearchReturnInfo",
+			"line":          "147",
+			"taskId":        taskId,
+			"tickets":       tickets,
+			"ticket length": len(tickets),
+			"source":        source,
+			"jql":           jql,
+		}))
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
 
