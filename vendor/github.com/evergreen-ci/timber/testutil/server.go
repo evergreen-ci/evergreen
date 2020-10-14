@@ -31,8 +31,8 @@ type MockMetricsServer struct {
 	DialOpts   timber.DialCedarOptions
 }
 
-// NewMockMetricsServer will return a new MockMetricsServer listening on
-// a port near the provided port.
+// NewMockMetricsServer will return a new MockMetricsServer listening on a port
+// near the provided port.
 func NewMockMetricsServer(ctx context.Context, basePort int) (*MockMetricsServer, error) {
 	srv := &MockMetricsServer{}
 	port := GetPortNumber(basePort)
@@ -60,8 +60,8 @@ func NewMockMetricsServer(ctx context.Context, basePort int) (*MockMetricsServer
 	return srv, nil
 }
 
-// NewMockMetricsServerWithDialOpts will return a new MockMetricsServer listening
-// on the port and url from the specified dial options
+// NewMockMetricsServerWithDialOpts will return a new MockMetricsServer
+// listening on the port and url from the specified dial options.
 func NewMockMetricsServerWithDialOpts(ctx context.Context, opts timber.DialCedarOptions) (*MockMetricsServer, error) {
 	srv := &MockMetricsServer{}
 	srv.DialOpts = opts
@@ -88,8 +88,8 @@ func (ms *MockMetricsServer) Address() string {
 	return fmt.Sprintf("%s:%s", ms.DialOpts.BaseAddress, ms.DialOpts.RPCPort)
 }
 
-// CreateSystemMetricsRecord will return an error if CreateErr is true, and
-// otherwise set Create to the given input.
+// CreateSystemMetricsRecord returns an error if CreateErr is true, otherwise
+// it sets Create to the input.
 func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *internal.SystemMetrics) (*internal.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
@@ -103,8 +103,8 @@ func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *in
 	}, nil
 }
 
-// AddSystemMetrics will return an error if AddErr is true, and
-// otherwise add the input to Data.
+// AddSystemMetrics returns an error if AddErr is true, otherwise it adds the
+// input to Data.
 func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.SystemMetricsData) (*internal.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
@@ -121,8 +121,8 @@ func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.Sy
 	}, nil
 }
 
-// StreamSystemMetrics will, when receiving from the stream, return an error
-// if StreamErr is true, and otherwise add the stream input to StreamData.
+// StreamSystemMetrics, when receiving from the stream, returns an error if
+// if StreamErr is true, otherwise it adds the stream input to StreamData.
 func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetrics_StreamSystemMetricsServer) error {
 	ctx := stream.Context()
 	id := ""
@@ -162,8 +162,8 @@ func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetr
 	}
 }
 
-// CloseMetrics will return an error if CloseErr is true, and otherwise set
-// Close to the given input.
+// CloseMetrics returns an error if CloseErr is true, otherwise sets Close to
+// the input.
 func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *internal.SystemMetricsSeriesEnd) (*internal.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
@@ -177,7 +177,8 @@ func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *internal.System
 	}, nil
 }
 
-// MockTestResultsServer sets up a mock Cedar server for sending test results using gRPC.
+// MockTestResultsServer sets up a mock Cedar server for sending test results
+// using gRPC.
 type MockTestResultsServer struct {
 	CreateErr     bool
 	AddErr        bool
@@ -195,8 +196,8 @@ func (ms *MockTestResultsServer) Address() string {
 	return fmt.Sprintf("%s:%s", ms.DialOpts.BaseAddress, ms.DialOpts.RPCPort)
 }
 
-// NewMockTestResultsServer will return a new MockTestResultsServer listening on
-// a port near the provided port.
+// NewMockTestResultsServer returns a new MockTestResultsServer listening on a
+// port near the provided port.
 func NewMockTestResultsServer(ctx context.Context, basePort int) (*MockTestResultsServer, error) {
 	srv := &MockTestResultsServer{}
 	port := GetPortNumber(basePort)
@@ -224,8 +225,8 @@ func NewMockTestResultsServer(ctx context.Context, basePort int) (*MockTestResul
 	return srv, nil
 }
 
-// NewMockTestResultsServerWithDialOpts will return a new MockTestResultsServer listening
-// on the port and url from the specified dial options.
+// NewMockTestResultsServerWithDialOpts returns a new MockTestResultsServer
+// listening on the port and url from the specified dial options.
 func NewMockTestResultsServerWithDialOpts(ctx context.Context, opts timber.DialCedarOptions) (*MockTestResultsServer, error) {
 	srv := &MockTestResultsServer{}
 	srv.DialOpts = opts
@@ -247,8 +248,8 @@ func NewMockTestResultsServerWithDialOpts(ctx context.Context, opts timber.DialC
 	return srv, nil
 }
 
-// CreateTestResultsRecord will return an error if CreateErr is true, and
-// otherwise set Create to the input.
+// CreateTestResultsRecord returns an error if CreateErr is true, otherwise it
+// sets Create to the input.
 func (m *MockTestResultsServer) CreateTestResultsRecord(_ context.Context, in *internal.TestResultsInfo) (*internal.TestResultsResponse, error) {
 	if m.CreateErr {
 		return nil, errors.New("create error")
@@ -257,8 +258,8 @@ func (m *MockTestResultsServer) CreateTestResultsRecord(_ context.Context, in *i
 	return &internal.TestResultsResponse{TestResultsRecordId: utility.RandomString()}, nil
 }
 
-// AddTestResults will return an error if AddErr is true, and
-// otherwise set Results to true.
+// AddTestResults returns an error if AddErr is true, otherwise it adds the
+// input to Results.
 func (m *MockTestResultsServer) AddTestResults(_ context.Context, in *internal.TestResults) (*internal.TestResultsResponse, error) {
 	if m.AddErr {
 		return nil, errors.New("add error")
@@ -270,18 +271,140 @@ func (m *MockTestResultsServer) AddTestResults(_ context.Context, in *internal.T
 	return &internal.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
 }
 
-// Stream
-// if StreamErr is true, and otherwise set Stream to true.
+// StreamTestResults returns a not implemented error.
 func (ms *MockTestResultsServer) StreamTestResults(internal.CedarTestResults_StreamTestResultsServer) error {
 	return errors.New("not implemented")
 }
 
-// CloseTestResults will return an error if CloseErr is true, and otherwise set
-// Close to true.
+// CloseTestResults returns an error if CloseErr is true, otherwise it sets
+// Close to the input.
 func (m *MockTestResultsServer) CloseTestResultsRecord(_ context.Context, in *internal.TestResultsEndInfo) (*internal.TestResultsResponse, error) {
 	if m.CloseErr {
 		return nil, errors.New("close error")
 	}
 	m.Close = in
 	return &internal.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
+}
+
+// MockBuildloggerServer sets up a mock cedar server for testing buildlogger
+// logs to cedar using gRPC.
+type MockBuildloggerServer struct {
+	Mu        sync.Mutex
+	CreateErr bool
+	AppendErr bool
+	CloseErr  bool
+	Create    *internal.LogData
+	Data      map[string][]*internal.LogLines
+	Close     *internal.LogEndInfo
+	DialOpts  timber.DialCedarOptions
+}
+
+// NewMockBuildloggerServer returns a new MockBuildloggerServer listening on a
+// port near the provided port.
+func NewMockBuildloggerServer(ctx context.Context, basePort int) (*MockBuildloggerServer, error) {
+	srv := &MockBuildloggerServer{
+		Data: make(map[string][]*internal.LogLines),
+	}
+	port := GetPortNumber(basePort)
+
+	srv.DialOpts = timber.DialCedarOptions{
+		BaseAddress: "localhost",
+		RPCPort:     strconv.Itoa(port),
+	}
+
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	s := grpc.NewServer()
+	internal.RegisterBuildloggerServer(s, srv)
+
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+	return srv, nil
+}
+
+// NewMockBuildloggerServerWithDialOpts returns a new MockBuildloggerServer
+// listening on the port and url from the specified dial options.
+func NewMockBuildloggerServerWithDialOpts(ctx context.Context, opts timber.DialCedarOptions) (*MockBuildloggerServer, error) {
+	srv := &MockBuildloggerServer{}
+	srv.DialOpts = opts
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	s := grpc.NewServer()
+	internal.RegisterBuildloggerServer(s, srv)
+
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+	return srv, nil
+}
+
+// Address returns the address the server is listening on.
+func (ms *MockBuildloggerServer) Address() string {
+	return fmt.Sprintf("%s:%s", ms.DialOpts.BaseAddress, ms.DialOpts.RPCPort)
+}
+
+// CreateLog returns an error if CreateErr is true, otherwise it sets Create to
+// the input.
+func (ms *MockBuildloggerServer) CreateLog(_ context.Context, in *internal.LogData) (*internal.BuildloggerResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
+	if ms.CreateErr {
+		return nil, errors.New("create error")
+	}
+
+	ms.Create = in
+	return &internal.BuildloggerResponse{}, nil
+}
+
+// AppendLogLines returns an error if AppendErr is true, otherwise it adds the
+// input to Data.
+func (ms *MockBuildloggerServer) AppendLogLines(_ context.Context, in *internal.LogLines) (*internal.BuildloggerResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
+	if ms.AppendErr {
+		return nil, errors.New("append error")
+	}
+
+	if ms.Data == nil {
+		ms.Data = make(map[string][]*internal.LogLines)
+	}
+	ms.Data[in.LogId] = append(ms.Data[in.LogId], in)
+
+	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
+}
+
+// StreamLogLines returns a not implemented error.
+func (ms *MockBuildloggerServer) StreamLogLines(in internal.Buildlogger_StreamLogLinesServer) error {
+	return errors.New("not implemented")
+}
+
+// CloseLog returns an error if CloseErr is true, otherwise it sets Close to
+// the input.
+func (ms *MockBuildloggerServer) CloseLog(_ context.Context, in *internal.LogEndInfo) (*internal.BuildloggerResponse, error) {
+	ms.Mu.Lock()
+	defer ms.Mu.Unlock()
+
+	if ms.CloseErr {
+		return nil, errors.New("close error")
+	}
+
+	ms.Close = in
+	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
 }
