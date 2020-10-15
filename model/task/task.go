@@ -2455,6 +2455,12 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+var taskFailureStatuses []string = []string{
+	evergreen.TaskFailed,
+	evergreen.TaskTestTimedOut,
+	evergreen.TaskTimedOut,
+}
+
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
@@ -2484,15 +2490,50 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		countPipeline = append(countPipeline, stage)
 	}
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
-	sorters := bson.D{}
+
 	if len(sortBy) > 0 {
-		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+		if sortBy == DisplayStatusKey {
+			// sort all failed statuses to the top
+			pipeline = append(pipeline, bson.M{
+				"$project": bson.M{
+					"first": bson.M{
+						"$cond": bson.M{
+							"if": bson.M{
+								"$or": bson.A{
+									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskFailed}},
+									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskTestTimedOut}},
+									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskTimedOut}},
+								},
+							},
+							"then": true,
+							"else": false,
+						},
+					},
+					DisplayStatusKey: "$" + DisplayStatusKey,
+				},
+			})
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.M{
+					"first":          -1,
+					DisplayStatusKey: 1,
+				},
+			})
+			pipeline = append(pipeline, bson.M{
+				"$project": bson.M{
+					DisplayStatusKey: 1,
+				},
+			})
+		} else {
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.M{
+					sortBy: sortDir,
+					// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+					IdKey: 1,
+				},
+			})
+		}
 	}
-	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
-	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
-	pipeline = append(pipeline, bson.M{
-		"$sort": sorters,
-	})
+
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$skip": page * limit,
