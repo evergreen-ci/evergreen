@@ -85,12 +85,21 @@ func Update() cli.Command {
 					return errors.Errorf("Failed to get installation path: %s", err)
 				}
 
-				grip.Infoln("Unlinking existing binary at", binaryDest)
-				err = syscall.Unlink(binaryDest)
-				if err != nil {
-					return err
+				winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
+				winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
+				if runtime.GOOS == "windows" {
+					grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
+					if err = os.Rename(binaryDest, winTempDest); err != nil {
+						return err
+					}
+				} else {
+					grip.Infoln("Unlinking existing binary at", binaryDest)
+					if err = syscall.Unlink(binaryDest); err != nil {
+						return err
+					}
 				}
-				grip.Infoln("Moving upgraded binary to:", binaryDest)
+
+				grip.Infoln("Moving upgraded binary to", binaryDest)
 				err = copyFile(binaryDest, updatedBin)
 				if err != nil {
 					return err
@@ -102,6 +111,19 @@ func Update() cli.Command {
 					return err
 				}
 				grip.Info("Upgrade complete!")
+
+				if runtime.GOOS == "windows" {
+					grip.Infoln("Deleting old binary", winTempDest)
+					// Source: https://stackoverflow.com/a/19748576
+					// Since Windows does not allow a binary that's currently in
+					// use to be deleted, wait 2 seconds for the CLI process to
+					// exit and then delete it.
+					cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
+					if err = cmd.Start(); err != nil {
+						return err
+					}
+				}
+
 				return nil
 			}
 
