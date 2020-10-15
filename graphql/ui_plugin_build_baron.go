@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -141,16 +140,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":        "EVG-13069",
-			"function":      "GetSearchReturnInfo",
-			"line":          "147",
-			"taskId":        taskId,
-			"tickets":       tickets,
-			"ticket length": len(tickets),
-			"source":        source,
-			"jql":           jql,
-		}))
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
 
@@ -216,7 +205,7 @@ func (js *JiraSuggest) GetTimeout() time.Duration {
 func (js *JiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
 	jql := t.GetJQL(js.BbProj.TicketSearchProjects)
 
-	results, err := js.JiraHandler.JQLSearch(jql, 0, -1)
+	results, err := js.JiraHandler.JQLSearch(jql, 0, 50)
 	if err != nil {
 		return nil, err
 	}
