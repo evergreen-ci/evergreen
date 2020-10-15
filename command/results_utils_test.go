@@ -2,28 +2,21 @@ package command
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
-
-func setupCedarTestResults(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockTestResultsServer {
-	srv, err := timberutil.NewMockTestResultsServer(ctx, serviceutil.NextPort())
-	require.NoError(t, err)
-
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
-	require.NoError(t, err)
-	comm.CedarGRPCConn = conn
-	return srv
-}
 
 func TestSendTestResultsToCedar(t *testing.T) {
 	results := &task.LocalTestResults{
@@ -121,4 +114,102 @@ func TestSendTestResultsToCedar(t *testing.T) {
 			testCase(ctx, t, srv, comm)
 		})
 	}
+}
+
+func TestSendTestLogToCedar(t *testing.T) {
+	ctx := context.TODO()
+	tsk := &task.Task{
+		Id:           "id",
+		Project:      "project",
+		Version:      "version",
+		BuildVariant: "build_variant",
+		Execution:    5,
+		Requester:    evergreen.GithubPRRequester,
+	}
+	log := &model.TestLog{
+		Id:            "id",
+		Name:          "test",
+		Task:          "task",
+		TaskExecution: 5,
+		Lines:         []string{"log line 1", "log line 2"},
+	}
+	comm := client.NewMock("url")
+
+	for _, test := range []struct {
+		name     string
+		testCase func(*testing.T, *timberutil.MockBuildloggerServer)
+	}{
+		{
+			name: "CreateSenderFails",
+			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+				srv.CreateErr = true
+				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
+			},
+		},
+		{
+			name: "SendFails",
+			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+				srv.AppendErr = true
+				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
+			},
+		},
+		{
+			name: "CloseSenderFails",
+			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+				srv.CloseErr = true
+				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
+			},
+		},
+		{
+			name: "SendSucceeds",
+			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+				assert.NoError(t, sendTestLogToCedar(ctx, tsk, comm, log))
+
+				require.NotEmpty(t, srv.Create)
+				assert.Equal(t, tsk.Project, srv.Create.Info.Project)
+				assert.Equal(t, tsk.Version, srv.Create.Info.Version)
+				assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
+				assert.Equal(t, tsk.DisplayName, srv.Create.Info.TaskName)
+				assert.Equal(t, tsk.Id, srv.Create.Info.TaskId)
+				assert.Equal(t, int32(tsk.Execution), srv.Create.Info.Execution)
+				assert.Equal(t, log.Name, srv.Create.Info.TestName)
+				assert.Equal(t, !tsk.IsPatchRequest(), srv.Create.Info.Mainline)
+				assert.Equal(t, buildlogger.LogStorageS3, buildlogger.LogStorage(srv.Create.Storage))
+
+				require.Len(t, srv.Data, 1)
+				for _, data := range srv.Data {
+					require.Len(t, data, 1)
+					require.Len(t, data[0].Lines, 2)
+					assert.Equal(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
+					assert.Equal(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
+				}
+
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			srv := setupCedarBuildlogger(ctx, t, comm)
+			test.testCase(t, srv)
+		})
+	}
+}
+
+func setupCedarTestResults(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockTestResultsServer {
+	srv, err := timberutil.NewMockTestResultsServer(ctx, serviceutil.NextPort())
+	require.NoError(t, err)
+
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	require.NoError(t, err)
+	comm.CedarGRPCConn = conn
+	return srv
+}
+
+func setupCedarBuildlogger(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockBuildloggerServer {
+	srv, err := timberutil.NewMockBuildloggerServer(ctx, serviceutil.NextPort())
+	require.NoError(t, err)
+
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	require.NoError(t, err)
+	comm.CedarGRPCConn = conn
+	return srv
 }

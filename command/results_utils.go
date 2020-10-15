@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -146,7 +147,7 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 		return errors.Wrapf(err, "error creating buildlogger logger for test result %s", log.Name)
 	}
 
-	sender.Send(message.ConvertToComposer(level.Info, log.Lines))
+	sender.Send(message.ConvertToComposer(level.Info, strings.Join(log.Lines, "\n")))
 	if err = sender.Close(); err != nil {
 		return errors.Wrapf(err, "error closing buildlogger logger for test result %s", log.Name)
 	}
