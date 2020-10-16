@@ -226,7 +226,7 @@ input SpawnHostInput {
   homeVolumeSize: Int
   volumeId: String
   taskId: String
-  useProjectSetupScript: Boolean!
+  useProjectSetupScript: Boolean
   spawnHostsStartedByTask: Boolean
 }
 

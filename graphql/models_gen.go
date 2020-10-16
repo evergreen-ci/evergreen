@@ -148,7 +148,7 @@ type SpawnHostInput struct {
 	HomeVolumeSize          *int            `json:"homeVolumeSize"`
 	VolumeID                *string         `json:"volumeId"`
 	TaskID                  *string         `json:"taskId"`
-	UseProjectSetupScript   bool            `json:"useProjectSetupScript"`
+	UseProjectSetupScript   *bool           `json:"useProjectSetupScript"`
 	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask"`
 }
 

@@ -4135,7 +4135,7 @@ input SpawnHostInput {
   homeVolumeSize: Int
   volumeId: String
   taskId: String
-  useProjectSetupScript: Boolean!
+  useProjectSetupScript: Boolean
   spawnHostsStartedByTask: Boolean
 }
 
@@ -20762,7 +20762,7 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			}
 		case "useProjectSetupScript":
 			var err error
-			it.UseProjectSetupScript, err = ec.unmarshalNBoolean2bool(ctx, v)
+			it.UseProjectSetupScript, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
