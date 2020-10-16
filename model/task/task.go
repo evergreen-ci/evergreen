@@ -2461,6 +2461,72 @@ var taskFailureStatuses []string = []string{
 	evergreen.TaskTimedOut,
 }
 
+var allTaskFieldKeys = []string{
+	IdKey,
+	SecretKey,
+	CreateTimeKey,
+	DispatchTimeKey,
+	ScheduledTimeKey,
+	StartTimeKey,
+	FinishTimeKey,
+	ActivatedTimeKey,
+	VersionKey,
+	ProjectKey,
+	RevisionKey,
+	LastHeartbeatKey,
+	ActivatedKey,
+	DeactivatedForDependencyKey,
+	BuildIdKey,
+	DistroIdKey,
+	DistroAliasesKey,
+	BuildVariantKey,
+	DependsOnKey,
+	OverrideDependenciesKey,
+	NumDepsKey,
+	DisplayNameKey,
+	HostIdKey,
+	AgentVersionKey,
+	ExecutionKey,
+	RestartsKey,
+	OldTaskIdKey,
+	ArchivedKey,
+	RevisionOrderNumberKey,
+	RequesterKey,
+	StatusKey,
+	DetailsKey,
+	AbortedKey,
+	AbortInfoKey,
+	TimeTakenKey,
+	ExpectedDurationKey,
+	ExpectedDurationStddevKey,
+	DurationPredictionKey,
+	PriorityKey,
+	ActivatedByKey,
+	CostKey,
+	SpawnedHostCostKey,
+	ExecutionTasksKey,
+	DisplayOnlyKey,
+	TaskGroupKey,
+	TaskGroupMaxHostsKey,
+	TaskGroupOrderKey,
+	GenerateTaskKey,
+	GeneratedTasksKey,
+	GeneratedByKey,
+	GenerateTasksErrorKey,
+	ResetWhenFinishedKey,
+	LogsKey,
+	CommitQueueMergeKey,
+	DisplayStatusKey,
+}
+
+func getFieldsToProject(fieldsToProject []string) bson.M {
+	fieldKeys := bson.M{}
+	for _, field := range fieldsToProject {
+		fieldKeys[field] = 1
+	}
+	return fieldKeys
+}
+
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
@@ -2505,8 +2571,8 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskTimedOut}},
 								},
 							},
-							"then": true,
-							"else": false,
+							"then": "a",
+							"else": "b",
 						},
 					},
 					DisplayStatusKey: "$" + DisplayStatusKey,
@@ -2514,14 +2580,14 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 			})
 			pipeline = append(pipeline, bson.M{
 				"$sort": bson.M{
-					"first":          -1,
-					DisplayStatusKey: 1,
+					"first":          sortDir,
+					DisplayStatusKey: sortDir,
+					IdKey:            1,
 				},
 			})
+
 			pipeline = append(pipeline, bson.M{
-				"$project": bson.M{
-					DisplayStatusKey: 1,
-				},
+				"$project": getFieldsToProject(allTaskFieldKeys),
 			})
 		} else {
 			pipeline = append(pipeline, bson.M{
@@ -2532,6 +2598,12 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 				},
 			})
 		}
+	} else {
+		pipeline = append(pipeline, bson.M{
+			"$sort": bson.M{
+				IdKey: 1,
+			},
+		})
 	}
 
 	if limit > 0 {
@@ -2543,12 +2615,8 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		})
 	}
 	if len(fieldsToProject) > 0 {
-		fieldKeys := bson.M{}
-		for _, field := range fieldsToProject {
-			fieldKeys[field] = 1
-		}
 		pipeline = append(pipeline, bson.M{
-			"$project": fieldKeys,
+			"$project": getFieldsToProject(fieldsToProject),
 		})
 	}
 	tasks := []Task{}

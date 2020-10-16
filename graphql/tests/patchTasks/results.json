@@ -265,15 +265,15 @@
                 "baseStatus": "test-timed-out"
               },
               {
-                "id": "4",
-                "baseStatus": "success"
-              },
-              {
                 "id": "1",
                 "baseStatus": "success"
               },
               {
                 "id": "1.5",
+                "baseStatus": "success"
+              },
+              {
+                "id": "4",
                 "baseStatus": "success"
               },
               {
@@ -293,19 +293,19 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "1.5",
-                "baseStatus": "success"
-              },
-              {
-                "id": "4.5",
-                "baseStatus": "success"
-              },
-              {
                 "id": "1",
                 "baseStatus": "success"
               },
               {
+                "id": "1.5",
+                "baseStatus": "success"
+              },
+              {
                 "id": "4",
+                "baseStatus": "success"
+              },
+              {
+                "id": "4.5",
                 "baseStatus": "success"
               },
               {
@@ -362,14 +362,14 @@
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
-              }
+              },
               {
                 "id": "2",
                 "status": "failed",
                 "baseStatus": "failed",
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
-              },
+              }
             ],
             "count": 6
           }
