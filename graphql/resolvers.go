@@ -370,7 +370,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		if spawnHostInput.TaskID == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
 		}
-		options.UseProjectSetupScript = spawnHostInput.UseProjectSetupScript
+		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 		options.TaskID = *spawnHostInput.TaskID
 	}
 
