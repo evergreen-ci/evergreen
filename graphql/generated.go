@@ -4134,6 +4134,9 @@ input SpawnHostInput {
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
   volumeId: String
+  taskId: String
+  useProjectSetupScript: Boolean!
+  spawnHostsStartedByTask: Boolean
 }
 
 input EditSpawnHostInput {
@@ -20748,6 +20751,24 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		case "volumeId":
 			var err error
 			it.VolumeID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskId":
+			var err error
+			it.TaskID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "useProjectSetupScript":
+			var err error
+			it.UseProjectSetupScript, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spawnHostsStartedByTask":
+			var err error
+			it.SpawnHostsStartedByTask, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}

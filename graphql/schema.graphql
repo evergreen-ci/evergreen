@@ -225,6 +225,9 @@ input SpawnHostInput {
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
   volumeId: String
+  taskId: String
+  useProjectSetupScript: Boolean!
+  spawnHostsStartedByTask: Boolean
 }
 
 input EditSpawnHostInput {
