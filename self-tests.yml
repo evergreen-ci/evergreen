@@ -61,6 +61,18 @@ variables:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist.tar.gz
+      # kim: TODO: might have to modify clients directory structure to include goos+goarch in file name, or just write a
+      # script to do it
+      - command: s3.put
+        type: system
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: gopath/src/github.com/evergreen-ci/evergreen/clients/*/evergreen
+          remote_file: evergreen/binaries/${revision}
+          bucket: mciuploads
+          content_type: application/octet-stream
+          permissions: public-read
   - &run-go-test-suite
     # runs a make target and then uploads gotest output to
     # evergreen. The test name should correspond to a make target for
