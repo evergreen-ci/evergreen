@@ -311,7 +311,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	if t.DisplayOnly {
 		for _, dt := range allTasks {
 			var execTasks []task.Task
-			execTasks, err = task.FindWithDisplayTasks(task.ByIds(dt.ExecutionTasks))
+			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
 			if err != nil {
 				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
 			}
