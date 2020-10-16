@@ -1121,11 +1121,12 @@ func FindWithDisplayTasks(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 
-	for _, t := range tasks {
+	for i, t := range tasks {
 		_, err = t.GetDisplayTask()
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to retrieve parent display task")
 		}
+		tasks[i] = t
 	}
 
 	return tasks, err
