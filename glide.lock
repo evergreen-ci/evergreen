@@ -136,7 +136,7 @@ imports:
   - name: github.com/evergreen-ci/timber
     version: a3a9b2252604db6385a6e4b4de47a2c23b5a2c19
   - name: github.com/evergreen-ci/poplar
-    version: 40f3bf0e6bca0ece93540d4b6aac47d17f50a685
+    version: b164c955b26f26201893b484ff18921be1a93238
 
   - name: github.com/evergreen-ci/certdepot
     version: 270990334f8f50e41a803e88f169d2f467e376c5

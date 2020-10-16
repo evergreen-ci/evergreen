@@ -218,7 +218,8 @@ func (a *TestArtifact) jsonToFTDC(ctx context.Context, path string) (string, err
 		OutputFilePrefix: strings.TrimSuffix(path, ".json"),
 		InputSource:      ftdcFile,
 	}
-	return path, metrics.CollectJSONStream(ctx, opts)
+	_, err = metrics.CollectJSONStream(ctx, opts)
+	return path, err
 }
 
 func (a *TestArtifact) gzip(path string) (string, error) {
