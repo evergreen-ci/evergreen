@@ -341,6 +341,15 @@ functions:
       params:
         file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
 
+  check-agent-version-update:
+    - command: subprocess.exec
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        binary: bash
+        args: ["scripts/check-agent-version-update.sh"]
+        env:
+          BRANCH_NAME: ${branch_name}
+
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -575,6 +584,11 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
+  - name: check-agent-version-update
+    commands:
+      - func: get-project
+      - func: check-agent-version-update
+
 
 buildvariants:
   - name: ubuntu1604
@@ -597,6 +611,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
+      - name: check-agent-version-update
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
