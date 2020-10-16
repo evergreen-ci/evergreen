@@ -1,0 +1,51 @@
+hash: ""
+updated: 2016-10-20T16:48:42.872025812-04:00
+imports:
+  - name: github.com/mongodb/ftdc
+    version: 6cd018a1279e89abfbb294371e571d25147a7f46
+  - name: github.com/evergreen-ci/birch
+    version: da7e58b5cca1d63dc9181790f6d69fca759bb78a
+  - name: github.com/google/uuid
+    version: c2e93f3ae59f2904160ceaab466009f965df46d6
+
+  - name: go.mongodb.org/mongo-driver
+    version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
+
+  - name: github.com/mongodb/grip
+    version: 7037e69a48d124757a3c61b53c8a4a24d0de2699
+  - name: github.com/evergreen-ci/pail
+    version: f18586040efc6a296edb4c589480f6385f5c90ee
+  - name: github.com/mongodb/amboy
+    version: 89691c8c27abb1d0374f24fb0b645143fc043f74
+  - name: github.com/evergreen-ci/aviation
+    version: 0d9addebe820f37b79433a37d0d53f06bfbb7f01
+  - name: github.com/evergreen-ci/utility 
+    version: 919337de206db45e5cb7192bacfcd95645bba2d5
+
+  - name: github.com/PuerkitoBio/rehttp
+    version: 11cf6ea5d3e9afda34846e1db511aa218049471c
+  - name: golang.org/x/oauth2
+    version: f047394b6d14284165300fd82dad67edb3a4d7f6
+
+  - name: github.com/pkg/errors
+    version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
+  - name: github.com/stretchr/testify
+    version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+  - name: gopkg.in/yaml.v2
+    version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
+  - name: github.com/papertrail/go-tail
+    version: 973c153b04319fc4604d847b09861a5730cbbde2
+
+  # grpc and dependencies
+  - name: google.golang.org/grpc
+    version: ac54eec90516cee50fc6b9b113b34628a85f976f
+  - name: golang.org/x/net
+    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
+  - name: golang.org/x/sys
+    version: d101bd2416d505c0448a6ce8a282482678040a89
+  - name: golang.org/x/text
+    version: 6c92c7dc7f53607809182301b96e4cc1975143f1
+  - name: google.golang.org/genproto
+    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
+  - name: github.com/golang/protobuf
+    version: c823c79ea1570fb5ff454033735a8e68575d1d0f
