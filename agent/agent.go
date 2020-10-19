@@ -27,6 +27,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// kim: test comment, plz ignore
+
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
 	comm          client.Communicator
