@@ -2495,7 +2495,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		if sortBy == DisplayStatusKey {
 			// setting field `first` onto tasks with a failed status allows us to sort all failed statuses to top of query and then sort alphabetically
 			pipeline = append(pipeline, bson.M{
-				"$set": bson.M{
+				"$addFields": bson.M{
 					"first": bson.M{
 						"$cond": bson.M{
 							"if": bson.M{
