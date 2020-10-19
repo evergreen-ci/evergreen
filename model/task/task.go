@@ -2509,7 +2509,6 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 							"else": "b",
 						},
 					},
-					// DisplayStatusKey: "$" + DisplayStatusKey,
 				},
 			})
 			// ordered sort with `first` at beginning of sort to sort all failure statuses to the top

@@ -455,7 +455,7 @@
               },
               {
                 "id": "4",
-                "status": "failed",
+                "status": "task-timed-out",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -482,7 +482,7 @@
               {
                 "id": "3",
                 "status": "success",
-                "baseStatus": "success",
+                "baseStatus": "test-timed-out",
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
