@@ -381,11 +381,11 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
 		task, e := task.FindOneId(*spawnHostInput.TaskID)
-		if err != nil || task == nil {
+		if e != nil || task == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found: %s ", *spawnHostInput.TaskID, e))
 		}
 		e = hc.CreateHostsFromTask(task, *usr, spawnHostInput.PublicKey.Key)
-		if err != nil {
+		if e != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, e))
 		}
 	}
