@@ -593,6 +593,11 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${revision}/${project}
+            GO_BIN_PATH: ${gobin}
+            LEGACY_GO_BIN_PATH: ${legacyGobin}
+            GOPATH: ${workdir}/gopath
+            GOROOT: ${goroot}
+
 
 buildvariants:
   - name: ubuntu1604
