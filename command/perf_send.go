@@ -13,7 +13,7 @@ import (
 )
 
 type perfSend struct {
-	// AwsKey and AwsSecret are the user's credentials for authenticating
+	// AWSKey and AWSSecret are the user's credentials for authenticating
 	// interactions with s3. These are required if any of the tests have
 	// artifacts.
 	AWSKey    string `mapstructure:"aws_key" plugin:"expand"`
