@@ -343,6 +343,7 @@ functions:
 
   verify-agent-version-update:
     - command: subprocess.exec
+      patch_only: true
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         binary: bash
