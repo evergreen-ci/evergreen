@@ -12,3 +12,4 @@ import:
   - package: github.com/evergreen-ci/aviation
   - package: gopkg.in/yaml.v2
   - package: go.mongodb.org/mongo-driver
+  - package: github.com/evergreen-ci/juniper

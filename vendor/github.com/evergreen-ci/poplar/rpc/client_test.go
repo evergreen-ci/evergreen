@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc/internal"
@@ -21,36 +22,36 @@ import (
 )
 
 type mockClient struct {
-	resultData []*internal.ResultData
-	endData    map[string]*internal.MetricsSeriesEnd
+	resultData []*gopb.ResultData
+	endData    map[string]*gopb.MetricsSeriesEnd
 }
 
 func NewMockClient() *mockClient {
-	return &mockClient{endData: map[string]*internal.MetricsSeriesEnd{}}
+	return &mockClient{endData: map[string]*gopb.MetricsSeriesEnd{}}
 }
 
-func (mc *mockClient) CreateMetricSeries(_ context.Context, in *internal.ResultData, _ ...grpc.CallOption) (*internal.MetricsResponse, error) {
+func (mc *mockClient) CreateMetricSeries(_ context.Context, in *gopb.ResultData, _ ...grpc.CallOption) (*gopb.MetricsResponse, error) {
 	mc.resultData = append(mc.resultData, in)
-	return &internal.MetricsResponse{Id: in.Id.TestName, Success: true}, nil
+	return &gopb.MetricsResponse{Id: in.Id.TestName, Success: true}, nil
 }
-func (*mockClient) AttachResultData(_ context.Context, _ *internal.ResultData, _ ...grpc.CallOption) (*internal.MetricsResponse, error) {
+func (*mockClient) AttachResultData(_ context.Context, _ *gopb.ResultData, _ ...grpc.CallOption) (*gopb.MetricsResponse, error) {
 	return nil, nil
 }
-func (*mockClient) AttachArtifacts(_ context.Context, _ *internal.ArtifactData, _ ...grpc.CallOption) (*internal.MetricsResponse, error) {
+func (*mockClient) AttachArtifacts(_ context.Context, _ *gopb.ArtifactData, _ ...grpc.CallOption) (*gopb.MetricsResponse, error) {
 	return nil, nil
 }
-func (*mockClient) AttachRollups(_ context.Context, _ *internal.RollupData, _ ...grpc.CallOption) (*internal.MetricsResponse, error) {
+func (*mockClient) AttachRollups(_ context.Context, _ *gopb.RollupData, _ ...grpc.CallOption) (*gopb.MetricsResponse, error) {
 	return nil, nil
 }
-func (*mockClient) SendMetrics(_ context.Context, _ ...grpc.CallOption) (internal.CedarPerformanceMetrics_SendMetricsClient, error) {
+func (*mockClient) SendMetrics(_ context.Context, _ ...grpc.CallOption) (gopb.CedarPerformanceMetrics_SendMetricsClient, error) {
 	return nil, nil
 }
-func (mc *mockClient) CloseMetrics(_ context.Context, in *internal.MetricsSeriesEnd, _ ...grpc.CallOption) (*internal.MetricsResponse, error) {
+func (mc *mockClient) CloseMetrics(_ context.Context, in *gopb.MetricsSeriesEnd, _ ...grpc.CallOption) (*gopb.MetricsResponse, error) {
 	mc.endData[in.Id] = in
-	return &internal.MetricsResponse{Success: true}, nil
+	return &gopb.MetricsResponse{Success: true}, nil
 }
 
-func mockUploadReport(ctx context.Context, report *poplar.Report, client internal.CedarPerformanceMetricsClient, serialize, dryRun bool) error {
+func mockUploadReport(ctx context.Context, report *poplar.Report, client gopb.CedarPerformanceMetricsClient, serialize, dryRun bool) error {
 	opts := UploadReportOptions{
 		Report:          report,
 		SerializeUpload: serialize,
@@ -150,7 +151,7 @@ func TestClient(t *testing.T) {
 				for j, artifact := range expectedTests[i].Artifacts {
 					require.NoError(t, artifact.Validate())
 					expectedArtifact := internal.ExportArtifactInfo(&artifact)
-					expectedArtifact.Location = internal.StorageLocation_CEDAR_S3
+					expectedArtifact.Location = gopb.StorageLocation_CEDAR_S3
 					assert.Equal(t, expectedArtifact, result.Artifacts[j])
 					r, err := s3Bucket.Get(ctx, artifact.Path)
 					require.NoError(t, err)

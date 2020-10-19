@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -120,7 +120,7 @@ func TestClient(t *testing.T) {
 			require.NotZero(t, id)
 
 			require.NoError(t, client.CloseRecord(ctx, id))
-			assert.Equal(t, internal.TestResultsEndInfo{TestResultsRecordId: id}, *srv.Close)
+			assert.Equal(t, gopb.TestResultsEndInfo{TestResultsRecordId: id}, *srv.Close)
 		},
 		"CloseRecordFailsWithoutID": func(ctx context.Context, t *testing.T, srv *testutil.MockTestResultsServer, client *Client) {
 			id, err := client.CreateRecord(ctx, validCreateOptions())
@@ -152,7 +152,7 @@ func TestClient(t *testing.T) {
 			require.NoError(t, client.CloseClient())
 
 			opts := validCreateOptions()
-			resp, err := internal.NewCedarTestResultsClient(conn).CreateTestResultsRecord(ctx, opts.export())
+			resp, err := gopb.NewCedarTestResultsClient(conn).CreateTestResultsRecord(ctx, opts.export())
 			require.NoError(t, err)
 			assert.NotZero(t, resp.TestResultsRecordId)
 		},

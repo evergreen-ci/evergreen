@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package cedar;
 
-option go_package = "internal";
+option go_package = "gopb";
 
 enum DataFormat {
   TEXT = 0;

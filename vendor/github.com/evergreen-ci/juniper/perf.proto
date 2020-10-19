@@ -2,10 +2,11 @@ syntax = "proto3";
 
 package cedar;
 
-option go_package = "internal";
+option go_package = "gopb";
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "formats.proto";
 
 message ResultID {
   string project = 1;
@@ -49,29 +50,6 @@ enum StorageLocation {
   GRIDFS = 3;
   EPHEMERAL = 4;
   LOCAL = 5;
-}
-
-enum DataFormat {
-  TEXT = 0;
-  FTDC = 1;
-  BSON = 2;
-  JSON = 3;
-  CSV = 4;
-}
-
-enum CompressionType {
-  NONE = 0;
-  TARGZ = 1;
-  ZIP = 2;
-  GZ = 3;
-  XZ = 4;
-}
-
-enum SchemaType {
-  RAW_EVENTS = 0;
-  COLLAPSED_EVENTS = 1;
-  INTERVAL_SUMMARIZATION = 2;
-  HISTOGRAM = 3;
 }
 
 message MetricsSeriesEnd {
@@ -159,7 +137,6 @@ message RollupData {
 
 service CedarPerformanceMetrics {
   rpc CreateMetricSeries(ResultData) returns (MetricsResponse);
-  rpc AttachResultData(ResultData) returns (MetricsResponse);
   rpc AttachArtifacts(ArtifactData) returns (MetricsResponse);
   rpc AttachRollups(RollupData) returns (MetricsResponse);
   rpc SendMetrics(stream MetricsEvent) returns (SendResponse);

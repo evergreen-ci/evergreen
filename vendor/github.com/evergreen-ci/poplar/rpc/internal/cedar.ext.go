@@ -3,14 +3,15 @@ package internal
 import (
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/poplar"
 	"github.com/golang/protobuf/ptypes"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pkg/errors"
 )
 
-func ExportArtifactInfo(in *poplar.TestArtifact) *ArtifactInfo {
-	out := &ArtifactInfo{
+func ExportArtifactInfo(in *poplar.TestArtifact) *gopb.ArtifactInfo {
+	out := &gopb.ArtifactInfo{
 		Bucket: in.Bucket,
 		Prefix: in.Prefix,
 		Path:   in.Path,
@@ -24,65 +25,65 @@ func ExportArtifactInfo(in *poplar.TestArtifact) *ArtifactInfo {
 
 	switch {
 	case in.PayloadTEXT:
-		out.Format = DataFormat_TEXT
+		out.Format = gopb.DataFormat_TEXT
 	case in.PayloadFTDC:
-		out.Format = DataFormat_FTDC
+		out.Format = gopb.DataFormat_FTDC
 	case in.PayloadBSON:
-		out.Format = DataFormat_BSON
+		out.Format = gopb.DataFormat_BSON
 	case in.PayloadJSON:
-		out.Format = DataFormat_JSON
+		out.Format = gopb.DataFormat_JSON
 	case in.PayloadCSV:
-		out.Format = DataFormat_CSV
+		out.Format = gopb.DataFormat_CSV
 	}
 
 	switch {
 	case in.DataUncompressed:
-		out.Compression = CompressionType_NONE
+		out.Compression = gopb.CompressionType_NONE
 	case in.DataGzipped:
-		out.Compression = CompressionType_GZ
+		out.Compression = gopb.CompressionType_GZ
 	case in.DataTarball:
-		out.Compression = CompressionType_TARGZ
+		out.Compression = gopb.CompressionType_TARGZ
 	}
 
 	switch {
 	case in.EventsRaw:
-		out.Schema = SchemaType_RAW_EVENTS
+		out.Schema = gopb.SchemaType_RAW_EVENTS
 	case in.EventsHistogram:
-		out.Schema = SchemaType_HISTOGRAM
+		out.Schema = gopb.SchemaType_HISTOGRAM
 	case in.EventsIntervalSummary:
-		out.Schema = SchemaType_INTERVAL_SUMMARIZATION
+		out.Schema = gopb.SchemaType_INTERVAL_SUMMARIZATION
 	case in.EventsCollapsed:
-		out.Schema = SchemaType_COLLAPSED_EVENTS
+		out.Schema = gopb.SchemaType_COLLAPSED_EVENTS
 	}
 
 	return out
 }
 
-func ExportRollup(in *poplar.TestMetrics) *RollupValue {
-	out := &RollupValue{
+func ExportRollup(in *poplar.TestMetrics) *gopb.RollupValue {
+	out := &gopb.RollupValue{
 		Name:          in.Name,
 		Version:       int64(in.Version),
 		UserSubmitted: true,
 	}
 
 	if in.Type != "" {
-		t, ok := RollupType_value[in.Type]
+		t, ok := gopb.RollupType_value[in.Type]
 		if ok {
-			out.Type = RollupType(t)
+			out.Type = gopb.RollupType(t)
 		}
 	}
 
 	switch val := in.Value.(type) {
 	case int64:
-		out.Value = &RollupValue_Int{Int: val}
+		out.Value = &gopb.RollupValue_Int{Int: val}
 	case float64:
-		out.Value = &RollupValue_Fl{Fl: val}
+		out.Value = &gopb.RollupValue_Fl{Fl: val}
 	case int:
-		out.Value = &RollupValue_Int{Int: int64(val)}
+		out.Value = &gopb.RollupValue_Int{Int: int64(val)}
 	case int32:
-		out.Value = &RollupValue_Int{Int: int64(val)}
+		out.Value = &gopb.RollupValue_Int{Int: int64(val)}
 	case float32:
-		out.Value = &RollupValue_Fl{Fl: float64(val)}
+		out.Value = &gopb.RollupValue_Fl{Fl: float64(val)}
 	}
 
 	return out

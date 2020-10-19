@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc/internal"
 	"github.com/mongodb/amboy"
@@ -26,7 +27,7 @@ func UploadReport(ctx context.Context, opts UploadReportOptions) error {
 	if err := opts.convertAndUploadArtifacts(ctx); err != nil {
 		return errors.Wrap(err, "problem uploading tests for report")
 	}
-	return errors.Wrap(uploadTests(ctx, internal.NewCedarPerformanceMetricsClient(opts.ClientConn), opts.Report, opts.Report.Tests, opts.DryRun),
+	return errors.Wrap(uploadTests(ctx, gopb.NewCedarPerformanceMetricsClient(opts.ClientConn), opts.Report, opts.Report.Tests, opts.DryRun),
 		"problem uploading tests for report")
 }
 
@@ -92,7 +93,7 @@ func (opts *UploadReportOptions) convertAndUploadArtifacts(ctx context.Context) 
 	return errors.Wrap(catcher.Resolve(), "problem uploading artifacts")
 }
 
-func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsClient, report *poplar.Report, tests []poplar.Test, dryRun bool) error {
+func uploadTests(ctx context.Context, client gopb.CedarPerformanceMetricsClient, report *poplar.Report, tests []poplar.Test, dryRun bool) error {
 	for idx, test := range tests {
 		grip.Info(message.Fields{
 			"num":     idx,
@@ -111,8 +112,8 @@ func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsCli
 		if err != nil {
 			return err
 		}
-		resultData := &internal.ResultData{
-			Id: &internal.ResultID{
+		resultData := &gopb.ResultData{
+			Id: &gopb.ResultID{
 				Project:   report.Project,
 				Version:   report.Version,
 				Order:     int32(report.Order),
@@ -139,7 +140,7 @@ func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsCli
 				"result_data": resultData,
 			})
 		} else {
-			var resp *internal.MetricsResponse
+			var resp *gopb.MetricsResponse
 			resp, err = client.CreateMetricSeries(ctx, resultData)
 			if err != nil {
 				return errors.Wrapf(err, "problem submitting test %d of %d", idx, len(tests))
@@ -161,7 +162,7 @@ func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsCli
 		if err != nil {
 			return err
 		}
-		end := &internal.MetricsSeriesEnd{
+		end := &gopb.MetricsSeriesEnd{
 			Id:          test.ID,
 			IsComplete:  true,
 			CompletedAt: completedAt,
@@ -174,7 +175,7 @@ func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsCli
 				"metric_series_end": end,
 			})
 		} else {
-			var resp *internal.MetricsResponse
+			var resp *gopb.MetricsResponse
 			resp, err = client.CloseMetrics(ctx, end)
 			if err != nil {
 				return errors.Wrapf(err, "problem closing metrics series for '%s'", test.ID)
@@ -188,21 +189,21 @@ func uploadTests(ctx context.Context, client internal.CedarPerformanceMetricsCli
 	return nil
 }
 
-func extractArtifacts(ctx context.Context, report *poplar.Report, test poplar.Test) ([]*internal.ArtifactInfo, error) {
-	artifacts := make([]*internal.ArtifactInfo, 0, len(test.Artifacts))
+func extractArtifacts(ctx context.Context, report *poplar.Report, test poplar.Test) ([]*gopb.ArtifactInfo, error) {
+	artifacts := make([]*gopb.ArtifactInfo, 0, len(test.Artifacts))
 	for _, a := range test.Artifacts {
 		if err := a.Validate(); err != nil {
 			return nil, errors.Wrap(err, "problem validating artifact")
 		}
 		artifacts = append(artifacts, internal.ExportArtifactInfo(&a))
-		artifacts[len(artifacts)-1].Location = internal.StorageLocation_CEDAR_S3
+		artifacts[len(artifacts)-1].Location = gopb.StorageLocation_CEDAR_S3
 	}
 
 	return artifacts, nil
 }
 
-func extractMetrics(ctx context.Context, test poplar.Test) []*internal.RollupValue {
-	rollups := make([]*internal.RollupValue, 0, len(test.Metrics))
+func extractMetrics(ctx context.Context, test poplar.Test) []*gopb.RollupValue {
+	rollups := make([]*gopb.RollupValue, 0, len(test.Metrics))
 	for _, r := range test.Metrics {
 		rollups = append(rollups, internal.ExportRollup(&r))
 	}

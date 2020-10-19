@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -21,22 +21,22 @@ type mockClient struct {
 	createErr bool
 	addErr    bool
 	closeErr  bool
-	info      *internal.SystemMetrics
-	data      *internal.SystemMetricsData
-	close     *internal.SystemMetricsSeriesEnd
+	info      *gopb.SystemMetrics
+	data      *gopb.SystemMetricsData
+	close     *gopb.SystemMetricsSeriesEnd
 }
 
-func (mc *mockClient) CreateSystemMetricsRecord(_ context.Context, in *internal.SystemMetrics, opts ...grpc.CallOption) (*internal.SystemMetricsResponse, error) {
+func (mc *mockClient) CreateSystemMetricsRecord(_ context.Context, in *gopb.SystemMetrics, opts ...grpc.CallOption) (*gopb.SystemMetricsResponse, error) {
 	if mc.createErr {
 		return nil, errors.New("create error")
 	}
 	mc.info = in
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
 
-func (mc *mockClient) AddSystemMetrics(_ context.Context, in *internal.SystemMetricsData, opts ...grpc.CallOption) (*internal.SystemMetricsResponse, error) {
+func (mc *mockClient) AddSystemMetrics(_ context.Context, in *gopb.SystemMetricsData, opts ...grpc.CallOption) (*gopb.SystemMetricsResponse, error) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
@@ -44,26 +44,26 @@ func (mc *mockClient) AddSystemMetrics(_ context.Context, in *internal.SystemMet
 		return nil, errors.New("add error")
 	}
 	mc.data = in
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
 
-func (mc *mockClient) StreamSystemMetrics(_ context.Context, opts ...grpc.CallOption) (internal.CedarSystemMetrics_StreamSystemMetricsClient, error) {
+func (mc *mockClient) StreamSystemMetrics(_ context.Context, opts ...grpc.CallOption) (gopb.CedarSystemMetrics_StreamSystemMetricsClient, error) {
 	return nil, nil
 }
 
-func (mc *mockClient) CloseMetrics(_ context.Context, in *internal.SystemMetricsSeriesEnd, opts ...grpc.CallOption) (*internal.SystemMetricsResponse, error) {
+func (mc *mockClient) CloseMetrics(_ context.Context, in *gopb.SystemMetricsSeriesEnd, opts ...grpc.CallOption) (*gopb.SystemMetricsResponse, error) {
 	if mc.closeErr {
 		return nil, errors.New("close error")
 	}
 	mc.close = in
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
 
-func (mc *mockClient) GetData() *internal.SystemMetricsData {
+func (mc *mockClient) GetData() *gopb.SystemMetricsData {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
@@ -199,8 +199,8 @@ func TestCreateSystemMetricsRecord(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, id, "ID")
-		assert.Equal(t, &internal.SystemMetrics{
-			Info: &internal.SystemMetricsInfo{
+		assert.Equal(t, &gopb.SystemMetrics{
+			Info: &gopb.SystemMetricsInfo{
 				Project:   "project",
 				Version:   "version",
 				Variant:   "variant",
@@ -209,9 +209,9 @@ func TestCreateSystemMetricsRecord(t *testing.T) {
 				Execution: 1,
 				Mainline:  true,
 			},
-			Artifact: &internal.SystemMetricsArtifactInfo{
-				Compression: internal.CompressionType(CompressionTypeNone),
-				Schema:      internal.SchemaType(SchemaTypeRawEvents),
+			Artifact: &gopb.SystemMetricsArtifactInfo{
+				Compression: gopb.CompressionType(CompressionTypeNone),
+				Schema:      gopb.SchemaType(SchemaTypeRawEvents),
 			},
 		}, mc.info)
 	})
@@ -282,10 +282,10 @@ func TestAddSystemMetrics(t *testing.T) {
 		s := &SystemMetricsClient{client: mc}
 
 		require.NoError(t, s.AddSystemMetrics(ctx, dataOpts, []byte("Test byte string")))
-		assert.Equal(t, &internal.SystemMetricsData{
+		assert.Equal(t, &gopb.SystemMetricsData{
 			Id:     "ID",
 			Type:   "Test",
-			Format: internal.DataFormat(DataFormatFTDC),
+			Format: gopb.DataFormat(DataFormatFTDC),
 			Data:   []byte("Test byte string"),
 		}, mc.GetData())
 	})
@@ -474,7 +474,7 @@ func TestCloseSystemMetrics(t *testing.T) {
 		s := &SystemMetricsClient{client: mc}
 
 		require.NoError(t, s.CloseSystemMetrics(ctx, "ID", true))
-		assert.Equal(t, &internal.SystemMetricsSeriesEnd{
+		assert.Equal(t, &gopb.SystemMetricsSeriesEnd{
 			Id:      "ID",
 			Success: true,
 		}, mc.close)
