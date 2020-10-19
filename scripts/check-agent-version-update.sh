@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -exo pipefail
 
 if [[ "${BRANCH_NAME}" == "" ]]; then
     BRANCH_NAME=master;
