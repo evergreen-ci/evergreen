@@ -380,13 +380,17 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		if spawnHostInput.TaskID == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		task, e := task.FindOneId(*spawnHostInput.TaskID)
-		if e != nil || task == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found: %s ", *spawnHostInput.TaskID, e))
+		var t *task.Task
+		t, err = task.FindOneId(*spawnHostInput.TaskID)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding Task with id: %s : %s", *spawnHostInput.TaskID, err))
 		}
-		e = hc.CreateHostsFromTask(task, *usr, spawnHostInput.PublicKey.Key)
-		if e != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, e))
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
+		}
+		err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
 		}
 	}
 
