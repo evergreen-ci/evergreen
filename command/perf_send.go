@@ -31,12 +31,6 @@ type perfSend struct {
 	// any artifacts without a prefix specified.
 	Prefix string `mapstructure:"region" plugin:"expand"`
 
-	// Permissions is the global ACL to apply to any artifacts without
-	// permissions specified. See:
-	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
-	// for some examples.
-	Permissions string `mapstructure:"permissions"`
-
 	// File is the file containing either the json or yaml representation
 	// of the performance report tests.
 	File string `mapstructure:"file" plugin:"expand"`
@@ -68,14 +62,7 @@ func (c *perfSend) Execute(ctx context.Context,
 	if err != nil {
 		return errors.Wrapf(err, "problem reading tests from '%s'", filename)
 	}
-	report.Project = conf.Task.Project
-	report.Version = conf.Task.Version
-	report.Order = conf.Task.RevisionOrderNumber
-	report.Variant = conf.Task.BuildVariant
-	report.TaskName = conf.Task.DisplayName
-	report.TaskID = conf.Task.Id
-	report.Execution = conf.Task.Execution
-	report.Mainline = !conf.Task.IsPatchRequest()
+	c.addEvgData(report, conf)
 
 	// Send data to Cedar.
 	conn, err := comm.GetCedarGRPCConn(ctx)
@@ -87,4 +74,31 @@ func (c *perfSend) Execute(ctx context.Context,
 		ClientConn: conn,
 	}
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "failed to upload report to cedar")
+}
+
+func (c *perfSend) addEvgData(report *poplar.Report, conf *model.TaskConfig) {
+	report.Project = conf.Task.Project
+	report.Version = conf.Task.Version
+	report.Order = conf.Task.RevisionOrderNumber
+	report.Variant = conf.Task.BuildVariant
+	report.TaskName = conf.Task.DisplayName
+	report.TaskID = conf.Task.Id
+	report.Execution = conf.Task.Execution
+	report.Mainline = !conf.Task.IsPatchRequest()
+
+	if report.BucketConf.APIKey == "" {
+		report.BucketConf.APIKey = c.AWSKey
+	}
+	if report.BucketConf.APISecret == "" {
+		report.BucketConf.APISecret = c.AWSSecret
+	}
+	if report.BucketConf.Name == "" {
+		report.BucketConf.Name = c.Bucket
+	}
+	if report.BucketConf.Prefix == "" {
+		report.BucketConf.Prefix = c.Prefix
+	}
+	if report.BucketConf.Region == "" {
+		report.BucketConf.Region = c.Region
+	}
 }
