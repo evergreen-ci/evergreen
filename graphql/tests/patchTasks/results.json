@@ -18,10 +18,12 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "2"
+                "id": "1",
+                "displayName": "test-thirdparty-docker"
               },
               {
-                "id": "1"
+                "id": "2",
+                "displayName": "test-cloud"
               }
             ],
             "count": 2
