@@ -1452,6 +1452,56 @@ func TestCreateTaskGroup(t *testing.T) {
 	assert.Contains(tasks[2].DependsOn[0].TaskId, "example_task_2")
 }
 
+func TestGetTaskIdTable(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	v := &Version{
+		Id:         "v0",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Revision:   "abcde",
+		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+
+	p := &Project{
+		Identifier: "p0",
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv0",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "t0",
+					},
+					{
+						Name: "t1",
+					},
+				},
+			},
+		},
+	}
+
+	tables, err := getTaskIdTables(v, p, TaskVariantPairs{})
+	assert.NoError(t, err)
+	assert.Len(t, tables.ExecutionTasks, 2)
+	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
+	assert.Equal(t, "p0_bv0_t1_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t1"))
+
+	// with patch requester
+	v.Requester = evergreen.PatchVersionRequester
+	newPairs := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			{Variant: "bv0", TaskName: "t0"},
+		},
+	}
+	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
+	require.NoError(t, existingTask.Insert())
+
+	tables, err = getTaskIdTables(v, p, newPairs)
+	assert.NoError(t, err)
+	assert.Len(t, tables.ExecutionTasks, 2)
+	assert.Equal(t, "p0_bv0_t0_patch_abcde_v0_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
+	assert.Equal(t, "t2", tables.ExecutionTasks.GetId("bv0", "existing_task"))
+}
+
 func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {

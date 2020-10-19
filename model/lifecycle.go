@@ -632,7 +632,7 @@ func RefreshTasksCache(buildId string) error {
 // addTasksToBuild creates/activates the tasks for the given build of a project
 func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, tasksWithBatchTime []string, generatedBy string, tasksInBuild []task.Task,
-	syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string) (*build.Build, task.Tasks, error) {
+	syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, taskIds TaskIdConfig) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
@@ -641,8 +641,6 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	// create the new tasks for the build
-	taskIds := NewTaskIdTable(project, v, "", "")
-
 	createTime, err := getTaskCreateTime(project.Identifier, v)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
@@ -1431,7 +1429,11 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
 	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 
-	taskIds := NewTaskIdTable(p, v, "", "")
+	taskIds, err := getTaskIdTables(v, p, tasks)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unable to make task ID table")
+	}
+
 	projectRef, err := FindOneProjectRef(p.Identifier)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to find project ref")
@@ -1581,6 +1583,11 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		return nil, err
 	}
 
+	taskIdTable, err := getTaskIdTables(v, p, pairs)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get table of task IDs")
+	}
+
 	taskIds := []string{}
 	for _, b := range builds {
 		// Find the set of task names that already exist for the given build
@@ -1626,7 +1633,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		}
 		batchTimeTasks := batchTimeInfo.batchTimeTasks(b.BuildVariant)
 		// Add the new set of tasks to the build.
-		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases)
+		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTable)
 		if err != nil {
 			return nil, err
 		}
@@ -1643,4 +1650,26 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 	}
 
 	return taskIds, nil
+}
+
+func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs) (TaskIdConfig, error) {
+	if v.Requester == evergreen.RepotrackerVersionRequester {
+		return NewTaskIdTable(p, v, "", ""), nil
+	}
+
+	// The table should include only new and existing tasks
+	taskIdTable := NewPatchTaskIdTable(p, v, newPairs)
+	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	if err != nil {
+		return TaskIdConfig{}, errors.Wrap(err, "can't get existing task ids")
+	}
+	for _, t := range existingTasks {
+		if t.DisplayOnly {
+			taskIdTable.DisplayTasks.AddId(t.BuildVariant, t.DisplayName, t.Id)
+		} else {
+			taskIdTable.ExecutionTasks.AddId(t.BuildVariant, t.DisplayName, t.Id)
+		}
+	}
+
+	return taskIdTable, nil
 }
