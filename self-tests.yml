@@ -576,6 +576,7 @@ tasks:
       - func: run-make
         vars: { target: "test-repotracker" }
   - name: upload-clis
+    patchable: false
     commands:
       - func: get-project
       - func: run-make
@@ -592,7 +593,7 @@ tasks:
             BUCKET_NAME: mciuploads
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
-            REMOTE_PATH: evergreen/clients/${revision}/${project}
+            REMOTE_PATH: evergreen/clients/${project}/${revision}
             GO_BIN_PATH: ${gobin}
             LEGACY_GO_BIN_PATH: ${legacyGobin}
             GOPATH: ${workdir}/gopath
