@@ -2462,7 +2462,6 @@ var taskFailureStatuses []string = []string{
 }
 
 var allTaskFieldKeys = []string{
-	IdKey,
 	SecretKey,
 	CreateTimeKey,
 	DispatchTimeKey,
@@ -2522,7 +2521,7 @@ var allTaskFieldKeys = []string{
 func getFieldsToProject(fieldsToProject []string) bson.M {
 	fieldKeys := bson.M{}
 	for _, field := range fieldsToProject {
-		fieldKeys[field] = 1
+		fieldKeys[field] = "$" + field
 	}
 	return fieldKeys
 }
@@ -2561,7 +2560,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		if sortBy == DisplayStatusKey {
 			// projecting field `first` onto tasks with a failed status allows us to sort all failed statuses to top of query and then sort alphabetically
 			pipeline = append(pipeline, bson.M{
-				"$project": bson.M{
+				"$set": bson.M{
 					"first": bson.M{
 						"$cond": bson.M{
 							"if": bson.M{
@@ -2575,7 +2574,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 							"else": "b",
 						},
 					},
-					DisplayStatusKey: "$" + DisplayStatusKey,
+					// DisplayStatusKey: "$" + DisplayStatusKey,
 				},
 			})
 			// ordered sort with `first` at beginning of sort to sort all failure statuses to the top
@@ -2585,10 +2584,6 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 					bson.E{Key: DisplayStatusKey, Value: sortDir},
 					bson.E{Key: IdKey, Value: 1},
 				},
-			})
-			// have to project all task fields because the above $project removes all fields except for `first` and DisplayStatusKey
-			pipeline = append(pipeline, bson.M{
-				"$project": getFieldsToProject(allTaskFieldKeys),
 			})
 		} else {
 			pipeline = append(pipeline, bson.M{
