@@ -470,7 +470,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"tag":              tag,
 			"message":          "user not authorized for git tag version",
 			"authorized_users": pRef.GitTagAuthorizedUsers, // TODO: remove these
-			"authorized_teams": pRef.GitTagAuthorizedUsers,
+			"authorized_teams": pRef.GitTagAuthorizedTeams,
 		})
 		return nil, nil
 	}

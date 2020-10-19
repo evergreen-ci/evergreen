@@ -980,16 +980,6 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token
 		return true, nil
 	}
 	// check authorized teams
-	if token == "" {
-		settings, err := evergreen.GetConfig()
-		if err != nil {
-			return false, errors.Wrap(err, "error getting settings")
-		}
-		token, err = settings.GetGithubOauthToken()
-		if err != nil {
-			return false, errors.Wrap(err, "error getting github token")
-		}
-	}
 	isMember, err := thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, user, token)
 	if err != nil {
 		return false, errors.WithStack(err)

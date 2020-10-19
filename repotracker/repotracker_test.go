@@ -1129,7 +1129,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: true,
 	}
-	v, err := shellVersionFromRevision(pRef, metadata)
+	v, err := shellVersionFromRevision(context.TODO(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)

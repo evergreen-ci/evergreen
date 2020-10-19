@@ -240,7 +240,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := shellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
@@ -582,7 +582,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(projectInfo.Ref, metadata)
+	v, err := shellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
@@ -657,7 +657,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
+func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
 	var err error
 	if metadata.Revision.AuthorGithubUID != 0 {
@@ -714,7 +714,15 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 		if !ref.GitTagVersionsEnabled {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Identifier)
 		}
-		authorized, err := ref.AuthorizedForGitTag(context.Background(), metadata.GitTag.Pusher, "")
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting settings")
+		}
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting github token")
+		}
+		authorized, err := ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token)
 		if err != nil {
 			return nil, errors.Wrap(err, "error checking if user is authorized")
 		}
