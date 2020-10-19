@@ -2559,7 +2559,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 
 	if len(sortBy) > 0 {
 		if sortBy == DisplayStatusKey {
-			// sort all failed statuses to the top
+			// projecting field `first` onto tasks with a failed status allows us to sort all failed statuses to top of query and then sort alphabetically
 			pipeline = append(pipeline, bson.M{
 				"$project": bson.M{
 					"first": bson.M{
@@ -2578,30 +2578,32 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 					DisplayStatusKey: "$" + DisplayStatusKey,
 				},
 			})
+			// ordered sort with `first` at beginning of sort to sort all failure statuses to the top
 			pipeline = append(pipeline, bson.M{
-				"$sort": bson.M{
-					"first":          sortDir,
-					DisplayStatusKey: sortDir,
-					IdKey:            1,
+				"$sort": bson.D{
+					bson.E{Key: "first", Value: sortDir},
+					bson.E{Key: DisplayStatusKey, Value: sortDir},
+					bson.E{Key: IdKey, Value: 1},
 				},
 			})
-
+			// have to project all task fields because the above $project removes all fields except for `first` and DisplayStatusKey
 			pipeline = append(pipeline, bson.M{
 				"$project": getFieldsToProject(allTaskFieldKeys),
 			})
 		} else {
 			pipeline = append(pipeline, bson.M{
-				"$sort": bson.M{
-					sortBy: sortDir,
+				"$sort": bson.D{
+					bson.E{Key: sortBy, Value: sortDir},
 					// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
-					IdKey: 1,
+					bson.E{Key: IdKey, Value: 1},
 				},
 			})
 		}
 	} else {
 		pipeline = append(pipeline, bson.M{
-			"$sort": bson.M{
-				IdKey: 1,
+			"$sort": bson.D{
+				// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+				bson.E{Key: IdKey, Value: 1},
 			},
 		})
 	}
