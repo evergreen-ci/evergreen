@@ -1000,7 +1000,12 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 
 	// SORT BY BASE STATUS
 	if *sortBy == TaskSortCategoryBaseStatus {
-		taskResults = GroupFailuresAndSortTasks(taskResults, sortDirParam, TaskBaseStatus)
+		sort.SliceStable(taskResults, func(i, j int) bool {
+			if sortDirParam == 1 {
+				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			}
+			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
+		})
 	}
 
 	if len(baseStatuses) > 0 {

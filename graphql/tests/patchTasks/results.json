@@ -263,10 +263,6 @@
                 "baseStatus": "failed"
               },
               {
-                "id": "3",
-                "baseStatus": "test-timed-out"
-              },
-              {
                 "id": "1",
                 "baseStatus": "success"
               },
@@ -281,6 +277,10 @@
               {
                 "id": "4.5",
                 "baseStatus": "success"
+              },
+              {
+                "id": "3",
+                "baseStatus": "test-timed-out"
               }
             ],
             "count": 6
@@ -295,6 +295,10 @@
           "patchTasks": {
             "tasks": [
               {
+                "id": "3",
+                "baseStatus": "test-timed-out"
+              },
+              {
                 "id": "1",
                 "baseStatus": "success"
               },
@@ -309,10 +313,6 @@
               {
                 "id": "4.5",
                 "baseStatus": "success"
-              },
-              {
-                "id": "3",
-                "baseStatus": "test-timed-out"
               },
               {
                 "id": "2",

@@ -34,68 +34,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type TaskStatusKey string
-
-const (
-	TaskStatus     TaskStatusKey = "Status"
-	TaskBaseStatus TaskStatusKey = "BaseStatus"
-)
-
-func getTaskStatusAndBaseStatusMap(task *TaskResult) map[TaskStatusKey]string {
-	return map[TaskStatusKey]string{
-		TaskStatus:     task.Status,
-		TaskBaseStatus: task.BaseStatus,
-	}
-}
-
-var taskFailureStatusesToBeGrouped map[string]bool = map[string]bool{
-	evergreen.TaskFailed:       true,
-	evergreen.TaskTestTimedOut: true,
-	evergreen.TaskTimedOut:     true,
-}
-
-func GroupFailuresAndSortTasks(tasks []*TaskResult, sortDirection int, statusKey TaskStatusKey) []*TaskResult {
-	failures := []*TaskResult{}
-	nonFailures := []*TaskResult{}
-
-	for _, task := range tasks {
-		t := getTaskStatusAndBaseStatusMap(task)
-		status := t[statusKey]
-
-		_, ok := taskFailureStatusesToBeGrouped[status]
-
-		if ok {
-			failures = append(failures, task)
-		} else {
-			nonFailures = append(nonFailures, task)
-		}
-	}
-
-	sort.SliceStable(failures, func(i, j int) bool {
-		iStatus := getTaskStatusAndBaseStatusMap(failures[i])[statusKey]
-		jStatus := getTaskStatusAndBaseStatusMap(failures[j])[statusKey]
-
-		if sortDirection == 1 {
-			return iStatus < jStatus
-		}
-		return iStatus > jStatus
-	})
-	sort.SliceStable(nonFailures, func(i, j int) bool {
-		iStatus := getTaskStatusAndBaseStatusMap(nonFailures[i])[statusKey]
-		jStatus := getTaskStatusAndBaseStatusMap(nonFailures[j])[statusKey]
-
-		if sortDirection == 1 {
-			return iStatus < jStatus
-		}
-		return iStatus > jStatus
-	})
-
-	if sortDirection == 1 {
-		return append(failures, nonFailures...)
-	}
-	return append(nonFailures, failures...)
-}
-
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
 func GetGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
 	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
