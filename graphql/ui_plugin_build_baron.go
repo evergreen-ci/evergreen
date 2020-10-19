@@ -137,11 +137,12 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	var tickets []thirdparty.JiraTicket
 	var source string
 
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
 		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
-	jql := t.GetJQL(bbProj.TicketSearchProjects)
+
 	var featuresURL string
 	if bbProj.BFSuggestionFeaturesURL != "" {
 		featuresURL = bbProj.BFSuggestionFeaturesURL
@@ -204,7 +205,7 @@ func (js *JiraSuggest) GetTimeout() time.Duration {
 func (js *JiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
 	jql := t.GetJQL(js.BbProj.TicketSearchProjects)
 
-	results, err := js.JiraHandler.JQLSearch(jql, 0, -1)
+	results, err := js.JiraHandler.JQLSearch(jql, 0, 50)
 	if err != nil {
 		return nil, err
 	}

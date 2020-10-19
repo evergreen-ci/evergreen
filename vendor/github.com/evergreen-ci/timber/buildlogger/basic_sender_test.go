@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -63,44 +62,6 @@ func (mc *mockClient) CloseLog(_ context.Context, in *internal.LogEndInfo, _ ...
 	mc.logEndInfo = in
 
 	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
-}
-
-type mockService struct {
-	createLog      bool
-	appendLogLines bool
-	closeLog       bool
-	createErr      bool
-	appendErr      bool
-	closeErr       bool
-}
-
-func (ms *mockService) CreateLog(_ context.Context, in *internal.LogData) (*internal.BuildloggerResponse, error) {
-	if ms.createErr {
-		return nil, errors.New("create error")
-	}
-
-	ms.createLog = true
-	return &internal.BuildloggerResponse{}, nil
-}
-
-func (ms *mockService) AppendLogLines(_ context.Context, in *internal.LogLines) (*internal.BuildloggerResponse, error) {
-	if ms.appendErr {
-		return nil, errors.New("append error")
-	}
-
-	ms.appendLogLines = true
-	return &internal.BuildloggerResponse{}, nil
-}
-
-func (ms *mockService) StreamLogLines(_ internal.Buildlogger_StreamLogLinesServer) error { return nil }
-
-func (ms *mockService) CloseLog(_ context.Context, in *internal.LogEndInfo) (*internal.BuildloggerResponse, error) {
-	if ms.closeErr {
-		return nil, errors.New("close error")
-	}
-
-	ms.closeLog = true
-	return &internal.BuildloggerResponse{}, nil
 }
 
 type mockSender struct {
@@ -191,11 +152,9 @@ func TestLoggerOptionsValidate(t *testing.T) {
 func TestNewLogger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	srv := &mockService{}
-	port := testutil.GetPortNumber(4000)
-	require.NoError(t, startRPCService(ctx, srv, port))
-	addr := fmt.Sprintf("localhost:%d", port)
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	srv, err := testutil.NewMockBuildloggerServer(ctx, 4000)
+	require.NoError(t, err)
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
 	require.NoError(t, err)
 
 	t.Run("WithExistingClient", func(t *testing.T) {
@@ -204,8 +163,22 @@ func TestNewLogger(t *testing.T) {
 		name := "test"
 		l := send.LevelInfo{Default: level.Debug, Threshold: level.Debug}
 		opts := &LoggerOptions{
-			ClientConn: conn,
-			Local:      &mockSender{Base: send.NewBase("test")},
+			Project:     "project",
+			Version:     "version",
+			Variant:     "variant",
+			TaskName:    "task_name",
+			TaskID:      "task_id",
+			Execution:   1,
+			TestName:    "test_name",
+			Trial:       1,
+			ProcessName: "process",
+			Format:      LogFormatJSON,
+			Tags:        []string{"tag1", "tag2"},
+			Arguments:   map[string]string{"arg1": "one", "arg2": "two"},
+			Mainline:    true,
+			Storage:     LogStorageS3,
+			Local:       &mockSender{Base: send.NewBase("test")},
+			ClientConn:  conn,
 		}
 
 		s, err := NewLoggerWithContext(ctx, name, l, opts)
@@ -213,7 +186,22 @@ func TestNewLogger(t *testing.T) {
 		require.NotNil(t, s)
 		assert.Equal(t, name, s.Name())
 		assert.Equal(t, l, s.Level())
-		assert.True(t, srv.createLog)
+		srv.Mu.Lock()
+		require.NotNil(t, srv.CreateLog)
+		assert.Equal(t, opts.Project, srv.Create.Info.Project)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Variant, srv.Create.Info.Variant)
+		assert.Equal(t, opts.TaskName, srv.Create.Info.TaskName)
+		assert.Equal(t, opts.TaskID, srv.Create.Info.TaskId)
+		assert.Equal(t, opts.Execution, srv.Create.Info.Execution)
+		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
+		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
+		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
+		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
+		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
 		require.NotNil(t, b.ctx)
@@ -228,17 +216,33 @@ func TestNewLogger(t *testing.T) {
 		b.mu.Lock()
 		assert.NotNil(t, b.timer)
 		b.mu.Unlock()
-		srv.createLog = false
+		srv.Mu.Lock()
+		srv.Create = nil
+		srv.Mu.Unlock()
 	})
 	t.Run("WithoutExistingClient", func(t *testing.T) {
 		subCtx, subCancel := context.WithCancel(ctx)
 		name := "test2"
 		l := send.LevelInfo{Default: level.Trace, Threshold: level.Alert}
 		opts := &LoggerOptions{
+			Project:     "project",
+			Version:     "version",
+			Variant:     "variant",
+			TaskName:    "task_name",
+			TaskID:      "task_id",
+			Execution:   1,
+			TestName:    "test_name",
+			Trial:       1,
+			ProcessName: "process",
+			Format:      LogFormatJSON,
+			Tags:        []string{"tag1", "tag2"},
+			Arguments:   map[string]string{"arg1": "one", "arg2": "two"},
+			Mainline:    true,
+			Storage:     LogStorageS3,
 			Local:       &mockSender{Base: send.NewBase("test")},
 			Insecure:    true,
-			BaseAddress: "localhost",
-			RPCPort:     strconv.Itoa(port),
+			BaseAddress: srv.DialOpts.BaseAddress,
+			RPCPort:     srv.DialOpts.RPCPort,
 		}
 
 		s, err := NewLoggerWithContext(ctx, name, l, opts)
@@ -246,7 +250,22 @@ func TestNewLogger(t *testing.T) {
 		require.NotNil(t, s)
 		assert.Equal(t, name, s.Name())
 		assert.Equal(t, l, s.Level())
-		assert.True(t, srv.createLog)
+		srv.Mu.Lock()
+		require.NotNil(t, srv.CreateLog)
+		assert.Equal(t, opts.Project, srv.Create.Info.Project)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Variant, srv.Create.Info.Variant)
+		assert.Equal(t, opts.TaskName, srv.Create.Info.TaskName)
+		assert.Equal(t, opts.TaskID, srv.Create.Info.TaskId)
+		assert.Equal(t, opts.Execution, srv.Create.Info.Execution)
+		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
+		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
+		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
+		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
+		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
 		require.NotNil(t, b.ctx)
@@ -262,14 +281,30 @@ func TestNewLogger(t *testing.T) {
 		b.mu.Lock()
 		assert.NotNil(t, b.timer)
 		b.mu.Unlock()
-		srv.createLog = false
+		srv.Mu.Lock()
+		srv.Create = nil
+		srv.Mu.Unlock()
 	})
 	t.Run("WithoutContext", func(t *testing.T) {
 		name := "test"
 		l := send.LevelInfo{Default: level.Debug, Threshold: level.Debug}
 		opts := &LoggerOptions{
-			ClientConn: conn,
-			Local:      &mockSender{Base: send.NewBase("test")},
+			Project:     "project",
+			Version:     "version",
+			Variant:     "variant",
+			TaskName:    "task_name",
+			TaskID:      "task_id",
+			Execution:   1,
+			TestName:    "test_name",
+			Trial:       1,
+			ProcessName: "process",
+			Format:      LogFormatJSON,
+			Tags:        []string{"tag1", "tag2"},
+			Arguments:   map[string]string{"arg1": "one", "arg2": "two"},
+			Mainline:    true,
+			Storage:     LogStorageS3,
+			Local:       &mockSender{Base: send.NewBase("test")},
+			ClientConn:  conn,
 		}
 
 		s, err := NewLogger(name, l, opts)
@@ -277,7 +312,22 @@ func TestNewLogger(t *testing.T) {
 		require.NotNil(t, s)
 		assert.Equal(t, name, s.Name())
 		assert.Equal(t, l, s.Level())
-		assert.True(t, srv.createLog)
+		srv.Mu.Lock()
+		require.NotNil(t, srv.CreateLog)
+		assert.Equal(t, opts.Project, srv.Create.Info.Project)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Version, srv.Create.Info.Version)
+		assert.Equal(t, opts.Variant, srv.Create.Info.Variant)
+		assert.Equal(t, opts.TaskName, srv.Create.Info.TaskName)
+		assert.Equal(t, opts.TaskID, srv.Create.Info.TaskId)
+		assert.Equal(t, opts.Execution, srv.Create.Info.Execution)
+		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
+		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
+		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
+		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
+		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
 		assert.NotNil(t, b.ctx)
@@ -290,7 +340,9 @@ func TestNewLogger(t *testing.T) {
 		b.mu.Lock()
 		assert.NotNil(t, b.timer)
 		b.mu.Unlock()
-		srv.createLog = false
+		srv.Mu.Lock()
+		srv.Create = nil
+		srv.Mu.Unlock()
 	})
 	t.Run("NegativeFlushInterval", func(t *testing.T) {
 		name := "test"
@@ -322,48 +374,14 @@ func TestNewLogger(t *testing.T) {
 			ClientConn: conn,
 			Local:      ms,
 		}
-		srv.createErr = true
+		srv.Mu.Lock()
+		srv.CreateErr = true
+		srv.Mu.Unlock()
 
 		s, err := NewLoggerWithContext(ctx, name, l, opts)
 		assert.Error(t, err)
 		assert.Nil(t, s)
 		assert.True(t, strings.Contains(ms.lastMessage, "create error"))
-	})
-}
-
-func TestCreateNewLog(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	t.Run("CorrectData", func(t *testing.T) {
-		mc := &mockClient{}
-		ms := &mockSender{Base: send.NewBase("test")}
-		b := createSender(ctx, mc, ms)
-
-		require.NoError(t, b.createNewLog())
-		assert.Equal(t, b.opts.Project, mc.logData.Info.Project)
-		assert.Equal(t, b.opts.Version, mc.logData.Info.Version)
-		assert.Equal(t, b.opts.Variant, mc.logData.Info.Variant)
-		assert.Equal(t, b.opts.TaskName, mc.logData.Info.TaskName)
-		assert.Equal(t, b.opts.Execution, mc.logData.Info.Execution)
-		assert.Equal(t, b.opts.TestName, mc.logData.Info.TestName)
-		assert.Equal(t, b.opts.Trial, mc.logData.Info.Trial)
-		assert.Equal(t, b.opts.ProcessName, mc.logData.Info.ProcName)
-		assert.Equal(t, internal.LogFormat(b.opts.Format), mc.logData.Info.Format)
-		assert.Equal(t, b.opts.Tags, mc.logData.Info.Tags)
-		assert.Equal(t, b.opts.Arguments, mc.logData.Info.Arguments)
-		assert.Equal(t, b.opts.Mainline, mc.logData.Info.Mainline)
-		assert.Equal(t, internal.LogStorage_LOG_STORAGE_S3, mc.logData.Storage)
-		assert.Equal(t, b.opts.logID, mc.logData.Info.TestName)
-		assert.Empty(t, ms.lastMessage)
-	})
-	t.Run("RPCError", func(t *testing.T) {
-		mc := &mockClient{createErr: true}
-		ms := &mockSender{Base: send.NewBase("test")}
-		b := createSender(ctx, mc, ms)
-
-		assert.Error(t, b.createNewLog())
-		assert.Equal(t, "create error", ms.lastMessage)
 	})
 }
 
