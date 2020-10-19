@@ -2461,71 +2461,6 @@ var taskFailureStatuses []string = []string{
 	evergreen.TaskTimedOut,
 }
 
-var allTaskFieldKeys = []string{
-	SecretKey,
-	CreateTimeKey,
-	DispatchTimeKey,
-	ScheduledTimeKey,
-	StartTimeKey,
-	FinishTimeKey,
-	ActivatedTimeKey,
-	VersionKey,
-	ProjectKey,
-	RevisionKey,
-	LastHeartbeatKey,
-	ActivatedKey,
-	DeactivatedForDependencyKey,
-	BuildIdKey,
-	DistroIdKey,
-	DistroAliasesKey,
-	BuildVariantKey,
-	DependsOnKey,
-	OverrideDependenciesKey,
-	NumDepsKey,
-	DisplayNameKey,
-	HostIdKey,
-	AgentVersionKey,
-	ExecutionKey,
-	RestartsKey,
-	OldTaskIdKey,
-	ArchivedKey,
-	RevisionOrderNumberKey,
-	RequesterKey,
-	StatusKey,
-	DetailsKey,
-	AbortedKey,
-	AbortInfoKey,
-	TimeTakenKey,
-	ExpectedDurationKey,
-	ExpectedDurationStddevKey,
-	DurationPredictionKey,
-	PriorityKey,
-	ActivatedByKey,
-	CostKey,
-	SpawnedHostCostKey,
-	ExecutionTasksKey,
-	DisplayOnlyKey,
-	TaskGroupKey,
-	TaskGroupMaxHostsKey,
-	TaskGroupOrderKey,
-	GenerateTaskKey,
-	GeneratedTasksKey,
-	GeneratedByKey,
-	GenerateTasksErrorKey,
-	ResetWhenFinishedKey,
-	LogsKey,
-	CommitQueueMergeKey,
-	DisplayStatusKey,
-}
-
-func getFieldsToProject(fieldsToProject []string) bson.M {
-	fieldKeys := bson.M{}
-	for _, field := range fieldsToProject {
-		fieldKeys[field] = "$" + field
-	}
-	return fieldKeys
-}
-
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
@@ -2612,8 +2547,12 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		})
 	}
 	if len(fieldsToProject) > 0 {
+		fieldKeys := bson.M{}
+		for _, field := range fieldsToProject {
+			fieldKeys[field] = 1
+		}
 		pipeline = append(pipeline, bson.M{
-			"$project": getFieldsToProject(fieldsToProject),
+			"$project": fieldKeys,
 		})
 	}
 	tasks := []Task{}
