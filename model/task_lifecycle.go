@@ -950,10 +950,11 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		}
 	}
 
-	if err := UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"); err != nil {
-		return errors.Wrap(err, "can't clear cached unattainable dependencies")
+	if err := t.Reset(); err != nil {
+		return errors.Wrap(err, "error resetting task in database")
 	}
-	return errors.Wrap(t.Reset(), "error resetting task in database")
+
+	return errors.Wrap(UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"), "can't clear cached unattainable dependencies")
 }
 
 func MarkTasksReset(taskIds []string) error {
@@ -961,15 +962,22 @@ func MarkTasksReset(taskIds []string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	for _, t := range tasks {
 		if t.DisplayOnly {
 			taskIds = append(taskIds, t.Id)
 		}
-		if err = UpdateUnblockedDependencies(&t, false, ""); err != nil {
-			return errors.Wrap(err, "can't clear cached unattainable dependencies")
-		}
 	}
-	return errors.Wrap(task.ResetTasks(taskIds), "error resetting tasks in database")
+
+	if err = task.ResetTasks(taskIds); err != nil {
+		return errors.Wrap(err, "error resetting tasks in database")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, t := range tasks {
+		catcher.Add(errors.Wrap(UpdateUnblockedDependencies(&t, false, ""), "can't clear cached unattainable dependencies"))
+	}
+	return catcher.Resolve()
 }
 
 func updateDisplayTaskAndCache(t *task.Task) error {
@@ -1312,7 +1320,7 @@ func checkResetDisplayTask(t *task.Task) error {
 		return errors.Wrapf(err, "can't get exec tasks for '%s'", t.Id)
 	}
 	for _, execTask := range execTasks {
-		if !execTask.IsFinished() && execTask.Activated {
+		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
 		}
 	}

@@ -825,6 +825,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"project": projectInfo.Project.Identifier,
 		"version": v.Id,
 	}))
+	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
@@ -862,15 +863,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if metadata.TriggerID == "" && evergreen.ShouldConsiderBatchtime(v.Requester) {
-			res, err := projectInfo.Ref.GetActivationTimeForVariant(&buildvariant)
-			if err == nil {
-				activateVariantAt = res
-			}
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding last activated",
-				"version": v.Id,
-			}))
-
+			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant)
+			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
@@ -879,9 +873,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}
 				bvt.Variant = buildvariant.Name
 				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt)
-				if err != nil {
+				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
-				}
 				taskStatuses = append(taskStatuses,
 					model.BatchTimeTaskStatus{
 						TaskName: bvt.Name,
@@ -913,6 +906,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
+	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+		"message": "unable to get all activation times",
+		"runner":  RunnerName,
+		"version": v.Id,
+	}))
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()

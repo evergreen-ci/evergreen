@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	batchTime              = 60
+	bvBatchTime            = 60
+	taskBatchTime          = 30
 	sampleGeneratedProject = GeneratedProject{
 		Tasks: []parserTask{
 			parserTask{
@@ -52,7 +53,8 @@ var (
 				Name: "a_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
-						Name: "say-bye",
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
 					},
 				},
 				DisplayTasks: []displayTask{
@@ -64,10 +66,14 @@ var (
 			},
 			parserBV{
 				Name:      "another_variant",
-				BatchTime: &batchTime,
+				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "example_task_group",
+					},
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
 					},
 				},
 				DisplayTasks: []displayTask{
@@ -588,26 +594,59 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 		Priority: 10,
 	}
 	s.NoError(genTask.Insert())
+	prevBatchTimeVersion := Version{
+		Id:         "prev_version",
+		Identifier: "proj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId:      "prev_build",
+				BuildVariant: "another_variant",
+				ActivationStatus: ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now(),
+				},
+				BatchTimeTasks: []BatchTimeTaskStatus{
+					{
+						TaskId:   "prev_task",
+						TaskName: "say-bye",
+						ActivationStatus: ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-time.Minute * 15), // 15 minutes ago
+						},
+					},
+				},
+			},
+		},
+	}
+	s.NoError(prevBatchTimeVersion.Insert())
 
 	sampleBuild := build.Build{
 		Id:           "sample_build",
+		Project:      "proj",
 		BuildVariant: "a_variant",
 		Version:      "version_that_called_generate_task",
 	}
+	s.NoError(sampleBuild.Insert())
 	v := &Version{
 		Id:                 "version_that_called_generate_task",
 		Identifier:         "proj",
 		BuildIds:           []string{"sample_build"},
 		Config:             sampleProjYml,
 		ConfigUpdateNumber: 4,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId:      "sample_build",
+				BuildVariant: "a_variant",
+			},
+		},
 	}
-	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 
-	p, pp, err := LoadProjectForVersion(v, "", false)
+	p, pp, err := LoadProjectForVersion(v, "proj", false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -618,32 +657,45 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.Equal(4, v.ConfigUpdateNumber)
-	s.False(v.BuildVariants[0].Activated)
-	s.InDelta(time.Now().Unix(), v.BuildVariants[0].ActivateAt.Unix(), 1)
+	s.Require().Len(v.BuildVariants, 2)
+
+	// batchtime task added to existing variant, despite no previous batchtime task
+	s.Require().Len(v.BuildVariants[0].BatchTimeTasks, 1)
+	s.InDelta(time.Now().Unix(), v.BuildVariants[0].BatchTimeTasks[0].ActivateAt.Unix(), 1)
+
+	// new build added correctly
+	s.False(v.BuildVariants[1].Activated)
+	s.InDelta(time.Now().Add(60*time.Minute).Unix(), v.BuildVariants[1].ActivateAt.Unix(), 1)
+	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
+	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Equal(5, pp.ConfigUpdateNumber)
-	builds, err := build.Find(db.Query(bson.M{}))
+	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
-	tasks := []task.Task{}
-	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
+	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
 	s.NoError(err)
 	s.Len(builds, 2)
-	s.Len(tasks, 6)
-	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id))
+	s.Len(tasks, 7)
+	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id)) // without display
 	s.NoError(err)
 	s.Len(existingVariantTasks, 2)
 	for _, existingTask := range existingVariantTasks {
-		s.True(existingTask.Activated)
+		if existingTask.DisplayName == "say-bye" {
+			s.False(existingTask.Activated)
+		} else {
+			s.True(existingTask.Activated)
+		}
 	}
 
 	for _, task := range tasks {
 		if task.DisplayOnly {
 			s.EqualValues(0, task.Priority)
 		} else {
-			s.EqualValues(10, task.Priority)
+			s.EqualValues(10, task.Priority,
+				fmt.Sprintf("task '%s' for '%s' failed", task.DisplayName, task.BuildVariant))
 		}
 	}
 }

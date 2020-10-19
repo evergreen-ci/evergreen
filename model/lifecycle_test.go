@@ -963,26 +963,26 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			}
 		})
 
-		Convey("if a non-empty list of tasksToActivate is passed in, only the specified tasks should be activated", func() {
-			toActivate := []string{"taskA", "taskB"}
+		Convey("if a non-empty list of TasksWithBatchTime is passed in, only the specified tasks should be activated", func() {
+			batchTimeTasks := []string{"taskA", "taskB"}
 			args := BuildCreateArgs{
-				Project:         *project,
-				Version:         *v,
-				TaskIDs:         table,
-				BuildName:       buildVar1.Name,
-				ActivateBuild:   true,
-				TaskNames:       []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
-				TasksToActivate: toActivate,
+				Project:            *project,
+				Version:            *v,
+				TaskIDs:            table,
+				BuildName:          buildVar1.Name,
+				ActivateBuild:      true,
+				TaskNames:          []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
+				TasksWithBatchTime: batchTimeTasks,
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
 			for _, t := range tasks {
-				if utility.StringSliceContains(toActivate, t.DisplayName) {
-					So(t.Activated, ShouldBeTrue)
-				} else {
+				if utility.StringSliceContains(batchTimeTasks, t.DisplayName) {
 					So(t.Activated, ShouldBeFalse)
+				} else {
+					So(t.Activated, ShouldBeTrue)
 				}
 			}
 		})

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -65,6 +66,15 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		if ctx.Err() != nil {
 			grip.Error("runCommands canceled")
 			return errors.New("runCommands canceled")
+		}
+		if cmd.DisplayName() == "" {
+			grip.Critical(message.Fields{
+				"message": "attempting to run an undefined command",
+				"name":    cmd.Name(),
+				"type":    cmd.Type(),
+				"raw":     fmt.Sprintf("%#v", cmd),
+				"info":    commandInfo,
+			})
 		}
 
 		// SetType implementations only modify the

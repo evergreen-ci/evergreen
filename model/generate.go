@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -207,10 +208,10 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-	// for patches and versions triggered by users, activate all builds. Otherwise activate ones that are not setting batchtime
-	var variantsToActivate []string
+	// for patches and versions triggered by users, activate all builds. Otherwise activate ones that are not setting batchtime.
+	var batchTimeInfo batchTimeTasksAndVariants
 	if !evergreen.IsPatchRequester(v.Requester) && evergreen.ShouldConsiderBatchtime(v.Requester) {
-		variantsToActivate = g.findVariantsToActivate()
+		batchTimeInfo = g.findTasksAndVariantsWithBatchTime()
 	}
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -258,12 +259,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
 
-	tasksInExistingBuilds, err := AddNewTasks(ctx, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
+	tasksInExistingBuilds, err := addNewTasks(ctx, batchTimeInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := AddNewBuilds(ctx, variantsToActivate, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
+	_, tasksInNewBuilds, err := addNewBuilds(ctx, batchTimeInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
@@ -275,17 +276,54 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-func (g *GeneratedProject) findVariantsToActivate() []string {
-	var toActivate []string
+type batchTimeTasksAndVariants struct {
+	tasks    map[string][]string // tasks by variant that have batchtime
+	variants []string            // variants that have batchtime
+}
+
+func newBatchTimeTasksAndVariants() batchTimeTasksAndVariants {
+	return batchTimeTasksAndVariants{
+		tasks:    map[string][]string{},
+		variants: []string{},
+	}
+}
+
+func (b *batchTimeTasksAndVariants) variantHasBatchTime(variant string) bool {
+	return utility.StringSliceContains(b.variants, variant)
+}
+
+func (b *batchTimeTasksAndVariants) batchTimeTasks(variant string) []string {
+	return b.tasks[variant]
+}
+
+func (b *batchTimeTasksAndVariants) hasAnyBatchTimeTasks() bool {
+	return len(b.tasks) > 0
+}
+
+// given some list of tasks, returns the tasks that don't have batchtime
+func (b *batchTimeTasksAndVariants) tasksWithoutBatchTime(taskNames []string, variant string) []string {
+	tasksWithoutBatchTime, _ := utility.StringSliceSymmetricDifference(taskNames, b.tasks[variant])
+	return tasksWithoutBatchTime
+}
+
+func (g *GeneratedProject) findTasksAndVariantsWithBatchTime() batchTimeTasksAndVariants {
+	res := newBatchTimeTasksAndVariants()
 	for _, bv := range g.BuildVariants {
-		if bv.BatchTime == nil && bv.CronBatchTime == "" {
-			if toActivate == nil {
-				toActivate = []string{}
+		if bv.BatchTime != nil || bv.CronBatchTime != "" {
+			res.variants = append(res.variants, bv.name())
+		}
+		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
+		batchTimeTasks := []string{}
+		for _, bvt := range bv.Tasks {
+			if bvt.BatchTime != nil || bvt.CronBatchTime != "" {
+				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
-			toActivate = append(toActivate, bv.name())
+		}
+		if len(batchTimeTasks) > 0 {
+			res.tasks[bv.name()] = batchTimeTasks
 		}
 	}
-	return toActivate
+	return res
 }
 
 func addDependencies(t *task.Task, newTaskIds []string) error {

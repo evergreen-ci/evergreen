@@ -258,6 +258,22 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 	return expanded, nil
 }
 
+// 16kB
+const userDataSizeLimit = 16 * 1024
+
+func validateUserDataSize(userData, distroID string) error {
+	if len(userData) < userDataSizeLimit {
+		return nil
+	}
+	err := errors.New("user data size limit exceeded")
+	grip.Error(message.WrapError(err, message.Fields{
+		"size":     len(userData),
+		"max_size": userDataSizeLimit,
+		"distro":   distroID,
+	}))
+	return errors.WithStack(err)
+}
+
 func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
 	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil {
 		return errors.New("instance missing availability zone")

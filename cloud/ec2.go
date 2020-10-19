@@ -308,6 +308,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	ec2Settings.UserData = userData
 
 	if ec2Settings.UserData != "" {
+		if err = validateUserDataSize(ec2Settings.UserData, h.Distro.Id); err != nil {
+			return errors.WithStack(err)
+		}
 		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
 		input.UserData = &userData
 	}
@@ -480,6 +483,9 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	ec2Settings.UserData = userData
 
 	if ec2Settings.UserData != "" {
+		if err = validateUserDataSize(ec2Settings.UserData, h.Distro.Id); err != nil {
+			return errors.WithStack(err)
+		}
 		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
 		spotRequest.LaunchSpecification.UserData = &userData
 	}
