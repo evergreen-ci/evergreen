@@ -42,6 +42,7 @@ func init() {
 		"json.send":                     taskDataSendFactory,
 		"keyval.inc":                    keyValIncFactory,
 		"manifest.load":                 manifestLoadFactory,
+		"perf.send":                     perfSendFactory,
 		"s3.get":                        s3GetFactory,
 		"s3.put":                        s3PutFactory,
 		"s3Copy.copy":                   s3CopyFactory,
