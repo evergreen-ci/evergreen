@@ -828,10 +828,11 @@ type APIBanner struct {
 }
 
 type APIHostInitConfig struct {
-	HostThrottle         int `json:"host_throttle"`
-	ProvisioningThrottle int `json:"provisioning_throttle"`
-	CloudStatusBatchSize int `json:"cloud_batch_size"`
-	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
+	HostThrottle         int     `json:"host_throttle"`
+	ProvisioningThrottle int     `json:"provisioning_throttle"`
+	CloudStatusBatchSize int     `json:"cloud_batch_size"`
+	MaxTotalDynamicHosts int     `json:"max_total_dynamic_hosts"`
+	S3BaseURL            *string `json:"s3_base_url"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -841,6 +842,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
+		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -853,6 +855,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
 		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
+		S3BaseURL:            FromStringPtr(a.S3BaseURL),
 	}, nil
 }
 
