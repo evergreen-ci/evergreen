@@ -1675,6 +1675,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 type APIServiceFlags struct {
 	TaskDispatchDisabled          bool `json:"task_dispatch_disabled"`
 	HostInitDisabled              bool `json:"host_init_disabled"`
+	S3BinaryDownloadsDisabled     bool `json:"s3_binary_downloads_disabled"`
 	MonitorDisabled               bool `json:"monitor_disabled"`
 	AlertsDisabled                bool `json:"alerts_disabled"`
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
@@ -1935,6 +1936,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
+		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
@@ -1971,6 +1973,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:          as.TaskDispatchDisabled,
 		HostInitDisabled:              as.HostInitDisabled,
+		S3BinaryDownloadsDisabled:     as.S3BinaryDownloadsDisabled,
 		MonitorDisabled:               as.MonitorDisabled,
 		AlertsDisabled:                as.AlertsDisabled,
 		AgentStartDisabled:            as.AgentStartDisabled,

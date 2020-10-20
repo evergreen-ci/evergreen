@@ -11,6 +11,7 @@ import (
 type ServiceFlags struct {
 	TaskDispatchDisabled          bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled              bool `bson:"host_init_disabled" json:"host_init_disabled"`
+	S3BinaryDownloadsDisabled     bool `bson:"s3_binary_downloads_disabled" json:"s3_binary_downloads_disabled"`
 	MonitorDisabled               bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	AlertsDisabled                bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled            bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
@@ -71,6 +72,7 @@ func (c *ServiceFlags) Set() error {
 		"$set": bson.M{
 			taskDispatchKey:                  c.TaskDispatchDisabled,
 			hostInitKey:                      c.HostInitDisabled,
+			s3BinaryDownloadsDisabledKey:     c.S3BinaryDownloadsDisabled,
 			monitorKey:                       c.MonitorDisabled,
 			alertsKey:                        c.AlertsDisabled,
 			agentStartKey:                    c.AgentStartDisabled,
