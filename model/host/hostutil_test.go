@@ -37,31 +37,76 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
-	h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
-	settings := &evergreen.Settings{
-		Ui:                evergreen.UIConfig{Url: "www.example.com"},
-		ClientBinariesDir: "clients",
-	}
-	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
-	assert.Equal(expected, h.CurlCommand(settings))
+	t.Run("WithoutS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ClientBinariesDir: "clients",
+		}
+		t.Run("Linux", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
+			assert.Equal(expected, h.CurlCommand(settings))
+		})
+		t.Run("Windows", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
+			assert.Equal(expected, h.CurlCommand(settings))
+		})
+	})
+	t.Run("WithS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ClientBinariesDir: "clients",
+			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
+		}
+		t.Run("Linux", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/clients/windows_amd64/evergreen.exe' || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe') && chmod +x evergreen.exe", evergreen.BuildRevision)
+			assert.Equal(expected, h.CurlCommand(settings))
+		})
 
-	h = &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
-	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
-	assert.Equal(expected, h.CurlCommand(settings))
+		t.Run("Windows", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/clients/linux_amd64/evergreen' || curl -LO 'www.example.com/clients/linux_amd64/evergreen') && chmod +x evergreen", evergreen.BuildRevision)
+			assert.Equal(expected, h.CurlCommand(settings))
+		})
+	})
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
-	settings := &evergreen.Settings{
-		Ui:                evergreen.UIConfig{Url: "www.example.com"},
-		ClientBinariesDir: "clients",
-	}
-	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
-	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
-
-	h = &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
-	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
-	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+	t.Run("WithoutS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ClientBinariesDir: "clients",
+		}
+		t.Run("Windows", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
+			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+		})
+		t.Run("Linux", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
+			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+		})
+	})
+	t.Run("WithS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
+			ClientBinariesDir: "clients",
+		}
+		t.Run("Windows", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
+			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+		})
+		t.Run("Linux", func(t *testing.T) {
+			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
+			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+		})
+	})
 }
 
 func TestClientURL(t *testing.T) {
