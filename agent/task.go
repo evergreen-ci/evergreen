@@ -280,10 +280,14 @@ func (tc *taskContext) hadTimedOut() bool {
 	return tc.timedOut()
 }
 
-func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
+func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
 	detected, pids := tc.oomTracker.Report()
-	return apimodels.OOMTrackerInfo{
-		Detected: detected,
+	if !detected {
+		return nil
+	}
+
+	return &apimodels.OOMTrackerInfo{
+		Detected: true,
 		Pids:     pids,
 	}
 }
