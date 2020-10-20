@@ -46,9 +46,6 @@ const (
 
 	// Media Type values to access preview APIs
 
-	// https://developer.github.com/changes/2020-01-10-revoke-installation-token/
-	mediaTypeRevokeTokenPreview = "application/vnd.github.gambit-preview+json"
-
 	// https://developer.github.com/changes/2014-12-09-new-attributes-for-stars-api/
 	mediaTypeStarringPreview = "application/vnd.github.v3.star+json"
 
@@ -109,9 +106,6 @@ const (
 	// https://developer.github.com/changes/2018-12-18-interactions-preview/
 	mediaTypeInteractionRestrictionsPreview = "application/vnd.github.sombra-preview+json"
 
-	// https://developer.github.com/changes/2019-02-14-draft-pull-requests/
-	mediaTypeDraftPreview = "application/vnd.github.shadow-cat-preview+json"
-
 	// https://developer.github.com/changes/2019-03-14-enabling-disabling-pages/
 	mediaTypeEnablePagesAPIPreview = "application/vnd.github.switcheroo-preview+json"
 
@@ -135,6 +129,12 @@ const (
 
 	// https://developer.github.com/changes/2019-10-03-multi-line-comments/
 	mediaTypeMultiLineCommentsPreview = "application/vnd.github.comfort-fade-preview+json"
+
+	// https://developer.github.com/changes/2019-11-05-deprecated-passwords-and-authorizations-api/
+	mediaTypeOAuthAppPreview = "application/vnd.github.doctor-strange-preview+json"
+
+	// https://developer.github.com/changes/2019-12-03-internal-visibility-changes/
+	mediaTypeRepositoryVisibilityPreview = "application/vnd.github.nebula-preview+json"
 )
 
 // A Client manages communication with the GitHub API.
@@ -165,6 +165,7 @@ type Client struct {
 	Apps           *AppsService
 	Authorizations *AuthorizationsService
 	Checks         *ChecksService
+	CodeScanning   *CodeScanningService
 	Gists          *GistsService
 	Git            *GitService
 	Gitignores     *GitignoresService
@@ -230,7 +231,7 @@ type RawOptions struct {
 	Type RawType
 }
 
-// addOptions adds the parameters in opt as URL query parameters to s. opt
+// addOptions adds the parameters in opts as URL query parameters to s. opts
 // must be a struct whose fields may contain "url" tags.
 func addOptions(s string, opts interface{}) (string, error) {
 	v := reflect.ValueOf(opts)
@@ -271,6 +272,7 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Apps = (*AppsService)(&c.common)
 	c.Authorizations = (*AuthorizationsService)(&c.common)
 	c.Checks = (*ChecksService)(&c.common)
+	c.CodeScanning = (*CodeScanningService)(&c.common)
 	c.Gists = (*GistsService)(&c.common)
 	c.Git = (*GitService)(&c.common)
 	c.Gitignores = (*GitignoresService)(&c.common)
@@ -291,16 +293,18 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // NewEnterpriseClient returns a new GitHub API client with provided
-// base URL and upload URL (often the same URL and is your GitHub Enterprise hostname).
-// If either URL does not have the suffix "/api/v3/", it will be added automatically.
-// If a nil httpClient is provided, http.DefaultClient will be used.
+// base URL and upload URL (often is your GitHub Enterprise hostname).
+// If the base URL does not have the suffix "/api/v3/", it will be added automatically.
+// If the upload URL does not have the suffix "/api/uploads", it will be added automatically.
+// If a nil httpClient is provided, a new http.Client will be used.
 //
 // Note that NewEnterpriseClient is a convenience helper only;
 // its behavior is equivalent to using NewClient, followed by setting
 // the BaseURL and UploadURL fields.
 //
 // Another important thing is that by default, the GitHub Enterprise URL format
-// should be http(s)://[hostname]/api/v3 or you will always receive the 406 status code.
+// should be http(s)://[hostname]/api/v3/ or you will always receive the 406 status code.
+// The upload URL format should be http(s)://[hostname]/api/uploads/.
 func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*Client, error) {
 	baseEndpoint, err := url.Parse(baseURL)
 	if err != nil {
@@ -320,8 +324,8 @@ func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*C
 	if !strings.HasSuffix(uploadEndpoint.Path, "/") {
 		uploadEndpoint.Path += "/"
 	}
-	if !strings.HasSuffix(uploadEndpoint.Path, "/api/v3/") {
-		uploadEndpoint.Path += "api/v3/"
+	if !strings.HasSuffix(uploadEndpoint.Path, "/api/uploads/") {
+		uploadEndpoint.Path += "api/uploads/"
 	}
 
 	c := NewClient(httpClient)
@@ -918,6 +922,24 @@ func (c *Client) RateLimits(ctx context.Context) (*RateLimits, *Response, error)
 	return response.Resources, resp, nil
 }
 
+func setCredentialsAsHeaders(req *http.Request, id, secret string) *http.Request {
+	// To set extra headers, we must make a copy of the Request so
+	// that we don't modify the Request we were given. This is required by the
+	// specification of http.RoundTripper.
+	//
+	// Since we are going to modify only req.Header here, we only need a deep copy
+	// of req.Header.
+	convertedRequest := new(http.Request)
+	*convertedRequest = *req
+	convertedRequest.Header = make(http.Header, len(req.Header))
+
+	for k, s := range req.Header {
+		convertedRequest.Header[k] = append([]string(nil), s...)
+	}
+	convertedRequest.SetBasicAuth(id, secret)
+	return convertedRequest
+}
+
 /*
 UnauthenticatedRateLimitedTransport allows you to make unauthenticated calls
 that need to use a higher rate limit associated with your OAuth application.
@@ -928,8 +950,8 @@ that need to use a higher rate limit associated with your OAuth application.
 	}
 	client := github.NewClient(t.Client())
 
-This will append the querystring params client_id=xxx&client_secret=yyy to all
-requests.
+This will add the client id and secret as a base64-encoded string in the format
+ClientID:ClientSecret and apply it as an "Authorization": "Basic" header.
 
 See https://developer.github.com/v3/#unauthenticated-rate-limited-requests for
 more information.
@@ -958,22 +980,7 @@ func (t *UnauthenticatedRateLimitedTransport) RoundTrip(req *http.Request) (*htt
 		return nil, errors.New("t.ClientSecret is empty")
 	}
 
-	// To set extra querystring params, we must make a copy of the Request so
-	// that we don't modify the Request we were given. This is required by the
-	// specification of http.RoundTripper.
-	//
-	// Since we are going to modify only req.URL here, we only need a deep copy
-	// of req.URL.
-	req2 := new(http.Request)
-	*req2 = *req
-	req2.URL = new(url.URL)
-	*req2.URL = *req.URL
-
-	q := req2.URL.Query()
-	q.Set("client_id", t.ClientID)
-	q.Set("client_secret", t.ClientSecret)
-	req2.URL.RawQuery = q.Encode()
-
+	req2 := setCredentialsAsHeaders(req, t.ClientID, t.ClientSecret)
 	// Make the HTTP request.
 	return t.transport().RoundTrip(req2)
 }
@@ -1007,20 +1014,7 @@ type BasicAuthTransport struct {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *BasicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// To set extra headers, we must make a copy of the Request so
-	// that we don't modify the Request we were given. This is required by the
-	// specification of http.RoundTripper.
-	//
-	// Since we are going to modify only req.Header here, we only need a deep copy
-	// of req.Header.
-	req2 := new(http.Request)
-	*req2 = *req
-	req2.Header = make(http.Header, len(req.Header))
-	for k, s := range req.Header {
-		req2.Header[k] = append([]string(nil), s...)
-	}
-
-	req2.SetBasicAuth(t.Username, t.Password)
+	req2 := setCredentialsAsHeaders(req, t.Username, t.Password)
 	if t.OTP != "" {
 		req2.Header.Set(headerOTP, t.OTP)
 	}

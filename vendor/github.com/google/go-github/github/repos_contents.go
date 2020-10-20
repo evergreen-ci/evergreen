@@ -94,7 +94,7 @@ func (r *RepositoryContent) GetContent() (string, error) {
 
 // GetReadme gets the Readme file for the repository.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-the-readme
+// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-a-repository-readme
 func (s *RepositoriesService) GetReadme(ctx context.Context, owner, repo string, opts *RepositoryContentGetOptions) (*RepositoryContent, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/readme", owner, repo)
 	u, err := addOptions(u, opts)
@@ -146,7 +146,7 @@ func (s *RepositoriesService) DownloadContents(ctx context.Context, owner, repo,
 // as possible, both result types will be returned but only one will contain a
 // value and the other will be nil.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-contents
+// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-repository-content
 func (s *RepositoriesService) GetContents(ctx context.Context, owner, repo, path string, opts *RepositoryContentGetOptions) (fileContent *RepositoryContent, directoryContent []*RepositoryContent, resp *Response, err error) {
 	escapedPath := (&url.URL{Path: path}).String()
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, escapedPath)
@@ -177,7 +177,7 @@ func (s *RepositoriesService) GetContents(ctx context.Context, owner, repo, path
 // CreateFile creates a new file in a repository at the given path and returns
 // the commit and file metadata.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#create-a-file
+// GitHub API docs: https://developer.github.com/v3/repos/contents/#create-or-update-file-contents
 func (s *RepositoriesService) CreateFile(ctx context.Context, owner, repo, path string, opts *RepositoryContentFileOptions) (*RepositoryContentResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := s.client.NewRequest("PUT", u, opts)
@@ -195,7 +195,7 @@ func (s *RepositoriesService) CreateFile(ctx context.Context, owner, repo, path 
 // UpdateFile updates a file in a repository at the given path and returns the
 // commit and file metadata. Requires the blob SHA of the file being updated.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#update-a-file
+// GitHub API docs: https://developer.github.com/v3/repos/contents/#create-or-update-file-contents
 func (s *RepositoriesService) UpdateFile(ctx context.Context, owner, repo, path string, opts *RepositoryContentFileOptions) (*RepositoryContentResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := s.client.NewRequest("PUT", u, opts)
@@ -228,15 +228,15 @@ func (s *RepositoriesService) DeleteFile(ctx context.Context, owner, repo, path 
 	return deleteResponse, resp, nil
 }
 
-// archiveFormat is used to define the archive type when calling GetArchiveLink.
-type archiveFormat string
+// ArchiveFormat is used to define the archive type when calling GetArchiveLink.
+type ArchiveFormat string
 
 const (
 	// Tarball specifies an archive in gzipped tar format.
-	Tarball archiveFormat = "tarball"
+	Tarball ArchiveFormat = "tarball"
 
 	// Zipball specifies an archive in zip format.
-	Zipball archiveFormat = "zipball"
+	Zipball ArchiveFormat = "zipball"
 )
 
 // GetArchiveLink returns an URL to download a tarball or zipball archive for a
@@ -244,7 +244,7 @@ const (
 // or github.Zipball constant.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/contents/#get-archive-link
-func (s *RepositoriesService) GetArchiveLink(ctx context.Context, owner, repo string, archiveformat archiveFormat, opts *RepositoryContentGetOptions, followRedirects bool) (*url.URL, *Response, error) {
+func (s *RepositoriesService) GetArchiveLink(ctx context.Context, owner, repo string, archiveformat ArchiveFormat, opts *RepositoryContentGetOptions, followRedirects bool) (*url.URL, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/%s", owner, repo, archiveformat)
 	if opts != nil && opts.Ref != "" {
 		u += fmt.Sprintf("/%s", opts.Ref)

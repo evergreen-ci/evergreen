@@ -220,6 +220,10 @@ func TestParseWebHook(t *testing.T) {
 			messageType: "fork",
 		},
 		{
+			payload:     &GitHubAppAuthorizationEvent{},
+			messageType: "github_app_authorization",
+		},
+		{
 			payload:     &GollumEvent{},
 			messageType: "gollum",
 		},
@@ -270,6 +274,10 @@ func TestParseWebHook(t *testing.T) {
 		{
 			payload:     &OrgBlockEvent{},
 			messageType: "org_block",
+		},
+		{
+			payload:     &PackageEvent{},
+			messageType: "package",
 		},
 		{
 			payload:     &PageBuildEvent{},
