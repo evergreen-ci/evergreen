@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/timber/internal"
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -25,43 +25,43 @@ type mockClient struct {
 	createErr  bool
 	appendErr  bool
 	closeErr   bool
-	logData    *internal.LogData
-	logLines   *internal.LogLines
-	logEndInfo *internal.LogEndInfo
+	logData    *gopb.LogData
+	logLines   *gopb.LogLines
+	logEndInfo *gopb.LogEndInfo
 }
 
-func (mc *mockClient) CreateLog(_ context.Context, in *internal.LogData, _ ...grpc.CallOption) (*internal.BuildloggerResponse, error) {
+func (mc *mockClient) CreateLog(_ context.Context, in *gopb.LogData, _ ...grpc.CallOption) (*gopb.BuildloggerResponse, error) {
 	if mc.createErr {
 		return nil, errors.New("create error")
 	}
 
 	mc.logData = in
 
-	return &internal.BuildloggerResponse{LogId: in.Info.TestName}, nil
+	return &gopb.BuildloggerResponse{LogId: in.Info.TestName}, nil
 }
 
-func (mc *mockClient) AppendLogLines(_ context.Context, in *internal.LogLines, _ ...grpc.CallOption) (*internal.BuildloggerResponse, error) {
+func (mc *mockClient) AppendLogLines(_ context.Context, in *gopb.LogLines, _ ...grpc.CallOption) (*gopb.BuildloggerResponse, error) {
 	if mc.appendErr {
 		return nil, errors.New("append error")
 	}
 
 	mc.logLines = in
 
-	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
+	return &gopb.BuildloggerResponse{LogId: in.LogId}, nil
 }
 
-func (*mockClient) StreamLogLines(_ context.Context, _ ...grpc.CallOption) (internal.Buildlogger_StreamLogLinesClient, error) {
+func (*mockClient) StreamLogLines(_ context.Context, _ ...grpc.CallOption) (gopb.Buildlogger_StreamLogLinesClient, error) {
 	return nil, nil
 }
 
-func (mc *mockClient) CloseLog(_ context.Context, in *internal.LogEndInfo, _ ...grpc.CallOption) (*internal.BuildloggerResponse, error) {
+func (mc *mockClient) CloseLog(_ context.Context, in *gopb.LogEndInfo, _ ...grpc.CallOption) (*gopb.BuildloggerResponse, error) {
 	if mc.closeErr {
 		return nil, errors.New("close error")
 	}
 
 	mc.logEndInfo = in
 
-	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
+	return &gopb.BuildloggerResponse{LogId: in.LogId}, nil
 }
 
 type mockSender struct {
@@ -81,8 +81,8 @@ func TestLoggerOptionsValidate(t *testing.T) {
 	t.Run("Defaults", func(t *testing.T) {
 		opts := &LoggerOptions{ClientConn: &grpc.ClientConn{}}
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogFormat(opts.Format), internal.LogFormat_LOG_FORMAT_UNKNOWN)
-		assert.Equal(t, internal.LogStorage(opts.Storage), internal.LogStorage_LOG_STORAGE_S3)
+		assert.Equal(t, gopb.LogFormat(opts.Format), gopb.LogFormat_LOG_FORMAT_UNKNOWN)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), gopb.LogStorage_LOG_STORAGE_S3)
 		assert.NotNil(t, opts.Local)
 		assert.Equal(t, defaultMaxBufferSize, opts.MaxBufferSize)
 		assert.Equal(t, defaultFlushInterval, opts.FlushInterval)
@@ -103,23 +103,23 @@ func TestLoggerOptionsValidate(t *testing.T) {
 
 		opts.Format = LogFormatText
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogFormat(opts.Format), internal.LogFormat_LOG_FORMAT_TEXT)
+		assert.Equal(t, gopb.LogFormat(opts.Format), gopb.LogFormat_LOG_FORMAT_TEXT)
 		opts.Format = LogFormatJSON
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogFormat(opts.Format), internal.LogFormat_LOG_FORMAT_JSON)
+		assert.Equal(t, gopb.LogFormat(opts.Format), gopb.LogFormat_LOG_FORMAT_JSON)
 		opts.Format = LogFormatBSON
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogFormat(opts.Format), internal.LogFormat_LOG_FORMAT_BSON)
+		assert.Equal(t, gopb.LogFormat(opts.Format), gopb.LogFormat_LOG_FORMAT_BSON)
 
 		opts.Storage = LogStorageS3
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogStorage(opts.Storage), internal.LogStorage_LOG_STORAGE_S3)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), gopb.LogStorage_LOG_STORAGE_S3)
 		opts.Storage = LogStorageLocal
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogStorage(opts.Storage), internal.LogStorage_LOG_STORAGE_LOCAL)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), gopb.LogStorage_LOG_STORAGE_LOCAL)
 		opts.Storage = LogStorageGridFS
 		require.NoError(t, opts.validate())
-		assert.Equal(t, internal.LogStorage(opts.Storage), internal.LogStorage_LOG_STORAGE_GRIDFS)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), gopb.LogStorage_LOG_STORAGE_GRIDFS)
 	})
 	t.Run("InvalidLogFormat", func(t *testing.T) {
 		opts := &LoggerOptions{
@@ -198,9 +198,9 @@ func TestNewLogger(t *testing.T) {
 		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
 		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
 		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
-		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, gopb.LogFormat(opts.Format), srv.Create.Info.Format)
 		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
-		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), srv.Create.Storage)
 		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
@@ -262,9 +262,9 @@ func TestNewLogger(t *testing.T) {
 		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
 		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
 		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
-		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, gopb.LogFormat(opts.Format), srv.Create.Info.Format)
 		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
-		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), srv.Create.Storage)
 		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
@@ -324,9 +324,9 @@ func TestNewLogger(t *testing.T) {
 		assert.Equal(t, opts.TestName, srv.Create.Info.TestName)
 		assert.Equal(t, opts.Trial, srv.Create.Info.Trial)
 		assert.Equal(t, opts.ProcessName, srv.Create.Info.ProcName)
-		assert.Equal(t, internal.LogFormat(opts.Format), srv.Create.Info.Format)
+		assert.Equal(t, gopb.LogFormat(opts.Format), srv.Create.Info.Format)
 		assert.Equal(t, opts.Tags, srv.Create.Info.Tags)
-		assert.Equal(t, internal.LogStorage(opts.Storage), srv.Create.Storage)
+		assert.Equal(t, gopb.LogStorage(opts.Storage), srv.Create.Storage)
 		srv.Mu.Unlock()
 		b, ok := s.(*buildlogger)
 		require.True(t, ok)
@@ -666,7 +666,7 @@ func TestClose(t *testing.T) {
 		b := createSender(subCtx, mc, ms)
 		b.opts.logID = "id"
 		b.opts.SetExitCode(2)
-		logLine := &internal.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
+		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
 		b.buffer = append(b.buffer, logLine)
 
 		require.NoError(t, b.Close())
@@ -698,7 +698,7 @@ func TestClose(t *testing.T) {
 		mc := &mockClient{appendErr: true}
 		ms := &mockSender{Base: send.NewBase("test")}
 		b := createSender(subCtx, mc, ms)
-		logLine := &internal.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
+		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
 		b.buffer = append(b.buffer, logLine)
 
 		assert.Error(t, b.Close())
@@ -714,7 +714,7 @@ func TestClose(t *testing.T) {
 	})
 }
 
-func createSender(ctx context.Context, mc internal.BuildloggerClient, ms send.Sender) *buildlogger {
+func createSender(ctx context.Context, mc gopb.BuildloggerClient, ms send.Sender) *buildlogger {
 	ctx, cancel := context.WithCancel(ctx)
 	return &buildlogger{
 		ctx:    ctx,
@@ -733,22 +733,22 @@ func createSender(ctx context.Context, mc internal.BuildloggerClient, ms send.Se
 			Arguments:   map[string]string{"tag1": "val", "tag2": "val2"},
 			Mainline:    true,
 			Local:       ms,
-			Format:      LogFormat(internal.LogFormat_LOG_FORMAT_TEXT),
+			Format:      LogFormat(gopb.LogFormat_LOG_FORMAT_TEXT),
 		},
 		client: mc,
-		buffer: []*internal.LogLine{},
+		buffer: []*gopb.LogLine{},
 		Base:   send.NewBase("test"),
 	}
 }
 
-func startRPCService(ctx context.Context, service internal.BuildloggerServer, port int) error {
+func startRPCService(ctx context.Context, service gopb.BuildloggerServer, port int) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterBuildloggerServer(s, service)
+	gopb.RegisterBuildloggerServer(s, service)
 
 	go func() {
 		_ = s.Serve(lis)

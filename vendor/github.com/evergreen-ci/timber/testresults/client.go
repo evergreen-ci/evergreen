@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/internal"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
 // Client provides a wrapper around a gRPC client for sending test results to Cedar.
 type Client struct {
-	client    internal.CedarTestResultsClient
+	client    gopb.CedarTestResultsClient
 	closeConn func() error
 	closed    bool
 }
@@ -38,7 +38,7 @@ func NewClient(ctx context.Context, opts timber.ConnectionOptions) (*Client, err
 	}
 
 	s := &Client{
-		client:    internal.NewCedarTestResultsClient(conn),
+		client:    gopb.NewCedarTestResultsClient(conn),
 		closeConn: conn.Close,
 	}
 	return s, nil
@@ -53,7 +53,7 @@ func NewClientWithExistingConnection(ctx context.Context, conn *grpc.ClientConn)
 	}
 
 	s := &Client{
-		client:    internal.NewCedarTestResultsClient(conn),
+		client:    gopb.NewCedarTestResultsClient(conn),
 		closeConn: func() error { return nil },
 	}
 	return s, nil
@@ -92,7 +92,7 @@ func (c *Client) CloseRecord(ctx context.Context, id string) error {
 		return errors.New("id cannot be empty")
 	}
 
-	if _, err := c.client.CloseTestResultsRecord(ctx, &internal.TestResultsEndInfo{TestResultsRecordId: id}); err != nil {
+	if _, err := c.client.CloseTestResultsRecord(ctx, &gopb.TestResultsEndInfo{TestResultsRecordId: id}); err != nil {
 		return errors.WithStack(err)
 	}
 

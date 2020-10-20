@@ -3,7 +3,7 @@ package testresults
 import (
 	"time"
 
-	"github.com/evergreen-ci/timber/internal"
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -22,8 +22,8 @@ type CreateOptions struct {
 	Mainline        bool   `bson:"mainline" json:"mainline" yaml:"mainline"`
 }
 
-func (opts CreateOptions) export() *internal.TestResultsInfo {
-	return &internal.TestResultsInfo{
+func (opts CreateOptions) export() *gopb.TestResultsInfo {
+	return &gopb.TestResultsInfo{
 		Project:         opts.Project,
 		Version:         opts.Version,
 		Variant:         opts.Variant,
@@ -49,8 +49,8 @@ func (r Results) validate() error {
 }
 
 // export converts Results into the equivalent protobuf TestResults.
-func (r Results) export() (*internal.TestResults, error) {
-	var results []*internal.TestResult
+func (r Results) export() (*gopb.TestResults, error) {
+	var results []*gopb.TestResult
 	for _, res := range r.Results {
 		exported, err := res.export()
 		if err != nil {
@@ -58,7 +58,7 @@ func (r Results) export() (*internal.TestResults, error) {
 		}
 		results = append(results, exported)
 	}
-	return &internal.TestResults{
+	return &gopb.TestResults{
 		TestResultsRecordId: r.ID,
 		Results:             results,
 	}, nil
@@ -76,7 +76,7 @@ type Result struct {
 }
 
 // export converts a Result into the equivalent protobuf TestResult.
-func (r Result) export() (*internal.TestResult, error) {
+func (r Result) export() (*gopb.TestResult, error) {
 	created, err := ptypes.TimestampProto(r.TaskCreated)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting create timestamp")
@@ -89,7 +89,7 @@ func (r Result) export() (*internal.TestResult, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting end timestamp")
 	}
-	return &internal.TestResult{
+	return &gopb.TestResult{
 		TestName:       r.Name,
 		Trial:          r.Trial,
 		Status:         r.Status,

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/internal"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -24,10 +24,10 @@ type MockMetricsServer struct {
 	AddErr     bool
 	StreamErr  bool
 	CloseErr   bool
-	Create     *internal.SystemMetrics
-	Data       map[string][]*internal.SystemMetricsData
-	StreamData map[string][]*internal.SystemMetricsData
-	Close      *internal.SystemMetricsSeriesEnd
+	Create     *gopb.SystemMetrics
+	Data       map[string][]*gopb.SystemMetricsData
+	StreamData map[string][]*gopb.SystemMetricsData
+	Close      *gopb.SystemMetricsSeriesEnd
 	DialOpts   timber.DialCedarOptions
 }
 
@@ -48,7 +48,7 @@ func NewMockMetricsServer(ctx context.Context, basePort int) (*MockMetricsServer
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterCedarSystemMetricsServer(s, srv)
+	gopb.RegisterCedarSystemMetricsServer(s, srv)
 
 	go func() {
 		_ = s.Serve(lis)
@@ -71,7 +71,7 @@ func NewMockMetricsServerWithDialOpts(ctx context.Context, opts timber.DialCedar
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterCedarSystemMetricsServer(s, srv)
+	gopb.RegisterCedarSystemMetricsServer(s, srv)
 
 	go func() {
 		_ = s.Serve(lis)
@@ -90,7 +90,7 @@ func (ms *MockMetricsServer) Address() string {
 
 // CreateSystemMetricsRecord returns an error if CreateErr is true, otherwise
 // it sets Create to the input.
-func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *internal.SystemMetrics) (*internal.SystemMetricsResponse, error) {
+func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *gopb.SystemMetrics) (*gopb.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -98,14 +98,14 @@ func (ms *MockMetricsServer) CreateSystemMetricsRecord(_ context.Context, in *in
 		return nil, errors.New("create error")
 	}
 	ms.Create = in
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
 
 // AddSystemMetrics returns an error if AddErr is true, otherwise it adds the
 // input to Data.
-func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.SystemMetricsData) (*internal.SystemMetricsResponse, error) {
+func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *gopb.SystemMetricsData) (*gopb.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -113,23 +113,23 @@ func (ms *MockMetricsServer) AddSystemMetrics(_ context.Context, in *internal.Sy
 		return nil, errors.New("add error")
 	}
 	if ms.Data == nil {
-		ms.Data = make(map[string][]*internal.SystemMetricsData)
+		ms.Data = make(map[string][]*gopb.SystemMetricsData)
 	}
 	ms.Data[in.Type] = append(ms.Data[in.Type], in)
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
 
 // StreamSystemMetrics, when receiving from the stream, returns an error if
 // if StreamErr is true, otherwise it adds the stream input to StreamData.
-func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetrics_StreamSystemMetricsServer) error {
+func (ms *MockMetricsServer) StreamSystemMetrics(stream gopb.CedarSystemMetrics_StreamSystemMetricsServer) error {
 	ctx := stream.Context()
 	id := ""
 
 	ms.Mu.Lock()
 	if ms.StreamData == nil {
-		ms.StreamData = map[string][]*internal.SystemMetricsData{}
+		ms.StreamData = map[string][]*gopb.SystemMetricsData{}
 	}
 	ms.Mu.Unlock()
 
@@ -140,7 +140,7 @@ func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetr
 
 		chunk, err := stream.Recv()
 		if err == io.EOF {
-			return stream.SendAndClose(&internal.SystemMetricsResponse{Id: id})
+			return stream.SendAndClose(&gopb.SystemMetricsResponse{Id: id})
 		}
 		if err != nil {
 			return fmt.Errorf("error in stream for id %s", id)
@@ -164,7 +164,7 @@ func (ms *MockMetricsServer) StreamSystemMetrics(stream internal.CedarSystemMetr
 
 // CloseMetrics returns an error if CloseErr is true, otherwise sets Close to
 // the input.
-func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *internal.SystemMetricsSeriesEnd) (*internal.SystemMetricsResponse, error) {
+func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *gopb.SystemMetricsSeriesEnd) (*gopb.SystemMetricsResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -172,7 +172,7 @@ func (ms *MockMetricsServer) CloseMetrics(_ context.Context, in *internal.System
 		return nil, errors.New("close error")
 	}
 	ms.Close = in
-	return &internal.SystemMetricsResponse{
+	return &gopb.SystemMetricsResponse{
 		Id: "ID",
 	}, nil
 }
@@ -184,10 +184,10 @@ type MockTestResultsServer struct {
 	AddErr        bool
 	StreamErr     bool
 	CloseErr      bool
-	Create        *internal.TestResultsInfo
-	Results       map[string][]*internal.TestResults
-	StreamResults map[string][]*internal.TestResults
-	Close         *internal.TestResultsEndInfo
+	Create        *gopb.TestResultsInfo
+	Results       map[string][]*gopb.TestResults
+	StreamResults map[string][]*gopb.TestResults
+	Close         *gopb.TestResultsEndInfo
 	DialOpts      timber.DialCedarOptions
 }
 
@@ -213,7 +213,7 @@ func NewMockTestResultsServer(ctx context.Context, basePort int) (*MockTestResul
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterCedarTestResultsServer(s, srv)
+	gopb.RegisterCedarTestResultsServer(s, srv)
 
 	go func() {
 		_ = s.Serve(lis)
@@ -236,7 +236,7 @@ func NewMockTestResultsServerWithDialOpts(ctx context.Context, opts timber.DialC
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterCedarTestResultsServer(s, srv)
+	gopb.RegisterCedarTestResultsServer(s, srv)
 
 	go func() {
 		grip.Error(errors.Wrap(s.Serve(lis), "running server"))
@@ -250,40 +250,40 @@ func NewMockTestResultsServerWithDialOpts(ctx context.Context, opts timber.DialC
 
 // CreateTestResultsRecord returns an error if CreateErr is true, otherwise it
 // sets Create to the input.
-func (m *MockTestResultsServer) CreateTestResultsRecord(_ context.Context, in *internal.TestResultsInfo) (*internal.TestResultsResponse, error) {
+func (m *MockTestResultsServer) CreateTestResultsRecord(_ context.Context, in *gopb.TestResultsInfo) (*gopb.TestResultsResponse, error) {
 	if m.CreateErr {
 		return nil, errors.New("create error")
 	}
 	m.Create = in
-	return &internal.TestResultsResponse{TestResultsRecordId: utility.RandomString()}, nil
+	return &gopb.TestResultsResponse{TestResultsRecordId: utility.RandomString()}, nil
 }
 
 // AddTestResults returns an error if AddErr is true, otherwise it adds the
 // input to Results.
-func (m *MockTestResultsServer) AddTestResults(_ context.Context, in *internal.TestResults) (*internal.TestResultsResponse, error) {
+func (m *MockTestResultsServer) AddTestResults(_ context.Context, in *gopb.TestResults) (*gopb.TestResultsResponse, error) {
 	if m.AddErr {
 		return nil, errors.New("add error")
 	}
 	if m.Results == nil {
-		m.Results = make(map[string][]*internal.TestResults)
+		m.Results = make(map[string][]*gopb.TestResults)
 	}
 	m.Results[in.TestResultsRecordId] = append(m.Results[in.TestResultsRecordId], in)
-	return &internal.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
+	return &gopb.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
 }
 
 // StreamTestResults returns a not implemented error.
-func (ms *MockTestResultsServer) StreamTestResults(internal.CedarTestResults_StreamTestResultsServer) error {
+func (ms *MockTestResultsServer) StreamTestResults(gopb.CedarTestResults_StreamTestResultsServer) error {
 	return errors.New("not implemented")
 }
 
 // CloseTestResults returns an error if CloseErr is true, otherwise it sets
 // Close to the input.
-func (m *MockTestResultsServer) CloseTestResultsRecord(_ context.Context, in *internal.TestResultsEndInfo) (*internal.TestResultsResponse, error) {
+func (m *MockTestResultsServer) CloseTestResultsRecord(_ context.Context, in *gopb.TestResultsEndInfo) (*gopb.TestResultsResponse, error) {
 	if m.CloseErr {
 		return nil, errors.New("close error")
 	}
 	m.Close = in
-	return &internal.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
+	return &gopb.TestResultsResponse{TestResultsRecordId: in.TestResultsRecordId}, nil
 }
 
 // MockBuildloggerServer sets up a mock cedar server for testing buildlogger
@@ -293,9 +293,9 @@ type MockBuildloggerServer struct {
 	CreateErr bool
 	AppendErr bool
 	CloseErr  bool
-	Create    *internal.LogData
-	Data      map[string][]*internal.LogLines
-	Close     *internal.LogEndInfo
+	Create    *gopb.LogData
+	Data      map[string][]*gopb.LogLines
+	Close     *gopb.LogEndInfo
 	DialOpts  timber.DialCedarOptions
 }
 
@@ -303,7 +303,7 @@ type MockBuildloggerServer struct {
 // port near the provided port.
 func NewMockBuildloggerServer(ctx context.Context, basePort int) (*MockBuildloggerServer, error) {
 	srv := &MockBuildloggerServer{
-		Data: make(map[string][]*internal.LogLines),
+		Data: make(map[string][]*gopb.LogLines),
 	}
 	port := GetPortNumber(basePort)
 
@@ -318,7 +318,7 @@ func NewMockBuildloggerServer(ctx context.Context, basePort int) (*MockBuildlogg
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterBuildloggerServer(s, srv)
+	gopb.RegisterBuildloggerServer(s, srv)
 
 	go func() {
 		_ = s.Serve(lis)
@@ -341,7 +341,7 @@ func NewMockBuildloggerServerWithDialOpts(ctx context.Context, opts timber.DialC
 	}
 
 	s := grpc.NewServer()
-	internal.RegisterBuildloggerServer(s, srv)
+	gopb.RegisterBuildloggerServer(s, srv)
 
 	go func() {
 		_ = s.Serve(lis)
@@ -360,7 +360,7 @@ func (ms *MockBuildloggerServer) Address() string {
 
 // CreateLog returns an error if CreateErr is true, otherwise it sets Create to
 // the input.
-func (ms *MockBuildloggerServer) CreateLog(_ context.Context, in *internal.LogData) (*internal.BuildloggerResponse, error) {
+func (ms *MockBuildloggerServer) CreateLog(_ context.Context, in *gopb.LogData) (*gopb.BuildloggerResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -369,12 +369,12 @@ func (ms *MockBuildloggerServer) CreateLog(_ context.Context, in *internal.LogDa
 	}
 
 	ms.Create = in
-	return &internal.BuildloggerResponse{}, nil
+	return &gopb.BuildloggerResponse{}, nil
 }
 
 // AppendLogLines returns an error if AppendErr is true, otherwise it adds the
 // input to Data.
-func (ms *MockBuildloggerServer) AppendLogLines(_ context.Context, in *internal.LogLines) (*internal.BuildloggerResponse, error) {
+func (ms *MockBuildloggerServer) AppendLogLines(_ context.Context, in *gopb.LogLines) (*gopb.BuildloggerResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -383,21 +383,21 @@ func (ms *MockBuildloggerServer) AppendLogLines(_ context.Context, in *internal.
 	}
 
 	if ms.Data == nil {
-		ms.Data = make(map[string][]*internal.LogLines)
+		ms.Data = make(map[string][]*gopb.LogLines)
 	}
 	ms.Data[in.LogId] = append(ms.Data[in.LogId], in)
 
-	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
+	return &gopb.BuildloggerResponse{LogId: in.LogId}, nil
 }
 
 // StreamLogLines returns a not implemented error.
-func (ms *MockBuildloggerServer) StreamLogLines(in internal.Buildlogger_StreamLogLinesServer) error {
+func (ms *MockBuildloggerServer) StreamLogLines(in gopb.Buildlogger_StreamLogLinesServer) error {
 	return errors.New("not implemented")
 }
 
 // CloseLog returns an error if CloseErr is true, otherwise it sets Close to
 // the input.
-func (ms *MockBuildloggerServer) CloseLog(_ context.Context, in *internal.LogEndInfo) (*internal.BuildloggerResponse, error) {
+func (ms *MockBuildloggerServer) CloseLog(_ context.Context, in *gopb.LogEndInfo) (*gopb.BuildloggerResponse, error) {
 	ms.Mu.Lock()
 	defer ms.Mu.Unlock()
 
@@ -406,5 +406,5 @@ func (ms *MockBuildloggerServer) CloseLog(_ context.Context, in *internal.LogEnd
 	}
 
 	ms.Close = in
-	return &internal.BuildloggerResponse{LogId: in.LogId}, nil
+	return &gopb.BuildloggerResponse{LogId: in.LogId}, nil
 }
