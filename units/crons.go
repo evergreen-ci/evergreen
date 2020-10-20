@@ -250,8 +250,15 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		}))
 		catcher.Add(err)
 
-		for idx := range hosts {
-			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, &hosts[idx], true, "host is expired, decommissioned, or failed to provision")))
+		for _, h := range hosts {
+			if h.NoExpiration && h.UserHost && h.Status != evergreen.HostProvisionFailed && time.Now().After(h.ExpirationTime) {
+				grip.Error(message.Fields{
+					"message": "attempting to terminate an expired host marked as non-expiring",
+					"host":    h.Id,
+				})
+				continue
+			}
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, &h, true, "host is expired, decommissioned, or failed to provision")))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -1113,10 +1120,16 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
+		hostIds := []string{}
 		for _, h := range hosts {
+			hostIds = append(hostIds, h.Id)
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
 		}
+		grip.Info(message.Fields{
+			"message": "expending spawn host expiration times",
+			"hosts":   hostIds,
+		})
 
 		return catcher.Resolve()
 	}
