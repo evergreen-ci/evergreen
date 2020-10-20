@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/evergreen-ci/evergreen"
@@ -249,10 +250,12 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, err
 	}
-	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
-	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, GetVolumeFromSpawnVolumeInput(spawnVolumeInput))
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
+	}
+	if vol == nil {
+		return false, InternalServerError.Send(ctx, "Unable to create volume")
 	}
 	errorTemplate := "Volume %s has been created but an error occurred."
 	var additionalOptions restModel.VolumeModifyOptions
@@ -267,9 +270,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
-	err = applyVolumeOptions(ctx, volume, additionalOptions)
+	err = applyVolumeOptions(ctx, *vol, additionalOptions)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
@@ -365,7 +368,34 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		options.Expiration = spawnHostInput.Expiration
 	}
 
+	if util.IsPtrSetToTrue(spawnHostInput.UseProjectSetupScript) {
+		if spawnHostInput.TaskID == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
+		}
+		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
+		options.TaskID = *spawnHostInput.TaskID
+	}
+
 	hc := &data.DBConnector{}
+
+	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
+		if spawnHostInput.TaskID == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
+		}
+		var t *task.Task
+		t, err = task.FindOneId(*spawnHostInput.TaskID)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding Task with id: %s : %s", *spawnHostInput.TaskID, err))
+		}
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
+		}
+		err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
+		}
+	}
+
 	spawnHost, err := hc.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment().Settings())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
@@ -1391,6 +1421,14 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
+}
+
+func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, error) {
+	zones := []string{}
+	for _, subnet := range evergreen.GetEnvironment().Settings().Providers.AWS.Subnets {
+		zones = append(zones, subnet.AZ)
+	}
+	return zones, nil
 }
 
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {

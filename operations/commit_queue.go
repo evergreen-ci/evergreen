@@ -169,7 +169,6 @@ func mergeCommand() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			showCQMessageForProject(ac, params.projectID)
 			return params.mergeBranch(ctx, conf, client, ac)
 		},
 	}
@@ -491,9 +490,12 @@ type mergeParams struct {
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
+		showCQMessageForProject(ac, p.projectID)
 		if err := p.uploadMergePatch(conf, ac); err != nil {
 			return err
 		}
+	} else {
+		showCQMessageForPatch(ctx, client, p.id)
 	}
 	if p.pause {
 		return nil
@@ -661,19 +663,15 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 }
 
 func showCQMessageForProject(ac *legacyClient, projectID string) {
-	projectRef, err := ac.GetProjectRef(projectID)
-	if err != nil {
-		grip.Error(errors.Wrapf(err, "unable to retrieve project '%s'", projectID))
-		return
+	projectRef, _ := ac.GetProjectRef(projectID)
+	if projectRef != nil && projectRef.CommitQueue.Message != "" {
+		grip.Info(projectRef.CommitQueue.Message)
 	}
-	grip.Info(projectRef.CommitQueue.Message)
 }
 
 func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchID string) {
-	message, err := comm.GetMessageForPatch(ctx, patchID)
-	if err != nil {
-		grip.Error(errors.Wrapf(err, "unable to retrieve patch '%s'", patchID))
-		return
+	message, _ := comm.GetMessageForPatch(ctx, patchID)
+	if message != "" {
+		grip.Info(message)
 	}
-	grip.Info(message)
 }

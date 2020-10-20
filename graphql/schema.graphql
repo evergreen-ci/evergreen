@@ -40,6 +40,7 @@ type Query {
   userSettings: UserSettings
   spruceConfig: SpruceConfig
   awsRegions: [String!]
+  subnetAvailabilityZones: [String!]!
   userConfig: UserConfig
   clientConfig: ClientConfig
   host(hostId: String!): Host
@@ -225,6 +226,9 @@ input SpawnHostInput {
   isVirtualWorkStation: Boolean!
   homeVolumeSize: Int
   volumeId: String
+  taskId: String
+  useProjectSetupScript: Boolean
+  spawnHostsStartedByTask: Boolean
 }
 
 input EditSpawnHostInput {

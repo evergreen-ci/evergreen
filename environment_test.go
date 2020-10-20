@@ -52,7 +52,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	s.Require().NoError(err)
 	s.env = env.(*envState)
-	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
+	s.Equal("http://localhost:9090", s.env.Settings().ApiUrl)
 	// persist to db
 	s.NoError(s.env.SaveConfig())
 
@@ -68,7 +68,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	s.env = env.(*envState)
 	s.Equal(db, s.env.settings.Database)
-	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
+	s.Equal("http://localhost:9090", s.env.Settings().ApiUrl)
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {

@@ -828,10 +828,11 @@ type APIBanner struct {
 }
 
 type APIHostInitConfig struct {
-	HostThrottle         int `json:"host_throttle"`
-	ProvisioningThrottle int `json:"provisioning_throttle"`
-	CloudStatusBatchSize int `json:"cloud_batch_size"`
-	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
+	HostThrottle         int     `json:"host_throttle"`
+	ProvisioningThrottle int     `json:"provisioning_throttle"`
+	CloudStatusBatchSize int     `json:"cloud_batch_size"`
+	MaxTotalDynamicHosts int     `json:"max_total_dynamic_hosts"`
+	S3BaseURL            *string `json:"s3_base_url"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -841,6 +842,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
+		a.S3BaseURL = ToStringPtr(v.S3BaseURL)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -853,6 +855,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
 		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
+		S3BaseURL:            FromStringPtr(a.S3BaseURL),
 	}, nil
 }
 
@@ -1675,6 +1678,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 type APIServiceFlags struct {
 	TaskDispatchDisabled          bool `json:"task_dispatch_disabled"`
 	HostInitDisabled              bool `json:"host_init_disabled"`
+	S3BinaryDownloadsDisabled     bool `json:"s3_binary_downloads_disabled"`
 	MonitorDisabled               bool `json:"monitor_disabled"`
 	AlertsDisabled                bool `json:"alerts_disabled"`
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
@@ -1935,6 +1939,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
+		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
@@ -1971,6 +1976,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:          as.TaskDispatchDisabled,
 		HostInitDisabled:              as.HostInitDisabled,
+		S3BinaryDownloadsDisabled:     as.S3BinaryDownloadsDisabled,
 		MonitorDisabled:               as.MonitorDisabled,
 		AlertsDisabled:                as.AlertsDisabled,
 		AgentStartDisabled:            as.AgentStartDisabled,
