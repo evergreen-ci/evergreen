@@ -63,7 +63,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			defer os.RemoveAll(tmpDir)
 
 			m := &monitor{
-				clientURL:  "https://www.example.com",
+				clientURLs: []string{"https://www.example.com"},
 				clientPath: filepath.Join(tmpDir, "evergreen"),
 				jasperPort: jasperPort,
 				port:       port,
