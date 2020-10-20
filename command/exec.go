@@ -85,10 +85,9 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
 
-	if c.Command != "" && (c.Binary != "" || len(c.Args) > 0) {
-		return errors.New("must specify command as either arguments or a command string but not both")
+	if err = c.splitCommands(); err != nil {
+		return errors.WithStack(err)
 	}
-
 	if c.Silent {
 		c.IgnoreStandardError = true
 		c.IgnoreStandardOutput = true
@@ -107,6 +106,9 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 
 func (c *subprocessExec) splitCommands() error {
 	if c.Command != "" {
+		if c.Binary != "" || len(c.Args) > 0 {
+			return errors.New("must specify command as either arguments or a command string but not both")
+		}
 		args, err := shlex.Split(c.Command)
 		if err != nil {
 			return errors.Wrapf(err, "problem parsing %s command", c.Name())
@@ -133,10 +135,24 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	c.Binary, err = exp.ExpandString(c.Binary)
 	catcher.Add(err)
 
+	c.Command, err = exp.ExpandString(c.Command)
+	catcher.Add(err)
+
+	newArgs := []string{}
 	for idx := range c.Args {
-		c.Args[idx], err = exp.ExpandString(c.Args[idx])
+		arg, err := exp.ExpandString(c.Args[idx])
 		catcher.Add(err)
+		if arg == "" {
+			newArgs = append(newArgs, arg)
+			continue
+		}
+		// in case the expansion has multiple values, split again
+		var splitArgs []string
+		splitArgs, err = shlex.Split(arg)
+		catcher.Add(err)
+		newArgs = append(newArgs, splitArgs...)
 	}
+	c.Args = newArgs
 
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
@@ -255,11 +271,6 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Error("problem expanding command values")
-		return errors.WithStack(err)
-	}
-
-	if err = c.splitCommands(); err != nil {
-		logger.Execution().Error(err.Error())
 		return errors.WithStack(err)
 	}
 
