@@ -83,7 +83,7 @@ func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []str
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 404 Not Found).
+		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
 		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.S3ClientURL(settings), curlArgs, h.ClientURL(settings), curlArgs)
 	} else {
 		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.ClientURL(settings), curlArgs)
@@ -111,13 +111,14 @@ func (h *Host) S3ClientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
 		// kim: TODO: replace this when done testing in staging
-		"7f41a4ffaee606d2edb7d3873cffd0d9b7451ab0",
-		// evergreen.BuildRevision,
+		// "7f41a4ffaee606d2edb7d3873cffd0d9b7451ab0",
+		evergreen.BuildRevision,
 		h.Distro.ExecutableSubPath(),
 	}, "/")
 }
 
-// ClientURL returns the URL used to get the latest Evergreen client version.
+// ClientURL returns the URL used to get the latest Evergreen client version
+// directly from the Evergreen server.
 func (h *Host) ClientURL(settings *evergreen.Settings) string {
 	return fmt.Sprintf("%s/%s/%s",
 		strings.TrimSuffix(settings.Ui.Url, "/"),
