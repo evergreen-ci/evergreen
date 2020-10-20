@@ -88,7 +88,12 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
-phony += cli clis
+# Targets to upload the CLI binaries to S3.
+$(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
+	@$(gobin) build -o $@ $<
+upload-clis:$(buildDir)/upload-s3 clis
+	$(buildDir)/upload-s3 -bucket="${BUCKET_NAME}" -local="${LOCAL_PATH}" -remote="${REMOTE_PATH}" -exclude="${EXCLUDE_PATTERN}"
+phony += cli clis upload-clis
 # end client build directives
 
 

@@ -584,6 +584,29 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
+  - name: upload-clis
+    patchable: false
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["upload-clis"]
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
+          env:
+            AWS_KEY: ${aws_key}
+            AWS_SECRET: ${aws_secret}
+            BUCKET_NAME: mciuploads
+            LOCAL_PATH: clients
+            EXCLUDE_PATTERN: .cache
+            REMOTE_PATH: evergreen/clients/${project}/${revision}
+            GO_BIN_PATH: ${gobin}
+            LEGACY_GO_BIN_PATH: ${legacyGobin}
+            GOPATH: ${workdir}/gopath
+            GOROOT: ${goroot}
   - name: verify-agent-version-update
     patch_only: true
     commands:
@@ -609,6 +632,7 @@ buildvariants:
     tasks:
       - name: "dist"
       - name: "dist-staging"
+      - name: "upload-clis"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
