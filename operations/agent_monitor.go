@@ -291,9 +291,11 @@ func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 			ArchiveOpts: options.Archive{ShouldExtract: false},
 		}
 
+		var attemptNum int
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
 			if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
-				return true, errors.Wrap(err, "failed to download file")
+				attemptNum++
+				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
 			return false, nil
 		}, retry); err != nil {
@@ -305,7 +307,7 @@ func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 		break
 	}
 	if !downloaded {
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "downloading client")
 	}
 
 	return errors.Wrap(os.Chmod(m.clientPath, 0755), "failed to chmod client")

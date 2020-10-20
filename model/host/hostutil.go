@@ -110,8 +110,6 @@ func curlRetryArgs(numRetries, maxSecs int) string {
 func (h *Host) S3ClientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
-		// kim: TODO: replace this when done testing in staging
-		// "7f41a4ffaee606d2edb7d3873cffd0d9b7451ab0",
 		evergreen.BuildRevision,
 		h.Distro.ExecutableSubPath(),
 	}, "/")
@@ -1106,7 +1104,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 
 	var clientURLsFlag []string
 	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
-		clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s ", h.S3ClientURL(settings)))
+		clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s", h.S3ClientURL(settings)))
 	}
 	clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s", h.ClientURL(settings)))
 
