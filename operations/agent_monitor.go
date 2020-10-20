@@ -51,7 +51,7 @@ func getLogID() int {
 type monitor struct {
 	// Monitor args
 	credentialsPath string
-	clientURL       string
+	clientURLs      []string
 	clientPath      string
 	shellPath       string
 	logPrefix       string
@@ -85,7 +85,7 @@ func defaultRetryArgs() util.RetryArgs {
 func agentMonitor() cli.Command {
 	const (
 		credentialsPathFlagName = "credentials"
-		clientURLFlagName       = "client_url"
+		clientURLsFlagName      = "client_url"
 		clientPathFlagName      = "client_path"
 		shellPathFlagName       = "shell_path"
 		logPrefixFlagName       = "log_prefix"
@@ -107,9 +107,9 @@ func agentMonitor() cli.Command {
 				Name:  credentialsPathFlagName,
 				Usage: "the path to the credentials used to authenticate the monitor to Jasper",
 			},
-			cli.StringFlag{
-				Name:  clientURLFlagName,
-				Usage: "the url to fetch the evergreen client from",
+			cli.StringSliceFlag{
+				Name:  clientURLsFlagName,
+				Usage: "the URL(s) to fetch the evergreen client from. URLs are tried in the order they're passed in.",
 			},
 			cli.StringFlag{
 				Name:  clientPathFlagName,
@@ -141,7 +141,7 @@ func agentMonitor() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(clientURLFlagName),
+			requireStringSliceFlag(clientURLsFlagName),
 			requireStringFlag(clientPathFlagName),
 			requireStringFlag(shellPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
@@ -154,7 +154,7 @@ func agentMonitor() cli.Command {
 		Action: func(c *cli.Context) error {
 			m := &monitor{
 				credentialsPath: c.String(credentialsPathFlagName),
-				clientURL:       c.String(clientURLFlagName),
+				clientURLs:      c.StringSlice(clientURLsFlagName),
 				clientPath:      c.String(clientPathFlagName),
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
@@ -278,19 +278,34 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 
 // fetchClient downloads the evergreen client.
 func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
-	info := options.Download{
-		URL:         m.clientURL,
-		Path:        m.clientPath,
-		ArchiveOpts: options.Archive{ShouldExtract: false},
+	if len(m.clientURLs) == 0 {
+		return errors.New("no URLs given to download client")
 	}
 
-	if err := util.RetryWithArgs(ctx, func() (bool, error) {
-		if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
-			return true, errors.Wrap(err, "failed to download file")
+	var downloaded bool
+	catcher := grip.NewBasicCatcher()
+	for _, url := range m.clientURLs {
+		info := options.Download{
+			URL:         url,
+			Path:        m.clientPath,
+			ArchiveOpts: options.Archive{ShouldExtract: false},
 		}
-		return false, nil
-	}, retry); err != nil {
-		return err
+
+		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+			if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
+				return true, errors.Wrap(err, "failed to download file")
+			}
+			return false, nil
+		}, retry); err != nil {
+			catcher.Wrapf(err, "URL '%s'", url)
+			continue
+		}
+
+		downloaded = true
+		break
+	}
+	if !downloaded {
+		return catcher.Resolve()
 	}
 
 	return errors.Wrap(os.Chmod(m.clientPath, 0755), "failed to chmod client")
@@ -419,7 +434,7 @@ func (m *monitor) run(ctx context.Context) {
 			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
-					"client_url":  m.clientURL,
+					"client_urls": m.clientURLs,
 					"client_path": m.clientPath,
 				}))
 				return true, err
@@ -432,7 +447,7 @@ func (m *monitor) run(ctx context.Context) {
 
 			grip.InfoWhen(sometimes.Fifth(), message.Fields{
 				"message":     "starting agent on host via Jasper",
-				"client_url":  m.clientURL,
+				"client_urls": m.clientURLs,
 				"client_path": m.clientPath,
 				"jasper_port": m.jasperPort,
 			})

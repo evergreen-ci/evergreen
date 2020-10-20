@@ -1103,15 +1103,21 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	args := append(h.AgentCommand(settings),
-		"monitor",
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
-		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
+	var clientURLsFlag []string
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+		clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s ", h.S3ClientURL(settings)))
+	}
+	clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s", h.ClientURL(settings)))
+
+	args := append(h.AgentCommand(settings), "monitor")
+	args = append(append(args,
+		clientURLsFlag...),
 		fmt.Sprintf("--client_path=%s", clientPath),
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
 
 	return &options.Create{
