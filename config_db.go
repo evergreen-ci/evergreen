@@ -116,6 +116,12 @@ var (
 	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
 	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
 
+	hostInitHostThrottleKey         = bsonutil.MustHaveTag(HostInitConfig{}, "HostThrottle")
+	hostInitProvisioningThrottleKey = bsonutil.MustHaveTag(HostInitConfig{}, "ProvisioningThrottle")
+	hostInitCloudStatusBatchSizeKey = bsonutil.MustHaveTag(HostInitConfig{}, "CloudStatusBatchSize")
+	hostInitMaxTotalDynamicHostsKey = bsonutil.MustHaveTag(HostInitConfig{}, "MaxTotalDynamicHosts")
+	hostInitS3BaseURLKey            = bsonutil.MustHaveTag(HostInitConfig{}, "S3BaseURL")
+
 	// Spawnhost keys
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")

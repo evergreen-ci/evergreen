@@ -128,7 +128,7 @@ func MockConfig() *evergreen.Settings {
 				ExpireAfterMinutes: 60,
 			},
 			Naive: &evergreen.NaiveAuthConfig{
-				Users: []evergreen.AuthUser{evergreen.AuthUser{Username: "user", Password: "pw"}},
+				Users: []evergreen.AuthUser{{Username: "user", Password: "pw"}},
 			},
 			Github: &evergreen.GithubAuthConfig{
 				ClientId:     "ghclient",
@@ -154,7 +154,7 @@ func MockConfig() *evergreen.Settings {
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
+				{
 					Distro:        "valid-distro",
 					Id:            "test-pool-1",
 					MaxContainers: 100,
@@ -167,7 +167,11 @@ func MockConfig() *evergreen.Settings {
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
-			HostThrottle: 64,
+			HostThrottle:         64,
+			ProvisioningThrottle: 100,
+			CloudStatusBatchSize: 10,
+			MaxTotalDynamicHosts: 500,
+			S3BaseURL:            "s3_base_url",
 		},
 		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",
@@ -204,7 +208,7 @@ func MockConfig() *evergreen.Settings {
 				AdminEmail: []string{"email"},
 			},
 		},
-		Plugins:   map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+		Plugins:   map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
