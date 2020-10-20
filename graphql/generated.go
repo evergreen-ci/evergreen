@@ -390,35 +390,36 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AwsRegions          func(childComplexity int) int
-		BbGetCreatedTickets func(childComplexity int, taskID string) int
-		BuildBaron          func(childComplexity int, taskID string, execution int) int
-		ClientConfig        func(childComplexity int) int
-		CommitQueue         func(childComplexity int, id string) int
-		DistroTaskQueue     func(childComplexity int, distroID string) int
-		Distros             func(childComplexity int, onlySpawnable bool) int
-		Host                func(childComplexity int, hostID string) int
-		HostEvents          func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
-		Hosts               func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
-		InstanceTypes       func(childComplexity int) int
-		MyHosts             func(childComplexity int) int
-		MyPublicKeys        func(childComplexity int) int
-		MyVolumes           func(childComplexity int) int
-		Patch               func(childComplexity int, id string) int
-		PatchBuildVariants  func(childComplexity int, patchID string) int
-		PatchTasks          func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
-		Projects            func(childComplexity int) int
-		SpruceConfig        func(childComplexity int) int
-		Task                func(childComplexity int, taskID string, execution *int) int
-		TaskAllExecutions   func(childComplexity int, taskID string) int
-		TaskFiles           func(childComplexity int, taskID string, execution *int) int
-		TaskLogs            func(childComplexity int, taskID string) int
-		TaskQueueDistros    func(childComplexity int) int
-		TaskTests           func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
-		User                func(childComplexity int, userID *string) int
-		UserConfig          func(childComplexity int) int
-		UserPatches         func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
-		UserSettings        func(childComplexity int) int
+		AwsRegions              func(childComplexity int) int
+		BbGetCreatedTickets     func(childComplexity int, taskID string) int
+		BuildBaron              func(childComplexity int, taskID string, execution int) int
+		ClientConfig            func(childComplexity int) int
+		CommitQueue             func(childComplexity int, id string) int
+		DistroTaskQueue         func(childComplexity int, distroID string) int
+		Distros                 func(childComplexity int, onlySpawnable bool) int
+		Host                    func(childComplexity int, hostID string) int
+		HostEvents              func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+		Hosts                   func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes           func(childComplexity int) int
+		MyHosts                 func(childComplexity int) int
+		MyPublicKeys            func(childComplexity int) int
+		MyVolumes               func(childComplexity int) int
+		Patch                   func(childComplexity int, id string) int
+		PatchBuildVariants      func(childComplexity int, patchID string) int
+		PatchTasks              func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
+		Projects                func(childComplexity int) int
+		SpruceConfig            func(childComplexity int) int
+		SubnetAvailabilityZones func(childComplexity int) int
+		Task                    func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions       func(childComplexity int, taskID string) int
+		TaskFiles               func(childComplexity int, taskID string, execution *int) int
+		TaskLogs                func(childComplexity int, taskID string) int
+		TaskQueueDistros        func(childComplexity int) int
+		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
+		User                    func(childComplexity int, userID *string) int
+		UserConfig              func(childComplexity int) int
+		UserPatches             func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
+		UserSettings            func(childComplexity int) int
 	}
 
 	RecentTaskLogs struct {
@@ -727,6 +728,7 @@ type QueryResolver interface {
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
 	SpruceConfig(ctx context.Context) (*model.APIAdminSettings, error)
 	AwsRegions(ctx context.Context) ([]string, error)
+	SubnetAvailabilityZones(ctx context.Context) ([]string, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	Host(ctx context.Context, hostID string) (*model.APIHost, error)
@@ -2604,6 +2606,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SpruceConfig(childComplexity), true
 
+	case "Query.subnetAvailabilityZones":
+		if e.complexity.Query.SubnetAvailabilityZones == nil {
+			break
+		}
+
+		return e.complexity.Query.SubnetAvailabilityZones(childComplexity), true
+
 	case "Query.task":
 		if e.complexity.Query.Task == nil {
 			break
@@ -3949,6 +3958,7 @@ var sources = []*ast.Source{
   userSettings: UserSettings
   spruceConfig: SpruceConfig
   awsRegions: [String!]
+  subnetAvailabilityZones: [String!]!
   userConfig: UserConfig
   clientConfig: ClientConfig
   host(hostId: String!): Host
@@ -13499,6 +13509,40 @@ func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql
 	res := resTmp.([]string)
 	fc.Result = res
 	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_subnetAvailabilityZones(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SubnetAvailabilityZones(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_userConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -23146,6 +23190,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_awsRegions(ctx, field)
+				return res
+			})
+		case "subnetAvailabilityZones":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_subnetAvailabilityZones(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "userConfig":
