@@ -140,7 +140,8 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 
 	newArgs := []string{}
 	for idx := range c.Args {
-		arg, err := exp.ExpandString(c.Args[idx])
+		var arg string
+		arg, err = exp.ExpandString(c.Args[idx])
 		catcher.Add(err)
 		if arg == "" {
 			newArgs = append(newArgs, arg)
