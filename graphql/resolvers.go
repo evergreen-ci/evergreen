@@ -250,10 +250,12 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, err
 	}
-	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
-	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, GetVolumeFromSpawnVolumeInput(spawnVolumeInput))
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
+	}
+	if vol == nil {
+		return false, InternalServerError.Send(ctx, "Unable to create volume")
 	}
 	errorTemplate := "Volume %s has been created but an error occurred."
 	var additionalOptions restModel.VolumeModifyOptions
@@ -268,9 +270,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
-	err = applyVolumeOptions(ctx, volume, additionalOptions)
+	err = applyVolumeOptions(ctx, *vol, additionalOptions)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
