@@ -343,7 +343,6 @@ functions:
 
   verify-agent-version-update:
     - command: subprocess.exec
-      patch_only: true
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         binary: bash
@@ -586,6 +585,7 @@ tasks:
       - func: run-make
         vars: { target: "test-repotracker" }
   - name: verify-agent-version-update
+    patch_only: true
     commands:
       - func: get-project
       - func: verify-agent-version-update
