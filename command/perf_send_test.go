@@ -59,66 +59,24 @@ func TestPerfSendAddEvgData(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		},
 	}
-
-	for _, test := range []struct {
-		name           string
-		report         *poplar.Report
-		expectedReport *poplar.Report
-	}{
-		{
-			name:   "EmptyBucketConfig",
-			report: &poplar.Report{},
-			expectedReport: &poplar.Report{
-				Project:   conf.Task.Project,
-				Version:   conf.Task.Version,
-				Order:     conf.Task.RevisionOrderNumber,
-				Variant:   conf.Task.BuildVariant,
-				TaskName:  conf.Task.DisplayName,
-				TaskID:    conf.Task.Id,
-				Execution: conf.Task.Execution,
-				Mainline:  true,
-				BucketConf: poplar.BucketConfiguration{
-					APIKey:    cmd.AWSKey,
-					APISecret: cmd.AWSSecret,
-					Region:    cmd.Region,
-					Name:      cmd.Bucket,
-					Prefix:    cmd.Prefix,
-				},
-			},
+	report := &poplar.Report{}
+	expectedReport := &poplar.Report{
+		Project:   conf.Task.Project,
+		Version:   conf.Task.Version,
+		Order:     conf.Task.RevisionOrderNumber,
+		Variant:   conf.Task.BuildVariant,
+		TaskName:  conf.Task.DisplayName,
+		TaskID:    conf.Task.Id,
+		Execution: conf.Task.Execution,
+		Mainline:  true,
+		BucketConf: poplar.BucketConfiguration{
+			APIKey:    cmd.AWSKey,
+			APISecret: cmd.AWSSecret,
+			Region:    cmd.Region,
+			Name:      cmd.Bucket,
+			Prefix:    cmd.Prefix,
 		},
-		{
-			name: "ExistngBucketConfig",
-			report: &poplar.Report{
-				BucketConf: poplar.BucketConfiguration{
-					APIKey:    "different_key",
-					APISecret: "different_secret",
-					Region:    "different_region",
-					Name:      "different_bucket",
-					Prefix:    "different_prefix",
-				},
-			},
-			expectedReport: &poplar.Report{
-				Project:   conf.Task.Project,
-				Version:   conf.Task.Version,
-				Order:     conf.Task.RevisionOrderNumber,
-				Variant:   conf.Task.BuildVariant,
-				TaskName:  conf.Task.DisplayName,
-				TaskID:    conf.Task.Id,
-				Execution: conf.Task.Execution,
-				Mainline:  true,
-				BucketConf: poplar.BucketConfiguration{
-					APIKey:    "different_key",
-					APISecret: "different_secret",
-					Region:    "different_region",
-					Name:      "different_bucket",
-					Prefix:    "different_prefix",
-				},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			cmd.addEvgData(test.report, conf)
-			assert.Equal(t, test.expectedReport, test.report)
-		})
 	}
+	cmd.addEvgData(report, conf)
+	assert.Equal(t, expectedReport, report)
 }

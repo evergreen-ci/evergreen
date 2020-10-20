@@ -86,19 +86,9 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *model.TaskConfig) {
 	report.Execution = conf.Task.Execution
 	report.Mainline = !conf.Task.IsPatchRequest()
 
-	if report.BucketConf.APIKey == "" {
-		report.BucketConf.APIKey = c.AWSKey
-	}
-	if report.BucketConf.APISecret == "" {
-		report.BucketConf.APISecret = c.AWSSecret
-	}
-	if report.BucketConf.Name == "" {
-		report.BucketConf.Name = c.Bucket
-	}
-	if report.BucketConf.Prefix == "" {
-		report.BucketConf.Prefix = c.Prefix
-	}
-	if report.BucketConf.Region == "" {
-		report.BucketConf.Region = c.Region
-	}
+	report.BucketConf.APIKey = c.AWSKey
+	report.BucketConf.APISecret = c.AWSSecret
+	report.BucketConf.Name = c.Bucket
+	report.BucketConf.Prefix = c.Prefix
+	report.BucketConf.Region = c.Region
 }
