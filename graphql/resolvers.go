@@ -1421,6 +1421,14 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
+func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, error) {
+	zones := []string{}
+	for _, subnet := range evergreen.GetEnvironment().Settings().Providers.AWS.Subnets {
+		zones = append(zones, subnet.AZ)
+	}
+	return zones, nil
+}
+
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {
