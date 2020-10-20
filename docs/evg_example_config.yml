@@ -8,7 +8,7 @@ providers:
         aws_id: PASTE_AWS_ID
         aws_secret: PASTE_AWS_SECRET
 
-api_url: "http://localhost:8080"
+api_url: "http://localhost:9090"
 credentials:
     github: "paste your token here"
 
@@ -26,7 +26,7 @@ runner:
     intervalseconds: 120
 
 api:
-    httplistenaddr: ":8080"
+    httplistenaddr: ":9090"
     httpslistenaddr: ":8443"
     httpskey: |
         -----BEGIN RSA PRIVATE KEY-----

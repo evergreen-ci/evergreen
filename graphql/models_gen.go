@@ -136,17 +136,20 @@ type RecentTaskLogs struct {
 }
 
 type SpawnHostInput struct {
-	DistroID             string          `json:"distroId"`
-	Region               string          `json:"region"`
-	SavePublicKey        bool            `json:"savePublicKey"`
-	PublicKey            *PublicKeyInput `json:"publicKey"`
-	UserDataScript       *string         `json:"userDataScript"`
-	Expiration           *time.Time      `json:"expiration"`
-	NoExpiration         bool            `json:"noExpiration"`
-	SetUpScript          *string         `json:"setUpScript"`
-	IsVirtualWorkStation bool            `json:"isVirtualWorkStation"`
-	HomeVolumeSize       *int            `json:"homeVolumeSize"`
-	VolumeID             *string         `json:"volumeId"`
+	DistroID                string          `json:"distroId"`
+	Region                  string          `json:"region"`
+	SavePublicKey           bool            `json:"savePublicKey"`
+	PublicKey               *PublicKeyInput `json:"publicKey"`
+	UserDataScript          *string         `json:"userDataScript"`
+	Expiration              *time.Time      `json:"expiration"`
+	NoExpiration            bool            `json:"noExpiration"`
+	SetUpScript             *string         `json:"setUpScript"`
+	IsVirtualWorkStation    bool            `json:"isVirtualWorkStation"`
+	HomeVolumeSize          *int            `json:"homeVolumeSize"`
+	VolumeID                *string         `json:"volumeId"`
+	TaskID                  *string         `json:"taskId"`
+	UseProjectSetupScript   *bool           `json:"useProjectSetupScript"`
+	SpawnHostsStartedByTask *bool           `json:"spawnHostsStartedByTask"`
 }
 
 type SpawnVolumeInput struct {

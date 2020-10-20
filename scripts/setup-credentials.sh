@@ -19,7 +19,7 @@ credentials: {
   github: "$GITHUB_TOKEN",
 }
 
-api_url: http://localhost:8080
+api_url: http://localhost:9090
 api:
   github_webhook_secret: "test"
 ui:

@@ -341,6 +341,15 @@ functions:
       params:
         file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
 
+  verify-agent-version-update:
+    - command: subprocess.exec
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        binary: bash
+        args: ["scripts/verify-agent-version-update.sh"]
+        env:
+          BRANCH_NAME: ${branch_name}
+
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -598,6 +607,11 @@ tasks:
             LEGACY_GO_BIN_PATH: ${legacyGobin}
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
+  - name: verify-agent-version-update
+    patch_only: true
+    commands:
+      - func: get-project
+      - func: verify-agent-version-update
 
 
 buildvariants:
@@ -622,6 +636,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
+      - name: verify-agent-version-update
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
