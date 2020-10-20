@@ -272,6 +272,7 @@ func MockConfig() *evergreen.Settings {
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:         true,
 			HostInitDisabled:             true,
+			S3BinaryDownloadsDisabled:    true,
 			MonitorDisabled:              true,
 			AlertsDisabled:               true,
 			AgentStartDisabled:           true,

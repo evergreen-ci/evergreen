@@ -65,6 +65,7 @@ var (
 	// degraded mode flags
 	taskDispatchKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
+	s3BinaryDownloadsDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "S3BinaryDownloadsDisabled")
 	monitorKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
 	agentStartKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
