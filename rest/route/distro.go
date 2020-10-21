@@ -881,10 +881,6 @@ func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
 
 func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.distroID = gimlet.GetVars(r)["distro_id"]
-	if rh.distroID == "" {
-		return errors.New("missing distro ID")
-	}
-
 	return nil
 }
 
