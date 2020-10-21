@@ -85,9 +85,25 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
 
-	if err = c.splitCommands(); err != nil {
-		return errors.WithStack(err)
+	if c.Command != "" {
+		if c.Binary != "" || len(c.Args) > 0 {
+			return errors.New("must specify command as either arguments or a command string but not both")
+		}
+
+		args, err := shlex.Split(c.Command)
+		if err != nil {
+			return errors.Wrapf(err, "problem parsing %s command", c.Name())
+		}
+		if len(args) == 0 {
+			return errors.Errorf("no arguments for command %s", c.Name())
+		}
+
+		c.Binary = args[0]
+		if len(args) > 1 {
+			c.Args = args[1:]
+		}
 	}
+
 	if c.Silent {
 		c.IgnoreStandardError = true
 		c.IgnoreStandardOutput = true
@@ -104,27 +120,6 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *subprocessExec) splitCommands() error {
-	if c.Command != "" {
-		if c.Binary != "" || len(c.Args) > 0 {
-			return errors.New("must specify command as either arguments or a command string but not both")
-		}
-		args, err := shlex.Split(c.Command)
-		if err != nil {
-			return errors.Wrapf(err, "problem parsing %s command", c.Name())
-		}
-		if len(args) == 0 {
-			return errors.Errorf("no arguments for command %s", c.Name())
-		}
-
-		c.Binary = args[0]
-		if len(args) > 1 {
-			c.Args = args[1:]
-		}
-	}
-	return nil
-}
-
 func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	var err error
 	catcher := grip.NewBasicCatcher()
@@ -135,25 +130,10 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	c.Binary, err = exp.ExpandString(c.Binary)
 	catcher.Add(err)
 
-	c.Command, err = exp.ExpandString(c.Command)
-	catcher.Add(err)
-
-	newArgs := []string{}
 	for idx := range c.Args {
-		var arg string
-		arg, err = exp.ExpandString(c.Args[idx])
+		c.Args[idx], err = exp.ExpandString(c.Args[idx])
 		catcher.Add(err)
-		if arg == "" {
-			newArgs = append(newArgs, arg)
-			continue
-		}
-		// in case the expansion has multiple values, split again
-		var splitArgs []string
-		splitArgs, err = shlex.Split(arg)
-		catcher.Add(err)
-		newArgs = append(newArgs, splitArgs...)
 	}
-	c.Args = newArgs
 
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
