@@ -1502,6 +1502,77 @@ func TestGetTaskIdTable(t *testing.T) {
 	assert.Equal(t, "t2", tables.ExecutionTasks.GetId("bv0", "existing_task"))
 }
 
+func TestMakeDeps(t *testing.T) {
+	table := TaskIdTable{
+		TVPair{TaskName: "t0", Variant: "bv0"}: "bv0_t0",
+		TVPair{TaskName: "t1", Variant: "bv0"}: "bv0_t1",
+		TVPair{TaskName: "t0", Variant: "bv1"}: "bv1_t0",
+		TVPair{TaskName: "t1", Variant: "bv1"}: "bv1_t1",
+	}
+	thisTaskId := "bv1_t1"
+	tSpec := BuildVariantTaskUnit{}
+
+	t.Run("All tasks in all variants", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: AllVariants},
+		}
+
+		deps := makeDeps(tSpec, thisTaskId, table)
+		assert.Len(t, deps, 3)
+		expectedIDs := []string{"bv0_t0", "bv0_t1", "bv1_t0"}
+		for _, dep := range deps {
+			assert.Contains(t, expectedIDs, dep.TaskId)
+			assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+		}
+	})
+
+	t.Run("All tasks in bv0", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTaskId, table)
+		assert.Len(t, deps, 2)
+		expectedIDs := []string{"bv0_t0", "bv0_t1"}
+		for _, dep := range deps {
+			assert.Contains(t, expectedIDs, dep.TaskId)
+			assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+		}
+	})
+
+	t.Run("specific task", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: "t0", Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTaskId, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: AllVariants},
+			{Name: "t0", Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTaskId, table)
+		assert.Len(t, deps, 3)
+	})
+
+	t.Run("non-default status", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: "t0", Variant: "bv0", Status: evergreen.TaskFailed},
+		}
+
+		deps := makeDeps(tSpec, thisTaskId, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskFailed, deps[0].Status)
+	})
+}
+
 func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {
