@@ -457,20 +457,15 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	if !pRef.GitTagVersionsEnabled {
 		return nil, nil
 	}
-	authorized, err := pRef.AuthorizedForGitTag(ctx, tag.Pusher, token)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error determining if user '%s' is authorized", tag.Pusher)
-	}
-	if !authorized {
+
+	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token) {
 		grip.Debug(message.Fields{
-			"source":           "github hook",
-			"msg_id":           gh.msgID,
-			"event":            gh.eventType,
-			"project":          pRef.Identifier,
-			"tag":              tag,
-			"message":          "user not authorized for git tag version",
-			"authorized_users": pRef.GitTagAuthorizedUsers, // TODO: remove these
-			"authorized_teams": pRef.GitTagAuthorizedTeams,
+			"source":  "github hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"project": pRef.Identifier,
+			"tag":     tag,
+			"message": "user not authorized for git tag version",
 		})
 		return nil, nil
 	}

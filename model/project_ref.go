@@ -975,16 +975,11 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token string) (bool, error) {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, user) {
-		return true, nil
+		return true
 	}
-	// check authorized teams
-	isMember, err := thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, user, token)
-	if err != nil {
-		return false, errors.WithStack(err)
-	}
-	return isMember, nil
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, user, token)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands

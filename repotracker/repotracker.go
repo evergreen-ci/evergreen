@@ -722,11 +722,8 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting github token")
 		}
-		authorized, err := ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token)
-		if err != nil {
-			return nil, errors.Wrap(err, "error checking if user is authorized")
-		}
-		if !authorized {
+
+		if !ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token) {
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Identifier)
 		}
