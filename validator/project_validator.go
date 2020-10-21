@@ -841,7 +841,7 @@ func validateCommands(section string, project *model.Project,
 		}
 		if cmd.Function != "" && cmd.Command != "" {
 			errs = append(errs, ValidationError{
-				Level:   Warning,
+				Level:   Error,
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
 			})
 		}
@@ -1043,7 +1043,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 			if dep.Name != model.AllDependencies && project.FindProjectTask(dep.Name) == nil {
 				errs = append(errs,
 					ValidationError{
-						Level: Warning,
+						Level: Error,
 						Message: fmt.Sprintf("project '%s' contains a "+
 							"non-existent task name '%s' in dependencies for "+
 							"task '%s'", project.Identifier, dep.Name,
@@ -1053,7 +1053,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 			}
 			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
 				errs = append(errs, ValidationError{
-					Level: Warning,
+					Level: Error,
 					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
 						project.Identifier, dep.Variant, task.Name),
 				})
