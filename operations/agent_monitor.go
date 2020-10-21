@@ -280,15 +280,10 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 }
 
 // fetchClient downloads the evergreen client.
-func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
-	clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
-	if err != nil {
-		return errors.Wrap(err, "retrieving client URLs")
-	}
-
+func (m *monitor) fetchClient(ctx context.Context, urls []string, retry util.RetryArgs) error {
 	var downloaded bool
 	catcher := grip.NewBasicCatcher()
-	for _, url := range clientURLs {
+	for _, url := range urls {
 		info := options.Download{
 			URL:         url,
 			Path:        m.clientPath,
@@ -435,9 +430,14 @@ func (m *monitor) run(ctx context.Context) {
 				}
 			}
 
+			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
+			if err != nil {
+				return true, errors.Wrap(err, "retrieving client URLs")
+			}
+
 			// The evergreen agent runs using a separate binary from the monitor
 			// to allow the agent to be updated.
-			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
+			if err := m.fetchClient(ctx, clientURLs, defaultRetryArgs()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
 					"distro":      m.distroID,
@@ -461,6 +461,7 @@ func (m *monitor) run(ctx context.Context) {
 				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
 				return true, err
 			}
+
 			return false, nil
 		}, defaultRetryArgs()); err != nil {
 			if ctx.Err() != nil {

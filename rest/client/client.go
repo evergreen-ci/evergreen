@@ -183,7 +183,7 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    fmt.Spritnf("distros/%s/client_urls", distroID),
+		path:    fmt.Sprintf("distros/%s/client_urls", distroID),
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {

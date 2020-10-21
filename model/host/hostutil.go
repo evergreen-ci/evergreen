@@ -1086,7 +1086,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	args := append(h.AgentCommand(settings), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
-		fmt.Sprintf("--distro", h.Distro.Id),
+		fmt.Sprintf("--distro=%s", h.Distro.Id),
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),

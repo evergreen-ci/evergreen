@@ -38,7 +38,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *monitor){
 		"FetchClientDownloadsFromURL": func(ctx context.Context, t *testing.T, m *monitor) {
-			require.NoError(t, m.fetchClient(ctx, defaultRetryArgs()))
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, defaultRetryArgs()))
 			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
 			assert.NotZero(t, fileInfo.Size())
@@ -63,8 +63,8 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			defer os.RemoveAll(tmpDir)
 
 			m := &monitor{
-				clientURLs: []string{"https://www.example.com"},
 				clientPath: filepath.Join(tmpDir, "evergreen"),
+				distroID:   "distro",
 				jasperPort: jasperPort,
 				port:       port,
 			}
