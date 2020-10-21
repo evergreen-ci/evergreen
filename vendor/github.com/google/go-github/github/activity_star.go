@@ -26,9 +26,9 @@ type Stargazer struct {
 // ListStargazers lists people who have starred the specified repo.
 //
 // GitHub API docs: https://developer.github.com/v3/activity/starring/#list-stargazers
-func (s *ActivityService) ListStargazers(ctx context.Context, owner, repo string, opt *ListOptions) ([]*Stargazer, *Response, error) {
+func (s *ActivityService) ListStargazers(ctx context.Context, owner, repo string, opts *ListOptions) ([]*Stargazer, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/stargazers", owner, repo)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,15 +67,16 @@ type ActivityListStarredOptions struct {
 // ListStarred lists all the repos starred by a user. Passing the empty string
 // will list the starred repositories for the authenticated user.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/starring/#list-repositories-being-starred
-func (s *ActivityService) ListStarred(ctx context.Context, user string, opt *ActivityListStarredOptions) ([]*StarredRepository, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/activity/starring/#list-repositories-starred-by-a-user
+// GitHub API docs: https://developer.github.com/v3/activity/starring/#list-repositories-starred-by-the-authenticated-user
+func (s *ActivityService) ListStarred(ctx context.Context, user string, opts *ActivityListStarredOptions) ([]*StarredRepository, *Response, error) {
 	var u string
 	if user != "" {
 		u = fmt.Sprintf("users/%v/starred", user)
 	} else {
 		u = "user/starred"
 	}
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,7 +101,7 @@ func (s *ActivityService) ListStarred(ctx context.Context, user string, opt *Act
 
 // IsStarred checks if a repository is starred by authenticated user.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/starring/#check-if-you-are-starring-a-repository
+// GitHub API docs: https://developer.github.com/v3/activity/starring/#check-if-a-repository-is-starred-by-the-authenticated-user
 func (s *ActivityService) IsStarred(ctx context.Context, owner, repo string) (bool, *Response, error) {
 	u := fmt.Sprintf("user/starred/%v/%v", owner, repo)
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -114,7 +115,7 @@ func (s *ActivityService) IsStarred(ctx context.Context, owner, repo string) (bo
 
 // Star a repository as the authenticated user.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/starring/#star-a-repository
+// GitHub API docs: https://developer.github.com/v3/activity/starring/#star-a-repository-for-the-authenticated-user
 func (s *ActivityService) Star(ctx context.Context, owner, repo string) (*Response, error) {
 	u := fmt.Sprintf("user/starred/%v/%v", owner, repo)
 	req, err := s.client.NewRequest("PUT", u, nil)
@@ -126,7 +127,7 @@ func (s *ActivityService) Star(ctx context.Context, owner, repo string) (*Respon
 
 // Unstar a repository as the authenticated user.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/starring/#unstar-a-repository
+// GitHub API docs: https://developer.github.com/v3/activity/starring/#unstar-a-repository-for-the-authenticated-user
 func (s *ActivityService) Unstar(ctx context.Context, owner, repo string) (*Response, error) {
 	u := fmt.Sprintf("user/starred/%v/%v", owner, repo)
 	req, err := s.client.NewRequest("DELETE", u, nil)

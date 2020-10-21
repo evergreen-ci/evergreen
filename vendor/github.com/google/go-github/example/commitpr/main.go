@@ -31,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v32/github"
 	"golang.org/x/oauth2"
 )
 
@@ -87,7 +87,7 @@ func getRef() (ref *github.Reference, err error) {
 // of the ref you got in getRef.
 func getTree(ref *github.Reference) (tree *github.Tree, err error) {
 	// Create a tree with what to commit.
-	entries := []github.TreeEntry{}
+	entries := []*github.TreeEntry{}
 
 	// Load each file into the tree.
 	for _, fileArg := range strings.Split(*sourceFiles, ",") {
@@ -95,7 +95,7 @@ func getTree(ref *github.Reference) (tree *github.Tree, err error) {
 		if err != nil {
 			return nil, err
 		}
-		entries = append(entries, github.TreeEntry{Path: github.String(file), Type: github.String("blob"), Content: github.String(string(content)), Mode: github.String("100644")})
+		entries = append(entries, &github.TreeEntry{Path: github.String(file), Type: github.String("blob"), Content: github.String(string(content)), Mode: github.String("100644")})
 	}
 
 	tree, _, err = client.Git.CreateTree(ctx, *sourceOwner, *sourceRepo, *ref.Object.SHA, entries)
@@ -122,7 +122,7 @@ func getFileContent(fileArg string) (targetName string, b []byte, err error) {
 	return targetName, b, err
 }
 
-// createCommit creates the commit in the given reference using the given tree.
+// pushCommit creates the commit in the given reference using the given tree.
 func pushCommit(ref *github.Reference, tree *github.Tree) (err error) {
 	// Get the parent commit to attach the commit to.
 	parent, _, err := client.Repositories.GetCommit(ctx, *sourceOwner, *sourceRepo, *ref.Object.SHA)
@@ -135,7 +135,7 @@ func pushCommit(ref *github.Reference, tree *github.Tree) (err error) {
 	// Create the commit using the tree.
 	date := time.Now()
 	author := &github.CommitAuthor{Date: &date, Name: authorName, Email: authorEmail}
-	commit := &github.Commit{Author: author, Message: commitMessage, Tree: tree, Parents: []github.Commit{*parent.Commit}}
+	commit := &github.Commit{Author: author, Message: commitMessage, Tree: tree, Parents: []*github.Commit{parent.Commit}}
 	newCommit, _, err := client.Git.CreateCommit(ctx, *sourceOwner, *sourceRepo, commit)
 	if err != nil {
 		return err

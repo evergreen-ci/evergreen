@@ -37,9 +37,9 @@ func (r RepositoryComment) String() string {
 // ListComments lists all the comments for the repository.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/comments/#list-commit-comments-for-a-repository
-func (s *RepositoriesService) ListComments(ctx context.Context, owner, repo string, opt *ListOptions) ([]*RepositoryComment, *Response, error) {
+func (s *RepositoriesService) ListComments(ctx context.Context, owner, repo string, opts *ListOptions) ([]*RepositoryComment, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/comments", owner, repo)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,10 +63,10 @@ func (s *RepositoriesService) ListComments(ctx context.Context, owner, repo stri
 
 // ListCommitComments lists all the comments for a given commit SHA.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/comments/#list-comments-for-a-single-commit
-func (s *RepositoriesService) ListCommitComments(ctx context.Context, owner, repo, sha string, opt *ListOptions) ([]*RepositoryComment, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/repos/comments/#list-commit-comments
+func (s *RepositoriesService) ListCommitComments(ctx context.Context, owner, repo, sha string, opts *ListOptions) ([]*RepositoryComment, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v/comments", owner, repo, sha)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -110,7 +110,7 @@ func (s *RepositoriesService) CreateComment(ctx context.Context, owner, repo, sh
 
 // GetComment gets a single comment from a repository.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/comments/#get-a-single-commit-comment
+// GitHub API docs: https://developer.github.com/v3/repos/comments/#get-a-commit-comment
 func (s *RepositoriesService) GetComment(ctx context.Context, owner, repo string, id int64) (*RepositoryComment, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/comments/%v", owner, repo, id)
 	req, err := s.client.NewRequest("GET", u, nil)

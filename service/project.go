@@ -222,6 +222,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Repo                  string                         `json:"repo_name"`
 		Admins                []string                       `json:"admins"`
 		GitTagAuthorizedUsers []string                       `json:"git_tag_authorized_users"`
+		GitTagAuthorizedTeams []string                       `json:"git_tag_authorized_teams"`
 		PRTestingEnabled      bool                           `json:"pr_testing_enabled"`
 		GitTagVersionsEnabled bool                           `json:"git_tag_versions_enabled"`
 		CommitQueue           restModel.APICommitQueueParams `json:"commit_queue"`
@@ -371,8 +372,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
 			return
 		}
-		if len(responseRef.GitTagAuthorizedUsers) == 0 {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users to create git tag versions"))
+		if len(responseRef.GitTagAuthorizedUsers) == 0 && len(responseRef.GitTagAuthorizedTeams) == 0 {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users or teams to create git tag versions"))
 			return
 		}
 	}
@@ -468,6 +469,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
+	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.Identifier = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled

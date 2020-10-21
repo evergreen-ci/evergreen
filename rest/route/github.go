@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -451,10 +450,28 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
 	revision model.Revision, tag model.GitTag) (*model.Version, error) {
-	if !pRef.GitTagVersionsEnabled || !utility.StringSliceContains(pRef.GitTagAuthorizedUsers, tag.Pusher) {
+	token, err := gh.settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.New("error getting github token")
+	}
+	if !pRef.GitTagVersionsEnabled {
 		return nil, nil
 	}
-	hasAliases, remotePath, err := gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.String(), tag.Tag)
+
+	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token) {
+		grip.Debug(message.Fields{
+			"source":  "github hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"project": pRef.Identifier,
+			"tag":     tag,
+			"message": "user not authorized for git tag version",
+		})
+		return nil, nil
+	}
+	var hasAliases bool
+	var remotePath string
+	hasAliases, remotePath, err = gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.String(), tag.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -474,11 +491,6 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			if err != nil {
 				return nil, errors.New("error getting settings config")
 			}
-		}
-		var token string
-		token, err = gh.settings.GetGithubOauthToken()
-		if err != nil {
-			return nil, errors.New("error getting github token")
 		}
 		info.Project, info.IntermediateProject, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
 		if err != nil {

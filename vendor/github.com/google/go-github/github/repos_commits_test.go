@@ -96,7 +96,7 @@ func TestRepositoriesService_GetCommit(t *testing.T) {
 		Committer: &User{
 			Login: String("l"),
 		},
-		Parents: []Commit{
+		Parents: []*Commit{
 			{
 				SHA: String("s"),
 			},
@@ -106,7 +106,7 @@ func TestRepositoriesService_GetCommit(t *testing.T) {
 			Deletions: Int(4),
 			Total:     Int(108),
 		},
-		Files: []CommitFile{
+		Files: []*CommitFile{
 			{
 				Filename:    String("f"),
 				Additions:   Int(10),
@@ -262,6 +262,45 @@ func TestRepositoriesService_NonAlphabetCharacter_GetCommitSHA1(t *testing.T) {
 	}
 }
 
+func TestRepositoriesService_TrailingPercent_GetCommitSHA1(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	const sha1 = "01234abcde"
+
+	mux.HandleFunc("/repos/o/r/commits/comm%", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", mediaTypeV3SHA)
+
+		fmt.Fprintf(w, sha1)
+	})
+
+	got, _, err := client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "comm%", "")
+	if err != nil {
+		t.Errorf("Repositories.GetCommitSHA1 returned error: %v", err)
+	}
+
+	if want := sha1; got != want {
+		t.Errorf("Repositories.GetCommitSHA1 = %v, want %v", got, want)
+	}
+
+	mux.HandleFunc("/repos/o/r/commits/tag", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testHeader(t, r, "Accept", mediaTypeV3SHA)
+		testHeader(t, r, "If-None-Match", `"`+sha1+`"`)
+
+		w.WriteHeader(http.StatusNotModified)
+	})
+
+	got, _, err = client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "tag", sha1)
+	if err == nil {
+		t.Errorf("Expected HTTP 304 response")
+	}
+
+	if want := ""; got != want {
+		t.Errorf("Repositories.GetCommitSHA1 = %v, want %v", got, want)
+	}
+}
+
 func TestRepositoriesService_CompareCommits(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
@@ -319,7 +358,7 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 			},
 			Author:    &User{Login: String("l")},
 			Committer: &User{Login: String("l")},
-			Parents: []Commit{
+			Parents: []*Commit{
 				{
 					SHA: String("s"),
 				},
@@ -329,7 +368,7 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 		AheadBy:      Int(1),
 		BehindBy:     Int(2),
 		TotalCommits: Int(1),
-		Commits: []RepositoryCommit{
+		Commits: []*RepositoryCommit{
 			{
 				SHA: String("s"),
 				Commit: &Commit{
@@ -337,14 +376,14 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 				},
 				Author:    &User{Login: String("l")},
 				Committer: &User{Login: String("l")},
-				Parents: []Commit{
+				Parents: []*Commit{
 					{
 						SHA: String("s"),
 					},
 				},
 			},
 		},
-		Files: []CommitFile{
+		Files: []*CommitFile{
 			{
 				Filename: String("f"),
 			},
@@ -367,7 +406,7 @@ func TestRepositoriesService_ListBranchesHeadCommit(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/commits/s/branches-where-head", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprintf(w, `[{"name": "b"}]`)
+		fmt.Fprintf(w, `[{"name": "b","commit":{"sha":"2e90302801c870f17b6152327d9b9a03c8eca0e2","url":"https://api.github.com/repos/google/go-github/commits/2e90302801c870f17b6152327d9b9a03c8eca0e2"},"protected":true}]`)
 	})
 
 	branches, _, err := client.Repositories.ListBranchesHeadCommit(context.Background(), "o", "r", "s")
@@ -375,7 +414,16 @@ func TestRepositoriesService_ListBranchesHeadCommit(t *testing.T) {
 		t.Errorf("Repositories.ListBranchesHeadCommit returned error: %v", err)
 	}
 
-	want := []*BranchCommit{{Name: String("b")}}
+	want := []*BranchCommit{
+		{
+			Name: String("b"),
+			Commit: &Commit{
+				SHA: String("2e90302801c870f17b6152327d9b9a03c8eca0e2"),
+				URL: String("https://api.github.com/repos/google/go-github/commits/2e90302801c870f17b6152327d9b9a03c8eca0e2"),
+			},
+			Protected: Bool(true),
+		},
+	}
 	if !reflect.DeepEqual(branches, want) {
 		t.Errorf("Repositories.ListBranchesHeadCommit returned %+v, want %+v", branches, want)
 	}

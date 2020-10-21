@@ -110,7 +110,7 @@ imports:
   - name: golang.org/x/sys
     version: d2e65c121b96ff63726fb564ece016e70ec81a44
   - name: github.com/google/go-github
-    version: 9686ff0746200cf521ce225525b421e13b4eac1a
+    version: e881974953e6ab6d1a6a1610e98ed6401a3aa1ba
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
   - name: github.com/PuerkitoBio/rehttp

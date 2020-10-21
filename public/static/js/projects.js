@@ -243,6 +243,16 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     $scope.isDirty = true;
   };
 
+  $scope.addGitTagTeam = function() {
+    $scope.settingsFormData.git_tag_authorized_teams.push($scope.git_tag_team);
+    $scope.git_tag_team = "";
+  }
+
+  $scope.removeGitTagTeam = function (index) {
+    $scope.settingsFormData.git_tag_authorized_teams.splice(index, 1);
+    $scope.isDirty = true;
+  }
+
   // addCacheIgnoreFile adds a file pattern to the settingsFormData's list of ignored cache files
   $scope.addCacheIgnoreFile = function () {
     if (!$scope.settingsFormData.files_ignored_from_cache) {
@@ -378,6 +388,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins: $scope.projectRef.admins || [],
           git_tag_authorized_users: $scope.projectRef.git_tag_authorized_users || [],
+          git_tag_authorized_teams: $scope.projectRef.git_tag_authorized_teams || [],
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
@@ -510,6 +521,10 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
     if ($scope.git_tag_user_name) {
       $scope.addGitTagUser();
+    }
+
+    if ($scope.git_tag_team) {
+      $scope.addGitTagTeam();
     }
 
     $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).then(

@@ -136,9 +136,9 @@ type PullRequestListOptions struct {
 // List the pull requests for the specified repository.
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/#list-pull-requests
-func (s *PullRequestsService) List(ctx context.Context, owner string, repo string, opt *PullRequestListOptions) ([]*PullRequest, *Response, error) {
+func (s *PullRequestsService) List(ctx context.Context, owner string, repo string, opts *PullRequestListOptions) ([]*PullRequest, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls", owner, repo)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -149,7 +149,7 @@ func (s *PullRequestsService) List(ctx context.Context, owner string, repo strin
 	}
 
 	// TODO: remove custom Accept header when this API fully launches.
-	acceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
+	acceptHeaders := []string{mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	var pulls []*PullRequest
@@ -165,10 +165,10 @@ func (s *PullRequestsService) List(ctx context.Context, owner string, repo strin
 //
 // The results will include open and closed pull requests.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-commit
-func (s *PullRequestsService) ListPullRequestsWithCommit(ctx context.Context, owner, repo, sha string, opt *PullRequestListOptions) ([]*PullRequest, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-a-commit
+func (s *PullRequestsService) ListPullRequestsWithCommit(ctx context.Context, owner, repo, sha string, opts *PullRequestListOptions) ([]*PullRequest, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v/pulls", owner, repo, sha)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -179,7 +179,7 @@ func (s *PullRequestsService) ListPullRequestsWithCommit(ctx context.Context, ow
 	}
 
 	// TODO: remove custom Accept header when this API fully launches.
-	acceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeDraftPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	acceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 	var pulls []*PullRequest
 	resp, err := s.client.Do(ctx, req, &pulls)
@@ -192,7 +192,7 @@ func (s *PullRequestsService) ListPullRequestsWithCommit(ctx context.Context, ow
 
 // Get a single pull request.
 //
-// GitHub API docs: https://developer.github.com/v3/pulls/#get-a-single-pull-request
+// GitHub API docs: https://developer.github.com/v3/pulls/#get-a-pull-request
 func (s *PullRequestsService) Get(ctx context.Context, owner string, repo string, number int) (*PullRequest, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d", owner, repo, number)
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -201,7 +201,7 @@ func (s *PullRequestsService) Get(ctx context.Context, owner string, repo string
 	}
 
 	// TODO: remove custom Accept header when this API fully launches.
-	acceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
+	acceptHeaders := []string{mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	pull := new(PullRequest)
@@ -214,20 +214,22 @@ func (s *PullRequestsService) Get(ctx context.Context, owner string, repo string
 }
 
 // GetRaw gets a single pull request in raw (diff or patch) format.
-func (s *PullRequestsService) GetRaw(ctx context.Context, owner string, repo string, number int, opt RawOptions) (string, *Response, error) {
+//
+// GitHub API docs: https://developer.github.com/v3/pulls/#get-a-pull-request
+func (s *PullRequestsService) GetRaw(ctx context.Context, owner string, repo string, number int, opts RawOptions) (string, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d", owner, repo, number)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return "", nil, err
 	}
 
-	switch opt.Type {
+	switch opts.Type {
 	case Diff:
 		req.Header.Set("Accept", mediaTypeV3Diff)
 	case Patch:
 		req.Header.Set("Accept", mediaTypeV3Patch)
 	default:
-		return "", nil, fmt.Errorf("unsupported raw type %d", opt.Type)
+		return "", nil, fmt.Errorf("unsupported raw type %d", opts.Type)
 	}
 
 	var buf bytes.Buffer
@@ -260,10 +262,6 @@ func (s *PullRequestsService) Create(ctx context.Context, owner string, repo str
 		return nil, nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	acceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeDraftPreview}
-	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
-
 	p := new(PullRequest)
 	resp, err := s.client.Do(ctx, req, p)
 	if err != nil {
@@ -273,9 +271,9 @@ func (s *PullRequestsService) Create(ctx context.Context, owner string, repo str
 	return p, resp, nil
 }
 
-// PullReqestBranchUpdateOptions specifies the optional parameters to the
+// PullRequestBranchUpdateOptions specifies the optional parameters to the
 // PullRequestsService.UpdateBranch method.
-type PullReqestBranchUpdateOptions struct {
+type PullRequestBranchUpdateOptions struct {
 	// ExpectedHeadSHA specifies the most recent commit on the pull request's branch.
 	// Default value is the SHA of the pull request's current HEAD ref.
 	ExpectedHeadSHA *string `json:"expected_head_sha,omitempty"`
@@ -296,7 +294,7 @@ type PullRequestBranchUpdateResponse struct {
 // in a successful request.
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/#update-a-pull-request-branch
-func (s *PullRequestsService) UpdateBranch(ctx context.Context, owner, repo string, number int, opts *PullReqestBranchUpdateOptions) (*PullRequestBranchUpdateResponse, *Response, error) {
+func (s *PullRequestsService) UpdateBranch(ctx context.Context, owner, repo string, number int, opts *PullRequestBranchUpdateOptions) (*PullRequestBranchUpdateResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/update-branch", owner, repo, number)
 
 	req, err := s.client.NewRequest("PUT", u, opts)
@@ -344,7 +342,10 @@ func (s *PullRequestsService) Edit(ctx context.Context, owner string, repo strin
 		State:               pull.State,
 		MaintainerCanModify: pull.MaintainerCanModify,
 	}
-	if pull.Base != nil {
+	// avoid updating the base branch when closing the Pull Request
+	// - otherwise the GitHub API server returns a "Validation Failed" error:
+	// "Cannot change base branch of closed pull request".
+	if pull.Base != nil && pull.GetState() != "closed" {
 		update.Base = pull.Base.Ref
 	}
 
@@ -354,7 +355,7 @@ func (s *PullRequestsService) Edit(ctx context.Context, owner string, repo strin
 	}
 
 	// TODO: remove custom Accept header when this API fully launches.
-	acceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	acceptHeaders := []string{mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	p := new(PullRequest)
@@ -369,9 +370,9 @@ func (s *PullRequestsService) Edit(ctx context.Context, owner string, repo strin
 // ListCommits lists the commits in a pull request.
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/#list-commits-on-a-pull-request
-func (s *PullRequestsService) ListCommits(ctx context.Context, owner string, repo string, number int, opt *ListOptions) ([]*RepositoryCommit, *Response, error) {
+func (s *PullRequestsService) ListCommits(ctx context.Context, owner string, repo string, number int, opts *ListOptions) ([]*RepositoryCommit, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/commits", owner, repo, number)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -393,9 +394,9 @@ func (s *PullRequestsService) ListCommits(ctx context.Context, owner string, rep
 // ListFiles lists the files in a pull request.
 //
 // GitHub API docs: https://developer.github.com/v3/pulls/#list-pull-requests-files
-func (s *PullRequestsService) ListFiles(ctx context.Context, owner string, repo string, number int, opt *ListOptions) ([]*CommitFile, *Response, error) {
+func (s *PullRequestsService) ListFiles(ctx context.Context, owner string, repo string, number int, opts *ListOptions) ([]*CommitFile, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/files", owner, repo, number)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -416,7 +417,7 @@ func (s *PullRequestsService) ListFiles(ctx context.Context, owner string, repo 
 
 // IsMerged checks if a pull request has been merged.
 //
-// GitHub API docs: https://developer.github.com/v3/pulls/#get-if-a-pull-request-has-been-merged
+// GitHub API docs: https://developer.github.com/v3/pulls/#check-if-a-pull-request-has-been-merged
 func (s *PullRequestsService) IsMerged(ctx context.Context, owner string, repo string, number int) (bool, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/merge", owner, repo, number)
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -438,7 +439,7 @@ type PullRequestMergeResult struct {
 
 // PullRequestOptions lets you define how a pull request will be merged.
 type PullRequestOptions struct {
-	CommitTitle string // Extra detail to append to automatic commit message. (Optional.)
+	CommitTitle string // Title for the automatic commit message. (Optional.)
 	SHA         string // SHA that pull request head must match to allow merge. (Optional.)
 
 	// The merge method to use. Possible values include: "merge", "squash", and "rebase" with the default being merge. (Optional.)
@@ -446,16 +447,16 @@ type PullRequestOptions struct {
 }
 
 type pullRequestMergeRequest struct {
-	CommitMessage string `json:"commit_message"`
+	CommitMessage string `json:"commit_message,omitempty"`
 	CommitTitle   string `json:"commit_title,omitempty"`
 	MergeMethod   string `json:"merge_method,omitempty"`
 	SHA           string `json:"sha,omitempty"`
 }
 
-// Merge a pull request (Merge Button™).
-// commitMessage is the title for the automatic commit message.
+// Merge a pull request.
+// commitMessage is an extra detail to append to automatic commit message.
 //
-// GitHub API docs: https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-buttontrade
+// GitHub API docs: https://developer.github.com/v3/pulls/#merge-a-pull-request
 func (s *PullRequestsService) Merge(ctx context.Context, owner string, repo string, number int, commitMessage string, options *PullRequestOptions) (*PullRequestMergeResult, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pulls/%d/merge", owner, repo, number)
 

@@ -68,13 +68,13 @@ type startUserMigration struct {
 // repos is a slice of repository names to migrate.
 //
 // GitHub API docs: https://developer.github.com/v3/migrations/users/#start-a-user-migration
-func (s *MigrationService) StartUserMigration(ctx context.Context, repos []string, opt *UserMigrationOptions) (*UserMigration, *Response, error) {
+func (s *MigrationService) StartUserMigration(ctx context.Context, repos []string, opts *UserMigrationOptions) (*UserMigration, *Response, error) {
 	u := "user/migrations"
 
 	body := &startUserMigration{Repositories: repos}
-	if opt != nil {
-		body.LockRepositories = Bool(opt.LockRepositories)
-		body.ExcludeAttachments = Bool(opt.ExcludeAttachments)
+	if opts != nil {
+		body.LockRepositories = Bool(opts.LockRepositories)
+		body.ExcludeAttachments = Bool(opts.ExcludeAttachments)
 	}
 
 	req, err := s.client.NewRequest("POST", u, body)
@@ -96,7 +96,7 @@ func (s *MigrationService) StartUserMigration(ctx context.Context, repos []strin
 
 // ListUserMigrations lists the most recent migrations.
 //
-// GitHub API docs: https://developer.github.com/v3/migrations/users/#get-a-list-of-user-migrations
+// GitHub API docs: https://developer.github.com/v3/migrations/users/#list-user-migrations
 func (s *MigrationService) ListUserMigrations(ctx context.Context) ([]*UserMigration, *Response, error) {
 	u := "user/migrations"
 
@@ -120,7 +120,7 @@ func (s *MigrationService) ListUserMigrations(ctx context.Context) ([]*UserMigra
 // UserMigrationStatus gets the status of a specific migration archive.
 // id is the migration ID.
 //
-// GitHub API docs: https://developer.github.com/v3/migrations/users/#get-the-status-of-a-user-migration
+// GitHub API docs: https://developer.github.com/v3/migrations/users/#get-a-user-migration-status
 func (s *MigrationService) UserMigrationStatus(ctx context.Context, id int64) (*UserMigration, *Response, error) {
 	u := fmt.Sprintf("user/migrations/%v", id)
 

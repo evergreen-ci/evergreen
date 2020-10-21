@@ -465,7 +465,10 @@ Evergreen Projects
           </div>
           <div ng-show="settingsFormData.git_tag_versions_enabled">
             <div class="form-group">
-              <div class="col-header col-lg-4 form-control-static"> <h3> Github Users Authorized To Create Versions With Git Tags </h3></div>
+              <div class="col-header col-lg-6 form-control-static"> <h4> Github Users/Teams Authorized To Create Versions With Git Tags </h4></div>
+            </div>
+            <div class="form-group">
+              <div class="col-header col-lg-3"> <h5> Authorized Users </h5> </div>
             </div>
             <div id="gitTagUsersList" class="form-group" ng-repeat="(index, user) in settingsFormData.git_tag_authorized_users">
               <div class="col-lg-4"> <label class="control-label">[[user]]</label> </div>
@@ -481,6 +484,33 @@ Evergreen Projects
               </div>
               <div class="col-lg-2">
                 <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_user_name)" type="button" ng-click="addGitTagUser()">
+                  <i class="fa fa-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="col-header col-lg-6 form-control-static"> <h5> Authorized Teams </h5>
+                <div class="muted small">
+                  This should be the team slug, i.e. the team name with dashes instead of spaces.
+                  For example, the team Evergreen Users would be evergreen-users.
+                </div>
+              </div>
+            </div>
+            <div id="gitTagTeamsList" class="form-group" ng-repeat="(index, team) in settingsFormData.git_tag_authorized_teams">
+              <div class="col-lg-4"> <label class="control-label">[[team]]</label> </div>
+              <div class="col-lg-2">
+                <button class="btn btn-default btn-danger" type="button" ng-click="removeGitTagTeam(index)">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-lg-4">
+                <input ng-model="git_tag_team" class="form-control" type="text" placeholder="team name">
+              </div>
+              <div class="col-lg-2">
+                <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_team)" type="button" ng-click="addGitTagTeam()">
                   <i class="fa fa-plus"></i>
                 </button>
               </div>
