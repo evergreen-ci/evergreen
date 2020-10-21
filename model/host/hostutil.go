@@ -84,9 +84,9 @@ func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []str
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.S3ClientURL(settings), curlArgs, h.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
 	} else {
-		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.ClientURL(settings), curlArgs)
+		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.Distro.ClientURL(settings), curlArgs)
 	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
@@ -103,25 +103,6 @@ const (
 
 func curlRetryArgs(numRetries, maxSecs int) string {
 	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
-}
-
-// S3ClientURL returns the URL in S3 where the Evergreen client version can be
-// retrieved for this server's particular Evergreen build version.
-func (h *Host) S3ClientURL(settings *evergreen.Settings) string {
-	return strings.Join([]string{
-		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
-		evergreen.BuildRevision,
-		h.Distro.ExecutableSubPath(),
-	}, "/")
-}
-
-// ClientURL returns the URL used to get the latest Evergreen client version
-// directly from the Evergreen server.
-func (h *Host) ClientURL(settings *evergreen.Settings) string {
-	return fmt.Sprintf("%s/%s/%s",
-		strings.TrimSuffix(settings.Ui.Url, "/"),
-		strings.TrimSuffix(settings.ClientBinariesDir, "/"),
-		h.Distro.ExecutableSubPath())
 }
 
 const (
@@ -1102,16 +1083,10 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	var clientURLsFlag []string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
-		clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s", h.S3ClientURL(settings)))
-	}
-	clientURLsFlag = append(clientURLsFlag, fmt.Sprintf("--client_url=%s", h.ClientURL(settings)))
-
 	args := append(h.AgentCommand(settings), "monitor")
-	args = append(append(args,
-		clientURLsFlag...),
+	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
+		fmt.Sprintf("--distro", h.Distro.Id),
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),

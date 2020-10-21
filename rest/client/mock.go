@@ -321,10 +321,15 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 	return out
 }
 
+func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
+	return []string{"https://example.com"}, nil
+}
+
 // GetLoggerProducer constructs a single channel log producer.
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime)), nil
 }
+
 func (c *Mock) GetLoggerMetadata() LoggerMetadata {
 	return LoggerMetadata{
 		Agent: []LogkeeperMetadata{{

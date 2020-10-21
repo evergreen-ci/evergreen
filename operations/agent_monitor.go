@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -51,8 +52,8 @@ func getLogID() int {
 type monitor struct {
 	// Monitor args
 	credentialsPath string
-	clientURLs      []string
 	clientPath      string
+	distroID        string
 	shellPath       string
 	logPrefix       string
 	jasperPort      int
@@ -62,7 +63,7 @@ type monitor struct {
 	// Args to be forwarded to the agent
 	agentArgs []string
 
-	// Set during runtime
+	comm         client.Communicator
 	jasperClient remote.Manager
 }
 
@@ -85,8 +86,8 @@ func defaultRetryArgs() util.RetryArgs {
 func agentMonitor() cli.Command {
 	const (
 		credentialsPathFlagName = "credentials"
-		clientURLsFlagName      = "client_url"
 		clientPathFlagName      = "client_path"
+		distroIDFlagName        = "distro"
 		shellPathFlagName       = "shell_path"
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
@@ -107,13 +108,13 @@ func agentMonitor() cli.Command {
 				Name:  credentialsPathFlagName,
 				Usage: "the path to the credentials used to authenticate the monitor to Jasper",
 			},
-			cli.StringSliceFlag{
-				Name:  clientURLsFlagName,
-				Usage: "the URL(s) to fetch the evergreen client from. URLs are tried in the order they're passed in.",
-			},
 			cli.StringFlag{
 				Name:  clientPathFlagName,
 				Usage: "the name of the agent's evergreen binary",
+			},
+			cli.StringFlag{
+				Name:  distroIDFlagName,
+				Usage: "the ID of the distro the monitor is running on.",
 			},
 			cli.StringFlag{
 				Name:  shellPathFlagName,
@@ -141,8 +142,8 @@ func agentMonitor() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringSliceFlag(clientURLsFlagName),
 			requireStringFlag(clientPathFlagName),
+			requireStringFlag(distroIDFlagName),
 			requireStringFlag(shellPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
 			requireIntValueBetween(portFlagName, minPort, maxPort),
@@ -153,9 +154,11 @@ func agentMonitor() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			m := &monitor{
+				// kim: TODO: verify that using parent context will work.
+				comm:            client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName)),
 				credentialsPath: c.String(credentialsPathFlagName),
-				clientURLs:      c.StringSlice(clientURLsFlagName),
 				clientPath:      c.String(clientPathFlagName),
+				distroID:        c.String(distroIDFlagName),
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
@@ -278,13 +281,14 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 
 // fetchClient downloads the evergreen client.
 func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
-	if len(m.clientURLs) == 0 {
-		return errors.New("no URLs given to download client")
+	clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
+	if err != nil {
+		return errors.Wrap(err, "retrieving client URLs")
 	}
 
 	var downloaded bool
 	catcher := grip.NewBasicCatcher()
-	for _, url := range m.clientURLs {
+	for _, url := range clientURLs {
 		info := options.Download{
 			URL:         url,
 			Path:        m.clientPath,
@@ -436,7 +440,7 @@ func (m *monitor) run(ctx context.Context) {
 			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
-					"client_urls": m.clientURLs,
+					"distro":      m.distroID,
 					"client_path": m.clientPath,
 				}))
 				return true, err
@@ -449,8 +453,8 @@ func (m *monitor) run(ctx context.Context) {
 
 			grip.InfoWhen(sometimes.Fifth(), message.Fields{
 				"message":     "starting agent on host via Jasper",
-				"client_urls": m.clientURLs,
 				"client_path": m.clientPath,
+				"distro":      m.distroID,
 				"jasper_port": m.jasperPort,
 			})
 			if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {

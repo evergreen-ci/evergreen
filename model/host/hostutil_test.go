@@ -109,38 +109,6 @@ func TestCurlCommandWithRetry(t *testing.T) {
 	})
 }
 
-func TestS3ClientURL(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64}}
-	settings := &evergreen.Settings{
-		HostInit: evergreen.HostInitConfig{
-			S3BaseURL: "https://foo.com",
-		},
-		ClientBinariesDir: "clients",
-	}
-
-	expected := fmt.Sprintf("https://foo.com/%s/windows_amd64/evergreen.exe", evergreen.BuildRevision)
-	assert.Equal(t, expected, h.S3ClientURL(settings))
-
-	h.Distro.Arch = evergreen.ArchLinuxAmd64
-	expected = fmt.Sprintf("https://foo.com/%s/linux_amd64/evergreen", evergreen.BuildRevision)
-	assert.Equal(t, expected, h.S3ClientURL(settings))
-}
-
-func TestClientURL(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64}}
-	settings := &evergreen.Settings{
-		Ui:                evergreen.UIConfig{Url: "www.example.com"},
-		ClientBinariesDir: "clients",
-	}
-
-	expected := "www.example.com/clients/windows_amd64/evergreen.exe"
-	assert.Equal(t, expected, h.ClientURL(settings))
-
-	h.Distro.Arch = evergreen.ArchLinuxAmd64
-	expected = "www.example.com/clients/linux_amd64/evergreen"
-	assert.Equal(t, expected, h.ClientURL(settings))
-}
-
 func TestGetSSHOptions(t *testing.T) {
 	defaultKeyName := "key_name"
 	defaultKeyPath := "/path/to/key/file"

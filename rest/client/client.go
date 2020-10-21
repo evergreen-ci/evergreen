@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -178,7 +179,29 @@ func (c *communicatorImpl) GetLoggerMetadata() LoggerMetadata {
 	return c.loggerInfo
 }
 
-// GetLogProducer
+func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) ([]string, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Spritnf("distros/%s/client_urls", distroID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting client URLs")
+	}
+
+	var urls []string
+	if err := utility.ReadJSON(resp.Body, &urls); err != nil {
+		return nil, errors.Wrapf(err, "reading client URLs from response")
+	}
+
+	return urls, nil
+}
+
 func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
 	if config == nil {
 		config = &LoggerConfig{

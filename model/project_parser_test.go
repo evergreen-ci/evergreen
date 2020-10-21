@@ -1419,8 +1419,6 @@ functions:
     params:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       binary: make
-      env:
-        CLIENT_URL: https://mciuploads.s3.amazonaws.com/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
 buildvariants:
 - matrix_name: "my-matrix"
   matrix_spec: { version: ["4.0", "4.2"], os: "linux" }
