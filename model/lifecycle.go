@@ -391,6 +391,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil && !adb.ResultsNotFound(err) {
 		return errors.WithStack(err)
 	}
+	// remove execution tasks in case the caller passed both display and execution tasks
+	// the functions below are expected to work if just the display task is passed
 	for i := len(finishedTasks) - 1; i >= 0; i-- {
 		t := finishedTasks[i]
 		if t.DisplayTask != nil {
