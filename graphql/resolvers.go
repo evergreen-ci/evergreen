@@ -998,7 +998,6 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	taskResults := ConvertDBTasksToGqlTasks(tasks, baseTaskStatuses)
 
-	// SORT BY BASE STATUS
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
 			if sortDirParam == 1 {
