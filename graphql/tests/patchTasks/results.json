@@ -38,16 +38,16 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "4"
-              },
-              {
-                "id": "3"
-              },
-              {
                 "id": "1.5"
               },
               {
                 "id": "4.5"
+              },
+              {
+                "id": "4"
+              },
+              {
+                "id": "3"
               }
             ],
             "count": 4
@@ -62,16 +62,16 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "4"
-              },
-              {
-                "id": "3"
-              },
-              {
                 "id": "1.5"
               },
               {
                 "id": "4.5"
+              },
+              {
+                "id": "4"
+              },
+              {
+                "id": "3"
               }
             ],
             "count": 4
@@ -104,6 +104,20 @@
                 "buildVariant": "ubuntu1604"
               },
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "4",
                 "status": "task-timed-out",
                 "baseStatus": "success",
@@ -122,20 +136,6 @@
                 "status": "success",
                 "baseStatus": "test-timed-out",
                 "displayName": "lint",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
                 "buildVariant": "windows"
               }
             ],
@@ -227,6 +227,14 @@
                 "status": "failed"
               },
               {
+                "id": "1.5",
+                "status": "system-failed"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed"
+              },
+              {
                 "id": "4",
                 "status": "task-timed-out"
               },
@@ -237,14 +245,6 @@
               {
                 "id": "3",
                 "status": "success"
-              },
-              {
-                "id": "1.5",
-                "status": "system-failed"
-              },
-              {
-                "id": "4.5",
-                "status": "system-failed"
               }
             ],
             "count": 6
@@ -331,20 +331,6 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
                 "id": "1",
                 "status": "success",
                 "baseStatus": "success",
@@ -361,6 +347,20 @@
               {
                 "id": "4",
                 "status": "task-timed-out",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -454,8 +454,8 @@
                 "buildVariant": "ubuntu1604"
               },
               {
-                "id": "4",
-                "status": "task-timed-out",
+                "id": "1.5",
+                "status": "system-failed",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -473,17 +473,17 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "1",
-                "status": "success",
+                "id": "4.5",
+                "status": "system-failed",
                 "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "displayName": "compile",
+                "buildVariant": "windows"
               },
               {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "test-timed-out",
-                "displayName": "lint",
+                "id": "4",
+                "status": "task-timed-out",
+                "baseStatus": "success",
+                "displayName": "compile",
                 "buildVariant": "windows"
               }
             ],
