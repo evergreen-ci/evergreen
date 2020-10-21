@@ -39,7 +39,7 @@ func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("WithoutS3", func(t *testing.T) {
 		settings := &evergreen.Settings{
-			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ApiUrl:            "www.example.com",
 			ClientBinariesDir: "clients",
 		}
 		t.Run("Linux", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestCurlCommand(t *testing.T) {
 	})
 	t.Run("WithS3", func(t *testing.T) {
 		settings := &evergreen.Settings{
-			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ApiUrl:            "www.example.com",
 			ClientBinariesDir: "clients",
 			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
 		}
@@ -76,7 +76,7 @@ func TestCurlCommand(t *testing.T) {
 func TestCurlCommandWithRetry(t *testing.T) {
 	t.Run("WithoutS3", func(t *testing.T) {
 		settings := &evergreen.Settings{
-			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ApiUrl:            "www.example.com",
 			ClientBinariesDir: "clients",
 		}
 		t.Run("Windows", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 	})
 	t.Run("WithS3", func(t *testing.T) {
 		settings := &evergreen.Settings{
-			Ui:                evergreen.UIConfig{Url: "www.example.com"},
+			ApiUrl:            "www.example.com",
 			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
 			ClientBinariesDir: "clients",
 		}
