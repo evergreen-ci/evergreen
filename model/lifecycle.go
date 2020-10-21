@@ -917,72 +917,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
-		// set the new task's dependencies
-		if len(t.DependsOn) == 1 &&
-			t.DependsOn[0].Name == AllDependencies &&
-			t.DependsOn[0].Variant != AllVariants {
-			// the task depends on all of the other tasks in the build
-			newTask.DependsOn = make([]task.Dependency, 0, len(tasksToCreate)-1)
-			status := evergreen.TaskSucceeded
-			if t.DependsOn[0].Status != "" {
-				status = t.DependsOn[0].Status
-			}
-			for _, dep := range tasksToCreate {
-				id := execTable.GetId(b.BuildVariant, dep.Name)
-				if len(id) == 0 || dep.Name == newTask.DisplayName {
-					continue
-				}
-				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: id, Status: status})
-			}
-			for _, existingTask := range tasksInBuild {
-				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: existingTask.Id, Status: status})
-			}
-		} else {
-			// the task has specific dependencies
-			newTask.DependsOn = make([]task.Dependency, 0, len(t.DependsOn))
-			for _, dep := range t.DependsOn {
-				// only add as a dependency if the dependency is valid/exists
-				status := evergreen.TaskSucceeded
-				if dep.Status != "" {
-					status = dep.Status
-				}
-				bv := b.BuildVariant
-				if dep.Variant != "" {
-					bv = dep.Variant
-				}
 
-				newDeps := []task.Dependency{}
-
-				if dep.Variant == AllVariants {
-					// for * case, we need to add all variants of the task
-					var ids []string
-					if dep.Name != AllDependencies {
-						ids = execTable.GetIdsForAllVariantsExcluding(
-							dep.Name,
-							TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant},
-						)
-					} else {
-						// edge case where variant and task are both *
-						ids = execTable.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
-					}
-					for _, id := range ids {
-						if len(id) != 0 {
-							newDeps = append(newDeps, task.Dependency{TaskId: id, Status: status})
-						}
-					}
-				} else {
-					// general case
-					id := execTable.GetId(bv, dep.Name)
-					// only create the dependency if the task exists--it always will,
-					// except for patches with patch_optional dependencies.
-					if len(id) != 0 {
-						newDeps = []task.Dependency{{TaskId: id, Status: status}}
-					}
-				}
-
-				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
-			}
-		}
+		newTask.DependsOn = makeDeps(t, newTask.Id, execTable)
 		newTask.GeneratedBy = generatedBy
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
@@ -1061,6 +997,46 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// return all of the tasks created
 	return tasks, nil
+}
+
+func makeDeps(t BuildVariantTaskUnit, thisTaskID string, taskIds TaskIdTable) []task.Dependency {
+	dependencySet := make(map[task.Dependency]bool)
+	for _, dep := range t.DependsOn {
+		status := evergreen.TaskSucceeded
+		if dep.Status != "" {
+			status = dep.Status
+		}
+
+		var depIDs []string
+		if dep.Variant == AllVariants && dep.Name == AllDependencies {
+			depIDs = taskIds.GetIdsForAllTasks()
+		} else if dep.Variant == AllVariants {
+			depIDs = taskIds.GetIdsForTaskInAllVariants(dep.Name)
+		} else if dep.Name == AllDependencies {
+			depIDs = taskIds.GetIdsForAllTasksInVariant(dep.Variant)
+		} else {
+			// don't add missing dependencies
+			// patch_optional tasks aren't in the patch and will be missing from the table
+			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
+				depIDs = []string{id}
+			}
+		}
+
+		for _, id := range depIDs {
+			// tasks don't depend on themselves
+			if id == thisTaskID {
+				continue
+			}
+			dependencySet[task.Dependency{TaskId: id, Status: status}] = true
+		}
+	}
+
+	dependencies := make([]task.Dependency, 0, len(dependencySet))
+	for dep := range dependencySet {
+		dependencies = append(dependencies, dep)
+	}
+
+	return dependencies
 }
 
 // shouldSyncTask returns whether or not this task in this build variant should

@@ -649,35 +649,38 @@ func (tt TaskIdTable) GetId(variant, taskName string) string {
 	return tt[TVPair{variant, taskName}]
 }
 
-// GetIdsForAllVariants returns all task Ids for taskName on all variants.
-func (tt TaskIdTable) GetIdsForAllVariants(taskName string) []string {
-	return tt.GetIdsForAllVariantsExcluding(taskName, TVPair{})
-}
-
-// GetIdsForAllVariants returns all task Ids for taskName on all variants, excluding
-// the specific task denoted by the task/variant pair.
-func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVPair) []string {
+// GetIdsForTaskInAllVariants returns all task Ids for taskName on all variants
+func (tt TaskIdTable) GetIdsForTaskInAllVariants(taskName string) []string {
 	ids := []string{}
-	for pair := range tt {
-		if pair.TaskName == taskName && pair != exclude {
-			if id := tt[pair]; id != "" {
-				ids = append(ids, id)
-			}
+	for pair, id := range tt {
+		if pair.TaskName != taskName || id == "" {
+			continue
 		}
+		ids = append(ids, id)
 	}
 	return ids
 }
 
-// GetIdsForTasks returns all task Ids for tasks on all variants != the current task.
-// The current variant and task must be passed in to avoid cycle generation.
-func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []string {
+// GetIdsForAllTasksInVariant returns all task Ids for all tasks on a variant
+func (tt TaskIdTable) GetIdsForAllTasksInVariant(variantName string) []string {
 	ids := []string{}
-	for pair := range tt {
-		if !(pair.TaskName == taskName && pair.Variant == currentVariant) {
-			if id := tt[pair]; id != "" {
-				ids = append(ids, id)
-			}
+	for pair, id := range tt {
+		if pair.Variant != variantName || id == "" {
+			continue
 		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// GetIdsForAllTasks returns every id in the table
+func (tt TaskIdTable) GetIdsForAllTasks() []string {
+	ids := make([]string, 0, len(tt))
+	for _, id := range tt {
+		if id == "" {
+			continue
+		}
+		ids = append(ids, id)
 	}
 	return ids
 }
