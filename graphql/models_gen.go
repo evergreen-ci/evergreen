@@ -529,12 +529,14 @@ func (e TaskSortCategory) MarshalGQL(w io.Writer) {
 type TestSortCategory string
 
 const (
-	TestSortCategoryStatus   TestSortCategory = "STATUS"
-	TestSortCategoryDuration TestSortCategory = "DURATION"
-	TestSortCategoryTestName TestSortCategory = "TEST_NAME"
+	TestSortCategoryBaseStatus TestSortCategory = "BASE_STATUS"
+	TestSortCategoryStatus     TestSortCategory = "STATUS"
+	TestSortCategoryDuration   TestSortCategory = "DURATION"
+	TestSortCategoryTestName   TestSortCategory = "TEST_NAME"
 )
 
 var AllTestSortCategory = []TestSortCategory{
+	TestSortCategoryBaseStatus,
 	TestSortCategoryStatus,
 	TestSortCategoryDuration,
 	TestSortCategoryTestName,
@@ -542,7 +544,7 @@ var AllTestSortCategory = []TestSortCategory{
 
 func (e TestSortCategory) IsValid() bool {
 	switch e {
-	case TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
+	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
 		return true
 	}
 	return false

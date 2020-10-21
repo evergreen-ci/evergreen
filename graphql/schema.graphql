@@ -124,6 +124,7 @@ enum TaskSortCategory {
 }
 
 enum TestSortCategory {
+  BASE_STATUS
   STATUS
   DURATION
   TEST_NAME
@@ -501,6 +502,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   status: String!
+  baseStatus: String
   testFile: String!
   logs: TestLog!
   exitCode: Int
