@@ -135,9 +135,6 @@ variables:
       - func: run-make
         vars:
           target: get-go-imports
-      # kim: TODO: probably remove
-      # - func: run-make
-      #   vars: { target: "cli" }
       - func: setup-mongodb
       - func: run-make
         vars: { target: "set-var" }

@@ -154,7 +154,6 @@ func agentMonitor() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			m := &monitor{
-				// kim: TODO: verify that using parent context will work.
 				comm:            client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName)),
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),

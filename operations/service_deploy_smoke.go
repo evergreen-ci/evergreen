@@ -57,14 +57,7 @@ func smokeStartEvergreen() cli.Command {
 		agentFlagName        = "agent"
 		webFlagName          = "web"
 		agentMonitorFlagName = "monitor"
-		// The URL of the client for the monitor.
-		// kim: TODO: fix this so that:
-		// - The smoke data contains the distro document, and the admin settings
-		// contain the API URL and client directory. Hopefully the fake server
-		// can serve client downloads.
-		// - The distro ID is propagated from the distro document to the smoke
-		// agent monitor command.
-		distroIDFlagName = "distro"
+		distroIDFlagName     = "distro"
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":9090"
