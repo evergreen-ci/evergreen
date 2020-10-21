@@ -109,7 +109,20 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 	s.Equal("baf}}r", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
+}
 
+func (s execCmdSuite) TestMultiwordCommandExpansion() {
+	cmd := &subprocessExec{
+		Command: "binary something ${long}",
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	expansions := &util.Expansions{"long": "multiword expansion"}
+	s.NoError(cmd.doExpansions(expansions))
+	s.Equal("binary", cmd.Binary)
+	s.Require().Len(cmd.Args, 3)
+	s.Equal(cmd.Args[0], "something")
+	s.Equal(cmd.Args[1], "multiword")
+	s.Equal(cmd.Args[2], "expansion")
 }
 
 func (s *execCmdSuite) TestParseParamsInitializesEnvMap() {
