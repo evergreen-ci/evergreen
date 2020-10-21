@@ -2455,10 +2455,14 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-var taskFailureStatuses []string = []string{
-	evergreen.TaskFailed,
-	evergreen.TaskTestTimedOut,
-	evergreen.TaskTimedOut,
+func getBsonFailureStatuses() bson.A {
+	failureStatusDocs := bson.A{}
+
+	for _, status := range evergreen.TaskFailureStatuses {
+		failureStatusDocs = append(failureStatusDocs, bson.M{"$eq": bson.A{"$" + DisplayStatusKey, status}})
+	}
+
+	return failureStatusDocs
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -2499,11 +2503,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 					"first": bson.M{
 						"$cond": bson.M{
 							"if": bson.M{
-								"$or": bson.A{
-									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskFailed}},
-									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskTestTimedOut}},
-									bson.M{"$eq": bson.A{"$" + DisplayStatusKey, evergreen.TaskTimedOut}},
-								},
+								"$or": getBsonFailureStatuses(),
 							},
 							"then": "a",
 							"else": "b",

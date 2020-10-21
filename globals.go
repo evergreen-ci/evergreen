@@ -231,6 +231,16 @@ const (
 	DefaultShutdownWaitSeconds = 10
 )
 
+var TaskFailureStatuses []string = []string{
+	TaskTimedOut,
+	TaskFailed,
+	TaskSystemFailed,
+	TaskTestTimedOut,
+	TaskSetupFailed,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+}
+
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskSucceeded ||
 		IsFailedTaskStatus(status) {
