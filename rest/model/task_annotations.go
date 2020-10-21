@@ -102,10 +102,6 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []task_annotat
 	return m
 }
 
-func TimeTimeTimeTime(in time.Time) time.Time {
-	return time.Time(in)
-}
-
 func TimeTimeTimeTimePtr(in time.Time) *time.Time {
 	out := time.Time(in)
 	return &out
@@ -117,12 +113,4 @@ func TimeTimePtrTimeTime(in *time.Time) time.Time {
 		return out
 	}
 	return time.Time(*in)
-}
-
-func TimeTimePtrTimeTimePtr(in *time.Time) *time.Time {
-	if in == nil {
-		return nil
-	}
-	out := time.Time(*in)
-	return &out
 }
