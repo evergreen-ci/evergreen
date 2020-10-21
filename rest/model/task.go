@@ -67,6 +67,7 @@ type APITask struct {
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
+	MustHaveResults    bool                `json:"must_have_test_results"`
 }
 
 type LogLinks struct {
@@ -213,6 +214,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
 			CanSync:           v.CanSync,
+			MustHaveResults:   v.MustHaveResults,
 			SyncAtEndOpts: APISyncAtEndOptions{
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,
@@ -298,6 +300,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		DisplayOnly:         ad.DisplayOnly,
 		Requester:           FromStringPtr(ad.Requester),
 		CanSync:             ad.CanSync,
+		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  ad.SyncAtEndOpts.Enabled,
 			Statuses: ad.SyncAtEndOpts.Statuses,

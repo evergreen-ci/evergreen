@@ -74,6 +74,7 @@ const (
 	// Task descriptions
 	TaskDescriptionHeartbeat = "heartbeat"
 	TaskDescriptionStranded  = "stranded"
+	TaskDescriptionNoResults = "expected test results, but none attached"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks)

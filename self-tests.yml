@@ -66,6 +66,7 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -79,6 +80,7 @@ variables:
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -96,6 +98,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -112,6 +115,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -612,7 +616,6 @@ tasks:
     commands:
       - func: get-project
       - func: verify-agent-version-update
-
 
 buildvariants:
   - name: ubuntu1604
