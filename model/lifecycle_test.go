@@ -1489,6 +1489,7 @@ func TestGetTaskIdTable(t *testing.T) {
 	v.Requester = evergreen.PatchVersionRequester
 	newPairs := TaskVariantPairs{
 		ExecTasks: TVPairSet{
+			// imagine t1 is a patch_optional task not included in newPairs
 			{Variant: "bv0", TaskName: "t0"},
 		},
 	}
