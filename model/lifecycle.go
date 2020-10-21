@@ -1629,7 +1629,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 }
 
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs) (TaskIdConfig, error) {
-	if v.Requester == evergreen.RepotrackerVersionRequester {
+	if utility.StringSliceContains(evergreen.AllTaskRequesterTypes, v.Requester) {
 		return NewTaskIdTable(p, v, "", ""), nil
 	}
 
