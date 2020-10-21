@@ -130,8 +130,10 @@ func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
 	if !ok {
 		return errors.Errorf("Incorrect type %T when unmarshalling OOMTrackerInfo", t)
 	}
-	at.Detected = v.Detected
-	at.Pids = v.Pids
+	if v != nil {
+		at.Detected = v.Detected
+		at.Pids = v.Pids
+	}
 
 	return nil
 }
