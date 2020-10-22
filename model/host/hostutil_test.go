@@ -42,12 +42,12 @@ func TestCurlCommand(t *testing.T) {
 			ApiUrl:            "www.example.com",
 			ClientBinariesDir: "clients",
 		}
-		t.Run("Linux", func(t *testing.T) {
+		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 			assert.Equal(expected, h.CurlCommand(settings))
 		})
-		t.Run("Windows", func(t *testing.T) {
+		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 			assert.Equal(expected, h.CurlCommand(settings))
@@ -59,13 +59,12 @@ func TestCurlCommand(t *testing.T) {
 			ClientBinariesDir: "clients",
 			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
 		}
-		t.Run("Linux", func(t *testing.T) {
+		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe') && chmod +x evergreen.exe", evergreen.BuildRevision)
 			assert.Equal(expected, h.CurlCommand(settings))
 		})
-
-		t.Run("Windows", func(t *testing.T) {
+		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' || curl -LO 'www.example.com/clients/linux_amd64/evergreen') && chmod +x evergreen", evergreen.BuildRevision)
 			assert.Equal(expected, h.CurlCommand(settings))
