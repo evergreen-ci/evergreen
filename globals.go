@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -251,12 +252,7 @@ func IsFinishedTaskStatus(status string) bool {
 }
 
 func IsFailedTaskStatus(status string) bool {
-	return status == TaskFailed ||
-		status == TaskSystemFailed ||
-		status == TaskSystemTimedOut ||
-		status == TaskSystemUnresponse ||
-		status == TaskTestTimedOut ||
-		status == TaskSetupFailed
+	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
 // evergreen package names
