@@ -1710,8 +1710,7 @@ func (t *Task) Archive() error {
 	archiveTask.Archived = true
 	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":          "EVG-12942",
+		grip.Error(message.WrapError(err, message.Fields{
 			"archive_task_id": archiveTask.Id,
 			"old_task_id":     archiveTask.OldTaskId,
 			"execution":       t.Execution,
