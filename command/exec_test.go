@@ -109,7 +109,20 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 	s.Equal("baf}}r", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
+}
 
+func (s execCmdSuite) TestMultiwordCommandExpansion() {
+	cmd := &subprocessExec{
+		Command: "binary something ${long}",
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.conf.Expansions = &util.Expansions{"long": "multiword expansion"}
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf)) // just want expansions
+	s.Equal("binary", cmd.Binary)
+	s.Require().Len(cmd.Args, 3)
+	s.Equal(cmd.Args[0], "something")
+	s.Equal(cmd.Args[1], "multiword")
+	s.Equal(cmd.Args[2], "expansion")
 }
 
 func (s *execCmdSuite) TestParseParamsInitializesEnvMap() {
@@ -140,7 +153,8 @@ func (s *execCmdSuite) TestCommandParsing() {
 	s.Zero(cmd.Binary)
 	s.Zero(cmd.Args)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	s.Len(cmd.Args, 2)
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Require().Len(cmd.Args, 2)
 	s.NotZero(cmd.Binary)
 	s.Equal("/bin/bash", cmd.Binary)
 	s.Equal("-c", cmd.Args[0])
@@ -212,11 +226,14 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 	cmd := &subprocessExec{
 		Command:    "bash -c 'exit 1'",
+		WorkingDir: testutil.GetDirectoryOfFile(),
 		Background: true,
 		Silent:     true,
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.conf.Task = &task.Task{Id: "foo"}
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	exec := cmd.getProc(s.ctx, "foo", s.logger)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
@@ -288,7 +305,8 @@ func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
 func (s *execCmdSuite) TestKeepEmptyArgs() {
 	// by default empty args should be stripped
 	cmd := &subprocessExec{
-		Command:    "echo ${foo|} bar",
+		Binary:     "echo",
+		Args:       []string{"${foo|}", "bar"},
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	cmd.SetJasperManager(s.jasper)
@@ -298,7 +316,8 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 
 	// empty args should not be stripped if set
 	cmd = &subprocessExec{
-		Command:       "echo ${foo|} bar",
+		Binary:        "echo",
+		Args:          []string{"${foo|}", "bar"},
 		WorkingDir:    testutil.GetDirectoryOfFile(),
 		KeepEmptyArgs: true,
 	}
