@@ -1,9 +1,9 @@
 package model
 
 import (
-	"encoding/json"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/model/task_annotations"
 )
 
@@ -21,7 +21,7 @@ type APITaskAnnotation struct {
 	Issues          []APIIssueLink      `json:"issues"`
 	SuspectedIssues []APIIssueLink      `json:"suspected_issues"`
 	Source          APIAnnotationSource `json:"source"`
-	Metadata        json.RawMessage     `json:"metadata"`
+	Metadata        *birch.Document     `json:"metadata"`
 }
 
 // APIAnnotationSourceBuildFromService takes the task_annotations.AnnotationSource DB struct and

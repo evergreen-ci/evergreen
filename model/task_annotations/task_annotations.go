@@ -1,8 +1,9 @@
 package task_annotations
 
 import (
-	"encoding/json"
 	"time"
+
+	"github.com/evergreen-ci/birch"
 )
 
 type TaskAnnotation struct {
@@ -16,7 +17,7 @@ type TaskAnnotation struct {
 	// annotation attribution
 	Source AnnotationSource `bson:"source" json:"source"`
 	// structured data about the task (not displayed in the UI, but available in the API)
-	Metadata json.RawMessage `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Metadata *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
 }
 
 type IssueLink struct {
