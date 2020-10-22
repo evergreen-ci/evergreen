@@ -1062,7 +1062,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 	baseTask, err := dbTask.FindTaskOnBaseCommit()
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find base task with id %s", taskID))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
 	}
 
 	baseTestStatusMap := make(map[string]string)
