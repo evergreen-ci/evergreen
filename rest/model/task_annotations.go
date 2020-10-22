@@ -106,11 +106,3 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []task_annotat
 	}
 	return m
 }
-
-func TimePtrTime(in *time.Time) time.Time {
-	var out time.Time
-	if in == nil {
-		return out
-	}
-	return time.Time(*in)
-}
