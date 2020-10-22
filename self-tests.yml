@@ -328,6 +328,7 @@ functions:
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
 
+
 #######################################
 #                Tasks                #
 #######################################
@@ -541,13 +542,17 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
-  - name: upload-clis
-    patchable: false
+  - name: verify-agent-version-update
+    patch_only: true
     commands:
       - func: get-project
-      - func: run-make
-        vars:
-          target: get-go-imports
+      - func: verify-agent-version-update
+  - name: upload-clis
+    patchable: false
+    depends_on:
+        - name: dist
+          status: success
+    commands:
       - command: subprocess.exec
         params:
           binary: make
@@ -564,13 +569,18 @@ tasks:
             LEGACY_GO_BIN_PATH: ${legacyGobin}
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
-  - name: verify-agent-version-update
-    patch_only: true
-    commands:
-      - func: get-project
-      - func: verify-agent-version-update
 
 
+task_groups:
+  - name: dist-and-upload-clis
+    max_hosts: 1
+    tasks:
+      - dist
+      - upload-clis
+
+#######################################
+#            Buildvariants            #
+#######################################
 buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -587,9 +597,8 @@ buildvariants:
       legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
-      - name: "dist"
+      - name: "dist-and-upload-clis"
       - name: "dist-staging"
-      - name: "upload-clis"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
