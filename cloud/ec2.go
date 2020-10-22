@@ -1049,8 +1049,8 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			continue
 		}
 
-		if volDB.Expiration.Before(time.Now().Add(evergreen.DefaultSpawnHostExpiration)) {
-			if err = m.modifyVolumeExpiration(ctx, volDB, time.Now().Add(evergreen.DefaultSpawnHostExpiration)); err != nil {
+		if volDB.Expiration.Before(time.Now().Add(evergreen.UnattachedVolumeExpiration)) {
+			if err = m.modifyVolumeExpiration(ctx, volDB, time.Now().Add(evergreen.UnattachedVolumeExpiration)); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error updating volume expiration",
 					"user":    user,

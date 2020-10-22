@@ -21,8 +21,8 @@ func init() {
 const (
 	// notification templates
 	expiringVolumeEmailSubject         = `Volume termination reminder`
-	expiringVolumeEmailBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>volume page</a> to extend its lifetime.`
-	expiringVolumeSlackBody            = `Your volume with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|volume page> to extend its lifetime.`
+	expiringVolumeEmailBody            = `Your volume with id {{.ID}} is unattached and will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>volume page</a> to extend its lifetime.`
+	expiringVolumeSlackBody            = `Your volume with id {{.ID}} is unattached and will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|volume page> to extend its lifetime.`
 	expiringVolumeSlackAttachmentTitle = "Volume Page"
 )
 
