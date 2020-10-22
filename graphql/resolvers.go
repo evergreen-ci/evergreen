@@ -1060,6 +1060,18 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
+	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
+	}
+
+	baseTestStatusMap := make(map[string]string)
+	if baseTask != nil {
+		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, 0)
+		for _, t := range baseTestResults {
+			baseTestStatusMap[t.TestFile] = t.Status
+		}
+	}
 
 	sortBy := ""
 	if sortCategory != nil {
@@ -1124,6 +1136,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
+		baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
+		apiTest.BaseStatus = &baseTestStatus
 		testPointers = append(testPointers, &apiTest)
 	}
 

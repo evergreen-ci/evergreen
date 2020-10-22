@@ -584,14 +584,15 @@ type ComplexityRoot struct {
 	}
 
 	TestResult struct {
-		Duration  func(childComplexity int) int
-		EndTime   func(childComplexity int) int
-		ExitCode  func(childComplexity int) int
-		Id        func(childComplexity int) int
-		Logs      func(childComplexity int) int
-		StartTime func(childComplexity int) int
-		Status    func(childComplexity int) int
-		TestFile  func(childComplexity int) int
+		BaseStatus func(childComplexity int) int
+		Duration   func(childComplexity int) int
+		EndTime    func(childComplexity int) int
+		ExitCode   func(childComplexity int) int
+		Id         func(childComplexity int) int
+		Logs       func(childComplexity int) int
+		StartTime  func(childComplexity int) int
+		Status     func(childComplexity int) int
+		TestFile   func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -3530,6 +3531,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestLog.RawDisplayURL(childComplexity), true
 
+	case "TestResult.baseStatus":
+		if e.complexity.TestResult.BaseStatus == nil {
+			break
+		}
+
+		return e.complexity.TestResult.BaseStatus(childComplexity), true
+
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
 			break
@@ -4042,6 +4050,7 @@ enum TaskSortCategory {
 }
 
 enum TestSortCategory {
+  BASE_STATUS
   STATUS
   DURATION
   TEST_NAME
@@ -4419,6 +4428,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   status: String!
+  baseStatus: String
   testFile: String!
   logs: TestLog!
   exitCode: Int
@@ -17983,6 +17993,37 @@ func (ec *executionContext) _TestResult_status(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_testFile(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24342,6 +24383,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "baseStatus":
+			out.Values[i] = ec._TestResult_baseStatus(ctx, field, obj)
 		case "testFile":
 			out.Values[i] = ec._TestResult_testFile(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
