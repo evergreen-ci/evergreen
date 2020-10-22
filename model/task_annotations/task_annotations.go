@@ -1,6 +1,7 @@
 package task_annotations
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -9,13 +10,13 @@ type TaskAnnotation struct {
 	// comment about the failure
 	Note string `bson:"note,omitempty" json:"note,omitempty"`
 	// links to tickets definitely related.
-	Issues []IssueLink `bson:"issues,omitempty" json:"issue,omitempty"`
+	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// links to tickets possibly related
-	SuspectIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 	// annotation attribution
-	Source AnnotationSource `bson:"source,omitempty" json:"source,omitempty"`
+	Source AnnotationSource `bson:"source" json:"source"`
 	// structured data about the task (not displayed in the UI, but available in the API)
-	Metadata string `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Metadata json.RawMessage `bson:"metadata,omitempty" json:"metadata,omitempty"`
 }
 
 type IssueLink struct {

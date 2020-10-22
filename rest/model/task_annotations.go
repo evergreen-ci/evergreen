@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task_annotations"
@@ -15,12 +16,12 @@ type APIIssueLink struct {
 	IssueKey *string `json:"issue_key"`
 }
 type APITaskAnnotation struct {
-	Id            *string             `json:"id"`
-	Note          *string             `json:"note"`
-	Issues        []APIIssueLink      `json:"issues"`
-	SuspectIssues []APIIssueLink      `json:"suspected_issues"`
-	Source        APIAnnotationSource `json:"source"`
-	Metadata      *string             `json:"metadata"`
+	Id              *string             `json:"id"`
+	Note            *string             `json:"note"`
+	Issues          []APIIssueLink      `json:"issues"`
+	SuspectedIssues []APIIssueLink      `json:"suspected_issues"`
+	Source          APIAnnotationSource `json:"source"`
+	Metadata        json.RawMessage     `json:"metadata"`
 }
 
 // APIAnnotationSourceBuildFromService takes the task_annotations.AnnotationSource DB struct and
@@ -28,7 +29,7 @@ type APITaskAnnotation struct {
 func APIAnnotationSourceBuildFromService(t task_annotations.AnnotationSource) *APIAnnotationSource {
 	m := APIAnnotationSource{}
 	m.Author = StringStringPtr(t.Author)
-	m.Time = TimeTimeTimeTimePtr(t.Time)
+	m.Time = ToTimePtr(t.Time)
 	return &m
 }
 
@@ -37,7 +38,11 @@ func APIAnnotationSourceBuildFromService(t task_annotations.AnnotationSource) *A
 func APIAnnotationSourceToService(m APIAnnotationSource) *task_annotations.AnnotationSource {
 	out := &task_annotations.AnnotationSource{}
 	out.Author = StringPtrString(m.Author)
-	out.Time = TimeTimePtrTimeTime(m.Time)
+	if m.Time != nil {
+		out.Time = *m.Time
+	} else {
+		out.Time = time.Time{}
+	}
 	return out
 }
 
@@ -66,9 +71,9 @@ func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITa
 	m.Id = StringStringPtr(t.Id)
 	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
 	m.Note = StringStringPtr(t.Note)
-	m.SuspectIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectIssues)
+	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
 	m.Source = *APIAnnotationSourceBuildFromService(t.Source)
-	m.Metadata = StringStringPtr(t.Metadata)
+	m.Metadata = t.Metadata
 	return &m
 }
 
@@ -79,9 +84,9 @@ func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnot
 	out.Id = StringPtrString(m.Id)
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
 	out.Note = StringPtrString(m.Note)
-	out.SuspectIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectIssues)
+	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
 	out.Source = *APIAnnotationSourceToService(m.Source)
-	out.Metadata = StringPtrString(m.Metadata)
+	out.Metadata = m.Metadata
 	return out
 }
 
@@ -102,12 +107,7 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []task_annotat
 	return m
 }
 
-func TimeTimeTimeTimePtr(in time.Time) *time.Time {
-	out := time.Time(in)
-	return &out
-}
-
-func TimeTimePtrTimeTime(in *time.Time) time.Time {
+func TimePtrTime(in *time.Time) time.Time {
 	var out time.Time
 	if in == nil {
 		return out
