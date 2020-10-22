@@ -542,11 +542,6 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
-  - name: verify-agent-version-update
-    patch_only: true
-    commands:
-      - func: get-project
-      - func: verify-agent-version-update
   - name: upload-clis
     patchable: false
     depends_on:
@@ -569,6 +564,11 @@ tasks:
             LEGACY_GO_BIN_PATH: ${legacyGobin}
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
+  - name: verify-agent-version-update
+    patch_only: true
+    commands:
+      - func: get-project
+      - func: verify-agent-version-update
 
 
 task_groups:
