@@ -1511,6 +1511,12 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 			return errors.Wrapf(err, "error modifying volume '%s' size in db", volume.ID)
 		}
 	}
+
+	if opts.NewName != "" {
+		if err := volume.SetDisplayName(opts.NewName); err != nil {
+			return errors.Wrapf(err, "error modifying volume '%s' name in db", volume.ID)
+		}
+	}
 	return nil
 }
 
