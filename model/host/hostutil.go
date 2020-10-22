@@ -78,9 +78,19 @@ func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, ma
 }
 
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []string {
+	var curlCmd string
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+		// Attempt to download the agent from S3, but fall back to downloading from
+		// the app server if it fails.
+		// Include -f to return an error code from curl if the HTTP request
+		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
+		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
+	} else {
+		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.Distro.ClientURL(settings), curlArgs)
+	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
-		fmt.Sprintf("curl -LO '%s'%s", h.ClientURL(settings), curlArgs),
+		curlCmd,
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	}
 }
@@ -93,14 +103,6 @@ const (
 
 func curlRetryArgs(numRetries, maxSecs int) string {
 	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
-}
-
-// ClientURL returns the URL used to get the latest Evergreen client version.
-func (h *Host) ClientURL(settings *evergreen.Settings) string {
-	return fmt.Sprintf("%s/%s/%s",
-		strings.TrimSuffix(settings.Ui.Url, "/"),
-		strings.TrimSuffix(settings.ClientBinariesDir, "/"),
-		h.Distro.ExecutableSubPath())
 }
 
 const (
@@ -1081,15 +1083,15 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	args := append(h.AgentCommand(settings),
-		"monitor",
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
-		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
+	args := append(h.AgentCommand(settings), "monitor")
+	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
+		fmt.Sprintf("--distro=%s", h.Distro.Id),
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
 
 	return &options.Create{

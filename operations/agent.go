@@ -18,11 +18,12 @@ import (
 
 const defaultAgentStatusPort = 2285
 
+const agentAPIServerURLFlagName = "api_server"
+
 func Agent() cli.Command {
 	const (
 		hostIDFlagName           = "host_id"
 		hostSecretFlagName       = "host_secret"
-		apiServerURLFlagName     = "api_server"
 		workingDirectoryFlagName = "working_directory"
 		logPrefixFlagName        = "log_prefix"
 		statusPortFlagName       = "status_port"
@@ -45,7 +46,7 @@ func Agent() cli.Command {
 				Usage: "secret for the current host",
 			},
 			cli.StringFlag{
-				Name:  apiServerURLFlagName,
+				Name:  agentAPIServerURLFlagName,
 				Usage: "URL of the API server",
 			},
 			cli.StringFlag{
@@ -68,7 +69,7 @@ func Agent() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(apiServerURLFlagName),
+			requireStringFlag(agentAPIServerURLFlagName),
 			requireStringFlag(hostIDFlagName),
 			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(workingDirectoryFlagName),
@@ -101,7 +102,7 @@ func Agent() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
+			comm := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
 			defer comm.Close()
 
 			agt, err := agent.New(ctx, opts, comm)
