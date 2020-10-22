@@ -604,11 +604,10 @@ func TestAllTasksFinished(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
 	tasks = []task.Task{
 		{
-			Id:          "t1",
-			BuildId:     "b1",
-			DisplayName: "compile",
-			Status:      evergreen.TaskStarted,
-			Activated:   true,
+			Id:        "t1",
+			BuildId:   "b1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
 		},
 		{
 			Id:      "t2",
@@ -616,10 +615,9 @@ func TestAllTasksFinished(t *testing.T) {
 			Status:  evergreen.TaskStarted,
 		},
 		{
-			Id:          "t3",
-			BuildId:     "b1",
-			DisplayName: evergreen.PushStage,
-			Status:      evergreen.TaskStarted,
+			Id:      "t3",
+			BuildId: "b1",
+			Status:  evergreen.TaskStarted,
 		},
 	}
 	for _, task := range tasks {
