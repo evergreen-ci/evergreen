@@ -199,7 +199,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
-	return util.IsPtrSetToFalse(bvt.Patchable) || bvt.Name == evergreen.PushStage
+	return util.IsPtrSetToFalse(bvt.Patchable)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {

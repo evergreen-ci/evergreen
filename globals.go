@@ -110,8 +110,6 @@ const (
 
 	HostTypeStatic = "static"
 
-	PushStage = "push"
-
 	MergeTestStarted   = "started"
 	MergeTestSucceeded = "succeeded"
 	MergeTestFailed    = "failed"
