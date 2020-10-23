@@ -285,7 +285,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	if err != nil {
 		return errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", "))
 	}
-	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
+	if err = ValidateNewGraph(t, tasksToBlock); err != nil {
 		return errors.Wrap(err, "problem validating proposed dependencies")
 	}
 
