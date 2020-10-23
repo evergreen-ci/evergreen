@@ -1027,6 +1027,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	}
 	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	taskResults := ConvertDBTasksToGqlTasks(tasks, baseTaskStatuses)
+
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
 			if sortDirParam == 1 {
@@ -1035,6 +1036,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
 	}
+
 	if len(baseStatuses) > 0 {
 		// tasks cannot be filtered by base status through a DB query. tasks are filtered by base status here.
 		allTasks, err := task.Find(task.ByVersion(patchID))
@@ -1048,6 +1050,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			count = len(FilterTasksByBaseStatuses(allTasksGql, baseStatuses, baseTaskStatuses))
 		}
 	}
+
 	patchTasks := PatchTasks{
 		Count: count,
 		Tasks: taskResults,

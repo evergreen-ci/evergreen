@@ -19,17 +19,11 @@
             "tasks": [
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
+                "displayName": "test-cloud"
               },
               {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "displayName": "test-thirdparty-docker"
               }
             ],
             "count": 2
@@ -44,32 +38,16 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "1.5"
               },
               {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "id": "4.5"
               },
               {
-                "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "4"
               },
               {
-                "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "3"
               }
             ],
             "count": 4
@@ -84,32 +62,16 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "1.5"
               },
               {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "id": "4.5"
               },
               {
-                "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "4"
               },
               {
-                "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "id": "3"
               }
             ],
             "count": 4
@@ -142,8 +104,22 @@
                 "buildVariant": "ubuntu1604"
               },
               {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "4",
-                "status": "failed",
+                "status": "task-timed-out",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -158,22 +134,8 @@
               {
                 "id": "3",
                 "status": "success",
-                "baseStatus": "success",
+                "baseStatus": "test-timed-out",
                 "displayName": "lint",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
                 "buildVariant": "windows"
               }
             ],
@@ -190,45 +152,27 @@
             "tasks": [
               {
                 "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "displayName": "compile"
               },
               {
                 "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "displayName": "compile"
               },
               {
                 "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "displayName": "compile"
               },
               {
                 "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "displayName": "lint"
               },
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
+                "displayName": "test-cloud"
               },
               {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "displayName": "test-thirdparty-docker"
               }
             ],
             "count": 6
@@ -244,44 +188,26 @@
             "tasks": [
               {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
                 "buildVariant": "ubuntu1604"
               },
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
               },
               {
                 "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
                 "buildVariant": "windows"
               },
               {
                 "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
                 "buildVariant": "windows"
               },
               {
                 "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
                 "buildVariant": "windows"
               },
               {
                 "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
                 "buildVariant": "windows"
               }
             ],
@@ -298,45 +224,27 @@
             "tasks": [
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "status": "failed"
               },
               {
                 "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "status": "system-failed"
               },
               {
                 "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "status": "system-failed"
+              },
+              {
+                "id": "4",
+                "status": "task-timed-out"
+              },
+              {
+                "id": "1",
+                "status": "success"
+              },
+              {
+                "id": "3",
+                "status": "success"
               }
             ],
             "count": 6
@@ -352,45 +260,27 @@
             "tasks": [
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
+                "baseStatus": "failed"
               },
               {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "baseStatus": "success"
               },
               {
                 "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "baseStatus": "success"
               },
               {
                 "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "baseStatus": "success"
               },
               {
                 "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "baseStatus": "success"
+              },
+              {
+                "id": "3",
+                "baseStatus": "test-timed-out"
               }
             ],
             "count": 6
@@ -405,46 +295,28 @@
           "patchTasks": {
             "tasks": [
               {
+                "id": "3",
+                "baseStatus": "test-timed-out"
+              },
+              {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "baseStatus": "success"
               },
               {
                 "id": "1.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "baseStatus": "success"
               },
               {
                 "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "baseStatus": "success"
               },
               {
                 "id": "4.5",
-                "status": "system-failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "baseStatus": "success"
               },
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
+                "baseStatus": "failed"
               }
             ],
             "count": 6
@@ -459,6 +331,27 @@
           "patchTasks": {
             "tasks": [
               {
+                "id": "1",
+                "status": "success",
+                "baseStatus": "success",
+                "displayName": "test-thirdparty-docker",
+                "buildVariant": "ubuntu1604"
+              },
+              {
+                "id": "3",
+                "status": "success",
+                "baseStatus": "test-timed-out",
+                "displayName": "lint",
+                "buildVariant": "windows"
+              },
+              {
+                "id": "4",
+                "status": "task-timed-out",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
+              },
+              {
                 "id": "1.5",
                 "status": "system-failed",
                 "baseStatus": "success",
@@ -473,32 +366,11 @@
                 "buildVariant": "windows"
               },
               {
-                "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
-              },
-              {
                 "id": "2",
                 "status": "failed",
                 "baseStatus": "failed",
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
               }
             ],
             "count": 6
@@ -518,16 +390,9 @@
                 "baseStatus": "failed",
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
               }
             ],
-            "count": 2
+            "count": 1
           }
         }
       }
@@ -559,34 +424,18 @@
             "tasks": [
               {
                 "id": "2",
-                "status": "failed",
-                "baseStatus": "failed",
-                "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
-              },
-              {
-                "id": "4",
-                "status": "failed",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
+                "status": "failed"
               },
               {
                 "id": "1",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "status": "success"
               },
               {
                 "id": "3",
-                "status": "success",
-                "baseStatus": "success",
-                "displayName": "lint",
-                "buildVariant": "windows"
+                "status": "success"
               }
             ],
-            "count": 4
+            "count": 3
           }
         }
       }
@@ -605,8 +454,8 @@
                 "buildVariant": "ubuntu1604"
               },
               {
-                "id": "4",
-                "status": "failed",
+                "id": "1.5",
+                "status": "system-failed",
                 "baseStatus": "success",
                 "displayName": "compile",
                 "buildVariant": "windows"
@@ -624,17 +473,17 @@
           "patchTasks": {
             "tasks": [
               {
-                "id": "1",
-                "status": "success",
+                "id": "4.5",
+                "status": "system-failed",
                 "baseStatus": "success",
-                "displayName": "test-thirdparty-docker",
-                "buildVariant": "ubuntu1604"
+                "displayName": "compile",
+                "buildVariant": "windows"
               },
               {
-                "id": "3",
-                "status": "success",
+                "id": "4",
+                "status": "task-timed-out",
                 "baseStatus": "success",
-                "displayName": "lint",
+                "displayName": "compile",
                 "buildVariant": "windows"
               }
             ],
