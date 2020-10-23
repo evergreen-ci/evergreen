@@ -215,6 +215,17 @@ Evergreen - Distros
                 form.plannerSettingsExpectedRuntimeFactor.$modelValue < 0 ||
                 form.plannerSettingsExpectedRuntimeFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
               </div>
+              <div>
+                <label class="distro-label">Generate Task Factor (0 to 100 inclusive):</label>
+                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                       name="plannerSettingsGenerateTaskFactor" class="form-control" ng-model="activeDistro.planner_settings.generate_task_factor" placeholder="Set to 0 to use its global default">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsGenerateTaskFactor.$dirty && form.plannerSettingsGenerateTaskFactor.$error.required ||
+                form.plannerSettingsGenerateTaskFactor.$invalid ||
+                form.plannerSettingsGenerateTaskFactor.$modelValue > 100 ||
+                form.plannerSettingsGenerateTaskFactor.$modelValue < 0 ||
+                form.plannerSettingsGenerateTaskFactor.$modelValue % 1 != 0"> Time In Queue Factor must be an integer between 0 and 100
+              </div>
               <br/>
               <div>
                 <span class="distro-menu-title">Group Versions:</span>
