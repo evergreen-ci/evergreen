@@ -1067,11 +1067,11 @@ func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
 	return []string{
 		h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName()),
 		"agent",
-		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
-		fmt.Sprintf("--host_id='%s'", h.Id),
-		fmt.Sprintf("--host_secret='%s'", h.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
+		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
 }
