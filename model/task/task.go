@@ -2530,7 +2530,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	} else {
 		pipeline = append(pipeline, bson.M{
 			"$sort": bson.D{
-				// sort by _id to ensure a consistent sort order when previous sort keys result in a tie
+				// sort by _id to ensure a consistent sort order
 				bson.E{Key: IdKey, Value: 1},
 			},
 		})
