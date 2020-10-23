@@ -557,7 +557,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "error updating blocked dependencies for '%s'", t.Id)
 		}
 
 		if !dependentTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip

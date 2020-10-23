@@ -251,7 +251,6 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 }
 
 func BlockTaskGroupTasks(taskID string) error {
-	catcher := grip.NewBasicCatcher()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
@@ -284,14 +283,17 @@ func BlockTaskGroupTasks(taskID string) error {
 	}
 	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
 	if err != nil {
-		catcher.Add(errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", ")))
+		return errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", "))
 	}
 	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
 		return errors.Wrap(err, "problem validating proposed dependencies")
 	}
+
+	catcher := grip.NewBasicCatcher()
 	for _, taskToBlock := range tasksToBlock {
 		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded, Unattainable: true}))
-		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
+		err = dequeue(taskToBlock.Id, taskToBlock.DistroId)
+		catcher.AddWhen(!adb.ResultsNotFound(err), err) // it's not an error if the task already isn't on the queue
 		// this operation is recursive, maybe be refactorable
 		// to use some kind of cache.
 		catcher.Add(UpdateBlockedDependencies(&taskToBlock))
