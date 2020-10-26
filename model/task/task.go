@@ -396,7 +396,8 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable)
+			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
+				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
