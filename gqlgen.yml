@@ -134,3 +134,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   JiraConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
+  CloudProviderConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
+  AWSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
