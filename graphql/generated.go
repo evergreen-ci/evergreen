@@ -53,6 +53,10 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AWSConfig struct {
+		MaxVolumeSizePerUser func(childComplexity int) int
+	}
+
 	BaseTaskMetadata struct {
 		BaseTaskDuration func(childComplexity int) int
 		BaseTaskLink     func(childComplexity int) int
@@ -81,6 +85,10 @@ type ComplexityRoot struct {
 	ClientConfig struct {
 		ClientBinaries func(childComplexity int) int
 		LatestRevision func(childComplexity int) int
+	}
+
+	CloudProviderConfig struct {
+		AWS func(childComplexity int) int
 	}
 
 	CommitQueue struct {
@@ -440,6 +448,7 @@ type ComplexityRoot struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
 		Jira        func(childComplexity int) int
+		Providers   func(childComplexity int) int
 		Ui          func(childComplexity int) int
 	}
 
@@ -799,6 +808,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "AWSConfig.maxVolumeSizePerUser":
+		if e.complexity.AWSConfig.MaxVolumeSizePerUser == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.MaxVolumeSizePerUser(childComplexity), true
+
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
 			break
@@ -903,6 +919,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ClientConfig.LatestRevision(childComplexity), true
+
+	case "CloudProviderConfig.aws":
+		if e.complexity.CloudProviderConfig.AWS == nil {
+			break
+		}
+
+		return e.complexity.CloudProviderConfig.AWS(childComplexity), true
 
 	case "CommitQueue.message":
 		if e.complexity.CommitQueue.Message == nil {
@@ -2796,6 +2819,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SpruceConfig.Jira(childComplexity), true
 
+	case "SpruceConfig.providers":
+		if e.complexity.SpruceConfig.Providers == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Providers(childComplexity), true
+
 	case "SpruceConfig.ui":
 		if e.complexity.SpruceConfig.Ui == nil {
 			break
@@ -4668,6 +4698,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  providers: CloudProviderConfig
 }
 
 type JiraConfig {
@@ -4676,6 +4707,14 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
 }
 
 type HostEvents {
@@ -5836,6 +5875,37 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _AWSConfig_maxVolumeSizePerUser(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AWSConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxVolumeSizePerUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6320,6 +6390,37 @@ func (ec *executionContext) _ClientConfig_latestRevision(ctx context.Context, fi
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CloudProviderConfig_aws(ctx context.Context, field graphql.CollectedField, obj *model.APICloudProviders) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CloudProviderConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AWS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAWSConfig)
+	fc.Result = res
+	return ec.marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _CommitQueue_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
@@ -14536,6 +14637,37 @@ func (ec *executionContext) _SpruceConfig_bannerTheme(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Providers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APICloudProviders)
+	fc.Result = res
+	return ec.marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21165,6 +21297,30 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj in
 
 // region    **************************** object.gotpl ****************************
 
+var aWSConfigImplementors = []string{"AWSConfig"}
+
+func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAWSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aWSConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AWSConfig")
+		case "maxVolumeSizePerUser":
+			out.Values[i] = ec._AWSConfig_maxVolumeSizePerUser(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var baseTaskMetadataImplementors = []string{"BaseTaskMetadata"}
 
 func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskMetadata) graphql.Marshaler {
@@ -21315,6 +21471,30 @@ func (ec *executionContext) _ClientConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ClientConfig_clientBinaries(ctx, field, obj)
 		case "latestRevision":
 			out.Values[i] = ec._ClientConfig_latestRevision(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var cloudProviderConfigImplementors = []string{"CloudProviderConfig"}
+
+func (ec *executionContext) _CloudProviderConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICloudProviders) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cloudProviderConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CloudProviderConfig")
+		case "aws":
+			out.Values[i] = ec._CloudProviderConfig_aws(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23552,6 +23732,8 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
+		case "providers":
+			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27179,6 +27361,17 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOAWSConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx context.Context, sel ast.SelectionSet, v model.APIAWSConfig) graphql.Marshaler {
+	return ec._AWSConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAWSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AWSConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
 	return ec._BaseTaskMetadata(ctx, sel, &v)
 }
@@ -27262,6 +27455,17 @@ func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._ClientConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOCloudProviderConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v model.APICloudProviders) graphql.Marshaler {
+	return ec._CloudProviderConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v *model.APICloudProviders) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CloudProviderConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueItemᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APICommitQueueItem) graphql.Marshaler {
