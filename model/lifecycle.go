@@ -918,7 +918,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
 
-		newTask.DependsOn = makeDeps(t, newTask.Id, execTable)
+		newTask.DependsOn = makeDeps(t, newTask, execTable)
 		newTask.GeneratedBy = generatedBy
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
@@ -999,12 +999,20 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	return tasks, nil
 }
 
-func makeDeps(t BuildVariantTaskUnit, thisTaskID string, taskIds TaskIdTable) []task.Dependency {
+func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) []task.Dependency {
 	dependencySet := make(map[task.Dependency]bool)
 	for _, dep := range t.DependsOn {
 		status := evergreen.TaskSucceeded
 		if dep.Status != "" {
 			status = dep.Status
+		}
+
+		// set unspecified fields to match thisTask
+		if dep.Name == "" {
+			dep.Name = thisTask.DisplayName
+		}
+		if dep.Variant == "" {
+			dep.Variant = thisTask.BuildVariant
 		}
 
 		var depIDs []string
@@ -1024,7 +1032,7 @@ func makeDeps(t BuildVariantTaskUnit, thisTaskID string, taskIds TaskIdTable) []
 
 		for _, id := range depIDs {
 			// tasks don't depend on themselves
-			if id == thisTaskID {
+			if id == thisTask.Id {
 				continue
 			}
 			dependencySet[task.Dependency{TaskId: id, Status: status}] = true

@@ -736,9 +736,10 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		Version:      "version_that_called_generate_task",
 	}
 	v := &Version{
-		Id:       "version_that_called_generate_task",
-		BuildIds: []string{"sample_build"},
-		Config:   sampleProjYmlTaskGroups,
+		Id:        "version_that_called_generate_task",
+		BuildIds:  []string{"sample_build"},
+		Config:    sampleProjYmlTaskGroups,
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())

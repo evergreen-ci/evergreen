@@ -1510,7 +1510,11 @@ func TestMakeDeps(t *testing.T) {
 		TVPair{TaskName: "t0", Variant: "bv1"}: "bv1_t0",
 		TVPair{TaskName: "t1", Variant: "bv1"}: "bv1_t1",
 	}
-	thisTaskId := "bv1_t1"
+	thisTask := &task.Task{
+		Id:           "bv1_t1",
+		BuildVariant: "bv1",
+		DisplayName:  "t1",
+	}
 	tSpec := BuildVariantTaskUnit{}
 
 	t.Run("All tasks in all variants", func(t *testing.T) {
@@ -1518,7 +1522,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: AllDependencies, Variant: AllVariants},
 		}
 
-		deps := makeDeps(tSpec, thisTaskId, table)
+		deps := makeDeps(tSpec, thisTask, table)
 		assert.Len(t, deps, 3)
 		expectedIDs := []string{"bv0_t0", "bv0_t1", "bv1_t0"}
 		for _, dep := range deps {
@@ -1532,7 +1536,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: AllDependencies, Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTaskId, table)
+		deps := makeDeps(tSpec, thisTask, table)
 		assert.Len(t, deps, 2)
 		expectedIDs := []string{"bv0_t0", "bv0_t1"}
 		for _, dep := range deps {
@@ -1546,7 +1550,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTaskId, table)
+		deps := makeDeps(tSpec, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv0_t0", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
@@ -1558,7 +1562,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTaskId, table)
+		deps := makeDeps(tSpec, thisTask, table)
 		assert.Len(t, deps, 3)
 	})
 
@@ -1567,10 +1571,32 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0", Status: evergreen.TaskFailed},
 		}
 
-		deps := makeDeps(tSpec, thisTaskId, table)
+		deps := makeDeps(tSpec, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv0_t0", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskFailed, deps[0].Status)
+	})
+
+	t.Run("unspecified variant", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv1_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
+	})
+
+	t.Run("unspecified name", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Variant: AllVariants},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t1", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
 	})
 }
 
