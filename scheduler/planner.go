@@ -227,6 +227,11 @@ func (unit *Unit) RankValue() int64 {
 		// would also be scheduled in a version.
 		priority += length
 	}
+	if generateTask {
+		// give generators a boost so people don't have to wait twice.
+		priority += 100
+		unit.cachedValue += priority * unit.distro.GetGenerateTaskFactor()
+	}
 
 	if inPatch {
 		// give patches a bump, over non-patches.
@@ -240,9 +245,6 @@ func (unit *Unit) RankValue() int64 {
 		// give commit queue patches a boost over everything else
 		priority += 200
 		unit.cachedValue += priority * unit.distro.GetCommitQueueFactor()
-	} else if generateTask {
-		// give generators a boost so people don't have to wait twice.
-		unit.cachedValue += priority * unit.distro.GetGenerateTaskFactor()
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
