@@ -1138,19 +1138,19 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(dbTasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
-			So(dbTasks[5].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded}})
-			So(dbTasks[6].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[1].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[4].Id, Status: evergreen.TaskSucceeded}})
-			So(dbTasks[7].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[5].DependsOn, ShouldHaveLength, 2)
+			So(dbTasks[5].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[5].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded})
+
+			So(dbTasks[6].DependsOn, ShouldHaveLength, 2)
+			So(dbTasks[6].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[1].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[6].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[4].Id, Status: evergreen.TaskSucceeded})
+
+			So(dbTasks[7].DependsOn, ShouldHaveLength, 3)
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded})
+
 			So(dbTasks[8].DisplayName, ShouldEqual, "taskE")
 			So(len(dbTasks[8].DependsOn), ShouldEqual, 8)
 		})
@@ -1457,7 +1457,6 @@ func TestGetTaskIdTable(t *testing.T) {
 
 	v := &Version{
 		Id:         "v0",
-		Requester:  evergreen.RepotrackerVersionRequester,
 		Revision:   "abcde",
 		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
@@ -1479,14 +1478,6 @@ func TestGetTaskIdTable(t *testing.T) {
 		},
 	}
 
-	tables, err := getTaskIdTables(v, p, TaskVariantPairs{})
-	assert.NoError(t, err)
-	assert.Len(t, tables.ExecutionTasks, 2)
-	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
-	assert.Equal(t, "p0_bv0_t1_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t1"))
-
-	// with patch requester
-	v.Requester = evergreen.PatchVersionRequester
 	newPairs := TaskVariantPairs{
 		ExecTasks: TVPairSet{
 			// imagine t1 is a patch_optional task not included in newPairs
@@ -1496,10 +1487,10 @@ func TestGetTaskIdTable(t *testing.T) {
 	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
 	require.NoError(t, existingTask.Insert())
 
-	tables, err = getTaskIdTables(v, p, newPairs)
+	tables, err := getTaskIdTables(v, p, newPairs)
 	assert.NoError(t, err)
 	assert.Len(t, tables.ExecutionTasks, 2)
-	assert.Equal(t, "p0_bv0_t0_patch_abcde_v0_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
+	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
 	assert.Equal(t, "t2", tables.ExecutionTasks.GetId("bv0", "existing_task"))
 }
 
