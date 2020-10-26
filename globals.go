@@ -331,11 +331,6 @@ var (
 		GitTagRequester,
 	}
 
-	AllTaskRequesterTypes = []string{
-		RepotrackerVersionRequester,
-		TriggerRequester,
-	}
-
 	ProviderSpotEc2Type = []string{
 		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,

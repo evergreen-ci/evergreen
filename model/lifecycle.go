@@ -1637,10 +1637,6 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 }
 
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs) (TaskIdConfig, error) {
-	if utility.StringSliceContains(evergreen.AllTaskRequesterTypes, v.Requester) {
-		return NewTaskIdTable(p, v, "", ""), nil
-	}
-
 	// The table should include only new and existing tasks
 	taskIdTable := NewPatchTaskIdTable(p, v, newPairs)
 	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
