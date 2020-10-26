@@ -384,6 +384,21 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     $scope.activeDistro.ssh_options.splice(index, 1);
   }
 
+  $scope.addPreconditionScript = function () {
+    if ($scope.activeDistro.bootstrap_settings == null) {
+      $scope.activeDistro.bootstrap_settings = {};
+    }
+    if ($scope.activeDistro.bootstrap_settings.precondition_scripts == null) {
+      $scope.activeDistro.bootstrap_settings.precondition_scripts = [];
+    }
+    $scope.activeDistro.bootstrap_settings.precondition_scripts.push({});
+    $scope.scrollElement('#precondition-scripts-table')
+  }
+
+  $scope.removePreconditionScript = function (index) {
+    $scope.activeDistro.bootstrap_settings.precondition_scripts.splice(index, 1);
+  }
+
   $scope.addEnvVar = function () {
     if ($scope.activeDistro.bootstrap_settings == null) {
       $scope.activeDistro.bootstrap_settings = {};
@@ -533,6 +548,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         'is_cluster': $scope.activeDistro.is_cluster,
         'disable_shallow_clone': $scope.activeDistro.disable_shallow_clone,
         'disabled': $scope.activeDistro.disabled,
+        'merge_user_data': $scope.activeDistro.merge_user_data_parts,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.provider_settings = _.clone($scope.activeDistro.provider_settings);

@@ -51,7 +51,7 @@ type Distro struct {
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings" json:"icecream_settings" yaml:"icecream_settings"`
+	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 }
 
 type DistroData struct {
@@ -75,6 +75,11 @@ type BootstrapSettings struct {
 	Method        string `bson:"method" json:"method" mapstructure:"method"`
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
+	// Optional
+	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
 	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
@@ -84,16 +89,18 @@ type BootstrapSettings struct {
 	ServiceUser string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
 	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
 	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
+}
 
-	Env []EnvVar `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-
-	// Linux-specific
-	ResourceLimits ResourceLimits `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+// PreconditionScript represents a script that must run and succeed before the
+// Jasper service can start on a provisioning host.
+type PreconditionScript struct {
+	Path   string `bson:"path,omitempty" json:"path,omitempty" mapstructure:"path,omitempty"`
+	Script string `bson:"script,omitempty" json:"script,omitempty" mapstructure:"script,omitempty"`
 }
 
 type EnvVar struct {
-	Key   string `bson:"key" json:"key"`
-	Value string `bson:"value" json:"value"`
+	Key   string `bson:"key" json:"key" mapstructure:"key,omitempty"`
+	Value string `bson:"value" json:"value" mapstructure:"value,omitempty"`
 }
 
 // ResourceLimits represents resource limits in Linux.
@@ -109,8 +116,8 @@ type HomeVolumeSettings struct {
 }
 
 type IcecreamSettings struct {
-	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host,omitempty" yaml:"scheduler_host,omitempty"`
-	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" yaml:"config_path,omitempty"`
+	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host,omitempty" mapstructure:"scheduler_host,omitempty"`
+	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" mapstructure:"config_path,omitempty"`
 }
 
 // WriteConfigScript returns the shell script to update the icecream config

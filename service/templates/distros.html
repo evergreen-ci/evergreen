@@ -243,7 +243,7 @@ Evergreen - Distros
               </div>
               <div>
                 <div class="icon fa fa-warning distro-error" ng-show="hostProviderForm.hostName.$dirty && hostProviderForm.hostName.$error.required">Static
-                  host can not be blank<br /></div>
+                  host cannot be blank<br /></div>
                 <br />
                 <button type="button" ng-hide="readOnly" ng-disabled="hostProviderForm.hostName.$dirty && hostProviderForm.$invalid || hostProviderForm.hostName.$error.required"
                   class="btn btn-primary" ng-click="form.$setDirty();addHost()"><i class="fa fa-plus"></i>Add Host</button>
@@ -676,8 +676,8 @@ Evergreen - Distros
               </ul>
           </div>
           <br />
-
           <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required"> Bootstrap method is required</div>
+
           <div class="dropdown">
             <span class="distro-menu-title">Host Communication Method:</span>
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
@@ -688,6 +688,8 @@ Evergreen - Distros
                   role="presentation"><a role="menuitem" tabindex="-1">[[communicationMethod.display]]</a></li>
               </ul>
           </div>
+          <div class="icon fa fa-warning distro-error" ng-show="form.communicationMethodForm.$dirty && form.communicationMethodForm.$invalid || communicationMethodForm.$error.required"> Communication method is required</div>
+
           <div class="icon fa fa-warning distro-error" ng-show="!validBootstrapAndCommunication()"> Legacy and non-legacy bootstrapping and communication are incompatible</div>
           <br />
 
@@ -759,7 +761,7 @@ Evergreen - Distros
               </table>
             </div>
             <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH
-              option can not be blank<br /></div>
+              option cannot be blank<br /></div>
             <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required"
               ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
 
@@ -828,7 +830,7 @@ Evergreen - Distros
               </div>
               <div>
               <div class="icon fa fa-warning distro-error" ng-show="env.envKey.$dirty && env.envKey.$error.required">
-                Environment key can not be blank<br />
+                Environment key cannot be blank<br />
               </div>
               <button type="button" ng-hide="readOnly" ng-disabled="env.envKey.$dirty && env.envKey.$invalid || env.envKey.$error.required"
                 class="btn btn-primary" ng-click="form.$setDirty();addEnvVar()"><i class="fa fa-plus"></i>Add Environment Variable</button>
@@ -865,6 +867,45 @@ Evergreen - Distros
                 min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.virtualMemory.$invalid"> Invalid max virtual memory</div><br />
             </div>
+            <div ng-form name="preconditionScriptsForm">
+              <label class="distro-label">Precondition Scripts:</label>
+              <div id="precondition-scripts-table" class="distro-table-scroll">
+                <table style="margin-left: -8px;" class="table distro-table">
+                  <tbody ng-repeat="script in activeDistro.bootstrap_settings.precondition_scripts track by $index">
+                    <tr>
+                      <td style="padding-left: 10px;">
+                        <label class="muted">Path:</label>
+                        <input ng-readonly="readOnly" name="path" type="text" class="form-control"
+                               ng-model="activeDistro.bootstrap_settings.precondition_scripts[$index].path"
+                               placeholder="Absolute path to the location to put the precondition script."/>
+                        <label class="muted">Script:</label>
+                        <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7"
+                                  style="margin-left: 0px; font-family: monospace"
+                                  ng-model="activeDistro.bootstrap_settings.precondition_scripts[$index].script"
+                                  style="margin-left: 0px; font-family: monospace"
+                                  placeholder="The precondition script that must run and succeed before Jasper can start."></textarea>
+                      </td>
+                      <td ng-hide="readOnly">
+                        <a ng-click="form.$setDirty();removePreconditionScript($index)">
+                          <i class="fa fa-trash distro-trash-icon"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="preconditionScriptsForm.path.$dirty &&
+                                                           preconditionScriptsForm.path.$error.required">Path to script cannot be blank<br /></div>
+              <div class="icon fa fa-warning distro-error" ng-show="preconditionScriptsForm.script.$dirty && preconditionScriptsForm.script.$error.required">
+                Script cannot be blank<br />
+              </div>
+              <button type="button" class="btn btn-primary" ng-hide="readOnly"
+                                                            ng-disabled="preconditionScriptsForm.script.$dirty && preconditionScriptsForm.$invalid || preconditionScriptsForm.script.$error.required"
+                ng-click="form.$setDirty();addPreconditionScript()">
+                <i class="fa fa-plus"></i>
+                Add Precondition Script
+              </button>
+            </div>
           </div>
           <div>
             <label class="distro-label">Home Volume Format Command:</label>
@@ -888,7 +929,6 @@ Evergreen - Distros
             Use legacy version of agent for this distro.
           </p>
         </div>
-        <div class="icon fa fa-warning distro-error" ng-show="form.communicationMethodForm.$dirty && form.communicationMethodForm.$invalid || communicationMethodForm.$error.required">Communication method is required</div>
         <div class="dropdown">
           <span class="distro-menu-title">Project Cloning Method:</span>
             <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
@@ -922,7 +962,7 @@ Evergreen - Distros
             </div>
             <div>
               <div class="icon fa fa-warning distro-error" ng-show="expansions.expKey.$dirty && expansions.expKey.$error.required">Expansion
-                key can not be blank<br /></div>
+                key cannot be blank<br /></div>
               <button type="button" ng-hide="readOnly" ng-disabled="(expansions.expKey.$dirty && expansions.$invalid) || expansions.expKey.$error.required"
                 class="btn btn-primary" ng-click="form.$setDirty();addExpansion()"><i class="fa fa-plus"></i>Add
                 Expansion</button>
