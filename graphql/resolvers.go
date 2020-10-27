@@ -1392,21 +1392,37 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
 	}
-	patchIds := []string{}
-	for _, item := range commitQueue.Queue {
-		issue := *item.Issue
-		patchIds = append(patchIds, issue)
-	}
-	patches, err := r.sc.FindPatchesByIds(patchIds)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
-	}
-	for i := range commitQueue.Queue {
-		for j := range patches {
-			if *commitQueue.Queue[i].Issue == *patches[j].Id {
-				commitQueue.Queue[i].Patch = &patches[j]
+
+	if project.CommitQueue.PatchType == commitqueue.CLIPatchType {
+		patchIds := []string{}
+		for _, item := range commitQueue.Queue {
+			issue := *item.Issue
+			patchIds = append(patchIds, issue)
+		}
+		patches, err := r.sc.FindPatchesByIds(patchIds)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patches: %s", err.Error()))
+		}
+		for i := range commitQueue.Queue {
+			for j := range patches {
+				if *commitQueue.Queue[i].Issue == *patches[j].Id {
+					commitQueue.Queue[i].Patch = &patches[j]
+				}
 			}
 		}
+	} else {
+		if len(commitQueue.Queue) > 0 {
+			versionId := restModel.FromStringPtr(commitQueue.Queue[0].Version)
+			if versionId != "" {
+				p, err := r.sc.FindPatchById(versionId)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+				}
+				commitQueue.Queue[0].Patch = p
+			}
+		}
+		commitQueue.Owner = restModel.ToStringPtr(project.Owner)
+		commitQueue.Repo = restModel.ToStringPtr(project.Repo)
 	}
 
 	return commitQueue, nil
@@ -1808,16 +1824,17 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
-func (r *mutationResolver) RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error) {
-	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, patchID, gimlet.GetUser(ctx).DisplayName())
+func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
+	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, issue, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
+			issue, commitQueueID, err.Error()))
 	}
 	if result != true {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item from commit queue %s", patchID))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("couldn't remove item %s from commit queue %s", issue, commitQueueID))
 	}
 
-	return &patchID, nil
+	return &issue, nil
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {

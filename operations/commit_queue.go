@@ -397,7 +397,9 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	}
 	grip.Infof("Project: %s\n", projectID)
 	grip.Infof("Type of queue: %s\n", projectRef.CommitQueue.PatchType)
-	grip.Infof("Message: %s\n", projectRef.CommitQueue.Message)
+	if projectRef.CommitQueue.Message != "" {
+		grip.Infof("Message: %s\n", projectRef.CommitQueue.Message)
+	}
 
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		grip.Infof("Owner: %s\n", projectRef.Owner)

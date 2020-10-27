@@ -39,10 +39,10 @@
       }
     },
     {
-      "query_file": "remove-patch-from-commit-queue.graphql",
+      "query_file": "remove-item-from-commit-queue.graphql",
       "result": {
         "data": {
-          "removePatchFromCommitQueue": "5e6bb9e23066155a993e0f1a"
+          "removeItemFromCommitQueue": "5e6bb9e23066155a993e0f1a"
         }
       }
     }
