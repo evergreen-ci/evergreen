@@ -2142,3 +2142,38 @@ func TestGetLatestExecution(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sample.Execution, execution)
 }
+
+func TestAddParentDisplayTasks(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	dt1 := Task{
+		Id:             "dt1",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et1", "et2"},
+	}
+	assert.NoError(t, dt1.Insert())
+	dt2 := Task{
+		Id:             "dt2",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et3", "et4"},
+	}
+	assert.NoError(t, dt2.Insert())
+	execTasks := []Task{
+		{Id: "et1"},
+		{Id: "et2"},
+		{Id: "et3"},
+		{Id: "et4"},
+	}
+	for _, et := range execTasks {
+		assert.NoError(t, et.Insert())
+	}
+	tasks, err := AddParentDisplayTasks(execTasks)
+	assert.NoError(t, err)
+	assert.Equal(t, "et1", tasks[0].Id)
+	assert.Equal(t, dt1.Id, tasks[0].DisplayTask.Id)
+	assert.Equal(t, "et2", tasks[1].Id)
+	assert.Equal(t, dt1.Id, tasks[1].DisplayTask.Id)
+	assert.Equal(t, "et3", tasks[2].Id)
+	assert.Equal(t, dt2.Id, tasks[2].DisplayTask.Id)
+	assert.Equal(t, "et4", tasks[3].Id)
+	assert.Equal(t, dt2.Id, tasks[3].DisplayTask.Id)
+}

@@ -2585,6 +2585,31 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	return tasks, count, nil
 }
 
+func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
+	taskIDs := []string{}
+	tasksCopy := tasks
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
+	parents, err := FindAll(ByExecutionTasks(taskIDs))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding parent tasks")
+	}
+	childrenToParents := map[string]*Task{}
+	for i, dt := range parents {
+		for _, et := range dt.ExecutionTasks {
+			childrenToParents[et] = &parents[i]
+		}
+	}
+	for i, t := range tasksCopy {
+		if childrenToParents[t.Id] != nil {
+			t.DisplayTask = childrenToParents[t.Id]
+			tasksCopy[i] = t
+		}
+	}
+	return tasksCopy, nil
+}
+
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))

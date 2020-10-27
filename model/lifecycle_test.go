@@ -1731,7 +1731,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a version
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
-	tasks, err := task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err := task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1742,7 +1742,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a build
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1763,7 +1763,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	assert.True(foundDisplayTask)
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1784,7 +1784,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", allTasks, false, "test"))
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
