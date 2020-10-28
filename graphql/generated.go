@@ -1756,12 +1756,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
 
-	case "Mutation.RemoveItemFromCommitQueue":
+	case "Mutation.removeItemFromCommitQueue":
 		if e.complexity.Mutation.RemoveItemFromCommitQueue == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_RemoveItemFromCommitQueue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeItemFromCommitQueue_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4028,7 +4028,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  RemoveItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
   updateHostStatus(
@@ -4772,28 +4772,6 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Mutation_RemoveItemFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["commitQueueId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["commitQueueId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["issue"]; ok {
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["issue"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4917,6 +4895,28 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeItemFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["commitQueueId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["commitQueueId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["issue"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["issue"] = arg1
 	return args, nil
 }
 
@@ -10359,7 +10359,7 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_RemoveItemFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_removeItemFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10375,7 +10375,7 @@ func (ec *executionContext) _Mutation_RemoveItemFromCommitQueue(ctx context.Cont
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_RemoveItemFromCommitQueue_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_removeItemFromCommitQueue_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -22382,8 +22382,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "RemoveItemFromCommitQueue":
-			out.Values[i] = ec._Mutation_RemoveItemFromCommitQueue(ctx, field)
+		case "removeItemFromCommitQueue":
+			out.Values[i] = ec._Mutation_removeItemFromCommitQueue(ctx, field)
 		case "updateUserSettings":
 			out.Values[i] = ec._Mutation_updateUserSettings(ctx, field)
 			if out.Values[i] == graphql.Null {

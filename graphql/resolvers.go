@@ -1416,7 +1416,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 			if versionId != "" {
 				p, err := r.sc.FindPatchById(versionId)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
 				}
 				commitQueue.Queue[0].Patch = p
 			}

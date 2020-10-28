@@ -87,6 +87,32 @@
       "activated": false,
       "alias": "",
       "patched_config": "some config"
+    },
+    {
+      "_id": { "$oid": "5e6bb9e23066155a993effff" },
+      "desc": "want to delete this",
+      "branch": "evergreen",
+      "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28",
+      "patch_number": 212,
+      "author": "annie.black",
+      "version": "",
+      "status": "created",
+      "create_time": { "$date": "2020-03-13T16:50:42.981Z" },
+      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "finish_time": { "$date": "0001-01-01T00:00:00Z" },
+      "build_variants": ["ubuntu1604"],
+      "tasks": ["test-graphql"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1604",
+          "tasks": ["test-graphql"],
+          "displaytasks": []
+        }
+      ],
+      "patches": [],
+      "activated": false,
+      "alias": "",
+      "patched_config": "some config"
     }
   ],
   "commit_queue": [
@@ -107,12 +133,33 @@
       "processing": true,
       "queue": [
         {
-          "issue": "5e6bb9e23066155a993e0f1a",
-          "enqueue_time": { "$date": "2020-04-13T19:52:00.182Z" },
-          "modules": null
+          "issue": "1234",
+          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" },
+          "modules": null,
+          "version": "5e6bb9e23066155a993e0f1a"
         }
       ],
       "processing_updated_time": { "$date": "2020-04-13T19:52:10.216Z" }
+    },
+    {
+      "_id": "cli-queue",
+      "processing": true,
+      "queue": [
+        {
+          "issue": "5e6bb9e23066155a993effff",
+          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
+        }
+      ]
+    },
+    {
+      "_id": "pr-queue",
+      "processing": true,
+      "queue": [
+        {
+          "issue": "5678",
+          "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
+        }
+      ]
     }
   ],
   "project_ref": [
@@ -131,14 +178,35 @@
       "local_config": "",
       "deactivate_previous": false,
       "tracked": true,
-      "repotracker_error": null
+      "repotracker_error": null,
+      "commit_queue": {
+        "enabled": true,
+        "patch_type": "PR"
+      }
     },
     {
       "_id": "1",
       "identifier": "mongodb-mongo-master",
       "commit_queue": {
         "enabled": true,
+        "patch_type": "CLI",
+        "message": "this is a message"
+      }
+    },
+    {
+      "_id": "2",
+      "identifier": "cli-queue",
+      "commit_queue": {
+        "enabled": true,
         "patch_type": "CLI"
+      }
+    },
+    {
+      "_id": "3",
+      "identifier": "pr-queue",
+      "commit_queue": {
+        "enabled": true,
+        "patch_type": "PR"
       }
     }
   ]
