@@ -1393,7 +1393,20 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		commitQueue.Message = &project.CommitQueue.Message
 	}
 
-	if project.CommitQueue.PatchType == commitqueue.CLIPatchType {
+	if project.CommitQueue.PatchType == commitqueue.PRPatchType {
+		if len(commitQueue.Queue) > 0 {
+			versionId := restModel.FromStringPtr(commitQueue.Queue[0].Version)
+			if versionId != "" {
+				p, err := r.sc.FindPatchById(versionId)
+				if err != nil {
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+				}
+				commitQueue.Queue[0].Patch = p
+			}
+		}
+		commitQueue.Owner = restModel.ToStringPtr(project.Owner)
+		commitQueue.Repo = restModel.ToStringPtr(project.Repo)
+	} else {
 		patchIds := []string{}
 		for _, item := range commitQueue.Queue {
 			issue := *item.Issue
@@ -1410,19 +1423,6 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 				}
 			}
 		}
-	} else {
-		if len(commitQueue.Queue) > 0 {
-			versionId := restModel.FromStringPtr(commitQueue.Queue[0].Version)
-			if versionId != "" {
-				p, err := r.sc.FindPatchById(versionId)
-				if err != nil {
-					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
-				}
-				commitQueue.Queue[0].Patch = p
-			}
-		}
-		commitQueue.Owner = restModel.ToStringPtr(project.Owner)
-		commitQueue.Repo = restModel.ToStringPtr(project.Repo)
 	}
 
 	return commitQueue, nil
