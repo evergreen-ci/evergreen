@@ -135,7 +135,11 @@
     },
     {
       "_id": "1",
-      "identifier": "mongodb-mongo-master"
+      "identifier": "mongodb-mongo-master",
+      "commit_queue": {
+        "enabled": true,
+        "patch_type": "CLI"
+      }
     }
   ]
 }

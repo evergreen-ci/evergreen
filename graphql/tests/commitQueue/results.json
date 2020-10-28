@@ -42,7 +42,7 @@
       "query_file": "remove-item-from-commit-queue.graphql",
       "result": {
         "data": {
-          "removeItemFromCommitQueue": "5e6bb9e23066155a993e0f1a"
+          "RemoveItemFromCommitQueue": "5e6bb9e23066155a993e0f1a"
         }
       }
     }
