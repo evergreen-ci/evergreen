@@ -2142,3 +2142,53 @@ func TestGetLatestExecution(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sample.Execution, execution)
 }
+
+func TestArchiveMany(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+	t1 := Task{
+		Id:      "t1",
+		Status:  evergreen.TaskFailed,
+		Aborted: true,
+		Version: "v",
+	}
+	assert.NoError(t, t1.Insert())
+	t2 := Task{
+		Id:       "t2",
+		Status:   evergreen.TaskFailed,
+		Aborted:  true,
+		Restarts: 2,
+		Version:  "v",
+	}
+	assert.NoError(t, t2.Insert())
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et"},
+		Version:        "v",
+	}
+	assert.NoError(t, dt.Insert())
+	et := Task{
+		Id:      "et",
+		Version: "v",
+	}
+	assert.NoError(t, et.Insert())
+
+	tasks := []Task{t1, t2, dt}
+	err := ArchiveMany(tasks)
+	assert.NoError(t, err)
+	currentTasks, err := FindAll(ByVersion("v"))
+	assert.NoError(t, err)
+	assert.Len(t, currentTasks, 4)
+	for _, task := range currentTasks {
+		assert.False(t, task.Aborted)
+		if task.Id == t2.Id {
+			assert.Equal(t, 3, task.Restarts)
+		}
+	}
+	oldTasks, err := FindAllOld(ByVersion("v"))
+	assert.NoError(t, err)
+	assert.Len(t, oldTasks, 4)
+	for _, task := range oldTasks {
+		assert.True(t, task.Archived)
+	}
+}

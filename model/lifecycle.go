@@ -401,12 +401,15 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 	// archive all the finished tasks
 	startPhaseAt = time.Now()
+	toArchive := []task.Task{}
 	for _, t := range finishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
-			if err = t.Archive(); err != nil {
-				return errors.Wrap(err, "failed to archive task")
-			}
+			toArchive = append(toArchive, t)
 		}
+	}
+	err = task.ArchiveMany(toArchive)
+	if err != nil {
+		return errors.Wrap(err, "unable to archive tasks")
 	}
 	grip.Info(message.Fields{
 		"message":       "Archive finished tasks",
@@ -546,6 +549,7 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 	// maps task group to a single task in the group so we only check once
 	taskGroupsToCheck := map[string]task.Task{}
 	restartIds := []string{}
+	toArchive := []task.Task{}
 	for _, t := range tasks {
 		if t.IsPartOfSingleHostTaskGroup() {
 			if err := t.SetResetWhenFinished(); err != nil {
@@ -558,11 +562,12 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 				restartIds = append(restartIds, t.ExecutionTasks...)
 			}
 			if t.IsFinished() {
-				if err := t.Archive(); err != nil {
-					return errors.Wrapf(err, "error archiving task '%s'", t.Id)
-				}
+				toArchive = append(toArchive, t)
 			}
 		}
+	}
+	if err := task.ArchiveMany(toArchive); err != nil {
+		return errors.Wrap(err, "unable to archive tasks")
 	}
 	// Set all the task fields to indicate restarted
 	if err := MarkTasksReset(restartIds); err != nil {
