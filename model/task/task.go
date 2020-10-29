@@ -1704,7 +1704,7 @@ func (t *Task) Archive() error {
 	}
 
 	archiveTask := t.makeArchivedtask()
-	err := db.Insert(OldCollection, &archiveTask)
+	err := db.Insert(OldCollection, archiveTask)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"archive_task_id": archiveTask.Id,
@@ -1741,6 +1741,9 @@ func (t *Task) Archive() error {
 }
 
 func ArchiveMany(tasks []Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	// add execution tasks of display tasks passed in, if they are not there
 	execTaskMap := map[string]*Task{}
 	for _, t := range tasks {
