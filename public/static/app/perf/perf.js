@@ -915,6 +915,8 @@ $http.get(templateUrl).success(function(template) {
     let from = null;
     let to = null;
 
+    // Concatenate the 2 arrays, pluck the create_times, unique, sort by time and return
+    // as a new array of string timestamps.
     const dates = _.chain([].concat(legacy || [], cedar || []))
                     .pluck("create_time")
                     .uniq()
@@ -922,7 +924,9 @@ $http.get(templateUrl).success(function(template) {
                     .value();
     if(!_.isEmpty(dates)) {
       from = dates[0];
-      if (from !== dates[dates.length-1]) {
+      // Set 'to' if there is more than one create_time (the array is
+      // already guaranteed to be unique).
+      if (dates.length > 1) {
         to = dates[dates.length-1];
       }
     }
