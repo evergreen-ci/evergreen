@@ -1691,7 +1691,7 @@ func (t *Task) Insert() error {
 
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
-	if t.DisplayOnly {
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrap(err, "error retrieving execution tasks")
@@ -1784,7 +1784,7 @@ func ArchiveMany(tasks []Task) error {
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-		_, err := oldTaskColl.InsertMany(ctx, archived)
+		_, err = oldTaskColl.InsertMany(ctx, archived)
 		if err != nil {
 			return nil, err
 		}
