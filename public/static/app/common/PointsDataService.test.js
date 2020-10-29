@@ -12,6 +12,8 @@ describe('PointsDataServiceSpec', function () {
   const db_perf = 'perf';
   const coll_points = 'points';
   const EMPTY_OUTLIERS = {rejects: [], outliers: {}};
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
 
   let service;
   let $db;
@@ -89,17 +91,21 @@ describe('PointsDataServiceSpec', function () {
 
         inject($injector => service = $injector.get('PointsDataService'));
       });
-      const getExpectedQuery = test => {
+      const getExpectedQuery = (test, create_time) => {
         if (_.isNull(test) || _.isUndefined(test)) {
           test = new stitch.BSON.BSONRegExp('^(fio|canary|iperf|NetworkBandwidth)');
         }
-        return {
+        let query = {
           project: project,
           variant: variant,
           task: task,
           test: test,
           $or: [{"outlier": true}, {"results.outlier": true}]
         }
+        if (create_time) {
+          query["create_time"] = create_time;
+        }
+        return query;
       };
       describe('query handling', () => {
 
@@ -115,6 +121,13 @@ describe('PointsDataServiceSpec', function () {
           expect($db.db).toHaveBeenCalledWith(db_perf);
           expect($db.collection).toHaveBeenCalledWith(coll_points);
           expect($db.find).toHaveBeenCalledWith(getExpectedQuery(test_name))
+        });
+
+        it('should handle from / to', function () {
+          service.getOutlierPointsQ(project, variant, task, test_name, from_time, to_time);
+          expect($db.db).toHaveBeenCalledWith(db_perf);
+          expect($db.collection).toHaveBeenCalledWith(coll_points);
+          expect($db.find).toHaveBeenCalledWith(getExpectedQuery(test_name, {"$gte":from_time, "$lte": to_time}))
         });
       });
     });

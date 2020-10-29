@@ -16,7 +16,7 @@ mciModule.controller('PerfController', function PerfController(
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
   TestSample, CANARY_EXCLUSION_REGEX, ApiTaskdata,
   loadBuildFailures, loadChangePoints, loadTrendData,
-  trendDataComplete, loadWhitelist,
+  trendDataComplete, loadWhitelist, getVisibleRange
 ) {
   /* for debugging
   $sce, $compile){
@@ -775,23 +775,27 @@ $http.get(templateUrl).success(function(template) {
     // Set the samples and filtered samples.
     $scope.allTrendSamples = null;
     $scope.filteredTrendSamples = null;
-
-    loadChangePoints($scope, project, variant, task_name).then(() => drawTrendGraph($scope));
-    loadBuildFailures($scope, project, variant, task_name).then(() => drawTrendGraph($scope));
-
-    const whitelistQ = loadWhitelist(project, variant, task_name).then(results => {
-      $scope.whitelist = results.whitelist;
-      $scope.outliers = results.points;
-      return results
-    });
+    $scope.visibleRange = {from: null, to: null};
 
     loadTrendData($scope, project, variant, task_name)
-      .then(data => whitelistQ.then(() => data))
-      .then(data => trendDataComplete($scope, data))
+      .then((trend_data) => {
+        $scope.visibleRange = getVisibleRange(trend_data);
+        return loadWhitelist(project, variant, task_name, $scope.visibleRange.from, $scope.visibleRange.to)
+              .then(response => {
+                $scope.whitelist = response.whitelist;
+                $scope.outliers = response.points;
+              })
+              .then(() => trendDataComplete($scope, trend_data));
+      })
       .then(() => {
         $scope.hideEmptyGraphs();
         $scope.hideCanaries();
         drawTrendGraph($scope);
+      }).then(() => {
+        if (!_.isEmpty($scope.allTrendSamples.samples)) {
+          loadChangePoints($scope, project, variant, task_name, $scope.visibleRange.from, $scope.visibleRange.to).then(() => drawTrendGraph($scope));
+          loadBuildFailures($scope, project, variant, task_name, $scope.visibleRange.from, $scope.visibleRange.to).then(() => drawTrendGraph($scope));
+        }
       });
   };
 
@@ -903,18 +907,53 @@ $http.get(templateUrl).success(function(template) {
     }
     return data;
   };
-}).factory('loadWhitelist', function ($q, PointsDataService, WhitelistDataService) {
+}).factory('getVisibleRange', function () {
+  return function (trend_data) {
+    const {
+      legacy = [], cedar = []
+    } = trend_data;
+    let from = null;
+    let to = null;
+
+    const dates = _.chain([].concat(legacy || [], cedar || []))
+                    .pluck("create_time")
+                    .uniq()
+                    .sortBy((timestamp) => new Date(timestamp))
+                    .value();
+    if(!_.isEmpty(dates)) {
+      from = dates[0];
+      if (from !== dates[dates.length-1]) {
+        to = dates[dates.length-1];
+      }
+    }
+    return { from, to };
+  };
+}).factory('limitToVisibleRange', function () {
+  return function (from, to, query, key = "create_time") {
+    let visible = {}
+
+    if(from) {
+      visible["$gte"]= from;
+    }
+    if (to) {
+      visible["$lte"]= to;
+    }
+
+    if(!_.isEmpty(visible)) {
+      query[key] = visible;
+    }
+    return query;
+  };
+}).factory('loadWhitelist', function ($q, PointsDataService, WhitelistDataService, limitToVisibleRange) {
   // Load the outliers and whitelist data.
   // This data is used to filter out rejected points from the trend charts.
   // The returned promise resolves when both the white list and outlier data is available.
-  return function (project, variant, task) {
+  return function (project, variant, task, from, to) {
     // Get a list of rejected points.
-    const points = PointsDataService.getOutlierPointsQ(project, variant, task);
-    const whitelist = WhitelistDataService.getWhitelistQ({
-      project,
-      variant,
-      task
-    });
+    const query = limitToVisibleRange(from, to, { project, variant, task })
+
+    const points = PointsDataService.getOutlierPointsQ(project, variant, task, null, from, to);
+    const whitelist = WhitelistDataService.getWhitelistQ(query);
     return $q.all({
       points,
       whitelist
@@ -942,11 +981,11 @@ $http.get(templateUrl).success(function(template) {
     });
   }
 }).factory('loadChangePoints', function ($q, loadUnprocessed, loadProcessed) {
-  return function (scope, project, variant, task) {
+  return function (scope, project, variant, task, from, to) {
     // Load the processed and unprocessed change points.
     // The returned promise resolves when both the white list and history data is available.
-    const processed = loadProcessed(project, variant, task);
-    const unprocessed = loadUnprocessed(project, variant, task);
+    const processed = loadProcessed(project, variant, task, from, to);
+    const unprocessed = loadUnprocessed(project, variant, task, from, to);
 
     // Wait for processed / unprocessed and then merge processed and unprocessed change points.
     // Processed ones always have a priority (in situations, when the revision has one processed
@@ -974,17 +1013,14 @@ $http.get(templateUrl).success(function(template) {
       return scope.changePoints;
     });
   }
-}).factory('loadProcessed', function ($log, Stitch, STITCH_CONFIG) {
-  return function (project, variant, task) {
+}).factory('loadProcessed', function ($log, Stitch, STITCH_CONFIG, limitToVisibleRange) {
+  return function (project, variant, task, from, to) {
+    const query = limitToVisibleRange(from, to, { project, variant, task });
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
-        .find({
-          project,
-          variant,
-          task
-        })
+        .find(query)
         .execute();
     }).then(
       docs => docs,
@@ -994,18 +1030,16 @@ $http.get(templateUrl).success(function(template) {
         return [];
       });
   }
-}).factory('loadUnprocessed', function ($log, Stitch, STITCH_CONFIG) {
-  return function (project, variant, task) {
+}).factory('loadUnprocessed', function ($log, Stitch, STITCH_CONFIG, limitToVisibleRange) {
+  return function (project, variant, task, from, to) {
+    const query = limitToVisibleRange(from, to, { project, variant, task });
+
     // This code loads change points for current task from the mdb cloud
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
-        .find({
-          project: project,
-          variant: variant,
-          task: task,
-        })
+        .find(query)
         .execute();
     }).then(
       docs => docs,
@@ -1092,8 +1126,8 @@ $http.get(templateUrl).success(function(template) {
 
   }
   return RevisionsMapper
-}).factory('loadRevisions', function (Stitch, RevisionsMapper, STITCH_CONFIG) {
-  return function (project, variant, task) {
+}).factory('loadRevisions', function (Stitch, RevisionsMapper, STITCH_CONFIG, limitToVisibleRange) {
+  return function (project, variant, task, from, to) {
     // Load revisions to orders from the points collection.
     // const task_identifier = { project: $scope.task.branch, task: $scope.task.display_name, variant: $scope.task.build_variant };
     const task_identifier = {
@@ -1101,10 +1135,10 @@ $http.get(templateUrl).success(function(template) {
       variant: variant,
       task: task
     };
-    const pipeline = [{
-        $match: {
-          project: project
-        }
+    const match = limitToVisibleRange(from, to , { project });
+    const pipeline = [
+      {
+        $match: match
       },
       {
         "$group": {
@@ -1144,20 +1178,22 @@ $http.get(templateUrl).success(function(template) {
       }).catch(err => null)
       .then((points) => new RevisionsMapper(points, task_identifier))
   }
-}).factory('loadBuildFailures', function ($log, Stitch, STITCH_CONFIG, loadRevisions) {
-  return function (scope, project, variant, task_name) {
-    const revisionsQ = loadRevisions(project, variant, task_name);
+}).factory('loadBuildFailures', function ($log, Stitch, STITCH_CONFIG, loadRevisions, limitToVisibleRange) {
+  return function (scope, project, variant, task_name, from, to) {
+    const revisionsQ = loadRevisions(project, variant, task_name, from, to);
+    const match = limitToVisibleRange(from ? moment.utc(from).startOf('day').toDate() : null , to ? moment.utc(to).endOf('day').toDate() : null, {
+      project: project,
+      buildvariants: variant,
+      tasks: task_name,
+    }, "created")
 
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
-        .aggregate([{
-            $match: {
-              project: project,
-              buildvariants: variant,
-              tasks: task_name,
-            }
+        .aggregate([
+          {
+            $match:match
           },
           // Denormalization
           {

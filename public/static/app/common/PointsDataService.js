@@ -13,7 +13,7 @@ mciModule.factory('PointsDataService', function ($log, Stitch, STITCH_CONFIG) {
   // Get a list of rejected points.
   const rejectedMatcher = _.matcher({outlier: true, rejected: true});
 
-  const getOutlierPointsQ = (project, variant, task, test) => {
+  const getOutlierPointsQ = (project, variant, task, test, from, to) => {
     test = test || new stitch.BSON.BSONRegExp('^(fio|canary|iperf|NetworkBandwidth)');
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
       const query = {
@@ -23,6 +23,18 @@ mciModule.factory('PointsDataService', function ($log, Stitch, STITCH_CONFIG) {
         test: test,
         $or: [{"outlier": true}, {"results.outlier": true}]
       };
+      let create_time = {}
+      if(from) {
+        create_time["$gte"]= from;
+      }
+      if (to) {
+        create_time["$lte"]= to;
+      }
+
+      if(!_.isEmpty(create_time)) {
+        query["create_time"] = create_time;
+      }
+
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_POINTS)
