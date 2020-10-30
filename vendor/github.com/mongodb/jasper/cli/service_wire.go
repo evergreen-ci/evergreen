@@ -7,8 +7,8 @@ import (
 
 	"github.com/evergreen-ci/service"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
@@ -50,9 +50,16 @@ func serviceCommandWire(cmd string, operation serviceOperation) cli.Command {
 				return errors.Wrap(err, "error creating wire manager")
 			}
 
-			daemon := newWireDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, makeLogger(c))
+			opts := daemonOptions{
+				host:             c.String(hostFlagName),
+				port:             c.Int(portFlagName),
+				manager:          manager,
+				logger:           makeLogger(c),
+				preconditionCmds: c.StringSlice(preconditionCmdsFlagName),
+			}
+			daemon := newWireDaemon(opts)
 
-			config := serviceConfig(WireService, c, buildRunCommand(c, WireService))
+			config := serviceConfig(WireService, c, buildServiceRunCommand(c, WireService))
 
 			if err := operation(daemon, config); !c.Bool(quietFlagName) {
 				return err
@@ -63,42 +70,21 @@ func serviceCommandWire(cmd string, operation serviceOperation) cli.Command {
 }
 
 type wireDaemon struct {
-	Host    string
-	Port    int
-	Manager jasper.Manager
-	Logger  *options.LoggerConfig
-
-	exit chan struct{}
+	baseDaemon
 }
 
-func newWireDaemon(host string, port int, manager jasper.Manager, logger *options.LoggerConfig) *wireDaemon {
-	return &wireDaemon{
-		Host:    host,
-		Port:    port,
-		Manager: manager,
-		Logger:  logger,
-	}
+func newWireDaemon(opts daemonOptions) *wireDaemon {
+	return &wireDaemon{newBaseDaemon(opts)}
 }
 
 func (d *wireDaemon) Start(s service.Service) error {
-	if d.Logger != nil {
-		if err := setupLogger(d.Logger); err != nil {
-			return errors.Wrap(err, "failed to set up logging")
-		}
-	}
-
-	d.exit = make(chan struct{})
-	if d.Manager == nil {
-		var err error
-		if d.Manager, err = jasper.NewSynchronizedManager(false); err != nil {
-			return errors.Wrap(err, "failed to construct wire manager")
-		}
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	go handleDaemonSignals(ctx, cancel, d.exit)
+	if err := d.setup(ctx, cancel); err != nil {
+		return errors.Wrap(err, "setup")
+	}
 
 	go func(ctx context.Context, d *wireDaemon) {
+		defer recovery.LogStackTraceAndContinue("wire service")
 		grip.Error(errors.Wrap(d.run(ctx), "error running wire service"))
 	}(ctx, d)
 
@@ -115,12 +101,12 @@ func (d *wireDaemon) run(ctx context.Context) error {
 }
 
 func (d *wireDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", d.Host, d.Port))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", d.host, d.port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve wire address")
 	}
 
-	closeService, err := remote.StartMDBService(ctx, d.Manager, addr)
+	closeService, err := remote.StartMDBService(ctx, d.manager, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "error starting wire service")
 	}

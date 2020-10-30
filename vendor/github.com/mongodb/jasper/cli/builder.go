@@ -20,49 +20,49 @@ func BuildServiceCommand(basePrefix ...string) []string {
 // BuildServiceInstallCommand is a convenience function to generate the slice of
 // strings to invoke the Jasper.Service.Install subcommand.
 func BuildServiceInstallCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), InstallCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceInstallCommand)
 }
 
 // BuildServiceUninstallCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Uninstall subcommand.
 func BuildServiceUninstallCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), UninstallCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceUninstallCommand)
 }
 
 // BuildServiceStartCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Start subcommand.
 func BuildServiceStartCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), StartCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceStartCommand)
 }
 
 // BuildServiceStopCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Stop subcommand.
 func BuildServiceStopCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), StopCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceStopCommand)
 }
 
 // BuildServiceRestartCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Restart subcommand.
 func BuildServiceRestartCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), RestartCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceRestartCommand)
 }
 
 // BuildServiceRunCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Run subcommand.
 func BuildServiceRunCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), RunCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceRunCommand)
 }
 
 // BuildServiceStatusCommand is a convenience function to generate the slice
 // of strings to invoke the Jasper.Service.Status subcommand.
 func BuildServiceStatusCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), StatusCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceStatusCommand)
 }
 
 // BuildServiceForceReinstallCommand is a convenience function to generate the
 // slice of strings to invoke the Jasper.Service.ForceReinstall subcommand.
 func BuildServiceForceReinstallCommand(basePrefix ...string) []string {
-	return append(BuildServiceCommand(basePrefix...), ForceReinstallCommand)
+	return append(BuildServiceCommand(basePrefix...), ServiceForceReinstallCommand)
 }
 
 // Jasper.Client builders

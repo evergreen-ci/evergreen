@@ -15,6 +15,75 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestBaseDaemon(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	t.Run("CheckPrecondition", func(t *testing.T) {
+		for testName, testCase := range map[string]struct {
+			preconditions []string
+			expectErr     bool
+		}{
+			"SucceedsWithNoPreconditions": {},
+			"SucceedsIfPreconditionSucceeds": {
+				preconditions: []string{"echo hello world!"},
+			},
+			"FailsIfPreconditionFails": {
+				preconditions: []string{"false"},
+				expectErr:     true,
+			},
+			"SucceedsIfAllPreconditionsSucceed": {
+				preconditions: []string{"true", "true", "echo hello world!"},
+			},
+			"FailsIfAnyPreconditionFails": {
+				preconditions: []string{"true", "true", "false"},
+				expectErr:     true,
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				manager, err := jasper.NewSynchronizedManager(false)
+				require.NoError(t, err)
+				opts := daemonOptions{
+					manager:          manager,
+					preconditionCmds: testCase.preconditions,
+				}
+				d := newBaseDaemon(opts)
+				err = d.checkPreconditions(ctx)
+				if testCase.expectErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}
+	})
+	t.Run("Setup", func(t *testing.T) {
+		sctx, scancel := context.WithCancel(ctx)
+		defer scancel()
+		t.Run("Succeeds", func(t *testing.T) {
+			manager, err := jasper.NewSynchronizedManager(false)
+			require.NoError(t, err)
+			d := newBaseDaemon(daemonOptions{manager: manager})
+			assert.NoError(t, d.setup(sctx, scancel))
+		})
+		t.Run("DefaultsManager", func(t *testing.T) {
+			d := newBaseDaemon(daemonOptions{})
+			assert.NoError(t, d.setup(sctx, scancel))
+		})
+		t.Run("SucceedsIfPreconditionSucceeds", func(t *testing.T) {
+			d := newBaseDaemon(daemonOptions{
+				preconditionCmds: []string{"true"},
+			})
+			assert.NoError(t, d.setup(sctx, scancel))
+		})
+		t.Run("FailsIfPreconditionFails", func(t *testing.T) {
+			d := newBaseDaemon(daemonOptions{
+				preconditionCmds: []string{"false"},
+			})
+			assert.Error(t, d.setup(sctx, scancel))
+		})
+	})
+}
+
 func TestDaemon(t *testing.T) {
 	for daemonAndClientName, makeDaemonAndClient := range map[string]func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager){
 		"RPCService": func(ctx context.Context, t *testing.T, _ jasper.Manager) (util.CloseFunc, remote.Manager) {
@@ -22,7 +91,12 @@ func TestDaemon(t *testing.T) {
 			manager, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 
-			daemon := newRPCDaemon("localhost", port, manager, "", nil)
+			opts := daemonOptions{
+				host:    "localhost",
+				port:    port,
+				manager: manager,
+			}
+			daemon := newRPCDaemon(opts, "")
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
@@ -37,7 +111,12 @@ func TestDaemon(t *testing.T) {
 			manager, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
 
-			daemon := newRESTDaemon("localhost", port, manager, nil)
+			opts := daemonOptions{
+				host:    "localhost",
+				port:    port,
+				manager: manager,
+			}
+			daemon := newRESTDaemon(opts)
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
@@ -49,32 +128,50 @@ func TestDaemon(t *testing.T) {
 			return func() error { return daemon.Stop(svc) }, client
 		},
 		"CombinedServiceRESTClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
-			restPort := testutil.GetPortNumber()
+			restOpts := daemonOptions{
+				host:    "localhost",
+				port:    testutil.GetPortNumber(),
+				manager: manager,
+			}
+			rpcOpts := daemonOptions{
+				host:    "localhost",
+				port:    testutil.GetPortNumber(),
+				manager: manager,
+			}
 			daemon := newCombinedDaemon(
-				newRESTDaemon("localhost", restPort, manager, nil),
-				newRPCDaemon("localhost", testutil.GetPortNumber(), manager, "", nil),
+				newRESTDaemon(restOpts),
+				newRPCDaemon(rpcOpts, ""),
 			)
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
-			require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", restPort)))
+			require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", restOpts.port)))
 
-			client, err := newRemoteManager(ctx, RESTService, "localhost", restPort, "")
+			client, err := newRemoteManager(ctx, RESTService, "localhost", restOpts.port, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client
 		},
 		"CombinedServiceRPCClient": func(ctx context.Context, t *testing.T, manager jasper.Manager) (util.CloseFunc, remote.Manager) {
-			rpcPort := testutil.GetPortNumber()
+			restOpts := daemonOptions{
+				host:    "localhost",
+				port:    testutil.GetPortNumber(),
+				manager: manager,
+			}
+			rpcOpts := daemonOptions{
+				host:    "localhost",
+				port:    testutil.GetPortNumber(),
+				manager: manager,
+			}
 			daemon := newCombinedDaemon(
-				newRESTDaemon("localhost", testutil.GetPortNumber(), manager, nil),
-				newRPCDaemon("localhost", rpcPort, manager, "", nil),
+				newRESTDaemon(restOpts),
+				newRPCDaemon(rpcOpts, ""),
 			)
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
 
-			client, err := newRemoteManager(ctx, RPCService, "localhost", rpcPort, "")
+			client, err := newRemoteManager(ctx, RPCService, "localhost", rpcOpts.port, "")
 			require.NoError(t, err)
 
 			return func() error { return daemon.Stop(svc) }, client

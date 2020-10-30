@@ -33,11 +33,11 @@ type ScriptingGolang struct {
 	cachedHash string
 }
 
-// NewGolangScriptingEnvironment generates a ScriptingEnvironment
+// NewGolangScriptingHarness generates a scripting.Harness
 // based on the arguments provided. Use this function for
 // simple cases when you do not need or want to set as many aspects of
 // the environment configuration.
-func NewGolangScriptingEnvironment(gopath, goroot string, packages ...string) ScriptingHarness {
+func NewGolangScriptingHarness(gopath, goroot string, packages ...string) ScriptingHarness {
 	return &ScriptingGolang{
 		Gopath:         gopath,
 		Goroot:         goroot,
@@ -46,16 +46,13 @@ func NewGolangScriptingEnvironment(gopath, goroot string, packages ...string) Sc
 	}
 }
 
-// Type is part of the options.ScriptingEnvironment interface and
-// returns the type of the interface.
+// Type returns the type of the interface.
 func (opts *ScriptingGolang) Type() string { return GolangScriptingType }
 
-// Interpreter is part of the options.ScriptingEnvironment interface
-// and returns the path to the interpreter or binary that runs scripts.
+// Interpreter returns the path to the binary that will run scripts.
 func (opts *ScriptingGolang) Interpreter() string { return filepath.Join(opts.Goroot, "bin", "go") }
 
-// Validate is part of the options.ScriptingEnvironment interface and
-// both ensures that the values are permissible and sets, where
+// Validate both ensures that the values are permissible and sets, where
 // possible, good defaults.
 func (opts *ScriptingGolang) Validate() error {
 	if opts.Goroot == "" {

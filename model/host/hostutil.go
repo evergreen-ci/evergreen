@@ -297,19 +297,19 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 	}
 
-	return h.jasperServiceCommand(settings.HostJasper, jcli.ForceReinstallCommand, params...)
+	return h.jasperServiceCommand(settings.HostJasper, jcli.ServiceForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
 // the existing configuration.
 func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.RestartCommand)
+	return h.jasperServiceCommand(config, jcli.ServiceRestartCommand)
 }
 
 // QuietUninstallJasperCommand returns the command to uninstall the Jasper
 // service. If the service is already not installed, this no-ops.
 func (h *Host) QuietUninstallJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.UninstallCommand, "--quiet")
+	return h.jasperServiceCommand(config, jcli.ServiceUninstallCommand, "--quiet")
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {

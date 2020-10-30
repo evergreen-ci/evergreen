@@ -250,7 +250,7 @@ type IDInput struct {
 	ID string `json:"id"`
 }
 
-// Validate checks that the Jasper process ID is non-empty.
+// Validate checks that the ID is non-empty.
 func (in *IDInput) Validate() error {
 	if len(in.ID) == 0 {
 		return errors.New("ID must not be empty")
@@ -417,6 +417,13 @@ func (in *ScriptingCreateInput) Export() (options.ScriptingHarness, error) {
 type ScriptingRunInput struct {
 	ID   string   `json:"id"`
 	Args []string `json:"args"`
+}
+
+// Validate checks that a scripting harness ID is given.
+func (in *ScriptingRunInput) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(in.ID == "", "must specify scripting harness ID")
+	return catcher.Resolve()
 }
 
 // ScriptingRunScriptInput represents CLI-specific input to run a script in

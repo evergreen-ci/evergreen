@@ -274,21 +274,23 @@ func (lc *LoggerConfig) UnmarshalJSON(b []byte) error {
 }
 
 func (lc *LoggerConfig) resolveProducer() error {
-	if lc.producer == nil {
-		if err := lc.validate(); err != nil {
-			return errors.Wrap(err, "invalid logger config")
-		}
+	if lc.producer != nil {
+		return nil
+	}
 
-		factory, ok := lc.Registry.Resolve(lc.info.Type)
-		if !ok {
-			return errors.Errorf("unregistered logger type '%s'", lc.info.Type)
-		}
-		lc.producer = factory()
+	if err := lc.validate(); err != nil {
+		return errors.Wrap(err, "invalid logger config")
+	}
 
-		if len(lc.info.Config) > 0 {
-			if err := lc.info.Format.Unmarshal(lc.info.Config, lc.producer); err != nil {
-				return errors.Wrap(err, "problem unmarshalling data")
-			}
+	factory, ok := lc.Registry.Resolve(lc.info.Type)
+	if !ok {
+		return errors.Errorf("unregistered logger type '%s'", lc.info.Type)
+	}
+	lc.producer = factory()
+
+	if len(lc.info.Config) > 0 {
+		if err := lc.info.Format.Unmarshal(lc.info.Config, lc.producer); err != nil {
+			return errors.Wrap(err, "problem unmarshalling data")
 		}
 	}
 

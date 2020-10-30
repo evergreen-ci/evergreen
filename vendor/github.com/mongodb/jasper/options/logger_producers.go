@@ -64,7 +64,7 @@ const LogFile = "file"
 
 // FileLoggerOptions encapsulates the options for creating a file logger.
 type FileLoggerOptions struct {
-	Filename string      `json:"filename " bson:"filename"`
+	Filename string      `json:"filename" bson:"filename"`
 	Base     BaseOptions `json:"base" bson:"base"`
 }
 

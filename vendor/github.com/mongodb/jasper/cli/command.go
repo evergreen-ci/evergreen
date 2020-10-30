@@ -18,9 +18,9 @@ import (
 	"github.com/urfave/cli"
 )
 
-// Run provides a simple user-centered command-line interface for
+// runCmd provides a simple user-centered command-line interface for
 // running commands on a remote instance.
-func Run() cli.Command { //nolint: gocognit
+func runCmd() cli.Command { //nolint: gocognit
 	const (
 		commandFlagName = "command"
 		envFlagName     = "env"
@@ -214,10 +214,10 @@ func printLogs(ctx context.Context, client remote.Manager, cmd *jasper.Command, 
 	return cmd.Wait(ctx)
 }
 
-// List provides a user interface to inspect processes managed by a
+// list provides a user interface to inspect processes managed by a
 // jasper instance and their state. The output of the command is a
 // human-readable table.
-func List() cli.Command {
+func list() cli.Command {
 	const (
 		filterFlagName = "filter"
 		groupFlagName  = "group"
@@ -287,8 +287,8 @@ func List() cli.Command {
 	}
 }
 
-// Kill terminates a single process by id, sending either TERM or KILL.
-func Kill() cli.Command {
+// kill terminates a single process by id, sending either TERM or KILL.
+func kill() cli.Command {
 	const (
 		idFlagName   = "id"
 		killFlagName = "kill"
@@ -338,28 +338,9 @@ func Kill() cli.Command {
 	}
 }
 
-// Clear removes all terminated/exited processes from Jasper Manager.
-func Clear() cli.Command {
-	return cli.Command{
-		Name:   "clear",
-		Usage:  "Clean up terminated processes.",
-		Flags:  clientFlags(),
-		Before: clientBefore(),
-		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			return withConnection(ctx, c, func(client remote.Manager) error {
-				client.Clear(ctx)
-				return nil
-			})
-		},
-	}
-}
-
-// KillAll terminates all processes with a given tag, sending either TERM or
+// killAll terminates all processes with a given tag, sending either TERM or
 // KILL.
-func KillAll() cli.Command {
+func killAll() cli.Command {
 	const (
 		groupFlagName = "group"
 		killFlagName  = "kill"
@@ -407,9 +388,28 @@ func KillAll() cli.Command {
 	}
 }
 
-// Download exposes a simple interface for using jasper to download
+// clear removes all terminated/exited processes from Jasper Manager.
+func clear() cli.Command {
+	return cli.Command{
+		Name:   "clear",
+		Usage:  "Clean up terminated processes.",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			return withConnection(ctx, c, func(client remote.Manager) error {
+				client.Clear(ctx)
+				return nil
+			})
+		},
+	}
+}
+
+// download exposes a simple interface for using jasper to download
 // files on the remote jasper.Manager.
-func Download() cli.Command {
+func download() cli.Command {
 	const (
 		urlFlagName         = "url"
 		pathFlagName        = "path"
