@@ -12,12 +12,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -74,23 +73,7 @@ func (s *logSenderSuite) SetupSuite() {
 }
 
 func (s *logSenderSuite) TearDownSuite() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	timer := time.NewTimer(0)
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Errorf("timed out when removing temp dir %s", s.tempDir)
-			return
-		case <-timer.C:
-			err := os.RemoveAll(s.tempDir)
-			if err == nil {
-				return
-			}
-			grip.Error(errors.Wrapf(err, "failed to remove temp dir in %s, trying again", s.T().Name()))
-			timer.Reset(500 * time.Millisecond)
-		}
-	}
+	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *logSenderSuite) randomSleep() {
