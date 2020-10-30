@@ -391,7 +391,9 @@ filters.common.filter('conditional', function () {
         if (!task.dispatch_time || task.dispatch_time == 0 || (typeof task.dispatch_time === "string" && +new Date(task.dispatch_time) <= 0)) {
           return "not scheduled"
         }
-        return 'aborted';
+        if (task.abort) {
+          return 'aborted';
+        }
       } else if (task.status == 'success') {
         return 'success';
       } else if (task.status == 'failed') {
