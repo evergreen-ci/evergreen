@@ -87,20 +87,11 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		TaskExecution: conf.Task.Execution,
 		Lines:         results.Log,
 	}
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	var logID string
-	logID, err = comm.SendTestLog(ctx, td, &log)
+	logId, err := sendTestLog(ctx, comm, conf, &log)
 	if err != nil {
-		// continue on error to let the other logs be posted
 		logger.Task().Errorf("failed to post log: %v", err)
 		return errors.Wrap(err, "failed to post log")
 	}
-
-	// TODO (EVG-7780): send test results for projects that enable it.
-	// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
-	// 	logger.Task().Errorf("problem posting test log: %v", err)
-	//      return errors.Wrap(err, "failed to post log")
-	// }
 	logger.Task().Info("Finished posting logs to server")
 
 	if len(results.Tests) == 0 {
@@ -119,19 +110,19 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	evgResults := make([]task.TestResult, 0, len(results.Tests))
 	for _, v := range results.Tests {
 		testResult := goTest2JSONToTestResult(v.Name, conf.Task, v)
-		testResult.LogId = logID
+		testResult.LogId = logId
 		evgResults = append(evgResults, testResult)
 	}
 
 	logger.Task().Info("Sending parsed results to server...")
-	if err := comm.SendTestResults(ctx, td, &task.LocalTestResults{
+	if err := sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{
 		Results: evgResults,
 	}); err != nil {
 		logger.Task().Errorf("problem posting parsed results to the server: %+v", err)
 		return errors.Wrap(err, "problem sending test results")
 	}
-
 	logger.Task().Info("Successfully sent parsed results to server")
+
 	return nil
 }
 
