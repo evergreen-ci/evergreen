@@ -144,41 +144,48 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("/dev/null")
-	// TODO (EVG-7780): add this line once test results are being sent to Cedar.
-	// cedarSrv := setupCedarTestResults(ctx, t, comm)
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err, "failed to setup test data")
-
 	conf := modelData.TaskConfig
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
-	assert.NoError(err)
 
-	err = xr.parseAndUploadResults(ctx, conf, logger, comm)
-	assert.NoError(err)
-	assert.NoError(logger.Close())
-	messages := comm.GetMockMessages()[conf.Task.Id]
+	t.Run("SendToEvergreen", func(t *testing.T) {
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		assert.NoError(err)
+		err = xr.parseAndUploadResults(ctx, conf, logger, comm)
+		assert.NoError(err)
+		assert.NoError(logger.Close())
 
-	successMessage := "Attach test logs succeeded for 201 of 201 files"
-	found := false
-	for _, message := range messages {
-		if successMessage == message.Message {
-			found = true
+		messages := comm.GetMockMessages()[conf.Task.Id]
+		successMessage := "Attach test logs succeeded for 201 of 201 files"
+		found := false
+		for _, message := range messages {
+			if successMessage == message.Message {
+				found = true
+			}
 		}
-	}
-	assert.True(found)
+		assert.True(found)
+	})
+	t.Run("SendToCedar", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = true
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		assert.NoError(err)
+		cedarSrv := setupCedarTestResults(ctx, t, comm)
+		err = xr.parseAndUploadResults(ctx, conf, logger, comm)
+		assert.NoError(err)
+		assert.NoError(logger.Close())
 
-	// TODO (EVG-7780): add this test once test results are being sent to Cedar.
-	// require.NotEmpty(t, cedarSrv.Results)
-	// for id, results := range cedarSrv.Results {
-	//     assert.NotEmpty(id)
-	//     assert.NotEmpty(results)
-	//     for _, res := range results {
-	//         assert.NotEmpty(res.Results)
-	//         for _, r := range res.Results {
-	//             assert.NotEmpty(r.TestName)
-	//             assert.NotEmpty(r.Status)
-	//         }
-	//     }
-	// }
+		require.NotEmpty(t, cedarSrv.Results)
+		for id, results := range cedarSrv.Results {
+			assert.NotEmpty(id)
+			assert.NotEmpty(results)
+			for _, res := range results {
+				assert.NotEmpty(res.Results)
+				for _, r := range res.Results {
+					assert.NotEmpty(r.TestName)
+					assert.NotEmpty(r.Status)
+				}
+			}
+		}
+	})
 }
