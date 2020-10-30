@@ -114,7 +114,9 @@ func (c *communicatorImpl) resetClient() {
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *communicatorImpl) Close() { utility.PutHTTPClient(c.httpClient) }
+func (c *communicatorImpl) Close() {
+	utility.PutHTTPClient(c.httpClient)
+}
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {
@@ -210,30 +212,36 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, c
 			Task:   []LogOpts{{Sender: model.EvergreenLogSender}},
 		}
 	}
+	underlying := []send.Sender{}
 
-	exec, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making agent logger")
 	}
-	task, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	underlying = append(underlying, senders...)
+	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making task logger")
 	}
-	system, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	underlying = append(underlying, senders...)
+	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making system logger")
 	}
+	underlying = append(underlying, senders...)
 
 	return &logHarness{
-		execution: logging.MakeGrip(exec),
-		task:      logging.MakeGrip(task),
-		system:    logging.MakeGrip(system),
+		execution:                 logging.MakeGrip(exec),
+		task:                      logging.MakeGrip(task),
+		system:                    logging.MakeGrip(system),
+		underlyingBufferedSenders: underlying,
 	}, nil
 }
 
-func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, error) {
+func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	senders := []send.Sender{grip.GetSender()}
+	underlyingBufferedSenders := []send.Sender{}
 
 	for _, opt := range opts {
 		var sender send.Sender
@@ -254,9 +262,10 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
 			if err != nil {
-				return nil, errors.Wrap(err, "error creating file logger")
+				return nil, nil, errors.Wrap(err, "error creating file logger")
 			}
 
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
 		case model.SplunkLogSender:
 			info := send.SplunkConnectionInfo{
@@ -265,8 +274,9 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
 			if err != nil {
-				return nil, errors.Wrap(err, "error creating splunk logger")
+				return nil, nil, errors.Wrap(err, "error creating splunk logger")
 			}
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
 		case model.LogkeeperLogSender:
 			config := send.BuildloggerConfig{
@@ -278,8 +288,9 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
-				return nil, errors.Wrap(err, "error creating logkeeper logger")
+				return nil, nil, errors.Wrap(err, "error creating logkeeper logger")
 			}
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
 			metadata := LogkeeperMetadata{
 				Build: config.GetBuildID(),
@@ -296,11 +307,11 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, errors.Wrap(err, "error setting up buildlogger sender")
+				return nil, nil, errors.Wrap(err, "error setting up buildlogger sender")
 			}
 
 			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, errors.Wrap(err, "error setting up cedar grpc connection")
+				return nil, nil, errors.Wrap(err, "error setting up cedar grpc connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
@@ -320,7 +331,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
-				return nil, errors.Wrap(err, "error creating buildlogger logger")
+				return nil, nil, errors.Wrap(err, "error creating buildlogger logger")
 			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
@@ -333,7 +344,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		senders = append(senders, sender)
 	}
 
-	return send.NewConfiguredMultiSender(senders...), nil
+	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
 }
 
 func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {

@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -51,15 +51,20 @@ func TestTimeoutSender(t *testing.T) {
 
 type logSenderSuite struct {
 	suite.Suite
-	restClient  *communicatorImpl
-	tempDir     string
-	numMessages int
-	maxSleep    time.Duration
+	restClient        *communicatorImpl
+	tempDir           string
+	numMessages       int
+	maxSleep          time.Duration
+	underlyingSenders []send.Sender
 }
 
 func TestLogSenders(t *testing.T) {
 	s := logSenderSuite{}
 	suite.Run(t, &s)
+}
+
+func (s *logSenderSuite) SetupTest() {
+	s.underlyingSenders = []send.Sender{}
 }
 
 func (s *logSenderSuite) SetupSuite() {
@@ -70,6 +75,12 @@ func (s *logSenderSuite) SetupSuite() {
 	s.numMessages = 1000
 	s.maxSleep = 10 * time.Millisecond
 	rand.Seed(time.Now().UnixNano())
+}
+
+func (s *logSenderSuite) TearDownTest() {
+	for _, sender := range s.underlyingSenders {
+		s.Require().NoError(sender.Close())
+	}
 }
 
 func (s *logSenderSuite) TearDownSuite() {
@@ -84,8 +95,9 @@ func (s *logSenderSuite) randomSleep() {
 
 func (s *logSenderSuite) TestFileLogger() {
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, "", "")
+	fileSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, "", "")
 	s.NoError(err)
+	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(fileSender)
 	logger := logging.MakeGrip(fileSender)
 
@@ -108,8 +120,9 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// no file logger for system logs
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix, "")
+	defaultSender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix, "")
 	s.NoError(err)
+	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.NotNil(defaultSender)
 	logger = logging.MakeGrip(defaultSender)
 	logger.Debug("foo")
@@ -142,7 +155,8 @@ func (s *logSenderSuite) TestEvergreenLogger() {
 }
 
 func (s *logSenderSuite) TestMisconfiguredLogkeeper() {
-	sender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.LogkeeperLogSender}}, "", "")
+	sender, toClose, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.LogkeeperLogSender}}, "", "")
+	s.underlyingSenders = append(s.underlyingSenders, toClose...)
 	s.Error(err)
 	s.Nil(sender)
 }
