@@ -170,13 +170,13 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		conf.ProjectRef.CedarTestResultsEnabled = true
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		assert.NoError(err)
-		cedarSrv := setupCedarTestResults(ctx, t, comm)
+		cedarSrv := setupCedarServer(ctx, t, comm)
 		err = xr.parseAndUploadResults(ctx, conf, logger, comm)
 		assert.NoError(err)
 		assert.NoError(logger.Close())
 
-		require.NotEmpty(t, cedarSrv.Results)
-		for id, results := range cedarSrv.Results {
+		require.NotEmpty(t, cedarSrv.TestResults.Results)
+		for id, results := range cedarSrv.TestResults.Results {
 			assert.NotEmpty(id)
 			assert.NotEmpty(results)
 			for _, res := range results {

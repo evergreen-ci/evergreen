@@ -50,6 +50,7 @@ func (s *test2JSONSuite) SetupTest() {
 		Task: &task.Task{
 			Id: "task0",
 		},
+		ProjectRef: &model.ProjectRef{},
 		Expansions: util.NewExpansions(map[string]string{}),
 	}
 	s.conf.Expansions.Put("expandme", test2JSONFile())
@@ -85,7 +86,7 @@ func (s *test2JSONSuite) TestPathExpansions() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 	s.Require().Equal(test2JSONFile(), s.c.Files[0])
 	msgs := drainMessages(s.sender)
-	s.Len(msgs, 5)
+	s.Len(msgs, 7)
 	s.noErrorMessages(msgs)
 }
 
@@ -94,7 +95,7 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
-	s.Len(msgs, 5)
+	s.Len(msgs, 7)
 	s.noErrorMessages(msgs)
 
 	s.Len(s.comm.LocalTestResults.Results, 13)
