@@ -2077,6 +2077,9 @@ describe('loadWhitelist', () => {
   let getWhitelistQSpy;
   let allSpy;
 
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
+
   beforeEach(() => {
     inject(($injector, $q) => {
       PointsDataService = $injector.get('PointsDataService');
@@ -2089,17 +2092,98 @@ describe('loadWhitelist', () => {
   });
 
   it('should get points and whitelist ', () => {
-    expect(loadWhitelist('project', 'variant', 'task')).toBe(resp);
-    expect(getOutlierPointsQSpy).toHaveBeenCalledWith('project', 'variant', 'task');
+    expect(loadWhitelist('project', 'variant', 'task', from_time, to_time)).toBe(resp);
+    expect(getOutlierPointsQSpy).toHaveBeenCalledWith('project', 'variant', 'task', null, from_time, to_time);
     expect(getWhitelistQSpy).toHaveBeenCalledWith({
       project: 'project',
       variant: 'variant',
-      task: 'task'
+      task: 'task',
+      create_time: {"$gte": from_time, "$lte": to_time}
     });
     expect(allSpy).toHaveBeenCalledWith({
       points,
       whitelist
     });
+  });
+});
+
+describe('limitToVisibleRange', () => {
+  beforeEach(module('MCI'));
+
+  let limitToVisibleRange;
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
+
+  beforeEach(() => {
+    inject(($injector, $q) => {
+      limitToVisibleRange = $injector.get('limitToVisibleRange');
+    });
+  });
+
+  it('should handle empty range ', () => {
+    expect(limitToVisibleRange(null, null, {})).toEqual({});
+  });
+
+  it('should handle from only', () => {
+    expect(limitToVisibleRange(from_time, null, {})).toEqual({create_time:{"$gte": from_time}});
+  });
+
+  it('should handle to only', () => {
+    expect(limitToVisibleRange(null, to_time, {})).toEqual({create_time:{"$lte": to_time}});
+  });
+
+  it('should handle from / to only', () => {
+    expect(limitToVisibleRange(from_time, to_time, {})).toEqual({create_time:{"$gte": from_time, "$lte": to_time}});
+  });
+
+  it('should handle custom key', () => {
+    expect(limitToVisibleRange(from_time, to_time, {}, "created")).toEqual({created:{"$gte": from_time, "$lte": to_time}});
+  });
+
+  it('should handle existing query', () => {
+    expect(limitToVisibleRange(from_time, to_time, {find:"me"}, "created")).toEqual({find:"me",created:{"$gte": from_time, "$lte": to_time}});
+  });
+});
+
+describe('getVisibleRange', () => {
+  beforeEach(module('MCI'));
+
+  let getVisibleRange;
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
+
+  beforeEach(() => {
+    inject(($injector, $q) => {
+      getVisibleRange = $injector.get('getVisibleRange');
+    });
+  });
+
+  it('should handle empty range ', () => {
+    expect(getVisibleRange({legacy: null, cedar: null})).toEqual({from: null, to: null});
+  });
+
+  it('should handle single', () => {
+    expect(getVisibleRange({legacy: [{create_time:from_time, dummy: 'variable'}], cedar: null})).toEqual({from: from_time, to: null});
+  });
+
+  it('should handle duplicates', () => {
+    expect(getVisibleRange({legacy: [{create_time:from_time}, {create_time:from_time}], cedar: null})).toEqual({from: from_time, to: null});
+  });
+
+  it('should handle from / to', () => {
+    expect(getVisibleRange({legacy: [{create_time:from_time}, {create_time:to_time}], cedar: null})).toEqual({from: from_time, to: to_time});
+  });
+
+  it('should handle out of order', () => {
+    expect(getVisibleRange({legacy: [{create_time:to_time}, {create_time:from_time}], cedar: null})).toEqual({from: from_time, to: to_time});
+  });
+
+  it('should handle cedar', () => {
+    expect(getVisibleRange({cedar: [{create_time:to_time}, {create_time:from_time}], legacy: null})).toEqual({from: from_time, to: to_time});
+  });
+
+  it('should handle both', () => {
+    expect(getVisibleRange({cedar: [{create_time:to_time}], legacy: [{create_time:from_time}]})).toEqual({from: from_time, to: to_time});
   });
 });
 
@@ -2160,6 +2244,8 @@ describe('loadChangePoints', function () {
   const variant = 'linux-standalone';
   const task = 'bestbuy_agg';
   const scope = {};
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
 
   let loadChangePoints;
   let $q;
@@ -2200,13 +2286,13 @@ describe('loadChangePoints', function () {
     });
 
     it('should be handled correctly', function () {
-      const value = loadChangePoints(scope, project, variant, task);
+      const value = loadChangePoints(scope, project, variant, task, from_time, to_time);
 
       expect(value).toEqual({});
       expect(scope.changePoints).toEqual({});
 
-      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task);
-      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task);
+      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
+      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
       expect(allSpy).toHaveBeenCalledWith(resp);
     });
 
@@ -2259,7 +2345,7 @@ describe('loadChangePoints', function () {
     });
 
     it('should be handled correctly', function () {
-      const value = loadChangePoints(scope, project, variant, task);
+      const value = loadChangePoints(scope, project, variant, task, from_time, to_time);
 
       expect(value).toBe(scope.changePoints);
       expect(Object.keys(scope.changePoints).length).toBe(3);
@@ -2269,8 +2355,8 @@ describe('loadChangePoints', function () {
         "InsertRemove.Genny.Setup"
       ]);
 
-      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task);
-      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task);
+      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
+      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
 
       expect(allSpy.calls.allArgs()[0]).toEqual([resp]);
     });
@@ -2324,7 +2410,7 @@ describe('loadChangePoints', function () {
     });
 
     it('should be handled correctly', function () {
-      const value = loadChangePoints(scope, project, variant, task);
+      const value = loadChangePoints(scope, project, variant, task, from_time, to_time);
 
       expect(value).toBe(scope.changePoints);
       expect(Object.keys(scope.changePoints).length).toBe(4);
@@ -2335,8 +2421,8 @@ describe('loadChangePoints', function () {
         "InsertRemove.Genny.Setup"
       ]);
 
-      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task);
-      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task);
+      expect(loadUnprocessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
+      expect(loadProcessedSpy).toHaveBeenCalledWith(project, variant, task, from_time, to_time);
 
       expect(allSpy.calls.allArgs()[0]).toEqual([resp]);
     });
@@ -3015,10 +3101,12 @@ describe('loadRevisions', function () {
 });
 
 describe('loadBuildFailures', function () {
+  const from_time = '2020-10-28T05:07:39.000Z';
+  const to_time = '2020-10-28T17:07:39.000Z';
+
   let project = 'sys-perf';
   let variant = 'standalone-linux';
   let task_name = 'bestbuy_agg';
-
   beforeEach(module('MCI'));
 
   let loadBuildFailures;
@@ -3063,10 +3151,21 @@ describe('loadBuildFailures', function () {
 
     it('should handle null', function () {
       let scope = {};
-      const value = loadBuildFailures(scope, project, variant, task_name);
+      const value = loadBuildFailures(scope, project, variant, task_name, from_time, to_time);
       expect(value).toBe(buildFailures);
 
-      expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name);
+      expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name, from_time, to_time);
+      expect($db.db).toHaveBeenCalledWith(STITCH_CONFIG.PERF.DB_PERF);
+      expect($db.collection).toHaveBeenCalledWith(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES);
+      expect($db.aggregate).toHaveBeenCalled();
+    });
+
+    it('should handle null times', function () {
+      let scope = {};
+      const value = loadBuildFailures(scope, project, variant, task_name, null, null);
+      expect(value).toBe(buildFailures);
+
+      expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name, null, null);
       expect($db.db).toHaveBeenCalledWith(STITCH_CONFIG.PERF.DB_PERF);
       expect($db.collection).toHaveBeenCalledWith(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES);
       expect($db.aggregate).toHaveBeenCalled();
@@ -3103,10 +3202,10 @@ describe('loadBuildFailures', function () {
 
       it('should handle no docs', function () {
         let scope = {};
-        const value = loadBuildFailures(scope, project, variant, task_name);
+        const value = loadBuildFailures(scope, project, variant, task_name, from_time, to_time);
         expect(value).toEqual({});
 
-        expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name);
+        expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name, from_time, to_time);
       });
     });
     describe('docs', function () {
@@ -3248,9 +3347,9 @@ describe('loadBuildFailures', function () {
 
       it('should handle no docs', function () {
         let scope = {};
-        const value = loadBuildFailures(scope, project, variant, task_name);
+        const value = loadBuildFailures(scope, project, variant, task_name, from_time, to_time);
         expect(value).toEqual(expected);
-        expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name);
+        expect(loadRevisions).toHaveBeenCalledWith(project, variant, task_name, from_time, to_time);
       });
     });
   });
