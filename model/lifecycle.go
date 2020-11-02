@@ -1413,7 +1413,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
 	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 
-	taskIds, err := getTaskIdTables(v, p, tasks)
+	taskIdTables, err := getTaskIdTables(v, p, tasks)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to make task ID table")
 	}
@@ -1456,7 +1456,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 		buildArgs := BuildCreateArgs{
 			Project:            *p,
 			Version:            *v,
-			TaskIDs:            taskIds,
+			TaskIDs:            taskIdTables,
 			BuildName:          pair.Variant,
 			ActivateBuild:      activateVariant,
 			TaskNames:          taskNames,
@@ -1567,7 +1567,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		return nil, err
 	}
 
-	taskIdTable, err := getTaskIdTables(v, p, pairs)
+	taskIdTables, err := getTaskIdTables(v, p, pairs)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get table of task IDs")
 	}
@@ -1617,7 +1617,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		}
 		batchTimeTasks := batchTimeInfo.batchTimeTasks(b.BuildVariant)
 		// Add the new set of tasks to the build.
-		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTable)
+		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTables)
 		if err != nil {
 			return nil, err
 		}
