@@ -402,7 +402,6 @@ type Patch {
   time: PatchTime
   taskCount: Int
   baseVersionID: String
-  parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
@@ -444,11 +443,6 @@ type ProjectBuildVariant {
   name: String!
   displayName: String!
   tasks: [String!]!
-}
-
-type Parameter {
-  key: String!
-  value: String!
 }
 
 type TaskResult {
