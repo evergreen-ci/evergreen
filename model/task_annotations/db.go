@@ -16,7 +16,7 @@ var (
 	NoteKey            = bsonutil.MustHaveTag(TaskAnnotation{}, "Note")
 	IssuesKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "Issues")
 	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
-	Source             = bsonutil.MustHaveTag(TaskAnnotation{}, "Source")
+	SourceKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "Source")
 	MetadataKey        = bsonutil.MustHaveTag(TaskAnnotation{}, "Metadata")
 )
 
@@ -41,7 +41,7 @@ func FindByID(id string) (*TaskAnnotation, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding task_annotation")
+		return nil, errors.Wrap(err, "problem finding task annotation")
 	}
 
 	return &annotation, nil
@@ -71,8 +71,8 @@ func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
-// BySource returns a query that contains a Source selector on the string, s.
-func ByTaskId(t string) db.Q {
+// ByTaskId returns a query for entries with the given Task Id
+func BytaskId(t string) db.Q {
 	return db.Query(bson.M{TaskIdKey: t})
 }
 
