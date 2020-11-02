@@ -298,7 +298,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	}
 
 	for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
-		params = append(params, fmt.Sprintf("--precondition=%s", ps.Path))
+		params = append(params, fmt.Sprintf("--precondition='%s -l %s'", h.Distro.BootstrapSettings.ShellPath, ps.Path))
 	}
 
 	return h.jasperServiceCommand(settings.HostJasper, jcli.ServiceForceReinstallCommand, params...)
@@ -453,10 +453,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		var setupJasperCmds []string
 		setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
 		setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds...)
-		// kim: TODO: unsure if we need a login shell context for this (i.e.
-		// bash -l -c <script>) or if we should just tell the user to do it
-		// themselves by adding a hashbang.
-		setupJasperCmds = append(setupJasperCmds, h.WriteJasperPreconditionScriptsCommands())
+		if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
+			setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
+		}
 		setupJasperCmds = append(setupJasperCmds,
 			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
@@ -498,10 +497,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	var setupJasperCmds []string
 	setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
 	setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds)
-	// kim: TODO: unsure if we need a login shell context for this (i.e.
-	// bash -l -c <script>) or if we should just tell the user to do it
-	// themselves by adding a hashbang.
-	setupJasperCmds = append(setupJasperCmds, h.WriteJasperPreconditionScriptsCommands())
+	if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
+		setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
+	}
 	setupJasperCmds = append(setupJasperCmds,
 		h.FetchJasperCommand(settings.HostJasper),
 		h.ForceReinstallJasperCommand(settings),
@@ -718,10 +716,10 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 func (h *Host) WriteJasperPreconditionScriptsCommands() string {
 	var cmds []string
 	for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
-		cmds = append(cmds, "tee %s <<'EOF'\n%s\nEOF", ps.Path, ps.Script)
-		cmds = append(cmds, "chmod 755 %s", ps.Path)
+		cmds = append(cmds, fmt.Sprintf("tee %s <<'EOF'\n%s\nEOF", ps.Path, ps.Script))
+		cmds = append(cmds, fmt.Sprintf("chmod 755 %s", ps.Path))
 	}
-	return strings.Join(cmds, " && ")
+	return strings.Join(cmds, "\n")
 }
 
 func bufferedWriteFileCommands(path, content string) []string {
