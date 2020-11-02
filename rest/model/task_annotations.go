@@ -8,14 +8,14 @@ import (
 )
 
 type APITaskAnnotation struct {
-	Id              *string             `json:"id"`
+	Id              *string             `bson:"_id" json:"id"`
 	TaskId          *string             `bson:"task_id" json:"task_id"`
 	TaskExecution   int                 `bson:"task_execution" json:"task_execution"`
-	Note            *string             `json:"note"`
-	Issues          []APIIssueLink      `json:"issues"`
-	SuspectedIssues []APIIssueLink      `json:"suspected_issues"`
-	Source          APIAnnotationSource `json:"source"`
-	Metadata        *birch.Document     `json:"metadata"`
+	Note            *string             `bson:"note" json:"note"`
+	Issues          []APIIssueLink      `bson:"issues" json:"issues"`
+	SuspectedIssues []APIIssueLink      `bson:"suspected_issues" json:"suspected_issues"`
+	Source          APIAnnotationSource `bson:"source" json:"source"`
+	Metadata        *birch.Document     `bson:"metadata" json:"metadata"`
 }
 
 type APIAnnotationSource struct {

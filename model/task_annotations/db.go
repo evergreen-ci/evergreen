@@ -72,8 +72,8 @@ func ById(id string) db.Q {
 }
 
 // ByTaskId returns a query for entries with the given Task Id
-func BytaskId(t string) db.Q {
-	return db.Query(bson.M{TaskIdKey: t})
+func ByTaskId(taskId string) db.Q {
+	return db.Query(bson.M{TaskIdKey: taskId})
 }
 
 // ByTaskIdAndExecution returns a query for entries with the given Task Id and
