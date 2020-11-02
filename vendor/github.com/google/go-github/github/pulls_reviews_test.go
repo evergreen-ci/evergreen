@@ -14,6 +14,88 @@ import (
 	"testing"
 )
 
+func TestReviewers_marshall(t *testing.T) {
+	testJSONMarshal(t, &Reviewers{}, "{}")
+
+	u := &Reviewers{
+		Users: []*User{{
+			Login:       String("l"),
+			ID:          Int64(1),
+			AvatarURL:   String("a"),
+			GravatarID:  String("g"),
+			Name:        String("n"),
+			Company:     String("c"),
+			Blog:        String("b"),
+			Location:    String("l"),
+			Email:       String("e"),
+			Hireable:    Bool(true),
+			PublicRepos: Int(1),
+			Followers:   Int(1),
+			Following:   Int(1),
+			CreatedAt:   &Timestamp{referenceTime},
+			URL:         String("u"),
+		}},
+		Teams: []*Team{{
+			ID:              Int64(1),
+			NodeID:          String("node"),
+			Name:            String("n"),
+			Description:     String("d"),
+			URL:             String("u"),
+			Slug:            String("s"),
+			Permission:      String("p"),
+			Privacy:         String("priv"),
+			MembersCount:    Int(1),
+			ReposCount:      Int(1),
+			Organization:    nil,
+			MembersURL:      String("m"),
+			RepositoriesURL: String("r"),
+			Parent:          nil,
+			LDAPDN:          String("l"),
+		}},
+	}
+
+	want := `{
+		"users" : [
+			{
+				"login": "l",
+				"id": 1,
+				"avatar_url": "a",
+				"gravatar_id": "g",
+				"name": "n",
+				"company": "c",
+				"blog": "b",
+				"location": "l",
+				"email": "e",
+				"hireable": true,
+				"public_repos": 1,
+				"followers": 1,
+				"following": 1,
+				"created_at": ` + referenceTimeStr + `,
+				"url": "u"
+			}
+		],
+		"teams" : [
+			{
+				"id": 1,
+				"node_id": "node",
+				"name": "n",
+				"description": "d",
+				"url": "u",
+				"slug": "s",
+				"permission": "p",
+				"privacy": "priv",
+				"members_count": 1,
+				"repos_count": 1,
+				"members_url": "m",
+				"repositories_url": "r",
+				"ldap_dn": "l"
+			}
+		]
+	}`
+
+	testJSONMarshal(t, u, want)
+}
+
 func TestPullRequestsService_ListReviews(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
@@ -143,6 +225,121 @@ func TestPullRequestsService_ListReviewComments_withOptions(t *testing.T) {
 	_, _, err := client.PullRequests.ListReviewComments(context.Background(), "o", "r", 1, 1, &ListOptions{Page: 2})
 	if err != nil {
 		t.Errorf("PullRequests.ListReviewComments returned error: %v", err)
+	}
+}
+
+func TestPullRequestReviewRequest_isComfortFadePreview(t *testing.T) {
+	path := "path/to/file.go"
+	body := "this is a comment body"
+	left, right := "LEFT", "RIGHT"
+	pos1, pos2, pos3 := 1, 2, 3
+	line1, line2, line3 := 11, 22, 33
+
+	tests := []struct {
+		name     string
+		review   *PullRequestReviewRequest
+		wantErr  error
+		wantBool bool
+	}{{
+		name:     "empty review",
+		review:   &PullRequestReviewRequest{},
+		wantBool: false,
+	}, {
+		name: "old-style review",
+		review: &PullRequestReviewRequest{
+			Comments: []*DraftReviewComment{{
+				Path:     &path,
+				Body:     &body,
+				Position: &pos1,
+			}, {
+				Path:     &path,
+				Body:     &body,
+				Position: &pos2,
+			}, {
+				Path:     &path,
+				Body:     &body,
+				Position: &pos3,
+			}},
+		},
+		wantBool: false,
+	}, {
+		name: "new-style review",
+		review: &PullRequestReviewRequest{
+			Comments: []*DraftReviewComment{{
+				Path: &path,
+				Body: &body,
+				Side: &right,
+				Line: &line1,
+			}, {
+				Path: &path,
+				Body: &body,
+				Side: &left,
+				Line: &line2,
+			}, {
+				Path: &path,
+				Body: &body,
+				Side: &right,
+				Line: &line3,
+			}},
+		},
+		wantBool: true,
+	}, {
+		name: "blended comment",
+		review: &PullRequestReviewRequest{
+			Comments: []*DraftReviewComment{{
+				Path:     &path,
+				Body:     &body,
+				Position: &pos1, // can't have both styles.
+				Side:     &right,
+				Line:     &line1,
+			}},
+		},
+		wantErr: ErrMixedCommentStyles,
+	}, {
+		name: "position then line",
+		review: &PullRequestReviewRequest{
+			Comments: []*DraftReviewComment{{
+				Path:     &path,
+				Body:     &body,
+				Position: &pos1,
+			}, {
+				Path: &path,
+				Body: &body,
+				Side: &right,
+				Line: &line1,
+			}},
+		},
+		wantErr: ErrMixedCommentStyles,
+	}, {
+		name: "line then position",
+		review: &PullRequestReviewRequest{
+			Comments: []*DraftReviewComment{{
+				Path: &path,
+				Body: &body,
+				Side: &right,
+				Line: &line1,
+			}, {
+				Path:     &path,
+				Body:     &body,
+				Position: &pos1,
+			}},
+		},
+		wantErr: ErrMixedCommentStyles,
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotBool, gotErr := tc.review.isComfortFadePreview()
+			if tc.wantErr != nil {
+				if gotErr != tc.wantErr {
+					t.Errorf("isComfortFadePreview() = %v, wanted %v", gotErr, tc.wantErr)
+				}
+			} else {
+				if gotBool != tc.wantBool {
+					t.Errorf("isComfortFadePreview() = %v, wanted %v", gotBool, tc.wantBool)
+				}
+			}
+		})
 	}
 }
 

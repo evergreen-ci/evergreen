@@ -68,25 +68,23 @@ func (c *attachResults) Execute(ctx context.Context,
 	// attempt to open the file
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't open report file '%s'", reportFileLoc)
+		return errors.Wrapf(err, "couldn't open report file '%s'", reportFileLoc)
 	}
 	defer reportFile.Close()
 
 	results := &task.LocalTestResults{}
 	if err = utility.ReadJSON(reportFile, results); err != nil {
-		return errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
+		return errors.Wrapf(err, "couldn't read report file '%s'", reportFileLoc)
 	}
 
 	if err := c.sendTestLogs(ctx, conf, logger, comm, results); err != nil {
-		return errors.Wrap(err, "sending test logs")
+		return errors.Wrap(err, "problem sending test logs")
 	}
 
-	return errors.WithStack(sendTestResults(ctx, conf, logger, comm, results))
+	return sendTestResults(ctx, comm, logger, conf, results)
 }
 
 func (c *attachResults) sendTestLogs(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
 	for i, res := range results.Results {
 		if ctx.Err() != nil {
 			return errors.Errorf("operation canceled during uploading")
@@ -101,15 +99,11 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *model.TaskConfig
 				Lines:         []string{res.LogRaw},
 			}
 
-			// TODO (EVG-7780): send test results for projects that enable it.
-			// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
-			// 	logger.Task().Errorf("problem posting test log: %v", err)
-			// }
-			id, err := comm.SendTestLog(ctx, td, testLogs)
+			logId, err := sendTestLog(ctx, comm, conf, testLogs)
 			if err != nil {
 				logger.Execution().Errorf("problem posting raw logs from results %s", err.Error())
 			} else {
-				results.Results[i].LogId = id
+				results.Results[i].LogId = logId
 			}
 
 			// clear the logs from the TestResult struct after it has been saved in the test logs. Since they are

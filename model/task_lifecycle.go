@@ -311,7 +311,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	if t.DisplayOnly {
 		for _, dt := range allTasks {
 			var execTasks []task.Task
-			execTasks, err = task.FindWithDisplayTasks(task.ByIds(dt.ExecutionTasks))
+			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
 			if err != nil {
 				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
 			}
@@ -557,7 +557,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "error updating blocked dependencies for '%s'", t.Id)
 		}
 
 		if !dependentTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip

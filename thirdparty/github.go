@@ -480,6 +480,21 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	return
 }
 
+func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) bool {
+	httpClient := getGithubClient(oauthToken)
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	for _, team := range teams {
+		//suppress error because it's not informative
+		membership, _, _ := client.Teams.GetTeamMembershipBySlug(ctx, org, team, user)
+		if membership != nil && membership.GetState() == "active" {
+			return true
+		}
+	}
+	return false
+}
+
 // GetGithubTokenUser fetches a github user associated with an oauth token, and
 // if requiredOrg is specified, checks that it belongs to that org.
 // Returns user object, if it was a member of the specified org (or false if not specified),

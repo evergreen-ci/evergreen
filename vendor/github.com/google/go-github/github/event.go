@@ -76,6 +76,8 @@ func (e *Event) ParsePayload() (payload interface{}, err error) {
 		payload = &OrganizationEvent{}
 	case "OrgBlockEvent":
 		payload = &OrgBlockEvent{}
+	case "PackageEvent":
+		payload = &PackageEvent{}
 	case "PageBuildEvent":
 		payload = &PageBuildEvent{}
 	case "PingEvent":
@@ -100,6 +102,8 @@ func (e *Event) ParsePayload() (payload interface{}, err error) {
 		payload = &ReleaseEvent{}
 	case "RepositoryEvent":
 		payload = &RepositoryEvent{}
+	case "RepositoryDispatchEvent":
+		payload = &RepositoryDispatchEvent{}
 	case "RepositoryVulnerabilityAlertEvent":
 		payload = &RepositoryVulnerabilityAlertEvent{}
 	case "StarEvent":
@@ -110,6 +114,8 @@ func (e *Event) ParsePayload() (payload interface{}, err error) {
 		payload = &TeamEvent{}
 	case "TeamAddEvent":
 		payload = &TeamAddEvent{}
+	case "UserEvent":
+		payload = &UserEvent{}
 	case "WatchEvent":
 		payload = &WatchEvent{}
 	}

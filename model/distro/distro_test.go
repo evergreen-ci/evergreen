@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -521,4 +522,36 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 	require.Len(t, data.ProviderSettingsMap, 2)
 	assert.EqualValues(t, d.ProviderSettingsList[0].ExportMap(), data.ProviderSettingsMap[0])
 	assert.EqualValues(t, d.ProviderSettingsList[1].ExportMap(), data.ProviderSettingsMap[1])
+}
+
+func TestS3ClientURL(t *testing.T) {
+	d := Distro{Arch: evergreen.ArchWindowsAmd64}
+	settings := &evergreen.Settings{
+		HostInit: evergreen.HostInitConfig{
+			S3BaseURL: "https://foo.com",
+		},
+		ClientBinariesDir: "clients",
+	}
+
+	expected := fmt.Sprintf("https://foo.com/%s/windows_amd64/evergreen.exe", evergreen.BuildRevision)
+	assert.Equal(t, expected, d.S3ClientURL(settings))
+
+	d.Arch = evergreen.ArchLinuxAmd64
+	expected = fmt.Sprintf("https://foo.com/%s/linux_amd64/evergreen", evergreen.BuildRevision)
+	assert.Equal(t, expected, d.S3ClientURL(settings))
+}
+
+func TestClientURL(t *testing.T) {
+	d := Distro{Arch: evergreen.ArchWindowsAmd64}
+	settings := &evergreen.Settings{
+		ApiUrl:            "www.example.com",
+		ClientBinariesDir: "clients",
+	}
+
+	expected := "www.example.com/clients/windows_amd64/evergreen.exe"
+	assert.Equal(t, expected, d.ClientURL(settings))
+
+	d.Arch = evergreen.ArchLinuxAmd64
+	expected = "www.example.com/clients/linux_amd64/evergreen"
+	assert.Equal(t, expected, d.ClientURL(settings))
 }

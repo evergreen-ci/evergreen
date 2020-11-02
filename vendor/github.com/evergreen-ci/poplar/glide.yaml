@@ -1,0 +1,17 @@
+package: github.com/evergreen-ci/poplar
+import:
+  - package: google.golang.org/grpc
+  - package: golang.org/x/net
+  - package: github.com/golang/protobuf
+  - package: golang.org/x/sys
+  - package: golang.org/x/text
+  - package: google.golang.org/genproto
+  - package: github.com/evergreen-ci/pail
+  - package: github.com/mongodb/grip
+  - package: github.com/mongodb/ftdc
+  - package: github.com/pkg/errors
+  - package: github.com/stretcher/testify
+  - package: gopkg.in/yaml.v2
+  - package: github.com/papertrail/go-tail
+  - package: github.com/mongodb/amboy
+  - package: github.com/evergreen-ci/aviation

@@ -147,6 +147,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
+	s.EqualValues(testSettings.HostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
+	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
+	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
+	s.EqualValues(testSettings.HostInit.S3BaseURL, settingsFromConnector.HostInit.S3BaseURL)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.
@@ -170,6 +174,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
@@ -224,27 +229,32 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
 	newExpansions := map[string]string{"newkey": "newval"}
-	newHostinit := restModel.APIHostInitConfig{
+	newHostInit := restModel.APIHostInitConfig{
 		HostThrottle:         64,
 		CloudStatusBatchSize: 1,
 		ProvisioningThrottle: 200,
 		MaxTotalDynamicHosts: 1000,
+		S3BaseURL:            restModel.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,
 		Expansions: newExpansions,
-		HostInit:   &newHostinit,
+		HostInit:   &newHostInit,
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
 	_, err = s.ctx.SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
 	s.NoError(err)
 	settingsFromConnector, err = s.ctx.GetEvergreenSettings()
-	s.NoError(err)
+	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
 	s.EqualValues(newExpansions, settingsFromConnector.Expansions)
-	s.EqualValues(newHostinit, settingsFromConnector.HostInit)
+	s.EqualValues(newHostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
+	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
+	s.EqualValues(newHostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
+	s.EqualValues(newHostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
+	s.EqualValues(restModel.FromStringPtr(newHostInit.S3BaseURL), settingsFromConnector.HostInit.S3BaseURL)
 	// old values should still be there
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)

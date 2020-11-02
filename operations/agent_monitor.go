@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -51,8 +52,8 @@ func getLogID() int {
 type monitor struct {
 	// Monitor args
 	credentialsPath string
-	clientURL       string
 	clientPath      string
+	distroID        string
 	shellPath       string
 	logPrefix       string
 	jasperPort      int
@@ -62,7 +63,7 @@ type monitor struct {
 	// Args to be forwarded to the agent
 	agentArgs []string
 
-	// Set during runtime
+	comm         client.Communicator
 	jasperClient remote.Manager
 }
 
@@ -85,8 +86,8 @@ func defaultRetryArgs() util.RetryArgs {
 func agentMonitor() cli.Command {
 	const (
 		credentialsPathFlagName = "credentials"
-		clientURLFlagName       = "client_url"
 		clientPathFlagName      = "client_path"
+		distroIDFlagName        = "distro"
 		shellPathFlagName       = "shell_path"
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
@@ -108,12 +109,12 @@ func agentMonitor() cli.Command {
 				Usage: "the path to the credentials used to authenticate the monitor to Jasper",
 			},
 			cli.StringFlag{
-				Name:  clientURLFlagName,
-				Usage: "the url to fetch the evergreen client from",
-			},
-			cli.StringFlag{
 				Name:  clientPathFlagName,
 				Usage: "the name of the agent's evergreen binary",
+			},
+			cli.StringFlag{
+				Name:  distroIDFlagName,
+				Usage: "the ID of the distro the monitor is running on.",
 			},
 			cli.StringFlag{
 				Name:  shellPathFlagName,
@@ -141,8 +142,8 @@ func agentMonitor() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
+			requireStringFlag(distroIDFlagName),
 			requireStringFlag(shellPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
 			requireIntValueBetween(portFlagName, minPort, maxPort),
@@ -153,9 +154,10 @@ func agentMonitor() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			m := &monitor{
+				comm:            client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName)),
 				credentialsPath: c.String(credentialsPathFlagName),
-				clientURL:       c.String(clientURLFlagName),
 				clientPath:      c.String(clientPathFlagName),
+				distroID:        c.String(distroIDFlagName),
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
@@ -277,20 +279,33 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 }
 
 // fetchClient downloads the evergreen client.
-func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
-	info := options.Download{
-		URL:         m.clientURL,
-		Path:        m.clientPath,
-		ArchiveOpts: options.Archive{ShouldExtract: false},
-	}
-
-	if err := util.RetryWithArgs(ctx, func() (bool, error) {
-		if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
-			return true, errors.Wrap(err, "failed to download file")
+func (m *monitor) fetchClient(ctx context.Context, urls []string, retry util.RetryArgs) error {
+	var downloaded bool
+	catcher := grip.NewBasicCatcher()
+	for _, url := range urls {
+		info := options.Download{
+			URL:         url,
+			Path:        m.clientPath,
+			ArchiveOpts: options.Archive{ShouldExtract: false},
 		}
-		return false, nil
-	}, retry); err != nil {
-		return err
+
+		var attemptNum int
+		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+			if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
+				attemptNum++
+				return true, errors.Wrapf(err, "attempt %d", attemptNum)
+			}
+			return false, nil
+		}, retry); err != nil {
+			catcher.Wrapf(err, "URL '%s'", url)
+			continue
+		}
+
+		downloaded = true
+		break
+	}
+	if !downloaded {
+		return errors.Wrap(catcher.Resolve(), "downloading client")
 	}
 
 	return errors.Wrap(os.Chmod(m.clientPath, 0755), "failed to chmod client")
@@ -414,12 +429,17 @@ func (m *monitor) run(ctx context.Context) {
 				}
 			}
 
+			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
+			if err != nil {
+				return true, errors.Wrap(err, "retrieving client URLs")
+			}
+
 			// The evergreen agent runs using a separate binary from the monitor
 			// to allow the agent to be updated.
-			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
+			if err := m.fetchClient(ctx, clientURLs, defaultRetryArgs()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
-					"client_url":  m.clientURL,
+					"distro":      m.distroID,
 					"client_path": m.clientPath,
 				}))
 				return true, err
@@ -432,14 +452,15 @@ func (m *monitor) run(ctx context.Context) {
 
 			grip.InfoWhen(sometimes.Fifth(), message.Fields{
 				"message":     "starting agent on host via Jasper",
-				"client_url":  m.clientURL,
 				"client_path": m.clientPath,
+				"distro":      m.distroID,
 				"jasper_port": m.jasperPort,
 			})
 			if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {
 				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
 				return true, err
 			}
+
 			return false, nil
 		}, defaultRetryArgs()); err != nil {
 			if ctx.Err() != nil {

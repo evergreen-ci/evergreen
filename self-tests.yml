@@ -153,48 +153,6 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
-  - &run-smoke-test-with-client-url
-    name: smoke
-    commands:
-      - command: timeout.update
-        params:
-          exec_timeout_secs: 900
-          timeout_secs: 900
-      - func: get-project
-      - func: run-make
-        vars:
-          target: get-go-imports
-      - func: run-make
-        vars: { target: "cli" }
-      - command: s3.put
-        type: system
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: gopath/src/github.com/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
-          remote_file: evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
-          bucket: mciuploads
-          content_type: application/octet-stream
-          permissions: public-read
-          display_name: evergreen
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "set-var" }
-      - func: run-make
-        vars: { target: "set-project-var" }
-      - func: run-make
-        vars: { target: "load-smoke-data" }
-      - command: subprocess.exec
-        params:
-          silent: true
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          command: bash scripts/setup-smoke-config.sh ${github_token}
-      - func: run-make
-        vars:
-          target: set-smoke-vars
-      - func: run-make
-        vars:
-          target: "${task_name}"
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint
@@ -242,7 +200,6 @@ functions:
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
-        CLIENT_URL: https://mciuploads.s3.amazonaws.com/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
         DEBUG_ENABLED: ${debug}
         DISABLE_COVERAGE: ${disable_coverage}
         DOCKER_HOST: ${docker_host}
@@ -371,6 +328,7 @@ functions:
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
 
+
 #######################################
 #                Tasks                #
 #######################################
@@ -409,7 +367,7 @@ tasks:
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
-  - <<: *run-smoke-test-with-client-url
+  - <<: *run-smoke-test
     name: smoke-test-agent-monitor
     tags: ["smoke"]
   - <<: *run-generate-lint
@@ -586,11 +544,10 @@ tasks:
         vars: { target: "test-repotracker" }
   - name: upload-clis
     patchable: false
+    depends_on:
+        - name: dist
+          status: success
     commands:
-      - func: get-project
-      - func: run-make
-        vars:
-          target: get-go-imports
       - command: subprocess.exec
         params:
           binary: make
@@ -614,6 +571,17 @@ tasks:
       - func: verify-agent-version-update
 
 
+task_groups:
+  - name: dist-and-upload-clis
+    max_hosts: 1
+    tasks:
+      - dist
+      - upload-clis
+
+
+#######################################
+#            Buildvariants            #
+#######################################
 buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -630,9 +598,8 @@ buildvariants:
       legacyGobin: /opt/golang/go1.9/bin/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
-      - name: "dist"
+      - name: "dist-and-upload-clis"
       - name: "dist-staging"
-      - name: "upload-clis"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"

@@ -396,7 +396,8 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable)
+			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
+				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -1710,8 +1711,7 @@ func (t *Task) Archive() error {
 	archiveTask.Archived = true
 	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"ticket":          "EVG-12942",
+		grip.Error(message.WrapError(err, message.Fields{
 			"archive_task_id": archiveTask.Id,
 			"old_task_id":     archiveTask.OldTaskId,
 			"execution":       t.Execution,
@@ -2455,6 +2455,16 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
+func getBsonFailureStatuses() bson.A {
+	failureStatusDocs := bson.A{}
+
+	for _, status := range evergreen.TaskFailureStatuses {
+		failureStatusDocs = append(failureStatusDocs, bson.M{"$eq": bson.A{"$" + DisplayStatusKey, status}})
+	}
+
+	return failureStatusDocs
+}
+
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
@@ -2484,15 +2494,48 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		countPipeline = append(countPipeline, stage)
 	}
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
-	sorters := bson.D{}
+
 	if len(sortBy) > 0 {
-		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
+		if sortBy == DisplayStatusKey {
+			// setting field `first` onto tasks with a failed status allows us to sort all failed statuses to top of query and then sort alphabetically
+			pipeline = append(pipeline, bson.M{
+				"$addFields": bson.M{
+					"first": bson.M{
+						"$cond": bson.M{
+							"if": bson.M{
+								"$or": getBsonFailureStatuses(),
+							},
+							"then": "a",
+							"else": "b",
+						},
+					},
+				},
+			})
+			// ordered sort with `first` at beginning of sort to sort all failure statuses to the top
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.D{
+					bson.E{Key: "first", Value: sortDir},
+					bson.E{Key: DisplayStatusKey, Value: sortDir},
+					bson.E{Key: IdKey, Value: 1},
+				},
+			})
+		} else {
+			pipeline = append(pipeline, bson.M{
+				"$sort": bson.D{
+					bson.E{Key: sortBy, Value: sortDir},
+					bson.E{Key: IdKey, Value: 1},
+				},
+			})
+		}
+	} else {
+		pipeline = append(pipeline, bson.M{
+			"$sort": bson.D{
+				// sort by _id to ensure a consistent sort order
+				bson.E{Key: IdKey, Value: 1},
+			},
+		})
 	}
-	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
-	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
-	pipeline = append(pipeline, bson.M{
-		"$sort": sorters,
-	})
+
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$skip": page * limit,

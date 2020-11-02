@@ -57,8 +57,7 @@ func smokeStartEvergreen() cli.Command {
 		agentFlagName        = "agent"
 		webFlagName          = "web"
 		agentMonitorFlagName = "monitor"
-		// The URL of the client for the monitor.
-		clientURLFlagName = "client_url"
+		distroIDFlagName     = "distro"
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":9090"
@@ -104,8 +103,8 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "start an evergreen agent monitor",
 			},
 			cli.StringFlag{
-				Name:  clientURLFlagName,
-				Usage: "the URL of the client for the monitor to fetch",
+				Name:  distroIDFlagName,
+				Usage: "the distro ID of the agent monitor",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
@@ -115,7 +114,7 @@ func smokeStartEvergreen() cli.Command {
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
-			clientURL := c.String(clientURLFlagName)
+			distroID := c.String(distroIDFlagName)
 
 			exit := make(chan error, 3)
 
@@ -124,6 +123,7 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "error running web service")
 				}
 			}
+			apiServerURL := smokeUrlPrefix + apiPort
 
 			if startAgent {
 				err := smokeRunBinary(exit, "agent",
@@ -132,7 +132,7 @@ func smokeStartEvergreen() cli.Command {
 					"agent",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
-					"--api_server", smokeUrlPrefix+apiPort,
+					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
 					"--working_directory", wd)
@@ -141,8 +141,8 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "error running agent")
 				}
 			} else if startAgentMonitor {
-				if clientURL == "" {
-					return errors.New("client URL cannot be empty when starting monitor")
+				if distroID == "" {
+					return errors.New("distro ID URL cannot be empty when starting agent monitor")
 				}
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
@@ -178,12 +178,12 @@ func smokeStartEvergreen() cli.Command {
 					"agent",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
-					"--api_server", smokeUrlPrefix+apiPort,
+					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
 					"--working_directory", wd,
 					"monitor",
-					"--client_url", clientURL,
+					"--distro", distroID,
 					"--client_path", clientFile.Name(),
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--port", strconv.Itoa(monitorPort),

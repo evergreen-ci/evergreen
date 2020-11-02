@@ -1592,3 +1592,61 @@ func (s *distroExecuteSuite) TestRunNonexistentDistro() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for GET /rest/v2/distros/{distro_id}/client_urls
+
+type distroClientURLsGetSuite struct {
+	sc     *data.MockConnector
+	rh     *distroClientURLsGetHandler
+	env    evergreen.Environment
+	cancel context.CancelFunc
+
+	suite.Suite
+}
+
+func TestDistroClientURLsGetSuite(t *testing.T) {
+	suite.Run(t, new(distroClientURLsGetSuite))
+}
+
+func (s *distroClientURLsGetSuite) SetupTest() {
+	d := distro.Distro{Id: "distroID"}
+	s.sc = &data.MockConnector{
+		MockDistroConnector: data.MockDistroConnector{
+			CachedDistros: []*distro.Distro{&d},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	env := &mock.Environment{}
+	s.env = env
+	s.Require().NoError(env.Configure(ctx))
+	h := makeGetDistroClientURLs(s.sc, s.env)
+	rh, ok := h.(*distroClientURLsGetHandler)
+	s.Require().True(ok)
+	s.rh = rh
+}
+
+func (s *distroClientURLsGetSuite) TearDownTest() {
+	s.cancel()
+}
+
+func (s *distroClientURLsGetSuite) TestRunWithDistroID() {
+	s.rh.distroID = "distroID"
+	ctx, _ := s.env.Context()
+	resp := s.rh.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
+	s.Require().NotNil(resp.Data())
+	urls := resp.Data().([]string)
+	s.NotEmpty(urls)
+}
+
+func (s *distroClientURLsGetSuite) TestRunNonexistentDistro() {
+	ctx := context.Background()
+	s.rh.distroID = "nonexistent"
+
+	resp := s.rh.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusNotFound, resp.Status())
+}

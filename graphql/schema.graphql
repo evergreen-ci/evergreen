@@ -40,6 +40,7 @@ type Query {
   userSettings: UserSettings
   spruceConfig: SpruceConfig
   awsRegions: [String!]
+  subnetAvailabilityZones: [String!]!
   userConfig: UserConfig
   clientConfig: ClientConfig
   host(hostId: String!): Host
@@ -123,6 +124,7 @@ enum TaskSortCategory {
 }
 
 enum TestSortCategory {
+  BASE_STATUS
   STATUS
   DURATION
   TEST_NAME
@@ -500,6 +502,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   status: String!
+  baseStatus: String
   testFile: String!
   logs: TestLog!
   exitCode: Int
@@ -739,6 +742,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  providers: CloudProviderConfig
 }
 
 type JiraConfig {
@@ -747,6 +751,14 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
 }
 
 type HostEvents {

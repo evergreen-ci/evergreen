@@ -856,3 +856,46 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		HostIDs []string `json:"host_ids"`
 	}{HostIDs: hostIDs})
 }
+
+// GET /rest/v2/distros/{distro_id}/client_urls
+
+type distroClientURLsGetHandler struct {
+	sc       data.Connector
+	env      evergreen.Environment
+	distroID string
+}
+
+func makeGetDistroClientURLs(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &distroClientURLsGetHandler{
+		env: env,
+		sc:  sc,
+	}
+}
+
+func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
+	return &distroClientURLsGetHandler{
+		env: rh.env,
+		sc:  rh.sc,
+	}
+}
+
+func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	rh.distroID = gimlet.GetVars(r)["distro_id"]
+	return nil
+}
+
+func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := rh.sc.FindDistroById(rh.distroID)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding distro '%s'", rh.distroID))
+	}
+
+	var urls []string
+	settings := rh.env.Settings()
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+		urls = append(urls, d.S3ClientURL(settings))
+	}
+	urls = append(urls, d.ClientURL(settings))
+
+	return gimlet.NewJSONResponse(urls)
+}

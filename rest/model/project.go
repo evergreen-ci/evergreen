@@ -257,8 +257,10 @@ type APIProjectRef struct {
 	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache,omitempty"`
 	Admins                      []*string            `json:"admins"`
 	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
-	GitTagAuthorizedUsers       []*string            `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
-	DeleteGitTagAuthorizedUsers []*string            `bson:"delete_git_tag_authorized_users,omitempty" json:"delete_git_tag_authorized_users,omitempty"`
+	GitTagAuthorizedUsers       []*string            `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	DeleteGitTagAuthorizedUsers []*string            `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
+	GitTagAuthorizedTeams       []*string            `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
 	NotifyOnBuildFailure        bool                 `json:"notify_on_failure"`
 	Tags                        []*string            `json:"tags"`
 
@@ -326,6 +328,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		SpawnHostScriptPath:   FromStringPtr(p.SpawnHostScriptPath),
 		Admins:                FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
+		GitTagAuthorizedTeams: FromStringPtrSlice(p.GitTagAuthorizedTeams),
 		Tags:                  FromStringPtrSlice(p.Tags),
 	}
 
@@ -406,6 +409,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.SpawnHostScriptPath = ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.Admins = ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
+	p.GitTagAuthorizedTeams = ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.Tags = ToStringPtrSlice(projectRef.Tags)
 
 	// Copy triggers

@@ -102,11 +102,10 @@ func TestChecksService_CreateCheckRun(t *testing.T) {
 	})
 	startedAt, _ := time.Parse(time.RFC3339, "2018-05-04T01:14:52Z")
 	checkRunOpt := CreateCheckRunOptions{
-		HeadBranch: "master",
-		Name:       "testCreateCheckRun",
-		HeadSHA:    "deadbeef",
-		Status:     String("in_progress"),
-		StartedAt:  &Timestamp{startedAt},
+		Name:      "testCreateCheckRun",
+		HeadSHA:   "deadbeef",
+		Status:    String("in_progress"),
+		StartedAt: &Timestamp{startedAt},
 		Output: &CheckRunOutput{
 			Title:   String("Mighty test report"),
 			Summary: String(""),
@@ -148,7 +147,6 @@ func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
 		})
 		fmt.Fprint(w, `[{
 		                           "path": "README.md",
-		                           "blob_href": "https://github.com/octocat/Hello-World/blob/837db83be4137ca555d9a5598d0a1ea2987ecfee/README.md",
 		                           "start_line": 2,
 		                           "end_line": 2,
 		                           "start_column": 1,
@@ -167,7 +165,6 @@ func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
 
 	want := []*CheckRunAnnotation{{
 		Path:            String("README.md"),
-		BlobHRef:        String("https://github.com/octocat/Hello-World/blob/837db83be4137ca555d9a5598d0a1ea2987ecfee/README.md"),
 		StartLine:       Int(2),
 		EndLine:         Int(2),
 		StartColumn:     Int(1),
@@ -202,7 +199,6 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 	})
 	startedAt, _ := time.Parse(time.RFC3339, "2018-05-04T01:14:52Z")
 	updateCheckRunOpt := UpdateCheckRunOptions{
-		HeadBranch:  String("master"),
 		Name:        "testUpdateCheckRun",
 		HeadSHA:     String("deadbeef"),
 		Status:      String("completed"),
@@ -506,7 +502,6 @@ func Test_CheckRunMarshal(t *testing.T) {
 			Annotations: []*CheckRunAnnotation{
 				{
 					AnnotationLevel: String("a"),
-					BlobHRef:        String("b"),
 					EndLine:         Int(1),
 					Message:         String("m"),
 					Path:            String("p"),
@@ -598,7 +593,6 @@ func Test_CheckRunMarshal(t *testing.T) {
 			"annotations": [
 				{
 					"path": "p",
-					"blob_href": "b",
 					"start_line": 1,
 					"end_line": 1,
 					"annotation_level": "a",

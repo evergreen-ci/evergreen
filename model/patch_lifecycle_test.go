@@ -556,35 +556,6 @@ func TestIncludeDependencies(t *testing.T) {
 		So(pairs, ShouldHaveLength, 2)
 		So(initDep, ShouldBeIn, pairs)
 	})
-	Convey("With a push task", t, func() {
-		project := &Project{
-			Tasks: []ProjectTask{
-				{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "push", Variant: "*"}}},
-				{Name: "push"},
-			},
-			BuildVariants: []BuildVariant{
-				{Name: "bv1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}}},
-				{Name: "bv2", Tasks: []BuildVariantTaskUnit{{Name: "push"}}},
-			},
-		}
-
-		// assert that the task/variant we're building on does exist
-		bvt := project.FindTaskForVariant("t1", "bv1")
-		So(bvt, ShouldNotBeNil)
-		So(bvt.DependsOn, ShouldHaveLength, 1)
-
-		pairs, _ := IncludeDependencies(project, []TVPair{{"bv1", "t1"}}, evergreen.PatchVersionRequester)
-		So(pairs, ShouldHaveLength, 1)
-
-		pairs, _ = IncludeDependencies(project, []TVPair{{"bv1", "t1"}}, evergreen.GithubPRRequester)
-		So(pairs, ShouldHaveLength, 1)
-
-		pairs, _ = IncludeDependencies(project, []TVPair{{"bv1", "t1"}}, evergreen.RepotrackerVersionRequester)
-		So(pairs, ShouldHaveLength, 2)
-
-		pairs, _ = IncludeDependencies(project, []TVPair{{"bv1", "t1"}}, evergreen.GitTagRequester)
-		So(pairs, ShouldHaveLength, 2)
-	})
 }
 
 func TestVariantTasksToTVPairs(t *testing.T) {

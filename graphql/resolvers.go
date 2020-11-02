@@ -250,10 +250,12 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, err
 	}
-	volume := GetVolumeFromSpawnVolumeInput(spawnVolumeInput)
-	success, _, gqlErr, err, vol := RequestNewVolume(ctx, volume)
+	success, _, gqlErr, err, vol := RequestNewVolume(ctx, GetVolumeFromSpawnVolumeInput(spawnVolumeInput))
 	if err != nil {
 		return false, gqlErr.Send(ctx, err.Error())
+	}
+	if vol == nil {
+		return false, InternalServerError.Send(ctx, "Unable to create volume")
 	}
 	errorTemplate := "Volume %s has been created but an error occurred."
 	var additionalOptions restModel.VolumeModifyOptions
@@ -268,9 +270,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
-	err = applyVolumeOptions(ctx, volume, additionalOptions)
+	err = applyVolumeOptions(ctx, *vol, additionalOptions)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
@@ -1025,6 +1027,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	}
 	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	taskResults := ConvertDBTasksToGqlTasks(tasks, baseTaskStatuses)
+
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
 			if sortDirParam == 1 {
@@ -1033,6 +1036,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
 		})
 	}
+
 	if len(baseStatuses) > 0 {
 		// tasks cannot be filtered by base status through a DB query. tasks are filtered by base status here.
 		allTasks, err := task.Find(task.ByVersion(patchID))
@@ -1046,6 +1050,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			count = len(FilterTasksByBaseStatuses(allTasksGql, baseStatuses, baseTaskStatuses))
 		}
 	}
+
 	patchTasks := PatchTasks{
 		Count: count,
 		Tasks: taskResults,
@@ -1057,6 +1062,18 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
+	}
+
+	baseTestStatusMap := make(map[string]string)
+	if baseTask != nil {
+		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, 0)
+		for _, t := range baseTestResults {
+			baseTestStatusMap[t.TestFile] = t.Status
+		}
 	}
 
 	sortBy := ""
@@ -1122,6 +1139,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
+		baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
+		apiTest.BaseStatus = &baseTestStatus
 		testPointers = append(testPointers, &apiTest)
 	}
 
@@ -1419,6 +1438,14 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
+}
+
+func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, error) {
+	zones := []string{}
+	for _, subnet := range evergreen.GetEnvironment().Settings().Providers.AWS.Subnets {
+		zones = append(zones, subnet.AZ)
+	}
+	return zones, nil
 }
 
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {

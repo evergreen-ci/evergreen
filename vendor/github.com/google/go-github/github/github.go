@@ -58,17 +58,11 @@ const (
 	// https://developer.github.com/changes/2018-10-16-deployments-environments-states-and-auto-inactive-updates/
 	mediaTypeExpandDeploymentStatusPreview = "application/vnd.github.flash-preview+json"
 
-	// https://developer.github.com/changes/2016-02-19-source-import-preview-api/
-	mediaTypeImportPreview = "application/vnd.github.barred-rock-preview"
-
 	// https://developer.github.com/changes/2016-05-12-reactions-api-preview/
 	mediaTypeReactionsPreview = "application/vnd.github.squirrel-girl-preview"
 
 	// https://developer.github.com/changes/2016-05-23-timeline-preview-api/
 	mediaTypeTimelinePreview = "application/vnd.github.mockingbird-preview+json"
-
-	// https://developer.github.com/changes/2016-07-06-github-pages-preiew-api/
-	mediaTypePagesPreview = "application/vnd.github.mister-fantastic-preview+json"
 
 	// https://developer.github.com/changes/2016-09-14-projects-api/
 	mediaTypeProjectsPreview = "application/vnd.github.inertia-preview+json"
@@ -91,26 +85,8 @@ const (
 	// https://developer.github.com/changes/2017-07-17-update-topics-on-repositories/
 	mediaTypeTopicsPreview = "application/vnd.github.mercy-preview+json"
 
-	// https://developer.github.com/changes/2017-08-30-preview-nested-teams/
-	mediaTypeNestedTeamsPreview = "application/vnd.github.hellcat-preview+json"
-
-	// https://developer.github.com/changes/2017-11-09-repository-transfer-api-preview/
-	mediaTypeRepositoryTransferPreview = "application/vnd.github.nightshade-preview+json"
-
-	// https://developer.github.com/changes/2018-01-25-organization-invitation-api-preview/
-	mediaTypeOrganizationInvitationPreview = "application/vnd.github.dazzler-preview+json"
-
 	// https://developer.github.com/changes/2018-03-16-protected-branches-required-approving-reviews/
 	mediaTypeRequiredApprovingReviewsPreview = "application/vnd.github.luke-cage-preview+json"
-
-	// https://developer.github.com/changes/2018-02-22-label-description-search-preview/
-	mediaTypeLabelDescriptionSearchPreview = "application/vnd.github.symmetra-preview+json"
-
-	// https://developer.github.com/changes/2018-02-07-team-discussions-api/
-	mediaTypeTeamDiscussionsPreview = "application/vnd.github.echo-preview+json"
-
-	// https://developer.github.com/changes/2018-03-21-hovercard-api-preview/
-	mediaTypeHovercardPreview = "application/vnd.github.hagar-preview+json"
 
 	// https://developer.github.com/changes/2018-01-10-lock-reason-api-preview/
 	mediaTypeLockReasonPreview = "application/vnd.github.sailor-v-preview+json"
@@ -130,9 +106,6 @@ const (
 	// https://developer.github.com/changes/2018-12-18-interactions-preview/
 	mediaTypeInteractionRestrictionsPreview = "application/vnd.github.sombra-preview+json"
 
-	// https://developer.github.com/changes/2019-02-14-draft-pull-requests/
-	mediaTypeDraftPreview = "application/vnd.github.shadow-cat-preview+json"
-
 	// https://developer.github.com/changes/2019-03-14-enabling-disabling-pages/
 	mediaTypeEnablePagesAPIPreview = "application/vnd.github.switcheroo-preview+json"
 
@@ -148,14 +121,20 @@ const (
 	// https://developer.github.com/changes/2019-04-11-pulls-branches-for-commit/
 	mediaTypeListPullsOrBranchesForCommitPreview = "application/vnd.github.groot-preview+json"
 
-	// https://developer.github.com/changes/2019-06-12-team-sync/
-	mediaTypeTeamSyncPreview = "application/vnd.github.team-sync-preview+json"
-
 	// https://developer.github.com/v3/previews/#repository-creation-permissions
 	mediaTypeMemberAllowedRepoCreationTypePreview = "application/vnd.github.surtur-preview+json"
 
 	// https://developer.github.com/v3/previews/#create-and-use-repository-templates
 	mediaTypeRepositoryTemplatePreview = "application/vnd.github.baptiste-preview+json"
+
+	// https://developer.github.com/changes/2019-10-03-multi-line-comments/
+	mediaTypeMultiLineCommentsPreview = "application/vnd.github.comfort-fade-preview+json"
+
+	// https://developer.github.com/changes/2019-11-05-deprecated-passwords-and-authorizations-api/
+	mediaTypeOAuthAppPreview = "application/vnd.github.doctor-strange-preview+json"
+
+	// https://developer.github.com/changes/2019-12-03-internal-visibility-changes/
+	mediaTypeRepositoryVisibilityPreview = "application/vnd.github.nebula-preview+json"
 )
 
 // A Client manages communication with the GitHub API.
@@ -180,11 +159,13 @@ type Client struct {
 	common service // Reuse a single struct instead of allocating one for each service on the heap.
 
 	// Services used for talking to different parts of the GitHub API.
+	Actions        *ActionsService
 	Activity       *ActivityService
 	Admin          *AdminService
 	Apps           *AppsService
 	Authorizations *AuthorizationsService
 	Checks         *ChecksService
+	CodeScanning   *CodeScanningService
 	Gists          *GistsService
 	Git            *GitService
 	Gitignores     *GitignoresService
@@ -208,10 +189,20 @@ type service struct {
 }
 
 // ListOptions specifies the optional parameters to various List methods that
-// support pagination.
+// support offset pagination.
 type ListOptions struct {
 	// For paginated result sets, page of results to retrieve.
 	Page int `url:"page,omitempty"`
+
+	// For paginated result sets, the number of results to include per page.
+	PerPage int `url:"per_page,omitempty"`
+}
+
+// ListCursorOptions specifies the optional parameters to various List methods that
+// support cursor pagination.
+type ListCursorOptions struct {
+	// For paginated result sets, page of results to retrieve.
+	Page string `url:"page,omitempty"`
 
 	// For paginated result sets, the number of results to include per page.
 	PerPage int `url:"per_page,omitempty"`
@@ -240,10 +231,10 @@ type RawOptions struct {
 	Type RawType
 }
 
-// addOptions adds the parameters in opt as URL query parameters to s. opt
+// addOptions adds the parameters in opts as URL query parameters to s. opts
 // must be a struct whose fields may contain "url" tags.
-func addOptions(s string, opt interface{}) (string, error) {
-	v := reflect.ValueOf(opt)
+func addOptions(s string, opts interface{}) (string, error) {
+	v := reflect.ValueOf(opts)
 	if v.Kind() == reflect.Ptr && v.IsNil() {
 		return s, nil
 	}
@@ -253,7 +244,7 @@ func addOptions(s string, opt interface{}) (string, error) {
 		return s, err
 	}
 
-	qs, err := query.Values(opt)
+	qs, err := query.Values(opts)
 	if err != nil {
 		return s, err
 	}
@@ -275,11 +266,13 @@ func NewClient(httpClient *http.Client) *Client {
 
 	c := &Client{client: httpClient, BaseURL: baseURL, UserAgent: userAgent, UploadURL: uploadURL}
 	c.common.client = c
+	c.Actions = (*ActionsService)(&c.common)
 	c.Activity = (*ActivityService)(&c.common)
 	c.Admin = (*AdminService)(&c.common)
 	c.Apps = (*AppsService)(&c.common)
 	c.Authorizations = (*AuthorizationsService)(&c.common)
 	c.Checks = (*ChecksService)(&c.common)
+	c.CodeScanning = (*CodeScanningService)(&c.common)
 	c.Gists = (*GistsService)(&c.common)
 	c.Git = (*GitService)(&c.common)
 	c.Gitignores = (*GitignoresService)(&c.common)
@@ -300,13 +293,18 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // NewEnterpriseClient returns a new GitHub API client with provided
-// base URL and upload URL (often the same URL).
-// If either URL does not have a trailing slash, one is added automatically.
+// base URL and upload URL (often is your GitHub Enterprise hostname).
+// If the base URL does not have the suffix "/api/v3/", it will be added automatically.
+// If the upload URL does not have the suffix "/api/uploads", it will be added automatically.
 // If a nil httpClient is provided, a new http.Client will be used.
 //
 // Note that NewEnterpriseClient is a convenience helper only;
 // its behavior is equivalent to using NewClient, followed by setting
 // the BaseURL and UploadURL fields.
+//
+// Another important thing is that by default, the GitHub Enterprise URL format
+// should be http(s)://[hostname]/api/v3/ or you will always receive the 406 status code.
+// The upload URL format should be http(s)://[hostname]/api/uploads/.
 func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*Client, error) {
 	baseEndpoint, err := url.Parse(baseURL)
 	if err != nil {
@@ -315,6 +313,9 @@ func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*C
 	if !strings.HasSuffix(baseEndpoint.Path, "/") {
 		baseEndpoint.Path += "/"
 	}
+	if !strings.HasSuffix(baseEndpoint.Path, "/api/v3/") {
+		baseEndpoint.Path += "api/v3/"
+	}
 
 	uploadEndpoint, err := url.Parse(uploadURL)
 	if err != nil {
@@ -322,6 +323,9 @@ func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*C
 	}
 	if !strings.HasSuffix(uploadEndpoint.Path, "/") {
 		uploadEndpoint.Path += "/"
+	}
+	if !strings.HasSuffix(uploadEndpoint.Path, "/api/uploads/") {
+		uploadEndpoint.Path += "api/uploads/"
 	}
 
 	c := NewClient(httpClient)
@@ -346,7 +350,7 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 
 	var buf io.ReadWriter
 	if body != nil {
-		buf = new(bytes.Buffer)
+		buf = &bytes.Buffer{}
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(false)
 		err := enc.Encode(body)
@@ -407,11 +411,26 @@ type Response struct {
 	// results. Any or all of these may be set to the zero value for
 	// responses that are not part of a paginated set, or for which there
 	// are no additional pages.
-
+	//
+	// These fields support what is called "offset pagination" and should
+	// be used with the ListOptions struct.
 	NextPage  int
 	PrevPage  int
 	FirstPage int
 	LastPage  int
+
+	// Additionally, some APIs support "cursor pagination" instead of offset.
+	// This means that a token points directly to the next record which
+	// can lead to O(1) performance compared to O(n) performance provided
+	// by offset pagination.
+	//
+	// For APIs that support cursor pagination (such as
+	// TeamsService.ListIDPGroupsInOrganization), the following field
+	// will be populated to point to the next page.
+	//
+	// To use this token, set ListCursorOptions.Page to this value before
+	// calling the endpoint again.
+	NextPageToken string
 
 	// Explicitly specify the Rate type so Rate's String() receiver doesn't
 	// propagate to Response.
@@ -457,7 +476,9 @@ func (r *Response) populatePageValues() {
 			for _, segment := range segments[1:] {
 				switch strings.TrimSpace(segment) {
 				case `rel="next"`:
-					r.NextPage, _ = strconv.Atoi(page)
+					if r.NextPage, err = strconv.Atoi(page); err != nil {
+						r.NextPageToken = page
+					}
 				case `rel="prev"`:
 					r.PrevPage, _ = strconv.Atoi(page)
 				case `rel="first"`:
@@ -495,9 +516,12 @@ func parseRate(r *http.Response) Rate {
 // first decode it. If rate limit is exceeded and reset time is in the future,
 // Do returns *RateLimitError immediately without making a network API call.
 //
-// The provided ctx must be non-nil. If it is canceled or times out,
+// The provided ctx must be non-nil, if it is nil an error is returned. If it is canceled or times out,
 // ctx.Err() will be returned.
 func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+	if ctx == nil {
+		return nil, errors.New("context must be non-nil")
+	}
 	req = withContext(ctx, req)
 
 	rateLimitCategory := category(req.URL.Path)
@@ -639,7 +663,7 @@ type TwoFactorAuthError ErrorResponse
 func (r *TwoFactorAuthError) Error() string { return (*ErrorResponse)(r).Error() }
 
 // RateLimitError occurs when GitHub returns 403 Forbidden response with a rate limit
-// remaining value of 0, and error message starts with "API rate limit exceeded for ".
+// remaining value of 0.
 type RateLimitError struct {
 	Rate     Rate           // Rate specifies last known rate limit for the client
 	Response *http.Response // HTTP response that caused this error
@@ -715,6 +739,10 @@ These are the possible validation error codes:
         some resources return this (e.g. github.User.CreateKey()), additional
         information is set in the Message field of the Error
 
+GitHub error responses structure are often undocumented and inconsistent.
+Sometimes error is just a simple string (Issue #540).
+In such cases, Message represents an error message as a workaround.
+
 GitHub API docs: https://developer.github.com/v3/#client-errors
 */
 type Error struct {
@@ -729,12 +757,19 @@ func (e *Error) Error() string {
 		e.Code, e.Field, e.Resource)
 }
 
+func (e *Error) UnmarshalJSON(data []byte) error {
+	type aliasError Error // avoid infinite recursion by using type alias.
+	if err := json.Unmarshal(data, (*aliasError)(e)); err != nil {
+		return json.Unmarshal(data, &e.Message) // data can be json string.
+	}
+	return nil
+}
+
 // CheckResponse checks the API response for errors, and returns them if
 // present. A response is considered an error if it has a status code outside
 // the 200 range or equal to 202 Accepted.
-// API error responses are expected to have either no response
-// body, or a JSON response body that maps to ErrorResponse. Any other
-// response body will be silently ignored.
+// API error responses are expected to have response
+// body, and a JSON response body that maps to ErrorResponse.
 //
 // The error type will be *RateLimitError for rate limit exceeded errors,
 // *AcceptedError for 202 Accepted status codes,
@@ -751,10 +786,14 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
+	// Re-populate error response body because GitHub error responses are often
+	// undocumented and inconsistent.
+	// Issue #1136, #540.
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 	switch {
 	case r.StatusCode == http.StatusUnauthorized && strings.HasPrefix(r.Header.Get(headerOTP), "required"):
 		return (*TwoFactorAuthError)(errorResponse)
-	case r.StatusCode == http.StatusForbidden && r.Header.Get(headerRateRemaining) == "0" && strings.HasPrefix(errorResponse.Message, "API rate limit exceeded for "):
+	case r.StatusCode == http.StatusForbidden && r.Header.Get(headerRateRemaining) == "0":
 		return &RateLimitError{
 			Rate:     parseRate(r),
 			Response: errorResponse.Response,
@@ -883,6 +922,24 @@ func (c *Client) RateLimits(ctx context.Context) (*RateLimits, *Response, error)
 	return response.Resources, resp, nil
 }
 
+func setCredentialsAsHeaders(req *http.Request, id, secret string) *http.Request {
+	// To set extra headers, we must make a copy of the Request so
+	// that we don't modify the Request we were given. This is required by the
+	// specification of http.RoundTripper.
+	//
+	// Since we are going to modify only req.Header here, we only need a deep copy
+	// of req.Header.
+	convertedRequest := new(http.Request)
+	*convertedRequest = *req
+	convertedRequest.Header = make(http.Header, len(req.Header))
+
+	for k, s := range req.Header {
+		convertedRequest.Header[k] = append([]string(nil), s...)
+	}
+	convertedRequest.SetBasicAuth(id, secret)
+	return convertedRequest
+}
+
 /*
 UnauthenticatedRateLimitedTransport allows you to make unauthenticated calls
 that need to use a higher rate limit associated with your OAuth application.
@@ -893,8 +950,8 @@ that need to use a higher rate limit associated with your OAuth application.
 	}
 	client := github.NewClient(t.Client())
 
-This will append the querystring params client_id=xxx&client_secret=yyy to all
-requests.
+This will add the client id and secret as a base64-encoded string in the format
+ClientID:ClientSecret and apply it as an "Authorization": "Basic" header.
 
 See https://developer.github.com/v3/#unauthenticated-rate-limited-requests for
 more information.
@@ -923,22 +980,7 @@ func (t *UnauthenticatedRateLimitedTransport) RoundTrip(req *http.Request) (*htt
 		return nil, errors.New("t.ClientSecret is empty")
 	}
 
-	// To set extra querystring params, we must make a copy of the Request so
-	// that we don't modify the Request we were given. This is required by the
-	// specification of http.RoundTripper.
-	//
-	// Since we are going to modify only req.URL here, we only need a deep copy
-	// of req.URL.
-	req2 := new(http.Request)
-	*req2 = *req
-	req2.URL = new(url.URL)
-	*req2.URL = *req.URL
-
-	q := req2.URL.Query()
-	q.Set("client_id", t.ClientID)
-	q.Set("client_secret", t.ClientSecret)
-	req2.URL.RawQuery = q.Encode()
-
+	req2 := setCredentialsAsHeaders(req, t.ClientID, t.ClientSecret)
 	// Make the HTTP request.
 	return t.transport().RoundTrip(req2)
 }
@@ -972,20 +1014,7 @@ type BasicAuthTransport struct {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *BasicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// To set extra headers, we must make a copy of the Request so
-	// that we don't modify the Request we were given. This is required by the
-	// specification of http.RoundTripper.
-	//
-	// Since we are going to modify only req.Header here, we only need a deep copy
-	// of req.Header.
-	req2 := new(http.Request)
-	*req2 = *req
-	req2.Header = make(http.Header, len(req.Header))
-	for k, s := range req.Header {
-		req2.Header[k] = append([]string(nil), s...)
-	}
-
-	req2.SetBasicAuth(t.Username, t.Password)
+	req2 := setCredentialsAsHeaders(req, t.Username, t.Password)
 	if t.OTP != "" {
 		req2.Header.Set(headerOTP, t.OTP)
 	}

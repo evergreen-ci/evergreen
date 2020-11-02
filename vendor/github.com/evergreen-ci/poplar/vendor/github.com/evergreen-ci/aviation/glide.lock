@@ -1,0 +1,15 @@
+hash: 325780044ba7d030475705741ab209a7c1ec917ebef1df199a5eb8dace79a4ee
+updated: 2019-03-11T13:18:59.695228-04:00
+imports:
+- name: github.com/evergreen-ci/gimlet
+  version: 73add5f53c69eec63e51ce885177067f6d25bd10
+- name: github.com/mongodb/grip
+  version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
+- name: github.com/pkg/errors
+  version: 27936f6d90f9c8e1145f11ed52ffffbfdb9e0af7
+- name: google.golang.org/grpc
+  version: 77ce7bc228475a8f28dc50a9d74ac4994fc019e7
+- name: github.com/stretchr/testify
+  version: 34c6fa2dc70986bccbbffcc6130f6920a924b075
+- name: github.com/jpillora/backoff
+  version: 3050d21c67d7c46b07ca1b5e1be0b26669c8d04c

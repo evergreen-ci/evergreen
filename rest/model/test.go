@@ -13,15 +13,16 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	Id        *string    `json:"test_id"`
-	TaskId    *string    `json:"task_id"`
-	Status    *string    `json:"status"`
-	TestFile  *string    `json:"test_file"`
-	Logs      TestLogs   `json:"logs"`
-	ExitCode  int        `json:"exit_code"`
-	StartTime *time.Time `json:"start_time"`
-	EndTime   *time.Time `json:"end_time"`
-	Duration  float64    `json:"duration"`
+	Id         *string    `json:"test_id"`
+	TaskId     *string    `json:"task_id"`
+	Status     *string    `json:"status"`
+	BaseStatus *string    `json:"base_status"`
+	TestFile   *string    `json:"test_file"`
+	Logs       TestLogs   `json:"logs"`
+	ExitCode   int        `json:"exit_code"`
+	StartTime  *time.Time `json:"start_time"`
+	EndTime    *time.Time `json:"end_time"`
+	Duration   float64    `json:"duration"`
 }
 
 // TestLogs is a struct for storing the information about logs that will

@@ -26,36 +26,37 @@ type IssuesService service
 // this is an issue, and if PullRequestLinks is not nil, this is a pull request.
 // The IsPullRequest helper method can be used to check that.
 type Issue struct {
-	ID               *int64            `json:"id,omitempty"`
-	Number           *int              `json:"number,omitempty"`
-	State            *string           `json:"state,omitempty"`
-	Locked           *bool             `json:"locked,omitempty"`
-	Title            *string           `json:"title,omitempty"`
-	Body             *string           `json:"body,omitempty"`
-	User             *User             `json:"user,omitempty"`
-	Labels           []Label           `json:"labels,omitempty"`
-	Assignee         *User             `json:"assignee,omitempty"`
-	Comments         *int              `json:"comments,omitempty"`
-	ClosedAt         *time.Time        `json:"closed_at,omitempty"`
-	CreatedAt        *time.Time        `json:"created_at,omitempty"`
-	UpdatedAt        *time.Time        `json:"updated_at,omitempty"`
-	ClosedBy         *User             `json:"closed_by,omitempty"`
-	URL              *string           `json:"url,omitempty"`
-	HTMLURL          *string           `json:"html_url,omitempty"`
-	CommentsURL      *string           `json:"comments_url,omitempty"`
-	EventsURL        *string           `json:"events_url,omitempty"`
-	LabelsURL        *string           `json:"labels_url,omitempty"`
-	RepositoryURL    *string           `json:"repository_url,omitempty"`
-	Milestone        *Milestone        `json:"milestone,omitempty"`
-	PullRequestLinks *PullRequestLinks `json:"pull_request,omitempty"`
-	Repository       *Repository       `json:"repository,omitempty"`
-	Reactions        *Reactions        `json:"reactions,omitempty"`
-	Assignees        []*User           `json:"assignees,omitempty"`
-	NodeID           *string           `json:"node_id,omitempty"`
+	ID                *int64            `json:"id,omitempty"`
+	Number            *int              `json:"number,omitempty"`
+	State             *string           `json:"state,omitempty"`
+	Locked            *bool             `json:"locked,omitempty"`
+	Title             *string           `json:"title,omitempty"`
+	Body              *string           `json:"body,omitempty"`
+	AuthorAssociation *string           `json:"author_association,omitempty"`
+	User              *User             `json:"user,omitempty"`
+	Labels            []*Label          `json:"labels,omitempty"`
+	Assignee          *User             `json:"assignee,omitempty"`
+	Comments          *int              `json:"comments,omitempty"`
+	ClosedAt          *time.Time        `json:"closed_at,omitempty"`
+	CreatedAt         *time.Time        `json:"created_at,omitempty"`
+	UpdatedAt         *time.Time        `json:"updated_at,omitempty"`
+	ClosedBy          *User             `json:"closed_by,omitempty"`
+	URL               *string           `json:"url,omitempty"`
+	HTMLURL           *string           `json:"html_url,omitempty"`
+	CommentsURL       *string           `json:"comments_url,omitempty"`
+	EventsURL         *string           `json:"events_url,omitempty"`
+	LabelsURL         *string           `json:"labels_url,omitempty"`
+	RepositoryURL     *string           `json:"repository_url,omitempty"`
+	Milestone         *Milestone        `json:"milestone,omitempty"`
+	PullRequestLinks  *PullRequestLinks `json:"pull_request,omitempty"`
+	Repository        *Repository       `json:"repository,omitempty"`
+	Reactions         *Reactions        `json:"reactions,omitempty"`
+	Assignees         []*User           `json:"assignees,omitempty"`
+	NodeID            *string           `json:"node_id,omitempty"`
 
 	// TextMatches is only populated from search results that request text matches
 	// See: search.go and https://developer.github.com/v3/search/#text-match-metadata
-	TextMatches []TextMatch `json:"text_matches,omitempty"`
+	TextMatches []*TextMatch `json:"text_matches,omitempty"`
 
 	// ActiveLockReason is populated only when LockReason is provided while locking the issue.
 	// Possible values are: "off-topic", "too heated", "resolved", and "spam".
@@ -128,28 +129,29 @@ type PullRequestLinks struct {
 // organization repositories; if false, list only owned and member
 // repositories.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/#list-issues
-func (s *IssuesService) List(ctx context.Context, all bool, opt *IssueListOptions) ([]*Issue, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/#list-issues-assigned-to-the-authenticated-user
+// GitHub API docs: https://developer.github.com/v3/issues/#list-user-account-issues-assigned-to-the-authenticated-user
+func (s *IssuesService) List(ctx context.Context, all bool, opts *IssueListOptions) ([]*Issue, *Response, error) {
 	var u string
 	if all {
 		u = "issues"
 	} else {
 		u = "user/issues"
 	}
-	return s.listIssues(ctx, u, opt)
+	return s.listIssues(ctx, u, opts)
 }
 
 // ListByOrg fetches the issues in the specified organization for the
 // authenticated user.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/#list-issues
-func (s *IssuesService) ListByOrg(ctx context.Context, org string, opt *IssueListOptions) ([]*Issue, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/#list-organization-issues-assigned-to-the-authenticated-user
+func (s *IssuesService) ListByOrg(ctx context.Context, org string, opts *IssueListOptions) ([]*Issue, *Response, error) {
 	u := fmt.Sprintf("orgs/%v/issues", org)
-	return s.listIssues(ctx, u, opt)
+	return s.listIssues(ctx, u, opts)
 }
 
-func (s *IssuesService) listIssues(ctx context.Context, u string, opt *IssueListOptions) ([]*Issue, *Response, error) {
-	u, err := addOptions(u, opt)
+func (s *IssuesService) listIssues(ctx context.Context, u string, opts *IssueListOptions) ([]*Issue, *Response, error) {
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -160,7 +162,7 @@ func (s *IssuesService) listIssues(ctx context.Context, u string, opt *IssueList
 	}
 
 	// TODO: remove custom Accept headers when APIs fully launch.
-	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	var issues []*Issue
@@ -214,10 +216,10 @@ type IssueListByRepoOptions struct {
 
 // ListByRepo lists the issues for the specified repository.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/#list-issues-for-a-repository
-func (s *IssuesService) ListByRepo(ctx context.Context, owner string, repo string, opt *IssueListByRepoOptions) ([]*Issue, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/#list-repository-issues
+func (s *IssuesService) ListByRepo(ctx context.Context, owner string, repo string, opts *IssueListByRepoOptions) ([]*Issue, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues", owner, repo)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -228,7 +230,7 @@ func (s *IssuesService) ListByRepo(ctx context.Context, owner string, repo strin
 	}
 
 	// TODO: remove custom Accept headers when APIs fully launch.
-	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeIntegrationPreview}
+	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeIntegrationPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	var issues []*Issue
@@ -242,7 +244,7 @@ func (s *IssuesService) ListByRepo(ctx context.Context, owner string, repo strin
 
 // Get a single issue.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/#get-a-single-issue
+// GitHub API docs: https://developer.github.com/v3/issues/#get-an-issue
 func (s *IssuesService) Get(ctx context.Context, owner string, repo string, number int) (*Issue, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%d", owner, repo, number)
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -251,7 +253,7 @@ func (s *IssuesService) Get(ctx context.Context, owner string, repo string, numb
 	}
 
 	// TODO: remove custom Accept headers when APIs fully launch.
-	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	acceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	issue := new(Issue)
@@ -273,9 +275,6 @@ func (s *IssuesService) Create(ctx context.Context, owner string, repo string, i
 		return nil, nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
-
 	i := new(Issue)
 	resp, err := s.client.Do(ctx, req, i)
 	if err != nil {
@@ -287,16 +286,13 @@ func (s *IssuesService) Create(ctx context.Context, owner string, repo string, i
 
 // Edit an issue.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/#edit-an-issue
+// GitHub API docs: https://developer.github.com/v3/issues/#update-an-issue
 func (s *IssuesService) Edit(ctx context.Context, owner string, repo string, number int, issue *IssueRequest) (*Issue, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%d", owner, repo, number)
 	req, err := s.client.NewRequest("PATCH", u, issue)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	i := new(Issue)
 	resp, err := s.client.Do(ctx, req, i)
@@ -319,14 +315,14 @@ type LockIssueOptions struct {
 // Lock an issue's conversation.
 //
 // GitHub API docs: https://developer.github.com/v3/issues/#lock-an-issue
-func (s *IssuesService) Lock(ctx context.Context, owner string, repo string, number int, opt *LockIssueOptions) (*Response, error) {
+func (s *IssuesService) Lock(ctx context.Context, owner string, repo string, number int, opts *LockIssueOptions) (*Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%d/lock", owner, repo, number)
-	req, err := s.client.NewRequest("PUT", u, opt)
+	req, err := s.client.NewRequest("PUT", u, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if opt != nil {
+	if opts != nil {
 		req.Header.Set("Accept", mediaTypeLockReasonPreview)
 	}
 

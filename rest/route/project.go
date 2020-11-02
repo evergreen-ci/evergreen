@@ -250,6 +250,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// these fields in the request represent the admins/users to be added
 	requestProjectRef.Admins = nil
 	requestProjectRef.GitTagAuthorizedUsers = nil
+	requestProjectRef.GitTagAuthorizedTeams = nil
 	if err = json.Unmarshal(h.body, requestProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
@@ -293,6 +294,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
 	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
 	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
+
+	teamsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedTeams)
+	allAuthorizedTeams := utility.UniqueStrings(append(oldProject.GitTagAuthorizedTeams, newProjectRef.GitTagAuthorizedTeams...))
+	newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
 	if newProjectRef.Enabled {
 		var hasHook bool
@@ -339,10 +344,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable git tag versions without a version definition",
 				})
 			}
-			if len(newProjectRef.GitTagAuthorizedUsers) == 0 {
+			if len(newProjectRef.GitTagAuthorizedUsers) == 0 && len(newProjectRef.GitTagAuthorizedTeams) == 0 {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
-					Message:    "must authorize users to create git tag versions",
+					Message:    "must authorize users or teams to create git tag versions",
 				})
 			}
 		}
