@@ -298,7 +298,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 	}
 
 	for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
-		params = append(params, fmt.Sprintf("--precondition='%s -l %s'", h.Distro.BootstrapSettings.ShellPath, ps.Path))
+		params = append(params, fmt.Sprintf("--precondition=%s", ps.Path))
 	}
 
 	return h.jasperServiceCommand(settings.HostJasper, jcli.ServiceForceReinstallCommand, params...)
