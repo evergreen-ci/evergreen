@@ -2586,6 +2586,9 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 }
 
 func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
+	if len(tasks) == 0 {
+		return tasks, nil
+	}
 	taskIDs := []string{}
 	tasksCopy := tasks
 	for _, t := range tasks {

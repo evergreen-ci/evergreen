@@ -382,12 +382,15 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 	startPhaseAt := time.Now()
 	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	finishedTasks, err = task.AddParentDisplayTasks(finishedTasks)
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil {
 		return errors.WithStack(err)
+	}
+	if len(finishedTasks) == 0 {
+		return nil
 	}
 	grip.Info(message.Fields{
 		"message":       "Find completed tasks",
