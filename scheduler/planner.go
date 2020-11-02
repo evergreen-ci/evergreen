@@ -230,7 +230,6 @@ func (unit *Unit) RankValue() int64 {
 	if generateTask {
 		// give generators a boost so people don't have to wait twice.
 		priority += 100
-		unit.cachedValue += priority * unit.distro.GetGenerateTaskFactor()
 	}
 
 	if inPatch {
