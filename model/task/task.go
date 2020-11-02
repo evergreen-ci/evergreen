@@ -1213,6 +1213,9 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
+	if !t.IsFinished() {
+		return t.Status
+	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
 	}
