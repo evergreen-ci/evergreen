@@ -257,6 +257,10 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
+	if err := putPreconditionScripts(ctx, env, settings, h); err != nil {
+		return errors.Wrap(err, "putting Jasper precondition files on remote host")
+	}
+
 	if err := doFetchAndReinstallJasper(ctx, env, h); err != nil {
 		return errors.Wrap(err, "error starting Jasper service on remote host")
 	}
@@ -291,6 +295,15 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 		return errors.Wrap(err, "error saving credentials")
 	}
 
+	return nil
+}
+
+// putPreconditionScripts puts the Jasper precondition scripts on the host.
+func putPreconditionScripts(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host) error {
+	cmds := h.WriteJasperPreconditionScriptsCommands()
+	if logs, err := h.RunSSHCommand(ctx, cmds); err != nil {
+		return errors.Wrapf(err, "copying precondition scripts to remote machine: command returned: %s", logs)
+	}
 	return nil
 }
 

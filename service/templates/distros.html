@@ -883,7 +883,7 @@ Evergreen - Distros
                                   style="margin-left: 0px; font-family: monospace"
                                   ng-model="activeDistro.bootstrap_settings.precondition_scripts[$index].script"
                                   style="margin-left: 0px; font-family: monospace"
-                                  placeholder="The precondition script that must run and succeed before Jasper can start."></textarea>
+                                  placeholder="The precondition script that must run and succeed before Jasper can start (Note: should include a shebang at the beginning)."></textarea>
                       </td>
                       <td ng-hide="readOnly">
                         <a ng-click="form.$setDirty();removePreconditionScript($index)">
