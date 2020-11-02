@@ -1696,14 +1696,12 @@ func (t *Task) Archive() error {
 		if err != nil {
 			return errors.Wrap(err, "error retrieving execution tasks")
 		}
-		for _, et := range execTasks {
-			if err = et.Archive(); err != nil {
-				return errors.Wrap(err, "error archiving execution task")
-			}
+		if err = ArchiveMany(execTasks); err != nil {
+			return errors.Wrap(err, "error archiving execution task")
 		}
 	}
 
-	archiveTask := t.makeArchivedtask()
+	archiveTask := t.makeArchivedTask()
 	err := db.Insert(OldCollection, archiveTask)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -1745,21 +1743,22 @@ func ArchiveMany(tasks []Task) error {
 		return nil
 	}
 	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]*Task{}
+	execTaskMap := map[string]bool{}
 	for _, t := range tasks {
-		execTaskMap[t.Id] = &t
+		execTaskMap[t.Id] = true
 	}
 	additionalTasks := []string{}
 	for _, t := range tasks {
+		// for any display tasks here, make sure that we archive all their execution tasks
 		for _, et := range t.ExecutionTasks {
-			if execTaskMap[et] == nil {
+			if !execTaskMap[et] {
 				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
 				continue
 			}
 		}
 	}
 	if len(additionalTasks) > 0 {
-		toAdd, err := Find(ByIds((additionalTasks)))
+		toAdd, err := FindAll(ByIds((additionalTasks)))
 		if err != nil {
 			return errors.Wrap(err, "unable to find execution tasks")
 		}
@@ -1769,7 +1768,7 @@ func ArchiveMany(tasks []Task) error {
 	archived := []interface{}{}
 	taskIds := []string{}
 	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedtask())
+		archived = append(archived, *t.makeArchivedTask())
 		taskIds = append(taskIds, t.Id)
 	}
 
@@ -1833,7 +1832,7 @@ func ArchiveMany(tasks []Task) error {
 	return eventLogErrs.Resolve()
 }
 
-func (t *Task) makeArchivedtask() *Task {
+func (t *Task) makeArchivedTask() *Task {
 	archiveTask := *t
 	archiveTask.Id = MakeOldID(t.Id, t.Execution)
 	archiveTask.OldTaskId = t.Id

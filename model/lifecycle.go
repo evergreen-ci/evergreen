@@ -407,8 +407,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			toArchive = append(toArchive, t)
 		}
 	}
-	err = task.ArchiveMany(toArchive)
-	if err != nil {
+	if err = task.ArchiveMany(toArchive); err != nil {
 		return errors.Wrap(err, "unable to archive tasks")
 	}
 	grip.Info(message.Fields{
