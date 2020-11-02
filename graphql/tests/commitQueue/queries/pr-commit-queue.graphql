@@ -1,6 +1,8 @@
 {
-  commitQueue(id: "mongodb-mongo-master") {
+  commitQueue(id: "mongodb-evergreen-spruce") {
     projectId
+    owner
+    repo
     queue {
       issue
       version
