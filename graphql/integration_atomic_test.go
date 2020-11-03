@@ -263,20 +263,6 @@ func spawnTestHostAndVolume(t *testing.T) {
 		HomeVolume:       true,
 	}
 	require.NoError(t, mountedVolume.Insert())
-	unmountedVolume := host.Volume{
-		ID:               "vol-0603934fsas024db5",
-		DisplayName:      "cd3721ats48700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
-		CreatedBy:        apiUser,
-		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
-		Size:             500,
-		AvailabilityZone: "us-east-1a",
-		Expiration:       volExp,
-		NoExpiration:     false,
-		CreationDate:     volCreation,
-		Host:             "",
-		HomeVolume:       true,
-	}
-	require.NoError(t, unmountedVolume.Insert())
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",
