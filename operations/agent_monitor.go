@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -424,7 +425,7 @@ func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
 			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.provider) {
-				if util.SpotHostWillTerminateSoon() {
+				if agentutil.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
 				}
 			}

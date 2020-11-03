@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -72,7 +73,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 			message.NewFormatted("problem closing '%s'", e.ArchivePath)))
 	}()
 
-	if err := util.ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
+	if err := agentutil.ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
 		return errors.Wrapf(err, "problem extracting '%s'", e.ArchivePath)
 	}
 

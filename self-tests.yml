@@ -409,14 +409,17 @@ tasks:
       - func: run-make
         vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["test", "db", "agent"]
-    name: test-command
-  - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
+    name: test-agent-util
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["test", "db", "agent"]
+    name: test-agent-command
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-data
@@ -454,7 +457,7 @@ tasks:
     tags: ["db", "test"]
     name: test-trigger
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+    tags: ["nodb", "test"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

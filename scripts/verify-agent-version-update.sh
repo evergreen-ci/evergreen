@@ -7,9 +7,10 @@ if [[ "${BRANCH_NAME}" == "" ]]; then
 fi
 
 # Find the common ancestor between the current set of changes and the upstream branch, then see if any source code files
-# have changed in the agent or command packages.
+# have changed in the agent or its subpackages.
 common_ancestor=$(git merge-base ${BRANCH_NAME}@{upstream} HEAD);
-if [[ "$(git diff --name-only ${common_ancestor} -- agent/**.go agent/**/*.go ':!agent/**_test.go' ':!agent/**/*_test.go' command/**.go command/**/*.go ':!command/**_test.go' ':!command/**/*_test.go' rest/client/evergreen_sender.go rest/client/logger.go rest/client/timeout_sender.go)" == "" ]]; then
+files_changed="$(git diff --name-only ${common_ancestor} -- agent/**.go agent/**/*.go ':!agent/**_test.go' ':!agent/**/*_test.go' rest/client/evergreen_sender.go rest/client/logger.go rest/client/timeout_sender.go)"
+if [[ "${files_changed}" == "" ]]; then
     exit 0;
 fi
 
@@ -30,5 +31,7 @@ if [[ "${last_commit_agent_version_updated}" == "0000000000000000000000000000000
     exit 0;
 fi
 
-echo "Agent has been changed but agent version has not been updated. Please update the agent version."
+echo -e "Files affected by agent version update:\n${files_changed}" >&2
+echo "${files_changed}" >&2
+echo "Agent has been changed but agent version has not been updated. Please update the agent version." >&2
 exit 1

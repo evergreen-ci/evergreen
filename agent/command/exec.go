@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -168,8 +169,8 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 }
 
 func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
-	c.Env[util.MarkerTaskID] = taskID
-	c.Env[util.MarkerAgentPID] = strconv.Itoa(os.Getpid())
+	c.Env[agentutil.MarkerTaskID] = taskID
+	c.Env[agentutil.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
 	if _, alreadyDefined := c.Env["GOCACHE"]; !alreadyDefined {
 		c.Env["GOCACHE"] = filepath.Join(c.WorkingDir, ".gocache")
@@ -208,7 +209,7 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 
 			pid := proc.Info(ctx).PID
 
-			util.TrackProcess(taskID, pid, logger.System())
+			agentutil.TrackProcess(taskID, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("running command in the background [pid=%d]", pid)

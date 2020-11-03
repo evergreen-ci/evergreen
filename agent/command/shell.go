@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -117,10 +118,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	env := map[string]string{
-		util.MarkerTaskID:   conf.Task.Id,
-		util.MarkerAgentPID: strconv.Itoa(os.Getpid()),
-		"GOCACHE":           filepath.Join(c.WorkingDir, ".gocache"),
-		"CI":                "true",
+		agentutil.MarkerTaskID:   conf.Task.Id,
+		agentutil.MarkerAgentPID: strconv.Itoa(os.Getpid()),
+		"GOCACHE":                filepath.Join(c.WorkingDir, ".gocache"),
+		"CI":                     "true",
 	}
 	addTempDirs(env, taskTmpDir)
 
@@ -161,7 +162,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 			pid := proc.Info(ctx).PID
 
-			util.TrackProcess(conf.Task.Id, pid, logger.System())
+			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("running command in the background [pid=%d]", pid)

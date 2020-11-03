@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -240,7 +241,7 @@ func (c *s3get) get(ctx context.Context) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if err := util.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+	if err := agentutil.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "problem extracting %s from archive", c.RemoteFile)
 	}
 

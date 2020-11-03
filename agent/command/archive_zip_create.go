@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -71,7 +72,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		c.Target = filepath.Join(conf.WorkDir, c.Target)
 	}
 
-	files, err := util.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
+	files, err := agentutil.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 	if err != nil {
 		return errors.Wrap(err, "problem finding files to archive")
 	}

@@ -11,10 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TrackProcess(key string, pid int, logger grip.Journaler) {
-	// trackProcess is a noop on OSX, because we detect all the processes to be killed in
-	// cleanup() and we don't need to do any special bookkeeping up-front.
-}
+// TrackProcess is a noop by default if we don't need to do any special
+// bookkeeping up-front.
+func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
 func cleanup(key, workingDir string, logger grip.Journaler) error {
 	pidsToKill, err := getPidsToKill(key, workingDir, logger)

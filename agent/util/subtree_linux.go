@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -22,10 +23,9 @@ const (
 	contextTimeout         = 10 * time.Second
 )
 
-func TrackProcess(key string, pid int, logger grip.Journaler) {
-	// trackProcess is a noop on linux, because we detect all the processes to be killed in
-	// cleanup() and we don't need to do any special bookkeeping up-front.
-}
+// TrackProcess is a noop by default if we don't need to do any special
+// bookkeeping up-front.
+func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
 // getEnv returns a slice of environment variables for the given pid, in the form
 // []string{"VAR1=FOO", "VAR2=BAR", ...}
@@ -116,7 +116,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
-	err = Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
