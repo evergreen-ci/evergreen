@@ -389,9 +389,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if len(finishedTasks) == 0 {
-		return nil
-	}
 	grip.Info(message.Fields{
 		"message":       "Find completed tasks",
 		"version":       versionId,
