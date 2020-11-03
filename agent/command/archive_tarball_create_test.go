@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,6 +101,12 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				require.NoError(t, os.RemoveAll(target), "Error removing tgz file")
 				require.NoError(t, os.RemoveAll(outputDir), "Error removing output dir")
+				defer func() {
+					assert.NoError(t, os.RemoveAll(target))
+				}()
+				defer func() {
+					assert.NoError(t, os.RemoveAll(outputDir))
+				}()
 
 				params := map[string]interface{}{
 					"target":        target,

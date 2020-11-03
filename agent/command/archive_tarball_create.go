@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -131,7 +132,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
-	f, gz, tarWriter, err := util.TarGzWriter(c.Target)
+	f, gz, tarWriter, err := agentutil.TarGzWriter(c.Target)
 	if err != nil {
 		return -1, errors.Wrapf(err, "error opening target archive file %s", c.Target)
 	}
@@ -142,7 +143,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	}()
 
 	// Build the archive
-	out, err := util.BuildArchive(ctx, tarWriter, c.SourceDir, c.Include,
+	out, err := agentutil.BuildArchive(ctx, tarWriter, c.SourceDir, c.Include,
 		c.ExcludeFiles, logger)
 
 	return out, errors.WithStack(err)

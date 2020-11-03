@@ -19,6 +19,8 @@ type ArchiveContentFile struct {
 	err  error
 }
 
+// FindContentsToArchive finds all files starting from the rootPath with the
+// given inclusion and exclusion patterns.
 func FindContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) ([]ArchiveContentFile, error) {
 	out := []ArchiveContentFile{}
 	catcher := grip.NewBasicCatcher()

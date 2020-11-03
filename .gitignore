@@ -40,12 +40,6 @@ mci_testing_env
 logs
 public/node_modules/
 *testlog*
-archive/testdata/artifacts_out/
-archive/testdata/artifacts_test/
-command/testdata/tmp/
-plugin/builtin/archive/testdata/output/
-plugin/builtin/archive/testdata/target.tgz
-plugin/builtin/s3Plugin/testdata/
 artifacts-*
 
 # directory for gvp
@@ -53,12 +47,13 @@ artifacts-*
 
 npm-debug.log
 clients
-testdata/target.tgz
-!command/testdata/archive/artifacts.tar.gz
-!util/testdata/artifacts.tar.gz
-command/testdata/archive/output/
-command/testdata/archive/target.tgz
-command/testdata/target.tgz
+# testdata/target.tgz
+# !agent/util/testdata/artifacts.tar.gz
+# !agent/command/testdata/archive/artifacts.tar.gz
+# agent/command/testdata/tmp/
+# agent/command/testdata/archive/output/
+# agent/command/testdata/archive/target.tgz
+# agent/command/testdata/target.tgz
 creds.yml
 
 fabfile.py
