@@ -4,7 +4,10 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -124,9 +127,24 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				exists := utility.FileExists(target.Name())
 				So(exists, ShouldBeTrue)
 
-				// untar the file
+				var targetPath string
+				if runtime.GOOS == "windows" {
+					// On Windows, the tar command is provided by Cygwin, which
+					// requires that you pass Unix-style Cygwin paths to it.
+					cygpath, err := exec.LookPath("cygpath")
+					require.NoError(t, err)
+
+					output := util.NewMBCappedWriter()
+
+					require.NoError(t, jasper.NewCommand().Add([]string{cygpath, "-u", target.Name()}).SetCombinedWriter(output).Run(ctx))
+					targetPath = strings.TrimSpace(output.String())
+				} else {
+					targetPath = target.Name()
+				}
+
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", target.Name()}, outputDir, nil)
+				// untar the file
+				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", targetPath}, outputDir, nil)
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included
