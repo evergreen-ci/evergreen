@@ -40,12 +40,13 @@ type LoggerProducer interface {
 // logHarness provides a straightforward implementation of the
 // plugin.LoggerProducer interface.
 type logHarness struct {
-	execution grip.Journaler
-	task      grip.Journaler
-	system    grip.Journaler
-	mu        sync.RWMutex
-	writers   []io.WriteCloser
-	closed    bool
+	execution                 grip.Journaler
+	task                      grip.Journaler
+	system                    grip.Journaler
+	mu                        sync.RWMutex
+	writers                   []io.WriteCloser
+	underlyingBufferedSenders []send.Sender
+	closed                    bool
 }
 
 func (l *logHarness) Execution() grip.Journaler { return l.execution }
@@ -81,6 +82,10 @@ func (l *logHarness) Close() error {
 	catcher.Add(l.execution.GetSender().Close())
 	catcher.Add(l.task.GetSender().Close())
 	catcher.Add(l.system.GetSender().Close())
+
+	for _, s := range l.underlyingBufferedSenders {
+		catcher.Add(s.Close())
+	}
 
 	return errors.Wrap(catcher.Resolve(), "problem closing log harness")
 }
