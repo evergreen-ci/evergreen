@@ -45,12 +45,16 @@ func TestCurlCommand(t *testing.T) {
 		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
-			assert.Equal(expected, h.CurlCommand(settings))
+			cmd, err := h.CurlCommand(settings)
+			require.NoError(t, err)
+			assert.Equal(expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
-			assert.Equal(expected, h.CurlCommand(settings))
+			cmd, err := h.CurlCommand(settings)
+			require.NoError(t, err)
+			assert.Equal(expected, cmd)
 		})
 	})
 	t.Run("WithS3", func(t *testing.T) {
@@ -62,12 +66,16 @@ func TestCurlCommand(t *testing.T) {
 		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe') && chmod +x evergreen.exe", evergreen.BuildRevision)
-			assert.Equal(expected, h.CurlCommand(settings))
+			cmd, err := h.CurlCommand(settings)
+			require.NoError(t, err)
+			assert.Equal(expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' || curl -LO 'www.example.com/clients/linux_amd64/evergreen') && chmod +x evergreen", evergreen.BuildRevision)
-			assert.Equal(expected, h.CurlCommand(settings))
+			cmd, err := h.CurlCommand(settings)
+			require.NoError(t, err)
+			assert.Equal(expected, cmd)
 		})
 	})
 }
@@ -81,12 +89,16 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
-			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+			require.NoError(t, err)
+			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
-			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+			require.NoError(t, err)
+			assert.Equal(t, expected, cmd)
 		})
 	})
 	t.Run("WithS3", func(t *testing.T) {
@@ -98,12 +110,16 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		t.Run("Windows", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
-			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+			require.NoError(t, err)
+			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
-			assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
+			require.NoError(t, err)
+			assert.Equal(t, expected, cmd)
 		})
 	})
 }
@@ -220,6 +236,9 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
+			curlAgent, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			require.NoError(t, err)
+
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
 			require.NoError(t, err)
 
@@ -232,7 +251,7 @@ func TestJasperCommands(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
-				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				curlAgent,
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				startAgentMonitor,
 				markDone,
@@ -278,6 +297,9 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
+			curlClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			require.NoError(t, err)
+
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
@@ -300,7 +322,7 @@ func TestJasperCommands(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
-				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				curlClient,
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				setupSpawnHost,
 				pullTaskSync,
@@ -445,6 +467,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
+			curlAgent, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			require.NoError(t, err)
+
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
 			require.NoError(t, err)
 
@@ -458,7 +483,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
-				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				curlAgent,
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				startAgentMonitor,
@@ -519,6 +544,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
+			curlClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			require.NoError(t, err)
+
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
@@ -532,7 +560,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
-				h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs),
+				curlClient,
 				h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())),
 				h.SetupCommand(),
 				setupSpawnHost,

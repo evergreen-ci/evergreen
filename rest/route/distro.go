@@ -890,9 +890,14 @@ func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding distro '%s'", rh.distroID))
 	}
 
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "could not fetch service flags"))
+	}
+
 	var urls []string
 	settings := rh.env.Settings()
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
 		urls = append(urls, d.S3ClientURL(settings))
 	}
 	urls = append(urls, d.ClientURL(settings))

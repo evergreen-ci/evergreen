@@ -243,7 +243,11 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 	// copy over the correct agent binary to the remote host
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
+	curlCmd, err := j.host.CurlCommand(settings)
+	if err != nil {
+		return errors.Wrap(err, "could not create command to curl evergreen client")
+	}
+	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", output)
