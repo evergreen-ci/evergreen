@@ -372,7 +372,13 @@ func (at *APITask) GetArtifacts() error {
 		return errors.Wrap(err, "error retrieving artifacts")
 	}
 	for _, entry := range entries {
-		for _, file := range entry.Files {
+		var strippedFiles []artifact.File
+		// The route is requires a user, so hasUser is always true.
+		strippedFiles, err = artifact.StripHiddenFiles(entry.Files, true)
+		if err != nil {
+			return err
+		}
+		for _, file := range strippedFiles {
 			apiFile := APIFile{}
 			err := apiFile.BuildFromService(file)
 			if err != nil {
