@@ -252,8 +252,8 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		if s3pc.isMulti() {
 			logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
 				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
-		} else if s3pc.Visibility == artifacts.Public && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite {
-			logger.Task().Info("Putting %s into %s/%s (%s)", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, util.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
+		} else if s3pc.Visibility == artifact.Public && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
+			logger.Task().Infof("Putting %s into %s/%s (%s)", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, util.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 		} else {
 			logger.Task().Infof("Putting %s into %s/%s", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
 		}
