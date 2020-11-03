@@ -381,16 +381,23 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		})
 	}
 	startPhaseAt := time.Now()
-	finishedTasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	finishedTasks, err = task.AddParentDisplayTasks(finishedTasks)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if len(finishedTasks) == 0 {
+		return nil
+	}
 	grip.Info(message.Fields{
 		"message":       "Find completed tasks",
 		"version":       versionId,
 		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
-	if err != nil && !adb.ResultsNotFound(err) {
-		return errors.WithStack(err)
-	}
 	// remove execution tasks in case the caller passed both display and execution tasks
 	// the functions below are expected to work if just the display task is passed
 	for i := len(finishedTasks) - 1; i >= 0; i-- {
@@ -516,7 +523,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	tasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -532,7 +539,7 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	allTasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
+	allTasks, err := task.FindAll(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -597,7 +604,11 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
+	tasks, err := task.FindAll(task.ByBuildId(buildId))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
