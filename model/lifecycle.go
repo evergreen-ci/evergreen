@@ -1228,6 +1228,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Requester:           v.Requester,
 		Version:             v.Id,
 		Revision:            v.Revision,
+		MustHaveResults:     util.IsPtrSetToTrue(project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
 		GenerateTask:        project.IsGenerateTask(buildVarTask.Name),
