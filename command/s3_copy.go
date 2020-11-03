@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -240,7 +241,7 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, td client.TaskData, request apimodels.S3CopyRequest) error {
 
 	remotePath := filepath.ToSlash(request.S3DestinationPath)
-	fileLink := util.S3DefaultURL(request.S3DestinationBucket, remotePath)
+	fileLink := agentutil.S3DefaultURL(request.S3DestinationBucket, remotePath)
 
 	displayName := request.S3DisplayName
 

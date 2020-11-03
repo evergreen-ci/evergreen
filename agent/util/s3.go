@@ -17,7 +17,7 @@ func S3VirtualHostedURL(bucket, key string) string {
 	return strings.Join([]string{fmt.Sprintf("https://%s.s3.amazonaws.com", bucket), key}, "/")
 }
 
-// SS3DefaultURL returns the S3 URL for the given bucket containing the object
+// S3DefaultURL returns the S3 URL for the given bucket containing the object
 // key. The style of the S3 URL is determined based on the bucket name.
 func S3DefaultURL(bucket, key string) string {
 	if strings.Contains(bucket, ".") {

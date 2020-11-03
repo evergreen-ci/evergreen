@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -402,7 +403,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
 		}
 
-		fileLink := util.S3DefaultURL(s3pc.Bucket, remoteFileName)
+		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
 		if s3pc.isMulti() || displayName == "" {
