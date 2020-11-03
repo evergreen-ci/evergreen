@@ -193,9 +193,9 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 #end generated config
 
 # generate rest model
-generate-rest-model:$(buildDir)/generate-rest-model
-	./$(buildDir)/generate-rest-model --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
-$(buildDir)/generate-rest-model:cmd/generate-rest-model/generate-rest-model.go
+generate-rest-model:$(buildDir)/codegen
+	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
+$(buildDir)/codegen:cmd/codegen/entry.go
 	$(gobin) build -o $@ $<
 #end generate rest model
 

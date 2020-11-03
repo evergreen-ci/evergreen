@@ -513,6 +513,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cmd-codegen-core
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
