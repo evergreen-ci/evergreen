@@ -16,11 +16,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -2719,6 +2721,66 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 	runningTask, err := task.FindOne(task.ById("t"))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+}
+
+func TestMarkEndWithNoResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, testresult.Collection))
+	testTask1 := task.Task{
+		Id:              "t1",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+	}
+	assert.NoError(t, testTask1.Insert())
+	testTask2 := task.Task{
+		Id:              "t2",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+	}
+	assert.NoError(t, testTask2.Insert())
+	b := build.Build{
+		Id:      "b",
+		Tasks:   []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
+		Version: "v",
+	}
+	assert.NoError(t, b.Insert())
+	v := &Version{
+		Id:        "v",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.VersionStarted,
+		Config:    "identifier: sample",
+	}
+	assert.NoError(t, v.Insert())
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskSucceeded,
+		Type:   "test",
+	}
+	updates := StatusChanges{}
+
+	err := MarkEnd(&testTask1, "", time.Now(), details, false, &updates)
+	assert.NoError(t, err)
+	dbTask, err := task.FindOneId(testTask1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
+
+	results := testresult.TestResult{
+		ID:     mgobson.NewObjectId(),
+		TaskID: testTask2.Id,
+	}
+	assert.NoError(t, results.Insert())
+	err = MarkEnd(&testTask2, "", time.Now(), details, false, &updates)
+	assert.NoError(t, err)
+	dbTask, err = task.FindOneId(testTask2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
 }
 
 func TestClearAndResetStaleStrandedTask(t *testing.T) {

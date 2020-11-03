@@ -66,6 +66,7 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -79,6 +80,7 @@ variables:
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -96,6 +98,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -112,6 +115,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -327,7 +331,6 @@ functions:
           set -o xtrace
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
-
 
 #######################################
 #                Tasks                #
@@ -545,8 +548,8 @@ tasks:
   - name: upload-clis
     patchable: false
     depends_on:
-        - name: dist
-          status: success
+      - name: dist
+        status: success
     commands:
       - command: subprocess.exec
         params:
@@ -570,14 +573,12 @@ tasks:
       - func: get-project
       - func: verify-agent-version-update
 
-
 task_groups:
   - name: dist-and-upload-clis
     max_hosts: 1
     tasks:
       - dist
       - upload-clis
-
 
 #######################################
 #            Buildvariants            #
