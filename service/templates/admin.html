@@ -655,6 +655,11 @@ Admin Settings
 										<input type="number" step="1" min="0" max="100"
 											ng-model="Settings.scheduler.expected_runtime_factor">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Generate Task Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100"
+											   ng-model="Settings.scheduler.generate_task_factor">
+									</md-input-container>
 									<md-input-container class="control" style="width:170px;">
 										<md-checkbox ng-model="Settings.scheduler.group_versions">
 											Group Versions

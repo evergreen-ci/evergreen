@@ -236,8 +236,12 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		"job":           j.ID(),
 	})
 
+	cmd, err := j.host.CurlCommand(settings)
+	if err != nil {
+		return errors.Wrap(err, "could not create command to curl evergreen client")
+	}
 	opts := &options.Create{
-		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", j.host.CurlCommand(settings)},
+		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 	}
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)

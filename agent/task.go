@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
@@ -180,6 +180,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			return nil
 		}
 		if taskGroup.SetupGroup != nil {
+			tc.logger.Task().Infof("Running setup_group for '%s'.", taskGroup.Name)
 			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
 			if taskGroup.SetupGroupTimeoutSecs > 0 {
 				ctx2, cancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
@@ -204,6 +205,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if taskGroup.SetupTask != nil {
+		tc.logger.Task().Infof("Running setup_task for '%s'.", taskGroup.Name)
 		opts.shouldSetupFail = taskGroup.SetupGroupFailTask
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
@@ -280,10 +282,14 @@ func (tc *taskContext) hadTimedOut() bool {
 	return tc.timedOut()
 }
 
-func (tc *taskContext) getOomTrackerInfo() apimodels.OOMTrackerInfo {
+func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
 	detected, pids := tc.oomTracker.Report()
-	return apimodels.OOMTrackerInfo{
-		Detected: detected,
+	if !detected {
+		return nil
+	}
+
+	return &apimodels.OOMTrackerInfo{
+		Detected: true,
 		Pids:     pids,
 	}
 }

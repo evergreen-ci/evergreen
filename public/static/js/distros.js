@@ -167,6 +167,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           distro.distro.planner_settings.patch_factor = distro.distro.planner_settings.patch_factor || 0;
           distro.distro.planner_settings.time_in_queue_factor = distro.distro.planner_settings.time_in_queue_factor || 0;
           distro.distro.planner_settings.expected_runtime_factor = distro.distro.planner_settings.expected_runtime_factor || 0;
+          distro.distro.planner_settings.generate_task_factor = distro.distro.planner_settings.generate_task_factor || 0;
+
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant planner_settings' fields.
           if (distro.distro.planner_settings.target_time > 0) {
             distro.distro.planner_settings.target_time /= 1e9;

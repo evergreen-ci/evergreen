@@ -89,14 +89,17 @@ func Count(query db.Q) (int, error) {
 
 // FindByTaskIDAndExecution returns test results from the testresults collection for a given task.
 func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
-	q := db.Query(bson.M{
+	return Find(FilterByTaskIDAndExecution(taskID, execution))
+}
+
+func FilterByTaskIDAndExecution(taskID string, execution int) db.Q {
+	return db.Query(bson.M{
 		TaskIDKey:    taskID,
 		ExecutionKey: execution,
 	}).Project(bson.M{
 		TaskIDKey:    0,
 		ExecutionKey: 0,
 	})
-	return Find(q)
 }
 
 func ByTaskIDs(ids []string) db.Q {

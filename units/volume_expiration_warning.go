@@ -68,19 +68,18 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Do alerts for volumes - collect all volumes expiring in the next 12 hours.
+	// Do alerts for volumes - collect all volumes that are unattached.
 	// The trigger logic will filter out any volumes that aren't in a notification window, or have
 	// already have alerts sent.
-	thresholdTime := time.Now().Add(12 * time.Hour)
-	expiringSoonVolumes, err := host.FindVolumesToDelete(thresholdTime)
+	unattachedVolumes, err := host.FindUnattachedExpirableVolumes()
 	if err != nil {
 		j.AddError(errors.WithStack(err))
 		return
 	}
 
-	for _, v := range expiringSoonVolumes {
+	for _, v := range unattachedVolumes {
 		if ctx.Err() != nil {
-			j.AddError(errors.New("spawnhost expiration warning run canceled"))
+			j.AddError(errors.New("volume expiration warning run canceled"))
 			return
 		}
 		if err = runVolumeWarningTriggers(v); err != nil {
@@ -97,27 +96,42 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 
 func runVolumeWarningTriggers(v host.Volume) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(tryVolumeNotification(v, 2))
-	catcher.Add(tryVolumeNotification(v, 12))
+	// try notifying with the largest notification types first.
+	// If an alert has been sent, don't continue to the smaller types.
+	triggerHours := []int{24 * 21, 24 * 14, 24 * 7, 12, 2}
+	for _, numHours := range triggerHours {
+		ok, err := tryVolumeNotification(v, numHours)
+		catcher.Add(err)
+		if ok {
+			return catcher.Resolve()
+		}
+	}
 	return catcher.Resolve()
 }
 
-func tryVolumeNotification(v host.Volume, numHours int) error {
+// return true if a notification was added
+func tryVolumeNotification(v host.Volume, numHours int) (bool, error) {
 	shouldExec, err := shouldNotifyForVolumeExpiration(v, numHours)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if shouldExec {
-		event.LogVolumeExpirationWarningSent(v.ID)
-		if err = alertrecord.InsertNewVolumeExpirationRecord(v.ID, numHours); err != nil {
-			return err
-		}
+	if !shouldExec {
+		return false, nil
 	}
-	return nil
+	event.LogVolumeExpirationWarningSent(v.ID)
+	if err = alertrecord.InsertNewVolumeExpirationRecord(v.ID, numHours); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func shouldNotifyForVolumeExpiration(v host.Volume, numHours int) (bool, error) {
-	if v.Expiration.Sub(time.Now()) > (time.Duration(numHours) * time.Hour) {
+	numHoursLeft := v.Expiration.Sub(time.Now())
+	// say we have 15 hours left. if 15 > 12, quit. if 15 > 2,  quit.
+	// say we have 10 hours left. 10 > 12 nope, so send. 12 > 2 so quit.
+	// say we have 30 days left. greater than everything, send no notices.
+	// say we have 5 days left. greater than 14 days and 21 days.
+	if numHoursLeft > (time.Duration(numHours) * time.Hour) {
 		return false, nil
 	}
 	rec, err := alertrecord.FindByVolumeExpirationWithHours(v.ID, numHours)

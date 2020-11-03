@@ -10,8 +10,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -635,7 +636,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
 			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
-			if err := util.KillSpawnedProcs(tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
+			if err := agentutil.KillSpawnedProcs(tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				logger.Critical(msg)
 			}

@@ -171,7 +171,7 @@ func (unit *Unit) ID() string {
 }
 
 // RankValue returns a point value for the tasks in the unit that can
-// be used to compare units with eachother.
+// be used to compare units with each other.
 //
 // Generally, higher point values are given to larger units and for
 // units that have been in the queue for longer, with longer expected
@@ -189,6 +189,7 @@ func (unit *Unit) RankValue() int64 {
 		inCommitQueue    bool
 		inPatch          bool
 		anyNonGroupTasks bool
+		generateTask     bool
 	)
 
 	for _, t := range unit.tasks {
@@ -200,6 +201,9 @@ func (unit *Unit) RankValue() int64 {
 
 		if t.TaskGroup == "" {
 			anyNonGroupTasks = true
+		}
+		if t.GenerateTask {
+			generateTask = true
 		}
 
 		if !t.ActivatedTime.IsZero() {
@@ -222,6 +226,10 @@ func (unit *Unit) RankValue() int64 {
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
 		priority += length
+	}
+	if generateTask {
+		// give generators a boost so people don't have to wait twice.
+		priority = priority * unit.distro.GetGenerateTaskFactor()
 	}
 
 	if inPatch {

@@ -543,6 +543,14 @@ func ByExecutionTask(taskId string) db.Q {
 	})
 }
 
+func ByExecutionTasks(ids []string) db.Q {
+	return db.Query(bson.M{
+		ExecutionTasksKey: bson.M{
+			"$in": ids,
+		},
+	})
+}
+
 var (
 	IsDispatchedOrStarted = db.Query(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},

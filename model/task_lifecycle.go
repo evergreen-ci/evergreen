@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -297,7 +298,7 @@ func AbortTask(taskId, caller string) error {
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
+	allTasks, err := task.FindAll(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
@@ -424,16 +425,27 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	deactivatePrevious bool, updates *StatusChanges) error {
 	const slowThreshold = time.Second
 
+	detailsCopy := *detail
 	if t.HasFailedTests() {
-		detail.Status = evergreen.TaskFailed
+		detailsCopy.Status = evergreen.TaskFailed
 	}
 
-	t.Details = *detail
-
-	if t.Status == detail.Status {
+	if t.Status == detailsCopy.Status {
 		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
 		return nil
 	}
+	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults {
+		count, err := testresult.Count(testresult.FilterByTaskIDAndExecution(t.Id, t.Execution))
+		if err != nil {
+			return errors.Wrap(err, "unable to count test results")
+		}
+		if count == 0 {
+			detailsCopy.Status = evergreen.TaskFailed
+			detailsCopy.Description = evergreen.TaskDescriptionNoResults
+			detailsCopy.Type = evergreen.CommandTypeTest
+		}
+	}
+	t.Details = detailsCopy
 	if utility.IsZeroTime(t.StartTime) {
 		grip.Warning(message.Fields{
 			"message":      "Task is missing start time",
@@ -444,7 +456,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 	}
 	startPhaseAt := time.Now()
-	err := t.MarkEnd(finishTime, detail)
+	err := t.MarkEnd(finishTime, &detailsCopy)
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
@@ -489,14 +501,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return errors.Wrap(err, "can't check display task reset")
 		}
 	} else {
-		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
+		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detailsCopy.Status, &detailsCopy, t.TimeTaken)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "failed to set cached task finished",
 				"function":   "MarkEnd",
 				"build_id":   t.BuildId,
 				"task_id":    t.Id,
-				"status":     detail.Status,
+				"status":     detailsCopy.Status,
 				"time_taken": t.TimeTaken,
 			}))
 			return errors.Wrap(err, "error updating build")
@@ -958,7 +970,11 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 }
 
 func MarkTasksReset(taskIds []string) error {
-	tasks, err := task.FindWithDisplayTasks(task.ByIds(taskIds))
+	tasks, err := task.FindAll(task.ByIds(taskIds))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1025,9 +1041,13 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindWithDisplayTasks(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindAll(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
-		return results, err
+		return results, errors.WithStack(err)
+	}
+	tasksToRestart, err = task.AddParentDisplayTasks(tasksToRestart)
+	if err != nil {
+		return results, errors.WithStack(err)
 	}
 
 	type taskGroupAndBuild struct {

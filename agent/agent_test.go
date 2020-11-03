@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -233,7 +233,7 @@ pre:
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[3].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
@@ -617,7 +617,7 @@ task_groups:
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[3].Message)
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 
@@ -721,7 +721,7 @@ task_groups:
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[3].Message)
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 

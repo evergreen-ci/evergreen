@@ -90,7 +90,7 @@ type DurationStats struct {
 
 // CachedDurationValueRefresher provides a mechanism for CachedDurationValues to
 // update their values when the current cached value
-// expires. Implementations are responsible for logging  errors, as
+// expires. Implementations are responsible for logging errors, as
 // needed.
 type CachedDurationValueRefresher func(DurationStats) (DurationStats, bool)
 

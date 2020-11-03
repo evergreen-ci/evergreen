@@ -66,6 +66,7 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -79,6 +80,7 @@ variables:
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -96,6 +98,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -112,6 +115,7 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
+    must_have_test_results: true
     commands:
       - func: get-project
       - func: run-make
@@ -328,7 +332,6 @@ functions:
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
 
-
 #######################################
 #                Tasks                #
 #######################################
@@ -406,14 +409,17 @@ tasks:
       - func: run-make
         vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["test", "db", "agent"]
-    name: test-command
-  - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
+    name: test-agent-util
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["test", "db", "agent"]
+    name: test-agent-command
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-data
@@ -451,7 +457,7 @@ tasks:
     tags: ["db", "test"]
     name: test-trigger
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+    tags: ["nodb", "test"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -545,8 +551,8 @@ tasks:
   - name: upload-clis
     patchable: false
     depends_on:
-        - name: dist
-          status: success
+      - name: dist
+        status: success
     commands:
       - command: subprocess.exec
         params:
@@ -570,14 +576,12 @@ tasks:
       - func: get-project
       - func: verify-agent-version-update
 
-
 task_groups:
   - name: dist-and-upload-clis
     max_hosts: 1
     tasks:
       - dist
       - upload-clis
-
 
 #######################################
 #            Buildvariants            #

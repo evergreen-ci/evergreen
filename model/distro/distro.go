@@ -222,6 +222,7 @@ type PlannerSettings struct {
 	CommitQueueFactor         int64         `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
 	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	GenerateTaskFactor        int64         `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -354,6 +355,13 @@ func (d *Distro) GetCommitQueueFactor() int64 {
 		return 1
 	}
 	return d.PlannerSettings.CommitQueueFactor
+}
+
+func (d *Distro) GetGenerateTaskFactor() int64 {
+	if d.PlannerSettings.GenerateTaskFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.GenerateTaskFactor
 }
 
 func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
@@ -690,6 +698,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		CommitQueueFactor:         ps.CommitQueueFactor,
 		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
 		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
+		GenerateTaskFactor:        ps.GenerateTaskFactor,
 		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
@@ -729,6 +738,9 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.ExpectedRuntimeFactor == 0 {
 		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
+	}
+	if resolved.GenerateTaskFactor == 0 {
+		resolved.GenerateTaskFactor = config.GenerateTaskFactor
 	}
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
