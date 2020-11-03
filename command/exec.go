@@ -85,8 +85,23 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
 
-	if c.Command != "" && (c.Binary != "" || len(c.Args) > 0) {
-		return errors.New("must specify command as either arguments or a command string but not both")
+	if c.Command != "" {
+		if c.Binary != "" || len(c.Args) > 0 {
+			return errors.New("must specify command as either arguments or a command string but not both")
+		}
+
+		args, err := shlex.Split(c.Command)
+		if err != nil {
+			return errors.Wrapf(err, "problem parsing %s command", c.Name())
+		}
+		if len(args) == 0 {
+			return errors.Errorf("no arguments for command %s", c.Name())
+		}
+
+		c.Binary = args[0]
+		if len(args) > 1 {
+			c.Args = args[1:]
+		}
 	}
 
 	if c.Silent {
@@ -105,24 +120,6 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *subprocessExec) splitCommands() error {
-	if c.Command != "" {
-		args, err := shlex.Split(c.Command)
-		if err != nil {
-			return errors.Wrapf(err, "problem parsing %s command", c.Name())
-		}
-		if len(args) == 0 {
-			return errors.Errorf("no arguments for command %s", c.Name())
-		}
-
-		c.Binary = args[0]
-		if len(args) > 1 {
-			c.Args = args[1:]
-		}
-	}
-	return nil
-}
-
 func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	var err error
 	catcher := grip.NewBasicCatcher()
@@ -131,9 +128,6 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	catcher.Add(err)
 
 	c.Binary, err = exp.ExpandString(c.Binary)
-	catcher.Add(err)
-
-	c.Command, err = exp.ExpandString(c.Command)
 	catcher.Add(err)
 
 	for idx := range c.Args {
@@ -258,10 +252,6 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Error("problem expanding command values")
-		return errors.WithStack(err)
-	}
-
-	if err = c.splitCommands(); err != nil {
 		return errors.WithStack(err)
 	}
 

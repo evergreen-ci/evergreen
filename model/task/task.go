@@ -79,6 +79,7 @@ type Task struct {
 	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
@@ -1212,6 +1213,9 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
+	}
+	if !t.IsFinished() {
+		return t.Status
 	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded

@@ -17,54 +17,56 @@ import (
 )
 
 // sendTestResults sends the test results to the API server and Cedar.
-func sendTestResults(ctx context.Context, conf *model.TaskConfig,
-	logger client.LoggerProducer, comm client.Communicator,
-	results *task.LocalTestResults) error {
-
+func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, results *task.LocalTestResults) error {
 	if results == nil || len(results.Results) == 0 {
 		return errors.New("cannot send nil results")
 	}
 
-	logger.Execution().Info("attaching test results")
-
+	logger.Task().Info("Attaching results to server...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	if err := comm.SendTestResults(ctx, td, results); err != nil {
-		return errors.WithStack(err)
+	if conf.ProjectRef.CedarTestResultsEnabled {
+		if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, results); err != nil {
+			logger.Task().Errorf("problem posting parsed results to the cedar: %+v", err)
+			return errors.Wrap(err, "problem sending test results to cedar")
+		}
+	} else {
+		if err := comm.SendTestResults(ctx, td, results); err != nil {
+			logger.Task().Errorf("problem posting parsed results to evergreen: %+v", err)
+			return errors.Wrap(err, "problem sending test results to evergreen")
+		}
 	}
-
-	// TODO (EVG-7780): send test results for projects that enable it.
-	// if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, results); err != nil {
-	//     return errors.Wrap(err, "sending test results to Cedar")
-	// }
-
-	logger.Task().Info("Attach test results succeeded")
+	logger.Task().Info("Successfully attached results to server")
 
 	return nil
+}
+
+// sendTestLog sends test logs to the API server and Cedar.
+func sendTestLog(ctx context.Context, comm client.Communicator, conf *model.TaskConfig, log *model.TestLog) (string, error) {
+	if conf.ProjectRef.CedarTestResultsEnabled {
+		return "", errors.Wrap(sendTestLogToCedar(ctx, conf.Task, comm, log), "problem sending test logs to cedar")
+	}
+
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	logId, err := comm.SendTestLog(ctx, td, log)
+	return logId, errors.Wrap(err, "problem sending test logs to evergreen")
 }
 
 // sendTestLogsAndResults sends the test logs and test results to the API
 // server and Cedar.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	// ship all of the test logs off to the server
 	logger.Task().Info("Sending test logs to server...")
-
 	allResults := task.LocalTestResults{}
 	for idx, log := range logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
 
-		logId, err := comm.SendTestLog(ctx, td, &log)
+		logId, err := sendTestLog(ctx, comm, conf, &log)
 		if err != nil {
 			// continue on error to let the other logs be posted
 			logger.Task().Errorf("problem posting log: %v", err)
 		}
-
-		// TODO (EVG-7780): send test results for projects that enable it.
-		// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
-		// 	logger.Task().Errorf("problem posting test log: %v", err)
-		// }
 
 		// add all of the test results that correspond to that log to the
 		// full list of results
@@ -76,21 +78,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	}
 	logger.Task().Info("Finished posting logs to server")
 
-	logger.Task().Info("Sending parsed results to server...")
-
-	if err := comm.SendTestResults(ctx, td, &allResults); err != nil {
-		logger.Task().Errorf("problem posting parsed results to the server: %+v", err)
-		return errors.Wrap(err, "problem sending test results")
-	}
-
-	// TODO (EVG-7780): send test results for projects that enable it.
-	// if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, &allResults); err != nil {
-	//     return errors.Wrap(err, "sending test results to Cedar")
-	// }
-
-	logger.Task().Info("Successfully sent parsed results to server")
-
-	return nil
+	return sendTestResults(ctx, comm, logger, conf, &allResults)
 }
 
 func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {

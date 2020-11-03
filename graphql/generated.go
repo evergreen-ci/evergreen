@@ -93,8 +93,10 @@ type ComplexityRoot struct {
 
 	CommitQueue struct {
 		Message   func(childComplexity int) int
+		Owner     func(childComplexity int) int
 		ProjectID func(childComplexity int) int
 		Queue     func(childComplexity int) int
+		Repo      func(childComplexity int) int
 	}
 
 	CommitQueueItem struct {
@@ -262,36 +264,36 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AbortTask                  func(childComplexity int, taskID string) int
-		AddFavoriteProject         func(childComplexity int, identifier string) int
-		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
-		BbCreateTicket             func(childComplexity int, taskID string) int
-		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
-		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
-		EnqueuePatch               func(childComplexity int, patchID string) int
-		RemoveFavoriteProject      func(childComplexity int, identifier string) int
-		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
-		RemovePublicKey            func(childComplexity int, keyName string) int
-		RemoveVolume               func(childComplexity int, volumeID string) int
-		RestartJasper              func(childComplexity int, hostIds []string) int
-		RestartPatch               func(childComplexity int, patchID string, abort bool, taskIds []string) int
-		RestartTask                func(childComplexity int, taskID string) int
-		SaveSubscription           func(childComplexity int, subscription model.APISubscription) int
-		SchedulePatch              func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
-		SchedulePatchTasks         func(childComplexity int, patchID string) int
-		ScheduleTask               func(childComplexity int, taskID string) int
-		SetPatchPriority           func(childComplexity int, patchID string, priority int) int
-		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
-		SpawnHost                  func(childComplexity int, spawnHostInput *SpawnHostInput) int
-		SpawnVolume                func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
-		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
-		UnscheduleTask             func(childComplexity int, taskID string) int
-		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
-		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus      func(childComplexity int, hostID string, action SpawnHostStatusActions) int
-		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
-		UpdateVolume               func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
+		AbortTask                 func(childComplexity int, taskID string) int
+		AddFavoriteProject        func(childComplexity int, identifier string) int
+		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
+		BbCreateTicket            func(childComplexity int, taskID string) int
+		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
+		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
+		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
+		EnqueuePatch              func(childComplexity int, patchID string) int
+		RemoveFavoriteProject     func(childComplexity int, identifier string) int
+		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
+		RemovePublicKey           func(childComplexity int, keyName string) int
+		RemoveVolume              func(childComplexity int, volumeID string) int
+		RestartJasper             func(childComplexity int, hostIds []string) int
+		RestartPatch              func(childComplexity int, patchID string, abort bool, taskIds []string) int
+		RestartTask               func(childComplexity int, taskID string) int
+		SaveSubscription          func(childComplexity int, subscription model.APISubscription) int
+		SchedulePatch             func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
+		SchedulePatchTasks        func(childComplexity int, patchID string) int
+		ScheduleTask              func(childComplexity int, taskID string) int
+		SetPatchPriority          func(childComplexity int, patchID string, priority int) int
+		SetTaskPriority           func(childComplexity int, taskID string, priority int) int
+		SpawnHost                 func(childComplexity int, spawnHostInput *SpawnHostInput) int
+		SpawnVolume               func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
+		UnschedulePatchTasks      func(childComplexity int, patchID string, abort bool) int
+		UnscheduleTask            func(childComplexity int, taskID string) int
+		UpdateHostStatus          func(childComplexity int, hostIds []string, status string, notes *string) int
+		UpdatePublicKey           func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
+		UpdateSpawnHostStatus     func(childComplexity int, hostID string, action SpawnHostStatusActions) int
+		UpdateUserSettings        func(childComplexity int, userSettings *model.APIUserSettings) int
+		UpdateVolume              func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
 
 	Notifications struct {
@@ -693,7 +695,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
+	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -934,6 +936,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CommitQueue.Message(childComplexity), true
 
+	case "CommitQueue.owner":
+		if e.complexity.CommitQueue.Owner == nil {
+			break
+		}
+
+		return e.complexity.CommitQueue.Owner(childComplexity), true
+
 	case "CommitQueue.projectId":
 		if e.complexity.CommitQueue.ProjectID == nil {
 			break
@@ -947,6 +956,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueue.Queue(childComplexity), true
+
+	case "CommitQueue.repo":
+		if e.complexity.CommitQueue.Repo == nil {
+			break
+		}
+
+		return e.complexity.CommitQueue.Repo(childComplexity), true
 
 	case "CommitQueueItem.enqueueTime":
 		if e.complexity.CommitQueueItem.EnqueueTime == nil {
@@ -1763,17 +1779,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
 
-	case "Mutation.removePatchFromCommitQueue":
-		if e.complexity.Mutation.RemovePatchFromCommitQueue == nil {
+	case "Mutation.removeItemFromCommitQueue":
+		if e.complexity.Mutation.RemoveItemFromCommitQueue == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_removePatchFromCommitQueue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeItemFromCommitQueue_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["patchId"].(string)), true
+		return e.complexity.Mutation.RemoveItemFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["issue"].(string)), true
 
 	case "Mutation.removePublicKey":
 		if e.complexity.Mutation.RemovePublicKey == nil {
@@ -4042,7 +4058,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
   updateHostStatus(
@@ -4611,6 +4627,8 @@ type LogMessage {
 type CommitQueue {
   projectId: String
   message: String
+  owner: String
+  repo: String
   queue: [CommitQueueItem!]
 }
 
@@ -4919,7 +4937,7 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_removeItemFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -4931,13 +4949,13 @@ func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx c
 	}
 	args["commitQueueId"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["patchId"]; ok {
+	if tmp, ok := rawArgs["issue"]; ok {
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["patchId"] = arg1
+	args["issue"] = arg1
 	return args, nil
 }
 
@@ -6472,6 +6490,68 @@ func (ec *executionContext) _CommitQueue_message(ctx context.Context, field grap
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueue_owner(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueue",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueue_repo(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueue",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10380,7 +10460,7 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_removeItemFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10396,7 +10476,7 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_removePatchFromCommitQueue_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_removeItemFromCommitQueue_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -10404,7 +10484,7 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemovePatchFromCommitQueue(rctx, args["commitQueueId"].(string), args["patchId"].(string))
+		return ec.resolvers.Mutation().RemoveItemFromCommitQueue(rctx, args["commitQueueId"].(string), args["issue"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21521,6 +21601,10 @@ func (ec *executionContext) _CommitQueue(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._CommitQueue_projectId(ctx, field, obj)
 		case "message":
 			out.Values[i] = ec._CommitQueue_message(ctx, field, obj)
+		case "owner":
+			out.Values[i] = ec._CommitQueue_owner(ctx, field, obj)
+		case "repo":
+			out.Values[i] = ec._CommitQueue_repo(ctx, field, obj)
 		case "queue":
 			out.Values[i] = ec._CommitQueue_queue(ctx, field, obj)
 		default:
@@ -22478,8 +22562,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "removePatchFromCommitQueue":
-			out.Values[i] = ec._Mutation_removePatchFromCommitQueue(ctx, field)
+		case "removeItemFromCommitQueue":
+			out.Values[i] = ec._Mutation_removeItemFromCommitQueue(ctx, field)
 		case "updateUserSettings":
 			out.Values[i] = ec._Mutation_updateUserSettings(ctx, field)
 			if out.Values[i] == graphql.Null {

@@ -1,6 +1,0 @@
-mutation {
-  removePatchFromCommitQueue(
-    commitQueueId: "mongodb-evergreen-spruce"
-    patchId: "5e6bb9e23066155a993e0f1a"
-  )
-}

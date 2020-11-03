@@ -57,6 +57,7 @@ func TestJIRASummary(t *testing.T) {
 				},
 				Task: &task.Task{
 					DisplayName: taskName,
+					Status:      evergreen.TaskFailed,
 					Details:     apimodels.TaskEndDetail{},
 				},
 				Build:   &build.Build{DisplayName: buildName},
@@ -439,6 +440,7 @@ func TestCustomFields(t *testing.T) {
 				Id:           taskId,
 				BuildVariant: "build12",
 				DisplayName:  taskName,
+				Status:       evergreen.TaskFailed,
 				Details: apimodels.TaskEndDetail{
 					Type: evergreen.CommandTypeSystem,
 				},

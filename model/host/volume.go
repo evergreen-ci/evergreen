@@ -108,6 +108,15 @@ func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
 	return findVolumes(q)
 }
 
+func FindUnattachedExpirableVolumes() ([]Volume, error) {
+	q := bson.M{
+		NoExpirationKey: bson.M{"$ne": true},
+		VolumeHostKey:   bson.M{"$exists": false},
+	}
+
+	return findVolumes(q)
+}
+
 // FindVolumeByID finds a volume by its ID field.
 func FindVolumeByID(id string) (*Volume, error) {
 	return FindOneVolume(bson.M{VolumeIDKey: id})

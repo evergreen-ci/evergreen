@@ -7,7 +7,9 @@ import (
 )
 
 type TaskAnnotation struct {
-	Id string `bson:"_id" json:"id"`
+	Id            string `bson:"_id" json:"id"`
+	TaskId        string `bson:"task_id" json:"task_id"`
+	TaskExecution int    `bson:"task_execution" json:"task_execution"`
 	// comment about the failure
 	Note string `bson:"note,omitempty" json:"note,omitempty"`
 	// links to tickets definitely related.

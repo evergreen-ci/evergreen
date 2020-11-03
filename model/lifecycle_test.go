@@ -811,6 +811,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		alias := ProjectAlias{ProjectID: pref.Identifier, TaskTags: []string{"pull-requests"}, Alias: evergreen.GithubAlias,
 			Variant: ".*"}
 		So(alias.Upsert(), ShouldBeNil)
+		mustHaveResults := true
 		project := &Project{
 			Identifier: "projectName",
 			Tasks: []ProjectTask{
@@ -834,9 +835,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					},
 				},
 				{
-					Name:      "taskD",
-					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskUnitDependency{{Name: AllDependencies}},
+					Name:            "taskD",
+					Tags:            []string{"tag1", "tag2"},
+					DependsOn:       []TaskUnitDependency{{Name: AllDependencies}},
+					MustHaveResults: &mustHaveResults,
 				},
 				{
 					Name: "taskE",
@@ -1363,6 +1365,24 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[5].Revision, ShouldEqual, v.Revision)
 				So(tasks[5].Project, ShouldEqual, project.Identifier)
 			})
+
+		Convey("the 'must have test results' flag should be set", func() {
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: true,
+				TaskNames:     []string{},
+			}
+			_, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			for _, t := range tasks {
+				if t.DisplayName == "taskD" {
+					So(t.MustHaveResults, ShouldBeTrue)
+				}
+			}
+		})
 
 	})
 }

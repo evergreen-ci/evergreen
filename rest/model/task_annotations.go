@@ -7,6 +7,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task_annotations"
 )
 
+type APITaskAnnotation struct {
+	Id              *string             `bson:"_id" json:"id"`
+	TaskId          *string             `bson:"task_id" json:"task_id"`
+	TaskExecution   int                 `bson:"task_execution" json:"task_execution"`
+	Note            *string             `bson:"note" json:"note"`
+	Issues          []APIIssueLink      `bson:"issues" json:"issues"`
+	SuspectedIssues []APIIssueLink      `bson:"suspected_issues" json:"suspected_issues"`
+	Source          APIAnnotationSource `bson:"source" json:"source"`
+	Metadata        *birch.Document     `bson:"metadata" json:"metadata"`
+}
+
 type APIAnnotationSource struct {
 	Author *string    `json:"author"`
 	Time   *time.Time `json:"time"`
@@ -15,13 +26,35 @@ type APIIssueLink struct {
 	URL      *string `json:"url"`
 	IssueKey *string `json:"issue_key"`
 }
-type APITaskAnnotation struct {
-	Id              *string             `json:"id"`
-	Note            *string             `json:"note"`
-	Issues          []APIIssueLink      `json:"issues"`
-	SuspectedIssues []APIIssueLink      `json:"suspected_issues"`
-	Source          APIAnnotationSource `json:"source"`
-	Metadata        *birch.Document     `json:"metadata"`
+
+// APITaskAnnotationBuildFromService takes the task_annotations.TaskAnnotation DB struct and
+// returns the REST struct *APITaskAnnotation with the corresponding fields populated
+func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITaskAnnotation {
+	m := APITaskAnnotation{}
+	m.Id = StringStringPtr(t.Id)
+	m.TaskId = StringStringPtr(t.TaskId)
+	m.TaskExecution = t.TaskExecution
+	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
+	m.Note = StringStringPtr(t.Note)
+	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
+	m.Source = *APIAnnotationSourceBuildFromService(t.Source)
+	m.Metadata = t.Metadata
+	return &m
+}
+
+// APITaskAnnotationToService takes the APITaskAnnotation REST struct and returns the DB struct
+// *task_annotations.TaskAnnotation with the corresponding fields populated
+func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnotation {
+	out := &task_annotations.TaskAnnotation{}
+	out.TaskId = StringPtrString(m.TaskId)
+	out.TaskExecution = m.TaskExecution
+	out.Id = StringPtrString(m.Id)
+	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
+	out.Note = StringPtrString(m.Note)
+	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
+	out.Source = *APIAnnotationSourceToService(m.Source)
+	out.Metadata = m.Metadata
+	return out
 }
 
 // APIAnnotationSourceBuildFromService takes the task_annotations.AnnotationSource DB struct and
@@ -61,32 +94,6 @@ func APIIssueLinkToService(m APIIssueLink) *task_annotations.IssueLink {
 	out := &task_annotations.IssueLink{}
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
-	return out
-}
-
-// APITaskAnnotationBuildFromService takes the task_annotations.TaskAnnotation DB struct and
-// returns the REST struct *APITaskAnnotation with the corresponding fields populated
-func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITaskAnnotation {
-	m := APITaskAnnotation{}
-	m.Id = StringStringPtr(t.Id)
-	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.Note = StringStringPtr(t.Note)
-	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
-	m.Source = *APIAnnotationSourceBuildFromService(t.Source)
-	m.Metadata = t.Metadata
-	return &m
-}
-
-// APITaskAnnotationToService takes the APITaskAnnotation REST struct and returns the DB struct
-// *task_annotations.TaskAnnotation with the corresponding fields populated
-func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnotation {
-	out := &task_annotations.TaskAnnotation{}
-	out.Id = StringPtrString(m.Id)
-	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.Note = StringPtrString(m.Note)
-	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
-	out.Source = *APIAnnotationSourceToService(m.Source)
-	out.Metadata = m.Metadata
 	return out
 }
 

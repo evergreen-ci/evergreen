@@ -1,22 +1,50 @@
 {
   "tests": [
     {
-      "query_file": "commit-queue.graphql",
+      "query_file": "cli-commit-queue.graphql",
       "result": {
         "data": {
           "commitQueue": {
             "projectId": "mongodb-mongo-master",
+            "message": "this is a message",
+            "owner": null,
+            "repo": null,
             "queue": [
               {
                 "issue": "5e94c2dfe3c3312519b59480",
                 "version": "",
-                "modules": null,
                 "enqueueTime": "2020-04-13T15:52:00-04:00",
                 "patch": {
                   "id": "5e94c2dfe3c3312519b59480",
                   "author": "mohamed.khelif",
                   "githash": "0170e0a872373b388a48694d24f22da63983e5d0"
-                }
+                },
+                "modules": null
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "pr-commit-queue.graphql",
+      "result": {
+        "data": {
+          "commitQueue": {
+            "projectId": "mongodb-evergreen-spruce",
+            "owner": "evergreen",
+            "repo": "spruce",
+            "queue": [
+              {
+                "issue": "1234",
+                "version": "5e6bb9e23066155a993e0f1a",
+                "enqueueTime": "2020-05-12T15:52:00-04:00",
+                "patch": {
+                  "id": "5e6bb9e23066155a993e0f1a",
+                  "author": "trey.granderson",
+                  "githash": "25ab18d7ed2775f27be77d8135ddd841c78cfe28"
+                },
+                "modules": null
               }
             ]
           }
@@ -39,10 +67,18 @@
       }
     },
     {
-      "query_file": "remove-patch-from-commit-queue.graphql",
+      "query_file": "cli-remove-item-from-commit-queue.graphql",
       "result": {
         "data": {
-          "removePatchFromCommitQueue": "5e6bb9e23066155a993e0f1a"
+          "removeItemFromCommitQueue": "5e6bb9e23066155a993effff"
+        }
+      }
+    },
+    {
+      "query_file": "pr-remove-item-from-commit-queue.graphql",
+      "result": {
+        "data": {
+          "removeItemFromCommitQueue": "5678"
         }
       }
     }

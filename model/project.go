@@ -498,11 +498,12 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Patchable      *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly      *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly     *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	Stepback       *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Patchable       *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly       *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag  *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly      *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults *bool `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 type LoggerConfig struct {
