@@ -840,64 +840,97 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
+	usr := gimlet.GetUser(ctx)
 	vars := gimlet.GetVars(r)
+	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 	logId := vars["log_id"]
-	var (
-		testLog  *model.TestLog
-		err      error
-		taskExec int
-	)
-
-	if logId != "" { // direct link to a log document by its ID
-		testLog, err = model.FindOneTestLogById(logId)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	} else {
-		taskID := vars["task_id"]
-		testName := vars["test_name"]
-		taskExecutionsAsString := vars["task_execution"]
-		taskExec, err = strconv.Atoi(taskExecutionsAsString)
-		if err != nil {
-			http.Error(w, "task execution num must be an int", http.StatusBadRequest)
-			return
-		}
-
-		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	if testLog == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+	taskID := vars["task_id"]
+	testName := vars["test_name"]
+	taskExecutionsAsString := vars["task_execution"]
+	taskExec, err = strconv.Atoi(taskExecutionsAsString)
+	if err != nil {
+		http.Error(w, "task execution num must be an int", http.StatusBadRequest)
 		return
 	}
+	var (
+		logReader io.ReadCloser
+		testLog   *model.TestLog
+		err       error
+		taskExec  int
+	)
 
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	data := logData{User: usr}
 
-	displayLogs := make(chan apimodels.LogMessage)
-	go func() {
-		defer close(displayLogs)
-		for _, line := range testLog.Lines {
-			if ctx.Err() != nil {
+	// Check buildlogger logs first.
+	opts := apimodels.GetBuildloggerLogsOptions{
+		BaseURL:       uis.Settings.Cedar.BaseURL,
+		TaskID:        taskID,
+		TestName:      testName,
+		Execution:     taskExec,
+		PrintPriority: !raw,
+	}
+	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
+	if err == nil {
+		defer func() {
+			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+				"task_id":   taskID,
+				"test_name": testName,
+				"message":   "failed to close buildlogger log ReadCloser",
+			}))
+		}()
+		data.Buildlogger = make(chan apimodels.LogMessage, 1024)
+		go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
+	} else {
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id":   taskID,
+			"test_name": testName,
+			"message":   "problem getting buildlogger logs",
+		}))
+	}
+
+	// If buildlogger fails, fall back to db.
+	if logReader == nil {
+		if logId != "" { // direct link to a log document by its ID
+			testLog, err = model.FindOneTestLogById(logId)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			displayLogs <- apimodels.LogMessage{
-				Type:     apimodels.TaskLogPrefix,
-				Severity: apimodels.LogInfoPrefix,
-				Version:  evergreen.LogmessageCurrentVersion,
-				Message:  line,
+		} else {
+			testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
 			}
 		}
-	}()
-	usr := gimlet.GetUser(ctx)
+
+		if testLog == nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		data.Data = make(chan apimodels.LogMessage)
+		go func() {
+			defer close(data.Data)
+			for _, line := range testLog.Lines {
+				if ctx.Err() != nil {
+					return
+				}
+				data.Data <- apimodels.LogMessage{
+					Type:     apimodels.TaskLogPrefix,
+					Severity: apimodels.LogInfoPrefix,
+					Version:  evergreen.LogmessageCurrentVersion,
+					Message:  line,
+				}
+			}
+		}()
+	}
+
 	template := "task_log.html"
-	data := logData{Data: displayLogs, User: usr}
-	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
+	if raw {
 		template = "task_log_raw.html"
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {

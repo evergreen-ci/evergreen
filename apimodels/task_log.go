@@ -71,6 +71,7 @@ func GetSeverityMapping(s int) string {
 type GetBuildloggerLogsOptions struct {
 	BaseURL       string
 	TaskID        string
+	TestName      string
 	Execution     int
 	PrintPriority bool
 	Tail          int
@@ -88,6 +89,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		UserKey:       usr.GetAPIKey(),
 		UserName:      usr.Username(),
 		TaskID:        opts.TaskID,
+		TestName:      opts.TestName,
 		Execution:     opts.Execution,
 		PrintTime:     true,
 		PrintPriority: opts.PrintPriority,
