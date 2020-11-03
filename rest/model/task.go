@@ -373,7 +373,7 @@ func (at *APITask) GetArtifacts() error {
 	}
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
-		// The route is requires a user, so hasUser is always true.
+		// The route requires a user, so hasUser is always true.
 		strippedFiles, err = artifact.StripHiddenFiles(entry.Files, true)
 		if err != nil {
 			return err
