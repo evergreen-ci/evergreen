@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 )
 
 // ArchiveContentFile represents a tar file on disk.
