@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
@@ -96,36 +98,37 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 			Convey("the correct files should be included and excluded", func() {
 
-				target := filepath.Join(testDataDir, "target.tgz")
-				outputDir := filepath.Join(testDataDir, "output")
-
-				require.NoError(t, os.RemoveAll(target), "Error removing tgz file")
-				require.NoError(t, os.RemoveAll(outputDir), "Error removing output dir")
+				target, err := ioutil.TempFile("", "target.tgz")
+				require.NoError(t, err)
 				defer func() {
-					assert.NoError(t, os.RemoveAll(target))
+					assert.NoError(t, os.RemoveAll(target.Name()))
 				}()
+				require.NoError(t, target.Close())
+				outputDir, err := ioutil.TempDir("", "archive_targz_output")
+				require.NoError(t, err)
 				defer func() {
 					assert.NoError(t, os.RemoveAll(outputDir))
 				}()
 
 				params := map[string]interface{}{
-					"target":        target,
+					"target":        target.Name(),
 					"source_dir":    testDataDir,
 					"include":       []string{"targz_me/dir1/**"},
 					"exclude_files": []string{"*.pdb"},
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				_, err := cmd.makeArchive(ctx, logger.Task())
+				numFound, err = cmd.makeArchive(ctx, logger.Task())
 				So(err, ShouldBeNil)
 				//So(numFound, ShouldEqual, 1)
+				pp.Println(numFound)
 
-				exists := utility.FileExists(target)
+				exists := utility.FileExists(target.Name())
 				So(exists, ShouldBeTrue)
 
 				// untar the file
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", "../target.tgz"}, outputDir, nil)
+				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", target.Name()}, outputDir, nil)
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included

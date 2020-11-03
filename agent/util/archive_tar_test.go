@@ -21,9 +21,8 @@ func init() {
 	reporting.QuietMode()
 }
 
+// getDirectoryOfFile returns the directory of the file of the calling function.
 func getDirectoryOfFile() string {
-	// returns the directory of the file of the calling
-	// function. duplicated from testutil to avoid a cycle.
 	_, file, _, _ := runtime.Caller(1)
 
 	return filepath.Dir(file)
@@ -32,10 +31,8 @@ func getDirectoryOfFile() string {
 func TestArchiveExtract(t *testing.T) {
 	Convey("After extracting a tarball", t, func() {
 		testDir := getDirectoryOfFile()
-		//Remove the test output dir, in case it was left over from prior test
-		outputDir := filepath.Join(testDir, "testdata", "artifacts_test")
-		err := os.RemoveAll(outputDir)
-		require.NoError(t, err, "Couldn't remove test dir")
+		outputDir, err := ioutil.TempDir("", "artifacts_test")
+		require.NoError(t, err)
 		defer func() {
 			assert.NoError(t, os.RemoveAll(outputDir))
 		}()
@@ -45,11 +42,11 @@ func TestArchiveExtract(t *testing.T) {
 		defer f.Close()
 		defer gz.Close()
 
-		err = extractTarArchive(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_test"), []string{})
+		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
 		So(err, ShouldBeNil)
 
 		Convey("extracted data should match the archive contents", func() {
-			f, err := os.Open(filepath.Join(testDir, "testdata", "artifacts_test", "artifacts", "dir1", "dir2", "testfile.txt"))
+			f, err := os.Open(filepath.Join(outputDir, "artifacts", "dir1", "dir2", "testfile.txt"))
 			So(err, ShouldBeNil)
 			defer f.Close()
 			data, err := ioutil.ReadAll(f)
@@ -64,14 +61,14 @@ func TestMakeArchive(t *testing.T) {
 		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
-		outputDir := filepath.Join(testDir, "testdata", "artifacts_out.tar.gz")
-		err := os.RemoveAll(outputDir)
-		require.NoError(t, err, "Couldn't delete test tarball")
+		outputFile, err := ioutil.TempFile("", "artifacts_test_out.tar.gz")
+		require.NoError(t, err)
 		defer func() {
-			assert.NoError(t, os.RemoveAll(outputDir))
+			assert.NoError(t, os.RemoveAll(outputFile.Name()))
 		}()
+		require.NoError(t, outputFile.Close())
 
-		f, gz, tarWriter, err := TarGzWriter(outputDir)
+		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
 		require.NoError(t, err, "Couldn't open test tarball")
 		defer f.Close()
 		defer gz.Close()
@@ -88,17 +85,14 @@ func TestArchiveRoundTrip(t *testing.T) {
 		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
-		outputFile := filepath.Join(testDir, "testdata", "artifacts_out.tar.gz")
-		err := os.RemoveAll(outputFile)
-		require.NoError(t, err, "Couldn't remove test tarball")
+		outputFile, err := ioutil.TempFile("", "artifacts_test_out.tar.gz")
+		require.NoError(t, err)
+		require.NoError(t, outputFile.Close())
 		defer func() {
-			assert.NoError(t, os.RemoveAll(outputFile))
+			assert.NoError(t, os.RemoveAll(outputFile.Name()))
 		}()
 
-		err = os.RemoveAll(outputFile)
-		require.NoError(t, err, "Couldn't remove test tarball")
-
-		f, gz, tarWriter, err := TarGzWriter(outputFile)
+		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
 		require.NoError(t, err, "Couldn't open test tarball")
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
@@ -110,11 +104,12 @@ func TestArchiveRoundTrip(t *testing.T) {
 		So(gz.Close(), ShouldBeNil)
 		So(f.Close(), ShouldBeNil)
 
-		outputDir := filepath.Join(testDir, "testdata", "artifacts_out")
+		outputDir, err := ioutil.TempDir("", "artifacts_out")
+		require.NoError(t, err)
 		defer func() {
 			assert.NoError(t, os.RemoveAll(outputDir))
 		}()
-		f2, gz2, tarReader, err := TarGzReader(outputFile)
+		f2, gz2, tarReader, err := TarGzReader(outputFile.Name())
 		require.NoError(t, err, "Couldn't open test tarball")
 		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
 		defer f2.Close()
