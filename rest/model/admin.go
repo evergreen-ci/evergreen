@@ -1638,6 +1638,7 @@ type APISchedulerConfig struct {
 	CommitQueueFactor             int64   `json:"commit_queue_factor"`
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
+	GenerateTaskFactor            int64   `json:"generate_task_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1656,6 +1657,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.CommitQueueFactor = v.CommitQueueFactor
 		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
+		a.GenerateTaskFactor = v.GenerateTaskFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1677,6 +1679,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
 		CommitQueueFactor:             a.CommitQueueFactor,
 		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
+		GenerateTaskFactor:            a.GenerateTaskFactor,
 	}, nil
 }
 

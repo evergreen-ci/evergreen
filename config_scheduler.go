@@ -23,6 +23,7 @@ type SchedulerConfig struct {
 	CommitQueueFactor             int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
 	MainlineTimeInQueueFactor     int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	GenerateTaskFactor            int64   `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -68,6 +69,7 @@ func (c *SchedulerConfig) Set() error {
 			"commit_queue_factor":               c.CommitQueueFactor,
 			"mainline_time_in_queue_factor":     c.MainlineTimeInQueueFactor,
 			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
+			"generate_task_factor":              c.GenerateTaskFactor,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -143,6 +145,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 
 	if c.ExpectedRuntimeFactor < 0 || c.ExpectedRuntimeFactor > 100 {
 		return errors.New("expected runtime factor must be between 0 and 100")
+	}
+	if c.GenerateTaskFactor < 0 || c.GenerateTaskFactor > 100 {
+		return errors.New("generate task factor must be between 0 and 100")
 	}
 
 	return nil
