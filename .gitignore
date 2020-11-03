@@ -47,13 +47,6 @@ artifacts-*
 
 npm-debug.log
 clients
-# testdata/target.tgz
-# !agent/util/testdata/artifacts.tar.gz
-# !agent/command/testdata/archive/artifacts.tar.gz
-# agent/command/testdata/tmp/
-# agent/command/testdata/archive/output/
-# agent/command/testdata/archive/target.tgz
-# agent/command/testdata/target.tgz
 creds.yml
 
 fabfile.py
