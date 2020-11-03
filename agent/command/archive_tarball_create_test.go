@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
@@ -118,10 +117,9 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err = cmd.makeArchive(ctx, logger.Task())
+				numFound, err := cmd.makeArchive(ctx, logger.Task())
 				So(err, ShouldBeNil)
-				//So(numFound, ShouldEqual, 1)
-				pp.Println(numFound)
+				So(numFound, ShouldEqual, 1)
 
 				exists := utility.FileExists(target.Name())
 				So(exists, ShouldBeTrue)
