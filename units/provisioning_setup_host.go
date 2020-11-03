@@ -573,7 +573,11 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.S
 
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
-	output, err := j.host.RunSSHCommand(curlCtx, j.host.CurlCommand(settings))
+	curlCmd, err := j.host.CurlCommand(settings)
+	if err != nil {
+		return errors.Wrap(err, "could not create command to curl evergreen client")
+	}
+	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
 		return errors.Wrapf(err, "error running command to get evergreen binary on spawn host: %s", output)
 	}

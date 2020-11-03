@@ -64,22 +64,34 @@ func ChmodCommandWithSudo(script string, sudo bool) []string {
 }
 
 // CurlCommand returns the command to curl the evergreen client.
-func (h *Host) CurlCommand(settings *evergreen.Settings) string {
-	return strings.Join(h.curlCommands(settings, ""), " && ")
+func (h *Host) CurlCommand(settings *evergreen.Settings) (string, error) {
+	cmds, err := h.curlCommands(settings, "")
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return strings.Join(cmds, " && "), nil
 }
 
 // CurlCommandWithRetry is the same as CurlCommand but retries the request.
-func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) string {
+func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) (string, error) {
 	var retryArgs string
 	if numRetries != 0 && maxRetrySecs != 0 {
 		retryArgs = " " + curlRetryArgs(numRetries, maxRetrySecs)
 	}
-	return strings.Join(h.curlCommands(settings, retryArgs), " && ")
+	cmds, err := h.curlCommands(settings, retryArgs)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return strings.Join(cmds, " && "), nil
 }
 
-func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []string {
+func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
 	var curlCmd string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
@@ -92,7 +104,7 @@ func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) []str
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
 		curlCmd,
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
-	}
+	}, nil
 }
 
 // Constants representing default curl retry arguments.
@@ -369,13 +381,15 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
 	bashPrefix := []string{"set -o errexit", "set -o verbose"}
 
-	fetchClient := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating curl command for evergreen client")
+	}
 
 	// User data runs as the privileged user, so ensure that the binary has
 	// permissions that allow it to be modified after user data is finished.
 	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
-	var err error
 	checkUserDataRan, err := h.CheckUserDataStartedCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating command to check if user data is already done")
