@@ -53,6 +53,10 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AWSConfig struct {
+		MaxVolumeSizePerUser func(childComplexity int) int
+	}
+
 	BaseTaskMetadata struct {
 		BaseTaskDuration func(childComplexity int) int
 		BaseTaskLink     func(childComplexity int) int
@@ -83,10 +87,16 @@ type ComplexityRoot struct {
 		LatestRevision func(childComplexity int) int
 	}
 
+	CloudProviderConfig struct {
+		AWS func(childComplexity int) int
+	}
+
 	CommitQueue struct {
 		Message   func(childComplexity int) int
+		Owner     func(childComplexity int) int
 		ProjectID func(childComplexity int) int
 		Queue     func(childComplexity int) int
+		Repo      func(childComplexity int) int
 	}
 
 	CommitQueueItem struct {
@@ -254,36 +264,36 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AbortTask                  func(childComplexity int, taskID string) int
-		AddFavoriteProject         func(childComplexity int, identifier string) int
-		AttachVolumeToHost         func(childComplexity int, volumeAndHost VolumeHost) int
-		BbCreateTicket             func(childComplexity int, taskID string) int
-		CreatePublicKey            func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DetachVolumeFromHost       func(childComplexity int, volumeID string) int
-		EditSpawnHost              func(childComplexity int, spawnHost *EditSpawnHostInput) int
-		EnqueuePatch               func(childComplexity int, patchID string) int
-		RemoveFavoriteProject      func(childComplexity int, identifier string) int
-		RemovePatchFromCommitQueue func(childComplexity int, commitQueueID string, patchID string) int
-		RemovePublicKey            func(childComplexity int, keyName string) int
-		RemoveVolume               func(childComplexity int, volumeID string) int
-		RestartJasper              func(childComplexity int, hostIds []string) int
-		RestartPatch               func(childComplexity int, patchID string, abort bool, taskIds []string) int
-		RestartTask                func(childComplexity int, taskID string) int
-		SaveSubscription           func(childComplexity int, subscription model.APISubscription) int
-		SchedulePatch              func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
-		SchedulePatchTasks         func(childComplexity int, patchID string) int
-		ScheduleTask               func(childComplexity int, taskID string) int
-		SetPatchPriority           func(childComplexity int, patchID string, priority int) int
-		SetTaskPriority            func(childComplexity int, taskID string, priority int) int
-		SpawnHost                  func(childComplexity int, spawnHostInput *SpawnHostInput) int
-		SpawnVolume                func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
-		UnschedulePatchTasks       func(childComplexity int, patchID string, abort bool) int
-		UnscheduleTask             func(childComplexity int, taskID string) int
-		UpdateHostStatus           func(childComplexity int, hostIds []string, status string, notes *string) int
-		UpdatePublicKey            func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus      func(childComplexity int, hostID string, action SpawnHostStatusActions) int
-		UpdateUserSettings         func(childComplexity int, userSettings *model.APIUserSettings) int
-		UpdateVolume               func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
+		AbortTask                 func(childComplexity int, taskID string) int
+		AddFavoriteProject        func(childComplexity int, identifier string) int
+		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
+		BbCreateTicket            func(childComplexity int, taskID string) int
+		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
+		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
+		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
+		EnqueuePatch              func(childComplexity int, patchID string) int
+		RemoveFavoriteProject     func(childComplexity int, identifier string) int
+		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
+		RemovePublicKey           func(childComplexity int, keyName string) int
+		RemoveVolume              func(childComplexity int, volumeID string) int
+		RestartJasper             func(childComplexity int, hostIds []string) int
+		RestartPatch              func(childComplexity int, patchID string, abort bool, taskIds []string) int
+		RestartTask               func(childComplexity int, taskID string) int
+		SaveSubscription          func(childComplexity int, subscription model.APISubscription) int
+		SchedulePatch             func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
+		SchedulePatchTasks        func(childComplexity int, patchID string) int
+		ScheduleTask              func(childComplexity int, taskID string) int
+		SetPatchPriority          func(childComplexity int, patchID string, priority int) int
+		SetTaskPriority           func(childComplexity int, taskID string, priority int) int
+		SpawnHost                 func(childComplexity int, spawnHostInput *SpawnHostInput) int
+		SpawnVolume               func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
+		UnschedulePatchTasks      func(childComplexity int, patchID string, abort bool) int
+		UnscheduleTask            func(childComplexity int, taskID string) int
+		UpdateHostStatus          func(childComplexity int, hostIds []string, status string, notes *string) int
+		UpdatePublicKey           func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
+		UpdateSpawnHostStatus     func(childComplexity int, hostID string, action SpawnHostStatusActions) int
+		UpdateUserSettings        func(childComplexity int, userSettings *model.APIUserSettings) int
+		UpdateVolume              func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
 
 	Notifications struct {
@@ -440,6 +450,7 @@ type ComplexityRoot struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
 		Jira        func(childComplexity int) int
+		Providers   func(childComplexity int) int
 		Ui          func(childComplexity int) int
 	}
 
@@ -584,14 +595,15 @@ type ComplexityRoot struct {
 	}
 
 	TestResult struct {
-		Duration  func(childComplexity int) int
-		EndTime   func(childComplexity int) int
-		ExitCode  func(childComplexity int) int
-		Id        func(childComplexity int) int
-		Logs      func(childComplexity int) int
-		StartTime func(childComplexity int) int
-		Status    func(childComplexity int) int
-		TestFile  func(childComplexity int) int
+		BaseStatus func(childComplexity int) int
+		Duration   func(childComplexity int) int
+		EndTime    func(childComplexity int) int
+		ExitCode   func(childComplexity int) int
+		Id         func(childComplexity int) int
+		Logs       func(childComplexity int) int
+		StartTime  func(childComplexity int) int
+		Status     func(childComplexity int) int
+		TestFile   func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -683,7 +695,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	RemovePatchFromCommitQueue(ctx context.Context, commitQueueID string, patchID string) (*string, error)
+	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
 	UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error)
@@ -798,6 +810,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "AWSConfig.maxVolumeSizePerUser":
+		if e.complexity.AWSConfig.MaxVolumeSizePerUser == nil {
+			break
+		}
+
+		return e.complexity.AWSConfig.MaxVolumeSizePerUser(childComplexity), true
+
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
 			break
@@ -903,12 +922,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ClientConfig.LatestRevision(childComplexity), true
 
+	case "CloudProviderConfig.aws":
+		if e.complexity.CloudProviderConfig.AWS == nil {
+			break
+		}
+
+		return e.complexity.CloudProviderConfig.AWS(childComplexity), true
+
 	case "CommitQueue.message":
 		if e.complexity.CommitQueue.Message == nil {
 			break
 		}
 
 		return e.complexity.CommitQueue.Message(childComplexity), true
+
+	case "CommitQueue.owner":
+		if e.complexity.CommitQueue.Owner == nil {
+			break
+		}
+
+		return e.complexity.CommitQueue.Owner(childComplexity), true
 
 	case "CommitQueue.projectId":
 		if e.complexity.CommitQueue.ProjectID == nil {
@@ -923,6 +956,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueue.Queue(childComplexity), true
+
+	case "CommitQueue.repo":
+		if e.complexity.CommitQueue.Repo == nil {
+			break
+		}
+
+		return e.complexity.CommitQueue.Repo(childComplexity), true
 
 	case "CommitQueueItem.enqueueTime":
 		if e.complexity.CommitQueueItem.EnqueueTime == nil {
@@ -1739,17 +1779,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(string)), true
 
-	case "Mutation.removePatchFromCommitQueue":
-		if e.complexity.Mutation.RemovePatchFromCommitQueue == nil {
+	case "Mutation.removeItemFromCommitQueue":
+		if e.complexity.Mutation.RemoveItemFromCommitQueue == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_removePatchFromCommitQueue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeItemFromCommitQueue_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemovePatchFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["patchId"].(string)), true
+		return e.complexity.Mutation.RemoveItemFromCommitQueue(childComplexity, args["commitQueueId"].(string), args["issue"].(string)), true
 
 	case "Mutation.removePublicKey":
 		if e.complexity.Mutation.RemovePublicKey == nil {
@@ -2795,6 +2835,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SpruceConfig.Jira(childComplexity), true
 
+	case "SpruceConfig.providers":
+		if e.complexity.SpruceConfig.Providers == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Providers(childComplexity), true
+
 	case "SpruceConfig.ui":
 		if e.complexity.SpruceConfig.Ui == nil {
 			break
@@ -3530,6 +3577,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestLog.RawDisplayURL(childComplexity), true
 
+	case "TestResult.baseStatus":
+		if e.complexity.TestResult.BaseStatus == nil {
+			break
+		}
+
+		return e.complexity.TestResult.BaseStatus(childComplexity), true
+
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
 			break
@@ -4004,7 +4058,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
   updateHostStatus(
@@ -4042,6 +4096,7 @@ enum TaskSortCategory {
 }
 
 enum TestSortCategory {
+  BASE_STATUS
   STATUS
   DURATION
   TEST_NAME
@@ -4419,6 +4474,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   status: String!
+  baseStatus: String
   testFile: String!
   logs: TestLog!
   exitCode: Int
@@ -4571,6 +4627,8 @@ type LogMessage {
 type CommitQueue {
   projectId: String
   message: String
+  owner: String
+  repo: String
   queue: [CommitQueueItem!]
 }
 
@@ -4658,6 +4716,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  providers: CloudProviderConfig
 }
 
 type JiraConfig {
@@ -4666,6 +4725,14 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
 }
 
 type HostEvents {
@@ -4870,7 +4937,7 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_removeItemFromCommitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -4882,13 +4949,13 @@ func (ec *executionContext) field_Mutation_removePatchFromCommitQueue_args(ctx c
 	}
 	args["commitQueueId"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["patchId"]; ok {
+	if tmp, ok := rawArgs["issue"]; ok {
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["patchId"] = arg1
+	args["issue"] = arg1
 	return args, nil
 }
 
@@ -5826,6 +5893,37 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _AWSConfig_maxVolumeSizePerUser(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AWSConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxVolumeSizePerUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6312,6 +6410,37 @@ func (ec *executionContext) _ClientConfig_latestRevision(ctx context.Context, fi
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _CloudProviderConfig_aws(ctx context.Context, field graphql.CollectedField, obj *model.APICloudProviders) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CloudProviderConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AWS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAWSConfig)
+	fc.Result = res
+	return ec.marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _CommitQueue_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6361,6 +6490,68 @@ func (ec *executionContext) _CommitQueue_message(ctx context.Context, field grap
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueue_owner(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueue",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueue_repo(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueue) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "CommitQueue",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10269,7 +10460,7 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_removeItemFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10285,7 +10476,7 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_removePatchFromCommitQueue_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_removeItemFromCommitQueue_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -10293,7 +10484,7 @@ func (ec *executionContext) _Mutation_removePatchFromCommitQueue(ctx context.Con
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemovePatchFromCommitQueue(rctx, args["commitQueueId"].(string), args["patchId"].(string))
+		return ec.resolvers.Mutation().RemoveItemFromCommitQueue(rctx, args["commitQueueId"].(string), args["issue"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14526,6 +14717,37 @@ func (ec *executionContext) _SpruceConfig_bannerTheme(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Providers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APICloudProviders)
+	fc.Result = res
+	return ec.marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -17983,6 +18205,37 @@ func (ec *executionContext) _TestResult_status(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_testFile(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21124,6 +21377,30 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj in
 
 // region    **************************** object.gotpl ****************************
 
+var aWSConfigImplementors = []string{"AWSConfig"}
+
+func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAWSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aWSConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AWSConfig")
+		case "maxVolumeSizePerUser":
+			out.Values[i] = ec._AWSConfig_maxVolumeSizePerUser(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var baseTaskMetadataImplementors = []string{"BaseTaskMetadata"}
 
 func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskMetadata) graphql.Marshaler {
@@ -21285,6 +21562,30 @@ func (ec *executionContext) _ClientConfig(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var cloudProviderConfigImplementors = []string{"CloudProviderConfig"}
+
+func (ec *executionContext) _CloudProviderConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICloudProviders) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cloudProviderConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CloudProviderConfig")
+		case "aws":
+			out.Values[i] = ec._CloudProviderConfig_aws(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var commitQueueImplementors = []string{"CommitQueue"}
 
 func (ec *executionContext) _CommitQueue(ctx context.Context, sel ast.SelectionSet, obj *model.APICommitQueue) graphql.Marshaler {
@@ -21300,6 +21601,10 @@ func (ec *executionContext) _CommitQueue(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._CommitQueue_projectId(ctx, field, obj)
 		case "message":
 			out.Values[i] = ec._CommitQueue_message(ctx, field, obj)
+		case "owner":
+			out.Values[i] = ec._CommitQueue_owner(ctx, field, obj)
+		case "repo":
+			out.Values[i] = ec._CommitQueue_repo(ctx, field, obj)
 		case "queue":
 			out.Values[i] = ec._CommitQueue_queue(ctx, field, obj)
 		default:
@@ -22257,8 +22562,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "removePatchFromCommitQueue":
-			out.Values[i] = ec._Mutation_removePatchFromCommitQueue(ctx, field)
+		case "removeItemFromCommitQueue":
+			out.Values[i] = ec._Mutation_removeItemFromCommitQueue(ctx, field)
 		case "updateUserSettings":
 			out.Values[i] = ec._Mutation_updateUserSettings(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -23511,6 +23816,8 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
+		case "providers":
+			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24342,6 +24649,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "baseStatus":
+			out.Values[i] = ec._TestResult_baseStatus(ctx, field, obj)
 		case "testFile":
 			out.Values[i] = ec._TestResult_testFile(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -27136,6 +27445,17 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOAWSConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx context.Context, sel ast.SelectionSet, v model.APIAWSConfig) graphql.Marshaler {
+	return ec._AWSConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAWSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AWSConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
 	return ec._BaseTaskMetadata(ctx, sel, &v)
 }
@@ -27219,6 +27539,17 @@ func (ec *executionContext) marshalOClientConfig2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._ClientConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOCloudProviderConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v model.APICloudProviders) graphql.Marshaler {
+	return ec._CloudProviderConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx context.Context, sel ast.SelectionSet, v *model.APICloudProviders) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CloudProviderConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueItemᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APICommitQueueItem) graphql.Marshaler {

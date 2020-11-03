@@ -1,0 +1,21 @@
+{
+  commitQueue(id: "mongodb-evergreen-spruce") {
+    projectId
+    owner
+    repo
+    queue {
+      issue
+      version
+      enqueueTime
+      patch {
+        id
+        author
+        githash
+      }
+      modules {
+        module
+        issue
+      }
+    }
+  }
+}

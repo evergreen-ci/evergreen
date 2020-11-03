@@ -116,7 +116,7 @@ func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't convert OOMTrackerInfo to service")
 	}
-	detail.OOMTracker = oomTrackerIface.(apimodels.OOMTrackerInfo)
+	detail.OOMTracker = oomTrackerIface.(*apimodels.OOMTrackerInfo)
 
 	return detail, nil
 }
@@ -127,18 +127,20 @@ type APIOomTrackerInfo struct {
 }
 
 func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
-	v, ok := t.(apimodels.OOMTrackerInfo)
+	v, ok := t.(*apimodels.OOMTrackerInfo)
 	if !ok {
 		return errors.Errorf("Incorrect type %T when unmarshalling OOMTrackerInfo", t)
 	}
-	at.Detected = v.Detected
-	at.Pids = v.Pids
+	if v != nil {
+		at.Detected = v.Detected
+		at.Pids = v.Pids
+	}
 
 	return nil
 }
 
 func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
-	return apimodels.OOMTrackerInfo{
+	return &apimodels.OOMTrackerInfo{
 		Detected: ad.Detected,
 		Pids:     ad.Pids,
 	}, nil

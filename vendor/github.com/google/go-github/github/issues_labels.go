@@ -27,10 +27,10 @@ func (l Label) String() string {
 
 // ListLabels lists all labels for a repository.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/labels/#list-all-labels-for-this-repository
-func (s *IssuesService) ListLabels(ctx context.Context, owner string, repo string, opt *ListOptions) ([]*Label, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/labels/#list-labels-for-a-repository
+func (s *IssuesService) ListLabels(ctx context.Context, owner string, repo string, opts *ListOptions) ([]*Label, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/labels", owner, repo)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -39,9 +39,6 @@ func (s *IssuesService) ListLabels(ctx context.Context, owner string, repo strin
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	var labels []*Label
 	resp, err := s.client.Do(ctx, req, &labels)
@@ -54,16 +51,13 @@ func (s *IssuesService) ListLabels(ctx context.Context, owner string, repo strin
 
 // GetLabel gets a single label.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/labels/#get-a-single-label
+// GitHub API docs: https://developer.github.com/v3/issues/labels/#get-a-label
 func (s *IssuesService) GetLabel(ctx context.Context, owner string, repo string, name string) (*Label, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/labels/%v", owner, repo, name)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	label := new(Label)
 	resp, err := s.client.Do(ctx, req, label)
@@ -84,9 +78,6 @@ func (s *IssuesService) CreateLabel(ctx context.Context, owner string, repo stri
 		return nil, nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
-
 	l := new(Label)
 	resp, err := s.client.Do(ctx, req, l)
 	if err != nil {
@@ -105,9 +96,6 @@ func (s *IssuesService) EditLabel(ctx context.Context, owner string, repo string
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	l := new(Label)
 	resp, err := s.client.Do(ctx, req, l)
@@ -132,10 +120,10 @@ func (s *IssuesService) DeleteLabel(ctx context.Context, owner string, repo stri
 
 // ListLabelsByIssue lists all labels for an issue.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/labels/#list-labels-on-an-issue
-func (s *IssuesService) ListLabelsByIssue(ctx context.Context, owner string, repo string, number int, opt *ListOptions) ([]*Label, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/labels/#list-labels-for-an-issue
+func (s *IssuesService) ListLabelsByIssue(ctx context.Context, owner string, repo string, number int, opts *ListOptions) ([]*Label, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%d/labels", owner, repo, number)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,9 +132,6 @@ func (s *IssuesService) ListLabelsByIssue(ctx context.Context, owner string, rep
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	var labels []*Label
 	resp, err := s.client.Do(ctx, req, &labels)
@@ -167,9 +152,6 @@ func (s *IssuesService) AddLabelsToIssue(ctx context.Context, owner string, repo
 		return nil, nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
-
 	var l []*Label
 	resp, err := s.client.Do(ctx, req, &l)
 	if err != nil {
@@ -189,24 +171,18 @@ func (s *IssuesService) RemoveLabelForIssue(ctx context.Context, owner string, r
 		return nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
-
 	return s.client.Do(ctx, req, nil)
 }
 
 // ReplaceLabelsForIssue replaces all labels for an issue.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/labels/#replace-all-labels-for-an-issue
+// GitHub API docs: https://developer.github.com/v3/issues/labels/#set-labels-for-an-issue
 func (s *IssuesService) ReplaceLabelsForIssue(ctx context.Context, owner string, repo string, number int, labels []string) ([]*Label, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%d/labels", owner, repo, number)
 	req, err := s.client.NewRequest("PUT", u, labels)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	var l []*Label
 	resp, err := s.client.Do(ctx, req, &l)
@@ -227,18 +203,15 @@ func (s *IssuesService) RemoveLabelsForIssue(ctx context.Context, owner string, 
 		return nil, err
 	}
 
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
-
 	return s.client.Do(ctx, req, nil)
 }
 
 // ListLabelsForMilestone lists labels for every issue in a milestone.
 //
-// GitHub API docs: https://developer.github.com/v3/issues/labels/#get-labels-for-every-issue-in-a-milestone
-func (s *IssuesService) ListLabelsForMilestone(ctx context.Context, owner string, repo string, number int, opt *ListOptions) ([]*Label, *Response, error) {
+// GitHub API docs: https://developer.github.com/v3/issues/labels/#list-labels-for-issues-in-a-milestone
+func (s *IssuesService) ListLabelsForMilestone(ctx context.Context, owner string, repo string, number int, opts *ListOptions) ([]*Label, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/milestones/%d/labels", owner, repo, number)
-	u, err := addOptions(u, opt)
+	u, err := addOptions(u, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -247,9 +220,6 @@ func (s *IssuesService) ListLabelsForMilestone(ctx context.Context, owner string
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: remove custom Accept header when this API fully launches.
-	req.Header.Set("Accept", mediaTypeLabelDescriptionSearchPreview)
 
 	var labels []*Label
 	resp, err := s.client.Do(ctx, req, &labels)

@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
@@ -241,7 +240,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := shellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
@@ -583,7 +582,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(projectInfo.Ref, metadata)
+	v, err := shellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
@@ -658,7 +657,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
+func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
 	var err error
 	if metadata.Revision.AuthorGithubUID != 0 {
@@ -712,7 +711,19 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 			v.RevisionOrderNumber = num
 		}
 	} else if metadata.GitTag.Tag != "" {
-		if !utility.StringSliceContains(ref.GitTagAuthorizedUsers, metadata.GitTag.Pusher) {
+		if !ref.GitTagVersionsEnabled {
+			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Identifier)
+		}
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting settings")
+		}
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting github token")
+		}
+
+		if !ref.AuthorizedForGitTag(ctx, metadata.GitTag.Pusher, token) {
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Identifier)
 		}

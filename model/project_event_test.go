@@ -36,6 +36,7 @@ func getMockProjectSettings() ProjectSettingsEvent {
 			Identifier:            projectId,
 			Admins:                []string{},
 			GitTagAuthorizedUsers: []string{},
+			GitTagAuthorizedTeams: []string{},
 			Tags:                  []string{},
 		},
 		GitHubHooksEnabled: true,

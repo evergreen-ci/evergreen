@@ -86,7 +86,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  removePatchFromCommitQueue(commitQueueId: String!, patchId: String!): String
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
   updateHostStatus(
@@ -124,6 +124,7 @@ enum TaskSortCategory {
 }
 
 enum TestSortCategory {
+  BASE_STATUS
   STATUS
   DURATION
   TEST_NAME
@@ -501,6 +502,7 @@ type TaskTestResult {
 type TestResult {
   id: String!
   status: String!
+  baseStatus: String
   testFile: String!
   logs: TestLog!
   exitCode: Int
@@ -653,6 +655,8 @@ type LogMessage {
 type CommitQueue {
   projectId: String
   message: String
+  owner: String
+  repo: String
   queue: [CommitQueueItem!]
 }
 
@@ -740,6 +744,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  providers: CloudProviderConfig
 }
 
 type JiraConfig {
@@ -748,6 +753,14 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
 }
 
 type HostEvents {

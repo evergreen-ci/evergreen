@@ -1564,3 +1564,12 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	input := *mock.ModifyVolumeInput
 	s.Equal(int(*input.Size), 100)
 }
+
+func (s *EC2Suite) TestModifyVolumeName() {
+	s.NoError(s.volume.Insert())
+	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NewName: "Some new thang"}))
+
+	vol, err := host.FindVolumeByID(s.volume.ID)
+	s.NoError(err)
+	s.Equal(vol.DisplayName, "Some new thang")
+}

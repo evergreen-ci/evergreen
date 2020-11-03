@@ -6,9 +6,6 @@
     tasks {
       id
       status
-      baseStatus
-      displayName
-      buildVariant
     }
     count
   }

@@ -216,7 +216,7 @@
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "task-timed-out"
     },
     {
       "_id": "4.5",
@@ -269,7 +269,11 @@
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "test-timed-out",
+      "details": {
+        "status": "failed",
+        "type": "system"
+      }
     },
     {
       "_id": "base-task-4",

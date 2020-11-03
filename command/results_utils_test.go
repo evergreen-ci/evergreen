@@ -18,7 +18,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestSendTestResultsToCedar(t *testing.T) {
+func TestSendTestResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	results := &task.LocalTestResults{
 		Results: []task.TestResult{
 			{
@@ -30,101 +32,115 @@ func TestSendTestResultsToCedar(t *testing.T) {
 			},
 		},
 	}
-	tsk := &task.Task{
-		Id:           "id",
-		Secret:       "secret",
-		CreateTime:   time.Now().Add(-time.Hour),
-		Project:      "project",
-		Version:      "version",
-		BuildVariant: "build_variant",
-		Execution:    5,
-		Requester:    evergreen.GithubPRRequester,
+	conf := &model.TaskConfig{
+		Task: &task.Task{
+			Id:           "id",
+			Secret:       "secret",
+			CreateTime:   time.Now().Add(-time.Hour),
+			Project:      "project",
+			Version:      "version",
+			BuildVariant: "build_variant",
+			Execution:    5,
+			Requester:    evergreen.GithubPRRequester,
+		},
+		ProjectRef: &model.ProjectRef{},
 	}
-	td := client.TaskData{
-		ID:     tsk.Id,
-		Secret: tsk.Secret,
-	}
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	comm := client.NewMock("url")
-	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(context.Background(), td)
+	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(ctx, td)
 	require.NoError(t, err)
+	logger, err := comm.GetLoggerProducer(ctx, td, nil)
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, logger.Close())
+	}()
 
-	checkRecord := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
-		require.NotZero(t, srv.Create)
-		assert.Equal(t, tsk.Id, srv.Create.TaskId)
-		assert.Equal(t, tsk.Project, srv.Create.Project)
-		assert.Equal(t, tsk.BuildVariant, srv.Create.Variant)
-		assert.Equal(t, tsk.Version, srv.Create.Version)
-		assert.EqualValues(t, tsk.Execution, srv.Create.Execution)
-		assert.Equal(t, tsk.Requester, srv.Create.RequestType)
-		assert.Equal(t, tsk.DisplayName, srv.Create.TaskName)
-		assert.Equal(t, displayTaskName, srv.Create.DisplayTaskName)
-		assert.False(t, srv.Create.Mainline)
-	}
-	checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
-		require.Len(t, srv.Results, 1)
-		for id, res := range srv.Results {
-			assert.NotEmpty(t, id)
-			require.Len(t, res, 1)
-			require.Len(t, res[0].Results, 1)
-			assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
-			assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
-			assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
-			assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
-			assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
+	t.Run("ToCedar", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = true
+		checkRecord := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
+			require.NotZero(t, srv.Create)
+			assert.Equal(t, conf.Task.Id, srv.Create.TaskId)
+			assert.Equal(t, conf.Task.Project, srv.Create.Project)
+			assert.Equal(t, conf.Task.BuildVariant, srv.Create.Variant)
+			assert.Equal(t, conf.Task.Version, srv.Create.Version)
+			assert.EqualValues(t, conf.Task.Execution, srv.Create.Execution)
+			assert.Equal(t, conf.Task.Requester, srv.Create.RequestType)
+			assert.Equal(t, conf.Task.DisplayName, srv.Create.TaskName)
+			assert.Equal(t, displayTaskName, srv.Create.DisplayTaskName)
+			assert.False(t, srv.Create.Mainline)
 		}
-	}
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock){
-		"Succeeds": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-			require.NoError(t, sendTestResultsToCedar(ctx, tsk, td, comm, results))
+		checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
+			require.Len(t, srv.Results, 1)
+			for id, res := range srv.Results {
+				assert.NotEmpty(t, id)
+				require.Len(t, res, 1)
+				require.Len(t, res[0].Results, 1)
+				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
+				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
+				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
+				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
+				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
+			}
+		}
 
-			checkRecord(t, srv)
-			checkResults(t, srv)
-			assert.NotZero(t, srv.Close.TestResultsRecordId)
-		},
-		"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-			srv.CreateErr = true
+		for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock){
+			"Succeeds": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, td, comm, results))
-			assert.Empty(t, srv.Results)
-			assert.Zero(t, srv.Close)
-		},
-		"FailsIfAddingResultsFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-			srv.AddErr = true
+				checkRecord(t, srv)
+				checkResults(t, srv)
+				assert.NotZero(t, srv.Close.TestResultsRecordId)
+			},
+			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				srv.CreateErr = true
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, td, comm, results))
-			checkRecord(t, srv)
-			assert.Empty(t, srv.Results)
-			assert.Zero(t, srv.Close)
-		},
-		"FailsIfClosingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-			srv.CloseErr = true
+				require.Error(t, sendTestResults(ctx, comm, logger, conf, results))
+				assert.Empty(t, srv.Results)
+				assert.Zero(t, srv.Close)
+			},
+			"FailsIfAddingResultsFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				srv.AddErr = true
 
-			require.Error(t, sendTestResultsToCedar(ctx, tsk, td, comm, results))
-			checkRecord(t, srv)
-			checkResults(t, srv)
-			assert.Zero(t, srv.Close)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+				require.Error(t, sendTestResults(ctx, comm, logger, conf, results))
+				checkRecord(t, srv)
+				assert.Empty(t, srv.Results)
+				assert.Zero(t, srv.Close)
+			},
+			"FailsIfClosingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				srv.CloseErr = true
 
-			srv := setupCedarTestResults(ctx, t, comm)
+				require.Error(t, sendTestResults(ctx, comm, logger, conf, results))
+				checkRecord(t, srv)
+				checkResults(t, srv)
+				assert.Zero(t, srv.Close)
+			},
+		} {
+			t.Run(testName, func(t *testing.T) {
+				srv := setupCedarServer(ctx, t, comm)
+				testCase(ctx, t, srv.TestResults, comm)
+			})
+		}
+	})
+	t.Run("ToEvergreen", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = false
 
-			testCase(ctx, t, srv, comm)
-		})
-	}
+		require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
+		assert.Equal(t, results, comm.LocalTestResults)
+	})
 }
 
-func TestSendTestLogToCedar(t *testing.T) {
+func TestSendTestLog(t *testing.T) {
 	ctx := context.TODO()
-	tsk := &task.Task{
-		Id:           "id",
-		Project:      "project",
-		Version:      "version",
-		BuildVariant: "build_variant",
-		Execution:    5,
-		Requester:    evergreen.GithubPRRequester,
+	conf := &model.TaskConfig{
+		Task: &task.Task{
+			Id:           "id",
+			Project:      "project",
+			Version:      "version",
+			BuildVariant: "build_variant",
+			Execution:    5,
+			Requester:    evergreen.GithubPRRequester,
+		},
+		ProjectRef: &model.ProjectRef{},
 	}
 	log := &model.TestLog{
 		Id:            "id",
@@ -135,77 +151,87 @@ func TestSendTestLogToCedar(t *testing.T) {
 	}
 	comm := client.NewMock("url")
 
-	for _, test := range []struct {
-		name     string
-		testCase func(*testing.T, *timberutil.MockBuildloggerServer)
-	}{
-		{
-			name: "CreateSenderFails",
-			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-				srv.CreateErr = true
-				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
-			},
-		},
-		{
-			name: "SendFails",
-			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-				srv.AppendErr = true
-				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
-			},
-		},
-		{
-			name: "CloseSenderFails",
-			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-				srv.CloseErr = true
-				assert.Error(t, sendTestLogToCedar(ctx, tsk, comm, log))
-			},
-		},
-		{
-			name: "SendSucceeds",
-			testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-				assert.NoError(t, sendTestLogToCedar(ctx, tsk, comm, log))
+	t.Run("ToCedar", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = true
+		for _, test := range []struct {
+			name     string
+			testCase func(*testing.T, *timberutil.MockBuildloggerServer)
+		}{
+			{
+				name: "CreateSenderFails",
+				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+					srv.CreateErr = true
 
-				require.NotEmpty(t, srv.Create)
-				assert.Equal(t, tsk.Project, srv.Create.Info.Project)
-				assert.Equal(t, tsk.Version, srv.Create.Info.Version)
-				assert.Equal(t, tsk.BuildVariant, srv.Create.Info.Variant)
-				assert.Equal(t, tsk.DisplayName, srv.Create.Info.TaskName)
-				assert.Equal(t, tsk.Id, srv.Create.Info.TaskId)
-				assert.Equal(t, int32(tsk.Execution), srv.Create.Info.Execution)
-				assert.Equal(t, log.Name, srv.Create.Info.TestName)
-				assert.Equal(t, !tsk.IsPatchRequest(), srv.Create.Info.Mainline)
-				assert.Equal(t, buildlogger.LogStorageS3, buildlogger.LogStorage(srv.Create.Storage))
-
-				require.Len(t, srv.Data, 1)
-				for _, data := range srv.Data {
-					require.Len(t, data, 1)
-					require.Len(t, data[0].Lines, 2)
-					assert.Equal(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
-					assert.Equal(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
-				}
-
+					_, err := sendTestLog(ctx, comm, conf, log)
+					assert.Error(t, err)
+				},
 			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			srv := setupCedarBuildlogger(ctx, t, comm)
-			test.testCase(t, srv)
-		})
-	}
+			{
+				name: "SendFails",
+				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+					srv.AppendErr = true
+
+					_, err := sendTestLog(ctx, comm, conf, log)
+					assert.Error(t, err)
+				},
+			},
+			{
+				name: "CloseSenderFails",
+				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+					srv.CloseErr = true
+
+					_, err := sendTestLog(ctx, comm, conf, log)
+					assert.Error(t, err)
+				},
+			},
+			{
+				name: "SendSucceeds",
+				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
+					_, err := sendTestLog(ctx, comm, conf, log)
+					assert.NoError(t, err)
+
+					require.NotEmpty(t, srv.Create)
+					assert.Equal(t, conf.Task.Project, srv.Create.Info.Project)
+					assert.Equal(t, conf.Task.Version, srv.Create.Info.Version)
+					assert.Equal(t, conf.Task.BuildVariant, srv.Create.Info.Variant)
+					assert.Equal(t, conf.Task.DisplayName, srv.Create.Info.TaskName)
+					assert.Equal(t, conf.Task.Id, srv.Create.Info.TaskId)
+					assert.Equal(t, int32(conf.Task.Execution), srv.Create.Info.Execution)
+					assert.Equal(t, log.Name, srv.Create.Info.TestName)
+					assert.Equal(t, !conf.Task.IsPatchRequest(), srv.Create.Info.Mainline)
+					assert.Equal(t, buildlogger.LogStorageS3, buildlogger.LogStorage(srv.Create.Storage))
+
+					require.Len(t, srv.Data, 1)
+					for _, data := range srv.Data {
+						require.Len(t, data, 1)
+						require.Len(t, data[0].Lines, 2)
+						assert.Equal(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
+						assert.Equal(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
+					}
+
+				},
+			},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				srv := setupCedarServer(ctx, t, comm)
+				test.testCase(t, srv.Buildlogger)
+			})
+		}
+	})
+	t.Run("ToEvergreen", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = false
+
+		logId, err := sendTestLog(ctx, comm, conf, log)
+		require.NoError(t, err)
+		assert.NotEmpty(t, logId)
+
+		require.Len(t, comm.TestLogs, 1)
+		assert.Equal(t, log, comm.TestLogs[0])
+	})
 }
 
-func setupCedarTestResults(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockTestResultsServer {
-	srv, err := timberutil.NewMockTestResultsServer(ctx, serviceutil.NextPort())
-	require.NoError(t, err)
-
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
-	require.NoError(t, err)
-	comm.CedarGRPCConn = conn
-	return srv
-}
-
-func setupCedarBuildlogger(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockBuildloggerServer {
-	srv, err := timberutil.NewMockBuildloggerServer(ctx, serviceutil.NextPort())
+func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
+	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
 	require.NoError(t, err)
 
 	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())

@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/internal"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -21,7 +21,7 @@ const (
 // SystemMetricsClient provides a wrapper around the gRPC client for sending
 // system metrics data to cedar.
 type SystemMetricsClient struct {
-	client     internal.CedarSystemMetricsClient
+	client     gopb.CedarSystemMetricsClient
 	clientConn *grpc.ClientConn
 }
 
@@ -49,7 +49,7 @@ func NewSystemMetricsClient(ctx context.Context, opts timber.ConnectionOptions) 
 	}
 
 	s := &SystemMetricsClient{
-		client:     internal.NewCedarSystemMetricsClient(conn),
+		client:     gopb.NewCedarSystemMetricsClient(conn),
 		clientConn: conn,
 	}
 	return s, nil
@@ -63,7 +63,7 @@ func NewSystemMetricsClientWithExistingConnection(ctx context.Context, clientCon
 	}
 
 	s := &SystemMetricsClient{
-		client: internal.NewCedarSystemMetricsClient(clientConn),
+		client: gopb.NewCedarSystemMetricsClient(clientConn),
 	}
 	return s, nil
 }
@@ -97,10 +97,10 @@ func (s *SystemMetricsClient) AddSystemMetrics(ctx context.Context, opts MetricD
 		return errors.New("must provide data to send")
 	}
 
-	_, err := s.client.AddSystemMetrics(ctx, &internal.SystemMetricsData{
+	_, err := s.client.AddSystemMetrics(ctx, &gopb.SystemMetricsData{
 		Id:     opts.Id,
 		Type:   opts.MetricType,
-		Format: internal.DataFormat(opts.Format),
+		Format: gopb.DataFormat(opts.Format),
 		Data:   data,
 	})
 	return err
@@ -142,7 +142,7 @@ func (s *SystemMetricsClient) CloseSystemMetrics(ctx context.Context, id string,
 		return errors.New("must specify id of system metrics object")
 	}
 
-	endInfo := &internal.SystemMetricsSeriesEnd{
+	endInfo := &gopb.SystemMetricsSeriesEnd{
 		Id:      id,
 		Success: success,
 	}
@@ -159,9 +159,9 @@ func (s *SystemMetricsClient) CloseClient() error {
 	return s.clientConn.Close()
 }
 
-func createSystemMetrics(opts SystemMetricsOptions) *internal.SystemMetrics {
-	return &internal.SystemMetrics{
-		Info: &internal.SystemMetricsInfo{
+func createSystemMetrics(opts SystemMetricsOptions) *gopb.SystemMetrics {
+	return &gopb.SystemMetrics{
+		Info: &gopb.SystemMetricsInfo{
 			Project:   opts.Project,
 			Version:   opts.Version,
 			Variant:   opts.Variant,
@@ -170,9 +170,9 @@ func createSystemMetrics(opts SystemMetricsOptions) *internal.SystemMetrics {
 			Execution: opts.Execution,
 			Mainline:  opts.Mainline,
 		},
-		Artifact: &internal.SystemMetricsArtifactInfo{
-			Compression: internal.CompressionType(opts.Compression),
-			Schema:      internal.SchemaType(opts.Schema),
+		Artifact: &gopb.SystemMetricsArtifactInfo{
+			Compression: gopb.CompressionType(opts.Compression),
+			Schema:      gopb.SchemaType(opts.Schema),
 		},
 	}
 }

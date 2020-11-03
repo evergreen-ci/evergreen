@@ -153,6 +153,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrapf(err, "error building apiJiraConfig %s", err)
 		}
 		as.Jira = &jiraConfig
+		cloudProviders := APICloudProviders{}
+		err = cloudProviders.BuildFromService(v.Providers)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiCloudProviders")
+		}
+		as.Providers = &cloudProviders
 		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)

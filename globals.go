@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -110,8 +111,6 @@ const (
 
 	HostTypeStatic = "static"
 
-	PushStage = "push"
-
 	MergeTestStarted   = "started"
 	MergeTestSucceeded = "succeeded"
 	MergeTestFailed    = "failed"
@@ -182,6 +181,7 @@ const (
 	DefaultSpawnHostExpiration          = 24 * time.Hour
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
+	UnattachedVolumeExpiration          = 24 * time.Hour * 30
 	DefaultMaxVolumeSizePerUser         = 500
 	DefaultUnexpirableHostsPerUser      = 1
 	DefaultUnexpirableVolumesPerUser    = 1
@@ -232,6 +232,16 @@ const (
 	DefaultShutdownWaitSeconds = 10
 )
 
+var TaskFailureStatuses []string = []string{
+	TaskTimedOut,
+	TaskFailed,
+	TaskSystemFailed,
+	TaskTestTimedOut,
+	TaskSetupFailed,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+}
+
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskSucceeded ||
 		IsFailedTaskStatus(status) {
@@ -242,12 +252,7 @@ func IsFinishedTaskStatus(status string) bool {
 }
 
 func IsFailedTaskStatus(status string) bool {
-	return status == TaskFailed ||
-		status == TaskSystemFailed ||
-		status == TaskSystemTimedOut ||
-		status == TaskSystemUnresponse ||
-		status == TaskTestTimedOut ||
-		status == TaskSetupFailed
+	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
 // evergreen package names

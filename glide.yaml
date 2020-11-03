@@ -57,6 +57,8 @@ import:
   - package: github.com/evergreen-ci/pail
   - package: gonum.org/v1/gonum
   - package: github.com/evergreen-ci/timber
+  - package: github.com/evergreen-ci/poplar
+  - package: github.com/evergreen-ci/juniper
 
   - package: github.com/evergreen-ci/certdepot
 

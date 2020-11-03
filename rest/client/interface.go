@@ -98,6 +98,10 @@ type Communicator interface {
 	// Sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
+	// GetClientURLs returns the all URLs that can be used to request the
+	// Evergreen binary for a given distro.
+	GetClientURLs(ctx context.Context, distroID string) ([]string, error)
+
 	// The following operations use the legacy API server and are
 	// used by task commands.
 	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error

@@ -1800,6 +1800,17 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
 	assert.Error(TryResetTask("task5", "", "", nil))
+
+	// trying to restart execution tasks should restart the entire display task, if it's done
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartVersion("version", allTasks, false, "test"))
+	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
 }
 
 func resetTaskData() error {

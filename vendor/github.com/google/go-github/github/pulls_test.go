@@ -20,7 +20,7 @@ func TestPullRequestsService_List(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
+	wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -35,8 +35,8 @@ func TestPullRequestsService_List(t *testing.T) {
 		fmt.Fprint(w, `[{"number":1}]`)
 	})
 
-	opt := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
-	pulls, _, err := client.PullRequests.List(context.Background(), "o", "r", opt)
+	opts := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
+	pulls, _, err := client.PullRequests.List(context.Background(), "o", "r", opts)
 	if err != nil {
 		t.Errorf("PullRequests.List returned error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeDraftPreview, mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+	wantAcceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/commits/sha/pulls", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -66,8 +66,8 @@ func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
 		fmt.Fprint(w, `[{"number":1}]`)
 	})
 
-	opt := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
-	pulls, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), "o", "r", "sha", opt)
+	opts := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
+	pulls, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), "o", "r", "sha", opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListPullRequestsWithCommit returned error: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestPullRequestsService_Get(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview, mediaTypeDraftPreview}
+	wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -306,8 +306,6 @@ func TestPullRequestsService_Create(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(v)
 
 		testMethod(t, r, "POST")
-		wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeDraftPreview}
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		if !reflect.DeepEqual(v, input) {
 			t.Errorf("Request body = %+v, want %+v", v, input)
 		}
@@ -348,7 +346,7 @@ func TestPullRequestsService_UpdateBranch(t *testing.T) {
 			}`)
 	})
 
-	opts := &PullReqestBranchUpdateOptions{
+	opts := &PullRequestBranchUpdateOptions{
 		ExpectedHeadSHA: String("s"),
 	}
 
@@ -398,7 +396,7 @@ func TestPullRequestsService_Edit(t *testing.T) {
 
 	for i, tt := range tests {
 		madeRequest := false
-		wantAcceptHeaders := []string{mediaTypeLabelDescriptionSearchPreview, mediaTypeLockReasonPreview}
+		wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 		mux.HandleFunc(fmt.Sprintf("/repos/o/r/pulls/%v", i), func(w http.ResponseWriter, r *http.Request) {
 			testMethod(t, r, "PATCH")
 			testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -458,8 +456,8 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 			]`)
 	})
 
-	opt := &ListOptions{Page: 2}
-	commits, _, err := client.PullRequests.ListCommits(context.Background(), "o", "r", 1, opt)
+	opts := &ListOptions{Page: 2}
+	commits, _, err := client.PullRequests.ListCommits(context.Background(), "o", "r", 1, opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListCommits returned error: %v", err)
 	}
@@ -467,7 +465,7 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 	want := []*RepositoryCommit{
 		{
 			SHA: String("3"),
-			Parents: []Commit{
+			Parents: []*Commit{
 				{
 					SHA: String("2"),
 				},
@@ -475,7 +473,7 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 		},
 		{
 			SHA: String("2"),
-			Parents: []Commit{
+			Parents: []*Commit{
 				{
 					SHA: String("1"),
 				},
@@ -517,8 +515,8 @@ func TestPullRequestsService_ListFiles(t *testing.T) {
 			]`)
 	})
 
-	opt := &ListOptions{Page: 2}
-	commitFiles, _, err := client.PullRequests.ListFiles(context.Background(), "o", "r", 1, opt)
+	opts := &ListOptions{Page: 2}
+	commitFiles, _, err := client.PullRequests.ListFiles(context.Background(), "o", "r", 1, opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListFiles returned error: %v", err)
 	}

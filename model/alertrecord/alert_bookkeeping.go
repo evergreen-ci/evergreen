@@ -23,20 +23,14 @@ const (
 	FirstTaskTypeFailureId   = "first_tasktype_failure"
 	TaskFailTransitionId     = "task_transition_failure"
 	FirstRegressionInVersion = "first_regression_in_version"
-	TaskFailedId             = "task_failed"
 	LastRevisionNotFound     = "last_revision_not_found"
 	taskRegressionByTest     = "task-regression-by-test"
 )
 
 // Host triggers
 const (
-	SpawnFailed                = "spawn_failed"
-	SpawnHostTwoHourWarning    = "spawn_twohour"
-	SpawnHostTwelveHourWarning = "spawn_twelvehour"
-	SlowProvisionWarning       = "slow_provision"
-	ProvisionFailed            = "provision_failed"
-	spawnHostWarningTemplate   = "spawn_%dhour"
-	volumeWarningTemplate      = "volume_%dhour"
+	spawnHostWarningTemplate = "spawn_%dhour"
+	volumeWarningTemplate    = "volume_%dhour"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"

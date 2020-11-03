@@ -2,10 +2,6 @@
   patchTasks(patchId: "5e4ff3abe3c3317e352062e4", variant: "windows") {
     tasks {
       id
-      status
-      baseStatus
-      displayName
-      buildVariant
     }
     count
   }

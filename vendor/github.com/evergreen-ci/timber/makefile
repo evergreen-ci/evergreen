@@ -91,35 +91,11 @@ $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
 
 .FORCE:
 
-
-proto:proto-buildlogger proto-system-metrics proto-test-results
-proto-buildlogger:buildlogger.proto
-	@mkdir -p internal
-	protoc --go_out=plugins=grpc:internal buildlogger.proto
-	rm -rf internal/vendor
-proto-system-metrics:formats.proto system_metrics.proto
-	@mkdir -p internal
-	protoc --go_out=plugins=grpc:internal formats.proto
-	protoc --go_out=plugins=grpc:internal system_metrics.proto
-proto-test-results: test_results.proto
-	@mkdir -p internal
-	protoc --go_out=plugins=grpc:internal $<
-
 clean:
-	rm -rf internal/*.pb.go
-	rm -f vendor/*.proto
 	rm -rf $(lintDeps)
 clean-results:
 	rm -rf $(buildDir)/output.*
 
-buildlogger.proto:
-	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/buildlogger.proto -o $@
-system_metrics.proto:
-	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/system_metrics.proto -o $@
-formats.proto:
-	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/formats.proto -o $@
-test_results.proto:
-	curl -L https://raw.githubusercontent.com/evergreen-ci/cedar/master/test_results.proto -o $@
 vendor:
 	glide install -s
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/evergreen-ci/aviation"
 	"github.com/evergreen-ci/aviation/services"
-	"github.com/evergreen-ci/timber/internal"
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -70,8 +70,8 @@ type buildlogger struct {
 	cancel     context.CancelFunc
 	opts       *LoggerOptions
 	conn       *grpc.ClientConn
-	client     internal.BuildloggerClient
-	buffer     []*internal.LogLine
+	client     gopb.BuildloggerClient
+	buffer     []*gopb.LogLine
 	bufferSize int
 	lastFlush  time.Time
 	timer      *time.Timer
@@ -239,8 +239,8 @@ func MakeLoggerWithContext(ctx context.Context, name string, opts *LoggerOptions
 		ctx:    ctx,
 		opts:   opts,
 		conn:   conn,
-		client: internal.NewBuildloggerClient(opts.ClientConn),
-		buffer: []*internal.LogLine{},
+		client: gopb.NewBuildloggerClient(opts.ClientConn),
+		buffer: []*gopb.LogLine{},
 		Base:   send.NewBase(name),
 	}
 
@@ -294,7 +294,7 @@ func (b *buildlogger) Send(m message.Composer) {
 		if line == "" {
 			continue
 		}
-		logLine := &internal.LogLine{
+		logLine := &gopb.LogLine{
 			Priority:  int32(m.Priority()),
 			Timestamp: &timestamp.Timestamp{Seconds: ts.Unix(), Nanos: int32(ts.Nanosecond())},
 			Data:      strings.TrimRightFunc(line, unicode.IsSpace),
@@ -349,7 +349,7 @@ func (b *buildlogger) Close() error {
 	}
 
 	if !catcher.HasErrors() {
-		endInfo := &internal.LogEndInfo{
+		endInfo := &gopb.LogEndInfo{
 			LogId:    b.opts.logID,
 			ExitCode: b.opts.exitCode,
 		}
@@ -368,8 +368,8 @@ func (b *buildlogger) Close() error {
 }
 
 func (b *buildlogger) createNewLog() error {
-	data := &internal.LogData{
-		Info: &internal.LogInfo{
+	data := &gopb.LogData{
+		Info: &gopb.LogInfo{
 			Project:   b.opts.Project,
 			Version:   b.opts.Version,
 			Variant:   b.opts.Variant,
@@ -379,12 +379,12 @@ func (b *buildlogger) createNewLog() error {
 			TestName:  b.opts.TestName,
 			Trial:     b.opts.Trial,
 			ProcName:  b.opts.ProcessName,
-			Format:    internal.LogFormat(b.opts.Format),
+			Format:    gopb.LogFormat(b.opts.Format),
 			Tags:      b.opts.Tags,
 			Arguments: b.opts.Arguments,
 			Mainline:  b.opts.Mainline,
 		},
-		Storage: internal.LogStorage(b.opts.Storage),
+		Storage: gopb.LogStorage(b.opts.Storage),
 	}
 	resp, err := b.client.CreateLog(b.ctx, data)
 	if err != nil {
@@ -420,7 +420,7 @@ func (b *buildlogger) timedFlush() {
 }
 
 func (b *buildlogger) flush(ctx context.Context) error {
-	_, err := b.client.AppendLogLines(ctx, &internal.LogLines{
+	_, err := b.client.AppendLogLines(ctx, &gopb.LogLines{
 		LogId: b.opts.logID,
 		Lines: b.buffer,
 	})
@@ -428,7 +428,7 @@ func (b *buildlogger) flush(ctx context.Context) error {
 		return err
 	}
 
-	b.buffer = []*internal.LogLine{}
+	b.buffer = []*gopb.LogLine{}
 	b.bufferSize = 0
 	b.lastFlush = time.Now()
 

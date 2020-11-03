@@ -56,6 +56,9 @@ var AuthError = errors.New("401 Unauthorized: User credentials are likely expire
 func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, errors.New("Error building request")
+	}
 	if data != nil {
 		if rc, ok := data.(io.ReadCloser); ok {
 			r.Body = rc
@@ -70,9 +73,6 @@ func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version 
 		}
 	}
 
-	if err != nil {
-		return nil, errors.New("Error building request")
-	}
 	if taskID != "" {
 		r.Header.Add(evergreen.TaskHeader, taskID)
 	}
