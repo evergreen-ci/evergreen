@@ -16,6 +16,84 @@ import (
 	"google.golang.org/grpc"
 )
 
+// MockCedarServer sets up a mock Cedar server for sending metrics, test
+// results, and logs using gRPC.
+type MockCedarServer struct {
+	Metrics     *MockMetricsServer
+	TestResults *MockTestResultsServer
+	Buildlogger *MockBuildloggerServer
+	DialOpts    timber.DialCedarOptions
+}
+
+// NewMockCedarServer will return a new MockCedarServer listening on a port
+// near the provided port.
+func NewMockCedarServer(ctx context.Context, basePort int) (*MockCedarServer, error) {
+	srv := &MockCedarServer{
+		Metrics:     &MockMetricsServer{},
+		TestResults: &MockTestResultsServer{},
+		Buildlogger: &MockBuildloggerServer{},
+	}
+	port := GetPortNumber(basePort)
+
+	srv.DialOpts = timber.DialCedarOptions{
+		BaseAddress: "localhost",
+		RPCPort:     strconv.Itoa(port),
+	}
+
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	s := grpc.NewServer()
+	gopb.RegisterCedarSystemMetricsServer(s, srv.Metrics)
+	gopb.RegisterCedarTestResultsServer(s, srv.TestResults)
+	gopb.RegisterBuildloggerServer(s, srv.Buildlogger)
+
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+	return srv, nil
+}
+
+// NewMockCedarServerWithDialOpts will return a new MockCedarServer listening
+// on the port and url from the specified dial options.
+func NewMockCedarServerWithDialOpts(ctx context.Context, opts timber.DialCedarOptions) (*MockCedarServer, error) {
+	srv := &MockCedarServer{
+		Metrics:     &MockMetricsServer{},
+		TestResults: &MockTestResultsServer{},
+		Buildlogger: &MockBuildloggerServer{},
+	}
+	srv.DialOpts = opts
+	lis, err := net.Listen("tcp", srv.Address())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	s := grpc.NewServer()
+	gopb.RegisterCedarSystemMetricsServer(s, srv.Metrics)
+	gopb.RegisterCedarTestResultsServer(s, srv.TestResults)
+	gopb.RegisterBuildloggerServer(s, srv.Buildlogger)
+
+	go func() {
+		_ = s.Serve(lis)
+	}()
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+	return srv, nil
+}
+
+// Address returns the address the server is listening on.
+func (ms *MockCedarServer) Address() string {
+	return fmt.Sprintf("%s:%s", ms.DialOpts.BaseAddress, ms.DialOpts.RPCPort)
+}
+
 // MockMetricsServer sets up a mock cedar server for testing sending system
 // metrics data to cedar using gRPC.
 type MockMetricsServer struct {

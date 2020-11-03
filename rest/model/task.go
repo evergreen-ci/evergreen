@@ -67,6 +67,7 @@ type APITask struct {
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
+	MustHaveResults    bool                `json:"must_have_test_results"`
 }
 
 type LogLinks struct {
@@ -115,7 +116,7 @@ func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't convert OOMTrackerInfo to service")
 	}
-	detail.OOMTracker = oomTrackerIface.(apimodels.OOMTrackerInfo)
+	detail.OOMTracker = oomTrackerIface.(*apimodels.OOMTrackerInfo)
 
 	return detail, nil
 }
@@ -126,18 +127,20 @@ type APIOomTrackerInfo struct {
 }
 
 func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
-	v, ok := t.(apimodels.OOMTrackerInfo)
+	v, ok := t.(*apimodels.OOMTrackerInfo)
 	if !ok {
 		return errors.Errorf("Incorrect type %T when unmarshalling OOMTrackerInfo", t)
 	}
-	at.Detected = v.Detected
-	at.Pids = v.Pids
+	if v != nil {
+		at.Detected = v.Detected
+		at.Pids = v.Pids
+	}
 
 	return nil
 }
 
 func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
-	return apimodels.OOMTrackerInfo{
+	return &apimodels.OOMTrackerInfo{
 		Detected: ad.Detected,
 		Pids:     ad.Pids,
 	}, nil
@@ -213,6 +216,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Requester:         ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
 			CanSync:           v.CanSync,
+			MustHaveResults:   v.MustHaveResults,
 			SyncAtEndOpts: APISyncAtEndOptions{
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,
@@ -298,6 +302,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		DisplayOnly:         ad.DisplayOnly,
 		Requester:           FromStringPtr(ad.Requester),
 		CanSync:             ad.CanSync,
+		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  ad.SyncAtEndOpts.Enabled,
 			Statuses: ad.SyncAtEndOpts.Statuses,

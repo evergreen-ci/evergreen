@@ -161,34 +161,25 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		return errors.New("no test results found")
 	}
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
 	succeeded := 0
 	for i, log := range cumulative.logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
 
-		// TODO (EVG-7780): send test results for projects that enable it.
-		// if err := sendTestLogToCedar(ctx, td, comm, &log); err != nil {
-		// 	logger.Task().Errorf("problem posting test log: %v", err)
-		//      continue
-		// } else {
-		//      succeeded++
-		// }
-		logID, err := comm.SendTestLog(ctx, td, log)
+		logId, err := sendTestLog(ctx, comm, conf, log)
 		if err != nil {
 			logger.Task().Warningf("problem uploading logs for %s", log.Name)
 			continue
 		} else {
 			succeeded++
 		}
-		cumulative.tests[cumulative.logIdxToTestIdx[i]].LogId = logID
+		cumulative.tests[cumulative.logIdxToTestIdx[i]].LogId = logId
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
 	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
 
-	return sendTestResults(ctx, conf, logger, comm, &task.LocalTestResults{Results: cumulative.tests})
+	return sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: cumulative.tests})
 }
 
 type testcaseAccumulator struct {

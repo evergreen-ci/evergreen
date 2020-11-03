@@ -122,6 +122,7 @@ type parserTask struct {
 	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MustHaveResults *bool               `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
 func (pp *ParserProject) Insert() error {
@@ -673,6 +674,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			AllowForGitTag:  pt.AllowForGitTag,
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
+			MustHaveResults: pt.MustHaveResults,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are unauthorized in task names ('%s')", pt.Name))

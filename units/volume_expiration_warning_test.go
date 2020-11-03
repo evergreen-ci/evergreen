@@ -20,6 +20,7 @@ func TestVolumeExpiration(t *testing.T) {
 		{ID: "v0", Expiration: time.Now().Add(2 * time.Hour)},
 		{ID: "v1", Expiration: time.Now().Add(10 * time.Hour)},
 		{ID: "v2", Expiration: time.Now().Add(15 * time.Hour)},
+		{ID: "v3", Expiration: time.Now().Add(30 * 24 * time.Hour)},
 	}
 	for _, v := range volumes {
 		require.NoError(t, v.Insert())
@@ -30,10 +31,10 @@ func TestVolumeExpiration(t *testing.T) {
 
 	events, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(t, err)
-	// two events for v0 and one for v1
+	// one event each for v0, v1, v2
 	assert.Len(t, events, 3)
 
-	expiringSoonVolumes := []string{"v0", "v1"}
+	expiringSoonVolumes := []string{"v0", "v1", "v2"}
 	for _, e := range events {
 		assert.Contains(t, expiringSoonVolumes, e.ResourceId)
 	}
