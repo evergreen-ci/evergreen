@@ -1697,7 +1697,7 @@ func (t *Task) Archive() error {
 			return errors.Wrap(err, "error retrieving execution tasks")
 		}
 		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "error archiving execution task")
+			return errors.Wrap(err, "error archiving execution tasks")
 		}
 	}
 
