@@ -249,7 +249,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	require.NoError(t, err)
 	volCreation, err := time.Parse(time.RFC3339, "2020-06-05T14:43:06.567Z")
 	require.NoError(t, err)
-	volume := host.Volume{
+	mountedVolume := host.Volume{
 		ID:               "vol-0603934da6f024db5",
 		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
 		CreatedBy:        apiUser,
@@ -262,7 +262,21 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Host:             "i-1104943f",
 		HomeVolume:       true,
 	}
-	require.NoError(t, volume.Insert())
+	require.NoError(t, mountedVolume.Insert())
+	unmountedVolume := host.Volume{
+		ID:               "vol-0603934fsas024db5",
+		DisplayName:      "cd3721ats48700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
+		CreatedBy:        apiUser,
+		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
+		Size:             500,
+		AvailabilityZone: "us-east-1a",
+		Expiration:       volExp,
+		NoExpiration:     false,
+		CreationDate:     volCreation,
+		Host:             "",
+		HomeVolume:       true,
+	}
+	require.NoError(t, unmountedVolume.Insert())
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",
@@ -291,7 +305,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, h.Insert())
 	ctx := context.Background()
-	err = graphql.SpawnHostForTestCode(ctx, &volume, &h)
+	err = graphql.SpawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
 }
 
