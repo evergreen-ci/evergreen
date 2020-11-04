@@ -28,10 +28,12 @@ func (m *Module) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
 func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m) }
 
 type CommitQueueItem struct {
-	Issue       string    `bson:"issue"`
-	Version     string    `bson:"version,omitempty"`
-	EnqueueTime time.Time `bson:"enqueue_time"`
-	Modules     []Module  `bson:"modules"`
+	Issue           string    `bson:"issue"`
+	Version         string    `bson:"version,omitempty"`
+	EnqueueTime     time.Time `bson:"enqueue_time"`
+	Modules         []Module  `bson:"modules"`
+	TitleOverride   string    `bson:"title_override"`
+	MessageOverride string    `bson:"message_override"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }

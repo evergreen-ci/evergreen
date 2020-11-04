@@ -18,11 +18,13 @@ type APICommitQueue struct {
 }
 
 type APICommitQueueItem struct {
-	Issue       *string     `json:"issue"`
-	Version     *string     `json:"version"`
-	EnqueueTime *time.Time  `json:"enqueueTime"`
-	Modules     []APIModule `json:"modules"`
-	Patch       *APIPatch   `json:"patch"`
+	Issue           *string     `json:"issue"`
+	Version         *string     `json:"version"`
+	EnqueueTime     *time.Time  `json:"enqueueTime"`
+	Modules         []APIModule `json:"modules"`
+	Patch           *APIPatch   `json:"patch"`
+	TitleOverride   *string     `json:"title_override"`
+	MessageOverride *string     `json:"message_override"`
 }
 
 type APIModule struct {
@@ -68,6 +70,8 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	item.Issue = ToStringPtr(cqItemService.Issue)
 	item.Version = ToStringPtr(cqItemService.Version)
 	item.EnqueueTime = ToTimePtr(cqItemService.EnqueueTime)
+	item.TitleOverride = ToStringPtr(cqItemService.TitleOverride)
+	item.MessageOverride = ToStringPtr(cqItemService.MessageOverride)
 
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
@@ -81,8 +85,10 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 
 func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	serviceItem := commitqueue.CommitQueueItem{
-		Issue:   FromStringPtr(item.Issue),
-		Version: FromStringPtr(item.Version),
+		Issue:           FromStringPtr(item.Issue),
+		Version:         FromStringPtr(item.Version),
+		TitleOverride:   FromStringPtr(item.TitleOverride),
+		MessageOverride: FromStringPtr(item.MessageOverride),
 	}
 	for _, module := range item.Modules {
 		serviceModule := commitqueue.Module{
@@ -94,19 +100,42 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	return serviceItem, nil
 }
 
-func ParseGitHubCommentModules(comment string) []APIModule {
+type GithubCommentCqData struct {
+	Modules         []APIModule
+	TitleOverride   string
+	MessageOverride string
+}
+
+func ParseGitHubComment(comment string) GithubCommentCqData {
+	data := GithubCommentCqData{}
 	comment = strings.TrimSpace(comment)
 	modules := []APIModule{}
 
-	r := regexp.MustCompile(`(?:--module|-m)\s+(\w+):(\d+)`)
-	moduleSlices := r.FindAllStringSubmatch(comment, -1)
-
+	moduleRegex := regexp.MustCompile(`(?:--module|-m)\s+(\w+):(\d+)`)
+	moduleSlices := moduleRegex.FindAllStringSubmatch(comment, -1)
 	for _, moduleSlice := range moduleSlices {
 		modules = append(modules, APIModule{
 			Module: ToStringPtr(moduleSlice[1]),
 			Issue:  ToStringPtr(moduleSlice[2]),
 		})
 	}
+	data.Modules = modules
 
-	return modules
+	titleOverride := ""
+	titleRegex := regexp.MustCompile(`(?:--title|-t)\s+\"([^\"]+)\"`)
+	titleMatch := titleRegex.FindStringSubmatch(comment)
+	if len(titleMatch) >= 2 {
+		titleOverride = titleMatch[1]
+	}
+	data.TitleOverride = titleOverride
+
+	messageOverride := ""
+	messageRegex := regexp.MustCompile(`(?:--message|-m)\s+\"([^\"]+)\"`)
+	messageMatch := messageRegex.FindStringSubmatch(comment)
+	if len(messageMatch) >= 2 {
+		messageOverride = messageMatch[1]
+	}
+	data.MessageOverride = messageOverride
+
+	return data
 }

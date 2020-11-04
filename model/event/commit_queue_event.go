@@ -19,11 +19,13 @@ const (
 )
 
 type PRInfo struct {
-	Owner       string `bson:"owner"`
-	Repo        string `bson:"repo"`
-	Ref         string `bson:"ref"`
-	PRNum       int    `bson:"pr_number"`
-	CommitTitle string `bson:"commit_title"`
+	Owner           string `bson:"owner"`
+	Repo            string `bson:"repo"`
+	Ref             string `bson:"ref"`
+	PRNum           int    `bson:"pr_number"`
+	CommitTitle     string `bson:"commit_title"`
+	TitleOverride   string `bson:"title_override"`
+	MessageOverride string `bson:"message_override"`
 }
 
 func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) {
