@@ -1,0 +1,11 @@
+{
+    "tests": [
+        {
+            "query_file": "success.graphql",
+            "result": {
+              "data": {"clearMySubscriptions":1}
+            }
+          }
+    ]
+  }
+  
