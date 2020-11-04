@@ -59,7 +59,7 @@ type monitor struct {
 	logPrefix       string
 	jasperPort      int
 	port            int
-	provider        string
+	cloudProvider   string
 
 	// Args to be forwarded to the agent
 	agentArgs []string
@@ -93,7 +93,6 @@ func agentMonitor() cli.Command {
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
-		providerFlagName        = "provider"
 	)
 
 	const (
@@ -137,10 +136,6 @@ func agentMonitor() cli.Command {
 				Value: defaultMonitorPort,
 				Usage: "the port that used by the monitor",
 			},
-			cli.StringFlag{
-				Name:  providerFlagName,
-				Usage: "the cloud provider that manages this host",
-			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientPathFlagName),
@@ -159,11 +154,11 @@ func agentMonitor() cli.Command {
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),
 				distroID:        c.String(distroIDFlagName),
+				cloudProvider:   c.Parent().String(agentCloudProviderFlagName),
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
 				logPrefix:       c.String(logPrefixFlagName),
-				provider:        c.String(providerFlagName),
 			}
 
 			var err error
@@ -424,7 +419,7 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
-			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.provider) {
+			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.cloudProvider) {
 				if agentutil.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
 				}

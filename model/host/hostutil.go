@@ -1105,6 +1105,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
@@ -1125,7 +1126,6 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
-		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
 
