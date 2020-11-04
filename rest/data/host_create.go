@@ -124,7 +124,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		return errors.Wrap(err, "error populating expansions")
 	}
 	params := append(proj.GetParameters(), v.Parameters...)
-	if err := model.UpdateExpansions(&expansions, t.Project, params); err != nil {
+	if err = model.UpdateExpansions(&expansions, t.Project, params); err != nil {
 		return errors.Wrap(err, "error updating expansions")
 	}
 
