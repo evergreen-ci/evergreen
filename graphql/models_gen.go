@@ -14,6 +14,13 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
+type AbortInfo struct {
+	User                    *string `json:"user"`
+	TaskID                  *string `json:"taskID"`
+	TaskDisplayName         *string `json:"taskDisplayName"`
+	BuildVariantDisplayName *string `json:"buildVariantDisplayName"`
+}
+
 type BaseTaskMetadata struct {
 	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
 	BaseTaskLink     string             `json:"baseTaskLink"`

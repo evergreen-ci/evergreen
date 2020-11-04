@@ -124,6 +124,34 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	return publicKeys, nil
 }
 
+func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
+	if at.Aborted != true {
+		return nil, nil
+	}
+
+	info := AbortInfo{
+		User:   &at.AbortInfo.User,
+		TaskID: &at.AbortInfo.TaskID,
+	}
+
+	abortedTask, err := task.FindOne(task.ById(at.AbortInfo.TaskID))
+	if err != nil {
+		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
+	}
+	abortedTaskBuild, err := build.FindOne(build.ById(abortedTask.BuildId))
+	if err != nil {
+		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
+	}
+	if abortedTaskBuild == nil || abortedTask == nil {
+		return &info, ResourceNotFound.Send(ctx, "Unable to find resources for aborted task")
+	}
+
+	info.TaskDisplayName = &abortedTask.DisplayName
+	info.BuildVariantDisplayName = &abortedTaskBuild.DisplayName
+
+	return &info, nil
+}
+
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {

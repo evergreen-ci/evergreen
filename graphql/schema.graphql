@@ -533,8 +533,16 @@ type BaseTaskMetadata {
   baseTaskLink: String!
 }
 
+type AbortInfo {
+  user: String
+  taskID: String
+  taskDisplayName: String
+  buildVariantDisplayName: String
+}
+
 type Task {
   aborted: Boolean
+  abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
   activatedTime: Time

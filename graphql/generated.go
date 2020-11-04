@@ -57,6 +57,13 @@ type ComplexityRoot struct {
 		MaxVolumeSizePerUser func(childComplexity int) int
 	}
 
+	AbortInfo struct {
+		BuildVariantDisplayName func(childComplexity int) int
+		TaskDisplayName         func(childComplexity int) int
+		TaskID                  func(childComplexity int) int
+		User                    func(childComplexity int) int
+	}
+
 	BaseTaskMetadata struct {
 		BaseTaskDuration func(childComplexity int) int
 		BaseTaskLink     func(childComplexity int) int
@@ -455,6 +462,7 @@ type ComplexityRoot struct {
 	}
 
 	Task struct {
+		AbortInfo           func(childComplexity int) int
 		Aborted             func(childComplexity int) int
 		Activated           func(childComplexity int) int
 		ActivatedBy         func(childComplexity int) int
@@ -757,6 +765,8 @@ type QueryResolver interface {
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 }
 type TaskResolver interface {
+	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
+
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
@@ -816,6 +826,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AWSConfig.MaxVolumeSizePerUser(childComplexity), true
+
+	case "AbortInfo.buildVariantDisplayName":
+		if e.complexity.AbortInfo.BuildVariantDisplayName == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.BuildVariantDisplayName(childComplexity), true
+
+	case "AbortInfo.taskDisplayName":
+		if e.complexity.AbortInfo.TaskDisplayName == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.TaskDisplayName(childComplexity), true
+
+	case "AbortInfo.taskID":
+		if e.complexity.AbortInfo.TaskID == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.TaskID(childComplexity), true
+
+	case "AbortInfo.user":
+		if e.complexity.AbortInfo.User == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.User(childComplexity), true
 
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
@@ -2849,6 +2887,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SpruceConfig.Ui(childComplexity), true
 
+	case "Task.abortInfo":
+		if e.complexity.Task.AbortInfo == nil {
+			break
+		}
+
+		return e.complexity.Task.AbortInfo(childComplexity), true
+
 	case "Task.aborted":
 		if e.complexity.Task.Aborted == nil {
 			break
@@ -4505,8 +4550,16 @@ type BaseTaskMetadata {
   baseTaskLink: String!
 }
 
+type AbortInfo {
+  user: String
+  taskID: String
+  taskDisplayName: String
+  buildVariantDisplayName: String
+}
+
 type Task {
   aborted: Boolean
+  abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
@@ -5922,6 +5975,130 @@ func (ec *executionContext) _AWSConfig_maxVolumeSizePerUser(ctx context.Context,
 	res := resTmp.(*int)
 	fc.Result = res
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_user(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_taskID(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_taskDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskDisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildVariantDisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -14779,6 +14956,37 @@ func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.Col
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_abortInfo(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().AbortInfo(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*AbortInfo)
+	fc.Result = res
+	return ec.marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAbortInfo(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_activated(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21401,6 +21609,36 @@ func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var abortInfoImplementors = []string{"AbortInfo"}
+
+func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet, obj *AbortInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, abortInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AbortInfo")
+		case "user":
+			out.Values[i] = ec._AbortInfo_user(ctx, field, obj)
+		case "taskID":
+			out.Values[i] = ec._AbortInfo_taskID(ctx, field, obj)
+		case "taskDisplayName":
+			out.Values[i] = ec._AbortInfo_taskDisplayName(ctx, field, obj)
+		case "buildVariantDisplayName":
+			out.Values[i] = ec._AbortInfo_buildVariantDisplayName(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var baseTaskMetadataImplementors = []string{"BaseTaskMetadata"}
 
 func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskMetadata) graphql.Marshaler {
@@ -23842,6 +24080,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("Task")
 		case "aborted":
 			out.Values[i] = ec._Task_aborted(ctx, field, obj)
+		case "abortInfo":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_abortInfo(ctx, field, obj)
+				return res
+			})
 		case "activated":
 			out.Values[i] = ec._Task_activated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -27454,6 +27703,17 @@ func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._AWSConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAbortInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAbortInfo(ctx context.Context, sel ast.SelectionSet, v AbortInfo) graphql.Marshaler {
+	return ec._AbortInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAbortInfo(ctx context.Context, sel ast.SelectionSet, v *AbortInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AbortInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOBaseTaskMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v BaseTaskMetadata) graphql.Marshaler {
