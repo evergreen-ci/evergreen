@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -92,40 +93,14 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		keyVal = keyNameOrVal
 	}
 
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	proj, expansions, err := makeProjectAndExpansionsFromTask(t)
 	if err != nil {
-		return errors.Wrap(err, "error finding version")
+		return errors.WithStack(err)
 	}
-	if v == nil {
-		return errors.New("version doesn't exist")
-	}
-	proj, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
-	if err != nil {
-		return errors.Wrap(err, "error loading project")
-	}
+
 	projectTask := proj.FindProjectTask(t.DisplayName)
 	if projectTask == nil {
 		return errors.Errorf("unable to find configuration for task %s", t.Id)
-	}
-	h, err := host.FindOne(host.ById(t.HostId))
-	if err != nil {
-		return errors.Wrap(err, "error finding host")
-	}
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "error getting evergreen config")
-	}
-	oauthToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "error getting oauth token")
-	}
-	expansions, err := model.PopulateExpansions(t, h, oauthToken)
-	if err != nil {
-		return errors.Wrap(err, "error populating expansions")
-	}
-	params := append(proj.GetParameters(), v.Parameters...)
-	if err = model.UpdateExpansions(&expansions, t.Project, params); err != nil {
-		return errors.Wrap(err, "error updating expansions")
 	}
 
 	createHostCmds := []apimodels.CreateHost{}
@@ -161,7 +136,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
-		err = createHost.Expand(&expansions)
+		err = createHost.Expand(expansions)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -186,6 +161,42 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	}
 
 	return catcher.Resolve()
+}
+
+func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expansions, error) {
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding version")
+	}
+	if v == nil {
+		return nil, nil, errors.New("version doesn't exist")
+	}
+	proj, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error loading project")
+	}
+	h, err := host.FindOne(host.ById(t.HostId))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding host")
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error getting evergreen config")
+	}
+	oauthToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error getting oauth token")
+	}
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error populating expansions")
+	}
+	params := append(proj.GetParameters(), v.Parameters...)
+	if err = model.UpdateExpansions(&expansions, t.Project, params); err != nil {
+		return nil, nil, errors.Wrap(err, "error updating expansions")
+	}
+
+	return proj, &expansions, nil
 }
 
 func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
