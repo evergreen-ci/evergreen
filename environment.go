@@ -774,8 +774,16 @@ func (e *envState) ClientConfig() *ClientConfig {
 }
 
 type BuildBaronProject struct {
+	// todo: after migrating the data, switch the logic to use this boolean and not the list
+
+	// since we are now also using this struct for task annotations (including the TicketCreateProject field),
+	// we can no longer assume that the presence of a project in the list means that the user wants to run the build baron.
+	showBuildBaron bool `mapstructure:"show_build_baron" bson:"show_build_baron"`
+
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+
+	TaskAnnotationSettings AnnotationsSettings `mapstructure:"task_annotation_settings" bson:"task_annotation_settings"`
 
 	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
 	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
@@ -783,6 +791,13 @@ type BuildBaronProject struct {
 	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
 	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
 	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url"`
+}
+
+type AnnotationsSettings struct {
+	// a list of jira fields the user wants to display in addition to state assignee and priority
+	JiraCustomFields []string `mapstructure:"jira_custom_fields" bson:"jira_custom_fields"`
+	// the endpoint that the user would like to send data to when the file ticket button is clicked
+	WebHook string `mapstructure:"web_hook" bson:"web_hook"`
 }
 
 func (e *envState) SaveConfig() error {
