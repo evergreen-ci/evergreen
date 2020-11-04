@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -42,7 +42,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
@@ -119,7 +119,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {
+func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
 	fileLoc := filepath.Join(conf.WorkDir, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "File '%s' does not exist", fn)

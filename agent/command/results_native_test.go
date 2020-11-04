@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -41,10 +42,12 @@ func TestAttachResults(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
 		So(err, ShouldBeNil)
-		modelData.TaskConfig.WorkDir = "."
+
+		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
+		conf.WorkDir = "."
 
 		Convey("all commands in test project should execute successfully", func() {
-			conf := modelData.TaskConfig
 			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 			So(err, ShouldBeNil)
 
@@ -91,8 +94,9 @@ func TestAttachRawResults(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
 
-		modelData.TaskConfig.WorkDir = "."
-		conf := modelData.TaskConfig
+		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
+		conf.WorkDir = "."
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
 

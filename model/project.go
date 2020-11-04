@@ -1028,35 +1028,36 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 
 // GetTaskGroup returns the task group for a given task from its project
 // Only called by agent so we don't retrieve project from database
-func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
-	if tc == nil {
-		return nil, errors.New("unable to get task group: TaskConfig is nil")
-	}
-	if tc.Task == nil {
-		return nil, errors.New("unable to get task group: task is nil")
-	}
-	if tc.Task.Version == "" {
-		return nil, errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return nil, errors.New("project is nil")
-	}
-
-	if taskGroup == "" {
-		// if there is no named task group, fall back to project definitions
-		return &TaskGroup{
-			SetupTask:          tc.Project.Pre,
-			TeardownTask:       tc.Project.Post,
-			Timeout:            tc.Project.Timeout,
-			SetupGroupFailTask: tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
-		}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
-	}
-	return tg, nil
-}
+// kim: TODO: move GetTaskGroup to agent
+// func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
+//     if tc == nil {
+//         return nil, errors.New("unable to get task group: TaskConfig is nil")
+//     }
+//     if tc.Task == nil {
+//         return nil, errors.New("unable to get task group: task is nil")
+//     }
+//     if tc.Task.Version == "" {
+//         return nil, errors.New("task has no version")
+//     }
+//     if tc.Project == nil {
+//         return nil, errors.New("project is nil")
+//     }
+//
+//     if taskGroup == "" {
+//         // if there is no named task group, fall back to project definitions
+//         return &TaskGroup{
+//             SetupTask:          tc.Project.Pre,
+//             TeardownTask:       tc.Project.Post,
+//             Timeout:            tc.Project.Timeout,
+//             SetupGroupFailTask: tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
+//         }, nil
+//     }
+//     tg := tc.Project.FindTaskGroup(taskGroup)
+//     if tg == nil {
+//         return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
+//     }
+//     return tg, nil
+// }
 
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -40,7 +41,7 @@ func (c *attachResults) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *attachResults) expandAttachResultsParams(taskConfig *model.TaskConfig) error {
+func (c *attachResults) expandAttachResultsParams(taskConfig *internal.TaskConfig) error {
 	var err error
 
 	c.FileLoc, err = taskConfig.Expansions.ExpandString(c.FileLoc)
@@ -54,7 +55,7 @@ func (c *attachResults) expandAttachResultsParams(taskConfig *model.TaskConfig) 
 // Execute carries out the attachResults command - this is required
 // to satisfy the 'Command' interface
 func (c *attachResults) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandAttachResultsParams(conf); err != nil {
 		return errors.WithStack(err)
@@ -84,7 +85,7 @@ func (c *attachResults) Execute(ctx context.Context,
 	return sendTestResults(ctx, comm, logger, conf, results)
 }
 
-func (c *attachResults) sendTestLogs(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
+func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
 	for i, res := range results.Results {
 		if ctx.Err() != nil {
 			return errors.Errorf("operation canceled during uploading")

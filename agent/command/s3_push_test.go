@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -40,8 +41,8 @@ func TestS3PushParseParams(t *testing.T) {
 }
 
 func TestS3PushExecute(t *testing.T) {
-	for testName, testCase := range map[string]func(context.Context, *testing.T, *s3Push, *client.Mock, client.LoggerProducer, *model.TaskConfig){
-		"PushesTaskDirectoryToS3": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+	for testName, testCase := range map[string]func(context.Context, *testing.T, *s3Push, *client.Mock, client.LoggerProducer, *internal.TaskConfig){
+		"PushesTaskDirectoryToS3": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
@@ -72,7 +73,7 @@ func TestS3PushExecute(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, fileContent, pulledContent)
 		},
-		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
@@ -103,7 +104,7 @@ func TestS3PushExecute(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, files)
 		},
-		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			tmpDir, err := ioutil.TempDir("", "s3_push")
 			require.NoError(t, err)
 			defer func() {
@@ -119,17 +120,17 @@ func TestS3PushExecute(t *testing.T) {
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
 			assert.Equal(t, excludeFilterExpansion, c.ExcludeFilter)
 		},
-		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			c.bucket = nil
 			conf.TaskSync.Key = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
-		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			c.bucket = nil
 			conf.TaskSync.Secret = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
-		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig) {
+		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			c.bucket = nil
 			conf.TaskSync.Bucket = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
@@ -138,7 +139,7 @@ func TestS3PushExecute(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			conf := &model.TaskConfig{
+			conf := &internal.TaskConfig{
 				Task: &task.Task{
 					Id:           "id",
 					Secret:       "secret",

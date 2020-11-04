@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -67,7 +68,7 @@ func TestCommandFileLogging(t *testing.T) {
 			Secret: taskSecret,
 		},
 		runGroupSetup: true,
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Project: &model.Project{
@@ -91,7 +92,7 @@ func TestCommandFileLogging(t *testing.T) {
 					{Name: "bv", Tasks: []model.BuildVariantTaskUnit{{Name: "task1"}}},
 				},
 			},
-			Timeout: &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout: &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			WorkDir: tmpDirName,
 		},
 		taskModel: task,
@@ -148,7 +149,7 @@ func TestStartLogging(t *testing.T) {
 			ID:     "logging",
 			Secret: "task_secret",
 		},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Task: &task.Task{},
 		},
 	}
@@ -203,7 +204,7 @@ func TestStartLoggingErrors(t *testing.T) {
 			Secret: "secret",
 		},
 		runGroupSetup: true,
-		taskConfig:    &model.TaskConfig{},
+		taskConfig:    &internal.TaskConfig{},
 		project:       project,
 		taskModel:     &task.Task{},
 	}
@@ -245,10 +246,10 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 				Task:   []model.LogOpts{{Type: model.LogkeeperLogSender}},
 			},
 		},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
-			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		},
 		taskModel: task,
 	}
@@ -284,10 +285,10 @@ func TestDefaultSender(t *testing.T) {
 			Secret: taskSecret,
 		},
 		project: &model.Project{},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
-			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		},
 		taskModel: task,
 	}
@@ -345,10 +346,10 @@ func TestTimberSender(t *testing.T) {
 				Task:   []model.LogOpts{{Type: model.BuildloggerLogSender}},
 			},
 		},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
-			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+			Timeout:      &internal.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		},
 		taskModel: task,
 	}

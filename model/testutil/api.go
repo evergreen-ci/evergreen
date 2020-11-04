@@ -13,14 +13,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type TestModelData struct {
 	Task       *task.Task
 	Build      *build.Build
 	Host       *host.Host
-	TaskConfig *model.TaskConfig
+	Project    *model.Project
+	ProjectRef *model.ProjectRef
+	// kim: TODO: remove
+	// TaskConfig *model.TaskConfig
 }
 
 func CleanupAPITestData() error {
@@ -43,13 +46,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.WithStack(err)
 	}
 
-	// Read in the project configuration
+	modelData := &TestModelData{}
+
 	projectConfig, err := ioutil.ReadFile(projectFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read project config")
 	}
-
-	modelData := &TestModelData{}
 
 	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
@@ -57,6 +59,13 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
+	modelData.Project = project
+
+	// kim: TODO: remove
+	// projectConfig, project, pp, err := setupAPIProject(projectFile)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "failed to set up project from file")
+	// }
 
 	// create a build variant for this project
 	bv := model.BuildVariant{
@@ -83,6 +92,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
 	}
+	modelData.ProjectRef = projectRef
 
 	version := &model.Version{
 		Id:         "sample_version",
@@ -134,6 +144,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.Wrap(err, "failed to insert taskOne")
 	}
 	modelData.Task = taskOne
+	// kim: TODO: remove
+	// taskOne, err := setupAPITaskOne(variant, projectRef.Identifier, taskDisplayName, patchMode)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "failed to set up taskOne")
+	// }
+	// modelData.Task = taskOne
 
 	taskTwo := &task.Task{
 		Id:           "testTaskIdTwo",
@@ -152,6 +168,11 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err = taskTwo.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert taskTwo")
 	}
+	// kim: TODO: remove
+	// taskTwo, err := setupAPITaskTwo(variant, projectRef.Identifier, taskDisplayName)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "failed to set up taskTwo")
+	// }
 
 	// Set up a task queue for task end tests
 	taskQueue := &model.TaskQueue{
@@ -172,10 +193,15 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:       taskOne.Version,
 		BuildIds: []string{taskOne.BuildId},
 	}
-	pp.Id = taskOne.Version
 	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version")
 	}
+	// kim: TODO: remove
+	// v, err := setupAPIVersion(taskOne)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "failed to set up version")
+	// }
+	pp.Id = taskOne.Version
 	if err = pp.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert parser project")
 	}
@@ -224,21 +250,21 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get db session!")
 	}
-	oauthToken, err := testConfig.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting oauth token")
-	}
-	e, err := model.PopulateExpansions(taskOne, testHost, oauthToken)
-	if err != nil {
-		return nil, errors.Wrap(err, "error populating expansions")
-	}
-
-	config, err := model.NewTaskConfig(&testHost.Distro, project,
-		taskOne, projectRef, nil, e)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create task config")
-	}
-	modelData.TaskConfig = config
+	// kim: TODO: remove
+	// oauthToken, err := testConfig.GetGithubOauthToken()
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "error getting oauth token")
+	// }
+	// e, err := model.PopulateExpansions(taskOne, testHost, oauthToken)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "error populating expansions")
+	// }
+	// config, err := model.NewTaskConfig(&testHost.Distro, project,
+	//     taskOne, projectRef, nil, e)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "failed to create task config")
+	// }
+	// modelData.TaskConfig = config
 
 	// Remove any logs for our test task from previous runs.
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).
@@ -249,3 +275,114 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	return modelData, nil
 }
+
+// kim: TODO: remove
+// func SetupAPIBuild(variant, displayName, projectFile string, patchMode PatchTestMode) (*build.Build, error) {
+//     if err := CleanupAPITestData(); err != nil {
+//         return nil, errors.WithStack(err)
+//     }
+//
+//     _, project, _, err := setupAPIProject(projectFile)
+//     if err != nil {
+//         return nil, errors.Wrap(err, "failed to set up project from file")
+//     }
+//
+//     taskOne, err := setupAPITaskOne(variant, project.DisplayName, displayName, patchMode)
+//     if err != nil {
+//         return nil, errors.Wrap(err, "could not set up taskOne")
+//     }
+//     taskTwo, err := setupAPITaskTwo(variant, project.DisplayName, displayName)
+//     if err != nil {
+//         return nil, errors.Wrap(err, "could not set up taskTwo")
+//     }
+//     v, err := setupAPIVersion(taskOne)
+//     if err != nil {
+//         return nil, errors.Wrap(err, "could not set up version")
+//     }
+//
+//     b := &build.Build{
+//         Id: "testBuildId",
+//         Tasks: []build.TaskCache{
+//             build.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
+//             build.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
+//         },
+//         Version: v.Id,
+//     }
+//     if err = b.Insert(); err != nil {
+//         return nil, errors.Wrap(err, "failed to insert build")
+//     }
+//
+//     return b, nil
+// }
+//
+// func setupAPIProject(projectFile string) ([]byte, *model.Project, *model.ParserProject, error) {
+//     projectConfig, err := ioutil.ReadFile(projectFile)
+//     if err != nil {
+//         return nil, nil, nil, errors.Wrap(err, "failed to read project config")
+//     }
+//     project := &model.Project{}
+//     pp, err := model.LoadProjectInto(projectConfig, "test", project)
+//     if err != nil {
+//         return nil, nil, nil, errors.Wrap(err, "failed to unmarshal project config")
+//     }
+//     return projectConfig, project, pp, nil
+// }
+//
+// func setupAPITaskOne(variant, projectID, displayName string, patchMode PatchTestMode) (*task.Task, error) {
+//     t := &task.Task{
+//         Id:           "testTaskId",
+//         BuildId:      "testBuildId",
+//         DistroId:     "test-distro-one",
+//         BuildVariant: variant,
+//         Project:      projectID,
+//         DisplayName:  displayName,
+//         HostId:       "testHost",
+//         Secret:       "testTaskSecret",
+//         Version:      "testVersionId",
+//         Status:       evergreen.TaskDispatched,
+//     }
+//     if patchMode == NoPatch {
+//         t.Requester = evergreen.RepotrackerVersionRequester
+//     } else if patchMode == MergePatch {
+//         t.Requester = evergreen.MergeTestRequester
+//     } else {
+//         t.Requester = evergreen.PatchVersionRequester
+//     }
+//     if err := t.Insert(); err != nil {
+//         return nil, errors.Wrap(err, "failed to insert task")
+//     }
+//     return t, nil
+//
+// }
+//
+// func setupAPITaskTwo(variant, projectID, displayName string) (*task.Task, error) {
+//     t := &task.Task{
+//         Id:           "testTaskIdTwo",
+//         BuildId:      "testBuildId",
+//         DistroId:     "test-distro-one",
+//         BuildVariant: variant,
+//         Project:      projectID,
+//         DisplayName:  displayName,
+//         HostId:       "",
+//         Secret:       "testTaskSecret",
+//         Version:      "testVersionId",
+//         Status:       evergreen.TaskUndispatched,
+//         Requester:    evergreen.RepotrackerVersionRequester,
+//         Activated:    true,
+//     }
+//     if err := t.Insert(); err != nil {
+//         return nil, errors.Wrap(err, "failed to insert taskTwo")
+//     }
+//     return t, nil
+// }
+//
+// func setupAPIVersion(t *task.Task) (*model.Version, error) {
+//     v := &model.Version{
+//         Id:       t.Version,
+//         BuildIds: []string{t.BuildId},
+//     }
+//     if err := v.Insert(); err != nil {
+//         return nil, errors.Wrap(err, "failed to insert version")
+//     }
+//     return v, nil
+// }

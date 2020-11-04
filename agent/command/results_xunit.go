@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -42,7 +43,7 @@ func (c *xunitResults) ParseParams(params map[string]interface{}) error {
 }
 
 // Expand the parameter appropriately
-func (c *xunitResults) expandParams(conf *model.TaskConfig) error {
+func (c *xunitResults) expandParams(conf *internal.TaskConfig) error {
 	if c.File != "" {
 		c.Files = append(c.Files, c.File)
 	}
@@ -61,7 +62,7 @@ func (c *xunitResults) expandParams(conf *model.TaskConfig) error {
 // Execute carries out the AttachResultsCommand command - this is required
 // to satisfy the 'Command' interface
 func (c *xunitResults) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandParams(conf); err != nil {
 		return err
@@ -100,7 +101,7 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	return out, nil
 }
 
-func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,
+func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator) error {
 
 	cumulative := testcaseAccumulator{

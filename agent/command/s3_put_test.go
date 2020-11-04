@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -235,7 +236,7 @@ func TestExpandS3PutParams(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		cmd := &s3put{}
-		conf := &model.TaskConfig{
+		conf := &internal.TaskConfig{
 			Expansions: util.NewExpansions(map[string]string{}),
 			WorkDir:    abs,
 		}
@@ -325,7 +326,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 		}
 
 		comm := client.NewMock("http://localhost.com")
-		conf := &model.TaskConfig{
+		conf := &internal.TaskConfig{
 			Expansions:   &util.Expansions{},
 			Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
 			Project:      &model.Project{},
@@ -391,7 +392,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			s.bucket, err = pail.NewLocalTemporaryBucket(opts)
 			require.NoError(t, err)
 			comm := client.NewMock("http://localhost.com")
-			conf := &model.TaskConfig{
+			conf := &internal.TaskConfig{
 				Expansions:   &util.Expansions{},
 				Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
 				Project:      &model.Project{},

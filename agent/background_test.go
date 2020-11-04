@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
@@ -37,7 +38,7 @@ func (s *BackgroundSuite) SetupTest() {
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
 	s.tc = &taskContext{}
-	s.tc.taskConfig = &model.TaskConfig{}
+	s.tc.taskConfig = &internal.TaskConfig{}
 	s.tc.taskConfig.Project = &model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
 	s.tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
@@ -111,7 +112,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
-	s.tc.taskConfig.Timeout = &model.Timeout{}
+	s.tc.taskConfig.Timeout = &internal.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()

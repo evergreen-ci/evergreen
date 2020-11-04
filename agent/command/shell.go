@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -93,7 +93,7 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 }
 
 // Execute starts the shell with its given parameters.
-func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	logger.Execution().Debug("Preparing script...")
 
 	var err error

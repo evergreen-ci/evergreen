@@ -92,14 +92,49 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		keyVal = keyNameOrVal
 	}
 
-	tc, err := model.MakeConfigFromTask(t)
-	if err != nil {
-		return err
-	}
+	// kim: TODO: remove and replace with required subset of fields from
+	// TaskConfig (need *Project and *util.Expansions)
+	// kim: TODO: remove
+	// tc, err := model.MakeConfigFromTask(t)
+	// if err != nil {
+	//     return err
+	// }
 
-	projectTask := tc.Project.FindProjectTask(tc.Task.DisplayName)
+	// kim: TODO: test
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return errors.Wrap(err, "error finding version")
+	}
+	if v == nil {
+		return errors.New("version doesn't exist")
+	}
+	proj, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
+	if err != nil {
+		return errors.Wrap(err, "error loading project")
+	}
+	projectTask := proj.FindProjectTask(t.DisplayName)
 	if projectTask == nil {
-		return errors.Errorf("unable to find configuration for task %s", tc.Task.Id)
+		return errors.Errorf("unable to find configuration for task %s", t.Id)
+	}
+	h, err := host.FindOne(host.ById(t.HostId))
+	if err != nil {
+		return errors.Wrap(err, "error finding host")
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error getting evergreen config")
+	}
+	oauthToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "error getting oauth token")
+	}
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
+	if err != nil {
+		return errors.Wrap(err, "error populating expansions")
+	}
+	params := append(proj.GetParameters(), v.Parameters...)
+	if err := model.UpdateExpansions(&expansions, t.Project, params); err != nil {
+		return errors.Wrap(err, "error updating expansions")
 	}
 
 	createHostCmds := []apimodels.CreateHost{}
@@ -107,7 +142,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	for _, commandConf := range projectTask.Commands {
 		var createHost *apimodels.CreateHost
 		if commandConf.Function != "" {
-			cmds := tc.Project.Functions[commandConf.Function]
+			cmds := proj.Functions[commandConf.Function]
 			for _, cmd := range cmds.List() {
 				createHost, err = createHostFromCommand(cmd)
 				if err != nil {
@@ -135,7 +170,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
-		err = createHost.Expand(tc.Expansions)
+		err = createHost.Expand(&expansions)
 		if err != nil {
 			catcher.Add(err)
 			continue

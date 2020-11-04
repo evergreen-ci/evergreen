@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -19,7 +20,7 @@ import (
 
 type execCmdSuite struct {
 	cancel func()
-	conf   *model.TaskConfig
+	conf   *internal.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
 	jasper jasper.Manager
@@ -43,7 +44,7 @@ func (s *execCmdSuite) SetupTest() {
 	var err error
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 }

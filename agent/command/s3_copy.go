@@ -7,9 +7,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -142,7 +142,7 @@ func (c *s3copy) validateParams() error {
 // Execute carries out the s3copy command - this is required
 // to satisfy the 'Command' interface
 func (c *s3copy) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand the S3 copy parameters before running the task
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
@@ -167,7 +167,7 @@ func (c *s3copy) Execute(ctx context.Context,
 // function - it makes an API calls to copy a given staged file to it's final
 // production destination
 func (c *s3copy) s3Copy(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 

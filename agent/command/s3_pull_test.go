@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -46,8 +47,8 @@ func TestS3PullParseParams(t *testing.T) {
 }
 
 func TestS3PullExecute(t *testing.T) {
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string){
-		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string){
+		"PullsTaskDirectoryFromS3": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "file")
@@ -71,7 +72,7 @@ func TestS3PullExecute(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, pulledContent, fileContent)
 		},
-		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 			tmpFile, err := ioutil.TempFile(taskDir, "file")
@@ -96,7 +97,7 @@ func TestS3PullExecute(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, files)
 		},
-		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			taskDir := filepath.Join(bucketDir, conf.Task.S3Path(c.FromBuildVariant, c.Task))
 			require.NoError(t, os.MkdirAll(taskDir, 0777))
 
@@ -117,29 +118,29 @@ func TestS3PullExecute(t *testing.T) {
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
 			assert.Equal(t, excludeFilterExpansion, c.ExcludeFilter)
 		},
-		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"FailsWithoutS3Key": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			c.bucket = nil
 			conf.TaskSync.Key = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
-		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"FailsWithoutS3Secret": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			c.bucket = nil
 			conf.TaskSync.Secret = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
-		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"FailsWithoutS3BucketName": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			c.bucket = nil
 			conf.TaskSync.Bucket = ""
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
-		"FailsWithNoContentsToPull": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *model.TaskConfig, bucketDir string) {
+		"FailsWithNoContentsToPull": func(ctx context.Context, t *testing.T, c *s3Pull, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig, bucketDir string) {
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			conf := &model.TaskConfig{
+			conf := &internal.TaskConfig{
 				Task: &task.Task{
 					Id:           "id",
 					Project:      "project",

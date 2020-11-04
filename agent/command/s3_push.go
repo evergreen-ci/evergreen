@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -28,7 +28,7 @@ func (c *s3Push) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(c.s3Base.ParseParams(params), "error decoding %s params", c.Name())
 }
 
-func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}

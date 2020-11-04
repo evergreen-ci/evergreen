@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -428,7 +429,7 @@ func (c *scriptingExec) getHarnessConfig(output options.Output) (options.Scripti
 
 }
 
-func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
@@ -526,7 +527,7 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	return catcher.Resolve()
 }
 
-func (c *scriptingExec) reportTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, report io.Reader) error {
+func (c *scriptingExec) reportTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, report io.Reader) error {
 	switch c.Harness {
 	case "go", "golang":
 		// A suite name is required in the REST request or else it hangs, but it

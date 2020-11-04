@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -36,7 +37,8 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
 
-		conf := modelData.TaskConfig
+		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
 		conf.WorkDir = "."
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
@@ -146,7 +148,8 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	comm := client.NewMock("/dev/null")
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err, "failed to setup test data")
-	conf := modelData.TaskConfig
+	conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+	require.NoError(t, err)
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
 
 	t.Run("SendToEvergreen", func(t *testing.T) {
