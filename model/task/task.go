@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -1694,26 +1695,18 @@ func (t *Task) Insert() error {
 
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
-	if t.DisplayOnly {
-		for _, et := range t.ExecutionTasks {
-			execTask, err := FindOne(ById(et))
-			if err != nil {
-				return errors.Wrap(err, "error retrieving execution task")
-			}
-			if execTask == nil {
-				return errors.Errorf("unable to find execution task '%s' from display task '%s'", et, t.Id)
-			}
-			if err = execTask.Archive(); err != nil {
-				return errors.Wrap(err, "error archiving execution task")
-			}
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrap(err, "error retrieving execution tasks")
+		}
+		if err = ArchiveMany(execTasks); err != nil {
+			return errors.Wrap(err, "error archiving execution tasks")
 		}
 	}
 
-	archiveTask := *t
-	archiveTask.Id = MakeOldID(t.Id, t.Execution)
-	archiveTask.OldTaskId = t.Id
-	archiveTask.Archived = true
-	err := db.Insert(OldCollection, &archiveTask)
+	archiveTask := t.makeArchivedTask()
+	err := db.Insert(OldCollection, archiveTask)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"archive_task_id": archiveTask.Id,
@@ -1747,6 +1740,112 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "unable to update host event logs")
 	}
 	return nil
+}
+
+func ArchiveMany(tasks []Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+	// add execution tasks of display tasks passed in, if they are not there
+	execTaskMap := map[string]bool{}
+	for _, t := range tasks {
+		execTaskMap[t.Id] = true
+	}
+	additionalTasks := []string{}
+	for _, t := range tasks {
+		// for any display tasks here, make sure that we archive all their execution tasks
+		for _, et := range t.ExecutionTasks {
+			if !execTaskMap[et] {
+				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
+				continue
+			}
+		}
+	}
+	if len(additionalTasks) > 0 {
+		toAdd, err := FindAll(ByIds((additionalTasks)))
+		if err != nil {
+			return errors.Wrap(err, "unable to find execution tasks")
+		}
+		tasks = append(tasks, toAdd...)
+	}
+
+	archived := []interface{}{}
+	taskIds := []string{}
+	for _, t := range tasks {
+		archived = append(archived, *t.makeArchivedTask())
+		taskIds = append(taskIds, t.Id)
+	}
+
+	mongoClient := evergreen.GetEnvironment().Client()
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return errors.Wrap(err, "unable to start session")
+	}
+	defer session.EndSession(ctx)
+
+	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
+		_, err = oldTaskColl.InsertMany(ctx, archived)
+		if err != nil {
+			return nil, err
+		}
+
+		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
+		_, err = taskColl.UpdateMany(ctx, bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
+		},
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:   "",
+					AbortInfoKey: "",
+				},
+				"$inc": bson.M{
+					ExecutionKey: 1,
+				},
+			})
+		if err != nil {
+			return nil, err
+		}
+		_, err = taskColl.UpdateMany(ctx, bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
+			RestartsKey: bson.M{
+				"$gt": 0,
+			},
+		},
+			bson.M{
+				"$inc": bson.M{
+					RestartsKey: 1,
+				},
+			})
+		return nil, err
+	}
+
+	_, err = session.WithTransaction(ctx, txFunc)
+	if err != nil {
+		return errors.Wrap(err, "unable to archive tasks")
+	}
+
+	eventLogErrs := grip.NewBasicCatcher()
+	for _, t := range tasks {
+		eventLogErrs.Add(event.UpdateExecutions(t.HostId, t.Id, t.Execution))
+	}
+
+	return eventLogErrs.Resolve()
+}
+
+func (t *Task) makeArchivedTask() *Task {
+	archiveTask := *t
+	archiveTask.Id = MakeOldID(t.Id, t.Execution)
+	archiveTask.OldTaskId = t.Id
+	archiveTask.Archived = true
+
+	return &archiveTask
 }
 
 // Aggregation
