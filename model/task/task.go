@@ -1803,6 +1803,9 @@ func ArchiveMany(tasks []Task) error {
 					AbortedKey:   "",
 					AbortInfoKey: "",
 				},
+				"$inc": bson.M{
+					ExecutionKey: 1,
+				},
 			})
 		if err != nil {
 			return nil, err
