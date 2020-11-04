@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -446,7 +445,7 @@ func (m *monitor) run(ctx context.Context) {
 				return true, err
 			}
 
-			grip.InfoWhen(sometimes.Fifth(), message.Fields{
+			grip.Info(message.Fields{
 				"message":     "starting agent on host via Jasper",
 				"client_path": m.clientPath,
 				"distro":      m.distroID,
