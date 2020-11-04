@@ -41,7 +41,7 @@ func Find(query db.Q) ([]TaskAnnotation, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding task annotation")
+		return nil, errors.Wrap(err, "problem finding task annotations")
 	}
 
 	return annotations, err
@@ -79,8 +79,8 @@ func (annotation *TaskAnnotation) UpdateAPIAnnotation(id string, execution int, 
 		},
 		bson.M{
 			"$set": bson.M{
-				"api_annotation": a,
-				"metadata":       m,
+				APIAnnotationKey: a,
+				MetadataKey:      m,
 			},
 		},
 	))
@@ -100,7 +100,7 @@ func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int,
 		},
 		bson.M{
 			"$set": bson.M{
-				"api_annotation": userAnnotation,
+				UserAnnotationKey: userAnnotation,
 			},
 		},
 	))

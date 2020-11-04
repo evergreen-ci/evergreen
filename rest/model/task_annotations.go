@@ -3,22 +3,24 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/model/task_annotations"
 )
 
 type APITaskAnnotation struct {
-	Id             *string       `bson:"_id" json:"id"`
-	TaskId         *string       `bson:"task_id" json:"task_id"`
-	TaskExecution  int           `bson:"task_execution" json:"task_execution"`
-	APIAnnotation  APIAnnotation `bson:"api_annotation,omitempty" json:"api_annotation,omitempty"`
-	UserAnnotation APIAnnotation `bson:"user_annotation,omitempty" json:"user_annotation,omitempty"`
+	Id             *string         `bson:"_id" json:"id"`
+	TaskId         *string         `bson:"task_id" json:"task_id"`
+	TaskExecution  int             `bson:"task_execution" json:"task_execution"`
+	APIAnnotation  APIAnnotation   `bson:"api_annotation,omitempty" json:"api_annotation,omitempty"`
+	UserAnnotation APIAnnotation   `bson:"user_annotation,omitempty" json:"user_annotation,omitempty"`
+	Metadata       *birch.Document `bson:"metadata" json:"metadata"`
 }
 
 type APIAnnotation struct {
-	Note          *string             `bson:"note,omitempty" json:"note,omitempty"`
-	Issues        []APIIssueLink      `bson:"issues,omitempty" json:"issues,omitempty"`
-	SuspectIssues []APIIssueLink      `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	Source        APIAnnotationSource `bson:"source" json:"source"`
+	Note            *string             `bson:"note,omitempty" json:"note,omitempty"`
+	Issues          []APIIssueLink      `bson:"issues,omitempty" json:"issues,omitempty"`
+	SuspectedIssues []APIIssueLink      `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	Source          APIAnnotationSource `bson:"source" json:"source"`
 }
 type APIAnnotationSource struct {
 	Author *string    `bson:"author,omitempty" json:"author,omitempty"`
@@ -26,7 +28,7 @@ type APIAnnotationSource struct {
 }
 
 type APIIssueLink struct {
-	URL      *string `bson:"url" json:"url"`
+	URL      *string `bson:"url,omitempty" json:"url,omitempty"`
 	IssueKey *string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 }
 
@@ -99,6 +101,7 @@ func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITa
 	m.TaskExecution = t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
 	m.UserAnnotation = *APIAnnotationBuildFromService(t.UserAnnotation)
+	m.Metadata = t.Metadata
 	return &m
 }
 
@@ -111,6 +114,7 @@ func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnot
 	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
 	out.UserAnnotation = *APIAnnotationToService(m.UserAnnotation)
+	out.Metadata = m.Metadata
 	return out
 }
 
