@@ -9,7 +9,7 @@ import (
 type APITaskAnnotation struct {
 	Id             *string       `bson:"_id" json:"id"`
 	TaskId         *string       `bson:"task_id" json:"task_id"`
-	TaskExecution  *int          `bson:"task_execution" json:"task_execution"`
+	TaskExecution  int           `bson:"task_execution" json:"task_execution"`
 	APIAnnotation  APIAnnotation `bson:"api_annotation,omitempty" json:"api_annotation,omitempty"`
 	UserAnnotation APIAnnotation `bson:"user_annotation,omitempty" json:"user_annotation,omitempty"`
 }
@@ -96,7 +96,7 @@ func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITa
 	m := APITaskAnnotation{}
 	m.APIAnnotation = *APIAnnotationBuildFromService(t.APIAnnotation)
 	m.Id = StringStringPtr(t.Id)
-	m.TaskExecution = IntIntPtr(t.TaskExecution)
+	m.TaskExecution = t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
 	m.UserAnnotation = *APIAnnotationBuildFromService(t.UserAnnotation)
 	return &m
@@ -108,7 +108,7 @@ func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnot
 	out := &task_annotations.TaskAnnotation{}
 	out.APIAnnotation = *APIAnnotationToService(m.APIAnnotation)
 	out.Id = StringPtrString(m.Id)
-	out.TaskExecution = IntPtrInt(m.TaskExecution)
+	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
 	out.UserAnnotation = *APIAnnotationToService(m.UserAnnotation)
 	return out
@@ -128,21 +128,4 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []task_annotat
 		m = append(m, *APIIssueLinkToService(e))
 	}
 	return m
-}
-
-func IntInt(in int) int {
-	return int(in)
-}
-
-func IntIntPtr(in int) *int {
-	out := int(in)
-	return &out
-}
-
-func IntPtrInt(in *int) int {
-	var out int
-	if in == nil {
-		return out
-	}
-	return int(*in)
 }
