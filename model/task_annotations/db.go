@@ -88,7 +88,6 @@ func (annotation *TaskAnnotation) UpdateAPIAnnotation(id string, execution int, 
 
 // Update updates one task_annotation.
 func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int, a Annotation, author string) error {
-	var userAnnotation = a
 	a.Source.Author = author
 	a.Source.Time = time.Now()
 
@@ -100,7 +99,7 @@ func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int,
 		},
 		bson.M{
 			"$set": bson.M{
-				UserAnnotationKey: userAnnotation,
+				UserAnnotationKey: a,
 			},
 		},
 	))

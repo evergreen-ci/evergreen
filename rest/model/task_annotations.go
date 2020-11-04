@@ -44,7 +44,7 @@ func APIAnnotationBuildFromService(t *task_annotations.Annotation) *APIAnnotatio
 
 // APIAnnotationToService takes the APIAnnotation REST struct and returns the DB struct
 // *task_annotations.Annotation with the corresponding fields populated
-func APIAnnotationToService(m APIAnnotation) *task_annotations.Annotation {
+func APIAnnotationToService(m *APIAnnotation) *task_annotations.Annotation {
 	out := &task_annotations.Annotation{}
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
 	out.Note = StringPtrString(m.Note)
@@ -96,11 +96,11 @@ func APIIssueLinkToService(m APIIssueLink) *task_annotations.IssueLink {
 // returns the REST struct *APITaskAnnotation with the corresponding fields populated
 func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITaskAnnotation {
 	m := APITaskAnnotation{}
-	m.APIAnnotation = APIAnnotationBuildFromService(&t.APIAnnotation)
+	m.APIAnnotation = APIAnnotationBuildFromService(t.APIAnnotation)
 	m.Id = StringStringPtr(t.Id)
 	m.TaskExecution = t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
-	m.UserAnnotation = APIAnnotationBuildFromService(&t.UserAnnotation)
+	m.UserAnnotation = APIAnnotationBuildFromService(t.UserAnnotation)
 	m.Metadata = t.Metadata
 	return &m
 }
@@ -109,11 +109,11 @@ func APITaskAnnotationBuildFromService(t task_annotations.TaskAnnotation) *APITa
 // *task_annotations.TaskAnnotation with the corresponding fields populated
 func APITaskAnnotationToService(m APITaskAnnotation) *task_annotations.TaskAnnotation {
 	out := &task_annotations.TaskAnnotation{}
-	out.APIAnnotation = *APIAnnotationToService(*m.APIAnnotation)
+	out.APIAnnotation = APIAnnotationToService(m.APIAnnotation)
 	out.Id = StringPtrString(m.Id)
 	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
-	out.UserAnnotation = *APIAnnotationToService(*m.UserAnnotation)
+	out.UserAnnotation = APIAnnotationToService(m.UserAnnotation)
 	out.Metadata = m.Metadata
 	return out
 }
