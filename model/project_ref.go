@@ -57,13 +57,11 @@ type ProjectRef struct {
 	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 	NotifyOnBuildFailure    bool                      `bson:"notify_on_failure" json:"notify_on_failure"`
 	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
 	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
-	PRTestingEnabled        bool                      `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
