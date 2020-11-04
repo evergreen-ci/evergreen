@@ -335,9 +335,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		// pp.Println("kim: using existing project:", tc.project)
-
 	}
 	grip.Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)

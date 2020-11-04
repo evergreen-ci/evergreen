@@ -267,58 +267,6 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-// kim: TODO: remove
-// func TestGetTaskGroup(t *testing.T) {
-//     assert := assert.New(t)
-//     require.NoError(t, db.ClearCollections(VersionCollection), "failed to clear collections")
-//     tgName := "example_task_group"
-//     projYml := `
-// tasks:
-// - name: example_task_1
-// - name: example_task_2
-// task_groups:
-// - name: example_task_group
-//   max_hosts: 2
-//   setup_group:
-//   - command: shell.exec
-//     params:
-//       script: "echo setup_group"
-//   teardown_group:
-//   - command: shell.exec
-//     params:
-//       script: "echo teardown_group"
-//   setup_task:
-//   - command: shell.exec
-//     params:
-//       script: "echo setup_group"
-//   teardown_task:
-//   - command: shell.exec
-//     params:
-//       script: "echo setup_group"
-//   tasks:
-//   - example_task_1
-//   - example_task_2
-// `
-//     p := &Project{}
-//     _, err := LoadProjectInto([]byte(projYml), "", p)
-//     assert.NoError(err)
-//     v := Version{
-//         Id:     "v1",
-//         Config: projYml,
-//     }
-//     t1 := task.Task{
-//         Id:        "t1",
-//         TaskGroup: tgName,
-//         Version:   v.Id,
-//     }
-//
-//     tg, err := GetTaskGroup(tgName, &t1, p)
-//     assert.NoError(err)
-//     assert.Equal(tgName, tg.Name)
-//     assert.Len(tg.Tasks, 2)
-//     assert.Equal(2, tg.MaxHosts)
-// }
-
 func TestPopulateExpansions(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))

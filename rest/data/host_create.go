@@ -92,15 +92,6 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		keyVal = keyNameOrVal
 	}
 
-	// kim: TODO: remove and replace with required subset of fields from
-	// TaskConfig (need *Project and *util.Expansions)
-	// kim: TODO: remove
-	// tc, err := model.MakeConfigFromTask(t)
-	// if err != nil {
-	//     return err
-	// }
-
-	// kim: TODO: test
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		return errors.Wrap(err, "error finding version")

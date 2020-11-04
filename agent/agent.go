@@ -295,7 +295,6 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting project")
 	}
-	// pp.Println("kim: fetched project:", project)
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {

@@ -45,11 +45,6 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			require.NoError(t, err, "problem setting up test server")
-			// kim: TODO: remove
-			// b, err := modelUtil.SetupAPIBuild("compile", "linux-64", filepath.Join(testDirectory, "testdata", "base_project.yaml"), modelUtil.ExternalPatch)
-			// defer func() {
-			//     assert.NoError(t, modelUtil.CleanupAPITestData())
-			// }()
 
 			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, testData.Build,
 				modelUtil.PatchRequest{
@@ -78,11 +73,6 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 		Convey("with a patch that adds a module", func() {
 			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
-			// kim: TODO: remove
-			// b, err := modelUtil.SetupAPIBuild("compile", "linux-64", filepath.Join(testDirectory, "testdata", "base_project.yaml"), modelUtil.ExternalPatch)
-			// defer func() {
-			//     assert.NoError(t, modelUtil.CleanupAPITestData())
-			// }()
 			require.NoError(t, err, "problem setting up test server")
 			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, testData.Build,
 				modelUtil.PatchRequest{

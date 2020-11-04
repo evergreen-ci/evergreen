@@ -17,19 +17,9 @@ func UpdateExpansions(expansions *util.Expansions, projectId string, params []pa
 	}
 
 	expansions.Update(projVars.GetUnrestrictedVars())
-	// expansions.Update(projVars.GetRestrictedVars())
-	// tc.Expansions.Update(projVars.GetUnrestrictedVars())
-	// tc.RestrictedExpansions.Update(projVars.GetRestrictedVars())
-	// kim: TODO; deal with redacted variables, which I don't even see it set
-	// anywhere.
-	// tc.Redacted = projVars.PrivateVars
 
 	for _, param := range params {
 		expansions.Put(param.Key, param.Value)
-		// tc.Expansions.Put(param.Key, param.Value)
-		// // params do not support restricted or redacted
-		// tc.RestrictedExpansions.Remove(param.Key)
-		// tc.Redacted[param.Key] = false
 	}
 	return nil
 }
