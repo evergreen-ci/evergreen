@@ -310,6 +310,11 @@ type ComplexityRoot struct {
 		Pids     func(childComplexity int) int
 	}
 
+	Parameter struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Patch struct {
 		Activated               func(childComplexity int) int
 		Alias                   func(childComplexity int) int
@@ -325,6 +330,7 @@ type ComplexityRoot struct {
 		Githash                 func(childComplexity int) int
 		Id                      func(childComplexity int) int
 		ModuleCodeChanges       func(childComplexity int) int
+		Parameters              func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
@@ -2087,6 +2093,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OomTrackerInfo.Pids(childComplexity), true
 
+	case "Parameter.key":
+		if e.complexity.Parameter.Key == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Key(childComplexity), true
+
+	case "Parameter.value":
+		if e.complexity.Parameter.Value == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Value(childComplexity), true
+
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
 			break
@@ -2184,6 +2204,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.ModuleCodeChanges(childComplexity), true
+
+	case "Patch.parameters":
+		if e.complexity.Patch.Parameters == nil {
+			break
+		}
+
+		return e.complexity.Patch.Parameters(childComplexity), true
 
 	case "Patch.patchNumber":
 		if e.complexity.Patch.PatchNumber == nil {
@@ -4374,6 +4401,7 @@ type Patch {
   time: PatchTime
   taskCount: Int
   baseVersionID: String
+  parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
@@ -4415,6 +4443,11 @@ type ProjectBuildVariant {
   name: String!
   displayName: String!
   tasks: [String!]!
+}
+
+type Parameter {
+  key: String!
+  value: String!
 }
 
 type TaskResult {
@@ -11364,6 +11397,74 @@ func (ec *executionContext) _OomTrackerInfo_pids(ctx context.Context, field grap
 	return ec.marshalOInt2ᚕint(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Parameter_key(ctx context.Context, field graphql.CollectedField, obj *model.APIParameter) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Parameter",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Parameter_value(ctx context.Context, field graphql.CollectedField, obj *model.APIParameter) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Parameter",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -11959,6 +12060,40 @@ func (ec *executionContext) _Patch_baseVersionID(ctx context.Context, field grap
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_parameters(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Parameters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIParameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_moduleCodeChanges(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -22713,6 +22848,38 @@ func (ec *executionContext) _OomTrackerInfo(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var parameterImplementors = []string{"Parameter"}
+
+func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet, obj *model.APIParameter) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, parameterImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Parameter")
+		case "key":
+			out.Values[i] = ec._Parameter_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "value":
+			out.Values[i] = ec._Parameter_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var patchImplementors = []string{"Patch"}
 
 func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatch) graphql.Marshaler {
@@ -22835,6 +23002,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				res = ec._Patch_baseVersionID(ctx, field, obj)
 				return res
 			})
+		case "parameters":
+			out.Values[i] = ec._Patch_parameters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "moduleCodeChanges":
 			out.Values[i] = ec._Patch_moduleCodeChanges(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -26156,6 +26328,47 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
 	return ec._OomTrackerInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNParameter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, sel ast.SelectionSet, v model.APIParameter) graphql.Marshaler {
+	return ec._Parameter(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParameter) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParameter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
