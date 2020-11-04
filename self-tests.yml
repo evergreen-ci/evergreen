@@ -391,23 +391,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-rest-client
-  - name: test-rest-model
+  - <<: *run-go-test-suite-with-mongodb
+    name: test-rest-model
     tags: ["db", "test"]
-    commands:
-      - func: get-project
-      - func: run-make
-        vars:
-          target: get-go-imports
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: revendor
-      - func: run-make
-        vars:
-          target: build
-      - func: run-make
-        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
@@ -516,6 +502,21 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-cmd-codegen-core
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars:
+          target: build
+      - func: run-make
+        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
