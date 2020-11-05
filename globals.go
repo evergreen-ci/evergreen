@@ -114,6 +114,7 @@ const (
 	MergeTestStarted   = "started"
 	MergeTestSucceeded = "succeeded"
 	MergeTestFailed    = "failed"
+	EnqueueFailed      = "failed to enqueue"
 
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 9

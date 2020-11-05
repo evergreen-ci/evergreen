@@ -343,11 +343,13 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.logError(err, "patch not found", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -355,18 +357,21 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
 	if err != nil {
 		j.logError(err, "can't update patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 
 	if err = addMergeTaskAndVariant(patchDoc, project, projectRef); err != nil {
 		j.logError(err, "can't set patch project config", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
 		j.logError(err, "can't update patch in db", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -374,6 +379,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
