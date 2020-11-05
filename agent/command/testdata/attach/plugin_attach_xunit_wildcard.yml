@@ -3,7 +3,7 @@ tasks:
   commands:
   - command: attach.xunit_results
     params:
-      file: "command/testdata/xunit/junit_*.xml"
+      file: "agent/command/testdata/xunit/junit_*.xml"
 
 buildvariants:
 - name: linux-64
