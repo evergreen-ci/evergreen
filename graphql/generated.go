@@ -268,6 +268,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket            func(childComplexity int, taskID string) int
+		ClearMySubscriptions      func(childComplexity int) int
 		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -717,6 +718,7 @@ type MutationResolver interface {
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
 	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
+	ClearMySubscriptions(ctx context.Context) (int, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1724,6 +1726,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.clearMySubscriptions":
+		if e.complexity.Mutation.ClearMySubscriptions == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ClearMySubscriptions(childComplexity), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -4108,6 +4117,7 @@ type Mutation {
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!): Boolean!
+  clearMySubscriptions: Int!
 }
 
 enum SpawnHostStatusActions {
@@ -11144,6 +11154,40 @@ func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field 
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_clearMySubscriptions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ClearMySubscriptions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
@@ -22771,6 +22815,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "bbCreateTicket":
 			out.Values[i] = ec._Mutation_bbCreateTicket(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "clearMySubscriptions":
+			out.Values[i] = ec._Mutation_clearMySubscriptions(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

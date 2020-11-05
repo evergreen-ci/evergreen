@@ -109,6 +109,7 @@ type Mutation {
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!): Boolean!
+  clearMySubscriptions: Int!
 }
 
 enum SpawnHostStatusActions {
