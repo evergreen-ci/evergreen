@@ -51,6 +51,7 @@ type Options struct {
 	Cleanup               bool
 	S3Opts                pail.S3Options
 	SetupData             apimodels.AgentSetupData
+	CloudProvider         string
 }
 
 type taskContext struct {
@@ -391,7 +392,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
-	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, tc.taskConfig.Distro.Provider) {
+	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
 		go a.startSpotTerminationWatcher(tskCtx)
 	}
 
@@ -432,7 +433,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.oomTrackerEnabled() && status == evergreen.TaskFailed {
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && status == evergreen.TaskFailed {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
 		defer oomCancel()
