@@ -59,8 +59,8 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		if proj.TaskAnnotationSettings.WebHook != "" {
-			if _, err := url.Parse(proj.TaskAnnotationSettings.WebHook); err != nil {
+		if proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
+			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
 				return errors.Wrapf(err, `Failed to parse webhook endpoint for project "%s"`, projName)
 			}
 		}

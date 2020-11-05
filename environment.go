@@ -774,11 +774,7 @@ func (e *envState) ClientConfig() *ClientConfig {
 }
 
 type BuildBaronProject struct {
-	// todo: after migrating the data, switch the logic to use this boolean and not the list
-
-	// since we are now also using this struct for task annotations (including the TicketCreateProject field),
-	// we can no longer assume that the presence of a project in the list means that the user wants to run the build baron.
-	showBuildBaron bool `mapstructure:"show_build_baron" bson:"show_build_baron"`
+	// todo: reconfigure the BuildBaronConfigured check to use TicketSearchProjects instead
 
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
@@ -795,9 +791,21 @@ type BuildBaronProject struct {
 
 type AnnotationsSettings struct {
 	// a list of jira fields the user wants to display in addition to state assignee and priority
-	JiraCustomFields []string `mapstructure:"jira_custom_fields" bson:"jira_custom_fields"`
+	JiraCustomFields []JiraField `mapstructure:"jira_custom_fields" bson:"jira_custom_fields"`
 	// the endpoint that the user would like to send data to when the file ticket button is clicked
-	WebHook string `mapstructure:"web_hook" bson:"web_hook"`
+	FileTicketWebHook WebHook `mapstructure:"web_hook" bson:"web_hook"`
+}
+
+type JiraField struct {
+	// the name that jira calls the field
+	Field string `mapstructure:"field" bson:"field"`
+	// the name the user would like to call it in the UI
+	DisplayText string `mapstructure:"display_text" bson:"display_text"`
+}
+
+type WebHook struct {
+	Endpoint string `mapstructure:"endpoint" bson:"endpoint"`
+	secret   string `mapstructure:"secret" bson:"secret"`
 }
 
 func (e *envState) SaveConfig() error {
