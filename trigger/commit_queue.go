@@ -15,6 +15,7 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeCommitQueue, event.CommitQueueStartTest, makeCommitQueueTriggers)
 	registry.registerEventHandler(event.ResourceTypeCommitQueue, event.CommitQueueConcludeTest, makeCommitQueueTriggers)
+	registry.registerEventHandler(event.ResourceTypeCommitQueue, event.CommitQueueEnqueueFailed, makeCommitQueueTriggers)
 }
 
 type commitQueueTriggers struct {
@@ -83,12 +84,16 @@ func (t *commitQueueTriggers) commitQueueOutcome(sub *event.Subscription) (*noti
 }
 
 func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+	text := t.patch.Description
+	if t.data.Error != "" {
+		text = t.data.Error
+	}
 	data := commonTemplateData{
 		ID:              t.patch.Id.Hex(),
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.patch.Id.Hex(),
-		Description:     t.patch.Description,
+		Description:     text,
 		Object:          "merge",
 		Project:         t.patch.Project,
 		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
@@ -103,7 +108,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	data.slack = append(data.slack, message.SlackAttachment{
 		Title:     "Evergreen Merge Test",
 		TitleLink: data.URL,
-		Text:      t.patch.Description,
+		Text:      text,
 		Color:     slackColor,
 	})
 
