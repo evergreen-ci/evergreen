@@ -64,10 +64,7 @@ type Communicator interface {
 	GetDisplayTaskNameFromExecution(context.Context, TaskData) (string, error)
 	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
-	// kim: TODO: remove
-	// GetDistro returns the distro for the task.
-	// GetDistro(context.Context, TaskData) (*distro.Distro, error)
-	// GetDistroInfo returns the view of the distro information for the task.
+	// GetDistroView returns the view of the distro information for the task.
 	GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error)
 	// GetDistroAMI gets the AMI for the given distro/region
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)

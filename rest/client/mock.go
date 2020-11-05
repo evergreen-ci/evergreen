@@ -176,15 +176,6 @@ func (c *Mock) GetProjectRef(ctx context.Context, td TaskData) (*serviceModel.Pr
 	}, nil
 }
 
-// kim: TODO: remove
-// GetDistro returns a mock Distro.
-// func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, error) {
-//     return &distro.Distro{
-//         Id:      "mock_distro_id",
-//         WorkDir: ".",
-//     }, nil
-// }
-
 func (c *Mock) GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error) {
 	return &apimodels.DistroView{
 		WorkDir: ".",

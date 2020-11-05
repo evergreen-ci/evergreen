@@ -187,32 +187,6 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	return projectRef, nil
 }
 
-// kim: TODO: remove
-// // GetDistro returns the distro for the task.
-// func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
-//     d := &distro.Distro{}
-//     info := requestInfo{
-//         method:   get,
-//         taskData: &taskData,
-//         version:  apiVersion1,
-//     }
-//     info.setTaskPathSuffix("distro")
-//     resp, err := c.retryRequest(ctx, info, nil)
-//     if err != nil {
-//         err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
-//         return nil, err
-//     }
-//     defer resp.Body.Close()
-//     if resp.StatusCode == http.StatusConflict {
-//         return nil, errors.New("conflict; wrong secret")
-//     }
-//     if err = utility.ReadJSON(resp.Body, d); err != nil {
-//         err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
-//         return nil, err
-//     }
-//     return d, nil
-// }
-
 func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData) (*apimodels.DistroView, error) {
 	info := requestInfo{
 		method:   get,
