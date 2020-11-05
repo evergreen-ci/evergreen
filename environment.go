@@ -805,7 +805,7 @@ type JiraField struct {
 
 type WebHook struct {
 	Endpoint string `mapstructure:"endpoint" bson:"endpoint"`
-	secret   string `mapstructure:"secret" bson:"secret"`
+	Secret   string `mapstructure:"secret" bson:"secret"`
 }
 
 func (e *envState) SaveConfig() error {
