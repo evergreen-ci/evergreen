@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mholt/archiver"
@@ -56,7 +56,7 @@ func (c *zipArchiveCreate) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *zipArchiveCreate) Execute(ctx context.Context,
-	client client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -32,7 +33,7 @@ func TestSendTestResults(t *testing.T) {
 			},
 		},
 	}
-	conf := &model.TaskConfig{
+	conf := &internal.TaskConfig{
 		Task: &task.Task{
 			Id:           "id",
 			Secret:       "secret",
@@ -131,7 +132,7 @@ func TestSendTestResults(t *testing.T) {
 
 func TestSendTestLog(t *testing.T) {
 	ctx := context.TODO()
-	conf := &model.TaskConfig{
+	conf := &internal.TaskConfig{
 		Task: &task.Task{
 			Id:           "id",
 			Project:      "project",

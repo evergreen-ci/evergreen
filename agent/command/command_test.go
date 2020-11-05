@@ -11,14 +11,13 @@ import (
 )
 
 func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
-
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)
 		require.NoError(t, err, "failed to read test module patch file")
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
-			Version: apiData.TaskConfig.Task.Version,
+			Version: apiData.Task.Version,
 			Patches: []patch.ModulePatch{
 				{
 					ModuleName: "enterprise",

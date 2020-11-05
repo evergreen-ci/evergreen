@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -25,7 +26,7 @@ type test2JSONSuite struct {
 
 	sender *send.InternalSender
 	comm   *client.Mock
-	conf   *model.TaskConfig
+	conf   *internal.TaskConfig
 
 	suite.Suite
 }
@@ -46,7 +47,7 @@ func (s *test2JSONSuite) SetupTest() {
 	s.comm = &client.Mock{
 		LogID: "log0",
 	}
-	s.conf = &model.TaskConfig{
+	s.conf = &internal.TaskConfig{
 		Task: &task.Task{
 			Id: "task0",
 		},

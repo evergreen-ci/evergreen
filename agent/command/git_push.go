@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -45,7 +46,7 @@ func (c *gitPush) ParseParams(params map[string]interface{}) error {
 }
 
 // Execute gets the source code required by the project
-func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "can't apply expansions")
 	}
@@ -169,7 +170,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	return nil
 }
 
-func (c *gitPush) revParse(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {
+func (c *gitPush) revParse(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {
 	stdout := noopWriteCloser{
 		&bytes.Buffer{},
 	}

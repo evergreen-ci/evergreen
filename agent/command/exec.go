@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
@@ -248,7 +248,7 @@ func addTempDirs(env map[string]string, dir string) {
 	}
 }
 
-func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 
 	if err = c.doExpansions(conf.Expansions); err != nil {

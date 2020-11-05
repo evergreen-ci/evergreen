@@ -20,7 +20,8 @@ type TestModelData struct {
 	Task       *task.Task
 	Build      *build.Build
 	Host       *host.Host
-	TaskConfig *model.TaskConfig
+	Project    *model.Project
+	ProjectRef *model.ProjectRef
 }
 
 func CleanupAPITestData() error {
@@ -43,13 +44,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.WithStack(err)
 	}
 
-	// Read in the project configuration
+	modelData := &TestModelData{}
+
 	projectConfig, err := ioutil.ReadFile(projectFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read project config")
 	}
-
-	modelData := &TestModelData{}
 
 	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
@@ -57,6 +57,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
+	modelData.Project = project
 
 	// create a build variant for this project
 	bv := model.BuildVariant{
@@ -83,6 +84,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
 	}
+	modelData.ProjectRef = projectRef
 
 	version := &model.Version{
 		Id:         "sample_version",
@@ -172,10 +174,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:       taskOne.Version,
 		BuildIds: []string{taskOne.BuildId},
 	}
-	pp.Id = taskOne.Version
 	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version")
 	}
+	pp.Id = taskOne.Version
 	if err = pp.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert parser project")
 	}
@@ -224,21 +226,6 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get db session!")
 	}
-	oauthToken, err := testConfig.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting oauth token")
-	}
-	e, err := model.PopulateExpansions(taskOne, testHost, oauthToken)
-	if err != nil {
-		return nil, errors.Wrap(err, "error populating expansions")
-	}
-
-	config, err := model.NewTaskConfig(&testHost.Distro, project,
-		taskOne, projectRef, nil, e)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create task config")
-	}
-	modelData.TaskConfig = config
 
 	// Remove any logs for our test task from previous runs.
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).

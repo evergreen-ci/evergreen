@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -24,7 +25,7 @@ const (
 type createHostSuite struct {
 	params map[string]interface{}
 	cmd    createHost
-	conf   *model.TaskConfig
+	conf   *internal.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
 
@@ -38,7 +39,7 @@ func TestCreateHostSuite(t *testing.T) {
 func (s *createHostSuite) SetupSuite() {
 	var err error
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &model.TaskConfig{
+	s.conf = &internal.TaskConfig{
 		Expansions: &util.Expansions{"subnet_id": "subnet-123456"},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/pkg/errors"
 )
@@ -24,7 +24,7 @@ func (c *manifestLoad) ParseParams(params map[string]interface{}) error {
 
 // Load performs a GET on /manifest/load
 func (c *manifestLoad) Load(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
@@ -47,7 +47,7 @@ func (c *manifestLoad) Load(ctx context.Context,
 
 // Implementation of Execute.
 func (c *manifestLoad) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	errChan := make(chan error)
 	go func() {

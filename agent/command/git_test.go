@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -38,13 +40,18 @@ const (
 )
 
 type GitGetProjectSuite struct {
-	settings   *evergreen.Settings
-	jasper     jasper.Manager
-	modelData1 *modelutil.TestModelData // test model for TestGitPlugin
-	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
-	modelData3 *modelutil.TestModelData
-	modelData4 *modelutil.TestModelData
-	modelData5 *modelutil.TestModelData
+	settings    *evergreen.Settings
+	jasper      jasper.Manager
+	modelData1  *modelutil.TestModelData // test model for TestGitPlugin
+	taskConfig1 *internal.TaskConfig
+	modelData2  *modelutil.TestModelData // test model for TestValidateGitCommands
+	taskConfig2 *internal.TaskConfig
+	modelData3  *modelutil.TestModelData
+	taskConfig3 *internal.TaskConfig
+	modelData4  *modelutil.TestModelData
+	taskConfig4 *internal.TaskConfig
+	modelData5  *modelutil.TestModelData
+	taskConfig5 *internal.TaskConfig
 
 	suite.Suite
 }
@@ -79,21 +86,27 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData1)
+	s.taskConfig1.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	s.Require().NoError(err)
 
 	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
+	s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData2)
+	s.Require().NoError(err)
+	s.taskConfig2.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
-	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
+	s.taskConfig2.BuildVariant.Modules = []string{"sample"}
 	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
 	err = setupTestPatchData(s.modelData1, patchPath, s.T())
 	s.Require().NoError(err)
 
 	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData3.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
+	s.taskConfig3, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData3)
+	s.Require().NoError(err)
+	s.taskConfig3.Expansions = util.NewExpansions(s.settings.Credentials)
+	s.taskConfig3.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
@@ -106,12 +119,16 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
-	s.modelData4.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
-	s.modelData4.TaskConfig.GithubPatchData = thirdparty.GithubPatch{
+	s.taskConfig4, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData4)
+	s.Require().NoError(err)
+	s.taskConfig4.Expansions = util.NewExpansions(s.settings.Credentials)
+	s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:       9001,
 		MergeCommitSHA: "abcdef",
 	}
 	s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
+	s.Require().NoError(err)
+	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData5)
 	s.Require().NoError(err)
 }
 
@@ -120,7 +137,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		Directory: "dir",
 		Token:     projectGitHubToken,
 	}
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 
 	opts := cloneOpts{
 		method: distro.CloneMethodOAuth,
@@ -139,7 +156,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 
 	opts := cloneOpts{
 		method: distro.CloneMethodOAuth,
@@ -159,7 +176,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		Directory: "dir",
 		Token:     "",
 	}
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 
 	opts := cloneOpts{
 		method: distro.CloneMethodLegacySSH,
@@ -178,7 +195,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 
 	opts := cloneOpts{
 		owner:  conf.ProjectRef.Owner,
@@ -193,7 +210,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put("github", token)
@@ -219,7 +236,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 func (s *GitGetProjectSuite) TestGitFetchRetries() {
 	c := gitFetchProject{Directory: "dir"}
 
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 	conf.Distro.CloneMethod = "this is not real!"
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -234,7 +251,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 }
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 	conf.ProjectRef.Repo = "doesntexist"
 	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
@@ -282,7 +299,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	if os.Getenv("IS_DOCKER") == "true" {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
-	conf := s.modelData5.TaskConfig
+	conf := s.taskConfig5
 	conf.Distro.CloneMethod = distro.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -326,7 +343,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	const refToCompare = "cf46076567e4949f9fc68e0634139d4ac495c89b" //note: also defined in test_config.yml
 
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -441,7 +458,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommand() {
-	conf := s.modelData1.TaskConfig
+	conf := s.taskConfig1
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -488,7 +505,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
-	conf := s.modelData3.TaskConfig
+	conf := s.taskConfig3
 	c := gitFetchProject{
 		Directory: "dir",
 	}
@@ -511,7 +528,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
-	conf := s.modelData4.TaskConfig
+	conf := s.taskConfig4
 	c := gitFetchProject{
 		Directory: "dir",
 	}
@@ -533,7 +550,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 	c := gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
@@ -550,15 +567,15 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
+	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 8)
-	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
+	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 	c := gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
@@ -606,7 +623,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'module'", cmds[4])
 
-	conf = s.modelData4.TaskConfig
+	conf = s.taskConfig4
 	// with merge test-commit checkout
 	module := &patch.ModulePatch{
 		ModuleName: "test-module",
@@ -652,7 +669,7 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
 		Patches: []patch.ModulePatch{
 			{
@@ -701,7 +718,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
-	conf := s.modelData2.TaskConfig
+	conf := s.taskConfig2
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
 	ctx := context.Background()
 	comm := client.NewMock("http://localhost.com")
@@ -743,11 +760,11 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {
-	if s.modelData1.TaskConfig != nil {
-		s.NoError(os.RemoveAll(s.modelData1.TaskConfig.WorkDir))
+	if s.taskConfig1 != nil {
+		s.NoError(os.RemoveAll(s.taskConfig1.WorkDir))
 	}
-	if s.modelData2.TaskConfig != nil {
-		s.NoError(os.RemoveAll(s.modelData2.TaskConfig.WorkDir))
+	if s.taskConfig2 != nil {
+		s.NoError(os.RemoveAll(s.taskConfig2.WorkDir))
 	}
 }
 
@@ -773,7 +790,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	sender := send.MakeInternalLogger()
 	logger := client.NewSingleChannelLogHarness("", sender)
 
-	conf := model.TaskConfig{
+	conf := internal.TaskConfig{
 		WorkDir: dir,
 	}
 

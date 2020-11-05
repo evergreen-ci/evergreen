@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -64,7 +65,7 @@ type taskContext struct {
 	task                   client.TaskData
 	taskGroup              string
 	runGroupSetup          bool
-	taskConfig             *model.TaskConfig
+	taskConfig             *internal.TaskConfig
 	taskDirectory          string
 	logDirectories         map[string]interface{}
 	timeout                timeoutInfo
@@ -357,7 +358,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	}
 	tc.setCurrentCommand(factory())
 
-	var taskConfig *model.TaskConfig
+	var taskConfig *internal.TaskConfig
 	taskConfig, err = a.makeTaskConfig(ctx, tc)
 	if err != nil {
 		grip.Errorf("Error fetching task configuration: %s", err)
@@ -455,7 +456,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for task timeout commands"))
 		return
@@ -548,7 +549,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
+	taskGroup, err := taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
 		return
@@ -576,7 +577,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
 		return
@@ -669,7 +670,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	if ignoreTaskGroupCheck {
 		return true
 	}
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		return false
 	}
