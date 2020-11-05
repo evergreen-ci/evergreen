@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/timber/buildlogger/fetcher"
+	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -132,12 +133,14 @@ func fetch() cli.Command {
 				}
 			}
 
-			opts := fetcher.GetOptions{
-				BaseURL:       c.String(cedarBaseURLFlagName),
-				UserKey:       conf.APIKey,
-				UserName:      conf.User,
-				TaskID:        c.String(taskIDFlagName),
-				TestName:      c.String(testNameFlagName),
+			opts := buildlogger.BuildloggerGetOptions{
+				CedarOpts: timber.GetOptions{
+					BaseURL:  c.String(cedarBaseURLFlagName),
+					UserKey:  conf.APIKey,
+					UserName: conf.User,
+					TaskID:   c.String(taskIDFlagName),
+					TestName: c.String(testNameFlagName),
+				},
 				GroupID:       c.String(groupIDFlagName),
 				Start:         start,
 				End:           end,
@@ -149,7 +152,7 @@ func fetch() cli.Command {
 				Tail:          c.Int(tailFlagName),
 				Limit:         c.Int(limitFlagName),
 			}
-			r, err := fetcher.Logs(ctx, opts)
+			r, err := buildlogger.GetLogs(ctx, opts)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching log(s)")
 			}

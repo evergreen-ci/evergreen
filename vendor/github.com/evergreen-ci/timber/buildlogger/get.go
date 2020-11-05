@@ -1,4 +1,4 @@
-package fetcher
+package buildlogger
 
 import (
 	"context"
@@ -7,27 +7,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/timber"
 	"github.com/peterhellberg/link"
 	"github.com/pkg/errors"
 )
 
-// GetOptions specify the required and optional information to create the
-// buildlogger HTTP GET request to cedar.
-type GetOptions struct {
-	// The cedar service's base HTTP URL for the request.
-	BaseURL string
-	// The user cookie for cedar authorization. Optional.
-	Cookie *http.Cookie
-	// User API key and name for request header.
-	UserKey  string
-	UserName string
+// BuildloggerGetOptions specify the required and optional information to
+// create the buildlogger HTTP GET request to cedar.
+type BuildloggerGetOptions struct {
+	CedarOpts timber.GetOptions
+
 	// Request information. See cedar's REST documentation for more
 	// information:
 	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
-	ID            string
-	TaskID        string
-	TestName      string
 	GroupID       string
 	Start         time.Time
 	End           time.Time
@@ -41,21 +33,21 @@ type GetOptions struct {
 	Meta          bool
 }
 
-// Logs returns a ReadCloser with the logs or log metadata requested via HTTP
-// to a cedar service.
-func Logs(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
+// GetLogs returns a ReadCloser with the logs or log metadata requested via
+// HTTP to a cedar service.
+func GetLogs(ctx context.Context, opts BuildloggerGetOptions) (io.ReadCloser, error) {
 	url, err := opts.parse()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem parsing options")
 	}
 
-	resp, err := doReq(ctx, url, opts)
+	resp, err := opts.CedarOpts.DoReq(ctx, url)
 	if err == nil {
 		if resp.StatusCode == http.StatusOK {
 			return &paginatedReadCloser{
 				ctx:        ctx,
 				header:     resp.Header,
-				opts:       opts,
+				opts:       opts.CedarOpts,
 				ReadCloser: resp.Body,
 			}, nil
 		}
@@ -64,15 +56,9 @@ func Logs(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
 	return nil, errors.Wrapf(err, "fetch logs request failed")
 }
 
-func (opts GetOptions) parse() (string, error) {
-	if opts.BaseURL == "" {
-		return "", errors.New("must provide a base URL")
-	}
-	if opts.ID != "" && opts.TaskID != "" {
-		return "", errors.New("cannot provide both ID and TaskID")
-	}
-	if opts.ID == "" && opts.TaskID == "" {
-		return "", errors.New("must provide either ID or TaskID")
+func (opts *BuildloggerGetOptions) parse() (string, error) {
+	if err := opts.CedarOpts.Validate(); err != nil {
+		return "", errors.WithStack(err)
 	}
 
 	params := fmt.Sprintf(
@@ -94,18 +80,16 @@ func (opts GetOptions) parse() (string, error) {
 		params += fmt.Sprintf("&tags=%s", tag)
 	}
 
-	url := fmt.Sprintf("%s/rest/v1/buildlogger", opts.BaseURL)
-	if opts.ID != "" {
-		url += fmt.Sprintf("/%s", opts.ID)
-	} else {
-		if opts.TestName != "" {
-			url += fmt.Sprintf("/test_name/%s/%s", opts.TaskID, opts.TestName)
-			if opts.GroupID != "" {
-				url += fmt.Sprintf("/group/%s", opts.GroupID)
-			}
-		} else {
-			url += fmt.Sprintf("/task_id/%s", opts.TaskID)
+	url := fmt.Sprintf("%s/rest/v1/buildlogger", opts.CedarOpts.BaseURL)
+	if opts.CedarOpts.ID != "" {
+		url += fmt.Sprintf("/%s", opts.CedarOpts.ID)
+	} else if opts.CedarOpts.TestName != "" {
+		url += fmt.Sprintf("/test_name/%s/%s", opts.CedarOpts.TaskID, opts.CedarOpts.TestName)
+		if opts.GroupID != "" {
+			url += fmt.Sprintf("/group/%s", opts.GroupID)
 		}
+	} else {
+		url += fmt.Sprintf("/task_id/%s", opts.CedarOpts.TaskID)
 	}
 
 	if opts.Meta {
@@ -119,7 +103,7 @@ func (opts GetOptions) parse() (string, error) {
 type paginatedReadCloser struct {
 	ctx    context.Context
 	header http.Header
-	opts   GetOptions
+	opts   timber.GetOptions
 
 	io.ReadCloser
 }
@@ -151,7 +135,7 @@ func (r *paginatedReadCloser) Read(p []byte) (int, error) {
 func (r *paginatedReadCloser) getNextPage() error {
 	group, ok := link.ParseHeader(r.header)["next"]
 	if ok {
-		resp, err := doReq(r.ctx, group.URI, r.opts)
+		resp, err := r.opts.DoReq(r.ctx, group.URI)
 		if err != nil {
 			return errors.Wrap(err, "problem requesting next page")
 		}
@@ -167,24 +151,4 @@ func (r *paginatedReadCloser) getNextPage() error {
 	}
 
 	return nil
-}
-
-func doReq(ctx context.Context, url string, opts GetOptions) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating http request for cedar buildlogger")
-	}
-	if opts.Cookie != nil {
-		req.AddCookie(opts.Cookie)
-	}
-	if opts.UserKey != "" && opts.UserName != "" {
-		req.Header.Set("Evergreen-Api-Key", opts.UserKey)
-		req.Header.Set("Evergreen-Api-User", opts.UserName)
-	}
-	req = req.WithContext(ctx)
-
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-
-	return c.Do(req)
 }
