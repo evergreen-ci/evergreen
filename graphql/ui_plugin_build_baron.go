@@ -115,21 +115,35 @@ func BbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error
 	return results, nil
 }
 
-func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, bool, error) {
-	projectNotFoundError := false
+type buildBaronConfig struct {
+	ProjectFound     bool
+	SearchConfigured bool
+}
+
+func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, buildBaronConfig, error) {
+	bbConfig := &buildBaronConfig{}
 	t, err := BbGetTask(taskId, exec)
 	if err != nil {
-		return nil, projectNotFoundError, err
+		return nil, *bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
 	buildBaronProjects := BbGetConfig(settings)
 	bbProj, ok := buildBaronProjects[t.Project]
 
 	if !ok {
-		projectNotFoundError = true
-		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
+		bbConfig.ProjectFound = false
+		return nil, *bbConfig, errors.New(fmt.Sprintf("Build Baron project for %s not found", t.Project))
 	}
+	bbConfig.ProjectFound = true
 
+	// the build baron is configured if the jira search is configured
+	bbSearchConfigured := len(bbProj.TicketSearchProjects) > 0
+
+	if !bbSearchConfigured {
+		bbConfig.SearchConfigured = false
+		return nil, *bbConfig, errors.New(fmt.Sprintf("Build Baron ticket search projects for %s not found", t.Project))
+	}
+	bbConfig.SearchConfigured = true
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}
@@ -140,7 +154,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		return nil, projectNotFoundError, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
+		return nil, *bbConfig, errors.New(fmt.Sprintf("Error searching for tickets: %s", err.Error()))
 	}
 
 	var featuresURL string
@@ -151,7 +165,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	} else {
 		featuresURL = ""
 	}
-	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, projectNotFoundError, nil
+	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, *bbConfig, nil
 }
 
 func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
