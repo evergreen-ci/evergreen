@@ -64,7 +64,7 @@ type APITask struct {
 	Requester          *string             `json:"requester"`
 	TestResults        []APITest           `json:"test_results"`
 	Aborted            bool                `json:"aborted"`
-	AbortInfo          APIAbortInfo        `json:"abort_info"`
+	AbortInfo          APIAbortInfo        `json:"abort_info,omitempty"`
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
