@@ -53,12 +53,12 @@ type monitor struct {
 	// Monitor args
 	credentialsPath string
 	clientPath      string
+	cloudProvider   string
 	distroID        string
 	shellPath       string
 	logPrefix       string
 	jasperPort      int
 	port            int
-	cloudProvider   string
 
 	// Args to be forwarded to the agent
 	agentArgs []string
