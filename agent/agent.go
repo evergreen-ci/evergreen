@@ -433,7 +433,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.oomTrackerEnabled() && status == evergreen.TaskFailed {
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && status == evergreen.TaskFailed {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, time.Second*10)
 		defer oomCancel()
