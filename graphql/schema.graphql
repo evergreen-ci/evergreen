@@ -447,6 +447,7 @@ type ProjectBuildVariant {
 
 type TaskResult {
   id: ID!
+  aborted: Boolean!
   displayName: String!
   version: String!
   status: String!

@@ -432,6 +432,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			Blocked:      task.Blocked(),
+			Aborted:      task.Aborted,
 		}
 		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
 			t.BaseStatus = baseTaskStatuses[task.BuildVariant][task.DisplayName]

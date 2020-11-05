@@ -180,6 +180,7 @@ type TaskQueueDistro struct {
 
 type TaskResult struct {
 	ID           string `json:"id"`
+	Aborted      bool   `json:"aborted"`
 	DisplayName  string `json:"displayName"`
 	Version      string `json:"version"`
 	Status       string `json:"status"`
