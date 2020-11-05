@@ -1054,7 +1054,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 						return false, nil
 					}
 					return true, errors.New("fetching task data not finished")
-				}, 5, time.Second, 15*time.Second)
+				}, 10, time.Second, 45*time.Second)
 			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
 			if err == nil {
 				return nil
