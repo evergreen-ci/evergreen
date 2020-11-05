@@ -1307,7 +1307,13 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 						"num_processes": 2,
 						"locked_memory": 3,
 						"virtual_memory": 4
-					}
+					},
+					"precondition_scripts": [
+						{
+						"path": "/tmp/foo",
+						"script": "echo foo"
+						}
+					]
 				},
 				"clone_method": "legacy-ssh",
 				"ssh_key" : "New SSH Key",
@@ -1379,16 +1385,19 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
 	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
+	s.Require().Len(apiDistro.BootstrapSettings.PreconditionScripts, 1)
+	s.Equal(model.ToStringPtr("/tmp/foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Path)
+	s.Equal(model.ToStringPtr("echo foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Script)
 	s.Equal(model.ToStringPtr("~root"), apiDistro.User)
 	s.Equal(model.ToStringPtr("New SSH Key"), apiDistro.SSHKey)
 	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)
 	s.False(apiDistro.UserSpawnAllowed)
 
 	s.Equal(apiDistro.Expansions, []model.APIExpansion{
-		model.APIExpansion{Key: model.ToStringPtr("~decompress"), Value: model.ToStringPtr("~tar zxvf")},
-		model.APIExpansion{Key: model.ToStringPtr("~ps"), Value: model.ToStringPtr("~ps aux")},
-		model.APIExpansion{Key: model.ToStringPtr("~kill_pid"), Value: model.ToStringPtr("~kill -- -$(ps opgid= %v)")},
-		model.APIExpansion{Key: model.ToStringPtr("~scons_prune_ratio"), Value: model.ToStringPtr("~0.8")},
+		{Key: model.ToStringPtr("~decompress"), Value: model.ToStringPtr("~tar zxvf")},
+		{Key: model.ToStringPtr("~ps"), Value: model.ToStringPtr("~ps aux")},
+		{Key: model.ToStringPtr("~kill_pid"), Value: model.ToStringPtr("~kill -- -$(ps opgid= %v)")},
+		{Key: model.ToStringPtr("~scons_prune_ratio"), Value: model.ToStringPtr("~0.8")},
 	})
 
 	// no problem turning into settings object
@@ -1457,16 +1466,16 @@ func getMockDistrosConnector() *data.MockConnector {
 						"ConnectTimeout=10"},
 					SpawnAllowed: false,
 					Expansions: []distro.Expansion{
-						distro.Expansion{
+						{
 							Key:   "decompress",
 							Value: "tar zxvf"},
-						distro.Expansion{
+						{
 							Key:   "ps",
 							Value: "ps aux"},
-						distro.Expansion{
+						{
 							Key:   "kill_pid",
 							Value: "kill -- -$(ps opgid= %v)"},
-						distro.Expansion{
+						{
 							Key:   "scons_prune_ratio",
 							Value: "0.8"},
 					},

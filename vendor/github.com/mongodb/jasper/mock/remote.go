@@ -137,20 +137,20 @@ func (c *RemoteManager) SendMessages(ctx context.Context, opts options.LoggingPa
 	return nil
 }
 
-// GetScripting returns a cached scripting environment. If FailGetScripting is
-// set, it returns an error.
+// GetScripting returns the ScriptingHarness field. If FailGetScripting is set,
+// it returns an error.
 func (c *RemoteManager) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
 	if c.FailGetScripting {
 		return nil, mockFail()
 	}
-	return c.ScriptingEnv, nil
+	return c.ScriptingHarness, nil
 }
 
-// CreateScripting constructs an attached scripting environment. If
-// FailCreateScripting is set, it returns an error.
+// CreateScripting returns the ScriptingHarness field. If FailCreateScripting is
+// set, it returns an error.
 func (c *RemoteManager) CreateScripting(ctx context.Context, opts options.ScriptingHarness) (scripting.Harness, error) {
 	if c.FailCreateScripting {
 		return nil, mockFail()
 	}
-	return c.ScriptingEnv, nil
+	return c.ScriptingHarness, nil
 }

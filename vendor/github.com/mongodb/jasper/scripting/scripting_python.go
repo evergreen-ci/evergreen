@@ -54,14 +54,13 @@ func (e *pythonEnvironment) Setup(ctx context.Context) error {
 		cmd.Add(args)
 	}
 
-	cmd.PostHook(func(res error) error {
-		if res == nil {
-			e.isConfigured = true
-		}
-		return nil
-	})
+	if err := cmd.SetOutputOptions(e.opts.Output).Run(ctx); err != nil {
+		return errors.Wrap(err, "setup")
+	}
 
-	return cmd.SetOutputOptions(e.opts.Output).Run(ctx)
+	e.isConfigured = true
+
+	return nil
 }
 
 func (e *pythonEnvironment) venvMod() string {
@@ -86,7 +85,11 @@ func (e *pythonEnvironment) RunScript(ctx context.Context, script string) error 
 		return errors.Wrap(err, "problem writing script file")
 	}
 
-	return e.manager.CreateCommand(ctx).Environment(e.opts.Environment).SetOutputOptions(e.opts.Output).AppendArgs(e.opts.Interpreter(), wo.Path).Run(ctx)
+	return e.manager.CreateCommand(ctx).
+		Environment(e.opts.Environment).
+		SetOutputOptions(e.opts.Output).
+		AppendArgs(e.opts.Interpreter(), wo.Path).
+		Run(ctx)
 }
 
 func (e *pythonEnvironment) Build(ctx context.Context, dir string, args []string) (string, error) {

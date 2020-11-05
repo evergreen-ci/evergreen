@@ -201,16 +201,17 @@ func (s *APIDispatcherSettings) ToService() (interface{}, error) {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string           `json:"method"`
-	Communication         *string           `json:"communication"`
-	ClientDir             *string           `json:"client_dir"`
-	JasperBinaryDir       *string           `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string           `json:"jasper_credentials_path"`
-	ServiceUser           *string           `json:"service_user"`
-	ShellPath             *string           `json:"shell_path"`
-	RootDir               *string           `json:"root_dir"`
-	Env                   []APIEnvVar       `json:"env"`
-	ResourceLimits        APIResourceLimits `json:"resource_limits"`
+	Method                *string                 `json:"method"`
+	Communication         *string                 `json:"communication"`
+	ClientDir             *string                 `json:"client_dir"`
+	JasperBinaryDir       *string                 `json:"jasper_binary_dir"`
+	JasperCredentialsPath *string                 `json:"jasper_credentials_path"`
+	ServiceUser           *string                 `json:"service_user"`
+	ShellPath             *string                 `json:"shell_path"`
+	RootDir               *string                 `json:"root_dir"`
+	Env                   []APIEnvVar             `json:"env"`
+	ResourceLimits        APIResourceLimits       `json:"resource_limits"`
+	PreconditionScripts   []APIPreconditionScript `json:"precondition_scripts"`
 }
 
 type APIEnvVar struct {
@@ -244,6 +245,35 @@ type APIResourceLimits struct {
 	NumProcesses    int `json:"num_processes"`
 	LockedMemoryKB  int `json:"locked_memory"`
 	VirtualMemoryKB int `json:"virtual_memory"`
+}
+
+// APIPreconditionScript is the model used by the API to represent a
+// distro.PreconditionScript.
+type APIPreconditionScript struct {
+	Path   *string `json:"path"`
+	Script *string `json:"script"`
+}
+
+// BuildFromService converts a service-level distro.PreconditionScript to an
+// APIPreconditionScript.
+func (s *APIPreconditionScript) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case distro.PreconditionScript:
+		s.Path = ToStringPtr(v.Path)
+		s.Script = ToStringPtr(v.Script)
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported precondition script type", h)
+	}
+}
+
+// ToService returns a service-level distro.PreconditionScript using the data
+// from the APIPreconditionScript.
+func (s *APIPreconditionScript) ToService() (interface{}, error) {
+	return distro.PreconditionScript{
+		Path:   FromStringPtr(s.Path),
+		Script: FromStringPtr(s.Script),
+	}, nil
 }
 
 // BuildFromService converts from service level distro.BootstrapSettings to an
@@ -280,7 +310,13 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 		}
 		s.Env = append(s.Env, apiEnvVar)
 	}
-
+	for _, script := range settings.PreconditionScripts {
+		var apiScript APIPreconditionScript
+		if err := apiScript.BuildFromService(script); err != nil {
+			return errors.Wrap(err, "precondition script")
+		}
+		s.PreconditionScripts = append(s.PreconditionScripts, apiScript)
+	}
 	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
 	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
@@ -314,11 +350,21 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 		}
 		envVar, ok := i.(distro.EnvVar)
 		if !ok {
-			return nil, errors.Errorf("unexpected type %T for environment variable", i)
+			return nil, errors.Errorf("programmatic error: unexpected type %T for environment variable", i)
 		}
 		settings.Env = append(settings.Env, envVar)
 	}
-
+	for _, apiScript := range s.PreconditionScripts {
+		i, err := apiScript.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "building precondition script")
+		}
+		script, ok := i.(distro.PreconditionScript)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: unexpected type %T for precondition script", i)
+		}
+		settings.PreconditionScripts = append(settings.PreconditionScripts, script)
+	}
 	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB

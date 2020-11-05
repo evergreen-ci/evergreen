@@ -118,7 +118,6 @@ imports:
   - name: github.com/Masterminds/glide
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
-    # TODO: revendor grip once MAKE-1139 merged
   - name: github.com/mongodb/grip
     version: 52301f66a09ae5a1c276e3d884af1185db5dbbf4
   - name: github.com/mongodb/amboy
@@ -130,7 +129,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 1a7ed05e11ee7fef549d3a0644a572da2e98ab02
   - name: github.com/mongodb/jasper
-    version: ebd707c9be04a36156354655d417833b37d9af72
+    version: 7c6b819182706471e29c1f65edbe6989efd7c0a2
   - name: go.mongodb.org/mongo-driver
     version: 90164f879ba927bc0fa38682215b7a71d4ff8a92
   - name: github.com/evergreen-ci/timber

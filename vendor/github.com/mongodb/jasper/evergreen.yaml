@@ -67,6 +67,10 @@ tasks:
     tags: ["test"]
     name: test-remote
 
+  - <<: *run-build
+    tags: ["test"]
+    name: test-scripting
+
   - name: compile-base
     tags: ["legacy-check"]
     commands:
@@ -105,6 +109,10 @@ tasks:
   - <<: *run-build
     tags: ["report"]
     name: lint-remote
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-scripting
 
   - <<: *run-build
     tags: ["report"]

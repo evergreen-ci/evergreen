@@ -124,6 +124,10 @@ type Config struct {
 	//     the generated service config file, will not check their correctness.
 	Dependencies []string
 
+	// Force the service to run interactively, even if it's running under the
+	// system service manager.
+	ForceInteractive bool
+
 	// The following fields are not supported on Windows.
 	WorkingDirectory string // Initial working directory.
 	ChRoot           string
@@ -367,8 +371,12 @@ type Service interface {
 	String() string
 
 	// Platform displays the name of the system that manages the service.
-	// In most cases this will be the same as service.Platform().
+	// In most cases, this will be the same as service.Platform().
 	Platform() string
+
+	// Interactive returns whether or not the service is running interactively
+	// or not. In most cases, this will be the same as service.Interactive().
+	Interactive() bool
 
 	// Status returns the current service status.
 	Status() (Status, error)

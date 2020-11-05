@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// ScriptingPython defines the configuration of a python environment.
+// ScriptingPython defines the configuration of a Python environment.
 type ScriptingPython struct {
 	VirtualEnvPath string `bson:"virtual_env_path" json:"virtual_env_path" yaml:"virtual_env_path"`
 	// InterpreterBinary is the global python binary interpreter.
@@ -40,11 +40,11 @@ type ScriptingPython struct {
 	cachedHash          string
 }
 
-// NewPythonScriptingEnvironment generates a ScriptingEnvironment for python 3
+// NewPythonScriptingHarness generates a ScriptingHarness for python 3
 // based on the arguments provided. Use this function for
 // simple cases when you do not need or want to set as many aspects of
 // the environment configuration.
-func NewPythonScriptingEnvironment(path, reqtxt string, packages ...string) ScriptingHarness {
+func NewPythonScriptingHarness(path, reqtxt string, packages ...string) ScriptingHarness {
 	return &ScriptingPython{
 		CachedDuration:    time.Hour,
 		InterpreterBinary: "python3",
@@ -54,8 +54,7 @@ func NewPythonScriptingEnvironment(path, reqtxt string, packages ...string) Scri
 	}
 }
 
-// Type is part of the options.ScriptingEnvironment interface and
-// returns the type of the interface.
+// Type returns the type of the interface.
 func (opts *ScriptingPython) Type() string {
 	if opts.LegacyPython {
 		return Python2ScriptingType
@@ -63,14 +62,12 @@ func (opts *ScriptingPython) Type() string {
 	return Python3ScriptingType
 }
 
-// Interpreter is part of the options.ScriptingEnvironment interface
-// and returns the path to the binary that will run scripts.
+// Interpreter returns the path to the binary that will run scripts.
 func (opts *ScriptingPython) Interpreter() string {
 	return filepath.Join(opts.VirtualEnvPath, "bin", "python")
 }
 
-// Validate is part of the options.ScriptingEnvironment interface and
-// both ensures that the values are permissible and sets, where
+// Validate both ensures that the values are permissible and sets, where
 // possible, good defaults.
 func (opts *ScriptingPython) Validate() error {
 	if opts.CachedDuration == 0 {

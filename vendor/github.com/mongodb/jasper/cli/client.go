@@ -20,10 +20,10 @@ const (
 	clientConnectionTimeout = 30 * time.Second
 )
 
-// Client encapsulates the client-side interface to a Jasper service.
+// client encapsulates the client-side interface to a Jasper service.
 // Operations read from standard input (if necessary) and write the result to
 // standard output.
-func Client() cli.Command {
+func client() cli.Command {
 	return cli.Command{
 		Name:  ClientCommand,
 		Usage: "Tools for making requests to Jasper services, intended for automation.",

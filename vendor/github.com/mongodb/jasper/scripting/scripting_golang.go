@@ -45,14 +45,12 @@ func (e *golangEnvironment) Setup(ctx context.Context) error {
 		}
 	}
 
-	cmd.PostHook(func(res error) error {
-		if res == nil {
-			e.isConfigured = true
-		}
-		return nil
-	})
+	if err := cmd.SetOutputOptions(e.opts.Output).Run(ctx); err != nil {
+		return errors.Wrap(err, "setup")
+	}
+	e.isConfigured = true
 
-	return cmd.SetOutputOptions(e.opts.Output).Run(ctx)
+	return nil
 }
 
 func (e *golangEnvironment) Run(ctx context.Context, args []string) error {

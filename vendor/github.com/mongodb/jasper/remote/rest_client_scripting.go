@@ -65,7 +65,10 @@ func (s *restScriptingHarness) Build(ctx context.Context, dir string, args []str
 	body, err := makeBody(struct {
 		Directory string   `json:"directory"`
 		Args      []string `json:"args"`
-	}{Args: args})
+	}{
+		Directory: dir,
+		Args:      args,
+	})
 	if err != nil {
 		return "", errors.Wrap(err, "problem building request")
 	}
