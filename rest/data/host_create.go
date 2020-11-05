@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -192,11 +193,30 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 		return nil, nil, errors.Wrap(err, "error populating expansions")
 	}
 	params := append(proj.GetParameters(), v.Parameters...)
-	if err = model.UpdateExpansions(&expansions, t.Project, params); err != nil {
+	if err = updateExpansions(&expansions, t.Project, params); err != nil {
 		return nil, nil, errors.Wrap(err, "error updating expansions")
 	}
 
 	return proj, &expansions, nil
+}
+
+// updateExpansions updates expansions with project variables and patch
+// parameters.
+func updateExpansions(expansions *util.Expansions, projectId string, params []patch.Parameter) error {
+	projVars, err := model.FindOneProjectVars(projectId)
+	if err != nil {
+		return errors.Wrap(err, "error finding project vars")
+	}
+	if projVars == nil {
+		return errors.New("project vars not found")
+	}
+
+	expansions.Update(projVars.GetUnrestrictedVars())
+
+	for _, param := range params {
+		expansions.Put(param.Key, param.Value)
+	}
+	return nil
 }
 
 func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
