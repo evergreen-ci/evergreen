@@ -336,11 +336,16 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 			return nil, err
 		}
 	}
-	grip.Info("Fetching distro configuration.")
-	confDistro, err := a.comm.GetDistro(ctx, tc.task)
+	grip.Info("Fetching distro view configuration.")
+	confDistro, err := a.comm.GetDistroView(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}
+	// kim: TODO: remove
+	// confDistro, err := a.comm.GetDistro(ctx, tc.task)
+	// if err != nil {
+	//     return nil, err
+	// }
 
 	grip.Info("Fetching project ref.")
 	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
