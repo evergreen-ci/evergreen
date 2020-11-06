@@ -752,6 +752,7 @@ type SpruceConfig {
   banner: String
   bannerTheme: String
   providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
 }
 
 type JiraConfig {
@@ -768,6 +769,12 @@ type CloudProviderConfig {
 
 type AWSConfig {
   maxVolumeSizePerUser: Int
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+  spawnHostsPerUser: Int!
 }
 
 type HostEvents {
