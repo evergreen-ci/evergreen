@@ -2,5 +2,6 @@
   user {
     displayName
     userId
+    emailAddress
   }
 }

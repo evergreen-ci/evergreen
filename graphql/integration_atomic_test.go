@@ -77,15 +77,16 @@ const apiUser = "testuser"
 func setup(t *testing.T, state *atomicGraphQLState) {
 	const apiKey = "testapikey"
 	const slackUsername = "testslackuser"
-
+	const email = "testuser@mongodb.com"
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 	testUser := user.DBUser{
-		Id:          apiUser,
-		APIKey:      apiKey,
-		Settings:    user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
-		SystemRoles: []string{"unrestrictedTaskAccess", "modify_host"},
+		Id:           apiUser,
+		APIKey:       apiKey,
+		EmailAddress: email,
+		Settings:     user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
+		SystemRoles:  []string{"unrestrictedTaskAccess", "modify_host"},
 		PubKeys: []user.PubKey{
 			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
 			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},

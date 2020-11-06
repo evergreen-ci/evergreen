@@ -6,7 +6,8 @@
         "data": {
           "user": {
             "displayName": "testuser",
-            "userId": "testuser"
+            "userId": "testuser",
+            "emailAddress": "testuser@mongodb.com"
           }
         }
       }
@@ -28,8 +29,12 @@
         "errors": [
           {
             "message": "Error getting user from user ID: user nonexistent-userid not found",
-            "path": ["user"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "user"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null

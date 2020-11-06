@@ -622,7 +622,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
-  EmailAddress: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {

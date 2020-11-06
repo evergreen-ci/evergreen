@@ -3747,7 +3747,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.User.DisplayName(childComplexity), true
 
-	case "User.EmailAddress":
+	case "User.emailAddress":
 		if e.complexity.User.EmailAddress == nil {
 			break
 		}
@@ -4638,7 +4638,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
-  EmailAddress: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {
@@ -18975,7 +18975,7 @@ func (ec *executionContext) _User_userId(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _User_EmailAddress(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -25079,8 +25079,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "EmailAddress":
-			out.Values[i] = ec._User_EmailAddress(ctx, field, obj)
+		case "emailAddress":
+			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
