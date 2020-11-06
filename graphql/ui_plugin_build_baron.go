@@ -136,7 +136,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	bbConfig.ProjectFound = true
 
 	// the build baron is configured if the jira search is configured
-	if !(len(bbProj.TicketSearchProjects) > 0) {
+	if len(bbProj.TicketSearchProjects) <= 0 {
 		bbConfig.SearchConfigured = false
 		return nil, bbConfig, errors.Errorf("Build Baron ticket search projects for %s not found", t.Project)
 	}
