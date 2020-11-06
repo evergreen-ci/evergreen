@@ -2020,9 +2020,11 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
+	email := usr.Email()
 	user := restModel.APIDBUser{
-		DisplayName: &displayName,
-		UserID:      &userID,
+		DisplayName:  &displayName,
+		UserID:       &userID,
+		EmailAddress: &email,
 	}
 	return &user, nil
 }
