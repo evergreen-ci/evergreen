@@ -21,21 +21,25 @@ type TaskAnnotation struct {
 type IssueLink struct {
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
-	IssueKey string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	IssueKey   string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	LinkSource Source `bson:"link_source,omitempty" json:"link_source,omitempty"`
 }
 
-type AnnotationSource struct {
+type Source struct {
 	Author string    `bson:"author,omitempty" json:"author,omitempty"`
 	Time   time.Time `bson:"time,omitempty" json:"time,omitempty"`
 }
 
 type Annotation struct {
 	// comment about the failure
-	Note string `bson:"note,omitempty" json:"note,omitempty"`
+	Note Note `bson:"note,omitempty" json:"note,omitempty"`
 	// links to tickets definitely related.
 	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// links to tickets possibly related
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	// annotation attribution
-	Source AnnotationSource `bson:"source" json:"source"`
+}
+
+type Note struct {
+	Message    string `bson:"message,omitempty" json:"message,omitempty"`
+	NoteSource Source `bson:"note_source,omitempty" json:"note_source,omitempty"`
 }

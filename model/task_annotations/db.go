@@ -1,8 +1,6 @@
 package task_annotations
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -87,10 +85,7 @@ func (annotation *TaskAnnotation) UpdateAPIAnnotation(id string, execution int, 
 }
 
 // Update updates one task_annotation.
-func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int, a Annotation, author string) error {
-	a.Source.Author = author
-	a.Source.Time = time.Now()
-
+func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int, a Annotation) error {
 	return errors.WithStack(db.Update(
 		Collection,
 		bson.M{
