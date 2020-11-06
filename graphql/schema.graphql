@@ -622,6 +622,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {

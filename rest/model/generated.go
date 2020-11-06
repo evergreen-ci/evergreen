@@ -12,10 +12,11 @@ type APIDisplayTask struct {
 	ExecutionTasks []string `json:"execution_tasks"`
 }
 type APIDBUser struct {
-	UserID      *string  `json:"user_id"`
-	DisplayName *string  `json:"display_name"`
-	OnlyApi     bool     `json:"only_api"`
-	Roles       []string `json:"roles"`
+	UserID       *string  `json:"user_id"`
+	DisplayName  *string  `json:"display_name"`
+	OnlyApi      bool     `json:"only_api"`
+	Roles        []string `json:"roles"`
+	EmailAddress *string  `json:"email_address"`
 }
 
 // APIDisplayTaskBuildFromService takes the patch.DisplayTask DB struct and
