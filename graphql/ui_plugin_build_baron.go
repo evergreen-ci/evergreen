@@ -131,7 +131,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	bbProj, ok := buildBaronProjects[t.Project]
 
 	if !ok {
-		bbConfig.ProjectFound = false
 		return nil, bbConfig, errors.Errorf("Build Baron project for %s not found", t.Project)
 	}
 	bbConfig.ProjectFound = true
