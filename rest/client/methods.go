@@ -204,7 +204,7 @@ func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData)
 		return nil, errors.New("conflict; wrong secret")
 	}
 	var dv apimodels.DistroView
-	if err = utility.ReadJSON(resp.Body, dv); err != nil {
+	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
 		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
 		return nil, err
 	}
