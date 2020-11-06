@@ -2197,8 +2197,9 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
-	if projectNotFound {
+
+	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskId, execString)
+	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
 		return &BuildBaron{
 			SearchReturnInfo:     searchReturnInfo,
 			BuildBaronConfigured: false,
