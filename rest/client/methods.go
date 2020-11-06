@@ -193,7 +193,7 @@ func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData)
 		taskData: &taskData,
 		version:  apiVersion1,
 	}
-	info.setTaskPathSuffix("distro")
+	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
