@@ -151,7 +151,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		return nil, bbConfig, errors.Errorf("Error searching for tickets: %s", err.Error())
+		return nil, bbConfig, errors.Wrapf(err, "Error searching for tickets: %s", err.Error())
 	}
 
 	var featuresURL string
