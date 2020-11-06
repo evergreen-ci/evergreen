@@ -33,18 +33,7 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) GetDistroView(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-
-	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if h == nil {
-		message := fmt.Errorf("No host found running task %v", t.Id)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
+	h := MustHaveHost(r)
 
 	dv := apimodels.DistroView{
 		CloneMethod:         h.Distro.CloneMethod,
