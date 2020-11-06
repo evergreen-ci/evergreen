@@ -34,6 +34,20 @@
                     }
                 }
             }
+        },
+        {
+            "query_file": "spawnHost.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "spawnHost": {
+                            "unexpirableHostsPerUser": 0,
+                            "unexpirableVolumesPerUser": 0,
+                            "spawnHostsPerUser": 0
+                        }
+                    }
+                }
+            }
         }
     ]
 }
