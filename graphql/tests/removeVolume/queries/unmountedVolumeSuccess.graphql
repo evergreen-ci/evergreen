@@ -1,0 +1,3 @@
+mutation {
+  removeVolume(volumeId: "vol-0603934fsas024db5")
+}

@@ -18,7 +18,10 @@ import (
 
 const defaultAgentStatusPort = 2285
 
-const agentAPIServerURLFlagName = "api_server"
+const (
+	agentAPIServerURLFlagName  = "api_server"
+	agentCloudProviderFlagName = "provider"
+)
 
 func Agent() cli.Command {
 	const (
@@ -67,6 +70,10 @@ func Agent() cli.Command {
 				Name:  cleanupFlagName,
 				Usage: "clean up working directory and processes (do not set for smoke tests)",
 			},
+			cli.StringFlag{
+				Name:  agentCloudProviderFlagName,
+				Usage: "the cloud provider that manages this host",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(agentAPIServerURLFlagName),
@@ -86,6 +93,7 @@ func Agent() cli.Command {
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
+				CloudProvider:    c.String(agentCloudProviderFlagName),
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -38,7 +39,9 @@ func TestManifestLoad(t *testing.T) {
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "manifest", "mongodb-mongo-master.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
-		taskConfig := modelData.TaskConfig
+
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
 		So(err, ShouldBeNil)
 

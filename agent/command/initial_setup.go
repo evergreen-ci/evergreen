@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 )
@@ -24,7 +24,7 @@ func (*initialSetup) ParseParams(params map[string]interface{}) error { return n
 func (*initialSetup) JasperManager() jasper.Manager                   { return nil }
 func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
 func (*initialSetup) Execute(ctx context.Context,
-	client client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Task().Info("performing initial task setup")
 	return nil

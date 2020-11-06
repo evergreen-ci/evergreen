@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -36,7 +37,7 @@ func TestExpansionsPlugin(t *testing.T) {
 		expansions.Put("base", "not eggs")
 		expansions.Put("topping", "bacon")
 
-		taskConfig := model.TaskConfig{
+		taskConfig := internal.TaskConfig{
 			Expansions: &expansions,
 		}
 
@@ -52,7 +53,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	Convey("When running Update commands", t, func() {
@@ -80,7 +81,7 @@ func TestExpansionWriter(t *testing.T) {
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"}, nil)
 	assert.NoError(err)
-	tc := &model.TaskConfig{
+	tc := &internal.TaskConfig{
 		Expansions: &util.Expansions{
 			"foo":      "bar",
 			"baz":      "qux",

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
@@ -31,11 +31,11 @@ func (c *s3Base) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(mapstructure.Decode(params, c), "error decoding S3 parameters")
 }
 
-func (c *s3Base) expandParams(conf *model.TaskConfig) error {
+func (c *s3Base) expandParams(conf *internal.TaskConfig) error {
 	return errors.WithStack(util.ExpandValues(c, conf.Expansions))
 }
 
-func (c *s3Base) createBucket(client *http.Client, conf *model.TaskConfig) error {
+func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) error {
 	if c.bucket != nil {
 		return nil
 	}
@@ -90,14 +90,14 @@ func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *s3Pull) expandParams(conf *model.TaskConfig) error {
+func (c *s3Pull) expandParams(conf *internal.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(c.s3Base.expandParams(conf))
 	catcher.Add(util.ExpandValues(c, conf.Expansions))
 	return catcher.Resolve()
 }
 
-func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "error applying expansions to parameters")
 	}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -57,7 +58,7 @@ func (s *AgentSuite) SetupTest() {
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			Project: &model.Project{},
 			Task:    &task.Task{},
 		},
@@ -91,11 +92,20 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: true}
-	ctx, cancel := context.WithCancel(context.Background())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := s.a.loop(ctx)
-	s.NoError(err)
+	errs := make(chan error, 1)
+	go func() {
+		errs <- s.a.loop(ctx)
+	}()
+	select {
+	case err := <-errs:
+		s.NoError(err)
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
+	}
 }
 
 func (s *AgentSuite) TestTaskWithoutSecret() {
@@ -103,45 +113,77 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: false}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	errChan := make(chan error)
+	agentCtx, agentCancel := context.WithCancel(ctx)
+	errs := make(chan error, 1)
 	go func() {
-		errChan <- s.a.loop(ctx)
+		errs <- s.a.loop(agentCtx)
 	}()
 	time.Sleep(1 * time.Second)
-	cancel()
-	err := <-errChan
-	s.NoError(err)
+	agentCancel()
+	select {
+	case err := <-errs:
+		s.NoError(err)
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
+	}
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := s.a.loop(ctx)
-	s.Error(err)
+	errs := make(chan error, 1)
+	go func() {
+		errs <- s.a.loop(ctx)
+	}()
+	select {
+	case err := <-errs:
+		s.Error(err)
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
+	}
 }
 
 func (s *AgentSuite) TestCanceledContext() {
 	s.a.opts.AgentSleepInterval = time.Millisecond
 	s.a.opts.MaxAgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := s.a.loop(ctx)
-	s.NoError(err)
+	errs := make(chan error, 1)
+
+	agentCtx, agentCancel := context.WithCancel(ctx)
+	agentCancel()
+	go func() {
+		errs <- s.a.loop(agentCtx)
+	}()
+	select {
+	case err := <-errs:
+		s.NoError(err)
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
+	}
 }
 
 func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := s.a.loop(ctx)
-	s.NoError(err)
+	errs := make(chan error, 1)
+	go func() {
+		errs <- s.a.loop(ctx)
+	}()
+	select {
+	case err := <-errs:
+		s.NoError(err)
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
+	}
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -149,13 +191,13 @@ func (s *AgentSuite) TestNextTaskConflict() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	errChan := make(chan error)
+	errs := make(chan error, 1)
 	go func() {
-		errChan <- s.a.loop(ctx)
+		errs <- s.a.loop(ctx)
 	}()
 	time.Sleep(time.Millisecond)
 	select {
-	case err := <-errChan:
+	case err := <-errs:
 		s.NoError(err)
 	default:
 		// pass
@@ -216,7 +258,7 @@ pre:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -248,7 +290,7 @@ pre:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -275,7 +317,7 @@ post:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -309,7 +351,7 @@ post:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -481,7 +523,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig: &model.TaskConfig{
+		taskConfig: &internal.TaskConfig{
 			BuildVariant: &model.BuildVariant{
 				Name: "buildvariant_id",
 			},
@@ -528,7 +570,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
 	tc.taskModel = &task.Task{}
-	tc.taskConfig = &model.TaskConfig{
+	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
 			Version: "version_base",
 		},
@@ -542,7 +584,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.TaskGroup = "foo"
 	tc.taskGroup = "foo"
 	nextTask.Version = "version_name"
-	tc.taskConfig = &model.TaskConfig{
+	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
 			Version: "version_name",
 		},
@@ -555,7 +597,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
 
-	tc.taskConfig = &model.TaskConfig{
+	tc.taskConfig = &internal.TaskConfig{
 		Task: &task.Task{
 			Version: versionId,
 			BuildId: "build_id_1",
@@ -599,7 +641,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -636,7 +678,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -670,7 +712,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -703,7 +745,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -738,7 +780,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -774,7 +816,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -812,7 +854,7 @@ task_groups:
 	p := &model.Project{}
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},
@@ -853,7 +895,7 @@ timeout:
 	_, err := model.LoadProjectInto([]byte(projYml), "", p)
 	s.NoError(err)
 	p.CallbackTimeout = 2
-	s.tc.taskConfig = &model.TaskConfig{
+	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
 		},

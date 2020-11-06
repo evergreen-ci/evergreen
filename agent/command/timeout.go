@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -40,7 +40,7 @@ func (c *timeout) ParseParams(params map[string]interface{}) error {
 
 // Execute updates the idle timeout.
 func (c *timeout) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	// do the params parsing here rather than in ParseParams because we want
 	// to destructure only if parsing as ints fails.
 	if err := mapstructure.Decode(c.params, c); err != nil ||

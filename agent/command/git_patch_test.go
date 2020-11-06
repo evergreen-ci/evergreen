@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -26,7 +28,7 @@ func TestPatchPluginAPI(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	cwd := testutil.GetDirectoryOfFile()
@@ -41,10 +43,12 @@ func TestPatchPluginAPI(t *testing.T) {
 
 		testCommand := &gitFetchProject{Directory: "dir"}
 		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
-		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
-		modelData.TaskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
-
 		require.NoError(t, err, "Couldn't set up test documents")
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
+		require.NoError(t, err)
+		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		taskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err, "Couldn't set up test documents")
 
@@ -113,14 +117,14 @@ func TestPatchPlugin(t *testing.T) {
 		patchFile := filepath.Join(cwd, "testdata", "git", "testmodule.patch")
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
 		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
-		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
-		modelData.TaskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
 		require.NoError(t, err, "Couldn't set up test documents")
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
+		require.NoError(t, err)
+		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		taskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err, "Couldn't set up patch documents")
-
-		taskConfig := modelData.TaskConfig
 
 		comm := client.NewMock("http://localhost.com")
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
@@ -156,18 +160,18 @@ func TestGetPatchCommands(t *testing.T) {
 		},
 	}
 
-	cmds := getPatchCommands(modulePatch, &model.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
+	cmds := getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
 
 	assert.Len(cmds, 5)
 	assert.Equal("cd '/teapot'", cmds[3])
 	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[4])
 
 	modulePatch.PatchSet.Patch = "bestest code"
-	cmds = getPatchCommands(modulePatch, &model.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
 	assert.Len(cmds, 6)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[5])
 
-	cmds = getPatchCommands(modulePatch, &model.TaskConfig{Task: &task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
 	assert.Len(cmds, 5)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[4])
 }

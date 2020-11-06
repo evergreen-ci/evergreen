@@ -355,12 +355,20 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+		},
+		"ForceReinstallJasperCommandWithEnvVars": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.Env = []distro.EnvVar{
+				{Key: "envKey0", Value: "envValue0"},
+				{Key: "envKey1", Value: "envValue1"},
+			}
+			cmd := h.ForceReinstallJasperCommand(settings)
+			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey0=envValue0'"))
 			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey1=envValue1'"))
-			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
-			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
-			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
-			assert.Contains(t, cmd, fmt.Sprintf("--limit_locked_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB))
 		},
 		"ForceReinstallJasperCommandWithSplunkLogging": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			settings.Splunk.ServerURL = "url"
@@ -378,6 +386,40 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()))
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
 		},
+		"ForceReinstallJasperWithResourceLimits": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.ResourceLimits = distro.ResourceLimits{
+				NumProcesses:    1,
+				NumFiles:        2,
+				LockedMemoryKB:  3,
+				VirtualMemoryKB: 4,
+			}
+			cmd := h.ForceReinstallJasperCommand(settings)
+			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_locked_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB))
+		},
+		"ForceReinstallJasperCommandWithPrecondition": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.PreconditionScripts = []distro.PreconditionScript{
+				{Path: "/tmp/precondition1.sh", Script: "#!/bin/bash\necho hello"},
+				{Path: "/tmp/precondition2.sh", Script: "#!/bin/bash\necho world"},
+			}
+			cmd := h.ForceReinstallJasperCommand(settings)
+			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
+
+			assert.Contains(t, cmd, "--host=0.0.0.0")
+			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
+			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
+				assert.Contains(t, cmd, fmt.Sprintf("--precondition=%s", ps.Path))
+			}
+		},
 	} {
 		t.Run(opName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
@@ -393,16 +435,6 @@ func TestJasperCommands(t *testing.T) {
 						ShellPath:             "/bin/bash",
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
-						Env: []distro.EnvVar{
-							{Key: "envKey0", Value: "envValue0"},
-							{Key: "envKey1", Value: "envValue1"},
-						},
-						ResourceLimits: distro.ResourceLimits{
-							NumProcesses:    1,
-							NumFiles:        2,
-							LockedMemoryKB:  3,
-							VirtualMemoryKB: 4,
-						},
 					},
 					User: "user",
 				},
@@ -652,6 +684,16 @@ func TestJasperCommandsWindows(t *testing.T) {
 					testCase(t, &hostCopy, &settingsCopy)
 				})
 			}
+		},
+		"WriteJasperPreconditionScriptsCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.BootstrapSettings.PreconditionScripts = []distro.PreconditionScript{
+				{Path: "/tmp/precondition1.sh", Script: "#!/bin/bash\necho hello"},
+				{Path: "/tmp/precondition2.sh", Script: "#!/bin/bash\necho world"},
+			}
+
+			cmd := h.WriteJasperPreconditionScriptsCommands()
+			assert.Contains(t, cmd, "tee /tmp/precondition1.sh <<'EOF'\n#!/bin/bash\necho hello\nEOF\nchmod 755 /tmp/precondition1.sh")
+			assert.Contains(t, cmd, "tee /tmp/precondition2.sh <<'EOF'\n#!/bin/bash\necho world\nEOF\nchmod 755 /tmp/precondition2.sh")
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {

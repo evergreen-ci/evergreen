@@ -8,7 +8,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
@@ -50,9 +49,16 @@ func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 				return errors.Wrap(err, "error creating REST manager")
 			}
 
-			daemon := newRESTDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, makeLogger(c))
+			opts := daemonOptions{
+				host:             c.String(hostFlagName),
+				port:             c.Int(portFlagName),
+				manager:          manager,
+				logger:           makeLogger(c),
+				preconditionCmds: c.StringSlice(preconditionCmdsFlagName),
+			}
+			daemon := newRESTDaemon(opts)
 
-			config := serviceConfig(RESTService, c, buildRunCommand(c, RESTService))
+			config := serviceConfig(RESTService, c, buildServiceRunCommand(c, RESTService))
 
 			if err := operation(daemon, config); !c.Bool(quietFlagName) {
 				return err
@@ -63,43 +69,21 @@ func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 }
 
 type restDaemon struct {
-	Host    string
-	Port    int
-	Manager jasper.Manager
-	Logger  *options.LoggerConfig
-
-	exit chan struct{}
+	baseDaemon
 }
 
-func newRESTDaemon(host string, port int, manager jasper.Manager, logger *options.LoggerConfig) *restDaemon {
-	return &restDaemon{
-		Host:    host,
-		Port:    port,
-		Manager: manager,
-		Logger:  logger,
-	}
+func newRESTDaemon(opts daemonOptions) *restDaemon {
+	return &restDaemon{newBaseDaemon(opts)}
 }
 
 func (d *restDaemon) Start(s service.Service) error {
-	if d.Logger != nil {
-		if err := setupLogger(d.Logger); err != nil {
-			return errors.Wrap(err, "failed to set up logging")
-		}
-	}
-
-	d.exit = make(chan struct{})
-	if d.Manager == nil {
-		var err error
-		if d.Manager, err = jasper.NewSynchronizedManager(false); err != nil {
-			return errors.Wrap(err, "failed to construct REST manager")
-		}
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	go handleDaemonSignals(ctx, cancel, d.exit)
+	if err := d.setup(ctx, cancel); err != nil {
+		return errors.Wrap(err, "setup")
+	}
 
 	go func(ctx context.Context, d *restDaemon) {
-		defer recovery.LogStackTraceAndContinue("rest service")
+		defer recovery.LogStackTraceAndContinue("REST service")
 		grip.Error(errors.Wrap(d.run(ctx), "error running REST service"))
 	}(ctx, d)
 
@@ -116,11 +100,11 @@ func (d *restDaemon) run(ctx context.Context) error {
 }
 
 func (d *restDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
-	if d.Manager == nil {
+	if d.manager == nil {
 		return nil, errors.New("manager is not set on REST service")
 	}
-	grip.Infof("starting REST service at '%s:%d'", d.Host, d.Port)
-	return newRESTService(ctx, d.Host, d.Port, d.Manager)
+	grip.Infof("starting REST service at '%s:%d'", d.host, d.port)
+	return newRESTService(ctx, d.host, d.port, d.manager)
 }
 
 // newRESTService creates a REST service around the manager serving requests on
@@ -137,7 +121,7 @@ func newRESTService(ctx context.Context, host string, port int, manager jasper.M
 	}
 
 	go func() {
-		defer recovery.LogStackTraceAndContinue("rest service")
+		defer recovery.LogStackTraceAndContinue("REST service")
 		grip.Warning(errors.Wrap(app.Run(ctx), "error running REST app"))
 	}()
 

@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "success.graphql",
+      "query_file": "mountedVolumeSuccess.graphql",
       "result": { "data": { "removeVolume": true } }
     },
     {
@@ -29,6 +29,10 @@
         ],
         "data": null
       }
+    },
+    {
+      "query_file": "unmountedVolumeSuccess.graphql",
+      "result": { "data": { "removeVolume": true } }
     }
   ]
 }

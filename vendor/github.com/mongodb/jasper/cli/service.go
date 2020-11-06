@@ -1,20 +1,17 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/evergreen-ci/service"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
@@ -23,15 +20,15 @@ import (
 
 // Constants representing the Jasper service interface as a CLI command.
 const (
-	ServiceCommand        = "service"
-	InstallCommand        = "install"
-	UninstallCommand      = "uninstall"
-	StartCommand          = "start"
-	StopCommand           = "stop"
-	RestartCommand        = "restart"
-	RunCommand            = "run"
-	StatusCommand         = "status"
-	ForceReinstallCommand = "force-reinstall"
+	ServiceCommand               = "service"
+	ServiceInstallCommand        = "install"
+	ServiceUninstallCommand      = "uninstall"
+	ServiceStartCommand          = "start"
+	ServiceStopCommand           = "stop"
+	ServiceRestartCommand        = "restart"
+	ServiceRunCommand            = "run"
+	ServiceStatusCommand         = "status"
+	ServiceForceReinstallCommand = "force-reinstall"
 )
 
 // Constants representing the supported Jasper service types.
@@ -44,10 +41,12 @@ const (
 
 // Constants representing service flags.
 const (
-	quietFlagName    = "quiet"
-	userFlagName     = "user"
-	passwordFlagName = "password"
-	envFlagName      = "env"
+	quietFlagName            = "quiet"
+	userFlagName             = "user"
+	passwordFlagName         = "password"
+	interactiveFlagName      = "interactive"
+	envFlagName              = "env"
+	preconditionCmdsFlagName = "precondition"
 
 	logNameFlagName  = "log_name"
 	defaultLogName   = "jasper"
@@ -65,42 +64,23 @@ const (
 	limitVirtualMemoryFlagName = "limit_virtual_memory"
 )
 
-// Service encapsulates the functionality to set up Jasper services.
+// serviceCmd encapsulates the functionality to set up Jasper services.
 // Except for run, the subcommands will generally require elevated privileges to
 // execute.
-func Service() cli.Command {
+func serviceCmd() cli.Command {
 	return cli.Command{
 		Name:  ServiceCommand,
 		Usage: "Tools for running Jasper services.",
 		Subcommands: []cli.Command{
-			serviceCommand(ForceReinstallCommand, forceReinstall),
-			serviceCommand(InstallCommand, install),
-			serviceCommand(UninstallCommand, uninstall),
-			serviceCommand(StartCommand, start),
-			serviceCommand(StopCommand, stop),
-			serviceCommand(RestartCommand, restart),
-			serviceCommand(RunCommand, run),
-			serviceCommand(StatusCommand, status),
+			serviceCommand(ServiceForceReinstallCommand, serviceForceReinstall),
+			serviceCommand(ServiceInstallCommand, serviceInstall),
+			serviceCommand(ServiceUninstallCommand, serviceUninstall),
+			serviceCommand(ServiceStartCommand, serviceStart),
+			serviceCommand(ServiceStopCommand, serviceStop),
+			serviceCommand(ServiceRestartCommand, serviceRestart),
+			serviceCommand(ServiceRunCommand, serviceRun),
+			serviceCommand(ServiceStatusCommand, serviceStatus),
 		},
-	}
-}
-
-// handleDaemonSignals shuts down the daemon by cancelling the context, either
-// when the context is done, it receives a terminate signal, or when it
-// receives a signal to exit the daemon.
-func handleDaemonSignals(ctx context.Context, cancel context.CancelFunc, exit chan struct{}) {
-	defer recovery.LogStackTraceAndContinue("graceful shutdown")
-	defer cancel()
-	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
-
-	select {
-	case <-sig:
-		grip.Debug("received signal")
-	case <-ctx.Done():
-		grip.Debug("context canceled")
-	case <-exit:
-		grip.Debug("received daemon exit signal")
 	}
 }
 
@@ -119,9 +99,17 @@ func serviceFlags() []cli.Flag {
 			Usage:  "The password for the user running the service.",
 			EnvVar: "JASPER_USER_PASSWORD",
 		},
+		cli.BoolFlag{
+			Name:  interactiveFlagName,
+			Usage: "Force the service to run in an interactive session.",
+		},
 		cli.StringSliceFlag{
 			Name:  envFlagName,
 			Usage: "The service environment variables (format: key=value).",
+		},
+		cli.StringSliceFlag{
+			Name:  preconditionCmdsFlagName,
+			Usage: "Execute command(s) that must be run and must succeed before the Jasper service can start.",
 		},
 		cli.StringFlag{
 			Name:  logNameFlagName,
@@ -238,20 +226,15 @@ func makeLogger(c *cli.Context) *options.LoggerConfig {
 	return logger
 }
 
-// setupLogger creates a logger and sets it as the global logging back end.
-func setupLogger(opts *options.LoggerConfig) error {
-	sender, err := opts.Resolve()
-	if err != nil {
-		return errors.Wrap(err, "could not configure logging")
-	}
-	return errors.Wrap(grip.SetSender(sender), "could not set grip logger")
-}
-
-// buildRunCommand builds the command arguments to run the Jasper service with
-// the flags set in the cli.Context.
-func buildRunCommand(c *cli.Context, serviceType string) []string {
+// buildServiceRunCommand builds the command arguments to run the Jasper service
+// with the flags set in the cli.Context.
+func buildServiceRunCommand(c *cli.Context, serviceType string) []string {
 	args := unparseFlagSet(c, serviceType)
-	subCmd := []string{JasperCommand, ServiceCommand, RunCommand, serviceType}
+	var subCmd []string
+	if filepath.Base(os.Args[0]) != JasperCommand {
+		subCmd = append(subCmd, JasperCommand)
+	}
+	subCmd = append(subCmd, ServiceCommand, ServiceRunCommand, serviceType)
 	return append(subCmd, args...)
 }
 
@@ -267,7 +250,7 @@ func serviceOptions(c *cli.Context) service.KeyValue {
 		"Password": c.String(passwordFlagName),
 	}
 
-	// Linux-specific resource limit options
+	// Linux/launchd-specific resource limit options
 	if limit := resourceLimit(c.Int(limitNumFilesFlagName)); limit != "" {
 		opts["LimitNumFiles"] = limit
 	}
@@ -297,7 +280,7 @@ func resourceLimit(limit int) string {
 		if limit == -1 {
 			return "infinity"
 		}
-	case "linux-upstart", "unix-systemv":
+	case "linux-upstart", "unix-systemv", "darwin-launchd":
 		if limit == -1 {
 			return "unlimited"
 		}
@@ -311,14 +294,15 @@ func resourceLimit(limit int) string {
 // serviceConfig returns the daemon service configuration.
 func serviceConfig(serviceType string, c *cli.Context, args []string) *service.Config {
 	return &service.Config{
-		Name:        fmt.Sprintf("%s_jasperd", serviceType),
-		DisplayName: fmt.Sprintf("Jasper %s service", serviceType),
-		Description: "Jasper is a service for process management",
-		Executable:  "", // No executable refers to the current executable.
-		Arguments:   args,
-		Environment: makeUserEnvironment(c.String(userFlagName), c.StringSlice(envFlagName)),
-		UserName:    c.String(userFlagName),
-		Option:      serviceOptions(c),
+		Name:             fmt.Sprintf("%s_jasperd", serviceType),
+		DisplayName:      fmt.Sprintf("Jasper %s service", serviceType),
+		Description:      "Jasper is a service for process management",
+		Executable:       "", // No executable refers to the current executable.
+		Arguments:        args,
+		Environment:      makeUserEnvironment(c.String(userFlagName), c.StringSlice(envFlagName)),
+		UserName:         c.String(userFlagName),
+		ForceInteractive: c.Bool(interactiveFlagName),
+		Option:           serviceOptions(c),
 	}
 }
 
@@ -393,21 +377,21 @@ func serviceCommand(cmd string, operation serviceOperation) cli.Command {
 	}
 }
 
-// forceReinstall stops the service if it is running, reinstalls the service
+// serviceForceReinstall stops the service if it is running, reinstalls the service
 // with the new configuration, and starts the newly-configured service. It only
 // returns an error if there is an error while installing or starting the new
 // service.
-func forceReinstall(daemon service.Interface, config *service.Config) error {
+func serviceForceReinstall(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		stopErr := message.WrapError(svc.Stop(), message.Fields{
 			"msg":    "error stopping service",
 			"cmd":    "force-reinstall",
-			"config": *config,
+			"config": fmt.Sprintf("%#v", *config),
 		})
 		uninstallErr := message.WrapError(svc.Uninstall(), message.Fields{
 			"msg":    "error uninstalling service",
 			"cmd":    "force-reinstall",
-			"config": *config,
+			"config": fmt.Sprintf("%#v", *config),
 		})
 
 		catcher := grip.NewBasicCatcher()
@@ -421,51 +405,51 @@ func forceReinstall(daemon service.Interface, config *service.Config) error {
 	}), "error force reinstalling service")
 }
 
-// install registers the service with the given configuration in the service
-// manager.
-func install(daemon service.Interface, config *service.Config) error {
+// serviceInstall registers the service with the given configuration in the
+// service manager.
+func serviceInstall(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Install()
 	}), "error installing service")
 }
 
-// uninstall removes the service from the service manager.
-func uninstall(daemon service.Interface, config *service.Config) error {
+// serviceUninstall removes the service from the service manager.
+func serviceUninstall(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Uninstall()
 	}), "error uninstalling service")
 }
 
-// start begins the service if it has not already started.
-func start(daemon service.Interface, config *service.Config) error {
+// serviceStart begins the service if it has not already started.
+func serviceStart(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Start()
 	}), "error starting service")
 }
 
-// stop ends the running service.
-func stop(daemon service.Interface, config *service.Config) error {
+// serviceStop ends the running service.
+func serviceStop(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Stop()
 	}), "error stopping service")
 }
 
-// restart stops the existing service and starts it again.
-func restart(daemon service.Interface, config *service.Config) error {
+// serviceRestart stops the existing service and starts it again.
+func serviceRestart(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Restart()
 	}), "error restarting service")
 }
 
-// run runs the service in the foreground.
-func run(daemon service.Interface, config *service.Config) error {
+// serviceRun runs the service in the foreground.
+func serviceRun(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		return svc.Run()
 	}), "error running service")
 }
 
-// status gets the current status of the running service.
-func status(daemon service.Interface, config *service.Config) error {
+// serviceStatus gets the current status of the running service.
+func serviceStatus(daemon service.Interface, config *service.Config) error {
 	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
 		status, err := svc.Status()
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 )
 
 // LoggingCache provides an interface to a cache of loggers.
+// TODO (EVG-13100): most of these methods should return errors.
 type LoggingCache interface {
 	// Create creates and caches a new logger based on the given output options.
 	Create(id string, opts *options.Output) (*options.CachedLogger, error)
@@ -25,6 +26,7 @@ type LoggingCache interface {
 	// Len returns the number of loggers. Implementations should return
 	// -1 if the length cannot be retrieved successfully.
 	Len() int
+	// TODO (EVG-13101): support closing of senders within cache.
 }
 
 // NewLoggingCache produces a thread-safe implementation of a local logging

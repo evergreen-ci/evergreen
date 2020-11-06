@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -54,12 +53,12 @@ type monitor struct {
 	// Monitor args
 	credentialsPath string
 	clientPath      string
+	cloudProvider   string
 	distroID        string
 	shellPath       string
 	logPrefix       string
 	jasperPort      int
 	port            int
-	provider        string
 
 	// Args to be forwarded to the agent
 	agentArgs []string
@@ -93,7 +92,6 @@ func agentMonitor() cli.Command {
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
-		providerFlagName        = "provider"
 	)
 
 	const (
@@ -137,10 +135,6 @@ func agentMonitor() cli.Command {
 				Value: defaultMonitorPort,
 				Usage: "the port that used by the monitor",
 			},
-			cli.StringFlag{
-				Name:  providerFlagName,
-				Usage: "the cloud provider that manages this host",
-			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientPathFlagName),
@@ -159,11 +153,11 @@ func agentMonitor() cli.Command {
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),
 				distroID:        c.String(distroIDFlagName),
+				cloudProvider:   c.Parent().String(agentCloudProviderFlagName),
 				shellPath:       c.String(shellPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
 				port:            c.Int(portFlagName),
 				logPrefix:       c.String(logPrefixFlagName),
-				provider:        c.String(providerFlagName),
 			}
 
 			var err error
@@ -424,7 +418,7 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := util.RetryWithArgs(ctx, func() (bool, error) {
-			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.provider) {
+			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.cloudProvider) {
 				if agentutil.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
 				}
@@ -451,7 +445,7 @@ func (m *monitor) run(ctx context.Context) {
 				return true, err
 			}
 
-			grip.InfoWhen(sometimes.Fifth(), message.Fields{
+			grip.Info(message.Fields{
 				"message":     "starting agent on host via Jasper",
 				"client_path": m.clientPath,
 				"distro":      m.distroID,

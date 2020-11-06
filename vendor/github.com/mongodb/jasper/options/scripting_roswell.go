@@ -13,7 +13,7 @@ import (
 
 // ScriptingRoswell describes the options needed to configure Roswell,
 // a Common Lisp-based scripting and environment management tool, as
-// a jasper.ScriptingEnvironment. Roswell uses Quicklip and must be
+// a ScriptingHarness. Roswell uses Quicklip and must be
 // installed on your systems to use with jasper.
 type ScriptingRoswell struct {
 	Path           string            `bson:"path" json:"path" yaml:"path"`
@@ -27,11 +27,10 @@ type ScriptingRoswell struct {
 	cachedHash string
 }
 
-// NewRoswellScriptingEnvironment generates a ScriptingEnvironment
-// based on the arguments provided. Use this function for
-// simple cases when you do not need or want to set as many aspects of
-// the environment configuration.
-func NewRoswellScriptingEnvironment(path string, systems ...string) ScriptingHarness {
+// NewRoswellScriptingHarness generates a ScriptingHarness based on the
+// arguments provided. Use this function for simple cases when you do not need
+// or want to set as many aspects of the environment configuration.
+func NewRoswellScriptingHarness(path string, systems ...string) ScriptingHarness {
 	return &ScriptingRoswell{
 		Path:           path,
 		Systems:        systems,
@@ -40,16 +39,13 @@ func NewRoswellScriptingEnvironment(path string, systems ...string) ScriptingHar
 	}
 }
 
-// Type is part of the options.ScriptingEnvironment interface and
-// returns the type of the interface.
+// Type returns the type of the interface.
 func (opts *ScriptingRoswell) Type() string { return RoswellScriptingType }
 
-// Interpreter is part of the options.ScriptingEnvironment interface
-// and returns the path to the interpreter or binary that runs scripts.
+// Interpreter returns the path to the interpreter or binary that runs scripts.
 func (opts *ScriptingRoswell) Interpreter() string { return "ros" }
 
-// Validate is part of the options.ScriptingEnvironment interface and
-// both ensures that the values are permissible and sets, where
+// Validate both ensures that the values are permissible and sets, where
 // possible, good defaults.
 func (opts *ScriptingRoswell) Validate() error {
 	if opts.CachedDuration == 0 {

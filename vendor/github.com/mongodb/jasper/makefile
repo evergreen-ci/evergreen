@@ -1,8 +1,8 @@
 name := jasper
 buildDir := build
-srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*" -not -path "./vendor/*")
+srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
-testPackages := $(name) cli remote options mock
+testPackages := $(name) cli remote options mock  scripting
 allPackages := $(testPackages) internal-executor remote-internal testutil benchmarks util
 lintPackages := $(allPackages)
 projectPath := github.com/mongodb/jasper

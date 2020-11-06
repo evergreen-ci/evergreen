@@ -132,14 +132,14 @@ func TestMongod(t *testing.T) {
 					id:          "With10MongodsAndSigkill",
 					numProcs:    10,
 					signal:      syscall.SIGKILL,
-					sleep:       2000 * time.Millisecond,
+					sleep:       2 * time.Second,
 					expectError: true,
 				},
 				{
 					id:          "With30MongodsAndSigkill",
 					numProcs:    30,
 					signal:      syscall.SIGKILL,
-					sleep:       3000 * time.Millisecond,
+					sleep:       3 * time.Second,
 					expectError: true,
 				},
 			} {
@@ -182,7 +182,7 @@ func TestMongod(t *testing.T) {
 						}
 					}
 
-					// Check that the processes have all noted an unsuccessful run
+					// Check that the processes have all noted a unsuccessful run
 					for _, proc := range procs {
 						if test.expectError {
 							assert.False(t, proc.Info(ctx).Successful)

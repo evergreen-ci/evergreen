@@ -38,7 +38,7 @@ imports:
   - name: github.com/evergreen-ci/utility
     version: 8a885e291da3d271f58d396ee2b313ab1aec21a8
   - name: github.com/evergreen-ci/service
-    version: d9382e39d76857e2fe92a379d89f3c86fe507c4d
+    version: a20f329f17748832fdbff8584b1accf28f322963
   - name: github.com/evergreen-ci/shrub
     version: 0efab318592de79316c35c9d40512a2f696abb28
 

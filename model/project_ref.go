@@ -32,51 +32,48 @@ import (
 // The ProjectRef struct contains general information, independent of any
 // revision control system, needed to track a given project
 type ProjectRef struct {
-	Owner              string   `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo               string   `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch             string   `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RepoKind           string   `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
-	Enabled            bool     `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private            bool     `bson:"private" json:"private" yaml:"private"`
-	Restricted         bool     `bson:"restricted" json:"restricted" yaml:"restricted"`
-	BatchTime          int      `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	RemotePath         string   `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	Identifier         string   `bson:"identifier" json:"identifier" yaml:"identifier"`
-	DisplayName        string   `bson:"display_name" json:"display_name" yaml:"display_name"`
-	DeactivatePrevious bool     `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
-	Tags               []string `bson:"tags" json:"tags" yaml:"tags"`
-
-	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
-	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
-
-	DefaultLogger string `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-
-	CedarTestResultsEnabled bool `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
-
-	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
-
-	// TaskSync holds settings for synchronizing task directories to S3.
-	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
-
-	//Tracked determines whether or not the project is discoverable in the UI
-	Tracked             bool `bson:"tracked" json:"tracked"`
-	PatchingDisabled    bool `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled bool `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled bool `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	// The following fields can be defined from both the branch and repo level.
+	Identifier          string `bson:"identifier" json:"identifier" yaml:"identifier"`
+	DisplayName         string `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Enabled             bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private             bool   `bson:"private" json:"private" yaml:"private"`
+	Restricted          bool   `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Owner               string `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                string `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	RemotePath          string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled    bool   `bson:"patching_disabled" json:"patching_disabled"`
+	RepotrackerDisabled bool   `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled bool   `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	PRTestingEnabled    bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
-	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
-	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
-	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
-	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
-
-	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
-
 	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
+
+	// The following fields can be defined only at the branch level.
+	Branch                  string                    `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure    bool                      `bson:"notify_on_failure" json:"notify_on_failure"`
+	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
+	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
+	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+
+	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
+	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
+
+	// TaskSync holds settings for synchronizing task directories to S3.
+	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
+
+	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
+	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users,omitempty" json:"git_tag_authorized_users,omitempty"`
+	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams,omitempty" json:"git_tag_authorized_teams,omitempty"`
+	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
@@ -84,12 +81,15 @@ type ProjectRef struct {
 
 	// List of regular expressions describing files to ignore when caching historical test results
 	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
-	DisabledStatsCache    bool     `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
+	DisabledStatsCache    bool     `bson:"disabled_stats_cache" json:"disabled_stats_cache"`
 
-	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
-	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	// List of commands
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
+
+	// The following fields are used by Evergreen and are not discoverable.
+	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
+	//Tracked determines whether or not the project is discoverable in the UI
+	Tracked bool `bson:"tracked" json:"tracked"`
 }
 
 type CommitQueueParams struct {

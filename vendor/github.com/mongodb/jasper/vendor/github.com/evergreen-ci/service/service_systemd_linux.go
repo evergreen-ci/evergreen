@@ -66,6 +66,13 @@ func (s *systemd) Platform() string {
 	return s.platform
 }
 
+func (s *systemd) Interactive() bool {
+	if s.Config.ForceInteractive {
+		return true
+	}
+	return system.Interactive()
+}
+
 // Systemd services should be supported, but are not currently.
 var errNoUserServiceSystemd = errors.New("User services are not supported on systemd.")
 
@@ -191,7 +198,7 @@ func (s *systemd) Uninstall() error {
 }
 
 func (s *systemd) Logger(errs chan<- error) (Logger, error) {
-	if system.Interactive() {
+	if s.Interactive() {
 		return ConsoleLogger, nil
 	}
 	return s.SystemLogger(errs)

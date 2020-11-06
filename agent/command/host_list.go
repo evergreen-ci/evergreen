@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -54,7 +54,7 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}

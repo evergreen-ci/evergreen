@@ -2181,6 +2181,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.Len(t, currentTasks, 4)
 	for _, task := range currentTasks {
 		assert.False(t, task.Aborted)
+		assert.Equal(t, 1, task.Execution)
 		if task.Id == t2.Id {
 			assert.Equal(t, 3, task.Restarts)
 		}
@@ -2190,6 +2191,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.Len(t, oldTasks, 4)
 	for _, task := range oldTasks {
 		assert.True(t, task.Archived)
+		assert.Equal(t, 0, task.Execution)
 	}
 }
 

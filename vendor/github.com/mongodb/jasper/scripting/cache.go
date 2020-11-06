@@ -39,7 +39,7 @@ func (c *cacheImpl) Add(id string, h Harness) error {
 	defer c.mutex.Unlock()
 
 	if _, ok := c.cache[id]; ok {
-		return errors.Errorf("harness '%s' exists, cannot cache", id)
+		return errors.Errorf("scripting harness '%s' already exists", id)
 	}
 
 	c.cache[id] = h
@@ -55,7 +55,7 @@ func (c *cacheImpl) Get(id string) (Harness, error) {
 		return h, nil
 	}
 
-	return nil, errors.Errorf("could not find manager '%s'", id)
+	return nil, errors.Errorf("could not find scripting harness '%s'", id)
 }
 
 func (c *cacheImpl) Check(id string) bool {

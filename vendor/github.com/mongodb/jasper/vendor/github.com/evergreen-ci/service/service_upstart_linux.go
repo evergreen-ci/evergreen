@@ -57,6 +57,13 @@ func (s *upstart) Platform() string {
 	return s.platform
 }
 
+func (s *upstart) Interactive() bool {
+	if s.Config.ForceInteractive {
+		return true
+	}
+	return system.Interactive()
+}
+
 // Upstart has some support for user services in graphical sessions.
 // Due to the mix of actual support for user services over versions, just don't bother.
 // Upstart will be replaced by systemd in most cases anyway.
@@ -176,7 +183,7 @@ func (s *upstart) Uninstall() error {
 }
 
 func (s *upstart) Logger(errs chan<- error) (Logger, error) {
-	if system.Interactive() {
+	if s.Interactive() {
 		return ConsoleLogger, nil
 	}
 	return s.SystemLogger(errs)

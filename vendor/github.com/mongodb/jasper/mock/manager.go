@@ -13,20 +13,20 @@ import (
 // Manager implements the Manager interface with exported fields to
 // configure and introspect the mock's behavior.
 type Manager struct {
-	FailCreate      bool
-	FailRegister    bool
-	FailList        bool
-	FailGroup       bool
-	FailGet         bool
-	FailClose       bool
-	NilLoggingCache bool
-	FailWriteFile   bool
-	Create          func(*options.Create) Process
-	CreateConfig    Process
-	ManagerID       string
-	Procs           []jasper.Process
-	ScriptingEnv    scripting.Harness
-	LoggingCacheVal jasper.LoggingCache
+	FailCreate       bool
+	FailRegister     bool
+	FailList         bool
+	FailGroup        bool
+	FailGet          bool
+	FailClose        bool
+	NilLoggingCache  bool
+	FailWriteFile    bool
+	Create           func(*options.Create) Process
+	CreateConfig     Process
+	ManagerID        string
+	Procs            []jasper.Process
+	ScriptingHarness scripting.Harness
+	LoggingCacheVal  jasper.LoggingCache
 
 	// WriteFile input
 	WriteFileOptions options.WriteFile

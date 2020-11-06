@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/model"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -33,7 +34,8 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		configFile := filepath.Join(pwd, "testdata", "plugin_s3_copy.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "copyTask", "linux-64", configFile, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
-		conf := modelData.TaskConfig
+		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
 		conf.WorkDir = pwd
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)

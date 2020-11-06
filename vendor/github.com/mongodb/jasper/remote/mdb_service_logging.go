@@ -26,14 +26,19 @@ func (s *mdbService) loggingCreate(ctx context.Context, w io.Writer, msg mongowi
 		return
 	}
 
-	cachedLogger, err := lc.Create(req.Params.ID, req.Params.Options)
+	if err := req.Params.Options.Validate(); err != nil {
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "invalid options"), LoggingCacheCreateCommand)
+		return
+	}
+
+	cachedLogger, err := lc.Create(req.Params.ID, &req.Params.Options)
 	if err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not create logger"), LoggingCacheCreateCommand)
 		return
 	}
 	cachedLogger.ManagerID = s.manager.ID()
 
-	s.loggingCacheResponse(ctx, w, makeLoggingCacheCreateAndGetResponse(cachedLogger), LoggingCacheCreateCommand)
+	s.loggingCacheResponse(ctx, w, makeLoggingCacheCreateAndGetResponse(*cachedLogger), LoggingCacheCreateCommand)
 }
 
 func (s *mdbService) loggingGet(ctx context.Context, w io.Writer, msg mongowire.Message) {
@@ -49,7 +54,7 @@ func (s *mdbService) loggingGet(ctx context.Context, w io.Writer, msg mongowire.
 		return
 	}
 
-	s.loggingCacheResponse(ctx, w, makeLoggingCacheCreateAndGetResponse(cachedLogger), LoggingCacheGetCommand)
+	s.loggingCacheResponse(ctx, w, makeLoggingCacheCreateAndGetResponse(*cachedLogger), LoggingCacheGetCommand)
 }
 
 func (s *mdbService) loggingRemove(ctx context.Context, w io.Writer, msg mongowire.Message) {

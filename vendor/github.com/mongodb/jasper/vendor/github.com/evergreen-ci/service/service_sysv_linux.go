@@ -42,6 +42,13 @@ func (s *sysv) Platform() string {
 	return s.platform
 }
 
+func (s *sysv) Interactive() bool {
+	if s.Config.ForceInteractive {
+		return true
+	}
+	return system.Interactive()
+}
+
 var errNoUserServiceSystemV = errors.New("User services are not supported on SystemV.")
 
 func (s *sysv) configPath() (cp string, err error) {
@@ -126,7 +133,7 @@ func (s *sysv) Uninstall() error {
 }
 
 func (s *sysv) Logger(errs chan<- error) (Logger, error) {
-	if system.Interactive() {
+	if s.Interactive() {
 		return ConsoleLogger, nil
 	}
 	return s.SystemLogger(errs)

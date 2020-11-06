@@ -160,6 +160,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		}
 		as.Providers = &cloudProviders
 		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
+		spawnHostConfig := APISpawnHostConfig{}
+		err = spawnHostConfig.BuildFromService(v.Spawnhost)
+		if err != nil {
+			return errors.Wrapf(err, "error building apiSpawnHostConfig")
+		}
+		as.Spawnhost = &spawnHostConfig
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}

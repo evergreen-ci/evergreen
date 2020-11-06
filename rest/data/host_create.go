@@ -19,8 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -92,14 +94,14 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		keyVal = keyNameOrVal
 	}
 
-	tc, err := model.MakeConfigFromTask(t)
+	proj, expansions, err := makeProjectAndExpansionsFromTask(t)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
-	projectTask := tc.Project.FindProjectTask(tc.Task.DisplayName)
+	projectTask := proj.FindProjectTask(t.DisplayName)
 	if projectTask == nil {
-		return errors.Errorf("unable to find configuration for task %s", tc.Task.Id)
+		return errors.Errorf("unable to find configuration for task %s", t.Id)
 	}
 
 	createHostCmds := []apimodels.CreateHost{}
@@ -107,7 +109,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	for _, commandConf := range projectTask.Commands {
 		var createHost *apimodels.CreateHost
 		if commandConf.Function != "" {
-			cmds := tc.Project.Functions[commandConf.Function]
+			cmds := proj.Functions[commandConf.Function]
 			for _, cmd := range cmds.List() {
 				createHost, err = createHostFromCommand(cmd)
 				if err != nil {
@@ -135,7 +137,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
-		err = createHost.Expand(tc.Expansions)
+		err = createHost.Expand(expansions)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -160,6 +162,61 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	}
 
 	return catcher.Resolve()
+}
+
+func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expansions, error) {
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding version")
+	}
+	if v == nil {
+		return nil, nil, errors.New("version doesn't exist")
+	}
+	proj, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error loading project")
+	}
+	h, err := host.FindOne(host.ById(t.HostId))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding host")
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error getting evergreen config")
+	}
+	oauthToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error getting oauth token")
+	}
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error populating expansions")
+	}
+	params := append(proj.GetParameters(), v.Parameters...)
+	if err = updateExpansions(&expansions, t.Project, params); err != nil {
+		return nil, nil, errors.Wrap(err, "error updating expansions")
+	}
+
+	return proj, &expansions, nil
+}
+
+// updateExpansions updates expansions with project variables and patch
+// parameters.
+func updateExpansions(expansions *util.Expansions, projectId string, params []patch.Parameter) error {
+	projVars, err := model.FindOneProjectVars(projectId)
+	if err != nil {
+		return errors.Wrap(err, "error finding project vars")
+	}
+	if projVars == nil {
+		return errors.New("project vars not found")
+	}
+
+	expansions.Update(projVars.GetUnrestrictedVars())
+
+	for _, param := range params {
+		expansions.Put(param.Key, param.Value)
+	}
+	return nil
 }
 
 func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
