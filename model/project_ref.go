@@ -33,7 +33,10 @@ import (
 // revision control system, needed to track a given project
 type ProjectRef struct {
 	// The following fields can be defined from both the branch and repo level.
-	Identifier          string `bson:"identifier" json:"identifier" yaml:"identifier"`
+	// Identifier is the unmodifiable unique ID for the project, used internally.
+	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
+	// Name must be unique, but is modifiable. Used by users.
+	Name                string `bson:"name" json:"name" yaml:"name"`
 	DisplayName         string `bson:"display_name" json:"display_name" yaml:"display_name"`
 	Enabled             bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
 	Private             bool   `bson:"private" json:"private" yaml:"private"`
@@ -184,6 +187,7 @@ var (
 	ProjectRefRestrictedKey              = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey               = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey              = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefNameKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Name")
 	ProjectRefDisplayNameKey             = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
 	ProjectRefDeactivatePreviousKey      = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
@@ -297,19 +301,9 @@ func (projectRef *ProjectRef) checkDefaultLogger() {
 	}
 }
 
-// FindOneProjectRef gets a project ref given the owner name, the repo
-// name and the project name
-func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+func findOne(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOne(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdentifierKey: identifier,
-		},
-		db.NoProjection,
-		db.NoSort,
-		projectRef,
-	)
+	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -317,6 +311,30 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	projectRef.checkDefaultLogger()
 
 	return projectRef, err
+
+}
+
+// FindOneProjectRef gets a project ref given the project identifier
+func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+	return findOne(byIdOrName(identifier))
+}
+
+func FindIdentifierForProject(name string) (string, error) {
+	pRef, err := findOne(byIdOrName(name).WithFields(ProjectRefIdentifierKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", name)
+	}
+	return pRef.Identifier, nil
+}
+
+func CountProjectRefsWithName(name string) (int, error) {
+	return db.Count(
+		ProjectRefCollection,
+		byIdOrName(name),
+	)
 }
 
 func FindFirstProjectRef() (*ProjectRef, error) {
@@ -444,25 +462,30 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+func byOwnerRepoAndBranch(owner, repoName, branch string) db.Q {
+	return db.Query(bson.M{
+		ProjectRefOwnerKey:   owner,
+		ProjectRefRepoKey:    repoName,
+		ProjectRefBranchKey:  branch,
+		ProjectRefEnabledKey: true,
+	})
+}
+
+func byIdOrName(name string) db.Q {
+	return db.Query(bson.M{
+		"$or": []bson.M{
+			bson.M{ProjectRefIdentifierKey: name},
+			bson.M{ProjectRefNameKey: name},
+		},
+	})
+}
+
 // FindProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
 // that are enabled and setup for PR testing
 func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefOwnerKey:   owner,
-			ProjectRefRepoKey:    repoName,
-			ProjectRefBranchKey:  branch,
-			ProjectRefEnabledKey: true,
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	err := db.FindAllQ(ProjectRefCollection, byOwnerRepoAndBranch(owner, repoName, branch), &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -703,6 +726,7 @@ func (projectRef *ProjectRef) Upsert() error {
 		},
 		bson.M{
 			"$set": bson.M{
+				ProjectRefNameKey:                    projectRef.Name,
 				ProjectRefRepoKindKey:                projectRef.RepoKind,
 				ProjectRefEnabledKey:                 projectRef.Enabled,
 				ProjectRefPrivateKey:                 projectRef.Private,
@@ -853,6 +877,20 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 
 	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
 		return errors.New("owner not authorized")
+	}
+	return nil
+}
+
+func (p *ProjectRef) ValidateName() error {
+	if p.Identifier == p.Name { // we already know the identifier is unique
+		return nil
+	}
+	count, err := CountProjectRefsWithName(p.Name)
+	if err != nil {
+		return errors.Wrapf(err, "error counting other project refs")
+	}
+	if count > 0 {
+		return errors.New("short name cannot match another project's name")
 	}
 	return nil
 }

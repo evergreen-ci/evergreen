@@ -1378,7 +1378,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := r.sc.FindCommitQueueByID(id)
+	commitQueue, err := r.sc.FindCommitQueueForProject(id)
 	if err != nil {
 		if errors.Cause(err) == err {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))

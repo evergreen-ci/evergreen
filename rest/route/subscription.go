@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	model2 "github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -95,6 +97,16 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Cannot get subscriptions for someone other than yourself",
 		}
+	}
+	if s.ownerType == string(event.OwnerTypeProject) {
+		id, err := model2.FindIdentifierForProject(s.owner)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "owner not found",
+			}
+		}
+		s.owner = id
 	}
 
 	return nil

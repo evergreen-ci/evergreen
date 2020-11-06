@@ -21,6 +21,7 @@ type APIProject struct {
 	Enabled               bool                 `json:"enabled"`
 	RepotrackerDisabled   bool                 `json:"repotracker_disabled"`
 	Identifier            *string              `json:"identifier"`
+	Name                  *string              `json:"name"`
 	Owner                 *string              `json:"owner_name"`
 	Private               bool                 `json:"private"`
 	RemotePath            *string              `json:"remote_path"`
@@ -58,6 +59,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Enabled = v.Enabled
 	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
 	apiProject.Identifier = ToStringPtr(v.Identifier)
+	apiProject.Name = ToStringPtr(v.Name)
 	apiProject.Owner = ToStringPtr(v.Owner)
 	apiProject.Private = v.Private
 	apiProject.RemotePath = ToStringPtr(v.RemotePath)
@@ -241,6 +243,7 @@ type APIProjectRef struct {
 	RemotePath                  *string              `json:"remote_path"`
 	SpawnHostScriptPath         *string              `json:"spawn_host_script_path"`
 	Identifier                  *string              `json:"identifier"`
+	Name                        *string              `json:"name"`
 	DisplayName                 *string              `json:"display_name"`
 	DeactivatePrevious          bool                 `json:"deactivate_previous"`
 	TracksPushEvents            bool                 `json:"tracks_push_events"`
@@ -309,6 +312,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		BatchTime:             p.BatchTime,
 		RemotePath:            FromStringPtr(p.RemotePath),
 		Identifier:            FromStringPtr(p.Identifier),
+		Name:                  FromStringPtr(p.Name),
 		DisplayName:           FromStringPtr(p.DisplayName),
 		DeactivatePrevious:    p.DeactivatePrevious,
 		TracksPushEvents:      p.TracksPushEvents,
@@ -390,6 +394,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = ToStringPtr(projectRef.RemotePath)
 	p.Identifier = ToStringPtr(projectRef.Identifier)
+	p.Name = ToStringPtr(projectRef.Name)
 	p.DisplayName = ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents

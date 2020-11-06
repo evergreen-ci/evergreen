@@ -208,6 +208,14 @@
         "enabled": true,
         "patch_type": "PR"
       }
+    },
+    {
+      "_id": "4",
+      "identifier": "no_queue",
+      "commit_queue": {
+        "enabled": false,
+        "patch_type": "PR"
+      }
     }
   ]
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -32,7 +34,11 @@ func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
-	aliasModels, err := a.sc.FindProjectAliases(a.name)
+	id, err := model.FindIdentifierForProject(a.name)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding project '%s'", a.name))
+	}
+	aliasModels, err := a.sc.FindProjectAliases(id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

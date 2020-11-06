@@ -266,8 +266,12 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
-	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(project, requester, limit, startOrder))
+func (ac *DBProjectConnector) GetVersionsInProject(projectName, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
+	projectId, err := model.FindIdentifierForProject(projectName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding project '%s'", projectName)
+	}
+	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(projectId, requester, limit, startOrder))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding versions")
 	}

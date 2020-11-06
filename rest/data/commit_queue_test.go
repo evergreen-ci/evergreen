@@ -80,7 +80,7 @@ func (s *CommitQueueSuite) TestEnqueue() {
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.ctx = &DBConnector{}
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
 }
@@ -106,7 +106,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)
@@ -270,13 +270,13 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 
 }
 
-func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
+func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
 	s.ctx = &MockConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
 	s.Equal(restModel.ToStringPtr("1234"), cq.Queue[0].Issue)
@@ -301,7 +301,7 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)

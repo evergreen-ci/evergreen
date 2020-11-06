@@ -75,7 +75,7 @@ type patchParams struct {
 }
 
 type patchSubmission struct {
-	projectId         string
+	projectName       string
 	patchData         string
 	description       string
 	base              string
@@ -93,7 +93,7 @@ type patchSubmission struct {
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
 	patchSub := patchSubmission{
-		projectId:         p.Project,
+		projectName:       p.Project,
 		patchData:         diffData.fullPatch,
 		description:       p.Description,
 		base:              diffData.base,
@@ -226,7 +226,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	// Validate the alias exists
 	if p.Alias != "" {
 		validAlias := false
-		aliases, err := comm.ListAliases(ctx, p.Project)
+		aliases, err := comm.ListAliases(ctx, ref.Identifier)
 		if err != nil {
 			return nil, errors.Wrap(err, "error contacting API server")
 		}

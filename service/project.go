@@ -693,6 +693,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 
 	newProject := model.ProjectRef{
 		Identifier: id,
+		Name:       id,
 		Tracked:    true,
 		RepoKind:   "github",
 	}

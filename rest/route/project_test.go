@@ -58,7 +58,7 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	ctx := context.Background()
 	json := []byte(`{"identifier": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -66,14 +66,14 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	s.Equal(resp.Status(), http.StatusForbidden)
 
 	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID))
+	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectName))
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	ctx := context.Background()
 	json := []byte(`{"display_name": "This is a display name"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "non-existent"
+	h.projectName = "non-existent"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -86,7 +86,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 	h.body = json
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -104,7 +104,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	ctx := context.Background()
 	jsonBody := []byte(`{"enabled": true, "revision": "my_revision", "commit_queue": {"enabled": true}}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 	h.body = jsonBody
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -233,7 +233,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "nutsandgum"
+	h.projectName = "nutsandgum"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -250,7 +250,7 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -284,7 +284,7 @@ func (s *ProjectGetByIDSuite) SetupTest() {
 func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 	ctx := context.Background()
 	h := s.rm.(*projectIDGetHandler)
-	h.projectID = "non-existent"
+	h.projectName = "non-existent"
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -294,7 +294,7 @@ func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	ctx := context.Background()
 	h := s.rm.(*projectIDGetHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 
 	resp := s.rm.Run(ctx)
 	s.Require().NotNil(resp.Data())
@@ -499,10 +499,10 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(v4.Insert())
 
 	h := getProjectVersionsHandler{
-		projectID: projectName,
-		requester: evergreen.AdHocRequester,
-		sc:        &data.DBConnector{},
-		limit:     20,
+		projectName: projectName,
+		requester:   evergreen.AdHocRequester,
+		sc:          &data.DBConnector{},
+		limit:       20,
 	}
 
 	resp := h.Run(context.Background())

@@ -69,14 +69,14 @@ func (s *ProjectCopySuite) TestParse() {
 	request = gimlet.SetURLVars(request, options)
 	s.NoError(err)
 	s.NoError(s.route.Parse(ctx, request))
-	s.Equal("projectA", s.route.oldProjectId)
-	s.Equal("projectB", s.route.newProjectId)
+	s.Equal("projectA", s.route.oldProjectName)
+	s.Equal("projectB", s.route.newProjectName)
 }
 
 func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 	ctx := context.Background()
-	s.route.oldProjectId = "projectA"
-	s.route.newProjectId = "projectB"
+	s.route.oldProjectName = "projectA"
+	s.route.newProjectName = "projectB"
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusBadRequest, resp.Status())
@@ -85,8 +85,8 @@ func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 func (s *ProjectCopySuite) TestCopyToNewProject() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
-	s.route.oldProjectId = "projectA"
-	s.route.newProjectId = "projectC"
+	s.route.oldProjectName = "projectA"
+	s.route.newProjectName = "projectC"
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
