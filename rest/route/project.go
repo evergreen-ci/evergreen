@@ -545,16 +545,17 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	count, err := dbModel.CountProjectRefsWithName(h.projectName)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error counting projects with id '%s'", h.projectName))
+	p, err := h.sc.FindProjectById(h.projectName)
+	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectName))
 	}
-	if count > 0 {
+	if p != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectName),
 		})
 	}
+
 	apiProjectRef := &model.APIProjectRef{}
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))

@@ -32,12 +32,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 		CachedProjects: []model.ProjectRef{
 			{
 				Identifier: "projectA",
+				Name:       "projectA",
 				Branch:     "abcd",
 				Enabled:    true,
 				Admins:     []string{"my-user"},
 			},
 			{
 				Identifier: "projectB",
+				Name:       "projectB",
 				Branch:     "bcde",
 				Enabled:    true,
 				Admins:     []string{"my-user"},
@@ -89,10 +91,11 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.route.newProjectName = "projectC"
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
 	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
+	s.Equal("projectC", restmodel.FromStringPtr(newProject.Name))
 	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)

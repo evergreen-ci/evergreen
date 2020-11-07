@@ -309,7 +309,6 @@ func findOne(query db.Q) (*ProjectRef, error) {
 	}
 
 	projectRef.checkDefaultLogger()
-
 	return projectRef, err
 
 }
@@ -331,10 +330,7 @@ func FindIdentifierForProject(name string) (string, error) {
 }
 
 func CountProjectRefsWithName(name string) (int, error) {
-	return db.Count(
-		ProjectRefCollection,
-		byIdOrName(name),
-	)
+	return db.CountQ(ProjectRefCollection, byIdOrName(name))
 }
 
 func FindFirstProjectRef() (*ProjectRef, error) {
@@ -474,8 +470,8 @@ func byOwnerRepoAndBranch(owner, repoName, branch string) db.Q {
 func byIdOrName(name string) db.Q {
 	return db.Query(bson.M{
 		"$or": []bson.M{
-			bson.M{ProjectRefIdentifierKey: name},
-			bson.M{ProjectRefNameKey: name},
+			{ProjectRefIdentifierKey: name},
+			{ProjectRefNameKey: name},
 		},
 	})
 }

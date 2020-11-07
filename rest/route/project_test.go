@@ -239,6 +239,12 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
+
+	p, err := h.sc.FindProjectById("nutsandgum")
+	s.NoError(err)
+	s.Require().NotNil(p)
+	s.Equal("nutsandgum", p.Identifier)
+	s.Equal("nutsandgum", p.Name)
 }
 
 func (s *ProjectPutSuite) TestRunExistingFails() {
@@ -468,38 +474,43 @@ func getMockProjectsConnector() *data.MockConnector {
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.Clear(serviceModel.VersionCollection))
-	const projectName = "proj"
+	const projectId = "proj"
+	project := serviceModel.ProjectRef{
+		Identifier: projectId,
+		Name:       "something-else",
+	}
+	assert.NoError(project.Insert())
 	v1 := serviceModel.Version{
 		Id:                  "v1",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 1,
 	}
 	assert.NoError(v1.Insert())
 	v2 := serviceModel.Version{
 		Id:                  "v2",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 2,
 	}
 	assert.NoError(v2.Insert())
 	v3 := serviceModel.Version{
 		Id:                  "v3",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 3,
 	}
 	assert.NoError(v3.Insert())
 	v4 := serviceModel.Version{
 		Id:                  "v4",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 4,
 	}
 	assert.NoError(v4.Insert())
 
 	h := getProjectVersionsHandler{
-		projectName: projectName,
+		projectName: "something-else",
 		requester:   evergreen.AdHocRequester,
 		sc:          &data.DBConnector{},
 		limit:       20,

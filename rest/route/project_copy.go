@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	dbModel "github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -58,8 +56,8 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// verify project with new name doesn't exist
-	_, err = dbModel.FindIdentifierForProject(p.newProjectName)
-	if err == nil { // indicates the project already exists
+	_, err = p.sc.FindProjectById(p.newProjectName)
+	if err == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("provide different ID for new project"))
 	}
 	apiErr, ok := err.(gimlet.ErrorResponse)
@@ -147,16 +145,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToIdentifier, err := dbModel.FindIdentifierForProject(p.opts.CopyTo)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
-	}
-	copyFromIdentifier, err := dbModel.FindIdentifierForProject(p.copyFrom)
+	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	varsToCopy, err := p.sc.FindProjectVarsById(copyFromIdentifier, p.opts.DryRun) //dont redact private variables unless it's a dry run
+	copyFromProject, err := p.sc.FindProjectById(p.copyFrom) // ensure project is existing
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
+	}
+
+	varsToCopy, err := p.sc.FindProjectVarsById(copyFromProject.Identifier, p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
 	}
@@ -175,7 +174,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	if err := p.sc.UpdateProjectVars(copyToIdentifier, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := p.sc.UpdateProjectVars(copyToProject.Identifier, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.copyFrom))
 	}
 
