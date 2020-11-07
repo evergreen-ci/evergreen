@@ -364,56 +364,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if uiTask.DisplayOnly {
-		uiTask.TestResults = []uiTestResult{}
-		execTasks := []task.Task{}
-		execTaskIDs := []string{}
-		for _, t := range projCtx.Task.ExecutionTasks {
-			var et *task.Task
-			if archived {
-				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
-			} else {
-				et, err = task.FindOneId(t)
-			}
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-			if et == nil {
-				grip.Error(message.Fields{
-					"message": "execution task not found",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
-				})
-				continue
-			}
-			execTasks = append(execTasks, *et)
-			execTaskIDs = append(execTaskIDs, t)
-		}
-		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		for i, execTask := range execTasks {
-			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        execTaskIDs[i],
-				Name:      execTask.DisplayName,
-				TimeTaken: execTask.TimeTaken,
-				Status:    execTask.ResultStatus(),
-			})
-			for _, tr := range execTask.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTaskIDs[i], TaskName: execTask.DisplayName})
-			}
-		}
-	} else {
-		for _, tr := range projCtx.Context.Task.LocalTestResults {
-			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
-		}
-		if uiTask.PartOfDisplay {
-			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
-		}
-	}
+	uis.getTestResults(w, r, &uiTask, execution)
 
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -840,14 +791,14 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
-	usr := gimlet.GetUser(ctx)
+	usr := gimlet.GetUser(r.Context())
 	vars := gimlet.GetVars(r)
 	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 	logId := vars["log_id"]
 	taskID := vars["task_id"]
 	testName := vars["test_name"]
 	taskExecutionsAsString := vars["task_execution"]
-	taskExec, err = strconv.Atoi(taskExecutionsAsString)
+	taskExec, err := strconv.Atoi(taskExecutionsAsString)
 	if err != nil {
 		http.Error(w, "task execution num must be an int", http.StatusBadRequest)
 		return
@@ -855,8 +806,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	var (
 		logReader io.ReadCloser
 		testLog   *model.TestLog
-		err       error
-		taskExec  int
 	)
 
 	data := logData{User: usr}
@@ -869,7 +818,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		Execution:     taskExec,
 		PrintPriority: !raw,
 	}
-	logReader, err = apimodels.GetBuildloggerLogs(ctx, opts)
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
 	if err == nil {
 		defer func() {
 			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
@@ -936,4 +885,142 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
 	}
+}
+
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, uiTask *uiTaskData, execution int) {
+	ctx := r.Context()
+	projCtx := MustHaveProjectContext(r)
+	var err error
+
+	uiTask.TestResults = []uiTestResult{}
+	execTasks := []task.Task{}
+	execTaskIDs := []string{}
+	if uiTask.DisplayOnly {
+		for _, t := range projCtx.Task.ExecutionTasks {
+			var et *task.Task
+			if uiTask.Archived {
+				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
+			} else {
+				et, err = task.FindOneId(t)
+			}
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if et == nil {
+				grip.Error(message.Fields{
+					"message": "execution task not found",
+					"task":    t,
+					"parent":  projCtx.Task.Id,
+				})
+				continue
+			}
+			execTasks = append(execTasks, *et)
+			execTaskIDs = append(execTaskIDs, t)
+		}
+		for i, execTask := range execTasks {
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
+				Id:        execTaskIDs[i],
+				Name:      execTask.DisplayName,
+				TimeTaken: execTask.TimeTaken,
+				Status:    execTask.ResultStatus(),
+			})
+		}
+	}
+
+	// Check cedar test results first.
+	success := true
+	testResults := []task.TestResult{}
+	if uiTask.DisplayOnly {
+		allResults := []uiTestResult{}
+		for i, execTask := range execTasks {
+			opts := apimodels.GetCedarTestResultsOptions{
+				BaseURL:   uis.Settings.Cedar.BaseURL,
+				TaskID:    execTask.Id,
+				Execution: execTask.Execution,
+			}
+			data, err := apimodels.GetCedarTestResults(ctx, opts)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"task_id":   execTask.Id,
+					"execution": execTask.Execution,
+					"message":   "problem getting cedar test results",
+				}))
+				success = false
+				break
+			}
+
+			if err = json.Unmarshal(data, testResults); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			for _, tr := range testResults {
+				allResults = append(allResults, uiTestResult{
+					TestResult: tr,
+					TaskId:     execTaskIDs[i],
+					TaskName:   execTask.DisplayName,
+				})
+			}
+		}
+
+		if success {
+			uiTask.TestResults = append(uiTask.TestResults, allResults...)
+			return
+		}
+	} else {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:   uis.Settings.Cedar.BaseURL,
+			TaskID:    projCtx.Task.Id,
+			Execution: projCtx.Task.Execution,
+		}
+		data, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task_id":   projCtx.Task.Id,
+				"execution": projCtx.Task.Execution,
+				"message":   "problem getting cedar test results",
+			}))
+			success = false
+		}
+
+		if success {
+			if err = json.Unmarshal(data, testResults); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			for _, tr := range testResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
+			}
+			if uiTask.PartOfDisplay {
+				uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
+			}
+			return
+		}
+	}
+
+	// If cedar test results fail, fall back to db.
+	if uiTask.DisplayOnly {
+		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		for i, execTask := range execTasks {
+			for _, tr := range execTask.LocalTestResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+					TestResult: tr,
+					TaskId:     execTaskIDs[i],
+					TaskName:   execTask.DisplayName,
+				})
+			}
+		}
+	} else {
+		for _, tr := range projCtx.Context.Task.LocalTestResults {
+			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
+		}
+		if uiTask.PartOfDisplay {
+			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
+		}
+	}
+
 }
