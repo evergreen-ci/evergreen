@@ -247,7 +247,7 @@ func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func getParams(opts BuildloggerGetOptions) string {
 	params := fmt.Sprintf(
 		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&paginate=true",
-		opts.Execution,
+		opts.CedarOpts.Execution,
 		opts.ProcessName,
 		opts.PrintTime,
 		opts.PrintPriority,

@@ -21,9 +21,10 @@ type GetOptions struct {
 	// Request information. See cedar's REST documentation for more
 	// information:
 	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
-	ID       string
-	TaskID   string
-	TestName string
+	ID        string
+	TaskID    string
+	TestName  string
+	Execution int
 }
 
 // Validate ensures GetOptions is configured correctly.

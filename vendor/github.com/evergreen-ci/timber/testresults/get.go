@@ -25,6 +25,7 @@ func GetTestResults(ctx context.Context, opts timber.GetOptions) ([]byte, error)
 	if opts.TestName != "" {
 		url += fmt.Sprintf("/%s", opts.TestName)
 	}
+	url += fmt.Sprintf("?execution=%d", opts.Execution)
 
 	catcher := grip.NewBasicCatcher()
 	resp, err := opts.DoReq(ctx, url)
