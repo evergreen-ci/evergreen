@@ -364,7 +364,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.getTestResults(w, r, &uiTask, execution)
+	uis.getTestResults(w, r, projCtx, &uiTask, execution)
 
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -792,23 +792,20 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(r.Context())
+	data := logData{User: usr}
 	vars := gimlet.GetVars(r)
 	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
+
 	logId := vars["log_id"]
 	taskID := vars["task_id"]
 	testName := vars["test_name"]
 	taskExecutionsAsString := vars["task_execution"]
 	taskExec, err := strconv.Atoi(taskExecutionsAsString)
-	if err != nil {
-		http.Error(w, "task execution num must be an int", http.StatusBadRequest)
-		return
-	}
+	grip.Warning(err)
 	var (
 		logReader io.ReadCloser
 		testLog   *model.TestLog
 	)
-
-	data := logData{User: usr}
 
 	// Check buildlogger logs first.
 	opts := apimodels.GetBuildloggerLogsOptions{
@@ -887,9 +884,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, uiTask *uiTaskData, execution int) {
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, execution int) {
 	ctx := r.Context()
-	projCtx := MustHaveProjectContext(r)
 	var err error
 
 	uiTask.TestResults = []uiTestResult{}
@@ -917,6 +913,12 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, uiTa
 			}
 			execTasks = append(execTasks, *et)
 			execTaskIDs = append(execTaskIDs, t)
+		}
+
+		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 		for i, execTask := range execTasks {
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
@@ -1000,11 +1002,6 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, uiTa
 
 	// If cedar test results fail, fall back to db.
 	if uiTask.DisplayOnly {
-		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
 		for i, execTask := range execTasks {
 			for _, tr := range execTask.LocalTestResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
