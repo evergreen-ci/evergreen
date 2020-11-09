@@ -16,22 +16,22 @@ type APITaskAnnotation struct {
 	Metadata       *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
 }
 type APIAnnotation struct {
-	Note          *APINote       `bson:"note,omitempty" json:"note,omitempty"`
-	Issues        []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
-	SuspectIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	Note            *APINote       `bson:"note,omitempty" json:"note,omitempty"`
+	Issues          []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
+	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 }
 type APINote struct {
 	Message *string    `bson:"message,omitempty" json:"message,omitempty"`
-	Source  *APISource `bson:"note_source,omitempty" json:"note_source,omitempty"`
+	Source  *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 type APISource struct {
 	Author *string    `bson:"author,omitempty" json:"author,omitempty"`
 	Time   *time.Time `bson:"time,omitempty" json:"time,omitempty"`
 }
 type APIIssueLink struct {
-	URL      *string   `bson:"url" json:"url"`
-	IssueKey *string   `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source   APISource `bson:"link_source,omitempty" json:"link_source,omitempty"`
+	URL      *string    `bson:"url" json:"url"`
+	IssueKey *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source   *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 // APIAnnotationBuildFromService takes the task_annotations.Annotation DB struct and
@@ -80,7 +80,7 @@ func APIIssueLinkBuildFromService(t task_annotations.IssueLink) *APIIssueLink {
 	m := APIIssueLink{}
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
-	m.Source = *APISourceBuildFromService(t.Source)
+	m.Source = APISourceBuildFromService(*t.Source)
 	return &m
 }
 
@@ -90,7 +90,7 @@ func APIIssueLinkToService(m APIIssueLink) *task_annotations.IssueLink {
 	out := &task_annotations.IssueLink{}
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
-	out.Source = *APISourceToService(m.Source)
+	out.Source = APISourceToService(*m.Source)
 	return out
 }
 
