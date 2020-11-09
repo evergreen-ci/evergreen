@@ -72,6 +72,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeAbortBuild(sc))
 	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartBuild(sc))
 	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchTasksByBuild(sc))
+	app.AddRoute("/builds/{build_id}/annotations").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchAnnotationsByBuild(sc))
 	app.AddRoute("/commit_queue/{project_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetCommitQueueItems(sc))
 	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(sc, env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem(sc))
