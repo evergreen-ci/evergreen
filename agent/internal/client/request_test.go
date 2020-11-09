@@ -60,7 +60,6 @@ func (s *RequestTestSuite) TestValidateRequestInfo() {
 	}
 	err := info.validateRequestInfo()
 	s.Error(err)
-	// kim: TODO: fix this test
 	validMethods := []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch}
 	for _, method := range validMethods {
 		info.method = method

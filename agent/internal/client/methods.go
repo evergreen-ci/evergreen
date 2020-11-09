@@ -29,17 +29,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// kim: TODO: remove
-// communicatorImpl implements Communicator and makes requests to API endpoints
-// for the agent.
-// type communicatorImpl struct {
-//     hostID          string
-//     hostSecret      string
-//     loggerInfo      LoggerMetadata
-//     lastMessageSent time.Time
-//     mutex           sync.RWMutex
-// }
-
 func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	out := &apimodels.AgentSetupData{}
 	info := requestInfo{
@@ -154,7 +143,9 @@ func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, 
 		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("display_task")
-	resp, err := c.retryRequest(ctx, info, nil)
+	// TODO (EVG-13389): this should probably retry, but retryRequest doesn't
+	// deal with 404s well.
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get display task of task %s", td.ID)
 	}

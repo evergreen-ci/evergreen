@@ -92,7 +92,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 		taskID = info.taskData.ID
 		secret = info.taskData.Secret
 	}
-	r, err := c.newRequest(string(info.method), info.path, taskID, secret, string(info.version), data)
+	r, err := c.newRequest(info.method, info.path, taskID, secret, string(info.version), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}
@@ -177,6 +177,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			}
 
 			resp, err := c.doRequest(ctx, r)
+			// TODO (EVG-13389): handle response status codes better.
 			if err != nil {
 				// for an error, don't return, just retry
 				grip.Warning(message.WrapError(err, message.Fields{

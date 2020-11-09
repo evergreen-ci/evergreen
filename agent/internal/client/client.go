@@ -44,58 +44,17 @@ type communicatorImpl struct {
 	cedarGRPCClient *grpc.ClientConn
 	loggerInfo      LoggerMetadata
 
-	// kim: TODO: remove
-	// apiUser string
-	// apiKey  string
 	// these fields have setters
 	hostID     string
 	hostSecret string
 
-	// kim: TODO: remove
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
 }
 
-// kim: TODO: remove
-// type LoggerMetadata struct {
-//     Agent  []LogkeeperMetadata
-//     System []LogkeeperMetadata
-//     Task   []LogkeeperMetadata
-// }
-//
-// type LogkeeperMetadata struct {
-//     Build string
-//     Test  string
-// }
-//
-// // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
-// type TaskData struct {
-//     ID                 string
-//     Secret             string
-//     OverrideValidation bool
-// }
-//
-// type LoggerConfig struct {
-//     System []LogOpts
-//     Agent  []LogOpts
-//     Task   []LogOpts
-// }
-//
-// type LogOpts struct {
-//     Sender            string
-//     SplunkServerURL   string
-//     SplunkToken       string
-//     Filepath          string
-//     LogkeeperURL      string
-//     LogkeeperBuildNum int
-//     BuilderID         string
-//     BufferDuration    time.Duration
-//     BufferSize        int
-// }
-
-// NewCommunicator returns a Communicator capable of making HTTP REST requests against
-// the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
-// and SetMaxAttempts methods.
+// NewCommunicator returns a Communicator capable of making HTTP REST requests
+// against the API server. To change the default retry behavior, use the
+// SetTimeoutStart, SetTimeoutMax, and SetMaxAttempts methods.
 func NewCommunicator(serverURL string) Communicator {
 	c := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
@@ -158,17 +117,6 @@ func (c *communicatorImpl) GetHostID() string {
 func (c *communicatorImpl) GetHostSecret() string {
 	return c.hostSecret
 }
-
-// kim: TODO: remove
-// SetAPIUser sets the API user.
-// func (c *communicatorImpl) SetAPIUser(apiUser string) {
-//     c.apiUser = apiUser
-// }
-//
-// // SetAPIKey sets the API key.
-// func (c *communicatorImpl) SetAPIKey(apiKey string) {
-//     c.apiKey = apiKey
-// }
 
 func (c *communicatorImpl) UpdateLastMessageTime() {
 	c.mutex.Lock()

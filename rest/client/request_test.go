@@ -20,9 +20,6 @@ func TestRequestTestSuite(t *testing.T) {
 
 func (s *RequestTestSuite) SetupTest() {
 	s.evergreenREST = &communicatorImpl{
-		// kim: TODO: remove
-		// hostID:       "hostID",
-		// hostSecret:   "hostSecret",
 		maxAttempts:  10,
 		timeoutStart: time.Second * 2,
 		timeoutMax:   time.Minute * 10,
@@ -31,13 +28,8 @@ func (s *RequestTestSuite) SetupTest() {
 }
 
 func (s *RequestTestSuite) TestNewRequest() {
-	r, err := s.evergreenREST.newRequest("method", "path", nil)
+	r, err := s.evergreenREST.newRequest(http.MethodGet, "path", nil)
 	s.NoError(err)
-	// kim: TODO: remove
-	// s.Equal("task1", r.Header.Get(evergreen.TaskHeader))
-	// s.Equal("taskSecret", r.Header.Get(evergreen.TaskSecretHeader))
-	// s.Equal(s.evergreenREST.hostID, r.Header.Get(evergreen.HostHeader))
-	// s.Equal(s.evergreenREST.hostSecret, r.Header.Get(evergreen.HostSecretHeader))
 	s.Equal(evergreen.ContentTypeValue, r.Header.Get(evergreen.ContentTypeHeader))
 }
 
@@ -63,13 +55,3 @@ func (s *RequestTestSuite) TestValidateRequestInfo() {
 		s.Error(err)
 	}
 }
-
-// func (s *RequestTestSuite) TestSetTaskPathSuffix() {
-//     info := requestInfo{
-//         taskData: &TaskData{
-//             ID: "bar",
-//         },
-//     }
-//     info.setTaskPathSuffix("foo")
-//     s.Equal("task/bar/foo", info.path)
-// }

@@ -1546,9 +1546,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) ([]string, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		// kim: TODO: remove
-		// version: apiVersion2,
-		path: fmt.Sprintf("distros/%s/client_urls", distroID),
+		path:   fmt.Sprintf("distros/%s/client_urls", distroID),
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {

@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Mock mocks the agent's Communicator for testing.
+// Mock mocks the Communicator for testing.
 type Mock struct {
 	maxAttempts  int
 	timeoutStart time.Duration
@@ -35,16 +35,11 @@ type Mock struct {
 	// these fields have setters
 	hostID     string
 	hostSecret string
-	// kim: TODO: remove
-	// apiUser string
-	// apiKey  string
 
 	// mock behavior
-	// kim: TODO: remove
-	NextTaskShouldFail     bool
-	NextTaskShouldConflict bool
-	GetPatchFileShouldFail bool
-	// kim: TODO: remove
+	NextTaskShouldFail          bool
+	NextTaskShouldConflict      bool
+	GetPatchFileShouldFail      bool
 	loggingShouldFail           bool
 	NextTaskResponse            *apimodels.NextTaskResponse
 	NextTaskIsNil               bool
@@ -57,7 +52,6 @@ type Mock struct {
 	HeartbeatShouldErr          bool
 	HeartbeatShouldSometimesErr bool
 	TaskExecution               int
-	GetSubscriptionsFail        bool
 	CreatedHost                 apimodels.CreateHost
 
 	CedarGRPCConn *grpc.ClientConn
@@ -110,7 +104,6 @@ func (c *Mock) UpdateLastMessageTime() {
 	c.LastMessageSent = time.Now()
 }
 
-// nolint
 func (c *Mock) SetTimeoutStart(timeoutStart time.Duration) { c.timeoutStart = timeoutStart }
 func (c *Mock) SetTimeoutMax(timeoutMax time.Duration)     { c.timeoutMax = timeoutMax }
 func (c *Mock) SetMaxAttempts(attempts int)                { c.maxAttempts = attempts }
@@ -120,21 +113,12 @@ func (c *Mock) SetHostSecret(hostSecret string) { c.hostSecret = hostSecret }
 func (c *Mock) GetHostID() string               { return c.hostID }
 func (c *Mock) GetHostSecret() string           { return c.hostSecret }
 
-// kim: TODO: remove
-// func (c *Mock) SetAPIUser(apiUser string) { c.apiUser = apiUser }
-// func (c *Mock) SetAPIKey(apiKey string)   { c.apiKey = apiKey }
-
-// kim: TODO: remove
-// nolint
 func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	return &apimodels.AgentSetupData{}, nil
 }
 
-//
-// nolint
 func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
 
-//
 // EndTask returns a mock EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td TaskData) (*apimodels.EndTaskResponse, error) {
 	if c.EndTaskShouldFail {
@@ -388,96 +372,6 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	}
 	return mockHost, nil
 }
-
-// kim: TODO: remove
-// func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, error) {
-//     return nil, errors.New("(*Mock) GetSpawnHost is not implemented")
-// }
-//
-// func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
-//     return errors.New("(*Mock) ModifySpawnHost is not implemented")
-// }
-//
-// func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
-//     return errors.New("(*Mock) TerminateSpawnHost is not implemented")
-// }
-//
-// func (*Mock) StopSpawnHost(context.Context, string, string, bool) error {
-//     return errors.New("(*Mock) StopSpawnHost is not implemented")
-// }
-//
-// func (*Mock) StartSpawnHost(context.Context, string, string, bool) error {
-//     return errors.New("(*Mock) StartSpawnHost is not implemented")
-// }
-//
-// func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
-//     return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
-// }
-//
-// func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
-//     return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
-// }
-//
-// func (*Mock) AttachVolume(context.Context, string, *host.VolumeAttachment) error {
-//     return errors.New("(*Mock) AttachVolume is not implemented")
-// }
-//
-// func (*Mock) DetachVolume(context.Context, string, string) error {
-//     return errors.New("(*Mock) DetachVolume is not implemented")
-// }
-//
-// func (*Mock) CreateVolume(context.Context, *host.Volume) (*model.APIVolume, error) {
-//     return nil, errors.New("(*Mock) CreateVolume is not implemented")
-// }
-//
-// func (*Mock) DeleteVolume(context.Context, string) error {
-//     return errors.New("(*Mock) DeleteVolume is not implemented")
-// }
-//
-// func (*Mock) ModifyVolume(context.Context, string, *model.VolumeModifyOptions) error {
-//     return errors.New("(*Mock) ModifyVolume is not implemented")
-// }
-//
-// func (*Mock) GetVolumesByUser(context.Context) ([]model.APIVolume, error) {
-//     return nil, errors.New("(*Mock) GetVolumesByUser is not implemented")
-// }
-//
-// func (c *Mock) GetVolume(context.Context, string) (*model.APIVolume, error) {
-//     return nil, errors.New("(*Mock) GetVolume is not implemented")
-// }
-//
-// GetHosts will return an array with a single mock host
-// func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
-//     spawnRequest := &model.HostRequestOptions{
-//         DistroID:     "mock_distro",
-//         KeyName:      "mock_key",
-//         UserData:     "",
-//         InstanceTags: nil,
-//         InstanceType: "mock_type",
-//     }
-//     host, _ := c.CreateSpawnHost(ctx, spawnRequest)
-//     return []*model.APIHost{host}, nil
-// }
-//
-// // nolint
-// func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.BannerTheme) error {
-//     return nil
-// }
-// func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                  { return "", nil }
-// func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error   { return nil }
-// func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)   { return nil, nil }
-// func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
-// func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)          { return nil, nil }
-// func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
-//     return nil, nil
-// }
-// func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
-//     return nil, nil
-// }
-// func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
-// func (c *Mock) ExecuteOnDistro(context.Context, string, model.APIDistroScriptOptions) ([]string, error) {
-//     return nil, nil
-// }
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.

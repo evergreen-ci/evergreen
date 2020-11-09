@@ -24,41 +24,12 @@ import (
 type requestInfo struct {
 	method string
 	path   string
-	taskID string
-	// kim: TODO: remove
-	// version apiVersion
-	// taskData *TaskData
 }
-
-// Version is an "enum" for the different API versions
-// type apiVersion string
-
-// const (
-//     // kim: TODO: remove
-//     // apiVersion1 apiVersion = "/api/2"
-//     apiVersion2 apiVersion = evergreen.APIRoutePrefixV2
-// )
-
-// kim: TODO: remove
-// Method is an "enum" for the supported HTTP methods
-// type method string
-//
-// const (
-//     get    method = "GET"
-//     post          = "POST"
-//     put           = "PUT"
-//     delete        = "DELETE"
-//     patch         = "PATCH"
-// )
-
-var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
 // AuthError is a special error when the CLI receives 401 Unauthorized to
 // suggest logging in again as a possible solution to the error.
 var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
 
-// kim: TODO: remove
-// func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
 func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
 	// url := c.getPath(path, version)
 	url := c.getPath(path)
@@ -80,19 +51,6 @@ func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*h
 		}
 	}
 
-	// kim: TODO: remove
-	// if taskID != "" {
-	//     r.Header.Add(evergreen.TaskHeader, taskID)
-	// }
-	// if taskSecret != "" {
-	//     r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
-	// }
-	// if c.hostID != "" {
-	//     r.Header.Add(evergreen.HostHeader, c.hostID)
-	// }
-	// if c.hostSecret != "" {
-	//     r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
-	// }
 	if c.apiUser != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
 	}
@@ -112,13 +70,6 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 		return nil, errors.WithStack(err)
 	}
 
-	// kim: TODO: remove
-	// var taskID, secret string
-	// if info.taskData != nil {
-	//     taskID = info.taskData.ID
-	//     secret = info.taskData.Secret
-	// }
-	// r, err := c.newRequest(string(info.method), info.path, taskID, secret, string(info.version), data)
 	r, err := c.newRequest(info.method, info.path, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
@@ -168,12 +119,6 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
 	var err error
-	// kim: TODO: remove
-	// if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
-	//     err = errors.New("no task secret provided")
-	//     grip.Error(err)
-	//     return nil, err
-	// }
 
 	var out []byte
 	if data != nil {
@@ -205,6 +150,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			}
 
 			resp, err := c.doRequest(ctx, r)
+			// TODO (EVG-13389): handle response status codes better.
 			if err != nil {
 				// for an error, don't return, just retry
 				grip.Warning(message.WrapError(err, message.Fields{
@@ -217,9 +163,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				}))
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
-			} else if resp.StatusCode == http.StatusConflict {
-				defer resp.Body.Close()
-				return nil, HTTPConflictError
 			} else if resp.StatusCode == http.StatusUnauthorized {
 				defer resp.Body.Close()
 				return nil, AuthError
@@ -252,10 +195,6 @@ func (c *communicatorImpl) getBackoff() *backoff.Backoff {
 	}
 }
 
-// kim: TODO: remove
-// func (c *communicatorImpl) getPath(path string, version string) string {
-//     return fmt.Sprintf("%s%s/%s", c.serverURL, version, strings.TrimPrefix(path, "/"))
-// }
 func (c *communicatorImpl) getPath(path string) string {
 	return fmt.Sprintf("%s%s/%s", c.serverURL, evergreen.APIRoutePrefixV2, strings.TrimPrefix(path, "/"))
 }
@@ -266,23 +205,6 @@ func (r *requestInfo) validateRequestInfo() error {
 	default:
 		return errors.New("invalid HTTP method")
 	}
-	// kim: TODO: remove
-	// if r.method != get && r.method != post && r.method != put && r.method != delete && r.method != patch {
-	//     return errors.New("invalid HTTP method")
-	// }
-
-	// kim: TODO: remove
-	// if r.version != apiVersion1 && r.version != apiVersion2 {
-	//     return errors.New("invalid API version")
-	// }
 
 	return nil
 }
-
-// kim: TODO: remove
-// func (r *requestInfo) setTaskPathSuffix(path string) {
-//     r.path = fmt.Sprintf("task/%s/%s", r.taskData.ID, strings.TrimPrefix(path, "/"))
-// }
-// func (r *requestInfo) setTaskPathSuffix(path string) {
-//     r.path = fmt.Sprintf("task/%s/%s", r.taskID, strings.TrimPrefix(path, "/"))
-// }

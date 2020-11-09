@@ -1,7 +1,5 @@
 package client
 
-// kim: TODO: split this into multiple files
-
 import (
 	"context"
 	"encoding/json"
