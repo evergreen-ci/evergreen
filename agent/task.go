@@ -337,7 +337,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 	grip.Info("Fetching distro configuration.")
-	confDistro, err := a.comm.GetDistro(ctx, tc.task)
+	confDistro, err := a.comm.GetDistroView(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}

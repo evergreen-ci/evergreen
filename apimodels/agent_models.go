@@ -297,3 +297,11 @@ type GeneratePollResponse struct {
 	Finished bool     `json:"finished"`
 	Errors   []string `json:"errors"`
 }
+
+// DistroView represents the view of data that the agent uses from the distro
+// it is running on.
+type DistroView struct {
+	CloneMethod         string `json:"clone_method"`
+	DisableShallowClone bool   `json:"disable_shallow_clone"`
+	WorkDir             string `json:"work_dir"`
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -47,7 +48,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+		taskConfig.Distro = &apimodels.DistroView{CloneMethod: distro.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err, "Couldn't set up test documents")
@@ -121,7 +122,7 @@ func TestPatchPlugin(t *testing.T) {
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
-		taskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+		taskConfig.Distro = &apimodels.DistroView{CloneMethod: distro.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err, "Couldn't set up patch documents")
