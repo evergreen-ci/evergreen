@@ -3,10 +3,10 @@ name := evergreen
 buildDir := bin
 tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
-packages := $(name) agent agent-util operations cloud cloud-userdata agent-command db util plugin units graphql
-packages += thirdparty auth scheduler model validator service repotracker
+packages := $(name) agent agent-command agent-util agent-internal apimodels operations cloud cloud-userdata db util plugin units graphql
+packages += thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
-packages += operations-metabuild-generator operations-metabuild-model
+packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
@@ -193,9 +193,9 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 #end generated config
 
 # generate rest model
-generate-rest-model:$(buildDir)/generate-rest-model
-	./$(buildDir)/generate-rest-model --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
-$(buildDir)/generate-rest-model:cmd/generate-rest-model/generate-rest-model.go
+generate-rest-model:$(buildDir)/codegen
+	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
+$(buildDir)/codegen:cmd/codegen/entry.go
 	$(gobin) build -o $@ $<
 #end generate rest model
 

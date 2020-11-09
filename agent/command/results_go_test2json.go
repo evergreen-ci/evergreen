@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -39,7 +40,7 @@ func (c *goTest2JSONCommand) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *goTest2JSONCommand) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "failed to expand files")
@@ -63,7 +64,7 @@ func (c *goTest2JSONCommand) Execute(ctx context.Context,
 }
 
 func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	logger.Task().Infof("Parsing test file '%s'...", file)
 	results, err := c.loadJSONFile(file, logger, conf)
 	if err != nil {
@@ -126,7 +127,7 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	return nil
 }
 
-func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProducer, conf *model.TaskConfig) (*test2json.TestResults, error) {
+func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProducer, conf *internal.TaskConfig) (*test2json.TestResults, error) {
 	filePath := file
 	if !path.IsAbs(filePath) {
 		filePath = path.Join(conf.WorkDir, filePath)

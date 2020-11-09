@@ -65,12 +65,26 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				return errors.Wrap(err, "error creating combined manager")
 			}
 
+			restOpts := daemonOptions{
+				host:             c.String(restHostFlagName),
+				port:             c.Int(restPortFlagName),
+				manager:          manager,
+				logger:           makeLogger(c),
+				preconditionCmds: c.StringSlice(preconditionCmdsFlagName),
+			}
+			rpcOpts := daemonOptions{
+				host:             c.String(rpcHostFlagName),
+				port:             c.Int(rpcPortFlagName),
+				manager:          manager,
+				logger:           makeLogger(c),
+				preconditionCmds: c.StringSlice(preconditionCmdsFlagName),
+			}
 			daemon := newCombinedDaemon(
-				newRESTDaemon(c.String(restHostFlagName), c.Int(restPortFlagName), manager, makeLogger(c)),
-				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), manager, c.String(rpcCredsFilePathFlagName), makeLogger(c)),
+				newRESTDaemon(restOpts),
+				newRPCDaemon(rpcOpts, c.String(rpcCredsFilePathFlagName)),
 			)
 
-			config := serviceConfig(CombinedService, c, buildRunCommand(c, CombinedService))
+			config := serviceConfig(CombinedService, c, buildServiceRunCommand(c, CombinedService))
 
 			if err := operation(daemon, config); !c.Bool(quietFlagName) {
 				return err
@@ -81,27 +95,27 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 }
 
 type combinedDaemon struct {
-	RESTDaemon *restDaemon
-	RPCDaemon  *rpcDaemon
+	*restDaemon
+	*rpcDaemon
 }
 
 func newCombinedDaemon(rest *restDaemon, rpc *rpcDaemon) *combinedDaemon {
 	return &combinedDaemon{
-		RESTDaemon: rest,
-		RPCDaemon:  rpc,
+		restDaemon: rest,
+		rpcDaemon:  rpc,
 	}
 }
 
 func (d *combinedDaemon) Start(s service.Service) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(errors.Wrap(d.RPCDaemon.Start(s), "error starting RPC service"))
-	catcher.Add(errors.Wrap(d.RESTDaemon.Start(s), "error starting REST service"))
+	catcher.Add(errors.Wrap(d.rpcDaemon.Start(s), "error starting RPC service"))
+	catcher.Add(errors.Wrap(d.restDaemon.Start(s), "error starting REST service"))
 	return catcher.Resolve()
 }
 
 func (d *combinedDaemon) Stop(s service.Service) error {
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(errors.Wrap(d.RPCDaemon.Stop(s), "error stopping RPC service"))
-	catcher.Add(errors.Wrap(d.RESTDaemon.Stop(s), "error stopping REST service"))
+	catcher.Add(errors.Wrap(d.rpcDaemon.Stop(s), "error stopping RPC service"))
+	catcher.Add(errors.Wrap(d.restDaemon.Stop(s), "error stopping REST service"))
 	return catcher.Resolve()
 }

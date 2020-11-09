@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -188,15 +187,13 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	return projectRef, nil
 }
 
-// GetDistro returns the distro for the task.
-func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
-	d := &distro.Distro{}
+func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData) (*apimodels.DistroView, error) {
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
 		version:  apiVersion1,
 	}
-	info.setTaskPathSuffix("distro")
+	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
@@ -206,11 +203,12 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict; wrong secret")
 	}
-	if err = utility.ReadJSON(resp.Body, d); err != nil {
+	var dv apimodels.DistroView
+	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
 		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
 		return nil, err
 	}
-	return d, nil
+	return &dv, nil
 }
 
 // GetDistroAMI returns the distro for the task.

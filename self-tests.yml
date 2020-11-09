@@ -266,12 +266,6 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
         command: make init-rs
-  setup_docker:
-    - command: shell.exec
-      params:
-        shell: bash
-        script: |
-          gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
   setup-docker-host:
     - command: host.create
       type: setup
@@ -391,23 +385,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-rest-client
-  - name: test-rest-model
+  - <<: *run-go-test-suite-with-mongodb
+    name: test-rest-model
     tags: ["db", "test"]
-    commands:
-      - func: get-project
-      - func: run-make
-        vars:
-          target: get-go-imports
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: revendor
-      - func: run-make
-        vars:
-          target: build
-      - func: run-make
-        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
@@ -513,6 +493,24 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cmd-codegen-core
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - func: setup-credentials
+      - func: setup-mongodb
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars:
+          target: build
+      - func: run-make
+        vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
@@ -523,7 +521,6 @@ tasks:
         vars:
           target: get-go-imports
       - func: setup-credentials
-      - func: setup_docker
       - func: run-make
         vars:
           target: revendor
@@ -607,7 +604,8 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: verify-agent-version-update
+      - name: "verify-agent-version-update"
+      - name: "docker-cleanup"
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
@@ -725,12 +723,3 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
-  - name: linux-docker
-    display_name: ArchLinux (Docker)
-    run_on:
-      - archlinux-test
-    expansions:
-      goos: linux
-      goarch: amd64
-    tasks:
-      - name: "docker-cleanup"

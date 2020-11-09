@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -17,7 +18,7 @@ import (
 )
 
 // sendTestResults sends the test results to the API server and Cedar.
-func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, results *task.LocalTestResults) error {
+func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, results *task.LocalTestResults) error {
 	if results == nil || len(results.Results) == 0 {
 		return errors.New("cannot send nil results")
 	}
@@ -41,7 +42,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 }
 
 // sendTestLog sends test logs to the API server and Cedar.
-func sendTestLog(ctx context.Context, comm client.Communicator, conf *model.TaskConfig, log *model.TestLog) (string, error) {
+func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *model.TestLog) (string, error) {
 	if conf.ProjectRef.CedarTestResultsEnabled {
 		return "", errors.Wrap(sendTestLogToCedar(ctx, conf.Task, comm, log), "problem sending test logs to cedar")
 	}
@@ -53,7 +54,7 @@ func sendTestLog(ctx context.Context, comm client.Communicator, conf *model.Task
 
 // sendTestLogsAndResults sends the test logs and test results to the API
 // server and Cedar.
-func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
+func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
 	// ship all of the test logs off to the server
 	logger.Task().Info("Sending test logs to server...")
 	allResults := task.LocalTestResults{}

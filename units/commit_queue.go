@@ -241,7 +241,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Identifier, evergreen.CommitQueueAlias)
+	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Identifier, evergreen.CommitQueueAlias, nextItem.TitleOverride)
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
@@ -323,7 +323,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
+	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id, nextItem.TitleOverride, nextItem.MessageOverride)
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
 		j.dequeue(cq, nextItem)
@@ -343,11 +343,13 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.logError(err, "patch not found", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -355,18 +357,21 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
 	if err != nil {
 		j.logError(err, "can't update patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 
 	if err = addMergeTaskAndVariant(patchDoc, project, projectRef); err != nil {
 		j.logError(err, "can't set patch project config", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
 
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
 		j.logError(err, "can't update patch in db", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -374,6 +379,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -540,7 +546,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID string) error {
+func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID, titleOverride, messageOverride string) error {
 	prs := make([]event.PRInfo, 0, len(modulePRs)+1)
 	for _, modulePR := range modulePRs {
 		prs = append(prs, event.PRInfo{
@@ -552,11 +558,13 @@ func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest,
 		})
 	}
 	prs = append(prs, event.PRInfo{
-		Owner:       projectRef.Owner,
-		Repo:        projectRef.Repo,
-		Ref:         *pr.Head.SHA,
-		PRNum:       *pr.Number,
-		CommitTitle: fmt.Sprintf("%s (#%d)", *pr.Title, *pr.Number),
+		Owner:           projectRef.Owner,
+		Repo:            projectRef.Repo,
+		Ref:             *pr.Head.SHA,
+		PRNum:           *pr.Number,
+		CommitTitle:     fmt.Sprintf("%s (#%d)", *pr.Title, *pr.Number),
+		MessageOverride: messageOverride,
+		TitleOverride:   titleOverride,
 	})
 
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{

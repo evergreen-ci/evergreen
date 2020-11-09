@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
@@ -127,11 +127,10 @@ func TestCreate(t *testing.T) {
 			assert.NoError(t, opts.Validate())
 		},
 		"WorkingDirectoryShouldErrorForFiles": func(t *testing.T, opts *Create) {
-			gobin, err := exec.LookPath("go")
-			assert.NoError(t, err)
-			assert.NotZero(t, gobin)
+			_, path, _, ok := runtime.Caller(0)
+			require.True(t, ok)
 
-			opts.WorkingDirectory = gobin
+			opts.WorkingDirectory = path
 			assert.Error(t, opts.Validate())
 		},
 		"MustSpecifyValidOutput": func(t *testing.T, opts *Create) {

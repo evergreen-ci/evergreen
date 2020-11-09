@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -65,8 +64,8 @@ type Communicator interface {
 	GetDisplayTaskNameFromExecution(context.Context, TaskData) (string, error)
 	// GetProjectRef loads the task's project ref.
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
-	// GetDistro returns the distro for the task.
-	GetDistro(context.Context, TaskData) (*distro.Distro, error)
+	// GetDistroView returns the view of the distro information for the task.
+	GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error)
 	// GetDistroAMI gets the AMI for the given distro/region
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID

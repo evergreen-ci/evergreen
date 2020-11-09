@@ -7,8 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -126,7 +126,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if tc.oomTrackerEnabled() {
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
 		tc.logger.Execution().Info("OOM tracker clearing system messages")
 		if err = tc.oomTracker.Clear(innerCtx); err != nil {
 			tc.logger.Execution().Errorf("error clearing system messages: %s", err)
@@ -174,7 +174,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	if tc.runGroupSetup {
 		var ctx2 context.Context
 		var cancel context.CancelFunc
-		taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 		if err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-group commands"))
 			return nil
@@ -198,7 +198,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 	}
 
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-task commands"))
 		return nil
@@ -294,8 +294,8 @@ func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
 	}
 }
 
-func (tc *taskContext) oomTrackerEnabled() bool {
-	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, tc.taskConfig.Distro.Provider)
+func (tc *taskContext) oomTrackerEnabled(cloudProvider string) bool {
+	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, cloudProvider)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {
@@ -328,7 +328,7 @@ func (tc *taskContext) getTimeoutType() timeoutType {
 }
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
-func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
+func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.TaskConfig, error) {
 	if tc.project == nil {
 		grip.Info("Fetching project config.")
 		err := a.fetchProjectConfig(ctx, tc)
@@ -337,7 +337,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 		}
 	}
 	grip.Info("Fetching distro configuration.")
-	confDistro, err := a.comm.GetDistro(ctx, tc.task)
+	confDistro, err := a.comm.GetDistroView(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +363,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	grip.Info("Constructing TaskConfig.")
-	taskConfig, err := model.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	taskConfig, err := internal.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 	if err != nil {
 		return nil, err
 	}
@@ -389,13 +389,13 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	return defaultExecTimeout
 }
 
-func (tc *taskContext) setTaskConfig(taskConfig *model.TaskConfig) {
+func (tc *taskContext) setTaskConfig(taskConfig *internal.TaskConfig) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.taskConfig = taskConfig
 }
 
-func (tc *taskContext) getTaskConfig() *model.TaskConfig {
+func (tc *taskContext) getTaskConfig() *internal.TaskConfig {
 	tc.RLock()
 	defer tc.RUnlock()
 	return tc.taskConfig

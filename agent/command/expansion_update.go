@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -62,7 +62,7 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *update) ExecuteUpdates(ctx context.Context, conf *model.TaskConfig) error {
+func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	for _, update := range c.Updates {
 		if ctx.Err() != nil {
 			return errors.New("operation aborted")
@@ -91,7 +91,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *model.TaskConfig) err
 
 // Execute updates the expansions. Fulfills Command interface.
 func (c *update) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	err := c.ExecuteUpdates(ctx, conf)
 

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
 )
 
+// TODO (EVG-13239): remove once agents have updated.
 // GetDistro loads the task's distro and sends it to the requester.
 func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
@@ -28,4 +30,15 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	// agent can't properly unmarshal provider settings
 	h.Distro.ProviderSettingsList = nil
 	gimlet.WriteJSON(w, h.Distro)
+}
+
+func (as *APIServer) GetDistroView(w http.ResponseWriter, r *http.Request) {
+	h := MustHaveHost(r)
+
+	dv := apimodels.DistroView{
+		CloneMethod:         h.Distro.CloneMethod,
+		DisableShallowClone: h.Distro.DisableShallowClone,
+		WorkDir:             h.Distro.WorkDir,
+	}
+	gimlet.WriteJSON(w, dv)
 }

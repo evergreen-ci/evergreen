@@ -802,6 +802,12 @@ func DeleteVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
 	}
+	if vol.Host != "" {
+		success, statusCode, gqlErr, detachErr := DetachVolume(ctx, volumeId)
+		if err != nil {
+			return success, statusCode, gqlErr, detachErr
+		}
+	}
 	mgr, err := getEC2Manager(ctx, vol)
 	if err != nil {
 		return false, http.StatusInternalServerError, InternalServerError, err

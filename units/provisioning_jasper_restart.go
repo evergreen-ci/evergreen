@@ -190,6 +190,7 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	writePreconditionScriptsCmd := j.host.WriteJasperPreconditionScriptsCommands()
 
 	if j.RestartThroughJasper {
 		client, err := j.host.JasperClient(ctx, j.env)
@@ -229,6 +230,25 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			}))
 			j.AddError(err)
 			return
+		}
+
+		if len(writePreconditionScriptsCmd) != 0 {
+			writePreconditionScriptsOpts := &options.Create{
+				Args: []string{
+					j.host.Distro.ShellBinary(), "-l", "-c", writePreconditionScriptsCmd,
+				},
+			}
+			if output, err = j.host.RunJasperProcess(ctx, j.env, writePreconditionScriptsOpts); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "could not write Jasper precondition scripts to host",
+					"logs":    output,
+					"host_id": j.host.Id,
+					"distro":  j.host.Distro.Id,
+					"job":     j.ID(),
+				}))
+				j.AddError(err)
+				return
+			}
 		}
 
 		fetchCmd := j.host.FetchJasperCommand(j.settings.HostJasper)
@@ -311,6 +331,19 @@ func (j *jasperRestartJob) Run(ctx context.Context) {
 			}))
 			j.AddError(err)
 			return
+		}
+		if len(writePreconditionScriptsCmd) != 0 {
+			if output, err := j.host.RunSSHCommand(ctx, writeCredentialsCmd); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "could not run SSH command to write precondition scripts",
+					"logs":    output,
+					"host_id": j.host.Id,
+					"distro":  j.host.Distro.Id,
+					"job":     j.ID(),
+				}))
+				j.AddError(err)
+				return
+			}
 		}
 
 		if output, err := j.host.RunSSHCommand(ctx, j.host.FetchJasperCommand(j.settings.HostJasper)); err != nil {

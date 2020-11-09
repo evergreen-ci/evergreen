@@ -4,7 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
@@ -54,7 +54,7 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *perfSend) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// Read the file and add the evergreen info.
 	filename := filepath.Join(conf.WorkDir, c.File)
@@ -76,7 +76,7 @@ func (c *perfSend) Execute(ctx context.Context,
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "failed to upload report to cedar")
 }
 
-func (c *perfSend) addEvgData(report *poplar.Report, conf *model.TaskConfig) {
+func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) {
 	report.Project = conf.Task.Project
 	report.Version = conf.Task.Version
 	report.Order = conf.Task.RevisionOrderNumber

@@ -149,6 +149,13 @@ func (ws *windowsService) Platform() string {
 	return version
 }
 
+func (ws *windowsService) Interactive() bool {
+	if ws.Config.ForceInteractive {
+		return true
+	}
+	return system.Interactive()
+}
+
 func (ws *windowsService) setError(err error) {
 	ws.errSync.Lock()
 	defer ws.errSync.Unlock()
@@ -253,7 +260,7 @@ func (ws *windowsService) Uninstall() error {
 
 func (ws *windowsService) Run() error {
 	ws.setError(nil)
-	if !interactive {
+	if !ws.Interactive() {
 		// Return error messages from start and stop routines
 		// that get executed in the Execute method.
 		// Guarded with a mutex as it may run a different thread
@@ -422,7 +429,7 @@ func getStopTimeout() time.Duration {
 }
 
 func (ws *windowsService) Logger(errs chan<- error) (Logger, error) {
-	if interactive {
+	if ws.Interactive() {
 		return ConsoleLogger, nil
 	}
 	return ws.SystemLogger(errs)

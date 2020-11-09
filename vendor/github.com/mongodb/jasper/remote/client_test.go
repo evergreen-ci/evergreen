@@ -20,7 +20,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/scripting"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -451,6 +450,49 @@ func addBasicClientTests(modify testutil.OptsModify, tests ...clientTestCase) []
 	}, tests...)
 }
 
+func remoteManagerTestCases(httpClient *http.Client) map[string]func(context.Context, *testing.T) Manager {
+	return map[string]func(context.Context, *testing.T) Manager{
+		"MDB": func(ctx context.Context, t *testing.T) Manager {
+			mngr, err := jasper.NewSynchronizedManager(false)
+			require.NoError(t, err)
+
+			client, err := makeTestMDBServiceAndClient(ctx, mngr)
+			require.NoError(t, err)
+			return client
+		},
+		"RPC/TLS": func(ctx context.Context, t *testing.T) Manager {
+			mngr, err := jasper.NewSynchronizedManager(false)
+			require.NoError(t, err)
+
+			client, err := makeTLSRPCServiceAndClient(ctx, mngr)
+			require.NoError(t, err)
+			return client
+		},
+		"RPC/Insecure": func(ctx context.Context, t *testing.T) Manager {
+			assert.NotPanics(t, func() {
+				newRPCClient(nil)
+			})
+
+			mngr, err := jasper.NewSynchronizedManager(false)
+			require.NoError(t, err)
+
+			client, err := makeInsecureRPCServiceAndClient(ctx, mngr)
+			require.NoError(t, err)
+			return client
+		},
+		"REST": func(ctx context.Context, t *testing.T) Manager {
+			_, port, err := startRESTService(ctx, httpClient)
+			require.NoError(t, err)
+
+			client := &restClient{
+				prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
+				client: httpClient,
+			}
+			return client
+		},
+	}
+}
+
 func TestManagerImplementations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -458,62 +500,8 @@ func TestManagerImplementations(t *testing.T) {
 	httpClient := testutil.GetHTTPClient()
 	defer testutil.PutHTTPClient(httpClient)
 
-	for _, factory := range []struct {
-		Name        string
-		Constructor func(context.Context, *testing.T) Manager
-	}{
-		{
-			Name: "MDB",
-			Constructor: func(ctx context.Context, t *testing.T) Manager {
-				mngr, err := jasper.NewSynchronizedManager(false)
-				require.NoError(t, err)
-
-				client, err := makeTestMDBServiceAndClient(ctx, mngr)
-				require.NoError(t, err)
-				return client
-			},
-		},
-		{
-			Name: "RPC/TLS",
-			Constructor: func(ctx context.Context, t *testing.T) Manager {
-				mngr, err := jasper.NewSynchronizedManager(false)
-				require.NoError(t, err)
-
-				client, err := makeTLSRPCServiceAndClient(ctx, mngr)
-				require.NoError(t, err)
-				return client
-			},
-		},
-		{
-			Name: "RPC/Insecure",
-			Constructor: func(ctx context.Context, t *testing.T) Manager {
-				assert.NotPanics(t, func() {
-					newRPCClient(nil)
-				})
-
-				mngr, err := jasper.NewSynchronizedManager(false)
-				require.NoError(t, err)
-
-				client, err := makeInsecureRPCServiceAndClient(ctx, mngr)
-				require.NoError(t, err)
-				return client
-			},
-		},
-		{
-			Name: "REST",
-			Constructor: func(ctx context.Context, t *testing.T) Manager {
-				_, port, err := startRESTService(ctx, httpClient)
-				require.NoError(t, err)
-
-				client := &restClient{
-					prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
-					client: httpClient,
-				}
-				return client
-			},
-		},
-	} {
-		t.Run(factory.Name, func(t *testing.T) {
+	for managerName, makeManager := range remoteManagerTestCases(httpClient) {
+		t.Run(managerName, func(t *testing.T) {
 			for _, modify := range []struct {
 				Name    string
 				Options testutil.OptsModify
@@ -1076,6 +1064,18 @@ func TestManagerImplementations(t *testing.T) {
 							},
 						},
 						clientTestCase{
+							Name: "LoggingCacheCreateFailsWithInvalidOptions",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								lc := client.LoggingCache(ctx)
+								logger, err := lc.Create("new_logger", &options.Output{
+									SendErrorToOutput: true,
+									SendOutputToError: true,
+								})
+								assert.Error(t, err)
+								assert.Zero(t, logger)
+							},
+						},
+						clientTestCase{
 							Name: "LoggingCachePutNotImplemented",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
@@ -1125,6 +1125,8 @@ func TestManagerImplementations(t *testing.T) {
 								logger1, err := lc.Create("logger1", &options.Output{})
 								require.NoError(t, err)
 								require.NotNil(t, lc.Get(logger1.ID))
+								// We have to sleep to force this logger to be
+								// pruned.
 								time.Sleep(2 * time.Second)
 
 								logger2, err := lc.Create("logger2", &options.Output{})
@@ -1169,28 +1171,74 @@ func TestManagerImplementations(t *testing.T) {
 						clientTestCase{
 							Name: "SendMessagesSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								if runtime.GOOS == "windows" {
+									// TODO (EVG-13101): do not skip this test
+									t.Skip("Windows will fail because of the leaked file handle from not closing the sender in the remote service")
+								}
 								lc := client.LoggingCache(ctx)
-								logger1, err := lc.Create("logger1", &options.Output{})
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "logging_cache")
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(tmpDir))
+								}()
+								tmpFile := filepath.Join(tmpDir, "send_messages")
+
+								fileOpts := &options.FileLoggerOptions{
+									Filename: tmpFile,
+									Base: options.BaseOptions{
+										Format: options.LogFormatPlain,
+									},
+								}
+								config := &options.LoggerConfig{}
+								require.NoError(t, config.Set(fileOpts))
+
+								logger, err := lc.Create("logger", &options.Output{
+									Loggers: []*options.LoggerConfig{config},
+								})
 								require.NoError(t, err)
 
 								payload := options.LoggingPayload{
-									LoggerID: logger1.ID,
+									LoggerID: logger.ID,
 									Data:     "new log message",
-									Priority: level.Warning,
+									Priority: level.Info,
 									Format:   options.LoggingPayloadFormatString,
 								}
 								assert.NoError(t, client.SendMessages(ctx, payload))
+
+								content, err := ioutil.ReadFile(tmpFile)
+								require.NoError(t, err)
+								assert.Equal(t, payload.Data, strings.TrimSpace(string(content)))
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingGetWithNonexistentHarnessFails",
+							Name: "CreateScriptingSucceeds",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
+								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, os.RemoveAll(tmpDir))
+								}()
+								sh := createTestScriptingHarness(ctx, t, client, tmpDir)
+								assert.NotZero(t, sh)
+							},
+						},
+						clientTestCase{
+							Name: "CreateScriptingFailsWithInvalidOptions",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								sh, err := client.CreateScripting(ctx, &options.ScriptingGolang{})
+								assert.Error(t, err)
+								assert.Zero(t, sh)
+							},
+						},
+						clientTestCase{
+							Name: "GetScriptingWithNonexistentHarnessFails",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								_, err := client.GetScripting(ctx, "nonexistent")
 								assert.Error(t, err)
 							},
 						},
 						clientTestCase{
-							Name: "ScriptingGetWithExistingHarnessSucceeds",
+							Name: "GetScriptingWithExistingHarnessSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 								require.NoError(t, err)
@@ -1204,130 +1252,11 @@ func TestManagerImplementations(t *testing.T) {
 								assert.Equal(t, expectedHarness.ID(), harness.ID())
 							},
 						},
-						clientTestCase{
-							Name: "ScriptingSetupSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-								assert.NoError(t, harness.Setup(ctx))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingCleanupSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-								assert.NoError(t, harness.Cleanup(ctx))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingRunSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-
-								require.NoError(t, err)
-								tmpFile := filepath.Join(tmpDir, "fake_script.go")
-								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(0) }`), 0755))
-								assert.NoError(t, harness.Run(ctx, []string{tmpFile}))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingRunErrors",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-
-								tmpFile := filepath.Join(tmpDir, "fake_script.go")
-								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(42) }`), 0755))
-								assert.Error(t, harness.Run(ctx, []string{tmpFile}))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingRunScriptSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-								assert.NoError(t, harness.RunScript(ctx, `package main; import "fmt"; func main() { fmt.Println("Hello World") }`))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingRunScriptErrors",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-								require.Error(t, harness.RunScript(ctx, `package main; import "os"; func main() { os.Exit(42) }`))
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingBuildSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-
-								tmpFile := filepath.Join(tmpDir, "fake_script.go")
-								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "os"; func main() { os.Exit(0) }`), 0755))
-								_, err = harness.Build(ctx, tmpDir, []string{
-									"-o",
-									filepath.Join(tmpDir, "fake_script"),
-									tmpFile,
-								})
-								require.NoError(t, err)
-								_, err = os.Stat(filepath.Join(tmpFile))
-								require.NoError(t, err)
-							},
-						},
-						clientTestCase{
-							Name: "ScriptingTestSucceeds",
-							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
-								require.NoError(t, err)
-								defer func() {
-									assert.NoError(t, os.RemoveAll(tmpDir))
-								}()
-								harness := createTestScriptingHarness(ctx, t, client, tmpDir)
-
-								tmpFile := filepath.Join(tmpDir, "fake_script_test.go")
-								require.NoError(t, ioutil.WriteFile(tmpFile, []byte(`package main; import "testing"; func TestMain(t *testing.T) { return }`), 0755))
-								results, err := harness.Test(ctx, tmpDir, scripting.TestOptions{Name: "dummy"})
-								require.NoError(t, err)
-								require.Len(t, results, 1)
-							},
-						},
 					) {
 						t.Run(test.Name, func(t *testing.T) {
 							tctx, cancel := context.WithTimeout(ctx, testutil.RPCTestTimeout)
 							defer cancel()
-							client := factory.Constructor(tctx, t)
+							client := makeManager(tctx, t)
 							defer func() {
 								assert.NoError(t, client.CloseConnection())
 							}()
@@ -1338,14 +1267,6 @@ func TestManagerImplementations(t *testing.T) {
 			}
 		})
 	}
-}
-
-func createTestScriptingHarness(ctx context.Context, t *testing.T, client Manager, dir string) scripting.Harness {
-	opts := options.NewGolangScriptingEnvironment(filepath.Join(dir, "gopath"), runtime.GOROOT())
-	harness, err := client.CreateScripting(ctx, opts)
-	require.NoError(t, err)
-
-	return harness
 }
 
 func createProcs(ctx context.Context, opts *options.Create, manager Manager, num int) ([]jasper.Process, error) {

@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 )
 
@@ -14,7 +14,7 @@ func gitApplyPatchFactory() Command                                    { return 
 func (*gitApplyPatch) Name() string                                    { return "git.apply_patch" }
 func (*gitApplyPatch) ParseParams(params map[string]interface{}) error { return nil }
 func (*gitApplyPatch) Execute(ctx context.Context,
-	client client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Task().Warning("git.apply_patch is deprecated. Patches are applied in git.get_project.")
 	return nil
@@ -27,7 +27,7 @@ func fetchVarsFactory() Command                                      { return &f
 func (c *fetchVars) Name() string                                    { return "expansions.fetch_vars" }
 func (c *fetchVars) ParseParams(params map[string]interface{}) error { return nil }
 func (c *fetchVars) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Task().Warning("expansions.fetch deprecated")
 	return nil
@@ -39,7 +39,7 @@ func shellCleanupFactory() Command                                       { retur
 func (cc *shellCleanup) Name() string                                    { return "shell.cleanup" }
 func (cc *shellCleanup) ParseParams(params map[string]interface{}) error { return nil }
 func (cc *shellCleanup) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Execution().Warning("shell.cleanup is deprecated. Process cleanup is now enabled by default.")
 	return nil
@@ -51,7 +51,7 @@ func shellTrackFactory() Command                                       { return 
 func (cc *shellTrack) Name() string                                    { return "shell.track" }
 func (cc *shellTrack) ParseParams(params map[string]interface{}) error { return nil }
 func (cc *shellTrack) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Execution().Warning("shell.track is deprecated. Process tracking is now enabled by default.")
 	return nil

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -19,7 +20,7 @@ import (
 type ArtifactsSuite struct {
 	suite.Suite
 	cmd    *attachArtifacts
-	conf   *model.TaskConfig
+	conf   *internal.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
 	mock   *client.Mock
@@ -58,7 +59,7 @@ func (s *ArtifactsSuite) SetupTest() {
 	var err error
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 	s.cmd = attachArtifactsFactory().(*attachArtifacts)

@@ -684,7 +684,7 @@ func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
 }
 
-func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
+func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, titleOverride string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}
@@ -703,12 +703,17 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch,
 		return nil, errors.New("pr contains no base branch data")
 	}
 
+	title := pr.GetTitle()
+	if titleOverride != "" {
+		title = titleOverride
+	}
+
 	patchDoc := &Patch{
 		Id:          id,
 		Project:     projectID,
 		Author:      u.Id,
 		Githash:     pr.Base.GetSHA(),
-		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), pr.GetTitle(), pr.GetHTMLURL()),
+		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), title, pr.GetHTMLURL()),
 		CreateTime:  time.Now(),
 		Status:      evergreen.PatchCreated,
 		Alias:       alias,

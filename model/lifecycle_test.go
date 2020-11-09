@@ -1140,19 +1140,19 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(dbTasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
-			So(dbTasks[5].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded}})
-			So(dbTasks[6].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[1].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[4].Id, Status: evergreen.TaskSucceeded}})
-			So(dbTasks[7].DependsOn, ShouldResemble,
-				[]task.Dependency{
-					{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded},
-					{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded}})
+			So(dbTasks[5].DependsOn, ShouldHaveLength, 2)
+			So(dbTasks[5].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[5].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded})
+
+			So(dbTasks[6].DependsOn, ShouldHaveLength, 2)
+			So(dbTasks[6].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[1].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[6].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[4].Id, Status: evergreen.TaskSucceeded})
+
+			So(dbTasks[7].DependsOn, ShouldHaveLength, 3)
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[0].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[3].Id, Status: evergreen.TaskSucceeded})
+			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded})
+
 			So(dbTasks[8].DisplayName, ShouldEqual, "taskE")
 			So(len(dbTasks[8].DependsOn), ShouldEqual, 8)
 		})
@@ -1472,6 +1472,145 @@ func TestCreateTaskGroup(t *testing.T) {
 	assert.Contains(tasks[2].DependsOn[0].TaskId, "example_task_2")
 }
 
+func TestGetTaskIdTable(t *testing.T) {
+	require.NoError(t, db.Clear(task.Collection))
+
+	v := &Version{
+		Id:         "v0",
+		Revision:   "abcde",
+		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+
+	p := &Project{
+		Identifier: "p0",
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv0",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "t0",
+					},
+					{
+						Name: "t1",
+					},
+				},
+			},
+		},
+	}
+
+	newPairs := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			// imagine t1 is a patch_optional task not included in newPairs
+			{Variant: "bv0", TaskName: "t0"},
+		},
+	}
+	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
+	require.NoError(t, existingTask.Insert())
+
+	tables, err := getTaskIdTables(v, p, newPairs)
+	assert.NoError(t, err)
+	assert.Len(t, tables.ExecutionTasks, 2)
+	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
+	assert.Equal(t, "t2", tables.ExecutionTasks.GetId("bv0", "existing_task"))
+}
+
+func TestMakeDeps(t *testing.T) {
+	table := TaskIdTable{
+		TVPair{TaskName: "t0", Variant: "bv0"}: "bv0_t0",
+		TVPair{TaskName: "t1", Variant: "bv0"}: "bv0_t1",
+		TVPair{TaskName: "t0", Variant: "bv1"}: "bv1_t0",
+		TVPair{TaskName: "t1", Variant: "bv1"}: "bv1_t1",
+	}
+	thisTask := &task.Task{
+		Id:           "bv1_t1",
+		BuildVariant: "bv1",
+		DisplayName:  "t1",
+	}
+	tSpec := BuildVariantTaskUnit{}
+
+	t.Run("All tasks in all variants", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: AllVariants},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 3)
+		expectedIDs := []string{"bv0_t0", "bv0_t1", "bv1_t0"}
+		for _, dep := range deps {
+			assert.Contains(t, expectedIDs, dep.TaskId)
+			assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+		}
+	})
+
+	t.Run("All tasks in bv0", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 2)
+		expectedIDs := []string{"bv0_t0", "bv0_t1"}
+		for _, dep := range deps {
+			assert.Contains(t, expectedIDs, dep.TaskId)
+			assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
+		}
+	})
+
+	t.Run("specific task", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: "t0", Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies, Variant: AllVariants},
+			{Name: "t0", Variant: "bv0"},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 3)
+	})
+
+	t.Run("non-default status", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: "t0", Variant: "bv0", Status: evergreen.TaskFailed},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskFailed, deps[0].Status)
+	})
+
+	t.Run("unspecified variant", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Name: AllDependencies},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv1_t0", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
+	})
+
+	t.Run("unspecified name", func(t *testing.T) {
+		tSpec.DependsOn = []TaskUnitDependency{
+			{Variant: AllVariants},
+		}
+
+		deps := makeDeps(tSpec, thisTask, table)
+		assert.Len(t, deps, 1)
+		assert.Equal(t, "bv0_t1", deps[0].TaskId)
+		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
+	})
+}
+
 func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {
@@ -1751,7 +1890,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a version
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
-	tasks, err := task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err := task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1762,7 +1901,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a build
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1783,7 +1922,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	assert.True(foundDisplayTask)
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1804,7 +1943,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", allTasks, false, "test"))
-	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	tasks, err = task.FindAll(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {

@@ -3,14 +3,14 @@ tasks:
   commands:
   - command: attach.xunit_results
     params:
-      file: "command/testdata/xunit/junit_${file_num}.xml" #junit_3.xml
+      file: "agent/command/testdata/xunit/junit_${file_num}.xml" #junit_3.xml
   - command: attach.xunit_results
     params:
       files:
-        - "command/testdata/xunit/junit_1.xml"
-        - "command/testdata/xunit/junit_2.xml"
-        - "command/testdata/xunit/junit_3.xml"
-        - "command/testdata/xunit/junit_4.xml"
+        - "agent/command/testdata/xunit/junit_1.xml"
+        - "agent/command/testdata/xunit/junit_2.xml"
+        - "agent/command/testdata/xunit/junit_3.xml"
+        - "agent/command/testdata/xunit/junit_4.xml"
 
 buildvariants:
 - name: linux-64

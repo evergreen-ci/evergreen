@@ -1,1 +1,16 @@
-{}
+{
+    "volumes": [
+        {
+            "_id":"vol-0603934fsas024db5",
+            "display_name":"",
+            "created_by":"admin",
+            "type":"gp2",
+            "size":500,
+            "availability_zone":"us-east-1a",
+            "expiration":{"$date":"2021-09-03T18:08:52.946Z"},
+            "no_expiration":false,
+            "created_at":{"$date":"2020-09-02T18:08:53.216Z"},
+            "home_volume":false
+        }
+   ]
+}

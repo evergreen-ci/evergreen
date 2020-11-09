@@ -3,7 +3,7 @@ package command
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -123,12 +123,12 @@ func TestExpandS3GetParams(t *testing.T) {
 	Convey("With an s3 get command and a task config", t, func() {
 
 		var cmd *s3get
-		var conf *model.TaskConfig
+		var conf *internal.TaskConfig
 
 		Convey("when expanding the command's params", func() {
 
 			cmd = &s3get{}
-			conf = &model.TaskConfig{
+			conf = &internal.TaskConfig{
 				Expansions:           util.NewExpansions(map[string]string{}),
 				RestrictedExpansions: util.NewExpansions(map[string]string{}),
 			}

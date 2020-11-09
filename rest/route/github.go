@@ -552,7 +552,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.New("PR contains no base branch label")
 	}
 
-	modules := restModel.ParseGitHubCommentModules(*event.Comment.Body)
+	cqInfo := restModel.ParseGitHubComment(*event.Comment.Body)
 	baseBranch := *pr.Base.Ref
 	projectRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
@@ -562,8 +562,10 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 	item := restModel.APICommitQueueItem{
-		Issue:   restModel.ToStringPtr(strconv.Itoa(PRNum)),
-		Modules: modules,
+		Issue:           restModel.ToStringPtr(strconv.Itoa(PRNum)),
+		TitleOverride:   &cqInfo.TitleOverride,
+		MessageOverride: &cqInfo.MessageOverride,
+		Modules:         cqInfo.Modules,
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item, false)
 	if err != nil {

@@ -650,35 +650,38 @@ func (tt TaskIdTable) GetId(variant, taskName string) string {
 	return tt[TVPair{variant, taskName}]
 }
 
-// GetIdsForAllVariants returns all task Ids for taskName on all variants.
-func (tt TaskIdTable) GetIdsForAllVariants(taskName string) []string {
-	return tt.GetIdsForAllVariantsExcluding(taskName, TVPair{})
-}
-
-// GetIdsForAllVariants returns all task Ids for taskName on all variants, excluding
-// the specific task denoted by the task/variant pair.
-func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVPair) []string {
+// GetIdsForTaskInAllVariants returns all task Ids for taskName on all variants
+func (tt TaskIdTable) GetIdsForTaskInAllVariants(taskName string) []string {
 	ids := []string{}
-	for pair := range tt {
-		if pair.TaskName == taskName && pair != exclude {
-			if id := tt[pair]; id != "" {
-				ids = append(ids, id)
-			}
+	for pair, id := range tt {
+		if pair.TaskName != taskName || id == "" {
+			continue
 		}
+		ids = append(ids, id)
 	}
 	return ids
 }
 
-// GetIdsForTasks returns all task Ids for tasks on all variants != the current task.
-// The current variant and task must be passed in to avoid cycle generation.
-func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []string {
+// GetIdsForAllTasksInVariant returns all task Ids for all tasks on a variant
+func (tt TaskIdTable) GetIdsForAllTasksInVariant(variantName string) []string {
 	ids := []string{}
-	for pair := range tt {
-		if !(pair.TaskName == taskName && pair.Variant == currentVariant) {
-			if id := tt[pair]; id != "" {
-				ids = append(ids, id)
-			}
+	for pair, id := range tt {
+		if pair.Variant != variantName || id == "" {
+			continue
 		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// GetIdsForAllTasks returns every id in the table
+func (tt TaskIdTable) GetIdsForAllTasks() []string {
+	ids := make([]string, 0, len(tt))
+	for _, id := range tt {
+		if id == "" {
+			continue
+		}
+		ids = append(ids, id)
 	}
 	return ids
 }
@@ -726,7 +729,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
 func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs) TaskIdConfig {
-	config := TaskIdConfig{}
+	config := TaskIdConfig{ExecutionTasks: TaskIdTable{}, DisplayTasks: TaskIdTable{}}
 	processedVariants := map[string]bool{}
 
 	// resolve task groups to exec tasks
@@ -1021,38 +1024,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 		}
 	}
 	return nil
-}
-
-// GetTaskGroup returns the task group for a given task from its project
-// Only called by agent so we don't retrieve project from database
-func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
-	if tc == nil {
-		return nil, errors.New("unable to get task group: TaskConfig is nil")
-	}
-	if tc.Task == nil {
-		return nil, errors.New("unable to get task group: task is nil")
-	}
-	if tc.Task.Version == "" {
-		return nil, errors.New("task has no version")
-	}
-	if tc.Project == nil {
-		return nil, errors.New("project is nil")
-	}
-
-	if taskGroup == "" {
-		// if there is no named task group, fall back to project definitions
-		return &TaskGroup{
-			SetupTask:          tc.Project.Pre,
-			TeardownTask:       tc.Project.Post,
-			Timeout:            tc.Project.Timeout,
-			SetupGroupFailTask: tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
-		}, nil
-	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
-	}
-	return tg, nil
 }
 
 func FindProjectFromVersionID(versionStr string) (*Project, error) {

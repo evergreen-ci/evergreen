@@ -309,19 +309,23 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		}
 	}
 
-	return h.jasperServiceCommand(settings.HostJasper, jcli.ForceReinstallCommand, params...)
+	for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
+		params = append(params, fmt.Sprintf("--precondition=%s", ps.Path))
+	}
+
+	return h.jasperServiceCommand(settings.HostJasper, jcli.ServiceForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
 // the existing configuration.
 func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.RestartCommand)
+	return h.jasperServiceCommand(config, jcli.ServiceRestartCommand)
 }
 
 // QuietUninstallJasperCommand returns the command to uninstall the Jasper
 // service. If the service is already not installed, this no-ops.
 func (h *Host) QuietUninstallJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.UninstallCommand, "--quiet")
+	return h.jasperServiceCommand(config, jcli.ServiceUninstallCommand, "--quiet")
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
@@ -463,6 +467,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		var setupJasperCmds []string
 		setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
 		setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds...)
+		if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
+			setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
+		}
 		setupJasperCmds = append(setupJasperCmds,
 			h.FetchJasperCommand(settings.HostJasper),
 			h.ForceReinstallJasperCommand(settings),
@@ -504,6 +511,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	var setupJasperCmds []string
 	setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
 	setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds)
+	if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
+		setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
+	}
 	setupJasperCmds = append(setupJasperCmds,
 		h.FetchJasperCommand(settings.HostJasper),
 		h.ForceReinstallJasperCommand(settings),
@@ -713,6 +723,17 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 	}
 
 	return strings.Join(cmds, " && "), nil
+}
+
+// WriteJasperPreconditionScriptsCommands returns the command to write the
+// Jasper precondition scripts to files.
+func (h *Host) WriteJasperPreconditionScriptsCommands() string {
+	var cmds []string
+	for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
+		cmds = append(cmds, fmt.Sprintf("tee %s <<'EOF'\n%s\nEOF", ps.Path, ps.Script))
+		cmds = append(cmds, fmt.Sprintf("chmod 755 %s", ps.Path))
+	}
+	return strings.Join(cmds, "\n")
 }
 
 func bufferedWriteFileCommands(path, content string) []string {
@@ -1033,7 +1054,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 						return false, nil
 					}
 					return true, errors.New("fetching task data not finished")
-				}, 5, time.Second, 15*time.Second)
+				}, 10, time.Second, 45*time.Second)
 			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
 			if err == nil {
 				return nil
@@ -1084,6 +1105,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
@@ -1104,7 +1126,6 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		fmt.Sprintf("--shell_path=%s", shellPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials=%s", credsPath),
-		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
 

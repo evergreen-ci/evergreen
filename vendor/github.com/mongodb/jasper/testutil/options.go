@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -61,12 +62,24 @@ func ValidMongoDBDownloadOptions() options.MongoDBDownload {
 	}
 }
 
-// ValidScriptingHarnessOptions returns valid options for creating a Python
-// scripting environment.
-func ValidScriptingHarnessOptions(dir string) options.ScriptingHarness {
+// ValidPythonScriptingHarnessOptions returns valid options for creating a
+// Python scripting harness.
+func ValidPythonScriptingHarnessOptions(dir string) options.ScriptingHarness {
 	return &options.ScriptingPython{
 		VirtualEnvPath: dir,
 		Packages:       []string{"requests"},
+	}
+}
+
+// ValidGolangScriptingHarnessOptions returns valid options for creating a
+// Golang scripting harness.
+func ValidGolangScriptingHarnessOptions(dir string) options.ScriptingHarness {
+	return &options.ScriptingGolang{
+		Gopath: filepath.Join(dir, "gopath"),
+		Goroot: runtime.GOROOT(),
+		Packages: []string{
+			"github.com/pkg/errors",
+		},
 	}
 }
 

@@ -25,6 +25,8 @@ models:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+  Parameter:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   VariantTask:
@@ -138,3 +140,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
   AWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
+  SpawnHostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig

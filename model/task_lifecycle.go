@@ -298,7 +298,7 @@ func AbortTask(taskId, caller string) error {
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
+	allTasks, err := task.FindAll(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
@@ -970,7 +970,11 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 }
 
 func MarkTasksReset(taskIds []string) error {
-	tasks, err := task.FindWithDisplayTasks(task.ByIds(taskIds))
+	tasks, err := task.FindAll(task.ByIds(taskIds))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1037,9 +1041,13 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindWithDisplayTasks(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindAll(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
-		return results, err
+		return results, errors.WithStack(err)
+	}
+	tasksToRestart, err = task.AddParentDisplayTasks(tasksToRestart)
+	if err != nil {
+		return results, errors.WithStack(err)
 	}
 
 	type taskGroupAndBuild struct {

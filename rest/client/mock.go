@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -177,10 +176,8 @@ func (c *Mock) GetProjectRef(ctx context.Context, td TaskData) (*serviceModel.Pr
 	}, nil
 }
 
-// GetDistro returns a mock Distro.
-func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, error) {
-	return &distro.Distro{
-		Id:      "mock_distro_id",
+func (c *Mock) GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error) {
+	return &apimodels.DistroView{
 		WorkDir: ".",
 	}, nil
 }

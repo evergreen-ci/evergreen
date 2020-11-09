@@ -12,8 +12,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -171,7 +171,7 @@ func (s3pc *s3put) validate() error {
 
 // Apply the expansions from the relevant task config (including restricted expansion)
 // to all appropriate fields of the s3put.
-func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
+func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(s3pc, conf.GetExpansionsWithRestricted()); err != nil {
 		return errors.WithStack(err)
@@ -213,7 +213,7 @@ func (s3pc *s3put) shouldRunForVariant(buildVariantName string) bool {
 // Implementation of Execute.  Expands the parameters, and then puts the
 // resource to s3.
 func (s3pc *s3put) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand necessary params
 	if err := s3pc.expandParams(conf); err != nil {

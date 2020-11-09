@@ -81,6 +81,12 @@ func TestDistroToService(t *testing.T) {
 				LockedMemoryKB:  3,
 				VirtualMemoryKB: 4,
 			},
+			PreconditionScripts: []APIPreconditionScript{
+				{
+					Path:   ToStringPtr("/tmp/foo"),
+					Script: ToStringPtr("echo foo"),
+				},
+			},
 		},
 		Note: ToStringPtr("note1"),
 		HomeVolumeSettings: APIHomeVolumeSettings{
@@ -98,23 +104,28 @@ func TestDistroToService(t *testing.T) {
 	d, ok := res.(*distro.Distro)
 	require.True(t, ok)
 
-	assert.Equal(t, apiDistro.CloneMethod, ToStringPtr(d.CloneMethod))
-	assert.Equal(t, apiDistro.BootstrapSettings.Method, ToStringPtr(d.BootstrapSettings.Method))
-	assert.Equal(t, apiDistro.BootstrapSettings.Communication, ToStringPtr(d.BootstrapSettings.Communication))
-	assert.Equal(t, apiDistro.BootstrapSettings.ClientDir, ToStringPtr(d.BootstrapSettings.ClientDir))
-	assert.Equal(t, apiDistro.BootstrapSettings.JasperBinaryDir, ToStringPtr(d.BootstrapSettings.JasperBinaryDir))
-	assert.Equal(t, apiDistro.BootstrapSettings.JasperCredentialsPath, ToStringPtr(d.BootstrapSettings.JasperCredentialsPath))
-	assert.Equal(t, apiDistro.BootstrapSettings.ServiceUser, ToStringPtr(d.BootstrapSettings.ServiceUser))
-	assert.Equal(t, apiDistro.BootstrapSettings.ShellPath, ToStringPtr(d.BootstrapSettings.ShellPath))
-	assert.Equal(t, apiDistro.BootstrapSettings.Env, []APIEnvVar{{Key: ToStringPtr("envKey"), Value: ToStringPtr("envValue")}})
+	assert.Equal(t, FromStringPtr(apiDistro.CloneMethod), d.CloneMethod)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Method), d.BootstrapSettings.Method)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Communication), d.BootstrapSettings.Communication)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ClientDir), d.BootstrapSettings.ClientDir)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.JasperBinaryDir), d.BootstrapSettings.JasperBinaryDir)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.JasperCredentialsPath), d.BootstrapSettings.JasperCredentialsPath)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ServiceUser), d.BootstrapSettings.ServiceUser)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ShellPath), d.BootstrapSettings.ShellPath)
+	require.Len(t, d.BootstrapSettings.Env, 1)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Env[0].Key), d.BootstrapSettings.Env[0].Key)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Env[0].Value), d.BootstrapSettings.Env[0].Value)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumFiles, d.BootstrapSettings.ResourceLimits.NumFiles)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
-	assert.Equal(t, apiDistro.Note, ToStringPtr(d.Note))
-	assert.Equal(t, apiDistro.HomeVolumeSettings.FormatCommand, ToStringPtr(d.HomeVolumeSettings.FormatCommand))
-	assert.Equal(t, apiDistro.IcecreamSettings.SchedulerHost, ToStringPtr(d.IcecreamSettings.SchedulerHost))
-	assert.Equal(t, apiDistro.IcecreamSettings.ConfigPath, ToStringPtr(d.IcecreamSettings.ConfigPath))
+	require.Len(t, d.BootstrapSettings.PreconditionScripts, 1)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Path), d.BootstrapSettings.PreconditionScripts[0].Path)
+	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
+	assert.Equal(t, FromStringPtr(apiDistro.Note), (d.Note))
+	assert.Equal(t, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
+	assert.Equal(t, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)
+	assert.Equal(t, FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IcecreamSettings.ConfigPath)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

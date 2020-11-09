@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 )
@@ -22,7 +22,7 @@ type Command interface {
 	// Execute runs the command using the agent's logger, communicator,
 	// task config, and a channel for interrupting long-running commands.
 	// Execute is called after ParseParams.
-	Execute(context.Context, client.Communicator, client.LoggerProducer, *model.TaskConfig) error
+	Execute(context.Context, client.Communicator, client.LoggerProducer, *internal.TaskConfig) error
 
 	// A string name for the command
 	Name() string

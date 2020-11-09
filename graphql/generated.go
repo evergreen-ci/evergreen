@@ -275,6 +275,7 @@ type ComplexityRoot struct {
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket            func(childComplexity int, taskID string) int
+		ClearMySubscriptions      func(childComplexity int) int
 		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -317,6 +318,11 @@ type ComplexityRoot struct {
 		Pids     func(childComplexity int) int
 	}
 
+	Parameter struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Patch struct {
 		Activated               func(childComplexity int) int
 		Alias                   func(childComplexity int) int
@@ -332,6 +338,7 @@ type ComplexityRoot struct {
 		Githash                 func(childComplexity int) int
 		Id                      func(childComplexity int) int
 		ModuleCodeChanges       func(childComplexity int) int
+		Parameters              func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
@@ -453,11 +460,18 @@ type ComplexityRoot struct {
 		Source      func(childComplexity int) int
 	}
 
+	SpawnHostConfig struct {
+		SpawnHostsPerUser         func(childComplexity int) int
+		UnexpirableHostsPerUser   func(childComplexity int) int
+		UnexpirableVolumesPerUser func(childComplexity int) int
+	}
+
 	SpruceConfig struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
 		Jira        func(childComplexity int) int
 		Providers   func(childComplexity int) int
+		Spawnhost   func(childComplexity int) int
 		Ui          func(childComplexity int) int
 	}
 
@@ -634,8 +648,9 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		DisplayName func(childComplexity int) int
-		UserID      func(childComplexity int) int
+		DisplayName  func(childComplexity int) int
+		EmailAddress func(childComplexity int) int
+		UserID       func(childComplexity int) int
 	}
 
 	UserConfig struct {
@@ -720,6 +735,7 @@ type MutationResolver interface {
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
 	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
+	ClearMySubscriptions(ctx context.Context) (int, error)
 }
 type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
@@ -1758,6 +1774,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
 
+	case "Mutation.clearMySubscriptions":
+		if e.complexity.Mutation.ClearMySubscriptions == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ClearMySubscriptions(childComplexity), true
+
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
 			break
@@ -2126,6 +2149,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OomTrackerInfo.Pids(childComplexity), true
 
+	case "Parameter.key":
+		if e.complexity.Parameter.Key == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Key(childComplexity), true
+
+	case "Parameter.value":
+		if e.complexity.Parameter.Value == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Value(childComplexity), true
+
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
 			break
@@ -2223,6 +2260,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.ModuleCodeChanges(childComplexity), true
+
+	case "Patch.parameters":
+		if e.complexity.Patch.Parameters == nil {
+			break
+		}
+
+		return e.complexity.Patch.Parameters(childComplexity), true
 
 	case "Patch.patchNumber":
 		if e.complexity.Patch.PatchNumber == nil {
@@ -2853,6 +2897,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SearchReturnInfo.Source(childComplexity), true
 
+	case "SpawnHostConfig.spawnHostsPerUser":
+		if e.complexity.SpawnHostConfig.SpawnHostsPerUser == nil {
+			break
+		}
+
+		return e.complexity.SpawnHostConfig.SpawnHostsPerUser(childComplexity), true
+
+	case "SpawnHostConfig.unexpirableHostsPerUser":
+		if e.complexity.SpawnHostConfig.UnexpirableHostsPerUser == nil {
+			break
+		}
+
+		return e.complexity.SpawnHostConfig.UnexpirableHostsPerUser(childComplexity), true
+
+	case "SpawnHostConfig.unexpirableVolumesPerUser":
+		if e.complexity.SpawnHostConfig.UnexpirableVolumesPerUser == nil {
+			break
+		}
+
+		return e.complexity.SpawnHostConfig.UnexpirableVolumesPerUser(childComplexity), true
+
 	case "SpruceConfig.banner":
 		if e.complexity.SpruceConfig.Banner == nil {
 			break
@@ -2880,6 +2945,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.Providers(childComplexity), true
+
+	case "SpruceConfig.spawnHost":
+		if e.complexity.SpruceConfig.Spawnhost == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.Spawnhost(childComplexity), true
 
 	case "SpruceConfig.ui":
 		if e.complexity.SpruceConfig.Ui == nil {
@@ -3763,6 +3835,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.User.DisplayName(childComplexity), true
 
+	case "User.emailAddress":
+		if e.complexity.User.EmailAddress == nil {
+			break
+		}
+
+		return e.complexity.User.EmailAddress(childComplexity), true
+
 	case "User.userId":
 		if e.complexity.User.UserID == nil {
 			break
@@ -4134,6 +4213,7 @@ type Mutation {
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!): Boolean!
+  clearMySubscriptions: Int!
 }
 
 enum SpawnHostStatusActions {
@@ -4427,6 +4507,7 @@ type Patch {
   time: PatchTime
   taskCount: Int
   baseVersionID: String
+  parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
@@ -4468,6 +4549,11 @@ type ProjectBuildVariant {
   name: String!
   displayName: String!
   tasks: [String!]!
+}
+
+type Parameter {
+  key: String!
+  value: String!
 }
 
 type TaskResult {
@@ -4649,6 +4735,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {
@@ -4779,6 +4866,7 @@ type SpruceConfig {
   banner: String
   bannerTheme: String
   providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
 }
 
 type JiraConfig {
@@ -4795,6 +4883,12 @@ type CloudProviderConfig {
 
 type AWSConfig {
   maxVolumeSizePerUser: Int
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+  spawnHostsPerUser: Int!
 }
 
 type HostEvents {
@@ -11299,6 +11393,40 @@ func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field 
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_clearMySubscriptions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ClearMySubscriptions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Notifications_buildBreak(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -11548,6 +11676,74 @@ func (ec *executionContext) _OomTrackerInfo_pids(ctx context.Context, field grap
 	res := resTmp.([]int)
 	fc.Result = res
 	return ec.marshalOInt2ᚕint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Parameter_key(ctx context.Context, field graphql.CollectedField, obj *model.APIParameter) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Parameter",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Parameter_value(ctx context.Context, field graphql.CollectedField, obj *model.APIParameter) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Parameter",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -12145,6 +12341,40 @@ func (ec *executionContext) _Patch_baseVersionID(ctx context.Context, field grap
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_parameters(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Parameters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIParameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_moduleCodeChanges(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -14779,6 +15009,108 @@ func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, f
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SpawnHostConfig_unexpirableHostsPerUser(ctx context.Context, field graphql.CollectedField, obj *model.APISpawnHostConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpawnHostConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnexpirableHostsPerUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpawnHostConfig_unexpirableVolumesPerUser(ctx context.Context, field graphql.CollectedField, obj *model.APISpawnHostConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpawnHostConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnexpirableVolumesPerUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpawnHostConfig_spawnHostsPerUser(ctx context.Context, field graphql.CollectedField, obj *model.APISpawnHostConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpawnHostConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostsPerUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _SpruceConfig_ui(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -14932,6 +15264,40 @@ func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field g
 	res := resTmp.(*model.APICloudProviders)
 	fc.Result = res
 	return ec.marshalOCloudProviderConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICloudProviders(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SpruceConfig_spawnHost(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "SpruceConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Spawnhost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISpawnHostConfig)
+	fc.Result = res
+	return ec.marshalNSpawnHostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISpawnHostConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -19038,6 +19404,40 @@ func (ec *executionContext) _User_userId(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "User",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EmailAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UserConfig_user(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -22920,6 +23320,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "clearMySubscriptions":
+			out.Values[i] = ec._Mutation_clearMySubscriptions(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22983,6 +23388,38 @@ func (ec *executionContext) _OomTrackerInfo(ctx context.Context, sel ast.Selecti
 			}
 		case "pids":
 			out.Values[i] = ec._OomTrackerInfo_pids(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var parameterImplementors = []string{"Parameter"}
+
+func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet, obj *model.APIParameter) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, parameterImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Parameter")
+		case "key":
+			out.Values[i] = ec._Parameter_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "value":
+			out.Values[i] = ec._Parameter_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23116,6 +23553,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				res = ec._Patch_baseVersionID(ctx, field, obj)
 				return res
 			})
+		case "parameters":
+			out.Values[i] = ec._Patch_parameters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "moduleCodeChanges":
 			out.Values[i] = ec._Patch_moduleCodeChanges(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -24078,6 +24520,43 @@ func (ec *executionContext) _SearchReturnInfo(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var spawnHostConfigImplementors = []string{"SpawnHostConfig"}
+
+func (ec *executionContext) _SpawnHostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISpawnHostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spawnHostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpawnHostConfig")
+		case "unexpirableHostsPerUser":
+			out.Values[i] = ec._SpawnHostConfig_unexpirableHostsPerUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "unexpirableVolumesPerUser":
+			out.Values[i] = ec._SpawnHostConfig_unexpirableVolumesPerUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "spawnHostsPerUser":
+			out.Values[i] = ec._SpawnHostConfig_spawnHostsPerUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var spruceConfigImplementors = []string{"SpruceConfig"}
 
 func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAdminSettings) graphql.Marshaler {
@@ -24099,6 +24578,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
 		case "providers":
 			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
+		case "spawnHost":
+			out.Values[i] = ec._SpruceConfig_spawnHost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25109,6 +25593,11 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "userId":
 			out.Values[i] = ec._User_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "emailAddress":
+			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -26244,6 +26733,24 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNInt2int(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec.marshalNInt2int(ctx, sel, *v)
+}
+
 func (ec *executionContext) marshalNJiraStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraStatus) graphql.Marshaler {
 	return ec._JiraStatus(ctx, sel, &v)
 }
@@ -26453,6 +26960,47 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
 	return ec._OomTrackerInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNParameter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, sel ast.SelectionSet, v model.APIParameter) graphql.Marshaler {
+	return ec._Parameter(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNParameter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParameter) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParameter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
@@ -26813,6 +27361,20 @@ func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreen�
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalNSpawnHostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISpawnHostConfig(ctx context.Context, sel ast.SelectionSet, v model.APISpawnHostConfig) graphql.Marshaler {
+	return ec._SpawnHostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSpawnHostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISpawnHostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISpawnHostConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SpawnHostConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSpawnHostStatusActions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostStatusActions(ctx context.Context, v interface{}) (SpawnHostStatusActions, error) {

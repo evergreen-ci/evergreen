@@ -24,14 +24,14 @@ func Jasper() cli.Command {
 		Name:  JasperCommand,
 		Usage: "Jasper CLI to interact with Jasper services",
 		Subcommands: []cli.Command{
-			Client(),
-			Service(),
-			Run(),
-			List(),
-			Clear(),
-			Kill(),
-			KillAll(),
-			Download(),
+			client(),
+			serviceCmd(),
+			runCmd(),
+			list(),
+			clear(),
+			kill(),
+			killAll(),
+			download(),
 		},
 	}
 }

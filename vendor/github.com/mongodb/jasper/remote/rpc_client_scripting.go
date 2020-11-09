@@ -82,11 +82,15 @@ func (s *rpcScriptingHarness) Test(ctx context.Context, dir string, args ...scri
 		return nil, errors.WithStack(err)
 	}
 
+	results, err := resp.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting test results")
+	}
 	if !resp.Outcome.Success {
-		return nil, errors.New(resp.Outcome.Text)
+		return results, errors.New(resp.Outcome.Text)
 	}
 
-	return resp.Export()
+	return results, nil
 }
 
 func (s *rpcScriptingHarness) Cleanup(ctx context.Context) error {

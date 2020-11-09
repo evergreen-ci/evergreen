@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/poplar"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +47,7 @@ func TestPerfSendAddEvgData(t *testing.T) {
 		Bucket:    "bucket",
 		Prefix:    "prefix",
 	}
-	conf := &model.TaskConfig{
+	conf := &internal.TaskConfig{
 		Task: &task.Task{
 			Id:                  "id",
 			Project:             "project",

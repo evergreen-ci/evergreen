@@ -381,16 +381,20 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		})
 	}
 	startPhaseAt := time.Now()
-	finishedTasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	finishedTasks, err = task.AddParentDisplayTasks(finishedTasks)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	grip.Info(message.Fields{
 		"message":       "Find completed tasks",
 		"version":       versionId,
 		"ticket":        "EVG-12549",
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
-	if err != nil && !adb.ResultsNotFound(err) {
-		return errors.WithStack(err)
-	}
 	// remove execution tasks in case the caller passed both display and execution tasks
 	// the functions below are expected to work if just the display task is passed
 	for i := len(finishedTasks) - 1; i >= 0; i-- {
@@ -401,12 +405,14 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 	// archive all the finished tasks
 	startPhaseAt = time.Now()
+	toArchive := []task.Task{}
 	for _, t := range finishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
-			if err = t.Archive(); err != nil {
-				return errors.Wrap(err, "failed to archive task")
-			}
+			toArchive = append(toArchive, t)
 		}
+	}
+	if err = task.ArchiveMany(toArchive); err != nil {
+		return errors.Wrap(err, "unable to archive tasks")
 	}
 	grip.Info(message.Fields{
 		"message":       "Archive finished tasks",
@@ -516,7 +522,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindWithDisplayTasks(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	tasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -532,7 +538,7 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	allTasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
+	allTasks, err := task.FindAll(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -546,6 +552,7 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 	// maps task group to a single task in the group so we only check once
 	taskGroupsToCheck := map[string]task.Task{}
 	restartIds := []string{}
+	toArchive := []task.Task{}
 	for _, t := range tasks {
 		if t.IsPartOfSingleHostTaskGroup() {
 			if err := t.SetResetWhenFinished(); err != nil {
@@ -558,11 +565,12 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 				restartIds = append(restartIds, t.ExecutionTasks...)
 			}
 			if t.IsFinished() {
-				if err := t.Archive(); err != nil {
-					return errors.Wrapf(err, "error archiving task '%s'", t.Id)
-				}
+				toArchive = append(toArchive, t)
 			}
 		}
+	}
+	if err := task.ArchiveMany(toArchive); err != nil {
+		return errors.Wrap(err, "unable to archive tasks")
 	}
 	// Set all the task fields to indicate restarted
 	if err := MarkTasksReset(restartIds); err != nil {
@@ -597,7 +605,11 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
+	tasks, err := task.FindAll(task.ByBuildId(buildId))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -623,7 +635,7 @@ func RefreshTasksCache(buildId string) error {
 // addTasksToBuild creates/activates the tasks for the given build of a project
 func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, tasksWithBatchTime []string, generatedBy string, tasksInBuild []task.Task,
-	syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string) (*build.Build, task.Tasks, error) {
+	syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, taskIds TaskIdConfig) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
@@ -632,8 +644,6 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	// create the new tasks for the build
-	taskIds := NewTaskIdTable(project, v, "", "")
-
 	createTime, err := getTaskCreateTime(project.Identifier, v)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
@@ -910,72 +920,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
-		// set the new task's dependencies
-		if len(t.DependsOn) == 1 &&
-			t.DependsOn[0].Name == AllDependencies &&
-			t.DependsOn[0].Variant != AllVariants {
-			// the task depends on all of the other tasks in the build
-			newTask.DependsOn = make([]task.Dependency, 0, len(tasksToCreate)-1)
-			status := evergreen.TaskSucceeded
-			if t.DependsOn[0].Status != "" {
-				status = t.DependsOn[0].Status
-			}
-			for _, dep := range tasksToCreate {
-				id := execTable.GetId(b.BuildVariant, dep.Name)
-				if len(id) == 0 || dep.Name == newTask.DisplayName {
-					continue
-				}
-				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: id, Status: status})
-			}
-			for _, existingTask := range tasksInBuild {
-				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: existingTask.Id, Status: status})
-			}
-		} else {
-			// the task has specific dependencies
-			newTask.DependsOn = make([]task.Dependency, 0, len(t.DependsOn))
-			for _, dep := range t.DependsOn {
-				// only add as a dependency if the dependency is valid/exists
-				status := evergreen.TaskSucceeded
-				if dep.Status != "" {
-					status = dep.Status
-				}
-				bv := b.BuildVariant
-				if dep.Variant != "" {
-					bv = dep.Variant
-				}
 
-				newDeps := []task.Dependency{}
-
-				if dep.Variant == AllVariants {
-					// for * case, we need to add all variants of the task
-					var ids []string
-					if dep.Name != AllDependencies {
-						ids = execTable.GetIdsForAllVariantsExcluding(
-							dep.Name,
-							TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant},
-						)
-					} else {
-						// edge case where variant and task are both *
-						ids = execTable.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
-					}
-					for _, id := range ids {
-						if len(id) != 0 {
-							newDeps = append(newDeps, task.Dependency{TaskId: id, Status: status})
-						}
-					}
-				} else {
-					// general case
-					id := execTable.GetId(bv, dep.Name)
-					// only create the dependency if the task exists--it always will,
-					// except for patches with patch_optional dependencies.
-					if len(id) != 0 {
-						newDeps = []task.Dependency{{TaskId: id, Status: status}}
-					}
-				}
-
-				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
-			}
-		}
+		newTask.DependsOn = makeDeps(t, newTask, execTable)
 		newTask.GeneratedBy = generatedBy
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
@@ -1054,6 +1000,54 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// return all of the tasks created
 	return tasks, nil
+}
+
+func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) []task.Dependency {
+	dependencySet := make(map[task.Dependency]bool)
+	for _, dep := range t.DependsOn {
+		status := evergreen.TaskSucceeded
+		if dep.Status != "" {
+			status = dep.Status
+		}
+
+		// set unspecified fields to match thisTask
+		if dep.Name == "" {
+			dep.Name = thisTask.DisplayName
+		}
+		if dep.Variant == "" {
+			dep.Variant = thisTask.BuildVariant
+		}
+
+		var depIDs []string
+		if dep.Variant == AllVariants && dep.Name == AllDependencies {
+			depIDs = taskIds.GetIdsForAllTasks()
+		} else if dep.Variant == AllVariants {
+			depIDs = taskIds.GetIdsForTaskInAllVariants(dep.Name)
+		} else if dep.Name == AllDependencies {
+			depIDs = taskIds.GetIdsForAllTasksInVariant(dep.Variant)
+		} else {
+			// don't add missing dependencies
+			// patch_optional tasks aren't in the patch and will be missing from the table
+			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
+				depIDs = []string{id}
+			}
+		}
+
+		for _, id := range depIDs {
+			// tasks don't depend on themselves
+			if id == thisTask.Id {
+				continue
+			}
+			dependencySet[task.Dependency{TaskId: id, Status: status}] = true
+		}
+	}
+
+	dependencies := make([]task.Dependency, 0, len(dependencySet))
+	for dep := range dependencySet {
+		dependencies = append(dependencies, dep)
+	}
+
+	return dependencies
 }
 
 // shouldSyncTask returns whether or not this task in this build variant should
@@ -1423,7 +1417,11 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
 	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
 
-	taskIds := NewTaskIdTable(p, v, "", "")
+	taskIdTables, err := getTaskIdTables(v, p, tasks)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unable to make task ID table")
+	}
+
 	projectRef, err := FindOneProjectRef(p.Identifier)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to find project ref")
@@ -1462,7 +1460,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 		buildArgs := BuildCreateArgs{
 			Project:            *p,
 			Version:            *v,
-			TaskIDs:            taskIds,
+			TaskIDs:            taskIdTables,
 			BuildName:          pair.Variant,
 			ActivateBuild:      activateVariant,
 			TaskNames:          taskNames,
@@ -1573,6 +1571,11 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		return nil, err
 	}
 
+	taskIdTables, err := getTaskIdTables(v, p, pairs)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get table of task IDs")
+	}
+
 	taskIds := []string{}
 	for _, b := range builds {
 		// Find the set of task names that already exist for the given build
@@ -1618,7 +1621,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		}
 		batchTimeTasks := batchTimeInfo.batchTimeTasks(b.BuildVariant)
 		// Add the new set of tasks to the build.
-		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases)
+		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTables)
 		if err != nil {
 			return nil, err
 		}
@@ -1635,4 +1638,22 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 	}
 
 	return taskIds, nil
+}
+
+func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs) (TaskIdConfig, error) {
+	// The table should include only new and existing tasks
+	taskIdTable := NewPatchTaskIdTable(p, v, newPairs)
+	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	if err != nil {
+		return TaskIdConfig{}, errors.Wrap(err, "can't get existing task ids")
+	}
+	for _, t := range existingTasks {
+		if t.DisplayOnly {
+			taskIdTable.DisplayTasks.AddId(t.BuildVariant, t.DisplayName, t.Id)
+		} else {
+			taskIdTable.ExecutionTasks.AddId(t.BuildVariant, t.DisplayName, t.Id)
+		}
+	}
+
+	return taskIdTable, nil
 }

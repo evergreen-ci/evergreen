@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
@@ -116,14 +116,14 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 
 // Apply the expansions from the relevant task config (including restricted expansions)
 // to all appropriate fields of the s3get.
-func (c *s3get) expandParams(conf *model.TaskConfig) error {
+func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	return util.ExpandValues(c, conf.GetExpansionsWithRestricted())
 }
 
 // Implementation of Execute.  Expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {

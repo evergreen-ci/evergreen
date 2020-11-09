@@ -109,6 +109,7 @@ type Mutation {
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!): Boolean!
+  clearMySubscriptions: Int!
 }
 
 enum SpawnHostStatusActions {
@@ -402,6 +403,7 @@ type Patch {
   time: PatchTime
   taskCount: Int
   baseVersionID: String
+  parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
   builds: [Build!]!
@@ -443,6 +445,11 @@ type ProjectBuildVariant {
   name: String!
   displayName: String!
   tasks: [String!]!
+}
+
+type Parameter {
+  key: String!
+  value: String!
 }
 
 type TaskResult {
@@ -624,6 +631,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {
@@ -754,6 +762,7 @@ type SpruceConfig {
   banner: String
   bannerTheme: String
   providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
 }
 
 type JiraConfig {
@@ -770,6 +779,12 @@ type CloudProviderConfig {
 
 type AWSConfig {
   maxVolumeSizePerUser: Int
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+  spawnHostsPerUser: Int!
 }
 
 type HostEvents {

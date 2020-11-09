@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -225,7 +226,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -274,7 +275,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -311,7 +312,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 
 // Execute gets the source code required by the project
 // Retries some number of times before failing
-func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	err := util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -335,7 +336,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 }
 
 func (c *gitFetchProject) executeLoop(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	var err error
 	// expand the github parameters before running the task
@@ -574,7 +575,7 @@ func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revisi
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
 // the API server, and setting them into the patch object.
 func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Communicator,
-	logger client.LoggerProducer, conf *model.TaskConfig, patch *patch.Patch) error {
+	logger client.LoggerProducer, conf *internal.TaskConfig, patch *patch.Patch) error {
 
 	if patch == nil {
 		return errors.New("cannot get patch contents for nil patch")
@@ -630,7 +631,7 @@ func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
-func getPatchCommands(modulePatch patch.ModulePatch, conf *model.TaskConfig, dir, patchPath string) []string {
+func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, dir, patchPath string) []string {
 	patchCommands := []string{
 		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
@@ -650,7 +651,7 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *model.TaskConfig, dir
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
-	conf *model.TaskConfig, patches []patch.ModulePatch) error {
+	conf *internal.TaskConfig, patches []patch.ModulePatch) error {
 
 	jpm := c.JasperManager()
 
@@ -733,7 +734,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	return nil
 }
 
-func isGitHubPRModulePatch(conf *model.TaskConfig, modulePatch *patch.ModulePatch) bool {
+func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
 	isGitHubMergeTest := conf.GithubPatchData.PRNumber != 0
 	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
 

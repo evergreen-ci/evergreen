@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -125,6 +126,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 
 func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
 	if j.CurrentAttempt >= setupScriptRetryLimit {
+		event.LogHostScriptExecuteFailed(j.HostID, j.Error())
 		return errors.Errorf("exceeded max retries for setup script (%d)", setupScriptRetryLimit)
 	}
 	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, j.CurrentAttempt+1))

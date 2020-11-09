@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -32,7 +32,7 @@ func (c *expansionsWriter) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *expansionsWriter) Execute(ctx context.Context,
-	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	_ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {

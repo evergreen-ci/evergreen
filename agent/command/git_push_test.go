@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -32,10 +34,10 @@ func TestGitPush(t *testing.T) {
 		Token:     token,
 	}
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{
+	conf := &internal.TaskConfig{
 		Task:       &task.Task{},
 		ProjectRef: &model.ProjectRef{Branch: "master"},
-		Distro:     &distro.Distro{CloneMethod: distro.CloneMethodOAuth},
+		Distro:     &apimodels.DistroView{CloneMethod: distro.CloneMethodOAuth},
 		Expansions: &util.Expansions{},
 	}
 	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)

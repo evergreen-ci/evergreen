@@ -5,6 +5,7 @@ type User {
   DisplayName: String @aliases(db: DispName, json: display_name)
   OnlyApi: Boolean! @aliases(db: OnlyAPI)
   Roles: [String!]! @aliases(db: SystemRoles)
+  EmailAddress: String @aliases(db: email)
 }
 
 type DisplayTask {

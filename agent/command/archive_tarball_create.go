@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -70,7 +70,7 @@ func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
 
 // Execute builds the archive.
 func (c *tarballCreate) Execute(ctx context.Context,
-	client client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")

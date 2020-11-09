@@ -59,6 +59,11 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
+		if proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
+			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
+				return errors.Wrapf(err, `Failed to parse webhook endpoint for project "%s"`, projName)
+			}
+		}
 	}
 	bbp.opts = bbpOptions
 
@@ -77,7 +82,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					_, enabled := bbp.opts.Projects[context.ProjectRef.Identifier]
+					enabled := len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil

@@ -1868,6 +1868,27 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 	return &issue, nil
 }
 
+func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
+	usr := MustHaveUser(ctx)
+	username := usr.Username()
+	subs, err := r.sc.GetSubscriptions(username, event.OwnerTypePerson)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error retreiving subscriptions %s", err.Error()))
+	}
+	subIds := []string{}
+	for _, sub := range subs {
+		if sub.ID != nil {
+			subIds = append(subIds, *sub.ID)
+		}
+	}
+	err = r.sc.DeleteSubscriptions(username, subIds)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
+	}
+
+	return len(subIds), nil
+}
+
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := MustHaveUser(ctx)
 	username := usr.Username()
@@ -2030,9 +2051,11 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	displayName := usr.DisplayName()
 	userID := usr.Username()
+	email := usr.Email()
 	user := restModel.APIDBUser{
-		DisplayName: &displayName,
-		UserID:      &userID,
+		DisplayName:  &displayName,
+		UserID:       &userID,
+		EmailAddress: &email,
 	}
 	return &user, nil
 }
@@ -2207,8 +2230,9 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
-	searchReturnInfo, projectNotFound, err := GetSearchReturnInfo(taskId, execString)
-	if projectNotFound {
+
+	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskId, execString)
+	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
 		return &BuildBaron{
 			SearchReturnInfo:     searchReturnInfo,
 			BuildBaronConfigured: false,

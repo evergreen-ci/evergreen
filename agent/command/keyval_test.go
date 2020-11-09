@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -30,9 +31,10 @@ func TestIncKey(t *testing.T) {
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "testinc", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err, "couldn't create test task")
+		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		require.NoError(t, err)
 
 		Convey("Inc command should increment a key successfully", func() {
-			conf := modelData.TaskConfig
 			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 			So(err, ShouldBeNil)
 			for _, task := range conf.Project.Tasks {

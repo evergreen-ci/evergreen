@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -53,7 +53,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(decoder.Decode(params), "error parsing '%s' params", c.Name())
 }
 
-func (c *createHost) parseParamsFromFile(fn string, conf *model.TaskConfig) error {
+func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(fn) {
 		fn = filepath.Join(conf.WorkDir, fn)
 	}
@@ -61,7 +61,7 @@ func (c *createHost) parseParamsFromFile(fn string, conf *model.TaskConfig) erro
 		"error reading from file '%s'", fn)
 }
 
-func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
+func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 	// if a filename is defined, then parseParams has not parsed the parameters yet,
 	// since the file was not yet available. it therefore needs to be parsed now.
 	if c.File != "" {
@@ -81,7 +81,7 @@ func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
 }
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
-	logger client.LoggerProducer, conf *model.TaskConfig) error {
+	logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := c.expandAndValidate(conf); err != nil {
 		return err
 	}

@@ -285,7 +285,7 @@ tasks:
   - name: new_task
     depends_on:
     - name: "*"
-      variant: "*"
+      variant: ubuntu1604
       status: "*"
 
 buildvariants:
@@ -365,7 +365,8 @@ buildvariants:
 	for _, dbTask := range tasks {
 		if dbTask.DisplayName == "new_task" {
 			foundGeneratedtask = true
-			assert.Len(dbTask.DependsOn, 2)
+			// the patch_only task isn't a dependency
+			assert.Len(dbTask.DependsOn, 0)
 		}
 	}
 	assert.True(foundGeneratedtask)

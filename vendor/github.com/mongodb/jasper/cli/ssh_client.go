@@ -109,7 +109,7 @@ func (c *sshClient) CreateScripting(ctx context.Context, opts options.ScriptingH
 		return nil, errors.WithStack(err)
 	}
 
-	return newSSHClientScriptingHarness(c.client, resp.ID), nil
+	return newSSHScriptingHarness(ctx, c.client, resp.ID), nil
 }
 
 func (c *sshClient) GetScripting(ctx context.Context, id string) (scripting.Harness, error) {
@@ -122,7 +122,7 @@ func (c *sshClient) GetScripting(ctx context.Context, id string) (scripting.Harn
 		return nil, errors.WithStack(err)
 	}
 
-	return newSSHClientScriptingHarness(c.client, id), nil
+	return newSSHScriptingHarness(ctx, c.client, id), nil
 }
 
 func (c *sshClient) Register(ctx context.Context, proc jasper.Process) error {

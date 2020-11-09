@@ -13,17 +13,20 @@ func commitQueueEventDataFactory() interface{} {
 }
 
 const (
-	ResourceTypeCommitQueue = "COMMIT_QUEUE"
-	CommitQueueStartTest    = "START_TEST"
-	CommitQueueConcludeTest = "CONCLUDE_TEST"
+	ResourceTypeCommitQueue  = "COMMIT_QUEUE"
+	CommitQueueEnqueueFailed = "ENQUEUE_FAILED"
+	CommitQueueStartTest     = "START_TEST"
+	CommitQueueConcludeTest  = "CONCLUDE_TEST"
 )
 
 type PRInfo struct {
-	Owner       string `bson:"owner"`
-	Repo        string `bson:"repo"`
-	Ref         string `bson:"ref"`
-	PRNum       int    `bson:"pr_number"`
-	CommitTitle string `bson:"commit_title"`
+	Owner           string `bson:"owner"`
+	Repo            string `bson:"repo"`
+	Ref             string `bson:"ref"`
+	PRNum           int    `bson:"pr_number"`
+	CommitTitle     string `bson:"commit_title"`
+	TitleOverride   string `bson:"title_override"`
+	MessageOverride string `bson:"message_override"`
 }
 
 func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) {
@@ -47,6 +50,7 @@ func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) 
 
 type CommitQueueEventData struct {
 	Status string `bson:"status,omitempty" json:"status,omitempty"`
+	Error  string `bson:"error,omitempty" json:"error,omitempty"`
 }
 
 func LogCommitQueueStartTestEvent(patchID string) {
@@ -61,4 +65,13 @@ func LogCommitQueueConcludeTest(patchID, status string) {
 		Status: status,
 	}
 	logCommitQueueEvent(patchID, CommitQueueConcludeTest, data)
+}
+
+func LogCommitQueueEnqueueFailed(patchID string, err error) {
+	data := &CommitQueueEventData{
+		Status: evergreen.EnqueueFailed,
+		Error:  err.Error(),
+	}
+	logCommitQueueEvent(patchID, CommitQueueEnqueueFailed, data)
+
 }
