@@ -42,22 +42,28 @@ func APIAnnotationBuildFromService(t *annotations.Annotation) *APIAnnotation {
 	}
 	m := APIAnnotation{}
 	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.Note = APINoteBuildFromService(*t.Note)
+	m.Note = APINoteBuildFromService(t.Note)
 	return &m
 }
 
 // APIAnnotationToService takes the APIAnnotation REST struct and returns the DB struct
 // *annotations.Annotation with the corresponding fields populated
-func APIAnnotationToService(m APIAnnotation) *annotations.Annotation {
+func APIAnnotationToService(m *APIAnnotation) *annotations.Annotation {
+	if m == nil {
+		return nil
+	}
 	out := &annotations.Annotation{}
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.Note = APINoteToService(*m.Note)
+	out.Note = APINoteToService(m.Note)
 	return out
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
 // returns the REST struct *APISource with the corresponding fields populated
-func APISourceBuildFromService(t annotations.Source) *APISource {
+func APISourceBuildFromService(t *annotations.Source) *APISource {
+	if t == nil {
+		return nil
+	}
 	m := APISource{}
 	m.Author = StringStringPtr(t.Author)
 	m.Time = ToTimePtr(t.Time)
@@ -66,7 +72,10 @@ func APISourceBuildFromService(t annotations.Source) *APISource {
 
 // APISourceToService takes the APISource REST struct and returns the DB struct
 // *annotations.Source with the corresponding fields populated
-func APISourceToService(m APISource) *annotations.Source {
+func APISourceToService(m *APISource) *annotations.Source {
+	if m == nil {
+		return nil
+	}
 	out := &annotations.Source{}
 	out.Author = StringPtrString(m.Author)
 	if m.Time != nil {
@@ -83,7 +92,7 @@ func APIIssueLinkBuildFromService(t annotations.IssueLink) *APIIssueLink {
 	m := APIIssueLink{}
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
-	m.Source = APISourceBuildFromService(*t.Source)
+	m.Source = APISourceBuildFromService(t.Source)
 	return &m
 }
 
@@ -93,25 +102,31 @@ func APIIssueLinkToService(m APIIssueLink) *annotations.IssueLink {
 	out := &annotations.IssueLink{}
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
-	out.Source = APISourceToService(*m.Source)
+	out.Source = APISourceToService(m.Source)
 	return out
 }
 
 // APINoteBuildFromService takes the annotations.Note DB struct and
 // returns the REST struct *APINote with the corresponding fields populated
-func APINoteBuildFromService(t annotations.Note) *APINote {
+func APINoteBuildFromService(t *annotations.Note) *APINote {
+	if t == nil {
+		return nil
+	}
 	m := APINote{}
 	m.Message = StringStringPtr(t.Message)
-	m.Source = APISourceBuildFromService(*t.Source)
+	m.Source = APISourceBuildFromService(t.Source)
 	return &m
 }
 
 // APINoteToService takes the APINote REST struct and returns the DB struct
 // *annotations.Note with the corresponding fields populated
-func APINoteToService(m APINote) *annotations.Note {
+func APINoteToService(m *APINote) *annotations.Note {
+	if m == nil {
+		return nil
+	}
 	out := &annotations.Note{}
 	out.Message = StringPtrString(m.Message)
-	out.Source = APISourceToService(*m.Source)
+	out.Source = APISourceToService(m.Source)
 	return out
 }
 
@@ -132,11 +147,11 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 // *annotations.TaskAnnotation with the corresponding fields populated
 func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation {
 	out := &annotations.TaskAnnotation{}
-	out.APIAnnotation = APIAnnotationToService(*m.APIAnnotation)
+	out.APIAnnotation = APIAnnotationToService(m.APIAnnotation)
 	out.Id = StringPtrString(m.Id)
 	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
-	out.UserAnnotation = APIAnnotationToService(*m.UserAnnotation)
+	out.UserAnnotation = APIAnnotationToService(m.UserAnnotation)
 	out.Metadata = m.Metadata
 	return out
 }
