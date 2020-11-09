@@ -4538,7 +4538,7 @@ type Volume {
   noExpiration: Boolean!
   homeVolume: Boolean!
   host: Host
-  creationTime: Time!
+  creationTime: Time
 }
 
 type PatchProject {
@@ -20319,14 +20319,11 @@ func (ec *executionContext) _Volume_creationTime(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -25825,9 +25822,6 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			})
 		case "creationTime":
 			out.Values[i] = ec._Volume_creationTime(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

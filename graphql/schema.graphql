@@ -434,7 +434,7 @@ type Volume {
   noExpiration: Boolean!
   homeVolume: Boolean!
   host: Host
-  creationTime: Time!
+  creationTime: Time
 }
 
 type PatchProject {
