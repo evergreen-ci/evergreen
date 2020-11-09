@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -48,9 +49,9 @@ func respErrorf(resp *http.Response, format string, args ...interface{}) error {
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 
 	info := requestInfo{
-		method:  post,
-		path:    "hosts",
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   "hosts",
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, spawnRequest)
 	if err != nil {
@@ -78,9 +79,9 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*model.APIHost, error) {
 
 	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("hosts/%s", hostId),
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s", hostId),
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -108,9 +109,9 @@ func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*mo
 // with the modifications passed as a parameter.
 func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
 	info := requestInfo{
-		method:  patch,
-		path:    fmt.Sprintf("hosts/%s", hostID),
-		version: apiVersion2,
+		method: http.MethodPatch,
+		path:   fmt.Sprintf("hosts/%s", hostID),
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, changes)
@@ -131,9 +132,9 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 
 func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/stop", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/stop", hostID),
+		// version: apiVersion2,
 	}
 
 	options := struct {
@@ -162,9 +163,9 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 
 func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *host.VolumeAttachment) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/attach", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/attach", hostID),
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, opts)
@@ -185,9 +186,9 @@ func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts
 
 func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID string) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/detach", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/detach", hostID),
+		// version: apiVersion2,
 	}
 	body := host.VolumeAttachment{
 		VolumeID: volumeID,
@@ -211,9 +212,9 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 
 func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume) (*model.APIVolume, error) {
 	info := requestInfo{
-		method:  post,
-		path:    "volumes",
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   "volumes",
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, volume)
@@ -238,9 +239,9 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 
 func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) error {
 	info := requestInfo{
-		method:  delete,
-		path:    fmt.Sprintf("volumes/%s", volumeID),
-		version: apiVersion2,
+		method: http.MethodDelete,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -261,9 +262,9 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 
 func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *model.VolumeModifyOptions) error {
 	info := requestInfo{
-		method:  patch,
-		path:    fmt.Sprintf("volumes/%s", volumeID),
-		version: apiVersion2,
+		method: http.MethodPatch,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, opts)
 	if err != nil {
@@ -283,9 +284,9 @@ func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, op
 
 func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*model.APIVolume, error) {
 	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("volumes/%s", volumeID),
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -311,9 +312,9 @@ func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*mod
 
 func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVolume, error) {
 	info := requestInfo{
-		method:  get,
-		path:    "volumes",
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   "volumes",
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -339,9 +340,9 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/start", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/start", hostID),
+		// version: apiVersion2,
 	}
 
 	options := struct {
@@ -375,9 +376,9 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 	)
 
 	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("hosts/%s", hostID),
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s", hostID),
+		// version: apiVersion2,
 	}
 
 	timerCtx, cancel := context.WithTimeout(ctx, contextTimeout)
@@ -413,9 +414,9 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/terminate", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/terminate", hostID),
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -435,9 +436,9 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 
 func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, rdpPassword string) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/change_password", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/change_password", hostID),
+		// version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
 		RDPPwd: model.ToStringPtr(rdpPassword),
@@ -460,9 +461,9 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 
 func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID string, addHours int) error {
 	info := requestInfo{
-		method:  post,
-		path:    fmt.Sprintf("hosts/%s/extend_expiration", hostID),
-		version: apiVersion2,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/extend_expiration", hostID),
+		// version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
 		AddHours: model.ToStringPtr(fmt.Sprintf("%d", addHours)),
@@ -485,9 +486,9 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 // GetHosts gets all hosts matching filters
 func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
 	info := requestInfo{
-		method:  get,
-		path:    "host/filter",
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   "host/filter",
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, data)
@@ -512,9 +513,9 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 
 func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme evergreen.BannerTheme) error {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "admin/banner",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "admin/banner",
 	}
 
 	resp, err := c.retryRequest(ctx, info, struct {
@@ -534,9 +535,9 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string,
 
 func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "admin/banner",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "admin/banner",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -555,9 +556,9 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "admin/service_flags",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "admin/service_flags",
 	}
 
 	resp, err := c.retryRequest(ctx, info, f)
@@ -571,9 +572,9 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "admin",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "admin",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -596,9 +597,9 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 	}
 
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "admin/restart",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "admin/restart",
 	}
 
 	payload := struct {
@@ -622,9 +623,9 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 
 func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "admin/settings",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "admin/settings",
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -643,9 +644,9 @@ func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings
 
 func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "admin/settings",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "admin/settings",
 	}
 	resp, err := c.request(ctx, info, &update)
 	if err != nil {
@@ -664,9 +665,9 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 
 func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
@@ -685,9 +686,9 @@ func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit in
 
 func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) error {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "admin/revert",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "admin/revert",
 	}
 	body := struct {
 		GUID string `json:"guid"`
@@ -709,9 +710,9 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 
 func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, opts model.APIDistroScriptOptions) (hostIDs []string, err error) {
 	info := requestInfo{
-		method:  http.MethodPatch,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/distros/%s/execute", distro),
+		method: http.MethodPatch,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/distros/%s/execute", distro),
 	}
 
 	var result struct {
@@ -737,9 +738,9 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 
 func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    "/admin/service_users",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "/admin/service_users",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -763,9 +764,9 @@ func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUs
 
 func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, displayName string, roles []string) error {
 	info := requestInfo{
-		method:  http.MethodPost,
-		version: apiVersion2,
-		path:    "/admin/service_users",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "/admin/service_users",
 	}
 	body := model.APIDBUser{
 		UserID:      &username,
@@ -790,9 +791,9 @@ func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, disp
 
 func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username string) error {
 	info := requestInfo{
-		method:  http.MethodDelete,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/admin/service_users?id=%s", username),
+		method: http.MethodDelete,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/admin/service_users?id=%s", username),
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -812,9 +813,9 @@ func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username strin
 
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "distros",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "distros",
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -834,9 +835,9 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 
 func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "keys",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "keys",
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -862,9 +863,9 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 
 func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue string) error {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "keys",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "keys",
 	}
 
 	key := model.APIPubKey{
@@ -889,9 +890,9 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 
 func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) error {
 	info := requestInfo{
-		method:  delete,
-		version: apiVersion2,
-		path:    "keys/" + keyName,
+		method: http.MethodDelete,
+		// version: apiVersion2,
+		path: "keys/" + keyName,
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -912,9 +913,9 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.ProjectAlias, error) {
 	path := fmt.Sprintf("alias/%s", project)
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    path,
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: path,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -946,9 +947,9 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 
 func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
 	info := requestInfo{
-		path:    "/status/cli_version",
-		method:  get,
-		version: apiVersion2,
+		path:   "/status/cli_version",
+		method: http.MethodGet,
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -985,9 +986,9 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([]serviceModel.ParameterInfo, error) {
 	path := fmt.Sprintf("projects/%s/parameters", project)
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    path,
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: path,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -1011,9 +1012,9 @@ func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([
 
 func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscription, error) {
 	info := requestInfo{
-		path:    fmt.Sprintf("/subscriptions?owner=%s&type=person", c.apiUser),
-		method:  get,
-		version: apiVersion2,
+		path:   fmt.Sprintf("/subscriptions?owner=%s&type=person", c.apiUser),
+		method: http.MethodGet,
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
@@ -1063,9 +1064,9 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 
 func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
 	info := requestInfo{
-		method:  put,
-		version: apiVersion2,
-		path:    "/versions",
+		method: http.MethodPut,
+		// version: apiVersion2,
+		path: "/versions",
 	}
 	body := struct {
 		ProjectID string          `json:"project_id"`
@@ -1102,9 +1103,9 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 
 func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/commit_queue/%s", projectID),
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/commit_queue/%s", projectID),
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -1129,9 +1130,9 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 
 func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
 	info := requestInfo{
-		method:  delete,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/commit_queue/%s/%s", projectID, item),
+		method: http.MethodDelete,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/commit_queue/%s/%s", projectID, item),
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -1148,9 +1149,9 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 
 func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error) {
 	info := requestInfo{
-		method:  put,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/commit_queue/%s", patchID),
+		method: http.MethodPut,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/commit_queue/%s", patchID),
 	}
 	if enqueueNext {
 		info.path += "?force=true"
@@ -1178,9 +1179,9 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 
 func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
 	info := requestInfo{
-		method:  put,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/patches/%s/merge_patch", patchID),
+		method: http.MethodPut,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/patches/%s/merge_patch", patchID),
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -1210,9 +1211,9 @@ func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID stri
 
 func (c *communicatorImpl) GetMessageForPatch(ctx context.Context, patchID string) (string, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/commit_queue/%s/message", patchID),
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/commit_queue/%s/message", patchID),
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -1242,9 +1243,9 @@ func (c *communicatorImpl) GetMessageForPatch(ctx context.Context, patchID strin
 
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "notifications/" + notificationType,
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "notifications/" + notificationType,
 	}
 
 	resp, err := c.request(ctx, info, data)
@@ -1265,9 +1266,9 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 // GetDockerStatus returns status of the container for the given host
 func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
 	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("hosts/%s/status", hostID),
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s/status", hostID),
+		// version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
@@ -1302,9 +1303,9 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    path,
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: path,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -1326,9 +1327,9 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 
 func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/tasks/%s/manifest", taskId),
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/tasks/%s/manifest", taskId),
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -1352,9 +1353,9 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 
 func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []string, script string, batchSize int) ([]model.APIHostProcess, error) {
 	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    "/host/start_processes",
+		method: http.MethodPost,
+		// version: apiVersion2,
+		path: "/host/start_processes",
 	}
 
 	result := []model.APIHostProcess{}
@@ -1397,9 +1398,9 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 
 func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcesses []model.APIHostProcess, batchSize int) ([]model.APIHostProcess, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    "/host/get_processes",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "/host/get_processes",
 	}
 
 	result := []model.APIHostProcess{}
@@ -1442,9 +1443,9 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 
 func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]model.APIVersion, error) {
 	info := requestInfo{
-		method:  get,
-		path:    fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
-		version: apiVersion2,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
+		// version: apiVersion2,
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -1470,9 +1471,9 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 
 func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    "/task/sync_read_credentials",
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: "/task/sync_read_credentials",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -1496,9 +1497,9 @@ func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*eve
 
 func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/tasks/%s/sync_path", taskID),
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("/tasks/%s/sync_path", taskID),
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -1518,4 +1519,50 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 	}
 
 	return string(path), nil
+}
+
+func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		// version: apiVersion2,
+		path: fmt.Sprintf("distros/%s", id),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem requesting distro named '%s", id)
+	}
+	defer resp.Body.Close()
+
+	d := &restmodel.APIDistro{}
+	if err = utility.ReadJSON(resp.Body, &d); err != nil {
+		return nil, errors.Wrapf(err, "reading distro from response body for '%s'", id)
+	}
+
+	return d, nil
+
+}
+
+func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) ([]string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		// kim: TODO: remove
+		// version: apiVersion2,
+		path: fmt.Sprintf("distros/%s/client_urls", distroID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting client URLs")
+	}
+
+	var urls []string
+	if err := utility.ReadJSON(resp.Body, &urls); err != nil {
+		return nil, errors.Wrapf(err, "reading client URLs from response")
+	}
+
+	return urls, nil
 }

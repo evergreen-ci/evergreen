@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 )
 
 // gitApplyPatch is deprecated. Its functionality is now a part of GitGetProjectCommand.

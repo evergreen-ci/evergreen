@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
 	"github.com/mitchellh/mapstructure"

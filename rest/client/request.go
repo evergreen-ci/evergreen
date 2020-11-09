@@ -22,30 +22,34 @@ import (
 
 // RequestInfo holds metadata about a request
 type requestInfo struct {
-	method   method
-	path     string
-	version  apiVersion
-	taskData *TaskData
+	method string
+	path   string
+	taskID string
+	// kim: TODO: remove
+	// version apiVersion
+	// taskData *TaskData
 }
 
 // Version is an "enum" for the different API versions
-type apiVersion string
+// type apiVersion string
 
-const (
-	apiVersion1 apiVersion = "/api/2"
-	apiVersion2 apiVersion = evergreen.APIRoutePrefixV2
-)
+// const (
+//     // kim: TODO: remove
+//     // apiVersion1 apiVersion = "/api/2"
+//     apiVersion2 apiVersion = evergreen.APIRoutePrefixV2
+// )
 
+// kim: TODO: remove
 // Method is an "enum" for the supported HTTP methods
-type method string
-
-const (
-	get    method = "GET"
-	post          = "POST"
-	put           = "PUT"
-	delete        = "DELETE"
-	patch         = "PATCH"
-)
+// type method string
+//
+// const (
+//     get    method = "GET"
+//     post          = "POST"
+//     put           = "PUT"
+//     delete        = "DELETE"
+//     patch         = "PATCH"
+// )
 
 var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
@@ -53,8 +57,11 @@ var HTTPConflictError = errors.New(evergreen.TaskConflict)
 // suggest logging in again as a possible solution to the error.
 var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
 
-func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
-	url := c.getPath(path, version)
+// kim: TODO: remove
+// func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
+func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
+	// url := c.getPath(path, version)
+	url := c.getPath(path)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, errors.New("Error building request")
@@ -73,23 +80,24 @@ func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version 
 		}
 	}
 
-	if taskID != "" {
-		r.Header.Add(evergreen.TaskHeader, taskID)
-	}
-	if taskSecret != "" {
-		r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
-	}
-	if c.hostID != "" {
-		r.Header.Add(evergreen.HostHeader, c.hostID)
-	}
+	// kim: TODO: remove
+	// if taskID != "" {
+	//     r.Header.Add(evergreen.TaskHeader, taskID)
+	// }
+	// if taskSecret != "" {
+	//     r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
+	// }
+	// if c.hostID != "" {
+	//     r.Header.Add(evergreen.HostHeader, c.hostID)
+	// }
+	// if c.hostSecret != "" {
+	//     r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
+	// }
 	if c.apiUser != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
 	}
 	if c.apiUser != "" {
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
-	}
-	if c.hostSecret != "" {
-		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
 	}
 	r.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
 
@@ -97,19 +105,21 @@ func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version 
 }
 
 func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
-	if info.method == post && data == nil {
+	if info.method == http.MethodPost && data == nil {
 		return nil, errors.New("Attempting to post a nil body")
 	}
 	if err := info.validateRequestInfo(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	var taskID, secret string
-	if info.taskData != nil {
-		taskID = info.taskData.ID
-		secret = info.taskData.Secret
-	}
-	r, err := c.newRequest(string(info.method), info.path, taskID, secret, string(info.version), data)
+	// kim: TODO: remove
+	// var taskID, secret string
+	// if info.taskData != nil {
+	//     taskID = info.taskData.ID
+	//     secret = info.taskData.Secret
+	// }
+	// r, err := c.newRequest(string(info.method), info.path, taskID, secret, string(info.version), data)
+	r, err := c.newRequest(info.method, info.path, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}
@@ -158,11 +168,12 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
 	var err error
-	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
-		err = errors.New("no task secret provided")
-		grip.Error(err)
-		return nil, err
-	}
+	// kim: TODO: remove
+	// if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
+	//     err = errors.New("no task secret provided")
+	//     grip.Error(err)
+	//     return nil, err
+	// }
 
 	var out []byte
 	if data != nil {
@@ -241,22 +252,37 @@ func (c *communicatorImpl) getBackoff() *backoff.Backoff {
 	}
 }
 
-func (c *communicatorImpl) getPath(path string, version string) string {
-	return fmt.Sprintf("%s%s/%s", c.serverURL, version, strings.TrimPrefix(path, "/"))
+// kim: TODO: remove
+// func (c *communicatorImpl) getPath(path string, version string) string {
+//     return fmt.Sprintf("%s%s/%s", c.serverURL, version, strings.TrimPrefix(path, "/"))
+// }
+func (c *communicatorImpl) getPath(path string) string {
+	return fmt.Sprintf("%s%s/%s", c.serverURL, evergreen.APIRoutePrefixV2, strings.TrimPrefix(path, "/"))
 }
 
 func (r *requestInfo) validateRequestInfo() error {
-	if r.method != get && r.method != post && r.method != put && r.method != delete && r.method != patch {
+	switch r.method {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
+	default:
 		return errors.New("invalid HTTP method")
 	}
+	// kim: TODO: remove
+	// if r.method != get && r.method != post && r.method != put && r.method != delete && r.method != patch {
+	//     return errors.New("invalid HTTP method")
+	// }
 
-	if r.version != apiVersion1 && r.version != apiVersion2 {
-		return errors.New("invalid API version")
-	}
+	// kim: TODO: remove
+	// if r.version != apiVersion1 && r.version != apiVersion2 {
+	//     return errors.New("invalid API version")
+	// }
 
 	return nil
 }
 
-func (r *requestInfo) setTaskPathSuffix(path string) {
-	r.path = fmt.Sprintf("task/%s/%s", r.taskData.ID, strings.TrimPrefix(path, "/"))
-}
+// kim: TODO: remove
+// func (r *requestInfo) setTaskPathSuffix(path string) {
+//     r.path = fmt.Sprintf("task/%s/%s", r.taskData.ID, strings.TrimPrefix(path, "/"))
+// }
+// func (r *requestInfo) setTaskPathSuffix(path string) {
+//     r.path = fmt.Sprintf("task/%s/%s", r.taskID, strings.TrimPrefix(path, "/"))
+// }

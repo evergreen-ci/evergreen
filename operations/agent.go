@@ -113,10 +113,11 @@ func Agent() cli.Command {
 			comm := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
 			defer comm.Close()
 
-			agt, err := agent.New(ctx, opts, comm)
+			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {
 				return errors.Wrap(err, "problem constructing agent")
 			}
+			defer agt.Close()
 
 			go hardShutdownForSignals(ctx, cancel)
 

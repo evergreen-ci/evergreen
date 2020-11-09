@@ -12,11 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
@@ -94,10 +94,21 @@ const (
 )
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
-// Agent's Start method to begin listening for tasks to run.
-func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, error) {
+// Agent's Start method to begin listening for tasks to run. Users should call
+// Close when the agent is finished.
+func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
+	comm := client.NewCommunicator(serverURL)
+	return newWithCommunicator(ctx, opts, comm)
+}
+
+func newWithCommunicator(ctx context.Context, opts Options, comm client.Communicator) (*Agent, error) {
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
+
+	jpm, err := jasper.NewSynchronizedManager(false)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	if setupData, err := comm.GetAgentSetupData(ctx); err == nil {
 		opts.SetupData = *setupData
@@ -111,19 +122,17 @@ func New(ctx context.Context, opts Options, comm client.Communicator) (*Agent, e
 		}
 	}
 
-	agent := &Agent{
-		opts: opts,
-		comm: comm,
+	return &Agent{
+		opts:   opts,
+		comm:   comm,
+		jasper: jpm,
+	}, nil
+}
+
+func (a *Agent) Close() {
+	if a.comm != nil {
+		a.comm.Close()
 	}
-
-	jpm, err := jasper.NewSynchronizedManager(false)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	agent.jasper = jpm
-
-	return agent, nil
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"

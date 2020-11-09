@@ -12,10 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/suite"
@@ -621,7 +621,7 @@ func (s *AgentSuite) TestAgentConstructorSetsHostData() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	agent, err := New(ctx, Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+	agent, err := newWithCommunicator(ctx, Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
 	s.Require().NoError(err)
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())

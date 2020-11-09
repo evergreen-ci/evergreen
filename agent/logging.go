@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
