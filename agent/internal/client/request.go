@@ -38,10 +38,6 @@ const (
 
 var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
-// AuthError is a special error when the CLI receives 401 Unauthorized to
-// suggest logging in again as a possible solution to the error.
-var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
-
 func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
@@ -195,7 +191,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				return nil, HTTPConflictError
 			} else if resp.StatusCode == http.StatusUnauthorized {
 				defer resp.Body.Close()
-				return nil, AuthError
+				return nil, errors.New(resp.Status)
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				defer resp.Body.Close()
 				reader := util.NewResponseReader(resp)

@@ -29,11 +29,6 @@ type Mock struct {
 	GetSubscriptionsFail bool
 }
 
-// type endTaskResult struct {
-//     Detail   *apimodels.TaskEndDetail
-//     TaskData TaskData
-// }
-
 // NewMock returns a Communicator for testing.
 func NewMock(serverURL string) *Mock {
 	return &Mock{

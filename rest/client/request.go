@@ -100,8 +100,6 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 	r = r.WithContext(ctx)
 
 	func() {
-		c.mutex.RLock()
-		defer c.mutex.RUnlock()
 		response, err = c.httpClient.Do(r)
 	}()
 

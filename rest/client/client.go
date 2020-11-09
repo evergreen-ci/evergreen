@@ -2,7 +2,6 @@ package client
 
 import (
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/utility"
@@ -30,8 +29,6 @@ type communicatorImpl struct {
 	// these fields have setters
 	apiUser string
 	apiKey  string
-
-	mutex sync.RWMutex
 }
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
@@ -50,9 +47,6 @@ func NewCommunicator(serverURL string) Communicator {
 }
 
 func (c *communicatorImpl) resetClient() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	if c.httpClient != nil {
 		utility.PutHTTPClient(c.httpClient)
 	}
