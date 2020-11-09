@@ -16,22 +16,22 @@ type APITaskAnnotation struct {
 	Metadata       *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
 }
 type APIAnnotation struct {
-	Note          APINote        `bson:"note,omitempty" json:"note,omitempty"`
+	Note          *APINote       `bson:"note,omitempty" json:"note,omitempty"`
 	Issues        []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	SuspectIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 }
 type APINote struct {
-	Message    *string   `bson:"message,omitempty" json:"message,omitempty"`
-	NoteSource APISource `bson:"note_source,omitempty" json:"note_source,omitempty"`
+	Message *string    `bson:"message,omitempty" json:"message,omitempty"`
+	Source  *APISource `bson:"note_source,omitempty" json:"note_source,omitempty"`
 }
 type APISource struct {
 	Author *string    `bson:"author,omitempty" json:"author,omitempty"`
 	Time   *time.Time `bson:"time,omitempty" json:"time,omitempty"`
 }
 type APIIssueLink struct {
-	URL        *string   `bson:"url" json:"url"`
-	IssueKey   *string   `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	LinkSource APISource `bson:"link_source,omitempty" json:"link_source,omitempty"`
+	URL      *string   `bson:"url" json:"url"`
+	IssueKey *string   `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source   APISource `bson:"link_source,omitempty" json:"link_source,omitempty"`
 }
 
 // APIAnnotationBuildFromService takes the task_annotations.Annotation DB struct and
@@ -39,7 +39,7 @@ type APIIssueLink struct {
 func APIAnnotationBuildFromService(t *task_annotations.Annotation) *APIAnnotation {
 	m := APIAnnotation{}
 	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.Note = *APINoteBuildFromService(t.Note)
+	m.Note = APINoteBuildFromService(*t.Note)
 	return &m
 }
 
@@ -48,7 +48,7 @@ func APIAnnotationBuildFromService(t *task_annotations.Annotation) *APIAnnotatio
 func APIAnnotationToService(m APIAnnotation) *task_annotations.Annotation {
 	out := &task_annotations.Annotation{}
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.Note = *APINoteToService(m.Note)
+	out.Note = APINoteToService(*m.Note)
 	return out
 }
 
@@ -80,7 +80,7 @@ func APIIssueLinkBuildFromService(t task_annotations.IssueLink) *APIIssueLink {
 	m := APIIssueLink{}
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
-	m.LinkSource = *APISourceBuildFromService(t.LinkSource)
+	m.Source = *APISourceBuildFromService(t.Source)
 	return &m
 }
 
@@ -90,7 +90,7 @@ func APIIssueLinkToService(m APIIssueLink) *task_annotations.IssueLink {
 	out := &task_annotations.IssueLink{}
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
-	out.LinkSource = *APISourceToService(m.LinkSource)
+	out.Source = *APISourceToService(m.Source)
 	return out
 }
 
@@ -99,7 +99,7 @@ func APIIssueLinkToService(m APIIssueLink) *task_annotations.IssueLink {
 func APINoteBuildFromService(t task_annotations.Note) *APINote {
 	m := APINote{}
 	m.Message = StringStringPtr(t.Message)
-	m.NoteSource = *APISourceBuildFromService(t.NoteSource)
+	m.Source = APISourceBuildFromService(*t.Source)
 	return &m
 }
 
@@ -108,7 +108,7 @@ func APINoteBuildFromService(t task_annotations.Note) *APINote {
 func APINoteToService(m APINote) *task_annotations.Note {
 	out := &task_annotations.Note{}
 	out.Message = StringPtrString(m.Message)
-	out.NoteSource = *APISourceToService(m.NoteSource)
+	out.Source = APISourceToService(*m.Source)
 	return out
 }
 
