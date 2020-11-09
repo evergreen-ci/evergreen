@@ -830,9 +830,9 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 // GetDockerStatus returns status of the container for the given host
 func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("hosts/%s/status", hostID),
-		// version: apiVersion2,
+		method:  http.MethodGet,
+		path:    fmt.Sprintf("hosts/%s/status", hostID),
+		version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
@@ -867,9 +867,9 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method: http.MethodGet,
-		// version: apiVersion2,
-		path: path,
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    path,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {

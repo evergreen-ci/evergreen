@@ -107,6 +107,7 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 
 	jpm, err := jasper.NewSynchronizedManager(false)
 	if err != nil {
+		comm.Close()
 		return nil, errors.WithStack(err)
 	}
 
