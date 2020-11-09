@@ -67,7 +67,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError((&model.ProjectRef{
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Identifier:       "mci",
+		Id:               "mci",
 		Enabled:          true,
 		PatchingDisabled: false,
 		Branch:           "master",

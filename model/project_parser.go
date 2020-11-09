@@ -540,17 +540,17 @@ type GetProjectOpts struct {
 func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
 	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Identifier, opts.Revision)
+		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Identifier)
+		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(fileContents, opts.Ref.Identifier, &config)
+	pp, err := LoadProjectInto(fileContents, opts.Ref.Id, &config)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Identifier)
+		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
 	return &config, pp, nil
 }

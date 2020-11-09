@@ -93,7 +93,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
 	}
 
-	found, err := cq.sc.CommitQueueRemoveItem(projectRef.Identifier, cq.item, gimlet.GetUser(ctx).DisplayName())
+	found, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}

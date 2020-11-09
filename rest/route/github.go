@@ -369,10 +369,10 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 	catcher := grip.NewBasicCatcher()
 	for _, pRef := range projectRefs {
 		// if a version for this revision exists for this project, add tag
-		existingVersion, err := gh.sc.FindVersionByProjectAndRevision(pRef.Identifier, hash)
+		existingVersion, err := gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
 		if err != nil {
 			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
-				pRef.Identifier, hash, tag.Tag))
+				pRef.Id, hash, tag.Tag))
 			continue
 		}
 		if existingVersion == nil {
@@ -381,7 +381,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				"message": "no version to add tag to",
 				"ref":     event.GetRef(),
 				"event":   gh.eventType,
-				"project": pRef.Identifier,
+				"project": pRef.Id,
 				"branch":  pRef.Branch,
 				"owner":   pRef.Owner,
 				"repo":    pRef.Repo,
@@ -463,7 +463,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			"source":  "github hook",
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,
-			"project": pRef.Identifier,
+			"project": pRef.Id,
 			"tag":     tag,
 			"message": "user not authorized for git tag version",
 		})
@@ -498,9 +498,9 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		info.Project, info.IntermediateProject, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Identifier)
+		info.Project, info.IntermediateProject, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
+			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Id)
 		}
 		metadata.Alias = evergreen.GitTagAlias
 	}
@@ -565,7 +565,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		Issue:   restModel.ToStringPtr(strconv.Itoa(PRNum)),
 		Modules: modules,
 	}
-	_, err = gh.sc.EnqueueItem(projectRef.Identifier, item, false)
+	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
 		return errors.Wrap(err, "can't enqueue item on commit queue")
 	}
@@ -604,17 +604,17 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	exists, err := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number))
+	exists, err := gh.sc.IsItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
 	if err != nil {
-		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Identifier)
+		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Id)
 	}
 	if !exists {
 		return nil
 	}
 
-	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number), evergreen.GithubPatchUser)
+	_, err = gh.sc.CommitQueueRemoveItem(projRef.Id, strconv.Itoa(*pr.Number), evergreen.GithubPatchUser)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
+		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Id)
 	}
 	return nil
 }

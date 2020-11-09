@@ -125,7 +125,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		for i := range commits {
 			commit := commits[i]
 			if commit == nil {
-				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Identifier)
+				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Id)
 			}
 			if firstCommit == nil {
 				firstCommit = commit
@@ -138,7 +138,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				commit.SHA == nil ||
 				commit.Commit.Committer == nil ||
 				commit.Commit.Committer.Date == nil {
-				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Identifier)
+				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Id)
 			}
 
 			if isLastRevision(revision, commit) {

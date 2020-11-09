@@ -56,9 +56,9 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	ctx := context.Background()
-	json := []byte(`{"identifier": "Verboten"}`)
+	json := []byte(`{"id": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectName = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -66,14 +66,14 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	s.Equal(resp.Status(), http.StatusForbidden)
 
 	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectName))
+	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.project))
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	ctx := context.Background()
 	json := []byte(`{"display_name": "This is a display name"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectName = "non-existent"
+	h.project = "non-existent"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -86,7 +86,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectName = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = json
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -104,7 +104,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	ctx := context.Background()
 	jsonBody := []byte(`{"enabled": true, "revision": "my_revision", "commit_queue": {"enabled": true}}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectName = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = jsonBody
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -243,8 +243,8 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	p, err := h.sc.FindProjectById("nutsandgum")
 	s.NoError(err)
 	s.Require().NotNil(p)
+	s.Equal("nutsandgum", p.Id)
 	s.Equal("nutsandgum", p.Identifier)
-	s.Equal("nutsandgum", p.Name)
 }
 
 func (s *ProjectPutSuite) TestRunExistingFails() {
@@ -317,7 +317,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
 	s.Equal(cachedProject.RemotePath, model.FromStringPtr(projectRef.RemotePath))
-	s.Equal(cachedProject.Identifier, model.FromStringPtr(projectRef.Identifier))
+	s.Equal(cachedProject.Id, model.FromStringPtr(projectRef.Id))
 	s.Equal(cachedProject.DisplayName, model.FromStringPtr(projectRef.DisplayName))
 	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
@@ -350,12 +350,12 @@ func TestProjectGetSuite(t *testing.T) {
 func (s *ProjectGetSuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []serviceModel.ProjectRef{
-			{Identifier: "projectA"},
-			{Identifier: "projectB"},
-			{Identifier: "projectC"},
-			{Identifier: "projectD"},
-			{Identifier: "projectE"},
-			{Identifier: "projectF"},
+			{Id: "projectA"},
+			{Id: "projectB"},
+			{Id: "projectC"},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 		},
 	}
 
@@ -387,7 +387,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
+	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -405,8 +405,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
-	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
+	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])
+	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Id, payload[1])
 
 	s.Nil(resp.Pages())
 }
@@ -444,7 +444,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					Private:            true,
 					BatchTime:          0,
 					RemotePath:         "evergreen.yml",
-					Identifier:         "dimoxinil",
+					Id:                 "dimoxinil",
 					DisplayName:        "Dimoxinil",
 					DeactivatePrevious: false,
 					TracksPushEvents:   false,
@@ -476,8 +476,8 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(db.Clear(serviceModel.VersionCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
-		Identifier: projectId,
-		Name:       "something-else",
+		Id:         projectId,
+		Identifier: "something-else",
 	}
 	assert.NoError(project.Insert())
 	v1 := serviceModel.Version{

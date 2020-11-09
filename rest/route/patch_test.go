@@ -654,7 +654,7 @@ buildvariants:
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set())
 	projectRef := &serviceModel.ProjectRef{
-		Identifier: "sample",
+		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
 		RepoKind:   "github",
@@ -666,7 +666,7 @@ buildvariants:
 	require.NoError(t, projectRef.Insert())
 	unfinalized := patch.Patch{
 		Id:            mgobson.NewObjectId(),
-		Project:       projectRef.Identifier,
+		Project:       projectRef.Id,
 		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		PatchedConfig: config,
 	}
@@ -752,7 +752,7 @@ buildvariants:
 	// * should select all tasks
 	patch2 := patch.Patch{
 		Id:            mgobson.NewObjectId(),
-		Project:       projectRef.Identifier,
+		Project:       projectRef.Id,
 		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
 		PatchedConfig: config,
 	}

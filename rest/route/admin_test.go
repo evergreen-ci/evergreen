@@ -305,7 +305,7 @@ func TestRestartVersionsRoute(t *testing.T) {
 	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
 	projectRef := &model.ProjectRef{
-		Identifier: "my-project",
+		Id: "my-project",
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.PRPatchType,
 			Enabled:   true,
@@ -316,13 +316,13 @@ func TestRestartVersionsRoute(t *testing.T) {
 		Branch:  "my-branch",
 	}
 	assert.NoError(projectRef.Insert())
-	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
 	assert.NoError(commitqueue.InsertQueue(cq))
 	patches := []patch.Patch{
 		{ // patch: within time frame, failed
 			Id:          mgobson.NewObjectId(),
 			PatchNumber: 1,
-			Project:     projectRef.Identifier,
+			Project:     projectRef.Id,
 			StartTime:   startTime.Add(30 * time.Minute),
 			FinishTime:  endTime.Add(30 * time.Minute),
 			Status:      evergreen.PatchFailed,
@@ -335,7 +335,7 @@ func TestRestartVersionsRoute(t *testing.T) {
 		{ // within time frame, not failed
 			Id:          mgobson.NewObjectId(),
 			PatchNumber: 2,
-			Project:     projectRef.Identifier,
+			Project:     projectRef.Id,
 			StartTime:   startTime.Add(30 * time.Minute),
 			FinishTime:  endTime.Add(30 * time.Minute),
 			Status:      evergreen.PatchSucceeded,

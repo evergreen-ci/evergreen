@@ -100,19 +100,19 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	catcher := grip.NewSimpleCatcher()
 	for i := range refs {
 		if !refs[i].TracksPushEvents || !refs[i].Enabled || refs[i].RepotrackerDisabled {
-			unactionable = append(unactionable, refs[i].Identifier)
+			unactionable = append(unactionable, refs[i].Id)
 			continue
 		}
 
-		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)
+		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
 		job.SetPriority(1)
 
 		if err := q.Put(context.TODO(), job); err != nil {
-			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Identifier))
-			failed = append(failed, refs[i].Identifier)
+			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Id))
+			failed = append(failed, refs[i].Id)
 
 		} else {
-			succeeded = append(succeeded, refs[i].Identifier)
+			succeeded = append(succeeded, refs[i].Id)
 		}
 	}
 

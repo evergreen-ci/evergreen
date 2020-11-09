@@ -78,7 +78,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
-		Identifier: "sample",
+		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
 		RepoKind:   "github",

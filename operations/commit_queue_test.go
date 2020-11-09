@@ -96,7 +96,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(p3.Insert())
 
 	pRef := &model.ProjectRef{
-		Identifier:  "mci",
+		Id:          "mci",
 		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
@@ -155,7 +155,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	}
 	s.NoError(p1.Insert())
 	pRef := &model.ProjectRef{
-		Identifier:  "mci",
+		Id:          "mci",
 		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
@@ -209,7 +209,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	cq.Queue[0].Version = "my_version"
 	s.NoError(cq.UpdateVersion(cq.Queue[0]))
 	pRef := &model.ProjectRef{
-		Identifier:  "mci",
+		Id:          "mci",
 		Owner:       "evergreen-ci",
 		Repo:        "evergreen",
 		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
@@ -268,7 +268,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
 	pRef := &model.ProjectRef{
-		Identifier:  "mci",
+		Id:          "mci",
 		Owner:       "me",
 		Repo:        "evergreen",
 		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
@@ -314,8 +314,8 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 	projectRef := model.ProjectRef{
-		Identifier: "mci",
-		Admins:     []string{"testuser"},
+		Id:     "mci",
+		Admins: []string{"testuser"},
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,
 		},

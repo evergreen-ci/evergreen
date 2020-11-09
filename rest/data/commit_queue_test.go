@@ -34,7 +34,7 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	s.projectRef = &model.ProjectRef{
-		Identifier:       "mci",
+		Id:               "mci",
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "master",
@@ -194,7 +194,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	s.Require().NoError(u.Insert())
 
 	cqAlias := model.ProjectAlias{
-		ProjectID: s.projectRef.Identifier,
+		ProjectID: s.projectRef.Id,
 		Alias:     evergreen.CommitQueueAlias,
 		Variant:   "v0",
 		Task:      "t0",
@@ -203,7 +203,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 
 	existingPatch := &patch.Patch{
 		Author:  "octocat",
-		Project: s.projectRef.Identifier,
+		Project: s.projectRef.Id,
 		PatchedConfig: `
 tasks:
   - name: t0

@@ -34,11 +34,11 @@ const (
 func getMockProjectSettings() model.ProjectSettingsEvent {
 	return model.ProjectSettingsEvent{
 		ProjectRef: model.ProjectRef{
-			Owner:      "admin",
-			Enabled:    true,
-			Private:    true,
-			Identifier: projectId,
-			Admins:     []string{},
+			Owner:   "admin",
+			Enabled: true,
+			Private: true,
+			Id:      projectId,
+			Admins:  []string{},
 		},
 		GitHubHooksEnabled: true,
 		Vars: model.ProjectVars{
@@ -76,7 +76,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		projects := []*model.ProjectRef{
 			{
-				Identifier:  "projectA",
+				Id:          "projectA",
 				Private:     false,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
@@ -84,7 +84,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Branch:      "master",
 			},
 			{
-				Identifier:  "projectB",
+				Id:          "projectB",
 				Private:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
@@ -92,23 +92,23 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Branch:      "master",
 			},
 			{
-				Identifier:  "projectC",
+				Id:          "projectC",
 				Private:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "master",
 			},
-			{Identifier: "projectD", Private: false},
-			{Identifier: "projectE", Private: false},
-			{Identifier: "projectF", Private: true},
+			{Id: "projectD", Private: false},
+			{Id: "projectE", Private: false},
+			{Id: "projectF", Private: true},
 		}
 
 		for _, p := range projects {
 			if err := p.Insert(); err != nil {
 				return err
 			}
-			if _, err := model.GetNewRevisionOrderNumber(p.Identifier); err != nil {
+			if _, err := model.GetNewRevisionOrderNumber(p.Id); err != nil {
 				return err
 			}
 		}
@@ -205,7 +205,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		s.ctx = &MockConnector{MockProjectConnector: MockProjectConnector{
 			CachedProjects: []model.ProjectRef{
 				{
-					Identifier:  "projectA",
+					Id:          "projectA",
 					Private:     false,
 					CommitQueue: model.CommitQueueParams{Enabled: true},
 					Owner:       "evergreen-ci",
@@ -213,7 +213,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					Branch:      "master",
 				},
 				{
-					Identifier:  "projectB",
+					Id:          "projectB",
 					Private:     true,
 					CommitQueue: model.CommitQueueParams{Enabled: true},
 					Owner:       "evergreen-ci",
@@ -221,16 +221,16 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					Branch:      "master",
 				},
 				{
-					Identifier:  "projectC",
+					Id:          "projectC",
 					Private:     true,
 					CommitQueue: model.CommitQueueParams{Enabled: true},
 					Owner:       "evergreen-ci",
 					Repo:        "evergreen",
 					Branch:      "master",
 				},
-				{Identifier: "projectD", Private: false},
-				{Identifier: "projectE", Private: false},
-				{Identifier: "projectF", Private: true},
+				{Id: "projectD", Private: false},
+				{Id: "projectE", Private: false},
+				{Id: "projectF", Private: true},
 			},
 			CachedEvents: projectEvents,
 			CachedVars: []*model.ProjectVars{
@@ -333,12 +333,12 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 
 func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 	projRef := &model.ProjectRef{
-		Owner:      "admin",
-		Enabled:    true,
-		Private:    true,
-		Identifier: projectId,
-		Admins:     []string{},
-		Repo:       "SomeRepo",
+		Owner:   "admin",
+		Enabled: true,
+		Private: true,
+		Id:      projectId,
+		Admins:  []string{},
+		Repo:    "SomeRepo",
 	}
 	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
 	s.NoError(err)
@@ -347,11 +347,11 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 
 func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 	projRef := &model.ProjectRef{
-		Owner:      "admin",
-		Enabled:    true,
-		Private:    true,
-		Identifier: projectId,
-		Admins:     []string{},
+		Owner:   "admin",
+		Enabled: true,
+		Private: true,
+		Id:      projectId,
+		Admins:  []string{},
 	}
 	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
 	s.NotNil(err)

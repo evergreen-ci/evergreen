@@ -53,9 +53,9 @@ func (s *commitQueueSuite) SetupSuite() {
 	s.Require().Len(s.prBody, 24757)
 
 	s.projectRef = &model.ProjectRef{
-		Identifier: "mci",
-		Owner:      "baxterthehacker",
-		Repo:       "public-repo",
+		Id:    "mci",
+		Owner: "baxterthehacker",
+		Repo:  "public-repo",
 		CommitQueue: model.CommitQueueParams{
 			Enabled:     true,
 			MergeMethod: "squash",
@@ -275,7 +275,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.NoError(err)
 
 	projectRef := &model.ProjectRef{
-		Identifier: "evergreen",
+		Id:         "evergreen",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",

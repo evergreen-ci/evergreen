@@ -59,7 +59,7 @@ func TestFetchRevisions(t *testing.T) {
 			"limit of 2 commits where 3 exist", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
-				"Error running repository process %s", repoTracker.Id)
+				"Error running repository process %s", repoTracker.Settings.Id)
 			numVersions, err := model.VersionCount(model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
@@ -117,9 +117,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			require.NoError(t, err, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
-			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
 			require.NoError(t, err, "Error retrieving first stored version %s", versionOne.Id)
-			versionTwo, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
+			versionTwo, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionTwo.Revision))
 			require.NoError(t, err, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
@@ -145,7 +145,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
@@ -173,8 +173,8 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		repoTracker := RepoTracker{
 			testConfig,
 			&model.ProjectRef{
-				Identifier: "testproject",
-				BatchTime:  10,
+				Id:        "testproject",
+				BatchTime: 10,
 			},
 			poller,
 		}
@@ -323,8 +323,8 @@ tasks:
 	repoTracker := RepoTracker{
 		testConfig,
 		&model.ProjectRef{
-			Identifier: "testproject",
-			BatchTime:  0,
+			Id:        "testproject",
+			BatchTime: 0,
 		},
 		NewMockRepoPoller(pp, revisions),
 	}
@@ -416,8 +416,8 @@ func TestBatchTimes(t *testing.T) {
 			repoTracker := RepoTracker{
 				testConfig,
 				&model.ProjectRef{
-					Identifier: "testproject",
-					BatchTime:  1,
+					Id:        "testproject",
+					BatchTime: 1,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -441,8 +441,8 @@ func TestBatchTimes(t *testing.T) {
 			repoTracker := RepoTracker{
 				testConfig,
 				&model.ProjectRef{
-					Identifier: "testproject",
-					BatchTime:  0,
+					Id:        "testproject",
+					BatchTime: 0,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -476,8 +476,8 @@ func TestBatchTimes(t *testing.T) {
 			repoTracker := RepoTracker{
 				testConfig,
 				&model.ProjectRef{
-					Identifier: "testproject",
-					BatchTime:  60,
+					Id:        "testproject",
+					BatchTime: 60,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -509,8 +509,8 @@ func TestBatchTimes(t *testing.T) {
 			repoTracker := RepoTracker{
 				testConfig,
 				&model.ProjectRef{
-					Identifier: "testproject",
-					BatchTime:  60,
+					Id:        "testproject",
+					BatchTime: 60,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -565,8 +565,8 @@ func TestBatchTimes(t *testing.T) {
 		repoTracker := RepoTracker{
 			testConfig,
 			&model.ProjectRef{
-				Identifier: "testproject",
-				BatchTime:  60,
+				Id:        "testproject",
+				BatchTime: 60,
 			},
 			NewMockRepoPoller(project, revisions),
 		}
@@ -645,12 +645,12 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	subs := []event.Subscription{}
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj1 := model.ProjectRef{
-		Identifier:           "proj1",
+		Id:                   "proj1",
 		NotifyOnBuildFailure: false,
 	}
 	v1 := model.Version{
 		Id:         "v1",
-		Identifier: proj1.Identifier,
+		Identifier: proj1.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 	}
@@ -662,7 +662,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	subs = []event.Subscription{}
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj2 := model.ProjectRef{
-		Identifier:           "proj2",
+		Id:                   "proj2",
 		NotifyOnBuildFailure: true,
 		Admins:               []string{"u2", "u3"},
 	}
@@ -703,7 +703,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(u4.Insert())
 	v3 := model.Version{
 		Id:         "v3",
-		Identifier: proj1.Identifier,
+		Identifier: proj1.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 		AuthorID:   u4.Id,
@@ -730,7 +730,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 	s.ref = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
-		Identifier: "mci",
+		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
 		RepoKind:   "github",
@@ -767,7 +767,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -807,7 +807,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -846,7 +846,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -882,7 +882,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -928,7 +928,7 @@ tasks:
 - name: task3
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -989,7 +989,7 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -998,7 +998,7 @@ tasks:
 	}
 	alias := model.ProjectAlias{
 		Alias:     evergreen.GithubAlias,
-		ProjectID: s.ref.Identifier,
+		ProjectID: s.ref.Id,
 		Task:      "task1",
 		Variant:   ".*",
 	}
@@ -1125,7 +1125,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		},
 	}
 	pRef := &model.ProjectRef{
-		Identifier:            "my-project",
+		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: true,
 	}

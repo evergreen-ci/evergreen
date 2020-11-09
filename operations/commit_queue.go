@@ -391,7 +391,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
 	}
-	cq, err := client.GetCommitQueue(ctx, projectRef.Identifier)
+	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
 	if err != nil {
 		return err
 	}

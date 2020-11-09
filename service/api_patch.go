@@ -114,7 +114,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:         dbUser.Id,
-		Project:      pref.Identifier,
+		Project:      pref.Id,
 		BaseGitHash:  data.Githash,
 		Module:       r.FormValue("module"),
 		PatchContent: patchString,
@@ -239,7 +239,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
 		return
 	}
-	project, err := model.FindLastKnownGoodProject(projectRef.Identifier)
+	project, err := model.FindLastKnownGoodProject(projectRef.Id)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting patch"))
 		return

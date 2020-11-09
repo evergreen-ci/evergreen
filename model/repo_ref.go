@@ -17,7 +17,7 @@ type RepoRef struct {
 
 var (
 	// bson fields for the RepoRef struct
-	RepoRefIdentifierKey          = bsonutil.MustHaveTag(RepoRef{}, "Identifier")
+	RepoRefIdKey                  = bsonutil.MustHaveTag(RepoRef{}, "Id")
 	RepoRefOwnerKey               = bsonutil.MustHaveTag(RepoRef{}, "Owner")
 	RepoRefRepoKey                = bsonutil.MustHaveTag(RepoRef{}, "Repo")
 	RepoRefEnabledKey             = bsonutil.MustHaveTag(RepoRef{}, "Enabled")
@@ -41,7 +41,7 @@ func (RepoRef *RepoRef) Update() error {
 	return db.Update(
 		RepoRefCollection,
 		bson.M{
-			RepoRefIdentifierKey: RepoRef.Identifier,
+			RepoRefIdKey: RepoRef.Id,
 		},
 		RepoRef,
 	)
@@ -53,7 +53,7 @@ func (RepoRef *RepoRef) Upsert() error {
 	_, err := db.Upsert(
 		RepoRefCollection,
 		bson.M{
-			RepoRefIdentifierKey: RepoRef.Identifier,
+			RepoRefIdKey: RepoRef.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -90,7 +90,7 @@ func FindOne(query db.Q) (*RepoRef, error) {
 // name and the project name
 func FindOneRepoRef(identifier string) (*RepoRef, error) {
 	return FindOne(db.Query(bson.M{
-		RepoRefIdentifierKey: identifier,
+		RepoRefIdKey: identifier,
 	}))
 }
 

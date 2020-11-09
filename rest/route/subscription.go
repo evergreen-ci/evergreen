@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	model2 "github.com/evergreen-ci/evergreen/model"
-
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -99,7 +98,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 		}
 	}
 	if s.ownerType == string(event.OwnerTypeProject) {
-		id, err := model2.FindIdentifierForProject(s.owner)
+		id, err := dbModel.FindIdForProject(s.owner)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,

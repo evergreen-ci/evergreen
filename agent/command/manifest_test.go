@@ -63,7 +63,7 @@ func TestManifestLoad(t *testing.T) {
 				currentManifest, err := manifest.FindOne(manifest.ById(taskConfig.Task.Version))
 				So(err, ShouldBeNil)
 				So(currentManifest, ShouldNotBeNil)
-				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Identifier)
+				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Id)
 				So(currentManifest.Modules, ShouldNotBeNil)
 				So(len(currentManifest.Modules), ShouldEqual, 1)
 				for key := range currentManifest.Modules {
@@ -90,7 +90,7 @@ func TestManifestLoad(t *testing.T) {
 				currentManifest, err := manifest.FindOne(manifest.ById(taskConfig.Task.Version))
 				So(err, ShouldBeNil)
 				So(currentManifest, ShouldNotBeNil)
-				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Identifier)
+				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Id)
 				So(currentManifest.Modules, ShouldNotBeNil)
 				So(len(currentManifest.Modules), ShouldEqual, 1)
 				for key := range currentManifest.Modules {

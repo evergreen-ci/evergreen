@@ -30,12 +30,12 @@ const (
 func getMockProjectSettings() ProjectSettingsEvent {
 	return ProjectSettingsEvent{
 		ProjectRef: ProjectRef{
-			Owner:      "admin",
-			Enabled:    true,
-			Private:    true,
-			Identifier: projectId,
-			Admins:     []string{},
-			Tags:       []string{},
+			Owner:   "admin",
+			Enabled: true,
+			Private: true,
+			Id:      projectId,
+			Admins:  []string{},
+			Tags:    []string{},
 		},
 		GitHubHooksEnabled: true,
 		Vars: ProjectVars{

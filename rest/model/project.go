@@ -15,6 +15,7 @@ type UIProjectFields struct {
 }
 
 type APIProject struct {
+	Id                    *string              `json:"id"`
 	BatchTime             int                  `json:"batch_time"`
 	Branch                *string              `json:"branch_name"`
 	DisplayName           *string              `json:"display_name"`
@@ -58,8 +59,8 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.DisplayName = ToStringPtr(v.DisplayName)
 	apiProject.Enabled = v.Enabled
 	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
+	apiProject.Id = ToStringPtr(v.Id)
 	apiProject.Identifier = ToStringPtr(v.Identifier)
-	apiProject.Name = ToStringPtr(v.Name)
 	apiProject.Owner = ToStringPtr(v.Owner)
 	apiProject.Private = v.Private
 	apiProject.RemotePath = ToStringPtr(v.RemotePath)
@@ -233,6 +234,7 @@ func (c *APIParameterInfo) BuildFromService(h interface{}) error {
 }
 
 type APIProjectRef struct {
+	Id                          *string              `json:"id"`
 	Owner                       *string              `json:"owner_name"`
 	Repo                        *string              `json:"repo_name"`
 	Branch                      *string              `json:"branch_name"`
@@ -243,7 +245,6 @@ type APIProjectRef struct {
 	RemotePath                  *string              `json:"remote_path"`
 	SpawnHostScriptPath         *string              `json:"spawn_host_script_path"`
 	Identifier                  *string              `json:"identifier"`
-	Name                        *string              `json:"name"`
 	DisplayName                 *string              `json:"display_name"`
 	DeactivatePrevious          bool                 `json:"deactivate_previous"`
 	TracksPushEvents            bool                 `json:"tracks_push_events"`
@@ -311,8 +312,8 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Private:               p.Private,
 		BatchTime:             p.BatchTime,
 		RemotePath:            FromStringPtr(p.RemotePath),
+		Id:                    FromStringPtr(p.Id),
 		Identifier:            FromStringPtr(p.Identifier),
-		Name:                  FromStringPtr(p.Name),
 		DisplayName:           FromStringPtr(p.DisplayName),
 		DeactivatePrevious:    p.DeactivatePrevious,
 		TracksPushEvents:      p.TracksPushEvents,
@@ -393,8 +394,8 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Private = projectRef.Private
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = ToStringPtr(projectRef.RemotePath)
+	p.Id = ToStringPtr(projectRef.Id)
 	p.Identifier = ToStringPtr(projectRef.Identifier)
-	p.Name = ToStringPtr(projectRef.Name)
 	p.DisplayName = ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents

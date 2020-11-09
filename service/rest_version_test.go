@@ -38,7 +38,7 @@ func TestGetRecentVersions(t *testing.T) {
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
-		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
+		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, model.ProjectRefCollection))
 
 		projectName := "project_test"
 

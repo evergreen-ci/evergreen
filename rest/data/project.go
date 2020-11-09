@@ -22,7 +22,7 @@ import (
 // from the Connector through interactions with the backing database.
 type DBProjectConnector struct{}
 
-// FindProjectById queries the database for the project matching the projectRef.Identifier.
+// FindProjectById queries the database for the project matching the projectRef.Id.
 func (pc *DBProjectConnector) FindProjectById(id string) (*model.ProjectRef, error) {
 	p, err := model.FindOneProjectRef(id)
 	if err != nil {
@@ -43,19 +43,19 @@ func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *use
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Identifier),
+			Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Id),
 		}
 	}
 	return nil
 }
 
-// UpdateProject updates the given model.ProjectRef.Identifier.
+// UpdateProject updates the given model.ProjectRef.Id.
 func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
 	err := projectRef.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 		}
 	}
 	return nil
@@ -75,7 +75,7 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Identifier)
+		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
 	}
 	if hook != nil {
 		projectRef.TracksPushEvents = true
@@ -95,7 +95,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "patch project",
 			"message": "can't setup webhook",
-			"project": projectRef.Identifier,
+			"project": projectRef.Id,
 			"owner":   projectRef.Owner,
 			"repo":    projectRef.Repo,
 		}))
@@ -104,7 +104,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 	}
 
 	if err = hook.Insert(); err != nil {
-		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Identifier)
+		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
 	}
 	projectRef.TracksPushEvents = true
 	return true, nil
@@ -116,7 +116,7 @@ func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) erro
 		return errors.Wrap(err, "error finding project refs")
 	}
 	for _, ref := range conflictingRefs {
-		if ref.PRTestingEnabled && ref.Identifier != projectRef.Identifier {
+		if ref.PRTestingEnabled && ref.Id != projectRef.Id {
 			return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
 		}
 	}
@@ -130,12 +130,12 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	cq, err := commitqueue.FindOneId(projectRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "database error finding commit queue")
 	}
 	if cq == nil {
-		cq = &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+		cq = &commitqueue.CommitQueue{ProjectID: projectRef.Id}
 		if err = commitqueue.InsertQueue(cq); err != nil {
 			return errors.Wrapf(err, "problem inserting new commit queue")
 		}
@@ -266,10 +266,10 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (ac *DBProjectConnector) GetVersionsInProject(projectName, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
-	projectId, err := model.FindIdentifierForProject(projectName)
+func (ac *DBProjectConnector) GetVersionsInProject(identifier, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
+	projectId, err := model.FindIdForProject(identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding project '%s'", projectName)
+		return nil, errors.Wrapf(err, "error finding project '%s'", identifier)
 	}
 	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(projectId, requester, limit, startOrder))
 	if err != nil {
@@ -289,22 +289,22 @@ func (ac *DBProjectConnector) GetVersionsInProject(projectName, requester string
 func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
 	hook, err := model.FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Identifier)
+		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
 	}
-	projectVars, err := model.FindOneProjectVars(p.Identifier)
+	projectVars, err := model.FindOneProjectVars(p.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Identifier)
+		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Id)
 	}
 	if projectVars == nil {
 		projectVars = &model.ProjectVars{}
 	}
-	projectAliases, err := model.FindAliasesForProject(p.Identifier)
+	projectAliases, err := model.FindAliasesForProject(p.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Identifier)
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
 	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Identifier, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Identifier)
+		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
 	}
 	projectSettingsEvent := model.ProjectSettingsEvent{
 		ProjectRef:         *p,
@@ -364,7 +364,7 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 	if sortDir > 0 {
 		for i := 0; i < len(pc.CachedProjects); i++ {
 			p := pc.CachedProjects[i]
-			if p.Identifier >= key {
+			if p.Id >= key {
 				projects = append(projects, p)
 				if len(projects) == limit {
 					break
@@ -374,7 +374,7 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 	} else {
 		for i := len(pc.CachedProjects) - 1; i >= 0; i-- {
 			p := pc.CachedProjects[i]
-			if p.Identifier < key {
+			if p.Id < key {
 				projects = append(projects, p)
 				if len(projects) == limit {
 					break
@@ -387,7 +387,7 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 
 func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		if p.Identifier == projectId {
+		if p.Id == projectId {
 			return &p, nil
 		}
 	}
@@ -399,10 +399,10 @@ func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.Projec
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	for _, p := range pc.CachedProjects {
-		if p.Identifier == projectRef.Identifier {
+		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Identifier),
+				Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Id),
 			}
 		}
 	}
@@ -412,13 +412,13 @@ func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *u
 
 func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
 	for _, p := range pc.CachedProjects {
-		if p.Identifier == projectRef.Identifier {
+		if p.Id == projectRef.Id {
 			return nil
 		}
 	}
 	return gimlet.ErrorResponse{
 		StatusCode: http.StatusInternalServerError,
-		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 	}
 }
 
@@ -437,7 +437,7 @@ tasks:
 - name: t1
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(config), pRef.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(config), pRef.Id, p)
 	return p, pp, err
 }
 

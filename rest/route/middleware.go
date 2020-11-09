@@ -154,7 +154,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 
 	isAdmin := utility.StringSliceContains(opCtx.ProjectRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Identifier,
+		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
@@ -300,7 +300,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 	// A superuser or project admin is authorized
 	isAdmin := utility.StringSliceContains(projRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Identifier,
+		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,

@@ -58,11 +58,11 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 				continue
 			}
 
-			mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(proj.Identifier))
+			mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(proj.Id))
 			catcher.Add(err)
 			if mostRecentVersion == nil {
 				grip.Warning(message.Fields{
-					"project":   proj.Identifier,
+					"project":   proj.Id,
 					"operation": "repotracker catchup",
 					"message":   "could not find a recent version for project, skipping catchup",
 					"error":     err,
@@ -71,7 +71,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			}
 
 			if mostRecentVersion.CreateTime.Before(time.Now().Add(-4 * time.Hour)) {
-				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)
+				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Id)
 				j.SetPriority(-1)
 				catcher.Add(queue.Put(ctx, j))
 			}
@@ -389,7 +389,7 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "can't find projectRefs with Commit Queue enabled")
 		}
 		for _, p := range projectRefs {
-			catcher.Add(queue.Put(ctx, NewCommitQueueJob(env, p.Identifier, ts)))
+			catcher.Add(queue.Put(ctx, NewCommitQueueJob(env, p.Id, ts)))
 		}
 		return catcher.Resolve()
 	}
@@ -1105,7 +1105,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Identifier, ts)))
+			catcher.Add(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Id, ts)))
 		}
 
 		return catcher.Resolve()
@@ -1210,7 +1210,7 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 			for _, definition := range project.PeriodicBuilds {
 				// schedule the job if we want it to start before the next time this cron runs
 				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
-					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, definition.ID, definition.NextRunTime)))
+					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Id, definition.ID, definition.NextRunTime)))
 				}
 			}
 		}

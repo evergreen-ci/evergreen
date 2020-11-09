@@ -59,7 +59,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	if projectInfo.Ref == nil {
 		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectName))
 	}
-	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, projectInfo.Ref.Identifier, projectInfo.Project)
+	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, projectInfo.Ref.Id, projectInfo.Project)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

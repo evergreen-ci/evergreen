@@ -238,11 +238,11 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	}
 
 	projRef := model.ProjectRef{
-		Identifier: "proj",
+		Id: "proj",
 	}
 	s.NoError(projRef.Insert())
 	proj := model.Project{
-		Identifier: projRef.Identifier,
+		Identifier: projRef.Id,
 		BuildVariants: model.BuildVariants{
 			{
 				Name:        "bv1",
@@ -427,7 +427,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
 	ref := model.ProjectRef{
-		Identifier: "mci",
+		Id: "mci",
 	}
 	assert.NoError(ref.Insert())
 	d := distro.Distro{
@@ -455,7 +455,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(config1), ref.Identifier, p)
+	pp, err := model.LoadProjectInto([]byte(config1), ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Project:             p,
@@ -472,7 +472,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
-	assert.Equal(ref.Identifier, newVersion.Identifier)
+	assert.Equal(ref.Id, newVersion.Identifier)
 	assert.Equal(6, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 	assert.Empty(newVersion.Config)
@@ -505,7 +505,7 @@ tasks:
 - name: t1
 `
 	p = &model.Project{}
-	pp, err = model.LoadProjectInto([]byte(config2), ref.Identifier, p)
+	pp, err = model.LoadProjectInto([]byte(config2), ref.Id, p)
 	assert.NoError(err)
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp
@@ -518,7 +518,7 @@ tasks:
 	assert.NoError(err)
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
-	assert.Equal(ref.Identifier, newVersion.Identifier)
+	assert.Equal(ref.Id, newVersion.Identifier)
 	assert.Equal(7, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 	assert.Empty(newVersion.Config)

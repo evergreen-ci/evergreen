@@ -226,7 +226,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	// Validate the alias exists
 	if p.Alias != "" {
 		validAlias := false
-		aliases, err := comm.ListAliases(ctx, ref.Identifier)
+		aliases, err := comm.ListAliases(ctx, ref.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error contacting API server")
 		}

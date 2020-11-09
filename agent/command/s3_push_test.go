@@ -151,7 +151,7 @@ func TestS3PushExecute(t *testing.T) {
 					Name: "build_variant",
 				},
 				ProjectRef: &model.ProjectRef{
-					Identifier: "project_identifier",
+					Id: "project_identifier",
 					TaskSync: model.TaskSyncOptions{
 						ConfigEnabled: true,
 					},

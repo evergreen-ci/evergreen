@@ -54,7 +54,7 @@ func perfDashGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(project.Tasks) == 0 {
-		http.Error(w, fmt.Sprintf("no project tasks for project %v with revision %v", projectRef.Identifier, v.Revision),
+		http.Error(w, fmt.Sprintf("no project tasks for project %v with revision %v", projectRef.Id, v.Revision),
 			http.StatusBadRequest)
 		return
 

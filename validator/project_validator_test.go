@@ -1589,10 +1589,10 @@ func TestCheckProjectSemantics(t *testing.T) {
 			}
 
 			projectRef := &model.ProjectRef{
-				Identifier: "project_test",
+				Id: "project_test",
 			}
 
-			project, err := model.FindLastKnownGoodProject(projectRef.Identifier)
+			project, err := model.FindLastKnownGoodProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
 		})

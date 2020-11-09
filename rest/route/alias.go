@@ -34,7 +34,7 @@ func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
-	id, err := model.FindIdentifierForProject(a.name)
+	id, err := model.FindIdForProject(a.name)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding project '%s'", a.name))
 	}

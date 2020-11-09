@@ -65,7 +65,7 @@ func getDistantEVGRevision() (string, error) {
 
 func resetProjectRefs() {
 	projectRef = &model.ProjectRef{
-		Identifier:  "mci-test",
+		Id:          "mci-test",
 		DisplayName: "MCI Test",
 		Owner:       "deafgoat",
 		Repo:        "mci-test",
@@ -80,7 +80,7 @@ func resetProjectRefs() {
 	evgProjectRef = &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
-		Identifier: "mci",
+		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
 		RepoKind:   "github",
@@ -205,7 +205,7 @@ func TestGetRemoteConfig(t *testing.T) {
 		t, func() {
 
 			self.ProjectRef = &model.ProjectRef{
-				Identifier:  "mci-test",
+				Id:          "mci-test",
 				DisplayName: "MCI Test",
 				Owner:       "deafgoat",
 				Repo:        "config",
