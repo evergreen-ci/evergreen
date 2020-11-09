@@ -18,7 +18,7 @@ type GetCedarTestResultsOptions struct {
 	Execution int
 }
 
-// GetCedarTestResults makes request to cedar for a a task's test results.
+// GetCedarTestResults makes request to cedar for a task's test results.
 func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) ([]byte, error) {
 	getOpts := timber.GetOptions{
 		BaseURL:   fmt.Sprintf("https://%s", opts.BaseURL),
