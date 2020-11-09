@@ -1,0 +1,10 @@
+{
+  task(taskId: "3") {
+    abortInfo {
+      user
+      taskID
+      taskDisplayName
+      buildVariantDisplayName
+    }
+  }
+}

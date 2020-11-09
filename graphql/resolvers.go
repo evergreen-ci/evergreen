@@ -124,6 +124,37 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	return publicKeys, nil
 }
 
+func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
+	if at.Aborted != true {
+		return nil, nil
+	}
+
+	info := AbortInfo{
+		User:   &at.AbortInfo.User,
+		TaskID: &at.AbortInfo.TaskID,
+	}
+
+	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
+	if err != nil {
+		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
+	}
+	if abortedTask == nil {
+		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
+	}
+	abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
+	if err != nil {
+		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
+	}
+	if abortedTaskBuild == nil {
+		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
+	}
+
+	info.TaskDisplayName = &abortedTask.DisplayName
+	info.BuildVariantDisplayName = &abortedTaskBuild.DisplayName
+
+	return &info, nil
+}
+
 func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {

@@ -64,10 +64,18 @@ type APITask struct {
 	Requester          *string             `json:"requester"`
 	TestResults        []APITest           `json:"test_results"`
 	Aborted            bool                `json:"aborted"`
+	AbortInfo          APIAbortInfo        `json:"abort_info,omitempty"`
 	CanSync            bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
 	MustHaveResults    bool                `json:"must_have_test_results"`
+}
+
+type APIAbortInfo struct {
+	User       string `json:"user,omitempty"`
+	TaskID     string `json:"task_id,omitempty"`
+	NewVersion string `json:"new_version,omitempty"`
+	PRClosed   bool   `json:"pr_closed,omitempty"`
 }
 
 type LogLinks struct {
@@ -221,6 +229,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,
 				Timeout:  v.SyncAtEndOpts.Timeout,
+			},
+			AbortInfo: APIAbortInfo{
+				NewVersion: v.AbortInfo.NewVersion,
+				TaskID:     v.AbortInfo.TaskID,
+				User:       v.AbortInfo.User,
+				PRClosed:   v.AbortInfo.PRClosed,
 			},
 		}
 
