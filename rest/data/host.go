@@ -78,11 +78,11 @@ func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error)
 }
 
 func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
-	hosts, filterdHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distroID, currentTaskID, statuses, startedBy, sortBy, sortDir, page, limit)
+	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distroID, currentTaskID, statuses, startedBy, sortBy, sortDir, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	return hosts, filterdHostsCount, totalHostsCount, nil
+	return hosts, filteredHostsCount, totalHostsCount, nil
 }
 
 func (hc *DBConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {

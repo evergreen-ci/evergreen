@@ -170,6 +170,8 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
+// NewTaskHostAuthMiddleware returns route middleware that authenticates a host
+// created by a task and verifies the secret of the host that created this host.
 func NewTaskHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskHostAuthMiddleware{
 		sc: sc,
@@ -196,12 +198,14 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	h, err := m.sc.FindHostById(hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
 	}
 	if h == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}))
+		return
 	}
 
 	if h.StartedBy == "" {
@@ -209,10 +213,12 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			StatusCode: http.StatusBadRequest,
 			Message:    "Host was not started by task",
 		}))
+		return
 	}
 	t, err := m.sc.FindTaskById(h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
 	}
 	if code, err := m.sc.CheckHostSecret(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
