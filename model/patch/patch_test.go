@@ -162,7 +162,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 		MergeCommitSHA: github.String("abcdef"),
 	}
 
-	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias)
+	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "")
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)

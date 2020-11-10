@@ -434,7 +434,7 @@ type Volume {
   noExpiration: Boolean!
   homeVolume: Boolean!
   host: Host
-  creationTime: Time!
+  creationTime: Time
 }
 
 type PatchProject {
@@ -454,6 +454,7 @@ type Parameter {
 
 type TaskResult {
   id: ID!
+  aborted: Boolean!
   displayName: String!
   version: String!
   status: String!
@@ -540,8 +541,16 @@ type BaseTaskMetadata {
   baseTaskLink: String!
 }
 
+type AbortInfo {
+  user: String
+  taskID: String
+  taskDisplayName: String
+  buildVariantDisplayName: String
+}
+
 type Task {
   aborted: Boolean
+  abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
@@ -622,6 +631,7 @@ type File {
 type User {
   displayName: String!
   userId: String!
+  emailAddress: String!
 }
 
 type RecentTaskLogs {
@@ -752,6 +762,7 @@ type SpruceConfig {
   banner: String
   bannerTheme: String
   providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
 }
 
 type JiraConfig {
@@ -768,6 +779,12 @@ type CloudProviderConfig {
 
 type AWSConfig {
   maxVolumeSizePerUser: Int
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+  spawnHostsPerUser: Int!
 }
 
 type HostEvents {

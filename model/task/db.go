@@ -928,6 +928,11 @@ func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
 	return findAllTaskIDs(q)
 }
 
+func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
+	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	return findAllTaskIDs(q)
+}
+
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
 func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	q := db.Query(bson.M{

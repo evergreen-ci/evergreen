@@ -1,4 +1,4 @@
-package task_annotations
+package annotations
 
 import (
 	"time"
@@ -21,21 +21,41 @@ type TaskAnnotation struct {
 type IssueLink struct {
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
-	IssueKey string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	IssueKey string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source   *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
-type AnnotationSource struct {
+type Source struct {
 	Author string    `bson:"author,omitempty" json:"author,omitempty"`
 	Time   time.Time `bson:"time,omitempty" json:"time,omitempty"`
 }
 
 type Annotation struct {
 	// comment about the failure
-	Note string `bson:"note,omitempty" json:"note,omitempty"`
+	Note *Note `bson:"note,omitempty" json:"note,omitempty"`
 	// links to tickets definitely related.
 	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// links to tickets possibly related
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	// annotation attribution
-	Source AnnotationSource `bson:"source" json:"source"`
+}
+
+type Note struct {
+	Message string  `bson:"message,omitempty" json:"message,omitempty"`
+	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
+}
+
+// GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
+func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
+	highestExecutionAnnotations := map[string]TaskAnnotation{}
+	for idx, a := range annotations {
+		storedAnnotation, ok := highestExecutionAnnotations[a.TaskId]
+		if !ok || storedAnnotation.TaskExecution < a.TaskExecution {
+			highestExecutionAnnotations[a.TaskId] = annotations[idx]
+		}
+	}
+	res := []TaskAnnotation{}
+	for _, a := range highestExecutionAnnotations {
+		res = append(res, a)
+	}
+	return res
 }

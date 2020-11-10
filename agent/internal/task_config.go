@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -17,7 +17,7 @@ import (
 )
 
 type TaskConfig struct {
-	Distro               *distro.Distro
+	Distro               *apimodels.DistroView
 	ProjectRef           *model.ProjectRef
 	Project              *model.Project
 	Task                 *task.Task
@@ -62,7 +62,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
-func NewTaskConfig(d *distro.Distro, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)

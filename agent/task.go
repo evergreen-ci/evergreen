@@ -126,7 +126,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if tc.oomTrackerEnabled() {
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
 		tc.logger.Execution().Info("OOM tracker clearing system messages")
 		if err = tc.oomTracker.Clear(innerCtx); err != nil {
 			tc.logger.Execution().Errorf("error clearing system messages: %s", err)
@@ -294,8 +294,8 @@ func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
 	}
 }
 
-func (tc *taskContext) oomTrackerEnabled() bool {
-	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, tc.taskConfig.Distro.Provider)
+func (tc *taskContext) oomTrackerEnabled(cloudProvider string) bool {
+	return tc.project.OomTracker && !utility.StringSliceContains(evergreen.ProviderContainer, cloudProvider)
 }
 
 func (tc *taskContext) setIdleTimeout(dur time.Duration) {
@@ -337,7 +337,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 	grip.Info("Fetching distro configuration.")
-	confDistro, err := a.comm.GetDistro(ctx, tc.task)
+	confDistro, err := a.comm.GetDistroView(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}

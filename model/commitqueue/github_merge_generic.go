@@ -86,14 +86,18 @@ func (s *GithubMergePR) Send() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(s.PRs)*10)*time.Second)
 	defer cancel()
 	for i, pr := range s.PRs {
+		title := pr.CommitTitle
+		if pr.TitleOverride != "" {
+			title = pr.TitleOverride
+		}
 		mergeOpts := &github.PullRequestOptions{
 			MergeMethod: s.MergeMethod,
-			CommitTitle: pr.CommitTitle,
+			CommitTitle: title,
 			SHA:         pr.Ref,
 		}
 
 		// do the merge
-		res, _, err := githubClient.PullRequests.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, "", mergeOpts)
+		res, _, err := githubClient.PullRequests.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, pr.MessageOverride, mergeOpts)
 		if err != nil {
 			return errors.Wrap(err, "can't access GitHub merge API")
 		}
