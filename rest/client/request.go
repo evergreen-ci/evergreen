@@ -31,7 +31,6 @@ type requestInfo struct {
 var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
 
 func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
-	// url := c.getPath(path, version)
 	url := c.getPath(path)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {

@@ -14,10 +14,6 @@ import (
 
 // Communicator is an interface for communicating with the API server.
 type Communicator interface {
-	// ---------------------------------------------------------------------
-	// Begin legacy API methods
-	// ---------------------------------------------------------------------
-	//
 	// Setters
 	//
 	// SetTimeoutStart sets the initial timeout for a request.
