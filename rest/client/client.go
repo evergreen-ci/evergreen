@@ -12,9 +12,6 @@ const (
 	defaultTimeoutStart = time.Second * 2
 	defaultTimeoutMax   = time.Minute * 10
 	defaultTimeout      = time.Minute * 1
-
-	defaultLogBufferTime = 15 * time.Second
-	defaultLogBufferSize = 1000
 )
 
 // communicatorImpl implements Communicator and makes requests to API endpoints
@@ -31,9 +28,9 @@ type communicatorImpl struct {
 	apiKey  string
 }
 
-// NewCommunicator returns a Communicator capable of making HTTP REST requests against
-// the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
-// and SetMaxAttempts methods.
+// NewCommunicator returns a Communicator capable of making HTTP REST requests
+// against the API server. To change the default retry behavior, use the
+// SetTimeoutStart, SetTimeoutMax, and SetMaxAttempts methods.
 func NewCommunicator(serverURL string) Communicator {
 	c := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
