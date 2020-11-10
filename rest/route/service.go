@@ -188,4 +188,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartVersion(sc))
+	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchAnnotationsByVersion(sc))
+
 }
