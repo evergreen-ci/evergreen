@@ -87,6 +87,10 @@ func (s *GithubMergePR) Send() (err error) {
 	defer cancel()
 	for i, pr := range s.PRs {
 		title := pr.CommitTitle
+		if s.MergeMethod == githubMergeMethodMerge {
+			// if the merge method is to add a merge commit, send no title to the github API so that they use the default merge commit title
+			title = ""
+		}
 		if pr.TitleOverride != "" {
 			title = pr.TitleOverride
 		}
