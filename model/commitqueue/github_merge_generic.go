@@ -99,6 +99,10 @@ func (s *GithubMergePR) Send() (err error) {
 		// do the merge
 		res, _, err := githubClient.PullRequests.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, pr.MessageOverride, mergeOpts)
 		if err != nil {
+			s.sendMergeFailedStatus(err.Error(), pr)
+			for j := i + 1; j < len(s.PRs); j++ {
+				s.sendMergeFailedStatus("aborted", s.PRs[j])
+			}
 			return errors.Wrap(err, "can't access GitHub merge API")
 		}
 
