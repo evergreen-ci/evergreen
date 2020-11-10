@@ -455,7 +455,10 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 			return nil, errors.WithStack(err)
 		}
 		if len(newDeps) != len(depIdsToQueryFor) {
-			return nil, errors.Errorf("task '%s' depends on non-existent tasks", t.Id)
+			grip.Warning(message.Fields{
+				"message": "task depends on non-existent tasks",
+				"task_id": t.Id,
+			})
 		}
 
 		// add queried dependencies to the cache
