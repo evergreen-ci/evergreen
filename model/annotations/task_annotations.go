@@ -1,4 +1,4 @@
-package task_annotations
+package annotations
 
 import (
 	"time"
@@ -42,4 +42,20 @@ type Annotation struct {
 type Note struct {
 	Message string  `bson:"message,omitempty" json:"message,omitempty"`
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
+}
+
+// GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
+func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
+	highestExecutionAnnotations := map[string]TaskAnnotation{}
+	for idx, a := range annotations {
+		storedAnnotation, ok := highestExecutionAnnotations[a.TaskId]
+		if !ok || storedAnnotation.TaskExecution < a.TaskExecution {
+			highestExecutionAnnotations[a.TaskId] = annotations[idx]
+		}
+	}
+	res := []TaskAnnotation{}
+	for _, a := range highestExecutionAnnotations {
+		res = append(res, a)
+	}
+	return res
 }
