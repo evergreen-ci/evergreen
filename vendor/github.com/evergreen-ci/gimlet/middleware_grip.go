@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	remoteAddrHeaderName = "X-Cluster-Client-Ip"
+	remoteAddrHeaderName = "X-Forwarded-For"
 )
 
 // appLogging provides a Negroni-compatible middleware to send all
