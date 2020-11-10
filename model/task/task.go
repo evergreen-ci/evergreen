@@ -424,12 +424,17 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return true, nil
 	}
 
-	deps, err := t.populateDependencyTaskCache(depCaches)
+	_, err := t.populateDependencyTaskCache(depCaches)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 
-	for _, depTask := range deps {
+	for _, dependency := range t.DependsOn {
+		depTask, ok := depCaches[dependency.TaskId]
+		// ignore non-existent dependencies
+		if !ok {
+			continue
+		}
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
@@ -453,12 +458,6 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey, ActivatedKey))
 		if err != nil {
 			return nil, errors.WithStack(err)
-		}
-		if len(newDeps) != len(depIdsToQueryFor) {
-			grip.Warning(message.Fields{
-				"message": "task depends on non-existent tasks",
-				"task_id": t.Id,
-			})
 		}
 
 		// add queried dependencies to the cache
