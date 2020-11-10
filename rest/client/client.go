@@ -11,7 +11,7 @@ const (
 	defaultMaxAttempts  = 10
 	defaultTimeoutStart = time.Second * 2
 	defaultTimeoutMax   = time.Minute * 10
-	heartbeatTimeout    = time.Minute * 1
+	defaultTimeout      = time.Minute * 1
 
 	defaultLogBufferTime = 15 * time.Second
 	defaultLogBufferSize = 1000
@@ -52,7 +52,7 @@ func (c *communicatorImpl) resetClient() {
 	}
 
 	c.httpClient = utility.GetDefaultHTTPRetryableClient()
-	c.httpClient.Timeout = heartbeatTimeout
+	c.httpClient.Timeout = defaultTimeout
 }
 
 func (c *communicatorImpl) Close() {
