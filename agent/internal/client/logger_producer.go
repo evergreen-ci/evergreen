@@ -11,31 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LoggerProducer provides a mechanism for agents (and command pluings) to access the
-// process' logging facilities. The interfaces are all based on grip
-// interfaces and abstractions, and the behavior of the interfaces is
-// dependent on the configuration and implementation of the
-// LoggerProducer instance.
-type LoggerProducer interface {
-	// The Execution/Task/System loggers provide a grip-like
-	// logging interface for the distinct logging channels that the
-	// Evergreen agent provides to tasks
-	Execution() grip.Journaler
-	Task() grip.Journaler
-	System() grip.Journaler
-
-	// Flush flushes the underlying senders.
-	Flush(context.Context) error
-
-	// Close releases all resources by calling Close on all underlying senders.
-	Close() error
-	// Closed returns true if this logger has been closed, false otherwise.
-	Closed() bool
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
-// Standard/Default Production  LoggerProducer
+// Standard/Default Production LoggerProducer
 
 // logHarness provides a straightforward implementation of the
 // plugin.LoggerProducer interface.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/pkg/errors"
 )
 

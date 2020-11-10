@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
@@ -120,10 +120,10 @@ func (s *CommandSuite) TestS3Copy() {
 
 	taskID := "s3copy"
 	s.tc.task.ID = taskID
-	s.NoError(s.a.startLogging(ctx, s.tc))
+	s.Require().NoError(s.a.startLogging(ctx, s.tc))
 	defer s.a.removeTaskDirectory(s.tc)
 	_, err := s.a.runTask(ctx, s.tc)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	s.Require().NoError(s.tc.logger.Close())
 	messages := s.mockCommunicator.GetMockMessages()

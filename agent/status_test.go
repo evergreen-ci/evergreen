@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -68,7 +68,7 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
-	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
+	agt, err := newWithCommunicator(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 
 	mockCommunicator := agt.comm.(*client.Mock)
@@ -90,7 +90,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	s.cancel = cancel
 
 	s.testOpts.StatusPort = 2287
-	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
+	agt, err := newWithCommunicator(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 
 	mockCommunicator := agt.comm.(*client.Mock)
@@ -156,7 +156,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
-	agt, err := New(ctx, s.testOpts, client.NewMock("url"))
+	agt, err := newWithCommunicator(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true

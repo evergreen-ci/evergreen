@@ -6,807 +6,1472 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
-func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	out := &apimodels.AgentSetupData{}
-	info := requestInfo{
-		method:  get,
-		version: apiVersion1,
-		path:    "agent/setup",
+// respErrorf attempts to read a gimlet.ErrorResponse from the response body
+// JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
+// HTTP status code and the formatted error message. Otherwise, it returns an
+// error message with the HTTP status and raw response body.
+func respErrorf(resp *http.Response, format string, args ...interface{}) error {
+	wrapError := func(err error) error {
+		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
+		return errors.Wrapf(err, format, args...)
 	}
 
-	resp, err := c.retryRequest(ctx, info, nil)
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get agent setup info")
+		return wrapError(errors.Wrap(err, "could not read response body"))
 	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, out); err != nil {
-		return nil, errors.Wrap(err, "failed to get agent setup info")
+
+	respErr := gimlet.ErrorResponse{}
+	if err = json.Unmarshal(b, &respErr); err != nil {
+		return wrapError(errors.Errorf("received response: %s", string(b)))
 	}
-	return out, nil
+
+	return wrapError(respErr)
 }
 
-// StartTask marks the task as started.
-func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) error {
-	grip.Info(message.Fields{
-		"message":     "started StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
-	})
-	pidStr := strconv.Itoa(os.Getpid())
-	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
+// CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
+func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
+
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodPost,
+		path:   "hosts",
 	}
-	info.setTaskPathSuffix("start")
-	resp, err := c.retryRequest(ctx, info, taskStartRequest)
+	resp, err := c.request(ctx, info, spawnRequest)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to start task %s", taskData.ID)
-		return err
+		err = errors.Wrapf(err, "error sending request to spawn host")
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "spawning host")
+	}
+
+	spawnHostResp := model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, &spawnHostResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &spawnHostResp, nil
+}
+
+// GetSpawnHost will return the host document for the given hostId
+func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*model.APIHost, error) {
+
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s", hostId),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		err = errors.Wrapf(err, "error sending request to spawn host")
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting host '%s'", hostId)
+	}
+
+	spawnHostResp := model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, &spawnHostResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &spawnHostResp, nil
+}
+
+// ModifySpawnHost will start a job that updates the specified user-spawned host
+// with the modifications passed as a parameter.
+func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
+	info := requestInfo{
+		method: http.MethodPatch,
+		path:   fmt.Sprintf("hosts/%s", hostID),
+	}
+
+	resp, err := c.request(ctx, info, changes)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to modify host")
 	}
 	defer resp.Body.Close()
-	grip.Info(message.Fields{
-		"message":     "finished StartTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
-	})
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "modifying host '%s'", hostID)
+	}
+
 	return nil
 }
 
-// EndTask marks the task as finished with the given status
-func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
-	grip.Info(message.Fields{
-		"message":     "started EndTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
-	})
-	taskEndResp := &apimodels.EndTaskResponse{}
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/stop", hostID),
 	}
-	info.setTaskPathSuffix("end")
-	resp, err := c.retryRequest(ctx, info, detail)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to end task %s", taskData.ID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
-		message := fmt.Sprintf("Error unmarshalling task end response: %v", err)
-		return nil, errors.New(message)
-	}
-	grip.Info(message.Fields{
-		"message":     "finished EndTask",
-		"task_id":     taskData.ID,
-		"task_secret": taskData.Secret,
-	})
-	return taskEndResp, nil
-}
 
-// GetTask returns the active task.
-func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
-	task := &task.Task{}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get task %s", taskData.ID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
-	if err = utility.ReadJSON(resp.Body, task); err != nil {
-		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
-		return nil, err
-	}
-	return task, nil
-}
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{SubscriptionType: subscriptionType}
 
-// GetDisplayTaskNameFromExecution returns the name of the display task
-// associated with the execution task.
-func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, td TaskData) (string, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &td,
-		version:  apiVersion2,
-	}
-	info.setTaskPathSuffix("display_task")
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.request(ctx, info, options)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get display task of task %s", td.ID)
+		return errors.Wrapf(err, "error sending request to stop host")
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return "", nil
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", respErrorf(resp, "getting display task of task %s", td.ID)
+		return respErrorf(resp, "stopping host '%s'", hostID)
 	}
 
-	name, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrapf(err, "reading display task name of task %s", td.ID)
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostStopped), "problem waiting for host stop to complete")
 	}
 
-	return string(name), nil
+	return nil
 }
 
-// GetProjectRef loads the task's project.
-func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
-	projectRef := &model.ProjectRef{}
+func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts *host.VolumeAttachment) error {
 	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/attach", hostID),
 	}
-	info.setTaskPathSuffix("project_ref")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get project ref for task %s", taskData.ID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
-	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
-		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
-		return nil, err
-	}
-	return projectRef, nil
-}
 
-func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData) (*apimodels.DistroView, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("distro_view")
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.request(ctx, info, opts)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
-	var dv apimodels.DistroView
-	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
-		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
-		return nil, err
-	}
-	return &dv, nil
-}
-
-// GetDistroAMI returns the distro for the task.
-func (c *communicatorImpl) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion2,
-	}
-	info.path = fmt.Sprintf("distros/%s/ami", distro)
-	if region != "" {
-		info.path = fmt.Sprintf("%s?region=%s", info.path, region)
-	}
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return "", errors.New("conflict; wrong secret")
-	}
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
-	}
-	return string(out), nil
-}
-
-func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("parser_project")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get project for task %s", taskData.ID)
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading body")
-	}
-	return model.GetProjectFromBSON(respBytes)
-}
-
-func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
-	e := util.Expansions{}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("expansions")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get expansions for task %s", taskData.ID)
+		return errors.Wrap(err, "error sending request to attach volume")
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
 	}
-	err = utility.ReadJSON(resp.Body, &e)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "attaching volume to host '%s'", hostID)
 	}
-	return e, nil
+
+	return nil
 }
 
-// Heartbeat sends a heartbeat to the API server. The server can respond with
-// an "abort" response. This function returns true if the agent should abort.
-func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
-	data := interface{}("heartbeat")
-	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
+func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/detach", hostID),
+	}
+	body := host.VolumeAttachment{
+		VolumeID: volumeID,
+	}
+
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to detach volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume) (*model.APIVolume, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "volumes",
+	}
+
+	resp, err := c.request(ctx, info, volume)
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to create volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "creating volume")
+	}
+
+	createVolumeResp := model.APIVolume{}
+	if err = utility.ReadJSON(resp.Body, &createVolumeResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &createVolumeResp, nil
+}
+
+func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) error {
+	info := requestInfo{
+		method: http.MethodDelete,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrap(err, "error sending request to delete volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "deleting volume '%s'", volumeID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, opts *model.VolumeModifyOptions) error {
+	info := requestInfo{
+		method: http.MethodPatch,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return errors.Wrap(err, "error sending request to modify volume")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "modifying volume '%s'", volumeID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*model.APIVolume, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("volumes/%s", volumeID),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get volumes")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting volume '%s'", volumeID)
+	}
+
+	volumeResp := &model.APIVolume{}
+	if err = utility.ReadJSON(resp.Body, volumeResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return volumeResp, nil
+}
+
+func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVolume, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "volumes",
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get volumes")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting volumes for user '%s'", c.apiUser)
+	}
+
+	getVolumesResp := []model.APIVolume{}
+	if err = utility.ReadJSON(resp.Body, &getVolumesResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return getVolumesResp, nil
+}
+
+func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/start", hostID),
+	}
+
+	options := struct {
+		SubscriptionType string `json:"subscription_type"`
+	}{SubscriptionType: subscriptionType}
+
+	resp, err := c.request(ctx, info, options)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to start host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "starting host '%s'", hostID)
+	}
+
+	if wait {
+		return errors.Wrap(c.waitForStatus(ctx, hostID, evergreen.HostRunning), "problem waiting for host start to complete")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status string) error {
+	const (
+		contextTimeout = 10 * time.Minute
+		retryInterval  = 10 * time.Second
+	)
+
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s", hostID),
+	}
+
+	timerCtx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	info := requestInfo{
-		method:   post,
-		version:  apiVersion1,
-		taskData: &taskData,
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-timerCtx.Done():
+			return errors.New("timer context canceled")
+		case <-timer.C:
+			resp, err := c.request(ctx, info, "")
+			if err != nil {
+				return errors.Wrap(err, "error sending request to get host info")
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusUnauthorized {
+				return AuthError
+			}
+			if resp.StatusCode != http.StatusOK {
+				return respErrorf(resp, "getting host status")
+			}
+			hostResp := model.APIHost{}
+			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
+				return fmt.Errorf("Error forming response body response: %v", err)
+			}
+			if model.FromStringPtr(hostResp.Status) == status {
+				return nil
+			}
+			timer.Reset(retryInterval)
+		}
 	}
-	info.setTaskPathSuffix("heartbeat")
+}
+
+func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/terminate", hostID),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to terminate host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "terminating host '%s'", hostID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, rdpPassword string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/change_password", hostID),
+	}
+	body := model.APISpawnHostModify{
+		RDPPwd: model.ToStringPtr(rdpPassword),
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to change host RDP password")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "changing RDP password on host '%s'", hostID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID string, addHours int) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   fmt.Sprintf("hosts/%s/extend_expiration", hostID),
+	}
+	body := model.APISpawnHostModify{
+		AddHours: model.ToStringPtr(fmt.Sprintf("%d", addHours)),
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to extend host expiration")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "changing expiration of host '%s'", hostID)
+	}
+	return nil
+}
+
+// GetHosts gets all hosts matching filters
+func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model.APIHost, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "host/filter",
+	}
+
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
-		err = errors.Wrapf(err, "error sending heartbeat for task %s", taskData.ID)
-		return false, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return false, errors.Errorf("unauthorized - wrong secret")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return false, errors.Errorf("unexpected status code doing heartbeat: %v",
-			resp.StatusCode)
-	}
-
-	heartbeatResponse := &apimodels.HeartbeatResponse{}
-	if err = utility.ReadJSON(resp.Body, heartbeatResponse); err != nil {
-		err = errors.Wrapf(err, "Error unmarshaling heartbeat response for task %s", taskData.ID)
-		return false, err
-	}
-	return heartbeatResponse.Abort, nil
-}
-
-// FetchExpansionVars loads expansions for a communicator's task from the API server.
-func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
-	resultVars := &apimodels.ExpansionVars{}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("fetch_vars")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get task for task %s", taskData.ID)
+		err = errors.Wrapf(err, "error sending request to spawn host")
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		err = errors.Errorf("fetching expansions failed: got 'unauthorized' response.")
-		return nil, err
+		return nil, AuthError
 	}
-	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
-		err = errors.Wrapf(err, "failed to read vars from response for task %s", taskData.ID)
-		return nil, err
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting hosts")
 	}
-	return resultVars, err
+
+	hosts := []*model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, &hosts); err != nil {
+		return nil, errors.Wrap(err, "can't read response as APIHost slice")
+	}
+	return hosts, nil
 }
 
-// GetNextTask returns a next task response by getting the next task for a given host.
-func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
-	nextTask := &apimodels.NextTaskResponse{}
+func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme evergreen.BannerTheme) error {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion1,
+		method: http.MethodPost,
+		path:   "admin/banner",
 	}
-	info.path = "agent/next_task"
-	resp, err := c.retryRequest(ctx, info, details)
+
+	resp, err := c.retryRequest(ctx, info, struct {
+		Banner string `json:"banner"`
+		Theme  string `json:"theme"`
+	}{
+		Banner: message,
+		Theme:  string(theme),
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get task")
-	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, nextTask); err != nil {
-		err = errors.Wrap(err, "failed to read next task from response")
-		return nil, err
-	}
-	return nextTask, nil
-}
-
-// GetCedarConfig returns the cedar service information including the base URL,
-// URL, RPC port, and credentials.
-func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	cc := &apimodels.CedarConfig{}
-
-	info := requestInfo{
-		method:  get,
-		version: apiVersion1,
-		path:    "agent/cedar_config",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cedar service info")
+		return errors.Wrap(err, "problem setting banner")
 	}
 	defer resp.Body.Close()
 
-	if err = utility.ReadJSON(resp.Body, cc); err != nil {
-		err = errors.Wrap(err, "failed to read next task from response")
-		return nil, err
-	}
-
-	return cc, nil
+	return nil
 }
 
-// GetCedarGRPCConn returns the client connection to cedar if it exists, or
-// creates it if it doesn't exist.
-func (c *communicatorImpl) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "error setting up cedar grpc connection")
+func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "admin/banner",
 	}
-	return c.cedarGRPCClient, nil
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting current banner message")
+	}
+	defer resp.Body.Close()
+
+	banner := model.APIBanner{}
+	if err = utility.ReadJSON(resp.Body, &banner); err != nil {
+		return "", errors.Wrap(err, "problem parsing response from server")
+	}
+
+	return model.FromStringPtr(banner.Text), nil
 }
 
-// SendLogMessages posts a group of log messages for a task.
-func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
-	if len(msgs) == 0 {
-		return nil
+func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "admin/service_flags",
 	}
 
-	payload := apimodels.TaskLog{
-		TaskId:       taskData.ID,
-		Timestamp:    time.Now(),
-		MessageCount: len(msgs),
-		Messages:     msgs,
+	resp, err := c.retryRequest(ctx, info, f)
+	if err != nil {
+		return errors.Wrap(err, "problem setting service flags")
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "admin",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting service flags")
+	}
+	defer resp.Body.Close()
+
+	settings := model.APIAdminSettings{}
+	if err = utility.ReadJSON(resp.Body, &settings); err != nil {
+		return nil, errors.Wrap(err, "problem parsing service flag response")
+	}
+
+	return settings.ServiceFlags, nil
+}
+
+func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {
+	if endAt.Before(startAt) {
+		return errors.Errorf("start (%s) cannot be before end (%s)", startAt, endAt)
 	}
 
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodPost,
+		path:   "admin/restart",
 	}
-	info.setTaskPathSuffix("log")
-	var cancel context.CancelFunc
-	now := time.Now()
-	grip.Debugf("sending %d log messages", payload.MessageCount)
-	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
-	defer cancel()
-	backupTimer := time.NewTimer(15 * time.Minute)
-	defer backupTimer.Stop()
-	doneChan := make(chan struct{})
-	defer func() {
-		close(doneChan)
-	}()
-	go func() {
-		defer recovery.LogStackTraceAndExit("backup timer")
-		select {
-		case <-ctx.Done():
-			grip.Info("request completed or task ending, stopping backup timer thread")
-			return
-		case t := <-backupTimer.C:
-			grip.Alert(message.Fields{
-				"message":  "retryRequest exceeded 15 minutes",
-				"start":    now.String(),
-				"end":      t.String(),
-				"task":     taskData.ID,
-				"messages": msgs,
-			})
-			cancel()
-			return
-		case <-doneChan:
-			return
+
+	payload := struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{
+		DryRun:    false,
+		StartTime: startAt,
+		EndTime:   endAt,
+	}
+
+	resp, err := c.request(ctx, info, &payload)
+	if err != nil {
+		return errors.Wrap(err, "problem restarting recent tasks")
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "admin/settings",
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving settings")
+	}
+	defer resp.Body.Close()
+
+	settings := &evergreen.Settings{}
+
+	if err = utility.ReadJSON(resp.Body, settings); err != nil {
+		return nil, errors.Wrap(err, "error parsing evergreen settings")
+	}
+	return settings, nil
+}
+
+func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "admin/settings",
+	}
+	resp, err := c.request(ctx, info, &update)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	newSettings := &model.APIAdminSettings{}
+	err = utility.ReadJSON(resp.Body, newSettings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing evergreen settings")
+	}
+
+	return newSettings, nil
+}
+
+func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	events := []interface{}{}
+	err = utility.ReadJSON(resp.Body, &events)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing response")
+	}
+
+	return events, nil
+}
+
+func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "admin/revert",
+	}
+	body := struct {
+		GUID string `json:"guid"`
+	}{guid}
+	resp, err := c.request(ctx, info, &body)
+	if err != nil {
+		return errors.Wrap(err, "error reverting settings")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error reverting %s", guid)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, opts model.APIDistroScriptOptions) (hostIDs []string, err error) {
+	info := requestInfo{
+		method: http.MethodPatch,
+		path:   fmt.Sprintf("/distros/%s/execute", distro),
+	}
+
+	var result struct {
+		HostIDs []string `json:"host_ids"`
+	}
+	resp, err := c.request(ctx, info, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "running script on distro '%s'", distro)
+	}
+
+	if err = utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "problem reading response")
+	}
+	return result.HostIDs, nil
+}
+
+func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUser, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "/admin/service_users",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting service users")
+	}
+	var result []model.APIDBUser
+	if err = utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "problem reading response")
+	}
+
+	return result, nil
+}
+
+func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, displayName string, roles []string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "/admin/service_users",
+	}
+	body := model.APIDBUser{
+		UserID:      &username,
+		DisplayName: &displayName,
+		Roles:       roles,
+	}
+
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "updating service user")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username string) error {
+	info := requestInfo{
+		method: http.MethodDelete,
+		path:   fmt.Sprintf("/admin/service_users?id=%s", username),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem during request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "deleting service user")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "distros",
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem fetching distribution list")
+	}
+	defer resp.Body.Close()
+
+	distros := []model.APIDistro{}
+
+	if err = utility.ReadJSON(resp.Body, &distros); err != nil {
+		return nil, errors.Wrap(err, "error parsing distribution list")
+	}
+
+	return distros, nil
+}
+
+func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "keys",
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem fetching keys list")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting key list")
+	}
+
+	keys := []model.APIPubKey{}
+
+	if err = utility.ReadJSON(resp.Body, &keys); err != nil {
+		return nil, errors.Wrap(err, "error parsing keys list")
+	}
+
+	return keys, nil
+}
+
+func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "keys",
+	}
+
+	key := model.APIPubKey{
+		Name: model.ToStringPtr(keyName),
+		Key:  model.ToStringPtr(keyValue),
+	}
+
+	resp, err := c.request(ctx, info, key)
+	if err != nil {
+		return errors.Wrap(err, "problem reaching evergreen API server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "adding key")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) error {
+	info := requestInfo{
+		method: http.MethodDelete,
+		path:   "keys/" + keyName,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrap(err, "problem reaching evergreen API server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "deleting key")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.ProjectAlias, error) {
+	path := fmt.Sprintf("alias/%s", project)
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+	patchAliases := []serviceModel.ProjectAlias{}
+
+	// use io.ReadAll and json.Unmarshal instead of utility.ReadJSON since we may read the results twice
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading JSON")
+	}
+	if err := json.Unmarshal(bytes, &patchAliases); err != nil {
+		patchAlias := serviceModel.ProjectAlias{}
+		if err := json.Unmarshal(bytes, &patchAlias); err != nil {
+			return nil, errors.Wrap(err, "error reading json")
 		}
-	}()
-	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
-		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
+		patchAliases = []serviceModel.ProjectAlias{patchAlias}
 	}
-	grip.Debugf("successfully sent %d log messages", payload.MessageCount)
-
-	return nil
+	return patchAliases, nil
 }
 
-// SendTaskResults posts a task's results, used by the attach results operations.
-func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskData, r *task.LocalTestResults) error {
-	if r == nil || len(r.Results) == 0 {
-		return nil
-	}
-
+func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("results")
-	if _, err := c.retryRequest(ctx, info, r); err != nil {
-		return errors.Wrapf(err, "problem adding %d results to task %s", len(r.Results), taskData.ID)
+		path:   "/status/cli_version",
+		method: http.MethodGet,
 	}
 
-	return nil
-}
-
-// GetPatch tries to get the patch data from the server in json format,
-// and unmarhals it into a patch struct. The GET request is attempted
-// multiple times upon failure.
-func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) (*patchmodel.Patch, error) {
-	patch := patchmodel.Patch{}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("git/patch")
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get patch for %s", taskData.ID)
+		return nil, errors.Wrap(err, "failed to fetch update manifest from server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+	}
+	update := &model.APICLIUpdate{}
+	if err = utility.ReadJSON(resp.Body, update); err != nil {
+		return nil, errors.Wrap(err, "failed to parse update manifest from server")
+	}
+
+	configInterface, err := update.ClientConfig.ToService()
+	if err != nil {
+		return nil, err
+	}
+	config, ok := configInterface.(evergreen.ClientConfig)
+	if !ok {
+		return nil, errors.New("received client configuration is invalid")
+	}
+	if update.IgnoreUpdate {
+		config.LatestRevision = evergreen.ClientVersion
+	}
+
+	return &config, nil
+}
+
+func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([]serviceModel.ParameterInfo, error) {
+	path := fmt.Sprintf("projects/%s/parameters", project)
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		grip.Error(resp.Body)
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+
+	params := []serviceModel.ParameterInfo{}
+	if err = utility.ReadJSON(resp.Body, &params); err != nil {
+		return nil, errors.Wrap(err, "error parsing parameters")
+	}
+	return params, nil
+}
+
+func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscription, error) {
+	info := requestInfo{
+		path:   fmt.Sprintf("/subscriptions?owner=%s&type=person", c.apiUser),
+		method: http.MethodGet,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting subscriptions")
+	}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+
+	apiSubs := []model.APISubscription{}
+	if err = json.Unmarshal(bytes, &apiSubs); err != nil {
+		apiSub := model.APISubscription{}
+		if err = json.Unmarshal(bytes, &apiSub); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal subscriptions")
+		}
+
+		apiSubs = append(apiSubs, apiSub)
+	}
+
+	subs := make([]event.Subscription, len(apiSubs))
+	for i := range apiSubs {
+		var iface interface{}
+		iface, err = apiSubs[i].ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert api model")
+		}
+
+		var ok bool
+		subs[i], ok = iface.(event.Subscription)
+		if !ok {
+			return nil, errors.New("received unexpected type from server")
+		}
+	}
+
+	return subs, nil
+}
+
+func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
+	info := requestInfo{
+		method: http.MethodPut,
+		path:   "/versions",
+	}
+	body := struct {
+		ProjectID string          `json:"project_id"`
+		Message   string          `json:"message"`
+		Active    bool            `json:"activate"`
+		IsAdHoc   bool            `json:"is_adhoc"`
+		Config    json.RawMessage `json:"config"`
+	}{
+		ProjectID: project,
+		Message:   message,
+		Active:    active,
+		IsAdHoc:   true,
+		Config:    config,
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "creating version from config")
+	}
+
+	v := &serviceModel.Version{}
+	if err = utility.ReadJSON(resp.Body, v); err != nil {
+		return nil, errors.Wrap(err, "parsing version data")
+	}
+
+	return v, nil
+}
+
+func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("/commit_queue/%s", projectID),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem fetching commit queue list")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "fetching commit queue list")
+	}
+
+	cq := model.APICommitQueue{}
+	if err = utility.ReadJSON(resp.Body, &cq); err != nil {
+		return nil, errors.Wrap(err, "error parsing commit queue")
+	}
+
+	return &cq, nil
+}
+
+func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+	info := requestInfo{
+		method: http.MethodDelete,
+		path:   fmt.Sprintf("/commit_queue/%s/%s", projectID, item),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return respErrorf(resp, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error) {
+	info := requestInfo{
+		method: http.MethodPut,
+		path:   fmt.Sprintf("/commit_queue/%s", patchID),
+	}
+	if enqueueNext {
+		info.path += "?force=true"
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return 0, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, respErrorf(resp, "enqueueing commit queue item")
+	}
+
+	positionResp := model.APICommitQueuePosition{}
+	if err = utility.ReadJSON(resp.Body, &positionResp); err != nil {
+		return 0, errors.Wrap(err, "parsing position response")
+	}
+
+	return positionResp.Position, nil
+}
+
+func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
+	info := requestInfo{
+		method: http.MethodPut,
+		path:   fmt.Sprintf("/patches/%s/merge_patch", patchID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return nil, errors.Errorf("received status code '%d' but was unable to parse error: '%s'", resp.StatusCode, string(bytes))
+		}
+		return nil, restErr
+	}
+
+	newPatch := &model.APIPatch{}
+	if err = json.Unmarshal(bytes, newPatch); err != nil {
+		return nil, errors.Wrap(err, "error parsing position response")
+	}
+
+	return newPatch, nil
+}
+
+func (c *communicatorImpl) GetMessageForPatch(ctx context.Context, patchID string) (string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("/commit_queue/%s/message", patchID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return "", errors.Errorf("received status code '%d' but was unable to parse error: '%s'", resp.StatusCode, string(bytes))
+		}
+		return "", restErr
+	}
+
+	var message string
+	if err = json.Unmarshal(bytes, &message); err != nil {
+		return "", errors.Wrap(err, "error parsing position response")
+	}
+
+	return message, nil
+}
+
+func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "notifications/" + notificationType,
+	}
+
+	resp, err := c.request(ctx, info, data)
+	if err != nil {
+		return errors.Wrapf(err, "problem sending slack notification")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return respErrorf(resp, "sending '%s' notification", notificationType)
+	}
+
+	return nil
+}
+
+// GetDockerStatus returns status of the container for the given host
+func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/%s/status", hostID),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting container status for %s", hostID)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("could not fetch patch for task with id '%s'; expected status code 200 OK, got %d %s", taskData.ID, resp.StatusCode, http.StatusText(resp.StatusCode))
+		return nil, respErrorf(resp, "getting container status")
 	}
-	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
-		return nil, errors.Wrapf(err, "problem parsing patch response for %s", taskData.ID)
+	status := cloud.ContainerStatus{}
+	if err := utility.ReadJSON(resp.Body, &status); err != nil {
+		return nil, errors.Wrap(err, "problem parsing container status")
 	}
 
-	return &patch, nil
+	return &status, nil
 }
 
-// GetPatchFiles is used by the git.get_project plugin and fetches
-// patches from the database, used in patch builds.
-func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, patchFileID string) (string, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
+func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
+	path := fmt.Sprintf("/hosts/%s/logs", hostID)
+	if isError {
+		path = fmt.Sprintf("%s/error", path)
+	} else {
+		path = fmt.Sprintf("%s/output", path)
 	}
-	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not get file %s for patch %ss", patchFileID, taskData.ID)
-	}
-	defer resp.Body.Close()
-
-	var result []byte
-	result, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem reading file %s for patch %s", patchFileID, taskData.ID)
-	}
-
-	return string(result), nil
-}
-
-// SendTestLog is used by the attach plugin to add to the test_logs
-// collection for log data associated with a test.
-func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
-	if log == nil {
-		return "", nil
+	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
+		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+	} else if !utility.IsZeroTime(startTime) {
+		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
+	} else if !utility.IsZeroTime(endTime) {
+		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
 	}
 
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodGet,
+		path:   path,
 	}
-	info.setTaskPathSuffix("test_logs")
-	resp, err := c.retryRequest(ctx, info, log)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return "", errors.Wrapf(err, "problem sending task log '%+v' for %s", *log, taskData.ID)
+		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", hostID)
 	}
 	defer resp.Body.Close()
 
-	logReply := struct {
-		ID string `json:"_id"`
-	}{}
-	if err = utility.ReadJSON(resp.Body, &logReply); err != nil {
-		message := fmt.Sprintf("Error unmarshalling post test log response: %v", err)
-		return "", errors.New(message)
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting logs for container id '%s'", hostID)
 	}
-	logID := logReply.ID
 
-	return logID, nil
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+
+	return body, nil
 }
 
-// SendResults posts a set of test results for the communicator's task.
-// If results are empty or nil, this operation is a noop.
-func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskData, results *task.LocalTestResults) error {
-	if results == nil || len(results.Results) == 0 {
-		return nil
-	}
+func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("/tasks/%s/manifest", taskId),
 	}
-	info.setTaskPathSuffix("results")
-	resp, err := c.retryRequest(ctx, info, results)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return errors.Wrapf(err, "failed to post results '%+v' for task %s", *results, taskData.ID)
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-// AttachFiles attaches task files.
-func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
-	if len(taskFiles) == 0 {
-		return nil
-	}
-
-	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("files")
-	resp, err := c.retryRequest(ctx, info, taskFiles)
-	if err != nil {
-		return errors.Wrapf(err, "failed to post task files for task %s", taskData.ID)
+		return nil, errors.Wrapf(err, "problem getting manifest for task '%s'", taskId)
 	}
 	defer resp.Body.Close()
 
-	return nil
-}
-
-func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
 	}
-	info.setTaskPathSuffix("manifest/load")
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem loading manifest for %s", taskData.ID)
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting manifest for task '%s'", taskId)
 	}
-	defer resp.Body.Close()
-
 	mfest := manifest.Manifest{}
-	if err = utility.ReadJSON(resp.Body, &mfest); err != nil {
-		return nil, errors.Wrapf(err, "problem parsing manifest response for %s", taskData.ID)
+	if err := utility.ReadJSON(resp.Body, &mfest); err != nil {
+		return nil, errors.Wrap(err, "problem parsing manifest")
 	}
 
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
+func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []string, script string, batchSize int) ([]model.APIHostProcess, error) {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodPost,
+		path:   "/host/start_processes",
 	}
-	info.setTaskPathSuffix("s3Copy/s3Copy")
-	resp, err := c.retryRequest(ctx, info, req)
+
+	result := []model.APIHostProcess{}
+	for i := 0; i < len(hostIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(hostIDs) {
+			end = len(hostIDs)
+		}
+		data := model.APIHostScript{Hosts: hostIDs[i:end], Script: script}
+		output, err := func() ([]model.APIHostProcess, error) {
+			resp, err := c.request(ctx, info, data)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't make request to run script on host")
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusUnauthorized {
+				return nil, AuthError
+			}
+			if resp.StatusCode != http.StatusOK {
+				return nil, respErrorf(resp, "running script on host")
+			}
+
+			output := []model.APIHostProcess{}
+			if err := utility.ReadJSON(resp.Body, &output); err != nil {
+				return nil, errors.Wrap(err, "problem reading response")
+			}
+
+			return output, nil
+		}()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't start processes")
+		}
+
+		result = append(result, output...)
+	}
+
+	return result, nil
+}
+
+func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcesses []model.APIHostProcess, batchSize int) ([]model.APIHostProcess, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "/host/get_processes",
+	}
+
+	result := []model.APIHostProcess{}
+
+	for i := 0; i < len(hostProcesses); i += batchSize {
+		end := i + batchSize
+		if end > len(hostProcesses) {
+			end = len(hostProcesses)
+		}
+		output, err := func() ([]model.APIHostProcess, error) {
+			resp, err := c.request(ctx, info, hostProcesses[i:end])
+			if err != nil {
+				return nil, errors.Wrap(err, "can't make request to run script on host")
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusUnauthorized {
+				return nil, AuthError
+			}
+			if resp.StatusCode != http.StatusOK {
+				return nil, respErrorf(resp, "running script on host")
+			}
+
+			output := []model.APIHostProcess{}
+			if err := utility.ReadJSON(resp.Body, &output); err != nil {
+				return nil, errors.Wrap(err, "problem reading response")
+			}
+
+			return output, nil
+		}()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get process output")
+		}
+
+		result = append(result, output...)
+	}
+
+	return result, nil
+}
+
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]model.APIVersion, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
+	}
+
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return "", errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
+		return nil, errors.Wrap(err, "error sending request to get versions")
 	}
 	defer resp.Body.Close()
 
-	response := gimlet.ErrorResponse{}
-	if err = utility.ReadJSON(resp.Body, &response); err == nil {
-		return response.Message, nil
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "problem getting versions for project '%s'", projectID)
 	}
 
-	return "", nil
+	getVersionsResp := []model.APIVersion{}
+	if err = utility.ReadJSON(resp.Body, &getVersionsResp); err != nil {
+		return nil, fmt.Errorf("error forming response body response: %v", err)
+	}
+
+	return getVersionsResp, nil
 }
 
-func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {
+func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodGet,
+		path:   "/task/sync_read_credentials",
 	}
-	info.setTaskPathSuffix("keyval/inc")
-	resp, err := c.retryRequest(ctx, info, kv.Key)
+
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return errors.Wrapf(err, "problem with keyval increment operation for %s", taskData.ID)
+		return nil, errors.Wrap(err, "couldn't make request to get task read-only credentials")
 	}
 	defer resp.Body.Close()
-
-	if err = utility.ReadJSON(resp.Body, kv); err != nil {
-		return errors.Wrapf(err, "problem parsing keyval inc response %s", taskData.ID)
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting task read-only credentials")
+	}
+	creds := &evergreen.S3Credentials{}
+	if err := utility.ReadJSON(resp.Body, creds); err != nil {
+		return nil, errors.Wrap(err, "reading credentials from response body")
 	}
 
-	return nil
+	return creds, nil
 }
 
-func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, path string, data interface{}) error {
+func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
 	info := requestInfo{
-		method:   post,
-		taskData: &taskData,
-		version:  apiVersion1,
+		method: http.MethodGet,
+		path:   fmt.Sprintf("/tasks/%s/sync_path", taskID),
 	}
-	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
-	resp, err := c.retryRequest(ctx, info, data)
+
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return errors.Wrapf(err, "problem with post json data operation for %s", taskData.ID)
+		return "", errors.Wrap(err, "couldn't make request to get task read-only credentials")
 	}
 	defer resp.Body.Close()
-
-	return nil
-}
-
-func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
-	pathParts := []string{"json", "data", taskName, dataName}
-	if variantName != "" {
-		pathParts = append(pathParts, variantName)
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", AuthError
 	}
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
+	if resp.StatusCode != http.StatusOK {
+		return "", respErrorf(resp, "getting task sync path")
 	}
-	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
-	resp, err := c.retryRequest(ctx, info, nil)
+	path, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem with get json data operation for %s", taskData.ID)
-	}
-	defer resp.Body.Close()
-
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
+		return "", errors.Wrap(err, "reading task sync path from response body")
 	}
 
-	return out, nil
-}
-
-func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData, tags bool, taskName, dataName string) ([]byte, error) {
-	path := "json/history/"
-	if tags {
-		path = "json/tags/"
-	}
-
-	path += fmt.Sprintf("%s/%s", taskName, dataName)
-
-	info := requestInfo{
-		method:   get,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix(path)
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem json history document for %s at %s", taskData.ID, path)
-	}
-	defer resp.Body.Close()
-
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
-	}
-
-	return out, nil
-}
-
-// GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
-	info := requestInfo{
-		method:   post,
-		taskData: &td,
-		version:  apiVersion2,
-	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
-	_, err := c.retryRequest(ctx, info, jsonBytes)
-	return errors.Wrap(err, "problem sending `generate.tasks` request")
-}
-
-// GenerateTasksPoll posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &td,
-		version:  apiVersion2,
-	}
-	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem sending `generate.tasks` request")
-	}
-	defer resp.Body.Close()
-	generated := &apimodels.GeneratePollResponse{}
-	if err := utility.ReadJSON(resp.Body, generated); err != nil {
-		return nil, errors.Wrapf(err, "problem reading generated from response body for '%s'", td.ID)
-	}
-	return generated, nil
-}
-
-// CreateHost requests a new host be created
-func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
-	info := requestInfo{
-		method:   post,
-		taskData: &td,
-		version:  apiVersion2,
-	}
-	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
-	resp, err := c.retryRequest(ctx, info, options)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem sending `create.host` request")
-	}
-	defer resp.Body.Close()
-
-	ids := []string{}
-	if err = utility.ReadJSON(resp.Body, &ids); err != nil {
-		return nil, errors.Wrap(err, "problem reading ids from `create.host` response")
-	}
-	return ids, nil
-}
-
-func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {
-	info := requestInfo{
-		method:   get,
-		taskData: &td,
-		version:  apiVersion2,
-		path:     fmt.Sprintf("hosts/%s/list", td.ID),
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
-	}
-	defer resp.Body.Close()
-
-	hosts := []restmodel.CreateHost{}
-	if err := utility.ReadJSON(resp.Body, &hosts); err != nil {
-		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
-	}
-	return hosts, nil
+	return string(path), nil
 }
 
 func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
 	info := requestInfo{
-		method:  get,
-		version: apiVersion2,
-		path:    fmt.Sprintf("distros/%s", id),
+		method: http.MethodGet,
+		path:   fmt.Sprintf("distros/%s", id),
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -822,4 +1487,26 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 
 	return d, nil
 
+}
+
+func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) ([]string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("distros/%s/client_urls", distroID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "getting client URLs")
+	}
+
+	var urls []string
+	if err := utility.ReadJSON(resp.Body, &urls); err != nil {
+		return nil, errors.Wrapf(err, "reading client URLs from response")
+	}
+
+	return urls, nil
 }
