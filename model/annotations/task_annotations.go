@@ -44,7 +44,7 @@ type Note struct {
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
-// GetLatestExecutions filters by latest execution only
+// GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
 func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	highestExecutionAnnotations := map[string]TaskAnnotation{}
 	for idx, a := range annotations {
