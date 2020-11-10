@@ -141,6 +141,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	if abortedTask == nil {
 		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
 	}
+
 	abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
 	if err != nil {
 		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
