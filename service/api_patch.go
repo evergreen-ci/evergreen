@@ -60,9 +60,22 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
+	pref, err := model.FindOneProjectRef(data.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
+		return
+	}
+	if pref == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound,
+			gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
+			})
+		return
+	}
 
 	opts := gimlet.PermissionOpts{
-		Resource:      data.Project,
+		Resource:      pref.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionPatches,
 		RequiredLevel: evergreen.PatchSubmit.Value,
@@ -85,20 +98,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	if len(data.BackportOf) > 0 && len(data.BackportInfo.PatchID) == 0 {
 		as.LoggedError(w, r, http.StatusBadRequest, cliOutOfDateError)
-		return
-	}
-
-	pref, err := model.FindOneProjectRef(data.Project)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
-		return
-	}
-	if pref == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound,
-			gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
-			})
 		return
 	}
 

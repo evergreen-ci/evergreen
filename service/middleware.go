@@ -369,7 +369,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	if projectId == "" {
 		for _, p := range pc.AllProjects {
 			opts := gimlet.PermissionOpts{
-				Resource:      p.Identifier,
+				Resource:      p.Identifier, // TODO: add ID to UIProjectFields for this to work
 				ResourceType:  evergreen.ProjectResourceType,
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,

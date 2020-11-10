@@ -1778,7 +1778,7 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		return false, err
 	}
 	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectRef.Identifier,
+		Resource:      projectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
