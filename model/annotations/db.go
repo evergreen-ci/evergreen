@@ -20,9 +20,9 @@ var (
 )
 
 const (
-	Collection = "task_annotation"
-	UISource   = "UI"
-	APISource  = "API"
+	Collection   = "task_annotation"
+	UIRequester  = "ui"
+	APIRequester = "api"
 )
 
 // FindOne gets one TaskAnnotation for the given query.
