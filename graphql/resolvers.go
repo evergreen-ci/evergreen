@@ -500,7 +500,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
 		}
 		if v.AvailabilityZone != h.Zone {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error mounting volume to spawn host, They must be in the same availability zone."))
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error mounting volume to spawn host, They must be in the same availability zone."))
 		}
 		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
