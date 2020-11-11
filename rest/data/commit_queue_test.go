@@ -222,7 +222,7 @@ buildvariants:
 	s.NoError(err)
 	s.NotNil(newPatch)
 
-	// newPatchDB, err := patch.FindOne(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
+	// newPatchDB, err := patch.findOneRepoRefQ(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
 	// s.NoError(err)
 	// s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
 }

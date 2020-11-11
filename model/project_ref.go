@@ -302,7 +302,7 @@ func (projectRef *ProjectRef) checkDefaultLogger() {
 	}
 }
 
-func findOne(query db.Q) (*ProjectRef, error) {
+func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
 	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
@@ -316,11 +316,11 @@ func findOne(query db.Q) (*ProjectRef, error) {
 
 // FindOneProjectRef gets a project ref given the project identifier
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
-	return findOne(byId(identifier))
+	return findOneProjectRefQ(byId(identifier))
 }
 
 func FindIdForProject(identifier string) (string, error) {
-	pRef, err := findOne(byId(identifier).WithFields(ProjectRefIdKey))
+	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
 		return "", err
 	}

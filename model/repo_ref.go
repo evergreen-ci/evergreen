@@ -76,8 +76,8 @@ func (RepoRef *RepoRef) Upsert() error {
 	return err
 }
 
-// FindOne returns one RepoRef that satisfies the query.
-func FindOne(query db.Q) (*RepoRef, error) {
+// findOneRepoRefQ returns one RepoRef that satisfies the query.
+func findOneRepoRefQ(query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
 	err := db.FindOneQ(RepoRefCollection, query, repoRef)
 	if adb.ResultsNotFound(err) {
@@ -89,7 +89,7 @@ func FindOne(query db.Q) (*RepoRef, error) {
 // FindOneRepoRef gets a project ref given the owner name, the repo
 // name and the project name
 func FindOneRepoRef(identifier string) (*RepoRef, error) {
-	return FindOne(db.Query(bson.M{
+	return findOneRepoRefQ(db.Query(bson.M{
 		RepoRefIdKey: identifier,
 	}))
 }
@@ -97,7 +97,7 @@ func FindOneRepoRef(identifier string) (*RepoRef, error) {
 // FindRepoRefsByRepoAndBranch finds RepoRefs with matching repo/branch
 // that are enabled and setup for PR testing
 func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
-	return FindOne(db.Query(bson.M{
+	return findOneRepoRefQ(db.Query(bson.M{
 		RepoRefOwnerKey: owner,
 		RepoRefRepoKey:  repoName,
 	}))
