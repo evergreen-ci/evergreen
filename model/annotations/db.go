@@ -95,9 +95,8 @@ func ByTaskIds(ids []string) db.Q {
 	return db.Query(q)
 }
 
-// ByIdAndExecutionAndType returns the query for a given Task Id and
-// execution number, populated according to the given type
-func ByIdExecutionAndType(id string, execution int) db.Q {
+// ByIdAndExecution returns the query for a given Task Id and execution number
+func ByIdAndExecution(id string, execution int) db.Q {
 	q := bson.M{
 		TaskIdKey:        id,
 		TaskExecutionKey: execution,
