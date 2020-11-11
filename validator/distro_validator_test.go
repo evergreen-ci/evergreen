@@ -514,7 +514,6 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 		distro.BootstrapMethodLegacySSH,
 		distro.BootstrapMethodSSH,
 		distro.BootstrapMethodUserData,
-		distro.BootstrapMethodPreconfiguredImage,
 	} {
 		for _, communication := range []string{
 			distro.CommunicationMethodLegacySSH,
@@ -658,7 +657,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 	for _, method := range []string{
 		distro.BootstrapMethodLegacySSH,
 		distro.BootstrapMethodSSH,
-		distro.BootstrapMethodPreconfiguredImage,
 	} {
 		d.BootstrapSettings.Method = method
 		assert.Nil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))

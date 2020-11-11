@@ -77,9 +77,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'id': 'ssh',
     'display': 'SSH'
   }, {
-    'id': 'preconfigured-image',
-    'display': 'Preconfigured Image'
-  }, {
     'id': 'user-data',
     'display': 'User Data'
   }, {}];
