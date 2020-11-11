@@ -19,11 +19,11 @@ func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
 }
 
 type versionCreateHandler struct {
-	ProjectName string          `json:"project_name"`
-	Message     string          `json:"message"`
-	Active      bool            `json:"activate"`
-	IsAdHoc     bool            `json:"is_adhoc"`
-	Config      json.RawMessage `json:"config"`
+	ProjectID string          `json:"project_id"`
+	Message   string          `json:"message"`
+	Active    bool            `json:"activate"`
+	IsAdHoc   bool            `json:"is_adhoc"`
+	Config    json.RawMessage `json:"config"`
 
 	sc data.Connector
 }
@@ -52,12 +52,12 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo := &model.ProjectInfo{}
 	var err error
-	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectName)
+	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}
 	if projectInfo.Ref == nil {
-		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectName))
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectID))
 	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, projectInfo.Ref.Id, projectInfo.Project)
 	if err != nil {
