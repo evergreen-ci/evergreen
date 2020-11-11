@@ -444,6 +444,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 }
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
+	var err error
 	usr := MustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
 	if err != nil {
