@@ -433,6 +433,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
 		if !ok {
+			grip.Warning(message.Fields{
+				"message":       "task has non-existent dependencies",
+				"task_id":       t.Id,
+				"dependency_id": dependency.TaskId,
+			})
 			continue
 		}
 		if !t.SatisfiesDependency(&depTask) {
