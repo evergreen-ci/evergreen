@@ -100,7 +100,7 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 }
 
 func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
-	allAnnotations, err := annotations.FindAPIAnnotationsByTaskIds(taskIds)
+	allAnnotations, err := annotations.FindAnnotationsByTaskIds(taskIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
 	}
