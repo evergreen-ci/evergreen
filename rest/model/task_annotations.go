@@ -8,54 +8,28 @@ import (
 )
 
 type APITaskAnnotation struct {
-	Id             *string         `bson:"_id" json:"id"`
-	TaskId         *string         `bson:"task_id" json:"task_id"`
-	TaskExecution  int             `bson:"task_execution" json:"task_execution"`
-	APIAnnotation  *APIAnnotation  `bson:"api_annotation,omitempty" json:"api_annotation,omitempty"`
-	UserAnnotation *APIAnnotation  `bson:"user_annotation,omitempty" json:"user_annotation,omitempty"`
-	Metadata       *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Id              *string         `bson:"_id" json:"id"`
+	TaskId          *string         `bson:"task_id" json:"task_id"`
+	TaskExecution   int             `bson:"task_execution" json:"task_execution"`
+	Metadata        *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Note            *APINote        `bson:"note,omitempty" json:"note,omitempty"`
+	Issues          []APIIssueLink  `bson:"issues,omitempty" json:"issues,omitempty"`
+	SuspectedIssues []APIIssueLink  `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 }
-type APIAnnotation struct {
-	Note            *APINote       `bson:"note,omitempty" json:"note,omitempty"`
-	Issues          []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
-	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-}
+
 type APINote struct {
 	Message *string    `bson:"message,omitempty" json:"message,omitempty"`
 	Source  *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 type APISource struct {
-	Author *string    `bson:"author,omitempty" json:"author,omitempty"`
-	Time   *time.Time `bson:"time,omitempty" json:"time,omitempty"`
+	Author    *string    `bson:"author,omitempty" json:"author,omitempty"`
+	Time      *time.Time `bson:"time,omitempty" json:"time,omitempty"`
+	Requester *string    `bson:"requester,omitempty" json:"requester,omitempty"`
 }
 type APIIssueLink struct {
 	URL      *string    `bson:"url" json:"url"`
 	IssueKey *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source   *APISource `bson:"source,omitempty" json:"source,omitempty"`
-}
-
-// APIAnnotationBuildFromService takes the annotations.Annotation DB struct and
-// returns the REST struct *APIAnnotation with the corresponding fields populated
-func APIAnnotationBuildFromService(t *annotations.Annotation) *APIAnnotation {
-	if t == nil {
-		return nil
-	}
-	m := APIAnnotation{}
-	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
-	m.Note = APINoteBuildFromService(t.Note)
-	return &m
-}
-
-// APIAnnotationToService takes the APIAnnotation REST struct and returns the DB struct
-// *annotations.Annotation with the corresponding fields populated
-func APIAnnotationToService(m *APIAnnotation) *annotations.Annotation {
-	if m == nil {
-		return nil
-	}
-	out := &annotations.Annotation{}
-	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
-	out.Note = APINoteToService(m.Note)
-	return out
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -67,6 +41,7 @@ func APISourceBuildFromService(t *annotations.Source) *APISource {
 	m := APISource{}
 	m.Author = StringStringPtr(t.Author)
 	m.Time = ToTimePtr(t.Time)
+	m.Requester = StringStringPtr(t.Requester)
 	return &m
 }
 
@@ -78,6 +53,7 @@ func APISourceToService(m *APISource) *annotations.Source {
 	}
 	out := &annotations.Source{}
 	out.Author = StringPtrString(m.Author)
+	out.Requester = StringPtrString(m.Requester)
 	if m.Time != nil {
 		out.Time = *m.Time
 	} else {
@@ -134,12 +110,13 @@ func APINoteToService(m *APINote) *annotations.Note {
 // returns the REST struct *APITaskAnnotation with the corresponding fields populated
 func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnnotation {
 	m := APITaskAnnotation{}
-	m.APIAnnotation = APIAnnotationBuildFromService(t.APIAnnotation)
 	m.Id = StringStringPtr(t.Id)
 	m.TaskExecution = t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
-	m.UserAnnotation = APIAnnotationBuildFromService(t.UserAnnotation)
 	m.Metadata = t.Metadata
+	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
+	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
+	m.Note = APINoteBuildFromService(t.Note)
 	return &m
 }
 
@@ -147,12 +124,13 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 // *annotations.TaskAnnotation with the corresponding fields populated
 func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation {
 	out := &annotations.TaskAnnotation{}
-	out.APIAnnotation = APIAnnotationToService(m.APIAnnotation)
 	out.Id = StringPtrString(m.Id)
 	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
-	out.UserAnnotation = APIAnnotationToService(m.UserAnnotation)
 	out.Metadata = m.Metadata
+	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
+	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
+	out.Note = APINoteToService(m.Note)
 	return out
 }
 
