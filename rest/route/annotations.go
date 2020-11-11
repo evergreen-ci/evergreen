@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -115,4 +116,67 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 	}
 
 	return gimlet.NewJSONResponse(res)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/task/{task_id}/{task_execution}/annotation
+
+type annotationByTaskHandler struct {
+	taskId    string
+	execution int
+	sc        data.Connector
+}
+
+func makeFetchAnnotationByTask(sc data.Connector) gimlet.RouteHandler {
+	return &annotationByTaskHandler{
+		sc: sc,
+	}
+}
+
+func (h *annotationByTaskHandler) Factory() gimlet.RouteHandler {
+	return &annotationByTaskHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+
+	h.taskId = gimlet.GetVars(r)["task_id"]
+	if h.taskId == "" {
+		return gimlet.ErrorResponse{
+			Message:    "task ID cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if gimlet.GetVars(r)["execution"] == "" {
+		return gimlet.ErrorResponse{
+			Message:    "task execution cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	h.execution, err = strconv.Atoi(gimlet.GetVars(r)["execution"])
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
+
+	return getAPIAnnotationsForTaskIdAndAnnotation(h.taskId, h.execution)
+}
+
+func getAPIAnnotationsForTaskIdAndAnnotation(taskId string, execution int) gimlet.Responder {
+	a, err := annotations.FindAnnotationByTaskIdAndExecution(taskId, execution)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
+	}
+	if a == nil {
+		return gimlet.NewJSONResponse(model.APITaskAnnotation{})
+	}
+	taskAnnotation := *model.APITaskAnnotationBuildFromService(*a)
+	return gimlet.NewJSONResponse(taskAnnotation)
 }

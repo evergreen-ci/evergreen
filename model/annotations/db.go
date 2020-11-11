@@ -65,6 +65,10 @@ func FindAnnotationsByTaskIds(ids []string) ([]TaskAnnotation, error) {
 	return Find(ByTaskIds(ids))
 }
 
+func FindAnnotationByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
+	return FindOne(ByIdAndExecution(id, execution))
+}
+
 // Insert writes the task_annotation to the database.
 func (a *TaskAnnotation) Insert() error {
 	return db.Insert(Collection, a)
