@@ -251,11 +251,10 @@ const (
 
 	// Bootstrapping mechanisms
 	// BootstrapMethodNone is for internal use only.
-	BootstrapMethodNone               = "none"
-	BootstrapMethodLegacySSH          = "legacy-ssh"
-	BootstrapMethodSSH                = "ssh"
-	BootstrapMethodPreconfiguredImage = "preconfigured-image"
-	BootstrapMethodUserData           = "user-data"
+	BootstrapMethodNone      = "none"
+	BootstrapMethodLegacySSH = "legacy-ssh"
+	BootstrapMethodSSH       = "ssh"
+	BootstrapMethodUserData  = "user-data"
 
 	// Means of communicating with hosts
 	CommunicationMethodLegacySSH = "legacy-ssh"
@@ -273,7 +272,6 @@ var validBootstrapMethods = []string{
 	BootstrapMethodNone,
 	BootstrapMethodLegacySSH,
 	BootstrapMethodSSH,
-	BootstrapMethodPreconfiguredImage,
 	BootstrapMethodUserData,
 }
 
@@ -293,18 +291,6 @@ var validCloneMethods = []string{
 // Seed the random number generator for creating distro names
 func init() {
 	rand.Seed(time.Now().UnixNano())
-}
-
-func (d *Distro) ManagementMethodsUseSSH() bool {
-	if utility.StringSliceContains([]string{BootstrapMethodLegacySSH, BootstrapMethodSSH}, d.BootstrapSettings.Method) {
-		return true
-	}
-
-	if utility.StringSliceContains([]string{CommunicationMethodLegacySSH, CommunicationMethodSSH}, d.BootstrapSettings.Communication) {
-		return true
-	}
-
-	return false
 }
 
 // GenerateName generates a unique instance name for a distro.
