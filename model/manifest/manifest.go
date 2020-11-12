@@ -5,7 +5,7 @@ const Collection = "manifest"
 // Manifest is a representation of the modules associated with the a version.
 // Id is the version id,
 // Revision is the revision of the version on the project
-// ProjectName is the Project Identifier,
+// ProjectName is the Project Id,
 // Branch is the branch of the repository. Modules is a map of the GitHub repository name to the
 // Module's information associated with the specific version.
 type Manifest struct {

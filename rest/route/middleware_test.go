@@ -99,12 +99,12 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Private:    true,
-		Identifier: "orchard",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
-		Admins:     []string{"johnny.appleseed"},
+		Private: true,
+		Id:      "orchard",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
+		Admins:  []string{"johnny.appleseed"},
 	}
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
@@ -135,11 +135,11 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Private:    true,
-		Identifier: "mci",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
+		Private: true,
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,
 		},
@@ -176,12 +176,12 @@ func TestCommitQueueItemOwnerMiddlewareProjectAdmin(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Private:    true,
-		Identifier: "mci",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
-		Admins:     []string{"admin"},
+		Private: true,
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
+		Admins:  []string{"admin"},
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,
 		},
@@ -221,11 +221,11 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Private:    true,
-		Identifier: "mci",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
+		Private: true,
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.PRPatchType,
 			Enabled:   true,
@@ -265,11 +265,11 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Private:    true,
-		Identifier: "mci",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "master",
+		Private: true,
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.CLIPatchType,
 			Enabled:   true,
@@ -373,11 +373,11 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scopeAll))
 	proj1 := model.ProjectRef{
-		Identifier: "proj1",
-		Private:    true,
+		Id:      "proj1",
+		Private: true,
 	}
 	proj2 := model.ProjectRef{
-		Identifier: "proj2",
+		Id: "proj2",
 	}
 	assert.NoError(proj1.Insert())
 	assert.NoError(proj2.Insert())
@@ -485,8 +485,8 @@ func TestEventLogPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scope3))
 	proj1 := model.ProjectRef{
-		Identifier: "proj1",
-		Private:    true,
+		Id:      "proj1",
+		Private: true,
 	}
 	assert.NoError(proj1.Insert())
 	distro1 := distro.Distro{
@@ -508,14 +508,14 @@ func TestEventLogPermission(t *testing.T) {
 
 	// no user + private project should 404
 	rw := httptest.NewRecorder()
-	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Identifier})
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Id})
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusNotFound, rw.Code)
 	assert.Equal(0, counter)
 
 	// have user, project event
 	req = req.WithContext(gimlet.AttachUser(req.Context(), user))
-	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Identifier})
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Id})
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)

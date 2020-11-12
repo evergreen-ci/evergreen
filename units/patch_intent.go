@@ -427,7 +427,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
-			patchDoc.Githash, projectRef.Identifier)
+			patchDoc.Githash, projectRef.Id)
 	}
 	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
 	// must normalize this to a hash before storing the patch doc.
@@ -577,7 +577,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			Summary:     summaries,
 		},
 	})
-	patchDoc.Project = projectRef.Identifier
+	patchDoc.Project = projectRef.Id
 
 	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return isMember, errors.Wrap(err, "failed to write patch file to db")

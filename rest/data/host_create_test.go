@@ -109,7 +109,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, d.Insert())
 	p := model.ProjectRef{
-		Identifier: "p",
+		Id: "p",
 	}
 	assert.NoError(t, p.Insert())
 	pvars := model.ProjectVars{
@@ -414,7 +414,7 @@ buildvariants:
 	require.NoError(d.Insert())
 
 	p := model.ProjectRef{
-		Identifier: "p",
+		Id: "p",
 	}
 	assert.NoError(p.Insert())
 	pvars := model.ProjectVars{

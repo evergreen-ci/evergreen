@@ -179,8 +179,8 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			Project:   "exists",
 		}
 		pref := &model.ProjectRef{
-			Identifier: "exists",
-			Enabled:    true,
+			Id:      "exists",
+			Enabled: true,
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -527,8 +527,8 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			StartTime: utility.ZeroTime,
 		}
 		pref := &model.ProjectRef{
-			Identifier: "exists",
-			Enabled:    true,
+			Id:      "exists",
+			Enabled: true,
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -733,7 +733,8 @@ func TestNextTask(t *testing.T) {
 	queue := env.LocalQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
+		if err := db.ClearCollections(model.ProjectRefCollection, host.Collection, task.Collection,
+			model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
@@ -809,8 +810,8 @@ func TestNextTask(t *testing.T) {
 		So(task3.Insert(), ShouldBeNil)
 
 		pref := &model.ProjectRef{
-			Identifier: "exists",
-			Enabled:    true,
+			Id:      "exists",
+			Enabled: true,
 		}
 
 		So(pref.Insert(), ShouldBeNil)
@@ -1198,7 +1199,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		versionId := "v1"
 
 		proj := model.ProjectRef{
-			Identifier: projectId,
+			Id: projectId,
 		}
 		So(proj.Insert(), ShouldBeNil)
 

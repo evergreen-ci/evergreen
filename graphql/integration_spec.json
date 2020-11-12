@@ -566,7 +566,7 @@
     ],
     "project_ref": [
       {
-        "_id": { "$oid": "5723cdaa7bd5c9f79a7fc666" },
+        "_id": "mci",
         "batch_time": 1200,
         "branch_name": "master",
         "display_name": "Evergreen Self-Tests",
@@ -615,7 +615,7 @@
         "repotracker_disabled": false
       },
       {
-        "_id": { "$oid": "5723cdaa7bd5c9f79a7fc782" },
+        "_id": "logkeeper",
         "owner_name": "evergreen-ci",
         "repo_name": "logkeeper",
         "branch_name": "master",

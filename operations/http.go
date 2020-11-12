@@ -526,7 +526,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Parameters        []patch.Parameter  `json:"parameters"`
 	}{
 		Description:       incomingPatch.description,
-		Project:           incomingPatch.projectId,
+		Project:           incomingPatch.projectName,
 		PatchBytes:        []byte(incomingPatch.patchData),
 		Githash:           incomingPatch.base,
 		Alias:             incomingPatch.alias,

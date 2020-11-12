@@ -18,7 +18,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		return nil, errors.New("cannot specify both a file and command")
 	}
 	if args.SourceVersion == nil {
-		return nil, errors.Errorf("unable to find source version in project %s", args.DownstreamProject.Identifier)
+		return nil, errors.Errorf("unable to find source version in project %s", args.DownstreamProject.Id)
 	}
 
 	// propagate version metadata to the downstream version
@@ -41,7 +41,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 			return nil, errors.WithStack(err)
 		}
 	} else if args.Command != "" {
-		proj, pp, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Identifier, args.Command, args.GenerateFile)
+		proj, pp, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Id, args.Command, args.GenerateFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -92,9 +92,9 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding build break subscriptions")
 	}
-	err = model.DoProjectActivation(args.DownstreamProject.Identifier)
+	err = model.DoProjectActivation(args.DownstreamProject.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error activating project %s", args.DownstreamProject.Identifier)
+		return nil, errors.Wrapf(err, "error activating project %s", args.DownstreamProject.Id)
 	}
 
 	return v, nil
@@ -110,7 +110,7 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 		CreateTime:      source.CreateTime,
 		RevisionMessage: source.Message,
 	}
-	repo, err := model.FindRepository(ref.Identifier)
+	repo, err := model.FindRepository(ref.Id)
 	if err != nil {
 		return metadata, errors.Wrap(err, "error finding most recent revision")
 	}

@@ -2104,7 +2104,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		"$lookup": bson.M{
 			"from":         "project_ref",
 			"localField":   ProjectKey,
-			"foreignField": "identifier",
+			"foreignField": "_id",
 			"as":           "project_ref",
 		},
 	}

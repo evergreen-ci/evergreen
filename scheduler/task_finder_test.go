@@ -61,6 +61,7 @@ func TestParallelTaskFinder(t *testing.T) {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, task.Collection))
 	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
 		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
@@ -77,17 +78,13 @@ func (s *TaskFinderSuite) SetupTest() {
 		{Id: depTaskIds[1]},
 	}
 
-	s.NoError(db.Clear(model.ProjectRefCollection))
-
 	ref := &model.ProjectRef{
-		Identifier: "exists",
-		Enabled:    true,
+		Id:      "exists",
+		Enabled: true,
 	}
 
 	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	s.NoError(ref.Insert())
-
-	s.NoError(db.Clear(task.Collection))
 }
 
 func (s *TaskFinderSuite) TearDownTest() {
@@ -185,8 +182,8 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
 func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 	ref := &model.ProjectRef{
-		Identifier: "exists",
-		Enabled:    false,
+		Id:      "exists",
+		Enabled: false,
 	}
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
@@ -196,7 +193,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 
 func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned() {
 	ref := &model.ProjectRef{
-		Identifier:          "exists",
+		Id:                  "exists",
 		DispatchingDisabled: true,
 	}
 	s.Require().NoError(ref.Upsert())
@@ -220,20 +217,20 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 	s.NoError(db.Clear(model.ProjectRefCollection))
 
 	ref := &model.ProjectRef{
-		Identifier: "exists",
-		Enabled:    true,
+		Id:      "exists",
+		Enabled: true,
 	}
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
-		Identifier: "disabled",
-		Enabled:    false,
+		Id:      "disabled",
+		Enabled: false,
 	}
 
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
-		Identifier:       "patching-disabled",
+		Id:               "patching-disabled",
 		PatchingDisabled: true,
 		Enabled:          true,
 	}
@@ -241,7 +238,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
-		Identifier:          "dispatching-disabled",
+		Id:                  "dispatching-disabled",
 		DispatchingDisabled: true,
 		Enabled:             true,
 	}

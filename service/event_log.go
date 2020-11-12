@@ -77,7 +77,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		authorized := u.HasPermission(gimlet.PermissionOpts{
-			Resource:      project.Identifier,
+			Resource:      project.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
 			RequiredLevel: evergreen.ProjectSettingsEdit.Value,

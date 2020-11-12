@@ -70,7 +70,11 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 	return position, nil
 }
 
-func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
+func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
+	id, err := model.FindIdForProject(name)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	cqService, err := commitqueue.FindOneId(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get commit queue from database")
@@ -95,7 +99,7 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue, user string) 
 	if projectRef == nil {
 		return false, errors.Errorf("can't find project ref for '%s'", id)
 	}
-	cq, err := commitqueue.FindOneId(id)
+	cq, err := commitqueue.FindOneId(projectRef.Id)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
@@ -240,7 +244,7 @@ func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel
 	return len(pc.Queue[projectID]) - 1, nil
 }
 
-func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
+func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restModel.APICommitQueue, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}

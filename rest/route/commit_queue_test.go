@@ -93,7 +93,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 func (s *CommitQueueSuite) TestDeleteItem() {
 	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
 		{
-			Identifier:  "mci",
+			Id:          "mci",
 			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.PRPatchType},
 		},
 	}
@@ -173,7 +173,7 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 func TestCqMessageForPatch(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection))
 	project := dbModel.ProjectRef{
-		Identifier:  "mci",
+		Id:          "mci",
 		CommitQueue: dbModel.CommitQueueParams{Message: "you found me!"},
 	}
 	assert.NoError(t, project.Insert())

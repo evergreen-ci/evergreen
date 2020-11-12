@@ -1,4 +1,5 @@
 identifier: evergreen-ci-render
+id: evergreen-ci-render
 owner: evergreen-ci
 repo: render
 branch: master

@@ -144,7 +144,7 @@ func mergeCommand() cli.Command {
 			defer cancel()
 
 			params := mergeParams{
-				projectID:   c.String(projectFlagName),
+				project:     c.String(projectFlagName),
 				ref:         c.String(refFlagName),
 				commits:     c.String(commitsFlagName),
 				id:          c.String(resumeFlagName),
@@ -396,13 +396,13 @@ func backport() cli.Command {
 }
 
 func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
-	cq, err := client.GetCommitQueue(ctx, projectID)
-	if err != nil {
-		return err
-	}
 	projectRef, err := ac.GetProjectRef(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
+	}
+	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
+	if err != nil {
+		return err
 	}
 	grip.Infof("Project: %s\n", projectID)
 	grip.Infof("Type of queue: %s\n", projectRef.CommitQueue.PatchType)
@@ -489,7 +489,7 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 }
 
 type mergeParams struct {
-	projectID   string
+	project     string
 	commits     string
 	ref         string
 	id          string
@@ -501,7 +501,7 @@ type mergeParams struct {
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
-		showCQMessageForProject(ac, p.projectID)
+		showCQMessageForProject(ac, p.project)
 		if err := p.uploadMergePatch(conf, ac); err != nil {
 			return err
 		}
@@ -522,7 +522,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
 	patchParams := &patchParams{
-		Project:     p.projectID,
+		Project:     p.project,
 		SkipConfirm: p.skipConfirm,
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,

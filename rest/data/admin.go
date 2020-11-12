@@ -186,10 +186,10 @@ func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartO
 		return nil, errors.Wrapf(err, "error finding projects with commit queue enabled")
 	}
 	for _, pRef := range pRefs {
-		restarted, notRestarted, err := model.RetryCommitQueueItems(pRef.Identifier, pRef.CommitQueue.PatchType, opts)
+		restarted, notRestarted, err := model.RetryCommitQueueItems(pRef.Id, pRef.CommitQueue.PatchType, opts)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project":    pRef.Identifier,
+				"project":    pRef.Id,
 				"start_time": opts.StartTime,
 				"end_time":   opts.EndTime,
 				"message":    "unable to restart failed commit queue versions for project",

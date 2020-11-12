@@ -70,7 +70,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 		MockProjectConnector: data.MockProjectConnector{
 			CachedProjects: []model.ProjectRef{
 				model.ProjectRef{
-					Identifier:  "bth",
+					Id:          "bth",
 					Enabled:     true,
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
@@ -202,11 +202,11 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
-		Identifier: "meh",
-		Enabled:    true,
-		Owner:      "baxterthehacker",
-		Repo:       "public-repo",
-		Branch:     "changes",
+		Id:      "meh",
+		Enabled: true,
+		Owner:   "baxterthehacker",
+		Repo:    "public-repo",
+		Branch:  "changes",
 	}
 	s.Require().NoError(ref.Insert())
 	event, err := github.ParseWebHook("push", s.pushBody)
@@ -307,7 +307,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
 	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
-	queue, err := s.sc.FindCommitQueueByID("bth")
+	queue, err := s.sc.FindCommitQueueForProject("bth")
 	s.NoError(err)
 	s.Empty(queue.Queue)
 
@@ -332,7 +332,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		},
 	}
 	pRef := model.ProjectRef{
-		Identifier:            "my-project",
+		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: true,
 	}

@@ -28,7 +28,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, j.env.Settings(), "TestPeriodicBuildsJob")
 
 	sampleProject := model.ProjectRef{
-		Identifier: "myProject",
+		Id:         "myProject",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
 		RemotePath: "evergreen.yml",
@@ -38,19 +38,19 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		},
 	}
 	assert.NoError(sampleProject.Insert())
-	j.ProjectID = sampleProject.Identifier
+	j.ProjectID = sampleProject.Id
 	j.DefinitionID = "abc"
 
 	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Identifier, sampleProject.PeriodicBuilds[0].ID)
+	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
 	assert.NoError(err)
 	assert.True(tasks[0].Activated)
-	dbProject, err := model.FindOneProjectRef(sampleProject.Identifier)
+	dbProject, err := model.FindOneProjectRef(sampleProject.Id)
 	assert.NoError(err)
 	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 }

@@ -40,7 +40,7 @@ func (cq *commitQueueGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (cq *commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
-	commitQueue, err := cq.sc.FindCommitQueueByID(cq.project)
+	commitQueue, err := cq.sc.FindCommitQueueForProject(cq.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get commit queue"))
 	}
@@ -85,7 +85,15 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	found, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item, gimlet.GetUser(ctx).DisplayName())
+	projectRef, err := cq.sc.FindProjectById(cq.project)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
+	}
+
+	found, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
@@ -97,10 +105,6 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	// Send GitHub status
-	projectRef, err := cq.sc.FindProjectById(cq.project)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
-	}
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {

@@ -29,14 +29,14 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
 	proj := model.ProjectRef{
-		Identifier:           "proj",
+		Id:                   "proj",
 		NotifyOnBuildFailure: true,
 		Admins:               []string{"admin"},
 	}
 	assert.NoError(proj.Insert())
 	v1 := model.Version{
 		Id:         "v1",
-		Identifier: proj.Identifier,
+		Identifier: proj.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	assert.NoError(v1.Insert())
@@ -50,7 +50,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Version:     v1.Id,
 		BuildId:     b1.Id,
 		Status:      evergreen.TaskFailed,
-		Project:     proj.Identifier,
+		Project:     proj.Id,
 		Requester:   evergreen.RepotrackerVersionRequester,
 		DisplayName: "t1",
 	}
@@ -84,7 +84,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	// should only go to admins
 	v2 := model.Version{
 		Id:         "v2",
-		Identifier: proj.Identifier,
+		Identifier: proj.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	assert.NoError(v2.Insert())
@@ -98,7 +98,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Version:     v2.Id,
 		BuildId:     b2.Id,
 		Status:      evergreen.TaskFailed,
-		Project:     proj.Identifier,
+		Project:     proj.Id,
 		Requester:   evergreen.RepotrackerVersionRequester,
 		TriggerID:   "abc",
 		DisplayName: "t2",
@@ -166,7 +166,7 @@ func (s *taskSuite) SetupTest() {
 	s.NoError(s.task.Insert())
 
 	s.projectRef = model.ProjectRef{
-		Identifier: "test_project",
+		Id: "test_project",
 	}
 	s.NoError(s.projectRef.Insert())
 
@@ -988,7 +988,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.NoError(testresult.InsertMany(results))
 
 	ref := model.ProjectRef{
-		Identifier: "myproj",
+		Id: "myproj",
 	}
 	s.NoError(ref.Insert())
 
@@ -1218,7 +1218,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert())
-	projectRef := model.ProjectRef{Identifier: "p0"}
+	projectRef := model.ProjectRef{Id: "p0"}
 	require.NoError(t, projectRef.Insert())
 	v := model.Version{Id: "v0", Revision: "abcdef01"}
 	require.NoError(t, v.Insert())
