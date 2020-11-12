@@ -804,10 +804,13 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(err)
 			return catcher.Resolve()
 		}
-		provider := evergreen.ProviderNameEc2OnDemand
-		mgrOpts := ManagerOpts{
-			Provider: provider,
-			Region:   AztoRegion(volume.AvailabilityZone),
+		if volume.AvailabilityZone != h.Zone {
+			catcher.Add(errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone))
+		}
+		mgrOpts, err := GetManagerOptions(h.Distro)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id))
+			return catcher.Resolve()
 		}
 		mgr, err := GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
 		if err != nil {
@@ -815,15 +818,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			return catcher.Resolve()
 		}
 		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
-		if err = mgr.AttachVolume(ctx, h, &attachment); err != nil {
-			attachment, attachmentInfoErr := mgr.GetVolumeAttachment(ctx, volume.ID)
-			if attachmentInfoErr != nil {
-				catcher.Add(errors.Wrapf(attachmentInfoErr, "can't query cloud provider for volume attachments for '%s'", volume.ID))
-			}
-			// if the volume isn't attached to this host then we have a problem
-			if attachment == nil || attachment.HostID != h.Id {
-				catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
-			}
+		err = mgr.AttachVolume(ctx, h, &attachment)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
 		}
 	}
 	return catcher.Resolve()

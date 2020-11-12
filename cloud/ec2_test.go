@@ -636,6 +636,7 @@ func (s *EC2Suite) TestModifyHost() {
 		},
 		DeleteInstanceTags: []string{"key-1"},
 		InstanceType:       "instance-type-2",
+		AttachVolume:       "thang",
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -665,6 +666,23 @@ func (s *EC2Suite) TestModifyHost() {
 	found, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
 	s.True(found.NoExpiration)
+
+	volumeToMount := host.Volume{
+		ID:               "thang",
+		AvailabilityZone: "us-east-1a",
+	}
+	s.Require().NoError(volumeToMount.Insert())
+	s.h.Zone = "us-east-1a"
+	s.Require().NoError(s.h.Remove())
+	s.Require().NoError(s.h.Insert())
+	changes = host.HostModifyOptions{
+		AttachVolume: "thang",
+	}
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.Require().Error(s.h.Remove())
+	s.Require().NoError(s.h.Remove())
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
