@@ -1,0 +1,56 @@
+{
+    "tests": [
+      {
+        "query_file": "filter-by-failed.graphql",
+        "result": {
+          "data": {
+            "patchTasks": {
+              "tasks": [
+                {
+                    "id": "1.5"
+                },
+                {
+                    "id": "4.5"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "query_file": "filter-by-aborted.graphql",
+        "result": {
+          "data": {
+            "patchTasks": {
+              "tasks": [
+                {
+                    "id": "2"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "query_file": "filter-by-multiple-statuses.graphql",
+        "result": {
+          "data": {
+            "patchTasks": {
+              "tasks": [
+                {
+                    "id": "1.5"
+                },
+                {
+                    "id": "2"
+                },
+                {
+                    "id": "4.5"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+  

@@ -2586,12 +2586,59 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		addDisplayStatus,
 	}
 	if len(statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": statuses},
-			},
-		})
+		// statuses can include a status (i.e. aborted) that is not valid for matching on the DisplayStatusKey
+		validTaskStatuses := []string{}
+		shouldShowAbortedTasks := false
+
+		// filter out unofficial statuses (aborted) and determine if status filters include `aborted` status
+		for _, status := range statuses {
+			if status == evergreen.TaskAborted {
+				shouldShowAbortedTasks = true
+			} else {
+				validTaskStatuses = append(validTaskStatuses, status)
+			}
+		}
+
+		// only aborted status -> validTaskStatuses is empty -> AbortKey: true
+		if shouldShowAbortedTasks && len(validTaskStatuses) == 0 {
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					AbortedKey: true,
+				},
+			})
+		}
+		// aborted & other statuses -> show aborted and matching status tasks -> AbortKey: true OR DisplayStatusKey: status
+		if shouldShowAbortedTasks && len(validTaskStatuses) > 0 {
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					"$or": bson.A{
+						bson.M{
+							DisplayStatusKey: bson.M{"$in": validTaskStatuses},
+						},
+						bson.M{
+							AbortedKey: true,
+						},
+					},
+				},
+			})
+		}
+		//
+		if shouldShowAbortedTasks == false && len(validTaskStatuses) > 0 {
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					"$and": bson.A{
+						bson.M{
+							DisplayStatusKey: bson.M{"$in": validTaskStatuses},
+						},
+						bson.M{
+							AbortedKey: nil,
+						},
+					},
+				},
+			})
+		}
 	}
+
 	countPipeline := []bson.M{}
 	for _, stage := range pipeline {
 		countPipeline = append(countPipeline, stage)
