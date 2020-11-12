@@ -932,7 +932,6 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 
 	// Check cedar test results first.
 	success := true
-	testResults := []task.TestResult{}
 	if uiTask.DisplayOnly {
 		allResults := []uiTestResult{}
 		for i, execTask := range execTasks {
@@ -941,7 +940,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				TaskID:    execTask.Id,
 				Execution: execTask.Execution,
 			}
-			data, err := apimodels.GetCedarTestResults(ctx, opts)
+			testResults, err := apimodels.GetCedarTestResults(ctx, opts)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"task_id":   execTask.Id,
@@ -952,13 +951,9 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				break
 			}
 
-			if err = json.Unmarshal(data, testResults); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
 			for _, tr := range testResults {
 				allResults = append(allResults, uiTestResult{
-					TestResult: tr,
+					TestResult: convertCedarTestResult(tr),
 					TaskId:     execTaskIDs[i],
 					TaskName:   execTask.DisplayName,
 				})
@@ -975,7 +970,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			TaskID:    projCtx.Task.Id,
 			Execution: projCtx.Task.Execution,
 		}
-		data, err := apimodels.GetCedarTestResults(ctx, opts)
+		testResults, err := apimodels.GetCedarTestResults(ctx, opts)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task_id":   projCtx.Task.Id,
@@ -986,12 +981,10 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 
 		if success {
-			if err = json.Unmarshal(data, testResults); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
 			for _, tr := range testResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+					TestResult: convertCedarTestResult(tr),
+				})
 			}
 			if uiTask.PartOfDisplay {
 				uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
@@ -1020,4 +1013,16 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 	}
 
+}
+
+func convertCedarTestResult(result apimodels.CedarTestResult) task.TestResult {
+	return task.TestResult{
+		TaskID:    result.TaskID,
+		Execution: result.Execution,
+		TestFile:  result.TestName,
+		LineNum:   result.LineNum,
+		StartTime: float64(result.Start.Unix()),
+		EndTime:   float64(result.End.Unix()),
+		Status:    result.Status,
+	}
 }

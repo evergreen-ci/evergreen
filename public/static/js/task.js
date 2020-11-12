@@ -353,17 +353,22 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
 
   $scope.getURL = function (testResult, isRaw) {
     var url = (isRaw) ? testResult.url_raw : testResult.url;
-
-    if (url != '') {
-      return url;
-    }
-
-    var logid = testResult.log_id;
-    var linenum = testResult.line_num || 0;
-
-    url = '/test_log/' + logid + '#L' + linenum;
-    if (isRaw) {
-      url = '/test_log/' + logid + '?raw=1';
+    let prefix = '/test_log/';
+    let raw = '?raw=1';
+    let lineNum = '#L' + (testResult.line_num || 0);
+    if (url == ''&& testResult.log_id) {
+      if (isRaw) {
+        url = prefix + testResult.log_id + raw;
+      } else  {
+        url = prefix + testResult.log_id + lineNum;
+      }
+    } else if (url == '') {
+      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + testResult.display_name;
+      if (isRaw) {
+          url  += raw;
+      } else {
+          url += lineNum;
+      }
     }
 
     return url;
@@ -377,8 +382,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   };
 
   $scope.hideURL = function (testResult, isRaw) {
-    var url = isRaw ? testResult.url_raw : testResult.url;
-    return !((url != '') || (testResult.log_id));
+    return false;
   };
 
   $scope.hasBothURL = function (testResult) {
