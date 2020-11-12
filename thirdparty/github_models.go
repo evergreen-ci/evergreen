@@ -24,7 +24,7 @@ func (u *GithubLoginUser) GetRefreshToken() string { return "" }
 func (u *GithubLoginUser) Roles() []string         { return []string{} }
 
 func (u *GithubLoginUser) HasPermission(gimlet.PermissionOpts) bool {
-	grip.Alert("HasPermission has not been implemented for GithubLoginUser")
+	grip.Alert("HasEditPermission has not been implemented for GithubLoginUser")
 	return false
 }
 

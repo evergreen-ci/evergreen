@@ -1,9 +1,17 @@
 package model
 
 import (
+	"fmt"
+
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -101,4 +109,57 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 		RepoRefOwnerKey: owner,
 		RepoRefRepoKey:  repoName,
 	}))
+}
+
+func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	catcher := grip.NewBasicCatcher()
+	if !r.Restricted {
+		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, r.Id), "error adding repo project '%s' to list of unrestricted projects", r.Id)
+	}
+	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id), "error adding repo project '%s' to list of all projects", r.Id)
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	newScope := gimlet.Scope{
+		ID:          fmt.Sprintf("repo_%s", r.Id),
+		Resources:   []string{r.Id},
+		Name:        r.Id,
+		Type:        evergreen.ProjectResourceType,
+		ParentScope: evergreen.AllProjectsScope, // does this seem reasonable or will it result in duplicates?
+	}
+	if err := rm.AddScope(newScope); err != nil {
+		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
+	}
+
+	newRole := gimlet.Role{
+		ID:          fmt.Sprintf("admin_repo_%s", r.Id),
+		Scope:       newScope.ID,
+		Permissions: adminPermissions,
+	}
+	if creator != nil {
+		newRole.Owners = []string{creator.Id}
+	}
+	if err := rm.UpdateRole(newRole); err != nil {
+		return errors.Wrapf(err, "error adding admin role for repo project '%s'", r.Id)
+	}
+	if creator != nil {
+		if err := creator.AddRole(newRole.ID); err != nil {
+			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		}
+	}
+	return nil
+}
+
+func (r *RepoRef) HasEditPermission(u *user.DBUser) bool {
+	if utility.StringSliceContains(r.Admins, u.Username()) {
+		return true
+	}
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      r.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
 }

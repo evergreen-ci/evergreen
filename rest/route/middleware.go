@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -153,13 +152,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	isAdmin := utility.StringSliceContains(opCtx.ProjectRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if !isAdmin {
+	if !opCtx.ProjectRef.HasEditPermission(user) {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -168,6 +161,39 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 
 	next(rw, r)
+}
+
+// This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
+func NewRepoAdminMiddleware(sc data.Connector) gimlet.Middleware {
+	return &projectRepoMiddleware{
+		sc: sc,
+	}
+}
+
+type projectRepoMiddleware struct {
+	sc data.Connector
+}
+
+func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	opCtx := MustHaveProjectContext(ctx)
+	user := MustHaveUser(ctx)
+
+	if opCtx == nil || opCtx.RepoRef == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "No project found",
+		}))
+		return
+	}
+
+	if !opCtx.RepoRef.HasEditPermission(user) {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
 }
 
 // NewTaskHostAuthMiddleware returns route middleware that authenticates a host
@@ -305,13 +331,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	// A superuser or project admin is authorized
-	isAdmin := utility.StringSliceContains(projRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
+	if projRef.HasEditPermission(user) {
 		next(rw, r)
 		return
 	}

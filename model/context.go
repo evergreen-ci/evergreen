@@ -17,6 +17,7 @@ type Context struct {
 	Version    *Version
 	Patch      *patch.Patch
 	ProjectRef *ProjectRef
+	RepoRef    *RepoRef
 
 	project *Project
 }
