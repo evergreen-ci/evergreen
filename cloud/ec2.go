@@ -813,14 +813,13 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id))
 			return catcher.Resolve()
 		}
-		mgr, err := GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
+		mgr, err := GetManager(ctx, m.env, mgrOpts)
 		if err != nil {
 			catcher.Add(err)
 			return catcher.Resolve()
 		}
 		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
-		err = mgr.AttachVolume(ctx, h, &attachment)
-		if err != nil {
+		if err = mgr.AttachVolume(ctx, h, &attachment); err != nil {
 			catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
 		}
 	}
