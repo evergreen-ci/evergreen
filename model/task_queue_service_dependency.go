@@ -133,57 +133,8 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
+	// The "depend_on" <from> task is not in the DAG so we don't need an edge.
 	if fromNode == nil {
-		// Get the "dependent" <to> task from the database.
-		toTask, err := task.FindOneId(toID)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "problem finding task in db",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			}))
-
-			return errors.Wrapf(err, "error adding edge from '%s' to '%s' - database problem while finding task '%s'", fromID, toID, toID)
-		}
-		if toTask == nil {
-			grip.Warning(message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "task from db not found",
-				"task_id":    toID,
-				"distro_id":  d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, toID)
-		}
-
-		// Get the "depends_on" <from> task to be satisfied from the database.
-		fromTask, err := task.FindOneId(fromID)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "problem finding task in db",
-				"task_id":    fromID,
-				"distro_id":  d.distroID,
-			}))
-
-			return errors.Wrapf(err, "error adding edge from '%s' to '%s' - database problem while finding task '%s'", fromID, toID, fromID)
-		}
-		if fromTask == nil {
-			grip.Warning(message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "addEdge",
-				"message":    "task from db not found",
-				"task_id":    fromID,
-				"distro_id":  d.distroID,
-			})
-
-			return errors.Errorf("error adding edge from '%s' to '%s' - task '%s' does not exist in the database", fromID, toID, fromID)
-		}
-
 		return nil
 	}
 

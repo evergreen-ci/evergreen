@@ -706,6 +706,10 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
 		}
 		for _, t := range bv.Tasks {
+			// omit tasks excluded from the version
+			if t.SkipOnRequester(v.Requester) {
+				continue
+			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
 					taskId := generateId(groupTask, p, &bv, rev, v)
