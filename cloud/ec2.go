@@ -764,11 +764,6 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
-	grip.Info(message.Fields{
-		"message":  "Inside modify ec2 host function",
-		"volumeId": opts.AttachVolume,
-		"ticket":   "EVG-13320",
-	})
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
@@ -804,14 +799,6 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		catcher.Add(h.SetDisplayName(opts.NewName))
 	}
 	if opts.AttachVolume != "" {
-		fmt.Println("___________________________________________________________________________________o________________________________________")
-		fmt.Println(opts.AttachVolume)
-		fmt.Println("___________________________________________________________________________________o________________________________________")
-		grip.Info(message.Fields{
-			"message":  "Inside AttachVolume condition",
-			"volumeId": opts.AttachVolume,
-			"ticket":   "EVG-13320",
-		})
 		volume, err := host.ValidateVolumeCanBeAttached(opts.AttachVolume)
 		if err != nil {
 			catcher.Add(err)
