@@ -177,6 +177,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
+	taskId := projCtx.Task.Id
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
@@ -364,7 +365,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.getTestResults(w, r, projCtx, &uiTask, execution)
+	uis.getTestResults(w, r, projCtx, &uiTask, taskId, execution)
 
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -884,7 +885,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, execution int) {
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string, execution int) {
 	ctx := r.Context()
 	var err error
 
@@ -967,13 +968,13 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 	} else {
 		opts := apimodels.GetCedarTestResultsOptions{
 			BaseURL:   uis.Settings.Cedar.BaseURL,
-			TaskID:    projCtx.Task.Id,
+			TaskID:    taskId,
 			Execution: projCtx.Task.Execution,
 		}
 		testResults, err := apimodels.GetCedarTestResults(ctx, opts)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"task_id":   projCtx.Task.Id,
+				"task_id":   taskId,
 				"execution": projCtx.Task.Execution,
 				"message":   "problem getting cedar test results",
 			}))
