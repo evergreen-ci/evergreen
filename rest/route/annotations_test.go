@@ -39,7 +39,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	tasks := []task.Task{
 		{Id: "task-with-many-executions", BuildId: "b1"},
-		{Id: "task-without-api-annotation", BuildId: "b1"},
+		{Id: "other-task", BuildId: "b1"},
 		{Id: "wrong-build", BuildId: "b2"},
 	}
 	for _, each := range tasks {
@@ -59,30 +59,28 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 
 	annotations := []annotations.TaskAnnotation{
 		{
-			Id:             "1",
-			TaskId:         "task-with-many-executions",
-			TaskExecution:  0,
-			APIAnnotation:  &annotations.Annotation{Note: &annotations.Note{Message: "note"}},
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}},
+			Id:            "1",
+			TaskId:        "task-with-many-executions",
+			TaskExecution: 1,
+			Note:          &annotations.Note{Message: "note"},
 		},
 		{
-			Id:             "2",
-			TaskId:         "task-with-many-executions",
-			TaskExecution:  1,
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
-		{
-			Id:            "3",
+			Id:            "2",
 			TaskId:        "task-with-many-executions",
 			TaskExecution: 2,
-			APIAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "note"}}},
+			Note:          &annotations.Note{Message: "note"},
+		},
 		{
-			Id:             "4",
-			TaskId:         "task-without-api-annotations",
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
+			Id:            "3",
+			TaskId:        "other-task",
+			TaskExecution: 0,
+			Note:          &annotations.Note{Message: "note"},
+		},
 		{
-			Id:            "5",
-			TaskId:        "wrong-build",
-			APIAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
+			Id:     "4",
+			TaskId: "wrong-build",
+			Note:   &annotations.Note{Message: "this note won't come up"},
+		},
 	}
 	for _, a := range annotations {
 		assert.NoError(t, a.Insert())
@@ -92,20 +90,20 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
-	require.Len(t, apiAnnotations, 1) // only most recent execution
-	assert.Equal(t, 2, apiAnnotations[0].TaskExecution)
+	require.Len(t, apiAnnotations, 2) // skip the previous execution of task-with-many-executions
+	for _, a := range apiAnnotations {
+		assert.NotEqual(t, 1, a.TaskExecution)
+	}
 
 	h.fetchAllExecutions = true
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 2) // all executions for which APIAnnotation is populated
+	assert.Len(t, apiAnnotations, 3)
 	for _, a := range apiAnnotations {
-		assert.Equal(t, "task-with-many-executions", model.FromStringPtr(a.TaskId))
-		assert.Equal(t, "note", model.FromStringPtr(a.APIAnnotation.Note.Message))
-		assert.NotEqual(t, 1, a.TaskExecution)
-		assert.Nil(t, a.UserAnnotation)
+		assert.NotEqual(t, "wrong-build", model.FromStringPtr(a.TaskId))
+		assert.Equal(t, "note", model.FromStringPtr(a.Note.Message))
 	}
 }
 
@@ -133,7 +131,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	tasks := []task.Task{
 		{Id: "task-with-many-executions", Version: "v1"},
-		{Id: "task-without-api-annotation", Version: "v1"},
+		{Id: "other-task", Version: "v1"},
 		{Id: "wrong-build", Version: "v2"},
 	}
 	for _, each := range tasks {
@@ -153,30 +151,28 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 
 	annotations := []annotations.TaskAnnotation{
 		{
-			Id:             "1",
-			TaskId:         "task-with-many-executions",
-			TaskExecution:  0,
-			APIAnnotation:  &annotations.Annotation{Note: &annotations.Note{Message: "note"}},
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}},
+			Id:            "1",
+			TaskId:        "task-with-many-executions",
+			TaskExecution: 1,
+			Note:          &annotations.Note{Message: "note"},
 		},
 		{
-			Id:             "2",
-			TaskId:         "task-with-many-executions",
-			TaskExecution:  1,
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
-		{
-			Id:            "3",
+			Id:            "2",
 			TaskId:        "task-with-many-executions",
 			TaskExecution: 2,
-			APIAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "note"}}},
+			Note:          &annotations.Note{Message: "note"},
+		},
 		{
-			Id:             "4",
-			TaskId:         "task-without-api-annotations",
-			UserAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
+			Id:            "3",
+			TaskId:        "other-task",
+			TaskExecution: 0,
+			Note:          &annotations.Note{Message: "note"},
+		},
 		{
-			Id:            "5",
-			TaskId:        "wrong-version",
-			APIAnnotation: &annotations.Annotation{Note: &annotations.Note{Message: "this note won't come up"}}},
+			Id:     "4",
+			TaskId: "wrong-build",
+			Note:   &annotations.Note{Message: "this note won't come up"},
+		},
 	}
 	for _, a := range annotations {
 		assert.NoError(t, a.Insert())
@@ -186,19 +182,19 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
-	require.Len(t, apiAnnotations, 1) // only most recent execution
-	assert.Equal(t, 2, apiAnnotations[0].TaskExecution)
+	require.Len(t, apiAnnotations, 2) // skip the previous execution of task-with-many-executions
+	for _, a := range apiAnnotations {
+		assert.NotEqual(t, 1, a.TaskExecution)
+	}
 
 	h.fetchAllExecutions = true
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 2) // all executions for which APIAnnotation is populated
+	assert.Len(t, apiAnnotations, 3)
 	for _, a := range apiAnnotations {
-		assert.Equal(t, "task-with-many-executions", model.FromStringPtr(a.TaskId))
-		assert.Equal(t, "note", model.FromStringPtr(a.APIAnnotation.Note.Message))
-		assert.NotEqual(t, 1, a.TaskExecution)
-		assert.Nil(t, a.UserAnnotation)
+		assert.NotEqual(t, "wrong-build", model.FromStringPtr(a.TaskId))
+		assert.Equal(t, "note", model.FromStringPtr(a.Note.Message))
 	}
 }

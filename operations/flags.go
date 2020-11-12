@@ -99,24 +99,10 @@ func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 
 }
 
-func addTasksFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringSliceFlag{
-		Name:  joinFlagNames(tasksFlagName, "t"),
-		Usage: "task names",
-	})
-}
-
 func addParameterFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  parameterFlagName,
 		Usage: "specify a parameter as a KEY=VALUE pair",
-	})
-}
-
-func addPatchAliasFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(patchAliasFlagName, "a"),
-		Usage: "patch alias (set by project admin)",
 	})
 }
 
