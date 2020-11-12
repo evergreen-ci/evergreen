@@ -56,12 +56,12 @@ type Mock struct {
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles    map[string][]*artifact.File
-	LogID            string
-	LocalTestResults *task.LocalTestResults
-	HasResults       bool
-	TestLogs         []*serviceModel.TestLog
-	TestLogCount     int
+	AttachedFiles       map[string][]*artifact.File
+	LogID               string
+	LocalTestResults    *task.LocalTestResults
+	HasCedarTestResults bool
+	TestLogs            []*serviceModel.TestLog
+	TestLogCount        int
 
 	// data collected by mocked methods
 	logMessages     map[string][]apimodels.LogMessage
@@ -383,7 +383,7 @@ func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.L
 
 // SetHasResults sets the HasResults flag in the task.
 func (c *Mock) SetHasResults(ctx context.Context, td TaskData) error {
-	c.HasResults = true
+	c.HasCedarTestResults = true
 	return nil
 }
 
