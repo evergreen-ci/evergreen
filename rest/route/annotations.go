@@ -184,7 +184,7 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
-	// get a specific execution ==>  execution != -1 h.fetchAllExecutions == false
+	// get a specific execution
 	if !h.fetchAllExecutions && h.execution != -1 {
 		a, err := annotations.FindAnnotationByTaskIdAndExecution(h.taskId, h.execution)
 		if err != nil {
@@ -201,11 +201,10 @@ func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
 	}
-	// get the latest execution ==> execution == -1 h.fetchAllExecutions == false
+	// get the latest execution
 	annotationsToReturn := allAnnotations
 	if !h.fetchAllExecutions && h.execution == -1 {
 		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
-
 	}
 
 	var res []model.APITaskAnnotation

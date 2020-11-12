@@ -295,7 +295,6 @@ func TestAnnotationByTaskHandlerRun(t *testing.T) {
 	}
 
 	// get the latest execution : 1
-	// works
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
