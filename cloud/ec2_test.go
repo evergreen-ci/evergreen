@@ -636,7 +636,6 @@ func (s *EC2Suite) TestModifyHost() {
 		},
 		DeleteInstanceTags: []string{"key-1"},
 		InstanceType:       "instance-type-2",
-		AttachVolume:       "thang",
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
