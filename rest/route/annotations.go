@@ -123,9 +123,10 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 // GET /rest/v2/task/{task_id}/{task_execution}/annotation
 
 type annotationByTaskHandler struct {
-	taskId    string
-	execution int
-	sc        data.Connector
+	taskId             string
+	fetchAllExecutions bool
+	execution          int
+	sc                 data.Connector
 }
 
 func makeFetchAnnotationByTask(sc data.Connector) gimlet.RouteHandler {
@@ -151,32 +152,67 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		}
 	}
 
-	if gimlet.GetVars(r)["execution"] == "" {
+	vals := r.URL.Query()
+	h.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
+	execution := vals.Get("execution")
+
+	if execution != "" && h.fetchAllExecutions == true {
 		return gimlet.ErrorResponse{
-			Message:    "task execution cannot be empty",
+			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	h.execution, err = strconv.Atoi(gimlet.GetVars(r)["execution"])
-	if err != nil {
-		return errors.WithStack(err)
+
+	if execution != "" {
+		h.execution, err = strconv.Atoi(execution)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "Invalid execution",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else {
+		// since an int in go defaults to 0, we won't know if the user
+		// specifically wanted execution 0, or if they want the latest.
+		// we use -1 to indicate "not specified"
+		h.execution = -1
 	}
+
+	//todo: don't allow giving both fetchall and an execution
+
 	return nil
 }
 
 func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
+	// get a specific execution ==>  execution != -1 h.fetchAllExecutions == false
+	if !h.fetchAllExecutions && h.execution != -1 {
+		a, err := annotations.FindAnnotationByTaskIdAndExecution(h.taskId, h.execution)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
+		}
+		if a == nil {
+			return gimlet.NewJSONResponse(model.APITaskAnnotation{})
+		}
+		taskAnnotation := model.APITaskAnnotationBuildFromService(*a)
+		return gimlet.NewJSONResponse([]model.APITaskAnnotation{*taskAnnotation})
+	}
 
-	return getAPIAnnotationsForTaskIdAndAnnotation(h.taskId, h.execution)
-}
-
-func getAPIAnnotationsForTaskIdAndAnnotation(taskId string, execution int) gimlet.Responder {
-	a, err := annotations.FindAnnotationByTaskIdAndExecution(taskId, execution)
+	allAnnotations, err := annotations.FindAnnotationsByTaskId(h.taskId)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
 	}
-	if a == nil {
-		return gimlet.NewJSONResponse(model.APITaskAnnotation{})
+	// get the latest execution ==> execution == -1 h.fetchAllExecutions == false
+	annotationsToReturn := allAnnotations
+	if !h.fetchAllExecutions && h.execution == -1 {
+		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
+
 	}
-	taskAnnotation := *model.APITaskAnnotationBuildFromService(*a)
-	return gimlet.NewJSONResponse(taskAnnotation)
+
+	var res []model.APITaskAnnotation
+	for _, a := range annotationsToReturn {
+		apiAnnotation := model.APITaskAnnotationBuildFromService(a)
+		res = append(res, *apiAnnotation)
+	}
+
+	return gimlet.NewJSONResponse(res)
 }
