@@ -454,6 +454,7 @@ func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string,
 	}
 	return tasksFilteredByBaseStatus
 }
+
 func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, task := range tasks {
