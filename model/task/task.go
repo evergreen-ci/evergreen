@@ -2599,7 +2599,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 			}
 		}
 
-		// only aborted status -> validTaskStatuses is empty -> AbortKey: true
+		// only show aborted tasks
 		if shouldShowAbortedTasks && len(validTaskStatuses) == 0 {
 			pipeline = append(pipeline, bson.M{
 				"$match": bson.M{
@@ -2607,7 +2607,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 				},
 			})
 		}
-		// aborted & other statuses -> show aborted and matching status tasks -> AbortKey: true OR DisplayStatusKey: status
+		// show aborted and specified valid statuses
 		if shouldShowAbortedTasks && len(validTaskStatuses) > 0 {
 			pipeline = append(pipeline, bson.M{
 				"$match": bson.M{
@@ -2622,7 +2622,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 				},
 			})
 		}
-		//
+		// only show specified valid statuses
 		if shouldShowAbortedTasks == false && len(validTaskStatuses) > 0 {
 			pipeline = append(pipeline, bson.M{
 				"$match": bson.M{
