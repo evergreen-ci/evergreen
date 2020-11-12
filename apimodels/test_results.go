@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CedarTestResult represents the expected test result format returned from
+// cedar.
 type CedarTestResult struct {
 	TaskID    string    `json:"task_id"`
 	Execution int       `json:"execution"`

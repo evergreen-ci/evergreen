@@ -475,5 +475,4 @@ func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool
 
 func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
 	return &cloud.ContainerStatus{HasStarted: true}, nil
-
 }

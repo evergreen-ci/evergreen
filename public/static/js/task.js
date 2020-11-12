@@ -356,7 +356,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
     let prefix = '/test_log/';
     let raw = '?raw=1';
     let lineNum = '#L' + (testResult.line_num || 0);
-    if (url == ''&& testResult.log_id) {
+    if (url == '' && testResult.log_id) {
       if (isRaw) {
         url = prefix + testResult.log_id + raw;
       } else  {
@@ -382,7 +382,8 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   };
 
   $scope.hideURL = function (testResult, isRaw) {
-    return false;
+    var url = isRaw ? testResult.url_raw : testResult.url;
+    return !((url != '') || (testResult.log_id) || (testResult.task_id != '' && testResult.display_name != ''));
   };
 
   $scope.hasBothURL = function (testResult) {
