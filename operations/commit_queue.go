@@ -294,13 +294,22 @@ func enqueuePatch() cli.Command {
 func backport() cli.Command {
 	return cli.Command{
 		Name:  "backport",
-		Usage: "automatically backport low-risk commits",
+		Usage: "Create a backport patch for low-risk commits. Changes are automatically enqueued when the patch succeeds.",
 		Flags: mergeFlagSlices(
 			addPatchFinalizeFlag(),
-			addVariantsFlag(),
-			addTasksFlag(),
-			addPatchAliasFlag(),
 			addPatchBrowseFlag(
+				cli.StringSliceFlag{
+					Name:  joinFlagNames(tasksFlagName, "t"),
+					Usage: "tasks to validate the backport",
+				},
+				cli.StringSliceFlag{
+					Name:  joinFlagNames(variantsFlagName, "v"),
+					Usage: "variants to validate the backport",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(patchAliasFlagName, "a"),
+					Usage: "patch alias to select tasks/variants to validate the backport",
+				},
 				cli.StringFlag{
 					Name:  joinFlagNames(existingPatchFlag, "e"),
 					Usage: "existing commit queue patch",
