@@ -5,6 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -21,6 +23,12 @@ type CloudHost struct {
 // giving access to the provider-specific methods to manipulate on the host.
 func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environment) (*CloudHost, error) {
 	mgrOpts, err := GetManagerOptions(host.Distro)
+	grip.Info(message.Fields{
+		"message":  "Inside get cloud host",
+		"hostId":   host.Id,
+		"ticket":   "EVG-13320",
+		"provider": mgrOpts.Provider,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get ManagerOpts for '%s'", host.Id)
 	}

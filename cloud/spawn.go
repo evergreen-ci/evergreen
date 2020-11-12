@@ -319,6 +319,11 @@ func ModifySpawnHost(ctx context.Context, env evergreen.Environment, host *host.
 	if err != nil {
 		return err
 	}
+	grip.Info(message.Fields{
+		"message": "inside cloud.ModifySpawnHost",
+		"volume":  opts.AttachVolume,
+		"ticket":  "EVG-13320",
+	})
 	if err = cloudHost.ModifyHost(ctx, opts); err != nil {
 		return err
 	}

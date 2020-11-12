@@ -764,6 +764,11 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
+	grip.Info(message.Fields{
+		"message":  "Inside modify ec2 host function",
+		"volumeId": opts.AttachVolume,
+		"ticket":   "EVG-13320",
+	})
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
@@ -798,7 +803,42 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(opts.NewName))
 	}
-
+	if opts.AttachVolume != "" {
+		fmt.Println("___________________________________________________________________________________o________________________________________")
+		fmt.Println(opts.AttachVolume)
+		fmt.Println("___________________________________________________________________________________o________________________________________")
+		grip.Info(message.Fields{
+			"message":  "Inside AttachVolume condition",
+			"volumeId": opts.AttachVolume,
+			"ticket":   "EVG-13320",
+		})
+		volume, err := host.ValidateVolumeCanBeAttached(opts.AttachVolume)
+		if err != nil {
+			catcher.Add(err)
+			return catcher.Resolve()
+		}
+		provider := evergreen.ProviderNameEc2OnDemand
+		mgrOpts := ManagerOpts{
+			Provider: provider,
+			Region:   AztoRegion(volume.AvailabilityZone),
+		}
+		mgr, err := GetManager(ctx, evergreen.GetEnvironment(), mgrOpts)
+		if err != nil {
+			catcher.Add(err)
+			return catcher.Resolve()
+		}
+		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
+		if err = mgr.AttachVolume(ctx, h, &attachment); err != nil {
+			attachment, attachmentInfoErr := mgr.GetVolumeAttachment(ctx, volume.ID)
+			if attachmentInfoErr != nil {
+				catcher.Add(errors.Wrapf(attachmentInfoErr, "can't query cloud provider for volume attachments for '%s'", volume.ID))
+			}
+			// if the volume isn't attached to this host then we have a problem
+			if attachment == nil || attachment.HostID != h.Id {
+				catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
+			}
+		}
+	}
 	return catcher.Resolve()
 }
 
