@@ -920,6 +920,11 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Id:        "id",
 				Status:    evergreen.HostRunning,
 				StartedBy: evergreen.User,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodLegacySSH,
+					},
+				},
 			}
 			So(h.Insert(), ShouldBeNil)
 			hosts, err := Find(db.Query(NeedsAgentDeploy(time.Now())))
@@ -948,6 +953,11 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				LastCommunicationTime: now.Add(-time.Duration(20) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodLegacySSH,
+					},
+				},
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
 			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
@@ -962,6 +972,11 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				LastCommunicationTime: now.Add(time.Duration(5) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodLegacySSH,
+					},
+				},
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
 			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
@@ -1013,20 +1028,6 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
-		Convey("with a host having no specified bootstrap method marked as needing a new agent", func() {
-			h := Host{
-				Id:            "h",
-				Status:        evergreen.HostRunning,
-				StartedBy:     evergreen.User,
-				NeedsNewAgent: true,
-			}
-			So(h.Insert(), ShouldBeNil)
-
-			hosts, err := Find(ShouldDeployAgent())
-			So(err, ShouldBeNil)
-			So(len(hosts), ShouldEqual, 1)
-			So(hosts[0].Id, ShouldEqual, h.Id)
-		})
 		Convey("with a host with that is still provisioning, does not need reprovisioning, and has not yet communicated", func() {
 			h := Host{
 				Id:            "h",
@@ -1044,8 +1045,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Id:               "h",
 				Status:           evergreen.HostProvisioning,
 				NeedsReprovision: ReprovisionToLegacy,
-				StartedBy:        evergreen.User,
-				NeedsNewAgent:    true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodLegacySSH,
+					},
+				},
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
 			}
 			So(h.Insert(), ShouldBeNil)
 			hosts, err := Find(db.Query(NeedsAgentDeploy(now)))
@@ -1247,15 +1253,6 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 		},
 		"BootstrapUserData": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(ShouldDeployAgentMonitor())
-			require.NoError(t, err)
-			require.Len(t, hosts, 1)
-			assert.Equal(t, h.Id, hosts[0].Id)
-		},
-		"BootstrapPreconfiguredImage": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodPreconfiguredImage
 			require.NoError(t, h.Insert())
 
 			hosts, err := Find(ShouldDeployAgentMonitor())

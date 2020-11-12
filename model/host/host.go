@@ -932,12 +932,9 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	}
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
-		IdKey:     h.Id,
-		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
-		bootstrapKey: bson.M{
-			"$exists": true,
-			"$ne":     distro.BootstrapMethodLegacySSH,
-		},
+		IdKey:        h.Id,
+		StatusKey:    bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		bootstrapKey: bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},

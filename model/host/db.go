@@ -485,29 +485,29 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	var hosts []Host
 
 	pipeline := []bson.M{
-		bson.M{"$match": bson.M{
-			bootstrapKey: bson.M{
-				"$exists": true,
-				"$ne":     distro.BootstrapMethodLegacySSH,
-			},
+		{"$match": bson.M{
+			bootstrapKey: bson.M{"$in": []string{
+				distro.BootstrapMethodSSH,
+				distro.BootstrapMethodUserData,
+			}},
 			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
 			"$or": []bson.M{
-				bson.M{NeedsReprovisionKey: bson.M{"$exists": false}},
-				bson.M{NeedsReprovisionKey: ReprovisionJasperRestart},
+				{NeedsReprovisionKey: bson.M{"$exists": false}},
+				{NeedsReprovisionKey: ReprovisionJasperRestart},
 			},
 			HasContainersKey: bson.M{"$ne": true},
 			ParentIDKey:      bson.M{"$exists": false},
 		}},
-		bson.M{"$lookup": bson.M{
+		{"$lookup": bson.M{
 			"from":         evergreen.CredentialsCollection,
 			"localField":   JasperCredentialsIDKey,
 			"foreignField": CertUserIDKey,
 			"as":           credentialsKey,
 		}},
-		bson.M{"$match": bson.M{
+		{"$match": bson.M{
 			expirationKey: bson.M{"$lte": deadline},
 		}},
-		bson.M{"$project": bson.M{
+		{"$project": bson.M{
 			credentialsKey: 0,
 		}},
 	}
@@ -828,6 +828,7 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 		RunningTaskKey:   bson.M{"$exists": false},
+		bootstrapKey:     distro.BootstrapMethodLegacySSH,
 		"$and": []bson.M{
 			{"$or": []bson.M{
 				{StatusKey: evergreen.HostRunning},
@@ -840,10 +841,6 @@ func NeedsAgentDeploy(currentTime time.Time) bson.M {
 				{LastCommunicationTimeKey: utility.ZeroTime},
 				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
-			}},
-			bson.M{"$or": []bson.M{
-				{bootstrapKey: bson.M{"$exists": false}},
-				{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
 			}},
 		},
 	}
@@ -873,11 +870,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
 		},
-		bootstrapKey: bson.M{"$in": []string{
-			distro.BootstrapMethodSSH,
-			distro.BootstrapMethodUserData,
-			distro.BootstrapMethodPreconfiguredImage,
-		}},
+		bootstrapKey: bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 	}
 }
 
@@ -886,10 +879,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 func ShouldDeployAgent() db.Q {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
-		"$or": []bson.M{
-			{bootstrapKey: bson.M{"$exists": false}},
-			{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
-		},
+		bootstrapKey:        distro.BootstrapMethodLegacySSH,
 		StatusKey:           evergreen.HostRunning,
 		StartedByKey:        evergreen.User,
 		HasContainersKey:    bson.M{"$ne": true},
@@ -905,10 +895,7 @@ func ShouldDeployAgent() db.Q {
 func ShouldDeployAgentMonitor() db.Q {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
-		bootstrapKey: bson.M{
-			"$exists": true,
-			"$ne":     distro.BootstrapMethodLegacySSH,
-		},
+		bootstrapKey:            bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
 		StatusKey:               evergreen.HostRunning,
 		StartedByKey:            evergreen.User,
 		HasContainersKey:        bson.M{"$ne": true},

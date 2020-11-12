@@ -23,9 +23,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addProjectFlag(flags...),
 		addPatchFinalizeFlag(),
 		addVariantsFlag(),
-		addTasksFlag(),
 		addParameterFlag(),
-		addPatchAliasFlag(),
 		addPatchBrowseFlag(),
 		addSyncBuildVariantsFlag(),
 		addSyncTasksFlag(),
@@ -36,6 +34,14 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addRefFlag(),
 		addUncommittedChangesFlag(),
 		addPreserveCommitsFlag(
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(tasksFlagName, "t"),
+				Usage: "task names",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(patchAliasFlagName, "a"),
+				Usage: "patch alias (set by project admin)",
+			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 				Usage: "description for the patch",
