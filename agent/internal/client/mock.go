@@ -59,6 +59,7 @@ type Mock struct {
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults *task.LocalTestResults
+	HasResults       bool
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
@@ -380,6 +381,12 @@ func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.L
 	return nil
 }
 
+// SetHasResults sets the HasResults flag in the task.
+func (c *Mock) SetHasResults(ctx context.Context, td TaskData) error {
+	c.HasResults = true
+	return nil
+}
+
 // SendFiles attaches task files.
 func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
 	c.mu.Lock()
@@ -468,4 +475,5 @@ func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool
 
 func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
 	return &cloud.ContainerStatus{HasStarted: true}, nil
+
 }

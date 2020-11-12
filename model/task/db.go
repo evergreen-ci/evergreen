@@ -72,6 +72,7 @@ var (
 	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	HasResultsKey               = bsonutil.MustHaveTag(Task{}, "HasResults")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")

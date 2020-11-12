@@ -895,6 +895,20 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
+func (t *Task) SetHasResults(hasResults bool) error {
+	t.HasResults = hasResults
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				HasResultsKey: hasResults,
+			},
+		},
+	)
+}
+
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
 func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller

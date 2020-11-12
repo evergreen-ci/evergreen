@@ -160,9 +160,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				}))
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
-			} else if resp.StatusCode == http.StatusConflict {
-				defer resp.Body.Close()
-				return resp, HTTPConflictError
 			} else if resp.StatusCode == http.StatusUnauthorized {
 				defer resp.Body.Close()
 				return resp, AuthError
