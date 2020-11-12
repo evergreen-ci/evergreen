@@ -678,10 +678,9 @@ func (s *EC2Suite) TestModifyHost() {
 	changes = host.HostModifyOptions{
 		AttachVolume: "thang",
 	}
-	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
-	s.Require().Error(s.h.Remove())
 	s.Require().NoError(s.h.Remove())
 }
 
