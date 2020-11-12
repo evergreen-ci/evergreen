@@ -444,7 +444,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 }
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
-	var err error
+	var v *host.Volume
 	usr := MustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
 	if err != nil {
@@ -496,7 +496,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if editSpawnHostInput.Volume != nil {
-		v, err := r.sc.FindVolumeById(*editSpawnHostInput.Volume)
+		v, err = r.sc.FindVolumeById(*editSpawnHostInput.Volume)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
 		}
