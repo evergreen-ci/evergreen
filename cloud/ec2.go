@@ -806,6 +806,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		}
 		if volume.AvailabilityZone != h.Zone {
 			catcher.Add(errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone))
+			return catcher.Resolve()
 		}
 		mgrOpts, err := GetManagerOptions(h.Distro)
 		if err != nil {
