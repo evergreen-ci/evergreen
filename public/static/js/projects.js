@@ -346,6 +346,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
+        $scope.patch_trigger_aliases = data.ProjectRef.patch_trigger_aliases || [];
         $scope.periodic_builds = data.ProjectRef.periodic_builds || [];
         $scope.permissions = data.permissions || {};
         $scope.github_valid_orgs = data.github_valid_orgs;
@@ -484,6 +485,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   $scope.saveProject = function () {
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
     $scope.settingsFormData.triggers = $scope.project_triggers;
+    $scope.settingsFormData.patch_trigger_aliases = $scope.patch_trigger_aliases;
     $scope.settingsFormData.periodic_builds = $scope.periodic_builds;
     _.each($scope.settingsFormData.triggers, function (trigger) {
       if (trigger.command) {
@@ -852,6 +854,80 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.validWorkstationCommand = function(obj) {
     return obj !== undefined && obj.command !== undefined && obj.command !== ""
+  }
+
+  $scope.showPatchTriggerAliasModal = function (index) {
+    if (index != undefined) {
+      var aliasToEdit = $scope.patch_trigger_aliases[index];
+    }
+    var modal = $mdDialog.confirm({
+      title: "New Patch Trigger Alias",
+      templateUrl: "/static/partials/patch_trigger_alias_modal.html",
+      controllerAs: "data",
+      controller: newPatchTriggerAliasController,
+      bindToController: true,
+      locals: {
+        "aliasToEdit": aliasToEdit,
+        "index": index
+      },
+    });
+
+    $mdDialog.show(modal).then(function (update) {
+      if (update.aliasIndex != undefined) {
+        if (update.delete) {
+          $scope.patch_trigger_aliases.splice(update.aliasIndex, 1);
+        } else {
+          $scope.patch_trigger_aliases[update.aliasIndex] = update.alias;
+        }
+      } else {
+        $scope.patch_trigger_aliases = $scope.patch_trigger_aliases.concat([update.alias]);
+      }
+      $scope.isDirty = true;
+    });
+  };
+
+  function newPatchTriggerAliasController($scope, $mdDialog) {
+    if ($scope.data.aliasToEdit) {
+      $scope.alias = $scope.data.aliasToEdit;
+      $scope.aliasIndex = $scope.data.index;
+    }
+
+    $scope.closeDialog = function (save) {
+      if (save) {
+        if (!$scope.validTriggerAlias()) {
+          return;
+        }
+
+        $mdDialog.hide({
+          "alias": $scope.alias,
+          "aliasIndex": $scope.aliasIndex
+        });
+      }
+      $mdDialog.cancel();
+    };
+
+    $scope.deleteAlias = function () {
+      $mdDialog.hide({
+        "delete": true,
+        "aliasIndex": $scope.aliasIndex
+      });
+    };
+
+    $scope.validTriggerAlias = function () {
+      if (!$scope.alias.definition_alias || !$scope.alias.child_project) {
+        return false;
+      }
+
+      return true;
+    };
+
+    $scope.modalTitle = function () {
+      if ($scope.data.aliasToEdit) {
+        return "Edit Patch Trigger Alias";
+      } else {
+        return "New Patch Trigger Alias";
+      }
+    };
   }
 
   $scope.showTriggerModal = function (index) {
