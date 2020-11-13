@@ -929,9 +929,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				Status:    execTask.ResultStatus(),
 			})
 		}
-	}
 
-	if uiTask.DisplayOnly {
 		allResults := []uiTestResult{}
 		for i, execTask := range execTasks {
 			opts := apimodels.GetCedarTestResultsOptions{
