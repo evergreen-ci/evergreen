@@ -291,9 +291,6 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
-	// add resource to the repo-level scope
-	// in the future, should only be able to create projects if the repo exists, otherwise first have to create the repo,
-	// so we can assume that the scope does exist if the flag is turned on
 
 	// add scope for the branch-level project configurations
 	newScope := gimlet.Scope{
