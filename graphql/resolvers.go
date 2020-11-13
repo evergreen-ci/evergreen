@@ -2058,7 +2058,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
 		}
 		if usr == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID: %s", err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID"))
 		}
 	}
 	displayName := usr.DisplayName()
