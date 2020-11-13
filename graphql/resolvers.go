@@ -2053,9 +2053,12 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	usr := MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
-		usr, err = model.FindUserByID(*userIdParam)
+		usr, err = user.FindOneById(*userIdParam)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+		}
+		if usr == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID: %s", err.Error()))
 		}
 	}
 	displayName := usr.DisplayName()

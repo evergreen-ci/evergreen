@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -191,18 +191,30 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 }
 
 func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
+	return user.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
 }
 
-func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }
+func getUserByID(id string) (gimlet.User, error) {
+	u, err := user.FindOneById(id)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil {
+		return nil, errors.Errorf("user with id '%s' not found", id)
+	}
+	return u, nil
+}
 
 // getUserWithExpiration returns a user by id and a boolean. True indicates the user is valid. False
 // indicates that the user has expired. An error is returned if the user does not exist or if there
 // is an error retrieving the user.
 func getUserByIdWithExpiration(id string, expireAfter time.Duration) (gimlet.User, bool, error) {
-	u, err := model.FindUserByID(id)
+	u, err := user.FindOneById(id)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "problem getting user from cache")
+	}
+	if u == nil {
+		return nil, false, errors.Errorf("user with id '%s' not found", id)
 	}
 	if time.Since(u.LoginCache.TTL) > expireAfter {
 		return u, false, nil

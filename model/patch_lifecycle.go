@@ -598,9 +598,12 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		return nil, errors.New("commit queue has no build variants or tasks configured")
 	}
 
-	u, err := FindUserByID(patchDoc.Author)
+	u, err := user.FindOneById(patchDoc.Author)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't find user for patch author '%s'", patchDoc.Author)
+	}
+	if u == nil {
+		return nil, errors.Errorf("patch author '%s' not found", patchDoc.Author)
 	}
 	// get the next patch number for the user
 	patchDoc.PatchNumber, err = u.IncPatchNumber()
