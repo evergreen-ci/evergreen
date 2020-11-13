@@ -1772,13 +1772,12 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		return true, nil
 	}
 
-	// project admin
-	projectRef, err := r.sc.FindProjectById(restModel.FromStringPtr(existingPatch.ProjectId))
-	if err != nil {
-		return false, err
-	}
-	// note: Admins will eventually return both project admins and repo admins for this check to be correct
-	return projectRef.HasEditPermission(u), nil
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      existingPatch.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}), nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {

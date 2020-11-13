@@ -251,45 +251,18 @@ func (p *ProjectRef) GetRepoId() string {
 	return fmt.Sprintf("%s_%s", p.Owner, p.Repo)
 }
 
-func (p *ProjectRef) HasEditPermission(u *user.DBUser) bool {
-	if utility.StringSliceContains(p.Admins, u.Username()) {
-		return true
-	}
-	isBranchAdmin := u.HasPermission(gimlet.PermissionOpts{
-		Resource:      p.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isBranchAdmin {
-		return true
-	}
-	// check if is repo admin
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      p.GetRepoId(),
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-}
-
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	catcher := grip.NewBasicCatcher()
-	if !p.Restricted {
-		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "error adding project '%s' to list of unrestricted projects", p.Id)
-	}
-	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Id), "error adding project '%s' to list of all projects", p.Id)
-
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		catcher.Wrap(err, "error getting service flags")
-	} else if !flags.ProjectsTrackBranchesDisabled {
-		catcher.Wrapf(rm.AddResourceToScope(fmt.Sprintf("repo_%s", p.GetRepoId()), p.Id), "error adding project '%s' to list of repo projects", p.Id)
+		return errors.Wrap(err, "error getting service flags")
 	}
 
-	if catcher.HasErrors() {
-		return catcher.Resolve()
+	parentScope := evergreen.AllProjectsScope
+	if !flags.ProjectsTrackBranchesDisabled {
+		parentScope = evergreen.GetRepoScope(p.GetRepoId())
+	} else if !p.Restricted {
+		parentScope = evergreen.UnrestrictedProjectsScope
 	}
 
 	// add scope for the branch-level project configurations
@@ -298,7 +271,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		Resources:   []string{p.Id},
 		Name:        p.Id,
 		Type:        evergreen.ProjectResourceType,
-		ParentScope: evergreen.AllProjectsScope,
+		ParentScope: parentScope,
 	}
 	if err := rm.AddScope(newScope); err != nil {
 		return errors.Wrapf(err, "error adding scope for project '%s'", p.Id)

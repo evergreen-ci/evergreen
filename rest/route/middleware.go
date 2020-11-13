@@ -152,7 +152,13 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !opCtx.ProjectRef.HasEditPermission(user) {
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -187,7 +193,13 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if !opCtx.RepoRef.HasEditPermission(user) {
+	isRepoAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.RepoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !!isRepoAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -331,7 +343,13 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	// A superuser or project admin is authorized
-	if projRef.HasEditPermission(user) {
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
 		next(rw, r)
 		return
 	}
