@@ -120,7 +120,7 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/task/{task_id}/{task_execution}/annotation
+// GET /rest/v2/task/{task_id}/annotation
 
 type annotationByTaskHandler struct {
 	taskId             string
@@ -129,7 +129,7 @@ type annotationByTaskHandler struct {
 	sc                 data.Connector
 }
 
-func makeFetchAnnotationByTask(sc data.Connector) gimlet.RouteHandler {
+func makeFetchAnnotationsByTask(sc data.Connector) gimlet.RouteHandler {
 	return &annotationByTaskHandler{
 		sc: sc,
 	}
@@ -167,7 +167,7 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		h.execution, err = strconv.Atoi(execution)
 		if err != nil {
 			return gimlet.ErrorResponse{
-				Message:    "Invalid execution",
+				Message:    "Invalid execution" + err.Error(),
 				StatusCode: http.StatusBadRequest,
 			}
 		}
@@ -177,8 +177,6 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		// we use -1 to indicate "not specified"
 		h.execution = -1
 	}
-
-	//todo: don't allow giving both fetchall and an execution
 
 	return nil
 }
@@ -191,7 +189,7 @@ func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
 		}
 		if a == nil {
-			return gimlet.NewJSONResponse(model.APITaskAnnotation{})
+			return gimlet.NewJSONResponse([]model.APITaskAnnotation{})
 		}
 		taskAnnotation := model.APITaskAnnotationBuildFromService(*a)
 		return gimlet.NewJSONResponse([]model.APITaskAnnotation{*taskAnnotation})
