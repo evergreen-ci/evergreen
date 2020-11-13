@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -167,7 +168,7 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		h.execution, err = strconv.Atoi(execution)
 		if err != nil {
 			return gimlet.ErrorResponse{
-				Message:    "Invalid execution" + err.Error(),
+				Message:    fmt.Sprintf("Invalid execution: '%s' " + err.Error()),
 				StatusCode: http.StatusBadRequest,
 			}
 		}
@@ -177,13 +178,12 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		// we use -1 to indicate "not specified"
 		h.execution = -1
 	}
-
 	return nil
 }
 
 func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	// get a specific execution
-	if !h.fetchAllExecutions && h.execution != -1 {
+	if h.execution != -1 {
 		a, err := annotations.FindAnnotationByTaskIdAndExecution(h.taskId, h.execution)
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
@@ -201,7 +201,7 @@ func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// get the latest execution
 	annotationsToReturn := allAnnotations
-	if !h.fetchAllExecutions && h.execution == -1 {
+	if !h.fetchAllExecutions {
 		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
 	}
 
