@@ -135,6 +135,11 @@ var (
 				"$switch": bson.M{
 					"branches": []bson.M{
 						{"case": bson.M{
+							"$eq": []interface{}{"$" + AbortedKey, true},
+						},
+							"then": evergreen.TaskAborted,
+						},
+						{"case": bson.M{
 							"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
 						},
 							"then": evergreen.TaskSucceeded,
