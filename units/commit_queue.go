@@ -711,7 +711,7 @@ func setDefaultNotification(username string) error {
 		}
 		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
 
-		return model.SaveUserSettings(u.Id, u.Settings)
+		return u.UpdateSettings(u.Settings)
 	}
 
 	return nil

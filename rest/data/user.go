@@ -161,7 +161,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.CommitQueueID = ""
 	}
 
-	return model.SaveUserSettings(dbUser.Id, settings)
+	return dbUser.UpdateSettings(settings)
 }
 
 func (u *DBUserConnector) SubmitFeedback(in restModel.APIFeedbackSubmission) error {

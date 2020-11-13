@@ -28,7 +28,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error getting user from user ID: user nonexistent-userid not found",
+            "message": "Could not find user from user ID",
             "path": [
               "user"
             ],

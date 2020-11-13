@@ -44,7 +44,7 @@ func (s *UserRouteSuite) SetupTest() {
 }
 
 func (s *UserRouteSuite) TestUpdateNotifications() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
+	_, err := user.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -74,7 +74,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 }
 
 func (s *UserRouteSuite) TestUndefinedInput() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
+	_, err := user.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	settings := user.UserSettings{
 		SlackUsername: "something",
@@ -108,7 +108,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 }
 
 func (s *UserRouteSuite) TestSaveFeedback() {
-	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
+	_, err := user.GetOrCreateUser("me", "me", "foo@bar.com", "", "", nil)
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
