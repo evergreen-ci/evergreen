@@ -73,7 +73,7 @@ func TestDataConnectorSuite(t *testing.T) {
 		Status:    evergreen.TaskFailed,
 	}
 	p := &model.ProjectRef{
-		Identifier: "sample",
+		Id: "sample",
 	}
 
 	b.Tasks = []build.TaskCache{

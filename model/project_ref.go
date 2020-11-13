@@ -33,7 +33,8 @@ import (
 // revision control system, needed to track a given project
 type ProjectRef struct {
 	// The following fields can be defined from both the branch and repo level.
-	Identifier          string `bson:"identifier" json:"identifier" yaml:"identifier"`
+	// Id is the unmodifiable unique ID for the configuration, used internally.
+	Id                  string `bson:"_id" json:"id" yaml:"id"`
 	DisplayName         string `bson:"display_name" json:"display_name" yaml:"display_name"`
 	Enabled             bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
 	Private             bool   `bson:"private" json:"private" yaml:"private"`
@@ -63,6 +64,9 @@ type ProjectRef struct {
 	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
 	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
 	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+
+	// Identifier must be unique, but is modifiable. Used by users.
+	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
@@ -175,6 +179,7 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
+	ProjectRefIdKey                      = bsonutil.MustHaveTag(ProjectRef{}, "Id")
 	ProjectRefOwnerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
 	ProjectRefRepoKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
 	ProjectRefBranchKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
@@ -246,24 +251,24 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	catcher := grip.NewBasicCatcher()
 	if !p.Restricted {
-		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "error adding project '%s' to list of unrestricted projects", p.Identifier)
+		catcher.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "error adding project '%s' to list of unrestricted projects", p.Id)
 	}
-	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Identifier), "error adding project '%s' to list of all projects", p.Identifier)
+	catcher.Wrapf(rm.AddResourceToScope(evergreen.AllProjectsScope, p.Id), "error adding project '%s' to list of all projects", p.Id)
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
 	newScope := gimlet.Scope{
-		ID:          fmt.Sprintf("project_%s", p.Identifier),
-		Resources:   []string{p.Identifier},
-		Name:        p.Identifier,
+		ID:          fmt.Sprintf("project_%s", p.Id),
+		Resources:   []string{p.Id},
+		Name:        p.Id,
 		Type:        evergreen.ProjectResourceType,
 		ParentScope: evergreen.AllProjectsScope,
 	}
 	if err := rm.AddScope(newScope); err != nil {
-		return errors.Wrapf(err, "error adding scope for project '%s'", p.Identifier)
+		return errors.Wrapf(err, "error adding scope for project '%s'", p.Id)
 	}
 	newRole := gimlet.Role{
-		ID:          fmt.Sprintf("admin_project_%s", p.Identifier),
+		ID:          fmt.Sprintf("admin_project_%s", p.Id),
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
 	}
@@ -271,7 +276,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		newRole.Owners = []string{creator.Id}
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Identifier)
+		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Id)
 	}
 	if creator != nil {
 		if err := creator.AddRole(newRole.ID); err != nil {
@@ -285,7 +290,7 @@ func (projectRef *ProjectRef) Update() error {
 	return db.Update(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefIdentifierKey: projectRef.Identifier,
+			ProjectRefIdKey: projectRef.Id,
 		},
 		projectRef,
 	)
@@ -297,26 +302,36 @@ func (projectRef *ProjectRef) checkDefaultLogger() {
 	}
 }
 
-// FindOneProjectRef gets a project ref given the owner name, the repo
-// name and the project name
-func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOne(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdentifierKey: identifier,
-		},
-		db.NoProjection,
-		db.NoSort,
-		projectRef,
-	)
+	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
 	projectRef.checkDefaultLogger()
-
 	return projectRef, err
+
+}
+
+// FindOneProjectRef gets a project ref given the project identifier
+func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+	return findOneProjectRefQ(byId(identifier))
+}
+
+func FindIdForProject(identifier string) (string, error) {
+	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", identifier)
+	}
+	return pRef.Id, nil
+}
+
+func CountProjectRefsWithIdentifier(identifier string) (int, error) {
+	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
 func FindFirstProjectRef() (*ProjectRef, error) {
@@ -444,25 +459,30 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+func byOwnerRepoAndBranch(owner, repoName, branch string) db.Q {
+	return db.Query(bson.M{
+		ProjectRefOwnerKey:   owner,
+		ProjectRefRepoKey:    repoName,
+		ProjectRefBranchKey:  branch,
+		ProjectRefEnabledKey: true,
+	})
+}
+
+func byId(identifier string) db.Q {
+	return db.Query(bson.M{
+		"$or": []bson.M{
+			{ProjectRefIdKey: identifier},
+			{ProjectRefIdentifierKey: identifier},
+		},
+	})
+}
+
 // FindProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
 // that are enabled and setup for PR testing
 func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefOwnerKey:   owner,
-			ProjectRefRepoKey:    repoName,
-			ProjectRefBranchKey:  branch,
-			ProjectRefEnabledKey: true,
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	err := db.FindAllQ(ProjectRefCollection, byOwnerRepoAndBranch(owner, repoName, branch), &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -656,13 +676,13 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	filter := bson.M{}
-	sortSpec := ProjectIdentifierKey
+	sortSpec := ProjectRefIdKey
 
 	if sortDir < 0 {
 		sortSpec = "-" + sortSpec
-		filter[ProjectIdentifierKey] = bson.M{"$lt": key}
+		filter[ProjectRefIdKey] = bson.M{"$lt": key}
 	} else {
-		filter[ProjectIdentifierKey] = bson.M{"$gte": key}
+		filter[ProjectRefIdKey] = bson.M{"$gte": key}
 	}
 
 	err := db.FindAll(
@@ -687,7 +707,7 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "database error finding project by repo and branch")
 	}
-	if resultRef != nil && resultRef.Identifier != projectRef.Identifier {
+	if resultRef != nil && resultRef.Id != projectRef.Id {
 		return false, nil
 	}
 	return true, nil
@@ -699,10 +719,11 @@ func (projectRef *ProjectRef) Upsert() error {
 	_, err := db.Upsert(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefIdentifierKey: projectRef.Identifier,
+			ProjectRefIdKey: projectRef.Id,
 		},
 		bson.M{
 			"$set": bson.M{
+				ProjectRefIdentifierKey:              projectRef.Identifier,
 				ProjectRefRepoKindKey:                projectRef.RepoKind,
 				ProjectRefEnabledKey:                 projectRef.Enabled,
 				ProjectRefPrivateKey:                 projectRef.Private,
@@ -746,7 +767,7 @@ func (projectRef *ProjectRef) Upsert() error {
 
 // ProjectRef returns a string representation of a ProjectRef
 func (projectRef *ProjectRef) String() string {
-	return projectRef.Identifier
+	return projectRef.Id
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
@@ -796,7 +817,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
 	}
 
-	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Identifier, variant.Name).WithFields(VersionBuildVariantsKey))
+	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "error finding version")
 	}
@@ -823,7 +844,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
 	}
 
-	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Identifier, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
+	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return defaultRes, errors.Wrap(err, "error finding version")
 	}
@@ -857,6 +878,20 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 	return nil
 }
 
+func (p *ProjectRef) ValidateIdentifier() error {
+	if p.Id == p.Identifier { // we already know the id is unique
+		return nil
+	}
+	count, err := CountProjectRefsWithIdentifier(p.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "error counting other project refs")
+	}
+	if count > 0 {
+		return errors.New("identifier cannot match another project's identifier")
+	}
+	return nil
+}
+
 func (p *ProjectRef) RemoveTag(tag string) (bool, error) {
 	newTags := []string{}
 	for _, t := range p.Tags {
@@ -871,7 +906,7 @@ func (p *ProjectRef) RemoveTag(tag string) (bool, error) {
 
 	err := db.Update(
 		ProjectRefCollection,
-		bson.M{ProjectRefIdentifierKey: p.Identifier},
+		bson.M{ProjectRefIdKey: p.Id},
 		bson.M{"$pull": bson.M{projectRefTagsKey: tag}},
 	)
 	if adb.ResultsNotFound(err) {
@@ -911,7 +946,7 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 
 	err := db.Update(
 		ProjectRefCollection,
-		bson.M{ProjectRefIdentifierKey: p.Identifier},
+		bson.M{ProjectRefIdKey: p.Id},
 		bson.M{"$addToSet": bson.M{projectRefTagsKey: bson.M{"$each": toAdd}}},
 	)
 	if adb.ResultsNotFound(err) {
@@ -928,12 +963,12 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "unable to remove %s from list of unrestricted projects", p.Identifier)
+	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
 }
 
 func (p *ProjectRef) MakeUnrestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Identifier), "unable to add %s to list of unrestricted projects", p.Identifier)
+	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
 }
 
 func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
@@ -941,12 +976,12 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Identifier}, adminPermissions)
+	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
 		return errors.Wrap(err, "error finding role with admin permissions")
 	}
 	if role == nil {
-		return errors.Errorf("no admin role for %s found", p.Identifier)
+		return errors.Errorf("no admin role for %s found", p.Id)
 	}
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
@@ -991,10 +1026,10 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token
 // The commands' working directories may not exist and need to be created before running the commands
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
-		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Identifier)
+		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Id)
 	}
 
-	baseDir := filepath.Join(opts.Directory, p.Identifier)
+	baseDir := filepath.Join(opts.Directory, p.Id)
 	cmds := []*jasper.Command{}
 
 	if p.WorkstationConfig.GitClone {
@@ -1007,7 +1042,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 					"directory": opts.Directory,
 					"command":   strings.Join(args, " "),
 					"op":        "repo clone",
-					"project":   p.Identifier,
+					"project":   p.Id,
 				})
 
 				return !opts.DryRun
@@ -1039,7 +1074,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 					"command":        cmdString,
 					"command_number": commandNumber,
 					"op":             "setup command",
-					"project":        p.Identifier,
+					"project":        p.Id,
 				})
 
 				return !opts.DryRun
@@ -1062,7 +1097,7 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 		}
 	}
 	filter := bson.M{
-		ProjectRefIdentifierKey: p.Identifier,
+		ProjectRefIdKey: p.Id,
 		projectRefPeriodicBuildsKey: bson.M{
 			"$elemMatch": bson.M{
 				"id": definition,
@@ -1081,13 +1116,13 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 func (p *ProjectRef) CommitQueueIsOn() error {
 	catcher := grip.NewBasicCatcher()
 	if !p.Enabled {
-		catcher.Add(errors.Errorf("project '%s' is disabled", p.Identifier))
+		catcher.Add(errors.Errorf("project '%s' is disabled", p.Id))
 	}
 	if p.PatchingDisabled {
-		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Identifier))
+		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Id))
 	}
 	if !p.CommitQueue.Enabled {
-		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Identifier))
+		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Id))
 	}
 
 	return catcher.Resolve()
@@ -1123,12 +1158,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, "")
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"error fetching spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+			"error fetching spawn host script for '%s' at path '%s'", pRef.Id, pRef.SpawnHostScriptPath)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"unable to spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+			"unable to spawn host script for '%s' at path '%s'", pRef.Id, pRef.SpawnHostScriptPath)
 	}
 
 	return string(fileContents), nil
@@ -1142,7 +1177,7 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject == nil {
 		return errors.Errorf("project '%s' not found", t.Project)
 	}
-	if upstreamProject.Identifier == parentProject {
+	if upstreamProject.Id == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {

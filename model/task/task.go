@@ -421,12 +421,22 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return true, nil
 	}
 
-	deps, err := t.populateDependencyTaskCache(depCaches)
+	_, err := t.populateDependencyTaskCache(depCaches)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 
-	for _, depTask := range deps {
+	for _, dependency := range t.DependsOn {
+		depTask, ok := depCaches[dependency.TaskId]
+		// ignore non-existent dependencies
+		if !ok {
+			grip.Warning(message.Fields{
+				"message":       "task has non-existent dependencies",
+				"task_id":       t.Id,
+				"dependency_id": dependency.TaskId,
+			})
+			continue
+		}
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
@@ -450,9 +460,6 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey, ActivatedKey))
 		if err != nil {
 			return nil, errors.WithStack(err)
-		}
-		if len(newDeps) != len(depIdsToQueryFor) {
-			return nil, errors.Errorf("task '%s' depends on non-existent tasks", t.Id)
 		}
 
 		// add queried dependencies to the cache
@@ -1993,7 +2000,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		"$lookup": bson.M{
 			"from":         "project_ref",
 			"localField":   ProjectKey,
-			"foreignField": "identifier",
+			"foreignField": "_id",
 			"as":           "project_ref",
 		},
 	}

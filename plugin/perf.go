@@ -55,7 +55,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				DataFunc: func(context UIContext) (interface{}, error) {
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{utility.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
+					}{utility.StringSliceContains(pp.Projects, context.ProjectRef.Id)}, nil
 				},
 			},
 		},

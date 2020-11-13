@@ -144,8 +144,8 @@ var sampleGeneratedProject = []string{`
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
-	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -197,7 +197,7 @@ func TestGenerateTasks(t *testing.T) {
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
-	projectRef := model.ProjectRef{Identifier: "mci"}
+	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
 	j := NewGenerateTasksJob("sample_task", "1")
@@ -317,7 +317,8 @@ buildvariants:
 }`}
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection,
+		patch.Collection, model.ParserProjectCollection, model.ProjectRefCollection))
 	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
@@ -352,7 +353,7 @@ buildvariants:
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
-	projectRef := model.ProjectRef{Identifier: "mci"}
+	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
 	j := NewGenerateTasksJob("generator", "1")

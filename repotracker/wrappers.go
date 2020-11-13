@@ -41,13 +41,13 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 
 func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef) error {
 	if !project.Enabled || project.RepotrackerDisabled {
-		return errors.Errorf("project disabled: %s", project.Identifier)
+		return errors.Errorf("project disabled: %s", project.Id)
 	}
 
 	tracker, err := getTracker(conf, project)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"project": project.Identifier,
+			"project": project.Id,
 			"message": "problem fetching repotracker",
 			"runner":  RunnerName,
 		}))
@@ -56,7 +56,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 
 	if err = tracker.FetchRevisions(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
-			"project": project.Identifier,
+			"project": project.Id,
 			"message": "problem fetching revisions",
 			"runner":  RunnerName,
 		}))
@@ -69,15 +69,15 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 
 func ActivateBuildsForProject(project model.ProjectRef) error {
 	if !project.Enabled {
-		return errors.Errorf("project disabled: %s", project.Identifier)
+		return errors.Errorf("project disabled: %s", project.Id)
 	}
 
-	if err := model.DoProjectActivation(project.Identifier); err != nil {
+	if err := model.DoProjectActivation(project.Id); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
 			"runner":  RunnerName,
 			"mode":    "catch up",
-			"project": project.Identifier,
+			"project": project.Id,
 		}))
 
 		return errors.WithStack(err)

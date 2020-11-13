@@ -977,14 +977,14 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, task.OldCollection,
-				build.Collection, VersionCollection, ParserProjectCollection), t, "error clearing collection")
+				build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection), t, "error clearing collection")
 			assert := assert.New(t)
 			runningTask.ResetWhenFinished = false
 			runningTask.Status = evergreen.TaskStarted
 			otherTask.Status = evergreen.TaskSucceeded
 			assert.NoError(runningTask.Insert())
 			assert.NoError(otherTask.Insert())
-			pRef := &ProjectRef{Identifier: "my_project"}
+			pRef := &ProjectRef{Id: "my_project"}
 			assert.NoError(pRef.Insert())
 			h := &host.Host{
 				Id:          "h1",
@@ -1469,7 +1469,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	pRef := &ProjectRef{Identifier: cq.ProjectID}
+	pRef := &ProjectRef{Id: cq.ProjectID}
 	pRef.CommitQueue.PatchType = commitqueue.CLIPatchType
 
 	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
@@ -1550,7 +1550,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t4.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	pRef := &ProjectRef{Identifier: cq.ProjectID}
+	pRef := &ProjectRef{Id: cq.ProjectID}
 
 	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
@@ -3215,7 +3215,7 @@ tasks:
 - name: generator
   `
 	proj := ProjectRef{
-		Identifier: "proj",
+		Id: "proj",
 	}
 	require.NoError(t, proj.Insert())
 	d := distro.Distro{

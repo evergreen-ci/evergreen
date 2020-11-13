@@ -124,7 +124,7 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	var err error
-	projectId := gimlet.GetVars(r)["project_id"]
+	projectIdentifier := gimlet.GetVars(r)["project_id"]
 	limit := r.FormValue("limit")
 	startStr := r.FormValue("start")
 	start := 0
@@ -149,15 +149,19 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-
-	// add one to limit to determine if a new page is necessary
-	versions, err := model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
-		Limit(l + 1).WithoutFields(model.VersionConfigKey))
-	if err != nil {
-		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
-		grip.Error(errors.Wrap(err, msg))
-		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
-		return
+	var versions []model.Version
+	projectId, err := model.FindIdForProject(projectIdentifier)
+	// only look for versions if the project can be found, otherwise continue without error
+	if err == nil {
+		// add one to limit to determine if a new page is necessary
+		versions, err = model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
+			Limit(l + 1).WithoutFields(model.VersionConfigKey))
+		if err != nil {
+			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
+			grip.Error(errors.Wrap(err, msg))
+			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+			return
+		}
 	}
 
 	nextPageStart := ""
@@ -177,7 +181,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 
 	result := recentVersionsContent{
-		Project:  projectId,
+		Project:  projectIdentifier,
 		Versions: make([]versionLessInfo, 0, len(versions)),
 	}
 	for _, version := range versions {
@@ -193,7 +197,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 	// Find all builds/tasks corresponding the set of version ids
 	if err = result.populateBuildsAndTasks(versionIds, versionIdx); err != nil {
-		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectId)
+		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectIdentifier)
 		grip.Error(errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 	}
@@ -344,9 +348,13 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	projectId := vars["project_id"]
+	projectName := vars["project_id"]
 	revision := vars["revision"]
 
+	projectId, err := model.FindIdForProject(projectName)
+	if err != nil {
+		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
+	}
 	srcVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)

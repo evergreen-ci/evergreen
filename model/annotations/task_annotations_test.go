@@ -16,40 +16,30 @@ func TestGetLatestExecutions(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	annotations := []TaskAnnotation{
 		{
-			Id:             "1",
-			TaskId:         "t1",
-			TaskExecution:  2,
-			APIAnnotation:  &Annotation{Note: &Note{Message: "this is a note"}},
-			UserAnnotation: &Annotation{Note: &Note{Message: "this will not be returned"}},
+			Id:            "1",
+			TaskId:        "t1",
+			TaskExecution: 2,
+			Note:          &Note{Message: "this is a note"},
 		},
 		{
 			Id:            "2",
 			TaskId:        "t1",
 			TaskExecution: 1,
-			APIAnnotation: &Annotation{Note: &Note{Message: "another note"}},
+			Note:          &Note{Message: "another note"},
 		},
 		{
-			Id:             "3",
-			TaskId:         "t1",
-			TaskExecution:  0,
-			UserAnnotation: &Annotation{Note: &Note{Message: "only a user annotation"}},
-		},
-		{
-			Id:            "4",
+			Id:            "3",
 			TaskId:        "t2",
 			TaskExecution: 0,
-			APIAnnotation: &Annotation{Note: &Note{Message: "this is the wrong task"}},
+			Note:          &Note{Message: "this is the wrong task"},
 		},
 	}
 	for _, a := range annotations {
 		assert.NoError(t, a.Insert())
 	}
 
-	annotations, err := FindAPIAnnotationsByTaskIds([]string{"t1", "t2"})
+	annotations, err := FindAnnotationsByTaskIds([]string{"t1", "t2"})
 	assert.NoError(t, err)
 	assert.Len(t, annotations, 3)
-	for _, a := range annotations {
-		assert.Nil(t, a.UserAnnotation)
-	}
 	assert.Len(t, GetLatestExecutions(annotations), 2)
 }

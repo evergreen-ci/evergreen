@@ -122,7 +122,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Id, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -170,7 +170,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 

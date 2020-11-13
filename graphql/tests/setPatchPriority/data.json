@@ -1,7 +1,7 @@
 {
   "project_ref": [
     {
-      "_id": "5a21b064635bf9fa8a3d667a",
+      "_id": "evergreen",
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
       "branch_name": "master",

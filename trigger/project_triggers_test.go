@@ -31,11 +31,11 @@ func TestMetadataFromVersion(t *testing.T) {
 		AuthorID:   "me",
 	}
 	ref := model.ProjectRef{
-		Identifier: "project",
+		Id: "project",
 	}
-	_, err := model.GetNewRevisionOrderNumber(ref.Identifier)
+	_, err := model.GetNewRevisionOrderNumber(ref.Id)
 	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Identifier, "def"))
+	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
 
 	metadata, err := metadataFromVersion(source, ref)
 	assert.NoError(err)
@@ -53,15 +53,15 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 	assert.NoError(testConfig.Set())
 
 	ref := model.ProjectRef{
-		Identifier: "myProj",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
+		Id:    "myProj",
+		Owner: "evergreen-ci",
+		Repo:  "evergreen",
 	}
 	proj, pp, err := makeDownstreamProjectFromFile(ref, "trigger/testdata/downstream_config.yml")
 	assert.NoError(err)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
-	assert.Equal(ref.Identifier, proj.Identifier)
+	assert.Equal(ref.Id, proj.Identifier)
 	assert.Len(proj.Tasks, 2)
 	assert.Equal("task1", proj.Tasks[0].Name)
 	assert.Len(proj.BuildVariants, 1)

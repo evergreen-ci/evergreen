@@ -369,7 +369,7 @@ func hostConfigure() cli.Command {
 				"operation": "setup project",
 				"directory": directory,
 				"commands":  len(cmds),
-				"project":   projectRef.Identifier,
+				"project":   projectRef.Id,
 				"dry-run":   dryRun,
 			})
 
@@ -381,7 +381,7 @@ func hostConfigure() cli.Command {
 				}
 
 				if err := cmd.Run(ctx); err != nil {
-					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Identifier)
+					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Id)
 				}
 			}
 			return nil

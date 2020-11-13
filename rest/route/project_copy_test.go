@@ -31,12 +31,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []model.ProjectRef{
 			{
+				Id:         "projectA",
 				Identifier: "projectA",
 				Branch:     "abcd",
 				Enabled:    true,
 				Admins:     []string{"my-user"},
 			},
 			{
+				Id:         "projectB",
 				Identifier: "projectB",
 				Branch:     "bcde",
 				Enabled:    true,
@@ -69,14 +71,14 @@ func (s *ProjectCopySuite) TestParse() {
 	request = gimlet.SetURLVars(request, options)
 	s.NoError(err)
 	s.NoError(s.route.Parse(ctx, request))
-	s.Equal("projectA", s.route.oldProjectId)
-	s.Equal("projectB", s.route.newProjectId)
+	s.Equal("projectA", s.route.oldProject)
+	s.Equal("projectB", s.route.newProject)
 }
 
 func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 	ctx := context.Background()
-	s.route.oldProjectId = "projectA"
-	s.route.newProjectId = "projectB"
+	s.route.oldProject = "projectA"
+	s.route.newProject = "projectB"
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusBadRequest, resp.Status())
@@ -85,13 +87,14 @@ func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 func (s *ProjectCopySuite) TestCopyToNewProject() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
-	s.route.oldProjectId = "projectA"
-	s.route.newProjectId = "projectC"
+	s.route.oldProject = "projectA"
+	s.route.newProject = "projectC"
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
+	s.Equal("projectC", restmodel.FromStringPtr(newProject.Id))
 	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
@@ -122,16 +125,16 @@ func (s *copyVariablesSuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []model.ProjectRef{
 			{
-				Identifier: "projectA",
-				Branch:     "abcd",
-				Enabled:    true,
-				Admins:     []string{"my-user"},
+				Id:      "projectA",
+				Branch:  "abcd",
+				Enabled: true,
+				Admins:  []string{"my-user"},
 			},
 			{
-				Identifier: "projectB",
-				Branch:     "bcde",
-				Enabled:    true,
-				Admins:     []string{"my-user"},
+				Id:      "projectB",
+				Branch:  "bcde",
+				Enabled: true,
+				Admins:  []string{"my-user"},
 			},
 		},
 		CachedVars: []*model.ProjectVars{

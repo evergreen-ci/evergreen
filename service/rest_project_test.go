@@ -30,10 +30,10 @@ func TestProjectRoutes(t *testing.T) {
 
 		publicId := "pub"
 		public := &model.ProjectRef{
-			Identifier: publicId,
-			Enabled:    true,
-			Repo:       "repo1",
-			Admins:     []string{},
+			Id:      publicId,
+			Enabled: true,
+			Repo:    "repo1",
+			Admins:  []string{},
 		}
 		So(public.Insert(), ShouldBeNil)
 
@@ -72,7 +72,7 @@ func TestProjectRoutes(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
 			So(len(out.Projects), ShouldEqual, 1)
-			So(out.Projects[0], ShouldEqual, public.Identifier)
+			So(out.Projects[0], ShouldEqual, public.Id)
 		})
 	})
 
@@ -81,11 +81,11 @@ func TestProjectRoutes(t *testing.T) {
 
 		privateId := "priv"
 		private := &model.ProjectRef{
-			Identifier: privateId,
-			Enabled:    true,
-			Private:    true,
-			Repo:       "repo1",
-			Admins:     []string{"testuser"},
+			Id:      privateId,
+			Enabled: true,
+			Private: true,
+			Repo:    "repo1",
+			Admins:  []string{"testuser"},
 		}
 		So(private.Insert(), ShouldBeNil)
 		response := httptest.NewRecorder()
@@ -127,7 +127,7 @@ func TestProjectRoutes(t *testing.T) {
 				So(response.Code, ShouldEqual, http.StatusOK)
 				So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
 				So(len(out.Projects), ShouldEqual, 1)
-				So(out.Projects[0], ShouldEqual, private.Identifier)
+				So(out.Projects[0], ShouldEqual, private.Id)
 			})
 			Convey("but not public users", func() {
 				router.ServeHTTP(response, request)

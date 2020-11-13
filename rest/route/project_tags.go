@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -105,7 +105,7 @@ func (h *checkTagForProject) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	out := &restModel.APIProjectRef{}
+	out := &model.APIProjectRef{}
 	if err := out.BuildFromService(pref); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

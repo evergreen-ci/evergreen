@@ -960,11 +960,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	next := service.FindNextTask(spec)
 	s.Require().NotNil(next)
 	s.Equal("1", next.Id)
-
-	next = service.FindNextTask(spec)
-	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
-	s.Require().Nil(next)
 	next = service.FindNextTask(spec)
 	s.Require().Nil(next)
 
@@ -1001,10 +996,8 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	next = service.FindNextTask(spec)
 	s.Require().Nil(next)
 
-	//
-
 	t2.DependsOn = []task.Dependency{
-		task.Dependency{
+		{
 			TaskId:       "1", // A Task.Id that will not be in the task_queue.
 			Status:       evergreen.TaskSucceeded,
 			Unattainable: false,
@@ -1017,7 +1010,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	s.Require().NoError(t3.Insert())
 
 	items = []TaskQueueItem{}
-	// items = append(items, item1)
 	items = append(items, item2)
 	items = append(items, item3)
 
@@ -1028,11 +1020,15 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
-	err = service.addEdge("2", "5") // There is no Node for the <to> task.Id: "5" in the task_queue.
+
+	// There is no Node for the <to> task.Id: "5" in the task_queue.
+	err = service.addEdge("2", "5")
 	s.Error(err)
 	s.Contains(err.Error(), "is not present in the DAG", nil)
 
-	//
+	// There is no Node for the <from> task.Id: "5" in the task_queue.
+	err = service.addEdge("5", "2")
+	s.NoError(err)
 
 	t1.Status = evergreen.TaskFailed
 	t3.DependsOn = []task.Dependency{{

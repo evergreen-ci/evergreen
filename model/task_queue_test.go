@@ -142,7 +142,7 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, VersionCollection))
 
-	projectRef := &ProjectRef{Identifier: "a"}
+	projectRef := &ProjectRef{Id: "a"}
 	assert.Nil(projectRef.Insert())
 	yml := `
 task_groups:

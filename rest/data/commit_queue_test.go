@@ -34,7 +34,7 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	s.projectRef = &model.ProjectRef{
-		Identifier:       "mci",
+		Id:               "mci",
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "master",
@@ -80,7 +80,7 @@ func (s *CommitQueueSuite) TestEnqueue() {
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.ctx = &DBConnector{}
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
 }
@@ -106,7 +106,7 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)
@@ -194,7 +194,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	s.Require().NoError(u.Insert())
 
 	cqAlias := model.ProjectAlias{
-		ProjectID: s.projectRef.Identifier,
+		ProjectID: s.projectRef.Id,
 		Alias:     evergreen.CommitQueueAlias,
 		Variant:   "v0",
 		Task:      "t0",
@@ -203,7 +203,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 
 	existingPatch := &patch.Patch{
 		Author:  "octocat",
-		Project: s.projectRef.Identifier,
+		Project: s.projectRef.Id,
 		PatchedConfig: `
 tasks:
   - name: t0
@@ -222,7 +222,7 @@ buildvariants:
 	s.NoError(err)
 	s.NotNil(newPatch)
 
-	// newPatchDB, err := patch.FindOne(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
+	// newPatchDB, err := patch.findOneRepoRefQ(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
 	// s.NoError(err)
 	// s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
 }
@@ -270,13 +270,13 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 
 }
 
-func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
+func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
 	s.ctx = &MockConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("mci"), cq.ProjectID)
 	s.Equal(restModel.ToStringPtr("1234"), cq.Queue[0].Issue)
@@ -301,7 +301,7 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.True(found)
-	cq, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToStringPtr("3"), cq.Queue[1].Issue)

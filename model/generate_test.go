@@ -316,11 +316,11 @@ func TestGenerateSuite(t *testing.T) {
 func (s *GenerateSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
 	ref := ProjectRef{
-		Identifier: "proj",
+		Id: "proj",
 	}
 	s.Require().NoError(ref.Insert())
 	ref2 := ProjectRef{
-		Identifier: "",
+		Id: "",
 	}
 	s.Require().NoError(ref2.Insert())
 }

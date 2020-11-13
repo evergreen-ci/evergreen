@@ -32,9 +32,9 @@ func TestFindProject(t *testing.T) {
 	Convey("When finding a project", t, func() {
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
-				Identifier: "",
+				Id: "",
 			}
-			project, err := FindLastKnownGoodProject(projRef.Identifier)
+			project, err := FindLastKnownGoodProject(projRef.Id)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 		})
@@ -52,13 +52,13 @@ func TestFindProject(t *testing.T) {
 				Config:     "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 			}
 			p := &ProjectRef{
-				Identifier: "project_test",
-				Owner:      "fakeowner",
-				Repo:       "fakerepo",
-				Branch:     "fakebranch",
+				Id:     "project_test",
+				Owner:  "fakeowner",
+				Repo:   "fakerepo",
+				Branch: "fakebranch",
 			}
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, err := FindLastKnownGoodProject(p.Identifier)
+			_, err := FindLastKnownGoodProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
@@ -299,7 +299,7 @@ buildvariants:
     github_org: wut?
 `
 	projectRef := &ProjectRef{
-		Identifier: "mci",
+		Id: "mci",
 	}
 	assert.NoError(projectRef.Insert())
 	v := &Version{
@@ -436,8 +436,8 @@ buildvariants:
 	}
 	assert.NoError(upstreamTask.Insert())
 	upstreamProject := ProjectRef{
-		Identifier: "upstreamProject",
-		Branch:     "idk",
+		Id:     "upstreamProject",
+		Branch: "idk",
 	}
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"

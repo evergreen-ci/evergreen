@@ -110,11 +110,11 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	PRConflictingRefs := []string{}
 	CQConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
-		if ref.PRTestingEnabled && ref.Identifier != projRef.Identifier {
-			PRConflictingRefs = append(PRConflictingRefs, ref.Identifier)
+		if ref.PRTestingEnabled && ref.Id != projRef.Id {
+			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}
-		if ref.CommitQueue.Enabled && ref.Identifier != projRef.Identifier {
-			CQConflictingRefs = append(CQConflictingRefs, ref.Identifier)
+		if ref.CommitQueue.Enabled && ref.Id != projRef.Id {
+			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Identifier, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Id, event.OwnerTypeProject)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -139,7 +139,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	opts := gimlet.PermissionOpts{Resource: projRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+	opts := gimlet.PermissionOpts{Resource: projRef.Id, ResourceType: evergreen.ProjectResourceType}
 	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -345,14 +345,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, ref := range conflictingRefs {
-			if ref.PRTestingEnabled && ref.Identifier != id {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Identifier))
+			if ref.PRTestingEnabled && ref.Id != id {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Id))
 				return
 			}
 		}
 
 		// verify there are PR aliases defined
-		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Identifier, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Id, responseRef.GitHubAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
@@ -364,7 +364,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	// verify git tag alias parameters
 	if responseRef.GitTagVersionsEnabled {
-		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Identifier, responseRef.GitTagAliases, responseRef.DeleteAliases)
+		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Id, responseRef.GitTagAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
@@ -394,8 +394,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Identifier != id {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Identifier))
+		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Id != id {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Id))
 			return
 		}
 
@@ -406,7 +406,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 		// verify there are commit queue aliases defined
 		var exists bool
-		exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Identifier, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
+		exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Id, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
 			return
@@ -416,13 +416,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var cq *commitqueue.CommitQueue
-		cq, err = commitqueue.FindOneId(projectRef.Identifier)
+		cq, err = commitqueue.FindOneId(projectRef.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		if cq == nil {
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
 			if err = commitqueue.InsertQueue(cq); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -473,7 +473,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
-	projectRef.Identifier = id
+	projectRef.Id = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
@@ -501,7 +501,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if responseRef.ForceRepotrackerRun {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
@@ -513,7 +513,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
+	origSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	for _, apiSubscription := range responseRef.Subscriptions {
 		var subscriptionIface interface{}
 		subscriptionIface, err = apiSubscription.ToService()
@@ -524,7 +524,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		subscription.Selectors = []event.Selector{
 			{
 				Type: "project",
-				Data: projectRef.Identifier,
+				Data: projectRef.Id,
 			},
 		}
 		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
@@ -539,8 +539,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		subscription.OwnerType = event.OwnerTypeProject
-		if subscription.Owner != projectRef.Identifier {
-			subscription.Owner = projectRef.Identifier
+		if subscription.Owner != projectRef.Id {
+			subscription.Owner = projectRef.Id
 			subscription.ID = ""
 		}
 		if !trigger.ValidateTrigger(subscription.ResourceType, subscription.Trigger) {
@@ -632,7 +632,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentAliases, _ := model.FindAliasesForProject(id)
-	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
+	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettingsEvent{
 		ProjectRef:         *projectRef,
 		GitHubHooksEnabled: hook != nil,
@@ -692,6 +692,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newProject := model.ProjectRef{
+		Id:         id,
 		Identifier: id,
 		Tracked:    true,
 		RepoKind:   "github",
@@ -708,7 +709,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newProjectVars := model.ProjectVars{
-		Id: newProject.Identifier,
+		Id: newProject.Id,
 	}
 
 	err = newProjectVars.Insert()
@@ -784,7 +785,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 
 	// run the repotracker for the project
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}

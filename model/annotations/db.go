@@ -1,7 +1,6 @@
 package annotations
 
 import (
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -11,21 +10,19 @@ import (
 
 var (
 	// bson fields for the TaskAnnotation struct
-	IdKey             = bsonutil.MustHaveTag(TaskAnnotation{}, "Id")
-	TaskIdKey         = bsonutil.MustHaveTag(TaskAnnotation{}, "TaskId")
-	TaskExecutionKey  = bsonutil.MustHaveTag(TaskAnnotation{}, "TaskExecution")
-	APIAnnotationKey  = bsonutil.MustHaveTag(TaskAnnotation{}, "APIAnnotation")
-	UserAnnotationKey = bsonutil.MustHaveTag(TaskAnnotation{}, "UserAnnotation")
-	MetadataKey       = bsonutil.MustHaveTag(TaskAnnotation{}, "Metadata")
+	IdKey              = bsonutil.MustHaveTag(TaskAnnotation{}, "Id")
+	TaskIdKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "TaskId")
+	TaskExecutionKey   = bsonutil.MustHaveTag(TaskAnnotation{}, "TaskExecution")
+	MetadataKey        = bsonutil.MustHaveTag(TaskAnnotation{}, "Metadata")
+	NoteKey            = bsonutil.MustHaveTag(TaskAnnotation{}, "Note")
+	IssuesKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "Issues")
+	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
 )
 
-const Collection = "task_annotation"
-
-type AnnotationType int
-
 const (
-	APIAnnotationType AnnotationType = iota
-	UserAnnotationType
+	Collection   = "task_annotation"
+	UIRequester  = "ui"
+	APIRequester = "api"
 )
 
 // FindOne gets one TaskAnnotation for the given query.
@@ -64,51 +61,26 @@ func FindByID(id string) (*TaskAnnotation, error) {
 	return annotation, nil
 }
 
-func FindAPIAnnotationsByTaskIds(ids []string) ([]TaskAnnotation, error) {
-	return Find(ByTaskIdsAndType(ids, APIAnnotationType))
+func FindAnnotationsByTaskIds(ids []string) ([]TaskAnnotation, error) {
+	return Find(ByTaskIds(ids))
+}
+
+func FindAnnotationByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
+	return FindOne(ByIdAndExecution(id, execution))
+}
+
+func FindAnnotationsByTaskId(id string) ([]TaskAnnotation, error) {
+	return Find(ByTaskId(id))
 }
 
 // Insert writes the task_annotation to the database.
-func (annotation *TaskAnnotation) Insert() error {
-	return db.Insert(Collection, annotation)
+func (a *TaskAnnotation) Insert() error {
+	return db.Insert(Collection, a)
 }
 
 // Update updates one task_annotation.
-func (annotation *TaskAnnotation) Update() error {
-	return db.UpdateId(Collection, annotation.Id, annotation)
-}
-
-// Update updates one task_annotation.
-func (annotation *TaskAnnotation) UpdateAPIAnnotation(id string, execution int, a Annotation, m *birch.Document) error {
-	return errors.WithStack(db.Update(
-		Collection,
-		bson.M{
-			TaskIdKey:        id,
-			TaskExecutionKey: execution,
-		},
-		bson.M{
-			"$set": bson.M{
-				APIAnnotationKey: a,
-				MetadataKey:      m,
-			},
-		},
-	))
-}
-
-// Update updates one task_annotation.
-func (annotation *TaskAnnotation) UpdateUserAnnotation(id string, execution int, a Annotation) error {
-	return errors.WithStack(db.Update(
-		Collection,
-		bson.M{
-			TaskIdKey:        id,
-			TaskExecutionKey: execution,
-		},
-		bson.M{
-			"$set": bson.M{
-				UserAnnotationKey: a,
-			},
-		},
-	))
+func (a *TaskAnnotation) Update() error {
+	return db.UpdateId(Collection, a.Id, a)
 }
 
 // Remove removes one task_annotation.
@@ -126,29 +98,16 @@ func ByTaskId(taskId string) db.Q {
 	return db.Query(bson.M{TaskIdKey: taskId})
 }
 
-func ByTaskIdsAndType(ids []string, aType AnnotationType) db.Q {
+func ByTaskIds(ids []string) db.Q {
 	q := bson.M{TaskIdKey: bson.M{"$in": ids}}
-	return queryWithType(q, aType)
+	return db.Query(q)
 }
 
-// ByIdAndExecutionAndType returns the query for a given Task Id and
-// execution number, populated according to the given type
-func ByIdExecutionAndType(id string, execution int, aType AnnotationType) db.Q {
+// ByIdAndExecution returns the query for a given Task Id and execution number
+func ByIdAndExecution(id string, execution int) db.Q {
 	q := bson.M{
 		TaskIdKey:        id,
 		TaskExecutionKey: execution,
-	}
-	return queryWithType(q, aType)
-}
-
-func queryWithType(q bson.M, aType AnnotationType) db.Q {
-	switch aType {
-	case APIAnnotationType:
-		q[APIAnnotationKey] = bson.M{"$exists": true}
-		return db.Query(q).WithoutFields(UserAnnotationKey)
-	case UserAnnotationType:
-		q[UserAnnotationKey] = bson.M{"$exists": true}
-		return db.Query(q).WithoutFields(MetadataKey, APIAnnotationKey)
 	}
 	return db.Query(q)
 }

@@ -22,7 +22,7 @@ import (
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Host: {{host .}}
-Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
+Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -203,7 +203,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		"type":         j.issueType,
 		"jira_project": j.project,
 		"task":         j.data.Task.Id,
-		"project":      j.data.Project.Identifier,
+		"project":      j.data.Project.Id,
 	})
 
 	return &issue, nil

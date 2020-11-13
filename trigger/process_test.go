@@ -26,7 +26,7 @@ type projectTriggerSuite struct {
 func mockTriggerVersion(args ProcessorArgs) (*model.Version, error) {
 	// we're putting the input params into arbitrary fields of the struct so that the tests can inspect them
 	v := model.Version{
-		Branch:      args.DownstreamProject.Identifier,
+		Branch:      args.DownstreamProject.Id,
 		Config:      args.ConfigFile,
 		Message:     args.Command,
 		TriggerID:   args.TriggerID,
@@ -71,8 +71,8 @@ func (s *projectTriggerSuite) SetupTest() {
 
 func (s *projectTriggerSuite) TestSimpleTaskFile() {
 	simpleTaskFile := model.ProjectRef{
-		Identifier: "simpleTaskFile",
-		Enabled:    true,
+		Id:      "simpleTaskFile",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
@@ -94,8 +94,8 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 
 func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 	simpleTaskCommand := model.ProjectRef{
-		Identifier: "simpleTaskCommand",
-		Enabled:    true,
+		Id:      "simpleTaskCommand",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
@@ -117,24 +117,24 @@ func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 
 func (s *projectTriggerSuite) TestMultipleProjects() {
 	proj1 := model.ProjectRef{
-		Identifier: "proj1",
-		Enabled:    true,
+		Id:      "proj1",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
-		Identifier: "proj2",
-		Enabled:    true,
+		Id:      "proj2",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
 	}
 	s.NoError(proj2.Insert())
 	proj3 := model.ProjectRef{
-		Identifier: "proj3",
-		Enabled:    true,
+		Id:      "proj3",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -153,8 +153,8 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 func (s *projectTriggerSuite) TestDateCutoff() {
 	date := 1
 	proj := model.ProjectRef{
-		Identifier: "proj",
-		Enabled:    true,
+		Id:      "proj",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
 		},
@@ -172,8 +172,8 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 
 func (s *projectTriggerSuite) TestWrongEvent() {
 	simpleTaskCommand := model.ProjectRef{
-		Identifier: "simpleTaskCommand",
-		Enabled:    true,
+		Id:      "simpleTaskCommand",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -191,16 +191,16 @@ func (s *projectTriggerSuite) TestWrongEvent() {
 
 func (s *projectTriggerSuite) TestTaskRegex() {
 	proj1 := model.ProjectRef{
-		Identifier: "proj1",
-		Enabled:    true,
+		Id:      "proj1",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "task*", ConfigFile: "configFile1"},
 		},
 	}
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
-		Identifier: "proj2",
-		Enabled:    true,
+		Id:      "proj2",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "$wontmatch^", ConfigFile: "configFile2"},
 		},
@@ -220,8 +220,8 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 
 func (s *projectTriggerSuite) TestMultipleTriggers() {
 	duplicate := model.ProjectRef{
-		Identifier: "duplicate",
-		Enabled:    true,
+		Id:      "duplicate",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile1"},
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile2"},
@@ -240,8 +240,8 @@ func (s *projectTriggerSuite) TestMultipleTriggers() {
 
 func (s *projectTriggerSuite) TestBuildFinish() {
 	ref := model.ProjectRef{
-		Identifier: "ref",
-		Enabled:    true,
+		Id:      "ref",
+		Enabled: true,
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
@@ -299,7 +299,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(upstreamVersion.Insert())
 	downstreamProjectRef := model.ProjectRef{
-		Identifier: "downstream",
+		Id:         "downstream",
 		Enabled:    true,
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
@@ -311,30 +311,30 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert())
 	uptreamProjectRef := model.ProjectRef{
-		Identifier: "upstream",
-		Enabled:    true,
-		Owner:      "evergreen-ci",
-		Repo:       "sample",
-		Branch:     "master",
-		RepoKind:   "github",
+		Id:       "upstream",
+		Enabled:  true,
+		Owner:    "evergreen-ci",
+		Repo:     "sample",
+		Branch:   "master",
+		RepoKind: "github",
 	}
 	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{
 		ID:        mgobson.NewObjectId(),
-		ProjectID: downstreamProjectRef.Identifier,
+		ProjectID: downstreamProjectRef.Id,
 		Alias:     "a1",
 		Variant:   "buildvariant",
 		Task:      "task1",
 	}
 	assert.NoError(alias.Upsert())
-	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Identifier)
+	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
-	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Identifier, downstreamRevision))
+	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
+	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
@@ -343,7 +343,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal("downstream_abc_def1", v.Id)
 		assert.Equal(downstreamRevision, v.Revision)
 		assert.Equal(evergreen.VersionCreated, v.Status)
-		assert.Equal(downstreamProjectRef.Identifier, v.Identifier)
+		assert.Equal(downstreamProjectRef.Id, v.Identifier)
 		assert.Equal(evergreen.TriggerRequester, v.Requester)
 		assert.Equal(upstreamTask.Id, v.TriggerID)
 		assert.Equal("task", v.TriggerType)
@@ -353,7 +353,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(err)
 	assert.True(len(builds) > 0)
 	for _, b := range builds {
-		assert.Equal(downstreamProjectRef.Identifier, b.Project)
+		assert.Equal(downstreamProjectRef.Id, b.Project)
 		assert.Equal(evergreen.TriggerRequester, b.Requester)
 		assert.Equal(evergreen.BuildCreated, b.Status)
 		assert.Equal(upstreamTask.Id, b.TriggerID)
@@ -365,7 +365,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(err)
 	assert.True(len(tasks) > 0)
 	for _, t := range tasks {
-		assert.Equal(downstreamProjectRef.Identifier, t.Project)
+		assert.Equal(downstreamProjectRef.Id, t.Project)
 		assert.Equal(evergreen.TriggerRequester, t.Requester)
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
 		assert.Equal(upstreamTask.Id, t.TriggerID)
@@ -373,9 +373,9 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Identifier, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
-	assert.Equal(downstreamProjectRef.Identifier, mani.ProjectName)
+	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing

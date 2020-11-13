@@ -5,6 +5,7 @@ branch: branch_test
 enabled: false
 stepback: true
 identifier: project_test
+id: project_test
 
 ## tasks
 tasks:

@@ -29,7 +29,7 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 
 	build1 := &build.Build{Id: "build1"}
 	build2 := &build.Build{Id: "build2"}
-	pr := &model.ProjectRef{Repo: "project", Identifier: "branch"}
+	pr := &model.ProjectRef{Repo: "project", Id: "branch"}
 
 	assert.NoError(t, build1.Insert())
 	assert.NoError(t, build2.Insert())
@@ -46,7 +46,7 @@ func TestMockBuildConnectorFetchByIdSuite(t *testing.T) {
 		CachedAborted:  make(map[string]string),
 	}}
 	s.mock = true
-	s.ctx.(*MockConnector).MockBuildConnector.CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Identifier: "branch"}
+	s.ctx.(*MockConnector).MockBuildConnector.CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Id: "branch"}
 	suite.Run(t, s)
 }
 

@@ -18,11 +18,11 @@ const (
 func getMockProjectSettings() model.ProjectSettingsEvent {
 	return model.ProjectSettingsEvent{
 		ProjectRef: model.ProjectRef{
-			Owner:      "admin",
-			Enabled:    true,
-			Private:    true,
-			Identifier: projectId,
-			Admins:     []string{},
+			Owner:   "admin",
+			Enabled: true,
+			Private: true,
+			Id:      projectId,
+			Admins:  []string{},
 		},
 		GitHubHooksEnabled: true,
 		Vars: model.ProjectVars{
@@ -131,6 +131,7 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 	suite.Equal(in.Private, out.Private)
 	suite.Equal(in.BatchTime, out.BatchTime)
 	suite.Equal(in.RemotePath, FromStringPtr(out.RemotePath))
+	suite.Equal(in.Id, FromStringPtr(out.Id))
 	suite.Equal(in.Identifier, FromStringPtr(out.Identifier))
 	suite.Equal(in.DisplayName, FromStringPtr(out.DisplayName))
 	suite.Equal(in.DeactivatePrevious, out.DeactivatePrevious)

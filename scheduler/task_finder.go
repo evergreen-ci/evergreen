@@ -79,7 +79,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -195,7 +195,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -317,7 +317,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Identifier) {
+		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
@@ -370,7 +370,7 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 	}
 
 	for _, ref := range refs {
-		out[ref.Identifier] = ref
+		out[ref.Id] = ref
 	}
 
 	return out, nil

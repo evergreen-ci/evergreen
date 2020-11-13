@@ -82,7 +82,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 			continue
 		}
 		j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(ref),
-			"problem activating builds for project %s", ref.Identifier))
+			"problem activating builds for project %s", ref.Id))
 		count++
 	}
 
