@@ -56,10 +56,12 @@ var (
 	SpruceV1Key               = bsonutil.MustHaveTag(UseSpruceOptions{}, "SpruceV1")
 )
 
+// ById returns a query that matches a user by ID.
 func ById(userId string) db.Q {
 	return db.Query(bson.M{IdKey: userId})
 }
 
+// ByIds returns a query that matches any users with one of the given IDs.
 func ByIds(userIds ...string) db.Q {
 	return db.Query(bson.M{
 		IdKey: bson.M{
