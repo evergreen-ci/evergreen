@@ -146,3 +146,64 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
 	)
 }
+
+func InsertNewAnnotation(taskId string, execution int, a *TaskAnnotation, source *Source) error {
+	annotation := TaskAnnotation{
+		Id:            bson.NewObjectId().Hex(),
+		TaskId:        taskId,
+		TaskExecution: execution,
+	}
+	if a.Metadata != nil {
+		annotation.Metadata = a.Metadata
+	}
+	if a.Note != nil {
+		annotation.Note = a.Note
+		annotation.Note.Source = source
+	}
+	if a.Issues != nil {
+		annotation.Issues = a.Issues
+		for _, i := range annotation.Issues {
+			i.Source = source
+		}
+	}
+	if a.SuspectedIssues != nil {
+		annotation.SuspectedIssues = a.SuspectedIssues
+		for _, i := range annotation.SuspectedIssues {
+			i.Source = source
+		}
+	}
+
+	err := annotation.Insert()
+	if err != nil {
+		return errors.Wrap(err, "error inserting task annotation")
+	}
+	return nil
+}
+
+func UpdateAnnotation(taskId string, execution int, a *TaskAnnotation, existingAnnotation *TaskAnnotation, source *Source) error {
+	if a.Metadata != nil {
+		existingAnnotation.Metadata = a.Metadata
+	}
+	if a.Note != nil {
+		existingAnnotation.Note = a.Note
+		existingAnnotation.Note.Source = source
+	}
+	if a.Issues != nil {
+		existingAnnotation.Issues = a.Issues
+		for _, i := range existingAnnotation.Issues {
+			i.Source = source
+		}
+	}
+	if a.SuspectedIssues != nil {
+		existingAnnotation.SuspectedIssues = a.SuspectedIssues
+		for _, i := range existingAnnotation.SuspectedIssues {
+			i.Source = source
+		}
+	}
+
+	err := existingAnnotation.Update()
+	if err != nil {
+		return errors.Wrap(err, "error updating task annotation")
+	}
+	return nil
+}
