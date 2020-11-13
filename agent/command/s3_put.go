@@ -247,7 +247,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	}
 
 	if s3pc.isPrivate(s3pc.Visibility) {
-		logger.Task().Infof("Putting private file(s) into s3")
+		logger.Task().Infof("Putting private files into s3")
 
 	} else {
 		if s3pc.isMulti() {
@@ -321,7 +321,7 @@ retryLoop:
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
-					logger.Task().Info("s3 put include filter matched no files")
+					logger.Task().Infof("s3.put: file filter '%s' matched no files", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}
@@ -350,19 +350,20 @@ retryLoop:
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
+							logger.Task().Infof("file '%s' not found but continuing to upload other files", fpath)
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
-							logger.Task().Infof("file %s not found but skip missing true", fpath)
+							logger.Task().Infof("file '%s' not found but skip missing true", fpath)
 							return nil
 						} else {
 							// single required uploads should return an error asap.
-							return errors.Wrapf(err, "missing file %s", fpath)
+							return errors.Wrapf(err, "missing file '%s'", fpath)
 						}
 					}
 
 					// in all other cases, log an error and retry after an interval.
-					logger.Execution().Error(errors.WithMessage(err, "problem putting s3 file"))
+					logger.Task().Error(errors.WithMessage(err, "problem putting s3 file"))
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
 				}
@@ -387,7 +388,7 @@ retryLoop:
 	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("%d requested, %d uploaded", len(filesList), len(uploadedFiles))
+		logger.Task().Infof("attempted to upload %d files, %d successfully uploaded", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 
@@ -435,7 +436,6 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "Attach files failed")
 	}
 
-	logger.Execution().Info("API attach files call succeeded")
 	return nil
 }
 
