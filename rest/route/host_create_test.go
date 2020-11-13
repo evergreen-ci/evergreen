@@ -39,6 +39,7 @@ func TestMakeIntentHost(t *testing.T) {
 			birch.EC.String("region", "us-east-1"),
 			birch.EC.String("instance_type", "t1.micro"),
 			birch.EC.String("subnet_id", "subnet-12345678"),
+			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
 	}
 	require.NoError(d.Insert())
@@ -236,6 +237,7 @@ func TestMakeIntentHost(t *testing.T) {
 		AWSSecret:           "my_secret_key",
 		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
+		SecurityGroups:      []string{"1234"},
 	}
 	handler.createHost = c
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
