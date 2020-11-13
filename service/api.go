@@ -573,6 +573,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
 
 	// Agent routes
+	// NOTE: new agent routes should be written in REST v2. The ones here are
+	// legacy routes.
 	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
 	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Cedar).Get()
