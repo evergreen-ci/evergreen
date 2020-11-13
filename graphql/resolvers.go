@@ -444,6 +444,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 }
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
+	var v *host.Volume
 	usr := MustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
 	if err != nil {
@@ -495,6 +496,13 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if editSpawnHostInput.Volume != nil {
+		v, err = r.sc.FindVolumeById(*editSpawnHostInput.Volume)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
+		}
+		if v.AvailabilityZone != h.Zone {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error mounting volume to spawn host, They must be in the same availability zone."))
+		}
 		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
@@ -1410,7 +1418,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := r.sc.FindCommitQueueByID(id)
+	commitQueue, err := r.sc.FindCommitQueueForProject(id)
 	if err != nil {
 		if errors.Cause(err) == err {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
@@ -1778,7 +1786,7 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		return false, err
 	}
 	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectRef.Identifier,
+		Resource:      projectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
@@ -2045,9 +2053,12 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	usr := MustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
-		usr, err = model.FindUserByID(*userIdParam)
+		usr, err = user.FindOneById(*userIdParam)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+		}
+		if usr == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID"))
 		}
 	}
 	displayName := usr.DisplayName()

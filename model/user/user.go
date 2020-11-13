@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -127,6 +126,26 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 		}
 	}
 	return "", errors.Errorf("Unable to find public key '%v' for user '%v'", keyname, u.Username())
+}
+
+// UpdateAPIKey updates the API key stored for the user.
+func (u *DBUser) UpdateAPIKey(newKey string) error {
+	update := bson.M{"$set": bson.M{APIKeyKey: newKey}}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "problem setting api key for user %s", u.Id)
+	}
+	u.APIKey = newKey
+	return nil
+}
+
+// UpdateSettings updates the user's settings.
+func (u *DBUser) UpdateSettings(settings UserSettings) error {
+	update := bson.M{"$set": bson.M{SettingsKey: settings}}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "problem saving user settings for %s", u.Id)
+	}
+	u.Settings = settings
+	return nil
 }
 
 func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
@@ -400,33 +419,6 @@ func (u *DBUser) DeleteRoles(roles []string) error {
 	return nil
 }
 
-func GetPatchUser(gitHubUID int) (*DBUser, error) {
-	u, err := FindByGithubUID(gitHubUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't look for user")
-	}
-	if u == nil {
-		// set to a default user
-		u, err = FindOne(ById(evergreen.GithubPatchUser))
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get user for pull request")
-		}
-		// default user doesn't exist yet
-		if u == nil {
-			u = &DBUser{
-				Id:       evergreen.GithubPatchUser,
-				DispName: "Github Pull Requests",
-				APIKey:   utility.RandomString(),
-			}
-			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "failed to create github patch user")
-			}
-		}
-	}
-
-	return u, nil
-}
-
 func IsValidSubscriptionPreference(in string) bool {
 	switch in {
 	case event.EmailSubscriberType, event.SlackSubscriberType, "", event.SubscriberTypeNone:
@@ -434,109 +426,4 @@ func IsValidSubscriptionPreference(in string) bool {
 	default:
 		return false
 	}
-}
-
-func FormatObjectID(id string) (primitive.ObjectID, error) {
-	return primitive.ObjectIDFromHex(id)
-}
-
-// PutLoginCache generates a token if one does not exist, and sets the TTL to now.
-func PutLoginCache(g gimlet.User) (string, error) {
-	u, err := FindOneById(g.Username())
-	if err != nil {
-		return "", errors.Wrap(err, "problem finding user by id")
-	}
-	if u == nil {
-		return "", errors.Errorf("no user '%s' found", g.Username())
-	}
-
-	// Always update the TTL. If the user doesn't have a token, generate and set it.
-	token := u.LoginCache.Token
-	setFields := bson.M{
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):            time.Now(),
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 0,
-	}
-	if token == "" {
-		token = utility.RandomString()
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey)] = token
-	}
-	if accessToken := g.GetAccessToken(); accessToken != "" {
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
-	}
-	if refreshToken := g.GetRefreshToken(); refreshToken != "" {
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
-	}
-	update := bson.M{"$set": setFields}
-
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return "", errors.Wrap(err, "problem updating user cache")
-	}
-	return token, nil
-}
-
-// GetLoginCache retrieve a cached user by token.
-// It returns an error if and only if there was an error retrieving the user from the cache.
-// It returns (<user>, true, nil) if the user is present in the cache and is valid.
-// It returns (<user>, false, nil) if the user is present in the cache but has expired.
-// It returns (nil, false, nil) if the user is not present in the cache.
-func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, error) {
-	u, err := FindOneByToken(token)
-	if err != nil {
-		return nil, false, errors.Wrap(err, "problem getting user from cache")
-	}
-	if u == nil {
-		return nil, false, nil
-	}
-	if time.Since(u.LoginCache.TTL) > expireAfter {
-		return u, false, nil
-	}
-	return u, true, nil
-}
-
-// ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out
-func ClearLoginCache(user gimlet.User, all bool) error {
-	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
-
-	if all {
-		query := bson.M{}
-		if err := UpdateAll(query, update); err != nil {
-			return errors.Wrap(err, "problem updating user cache")
-		}
-	} else {
-		u, err := FindOneById(user.Username())
-		if err != nil {
-			return errors.Wrapf(err, "problem finding user %s by id", user.Username())
-		}
-		if u == nil {
-			return errors.Errorf("no user '%s' found", user.Username())
-		}
-		query := bson.M{IdKey: u.Id}
-		if err := UpdateOne(query, update); err != nil {
-			return errors.Wrap(err, "problem updating user cache")
-		}
-	}
-	return nil
-}
-
-// FindNeedsReauthorization finds all users need to be reauthorized after the
-// given period has passed.
-func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) ([]DBUser, error) {
-	cutoff := time.Now().Add(-reauthorizeAfter)
-	users, err := Find(db.Query(bson.M{
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
-		"$or": []bson.M{
-			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$exists": false}},
-			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts}},
-		},
-	}))
-	return users, errors.Wrap(err, "could not find users who need reauthorization")
-}
-
-// FindServiceUsers scans the entire user collection and returns only-api users
-func FindServiceUsers() ([]DBUser, error) {
-	query := bson.M{
-		OnlyAPIKey: true,
-	}
-	return Find(db.Query(query))
 }

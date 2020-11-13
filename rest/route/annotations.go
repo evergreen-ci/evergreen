@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -108,6 +110,101 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 	if !allExecutions {
 		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
 	}
+	var res []model.APITaskAnnotation
+	for _, a := range annotationsToReturn {
+		apiAnnotation := model.APITaskAnnotationBuildFromService(a)
+		res = append(res, *apiAnnotation)
+	}
+
+	return gimlet.NewJSONResponse(res)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/task/{task_id}/annotation
+
+type annotationByTaskHandler struct {
+	taskId             string
+	fetchAllExecutions bool
+	execution          int
+	sc                 data.Connector
+}
+
+func makeFetchAnnotationsByTask(sc data.Connector) gimlet.RouteHandler {
+	return &annotationByTaskHandler{
+		sc: sc,
+	}
+}
+
+func (h *annotationByTaskHandler) Factory() gimlet.RouteHandler {
+	return &annotationByTaskHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+
+	h.taskId = gimlet.GetVars(r)["task_id"]
+	if h.taskId == "" {
+		return gimlet.ErrorResponse{
+			Message:    "task ID cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	vals := r.URL.Query()
+	h.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
+	execution := vals.Get("execution")
+
+	if execution != "" && h.fetchAllExecutions == true {
+		return gimlet.ErrorResponse{
+			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if execution != "" {
+		h.execution, err = strconv.Atoi(execution)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else {
+		// since an int in go defaults to 0, we won't know if the user
+		// specifically wanted execution 0, or if they want the latest.
+		// we use -1 to indicate "not specified"
+		h.execution = -1
+	}
+	return nil
+}
+
+func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
+	// get a specific execution
+	if h.execution != -1 {
+		a, err := annotations.FindAnnotationByTaskIdAndExecution(h.taskId, h.execution)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
+		}
+		if a == nil {
+			return gimlet.NewJSONResponse([]model.APITaskAnnotation{})
+		}
+		taskAnnotation := model.APITaskAnnotationBuildFromService(*a)
+		return gimlet.NewJSONResponse([]model.APITaskAnnotation{*taskAnnotation})
+	}
+
+	allAnnotations, err := annotations.FindAnnotationsByTaskId(h.taskId)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
+	}
+	// get the latest execution
+	annotationsToReturn := allAnnotations
+	if !h.fetchAllExecutions {
+		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
+	}
+
 	var res []model.APITaskAnnotation
 	for _, a := range annotationsToReturn {
 		apiAnnotation := model.APITaskAnnotationBuildFromService(a)

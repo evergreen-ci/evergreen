@@ -459,7 +459,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	ref := &model.ProjectRef{
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
-		Identifier: s.projectId,
+		Id:         s.projectId,
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
 		RepoKind:   "github",

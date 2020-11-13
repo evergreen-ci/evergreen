@@ -15,12 +15,14 @@ type UIProjectFields struct {
 }
 
 type APIProject struct {
+	Id                    *string              `json:"id"`
 	BatchTime             int                  `json:"batch_time"`
 	Branch                *string              `json:"branch_name"`
 	DisplayName           *string              `json:"display_name"`
 	Enabled               bool                 `json:"enabled"`
 	RepotrackerDisabled   bool                 `json:"repotracker_disabled"`
 	Identifier            *string              `json:"identifier"`
+	Name                  *string              `json:"name"`
 	Owner                 *string              `json:"owner_name"`
 	Private               bool                 `json:"private"`
 	RemotePath            *string              `json:"remote_path"`
@@ -57,6 +59,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.DisplayName = ToStringPtr(v.DisplayName)
 	apiProject.Enabled = v.Enabled
 	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
+	apiProject.Id = ToStringPtr(v.Id)
 	apiProject.Identifier = ToStringPtr(v.Identifier)
 	apiProject.Owner = ToStringPtr(v.Owner)
 	apiProject.Private = v.Private
@@ -231,6 +234,7 @@ func (c *APIParameterInfo) BuildFromService(h interface{}) error {
 }
 
 type APIProjectRef struct {
+	Id                          *string              `json:"id"`
 	Owner                       *string              `json:"owner_name"`
 	Repo                        *string              `json:"repo_name"`
 	Branch                      *string              `json:"branch_name"`
@@ -308,6 +312,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Private:               p.Private,
 		BatchTime:             p.BatchTime,
 		RemotePath:            FromStringPtr(p.RemotePath),
+		Id:                    FromStringPtr(p.Id),
 		Identifier:            FromStringPtr(p.Identifier),
 		DisplayName:           FromStringPtr(p.DisplayName),
 		DeactivatePrevious:    p.DeactivatePrevious,
@@ -389,6 +394,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Private = projectRef.Private
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = ToStringPtr(projectRef.RemotePath)
+	p.Id = ToStringPtr(projectRef.Id)
 	p.Identifier = ToStringPtr(projectRef.Identifier)
 	p.DisplayName = ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious

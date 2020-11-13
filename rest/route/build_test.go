@@ -37,7 +37,7 @@ func (s *BuildByIdSuite) SetupSuite() {
 			{Id: "build2", Project: "notbranch"},
 		},
 		CachedProjects: map[string]*serviceModel.ProjectRef{
-			"branch": {Repo: "project", Identifier: "branch"},
+			"branch": {Repo: "project", Id: "branch"},
 		},
 		CachedAborted: make(map[string]string),
 	}
@@ -189,7 +189,7 @@ func (s *BuildAbortSuite) SetupSuite() {
 			{Id: "build2", Project: "notbranch"},
 		},
 		CachedProjects: map[string]*serviceModel.ProjectRef{
-			"branch": {Repo: "project", Identifier: "branch"},
+			"branch": {Repo: "project", Id: "branch"},
 		},
 		CachedAborted: make(map[string]string),
 	}

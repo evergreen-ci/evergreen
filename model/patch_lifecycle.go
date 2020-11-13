@@ -122,7 +122,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Id, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -170,7 +170,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
@@ -598,9 +598,12 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		return nil, errors.New("commit queue has no build variants or tasks configured")
 	}
 
-	u, err := FindUserByID(patchDoc.Author)
+	u, err := user.FindOneById(patchDoc.Author)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't find user for patch author '%s'", patchDoc.Author)
+	}
+	if u == nil {
+		return nil, errors.Errorf("patch author '%s' not found", patchDoc.Author)
 	}
 	// get the next patch number for the user
 	patchDoc.PatchNumber, err = u.IncPatchNumber()

@@ -164,7 +164,7 @@
   ],
   "project_ref": [
     {
-      "_id": { "$oid": "5e94c2dfe3c3312519b59432" },
+      "_id": "mongodb-evergreen-spruce",
       "owner_name": "evergreen",
       "repo_name": "spruce",
       "branch_name": "NOBRANCH",
@@ -185,7 +185,7 @@
       }
     },
     {
-      "_id": "1",
+      "_id": "mongodb-mongo-master",
       "identifier": "mongodb-mongo-master",
       "commit_queue": {
         "enabled": true,
@@ -194,7 +194,7 @@
       }
     },
     {
-      "_id": "2",
+      "_id": "cli-queue",
       "identifier": "cli-queue",
       "commit_queue": {
         "enabled": true,
@@ -202,10 +202,18 @@
       }
     },
     {
-      "_id": "3",
+      "_id": "pr-queue",
       "identifier": "pr-queue",
       "commit_queue": {
         "enabled": true,
+        "patch_type": "PR"
+      }
+    },
+    {
+      "_id": "no_queue",
+      "identifier": "no_queue",
+      "commit_queue": {
+        "enabled": false,
         "patch_type": "PR"
       }
     }

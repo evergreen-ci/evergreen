@@ -109,7 +109,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, d.Insert())
 	p := model.ProjectRef{
-		Identifier: "p",
+		Id: "p",
 	}
 	assert.NoError(t, p.Insert())
 	pvars := model.ProjectVars{
@@ -157,11 +157,6 @@ buildvariants:
 		assert.NoError(t, h1.Insert())
 
 		settings := &evergreen.Settings{
-			Providers: evergreen.CloudProviders{
-				AWS: evergreen.AWSConfig{
-					DefaultSecurityGroup: "sg-default",
-				},
-			},
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
@@ -231,11 +226,6 @@ buildvariants:
 		assert.NoError(t, h2.Insert())
 
 		settings := &evergreen.Settings{
-			Providers: evergreen.CloudProviders{
-				AWS: evergreen.AWSConfig{
-					DefaultSecurityGroup: "sg-default",
-				},
-			},
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
@@ -300,11 +290,6 @@ buildvariants:
 		assert.NoError(t, h3.Insert())
 
 		settings := &evergreen.Settings{
-			Providers: evergreen.CloudProviders{
-				AWS: evergreen.AWSConfig{
-					DefaultSecurityGroup: "sg-default",
-				},
-			},
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
@@ -324,7 +309,7 @@ buildvariants:
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(evergreen.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
-			assert.Equal(t, "sg-default", ec2Settings.SecurityGroupIDs[0]) // none provided, should get default from config
+			assert.Equal(t, "sg-distro", ec2Settings.SecurityGroupIDs[0]) // if not overridden, stick with ec2 security group
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}
 	})
@@ -414,7 +399,7 @@ buildvariants:
 	require.NoError(d.Insert())
 
 	p := model.ProjectRef{
-		Identifier: "p",
+		Id: "p",
 	}
 	assert.NoError(p.Insert())
 	pvars := model.ProjectVars{

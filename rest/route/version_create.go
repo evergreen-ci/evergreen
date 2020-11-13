@@ -52,16 +52,19 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo := &model.ProjectInfo{}
 	var err error
-	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, h.ProjectID, projectInfo.Project)
+	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
+	if projectInfo.Ref == nil {
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectID))
+	}
+	projectInfo.IntermediateProject, err = model.LoadProjectInto(h.Config, projectInfo.Ref.Id, projectInfo.Project)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "unable to unmarshal yaml config").Error(),
 		})
-	}
-	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID)
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(err)
 	}
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
 	if err != nil {

@@ -629,12 +629,12 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 	}
 
 	// if task is part of a commit queue, dequeue and abort version
-	cq, err := commitqueue.FindOneId(projectRef.Identifier)
+	cq, err := commitqueue.FindOneId(projectRef.Id)
 	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Identifier)
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Id)
 	}
 	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", projectRef.Identifier)
+		return errors.Errorf("no commit queue found for '%s'", projectRef.Id)
 	}
 	issue := p.Id.Hex()
 	if p.IsPRMergePatch() {
@@ -643,7 +643,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 
 	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true, caller)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Identifier)
+		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Id)
 	}
 	if !removed {
 		return nil

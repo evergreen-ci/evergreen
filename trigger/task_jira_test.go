@@ -252,7 +252,7 @@ func TestJIRADescription(t *testing.T) {
 				UIRoot: "http://evergreen.ui",
 				Project: &model.ProjectRef{
 					DisplayName: projectName,
-					Identifier:  projectId,
+					Id:          projectId,
 					Owner:       projectOwner,
 				},
 				Task: &task.Task{
@@ -419,7 +419,7 @@ func TestCustomFields(t *testing.T) {
 					{Field: jiraFailingTasksField, Template: "{{.TaskDisplayName}}"},
 					{Field: jiraFailingTestsField, Template: "%%FailedTestNames%%"},
 					{Field: jiraFailingVariantField, Template: "{{.Task.BuildVariant}}"},
-					{Field: jiraEvergreenProjectField, Template: "{{.Project.Identifier}}"},
+					{Field: jiraEvergreenProjectField, Template: "{{.Project.Id}}"},
 					{Field: jiraFailingRevisionField, Template: "{{.Task.Revision}}"},
 					{Field: jiraFailureType, Template: "{{.SpecificTaskStatus}}"},
 				},
@@ -433,7 +433,7 @@ func TestCustomFields(t *testing.T) {
 			UIRoot: "http://evergreen.ui",
 			Project: &model.ProjectRef{
 				DisplayName: projectName,
-				Identifier:  projectId,
+				Id:          projectId,
 				Owner:       projectOwner,
 			},
 			Task: &task.Task{

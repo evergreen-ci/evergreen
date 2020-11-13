@@ -73,13 +73,13 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
-		Identifier: project.DisplayName,
-		Owner:      project.Owner,
-		Repo:       project.Repo,
-		RepoKind:   project.RepoKind,
-		Branch:     project.Branch,
-		Enabled:    project.Enabled,
-		BatchTime:  project.BatchTime,
+		Id:        project.DisplayName,
+		Owner:     project.Owner,
+		Repo:      project.Repo,
+		RepoKind:  project.RepoKind,
+		Branch:    project.Branch,
+		Enabled:   project.Enabled,
+		BatchTime: project.BatchTime,
 	}
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
@@ -118,7 +118,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      projectRef.Identifier,
+		Project:      projectRef.Id,
 		DisplayName:  taskDisplayName,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",

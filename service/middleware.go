@@ -148,7 +148,7 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 // or if the the permission level is sufficient.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
 	return utility.StringSliceContains(project.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
-		Resource:      project.Identifier,
+		Resource:      project.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
@@ -157,7 +157,7 @@ func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
 
 func hasViewPermission(u gimlet.User, project *model.ProjectRef) bool {
 	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      project.Identifier,
+		Resource:      project.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsView.Value,
@@ -249,7 +249,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 			opts := gimlet.PermissionOpts{
-				Resource:      projCtx.ProjectRef.Identifier,
+				Resource:      projCtx.ProjectRef.Id,
 				ResourceType:  evergreen.ProjectResourceType,
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
@@ -283,7 +283,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
 		isAdmin := user != nil && user.HasPermission(gimlet.PermissionOpts{
-			Resource:      p.Identifier,
+			Resource:      p.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
 			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
@@ -298,7 +298,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 		if !p.Private || includePrivate {
 			uiProj := restModel.UIProjectFields{
 				DisplayName: p.DisplayName,
-				Identifier:  p.Identifier,
+				Identifier:  p.Id,
 				Repo:        p.Repo,
 				Owner:       p.Owner,
 			}
@@ -369,7 +369,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	if projectId == "" {
 		for _, p := range pc.AllProjects {
 			opts := gimlet.PermissionOpts{
-				Resource:      p.Identifier,
+				Resource:      p.Identifier, // TODO: add ID to UIProjectFields for this to work
 				ResourceType:  evergreen.ProjectResourceType,
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
@@ -392,7 +392,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	if ctx.ProjectRef != nil {
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
-			Value:   ctx.ProjectRef.Identifier,
+			Value:   ctx.ProjectRef.Id,
 			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})

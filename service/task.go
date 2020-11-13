@@ -373,7 +373,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 	permissions := gimlet.Permissions{}
 	if usr != nil {
-		opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Identifier, ResourceType: evergreen.ProjectResourceType}
+		opts := gimlet.PermissionOpts{Resource: projCtx.ProjectRef.Id, ResourceType: evergreen.ProjectResourceType}
 		permissions, err = rolemanager.HighestPermissionsForRoles(usr.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -683,7 +683,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	authUser := gimlet.GetUser(ctx)
 	authName := authUser.DisplayName()
 	requiredPermission := gimlet.PermissionOpts{
-		Resource:      projCtx.ProjectRef.Identifier,
+		Resource:      projCtx.ProjectRef.Id,
 		ResourceType:  "project",
 		Permission:    evergreen.PermissionTasks,
 		RequiredLevel: evergreen.TasksAdmin.Value,
@@ -711,7 +711,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, authName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -735,7 +735,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !active && projCtx.Task.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Identifier,
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id,
 				projCtx.ProjectRef.CommitQueue.PatchType, projCtx.Task.Version, authName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

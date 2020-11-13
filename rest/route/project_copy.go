@@ -17,9 +17,9 @@ import (
 // POST /rest/v2/projects/{project_id}/copy
 
 type projectCopyHandler struct {
-	oldProjectId string
-	newProjectId string
-	sc           data.Connector
+	oldProject string
+	newProject string
+	sc         data.Connector
 }
 
 func makeCopyProject(sc data.Connector) gimlet.RouteHandler {
@@ -35,9 +35,9 @@ func (p *projectCopyHandler) Factory() gimlet.RouteHandler {
 }
 
 func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
-	p.oldProjectId = gimlet.GetVars(r)["project_id"]
-	p.newProjectId = r.FormValue("new_project")
-	if p.newProjectId == "" {
+	p.oldProject = gimlet.GetVars(r)["project_id"]
+	p.newProject = r.FormValue("new_project")
+	if p.newProject == "" {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must provide new project ID",
@@ -47,34 +47,37 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
-	projectToCopy, err := p.sc.FindProjectById(p.oldProjectId)
+	projectToCopy, err := p.sc.FindProjectById(p.oldProject)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.oldProjectId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.oldProject))
+	}
+	if projectToCopy == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
 	}
 
-	// verify project with new ID doesn't exist
-	_, err = p.sc.FindProjectById(p.newProjectId)
+	// verify project with new name doesn't exist
+	_, err = p.sc.FindProjectById(p.newProject)
 	if err == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("provide different ID for new project"))
 	}
-	if err != nil {
-		apiErr, ok := err.(gimlet.ErrorResponse)
-		if !ok {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
-		}
-		if apiErr.StatusCode != http.StatusNotFound {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProjectId))
-		}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
 	}
 
 	// copy project, disable necessary settings
-	projectToCopy.Identifier = p.newProjectId
+	oldId := projectToCopy.Id
+	projectToCopy.Id = p.newProject // TODO: this will be internally generated in future work
+	projectToCopy.Identifier = p.newProject
 	projectToCopy.Enabled = false
 	projectToCopy.PRTestingEnabled = false
 	projectToCopy.CommitQueue.Enabled = false
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err = p.sc.CreateProject(projectToCopy, u); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProjectId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProject))
 	}
 	apiProjectRef := &model.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -82,14 +85,14 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// copy variables, aliases, and subscriptions
-	if err = p.sc.CopyProjectVars(p.oldProjectId, p.newProjectId); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.oldProjectId))
+	if err = p.sc.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.oldProject))
 	}
-	if err = p.sc.CopyProjectAliases(p.oldProjectId, p.newProjectId); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying aliases from project '%s'", p.oldProjectId))
+	if err = p.sc.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying aliases from project '%s'", p.oldProject))
 	}
-	if err = p.sc.CopyProjectSubscriptions(p.oldProjectId, p.newProjectId); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProjectId))
+	if err = p.sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProject))
 	}
 
 	return gimlet.NewJSONResponse(apiProjectRef)
@@ -142,12 +145,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := p.sc.FindProjectById(p.opts.CopyTo) // ensure project is existing
+	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	varsToCopy, err := p.sc.FindProjectVarsById(p.copyFrom, p.opts.DryRun) //dont redact private variables unless it's a dry run
+	copyFromProject, err := p.sc.FindProjectById(p.copyFrom) // ensure project is existing
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
+	}
+
+	varsToCopy, err := p.sc.FindProjectVarsById(copyFromProject.Id, p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
 	}
@@ -166,7 +174,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	if err := p.sc.UpdateProjectVars(p.opts.CopyTo, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := p.sc.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.copyFrom))
 	}
 

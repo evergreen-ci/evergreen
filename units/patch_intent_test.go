@@ -67,13 +67,16 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError((&model.ProjectRef{
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Identifier:       "mci",
+		Id:               "mci",
 		Enabled:          true,
 		PatchingDisabled: false,
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
 		RepoKind:         "github",
 		PRTestingEnabled: true,
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
 	}).Insert())
 
 	s.NoError((&user.DBUser{
@@ -552,4 +555,53 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 
 	s.True(foundPatch)
 	s.True(foundBuild)
+}
+
+func (s *PatchIntentUnitsSuite) TestCliBackport() {
+	sourcePatch := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: s.project,
+		Githash: s.hash,
+		Alias:   evergreen.CommitQueueAlias,
+		Patches: []patch.ModulePatch{
+			{
+				Githash: "revision",
+				PatchSet: patch.PatchSet{
+					Patch: "something",
+					Summary: []thirdparty.Summary{
+						{Name: "asdf", Additions: 4, Deletions: 80},
+						{Name: "random.txt", Additions: 6, Deletions: 0},
+					},
+				},
+			},
+		},
+	}
+	s.NoError(sourcePatch.Insert())
+	params := patch.CLIIntentParams{
+		User:        s.user,
+		Project:     s.project,
+		BaseGitHash: s.hash,
+		BackportOf: patch.BackportInfo{
+			PatchID: sourcePatch.Id.Hex(),
+		},
+	}
+
+	intent, err := patch.NewCliIntent(params)
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	id := mgobson.NewObjectId()
+	j, ok := NewPatchIntentProcessor(id, intent).(*patchIntentProcessor)
+	j.env = s.env
+	s.True(ok)
+	s.NotNil(j)
+	j.Run(context.Background())
+	s.NoError(j.Error())
+
+	backportPatch, err := patch.FindOneId(id.Hex())
+	s.NoError(err)
+	s.Equal(sourcePatch.Id.Hex(), backportPatch.BackportOf.PatchID)
+	s.Len(backportPatch.Patches, 1)
+	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
 }

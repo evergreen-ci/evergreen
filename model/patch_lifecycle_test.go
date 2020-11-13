@@ -60,7 +60,7 @@ func clearAll(t *testing.T) {
 func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
-		Identifier: patchedProject,
+		Id:         patchedProject,
 		RemotePath: configFilePath,
 		Owner:      patchOwner,
 		Repo:       patchRepo,
@@ -119,7 +119,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	clearAll(t)
 	projectRef := &ProjectRef{
-		Identifier: patchedProject,
+		Id:         patchedProject,
 		RemotePath: newConfigFilePath,
 		Owner:      patchOwner,
 		Repo:       patchRepo,
@@ -605,7 +605,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(v.Insert())
 	assert.NoError(baseVersion.Insert())
 	ref := ProjectRef{
-		Identifier: "project",
+		Id: "project",
 	}
 	assert.NoError(ref.Insert())
 
@@ -793,7 +793,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 
 func TestRetryCommitQueueItems(t *testing.T) {
 	projectRef := &ProjectRef{
-		Identifier: patchedProject,
+		Id:         patchedProject,
 		RemotePath: configFilePath,
 		Owner:      patchOwner,
 		Repo:       patchRepo,
@@ -813,12 +813,12 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
 			assert.NoError(t, projectRef.Insert())
 
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
 			assert.NoError(t, err)
 			assert.Len(t, restarted, 1)
 			assert.Len(t, notRestarted, 0)
 
-			cq, err := commitqueue.FindOneId(projectRef.Identifier)
+			cq, err := commitqueue.FindOneId(projectRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, cq)
 
@@ -835,7 +835,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			u := user.DBUser{Id: "me", PatchNumber: 12}
 			assert.NoError(t, u.Insert())
 
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
 			assert.NoError(t, err)
 			assert.Len(t, restarted, 1)
 			assert.Len(t, notRestarted, 0)
@@ -844,7 +844,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 5, all)
 
-			cq, err := commitqueue.FindOneId(projectRef.Identifier)
+			cq, err := commitqueue.FindOneId(projectRef.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, cq)
 			require.Len(t, cq.Queue, 1)
@@ -861,7 +861,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			// not started but terminated within time range
 			p := patch.Patch{
 				Id:         mgobson.NewObjectId(),
-				Project:    projectRef.Identifier,
+				Project:    projectRef.Id,
 				Githash:    patchedRevision,
 				StartTime:  time.Time{},
 				FinishTime: startTime.Add(30 * time.Minute),
@@ -872,7 +872,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				},
 			}
 			assert.NoError(t, p.Insert())
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
 			assert.NoError(t, err)
 			assert.Len(t, restarted, 2)
 			assert.Len(t, notRestarted, 0)
@@ -880,14 +880,14 @@ func TestRetryCommitQueueItems(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection))
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
 			assert.NoError(t, commitqueue.InsertQueue(cq))
 
 			patches := []patch.Patch{
 				{ // patch: within time frame, failed
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 1,
-					Project:     projectRef.Identifier,
+					Project:     projectRef.Id,
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
@@ -914,7 +914,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				{ // within time frame, not failed
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 2,
-					Project:     projectRef.Identifier,
+					Project:     projectRef.Id,
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
@@ -924,7 +924,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				{ // within time frame, not commit queue
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 3,
-					Project:     projectRef.Identifier,
+					Project:     projectRef.Id,
 					Githash:     patchedRevision,
 					StartTime:   startTime.Add(30 * time.Minute),
 					FinishTime:  endTime.Add(30 * time.Minute),
@@ -933,7 +933,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 4,
-					Project:     projectRef.Identifier,
+					Project:     projectRef.Id,
 					Githash:     patchedRevision,
 					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
 					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),

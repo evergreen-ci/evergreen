@@ -76,9 +76,10 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+	Env                     []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits          ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	PreconditionScripts     []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+	FetchProvisioningScript bool                 `bson:"fetch_provisioning_script,omitempty" json:"fetch_provisioning_script,omitempty" mapstructure:"fetch_provisioning_script,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
@@ -251,11 +252,10 @@ const (
 
 	// Bootstrapping mechanisms
 	// BootstrapMethodNone is for internal use only.
-	BootstrapMethodNone               = "none"
-	BootstrapMethodLegacySSH          = "legacy-ssh"
-	BootstrapMethodSSH                = "ssh"
-	BootstrapMethodPreconfiguredImage = "preconfigured-image"
-	BootstrapMethodUserData           = "user-data"
+	BootstrapMethodNone      = "none"
+	BootstrapMethodLegacySSH = "legacy-ssh"
+	BootstrapMethodSSH       = "ssh"
+	BootstrapMethodUserData  = "user-data"
 
 	// Means of communicating with hosts
 	CommunicationMethodLegacySSH = "legacy-ssh"
@@ -273,7 +273,6 @@ var validBootstrapMethods = []string{
 	BootstrapMethodNone,
 	BootstrapMethodLegacySSH,
 	BootstrapMethodSSH,
-	BootstrapMethodPreconfiguredImage,
 	BootstrapMethodUserData,
 }
 
@@ -293,18 +292,6 @@ var validCloneMethods = []string{
 // Seed the random number generator for creating distro names
 func init() {
 	rand.Seed(time.Now().UnixNano())
-}
-
-func (d *Distro) ManagementMethodsUseSSH() bool {
-	if utility.StringSliceContains([]string{BootstrapMethodLegacySSH, BootstrapMethodSSH}, d.BootstrapSettings.Method) {
-		return true
-	}
-
-	if utility.StringSliceContains([]string{CommunicationMethodLegacySSH, CommunicationMethodSSH}, d.BootstrapSettings.Communication) {
-		return true
-	}
-
-	return false
 }
 
 // GenerateName generates a unique instance name for a distro.

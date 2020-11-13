@@ -56,9 +56,9 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	ctx := context.Background()
-	json := []byte(`{"identifier": "Verboten"}`)
+	json := []byte(`{"id": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -66,14 +66,14 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	s.Equal(resp.Status(), http.StatusForbidden)
 
 	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID))
+	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.project))
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	ctx := context.Background()
 	json := []byte(`{"display_name": "This is a display name"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "non-existent"
+	h.project = "non-existent"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -86,7 +86,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = json
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -104,7 +104,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	ctx := context.Background()
 	jsonBody := []byte(`{"enabled": true, "revision": "my_revision", "commit_queue": {"enabled": true}}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.projectID = "dimoxinil"
+	h.project = "dimoxinil"
 	h.body = jsonBody
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
@@ -233,12 +233,18 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "nutsandgum"
+	h.projectName = "nutsandgum"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
+
+	p, err := h.sc.FindProjectById("nutsandgum")
+	s.NoError(err)
+	s.Require().NotNil(p)
+	s.Equal("nutsandgum", p.Id)
+	s.Equal("nutsandgum", p.Identifier)
 }
 
 func (s *ProjectPutSuite) TestRunExistingFails() {
@@ -250,7 +256,7 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
@@ -284,7 +290,7 @@ func (s *ProjectGetByIDSuite) SetupTest() {
 func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 	ctx := context.Background()
 	h := s.rm.(*projectIDGetHandler)
-	h.projectID = "non-existent"
+	h.projectName = "non-existent"
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -294,7 +300,7 @@ func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	ctx := context.Background()
 	h := s.rm.(*projectIDGetHandler)
-	h.projectID = "dimoxinil"
+	h.projectName = "dimoxinil"
 
 	resp := s.rm.Run(ctx)
 	s.Require().NotNil(resp.Data())
@@ -311,7 +317,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
 	s.Equal(cachedProject.RemotePath, model.FromStringPtr(projectRef.RemotePath))
-	s.Equal(cachedProject.Identifier, model.FromStringPtr(projectRef.Identifier))
+	s.Equal(cachedProject.Id, model.FromStringPtr(projectRef.Id))
 	s.Equal(cachedProject.DisplayName, model.FromStringPtr(projectRef.DisplayName))
 	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
@@ -344,12 +350,12 @@ func TestProjectGetSuite(t *testing.T) {
 func (s *ProjectGetSuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []serviceModel.ProjectRef{
-			{Identifier: "projectA"},
-			{Identifier: "projectB"},
-			{Identifier: "projectC"},
-			{Identifier: "projectD"},
-			{Identifier: "projectE"},
-			{Identifier: "projectF"},
+			{Id: "projectA"},
+			{Id: "projectB"},
+			{Id: "projectC"},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 		},
 	}
 
@@ -381,7 +387,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
+	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -399,8 +405,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
-	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
+	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])
+	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Id, payload[1])
 
 	s.Nil(resp.Pages())
 }
@@ -438,7 +444,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					Private:            true,
 					BatchTime:          0,
 					RemotePath:         "evergreen.yml",
-					Identifier:         "dimoxinil",
+					Id:                 "dimoxinil",
 					DisplayName:        "Dimoxinil",
 					DeactivatePrevious: false,
 					TracksPushEvents:   false,
@@ -468,41 +474,46 @@ func getMockProjectsConnector() *data.MockConnector {
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.Clear(serviceModel.VersionCollection))
-	const projectName = "proj"
+	const projectId = "proj"
+	project := serviceModel.ProjectRef{
+		Id:         projectId,
+		Identifier: "something-else",
+	}
+	assert.NoError(project.Insert())
 	v1 := serviceModel.Version{
 		Id:                  "v1",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 1,
 	}
 	assert.NoError(v1.Insert())
 	v2 := serviceModel.Version{
 		Id:                  "v2",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 2,
 	}
 	assert.NoError(v2.Insert())
 	v3 := serviceModel.Version{
 		Id:                  "v3",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 3,
 	}
 	assert.NoError(v3.Insert())
 	v4 := serviceModel.Version{
 		Id:                  "v4",
-		Identifier:          projectName,
+		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 4,
 	}
 	assert.NoError(v4.Insert())
 
 	h := getProjectVersionsHandler{
-		projectID: projectName,
-		requester: evergreen.AdHocRequester,
-		sc:        &data.DBConnector{},
-		limit:     20,
+		projectName: "something-else",
+		requester:   evergreen.AdHocRequester,
+		sc:          &data.DBConnector{},
+		limit:       20,
 	}
 
 	resp := h.Run(context.Background())

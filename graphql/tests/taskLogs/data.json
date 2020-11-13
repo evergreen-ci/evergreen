@@ -7,7 +7,7 @@
   ],
   "project_ref": [
     {
-      "_id": { "$oid": "572cf4126685d46c3c16a704" },
+      "_id":  "curator",
       "owner_name": "mongodb",
       "default_logger": "NOT BUILDLOGGER",
       "repo_name": "curator",

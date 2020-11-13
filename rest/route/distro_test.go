@@ -1313,7 +1313,8 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 						"path": "/tmp/foo",
 						"script": "echo foo"
 						}
-					]
+					],
+					"fetch_provisioning_script": true
 				},
 				"clone_method": "legacy-ssh",
 				"ssh_key" : "New SSH Key",
@@ -1388,6 +1389,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Require().Len(apiDistro.BootstrapSettings.PreconditionScripts, 1)
 	s.Equal(model.ToStringPtr("/tmp/foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Path)
 	s.Equal(model.ToStringPtr("echo foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Script)
+	s.True(apiDistro.BootstrapSettings.FetchProvisioningScript)
 	s.Equal(model.ToStringPtr("~root"), apiDistro.User)
 	s.Equal(model.ToStringPtr("New SSH Key"), apiDistro.SSHKey)
 	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)

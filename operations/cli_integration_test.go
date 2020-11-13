@@ -78,7 +78,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
-		Identifier: "sample",
+		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
 		RepoKind:   "github",
@@ -133,7 +133,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		// first, create a patch
 		patchSub := patchSubmission{
-			projectId:   "sample",
+			projectName: "sample",
 			patchData:   testPatch,
 			description: "sample patch",
 			base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -371,7 +371,7 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating a simple patch should be successful", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -433,7 +433,7 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating a patch without variants should be successful", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -447,7 +447,7 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating a complex patch should be successful", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -490,7 +490,7 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating an empty patch should not error out anything", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   emptyPatch,
 					description: "sample patch",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -560,7 +560,7 @@ func TestCLIFunctions(t *testing.T) {
 			})
 			Convey("Creating a patch using 'all' as variants should schedule all variants", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
@@ -589,7 +589,7 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating a patch using 'all' as tasks should schedule all tasks", func() {
 				patchSub := patchSubmission{
-					projectId:   "sample",
+					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
 					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",

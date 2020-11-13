@@ -122,12 +122,12 @@ func listTaggedProjects(ctx context.Context, confPath string, tag string) error 
 		}
 	}
 
-	sort.Slice(matching, func(i, j int) bool { return matching[i].Identifier < matching[j].Identifier })
+	sort.Slice(matching, func(i, j int) bool { return matching[i].Id < matching[j].Id })
 
 	t := tabby.New()
 	t.AddHeader("Name", "Description", "Tags")
 	for _, prj := range matching {
-		t.AddLine(prj.Identifier, prj.DisplayName, strings.Join(prj.Tags, ", "))
+		t.AddLine(prj.Id, prj.DisplayName, strings.Join(prj.Tags, ", "))
 	}
 	fmt.Printf("%d matching projects:\n", len(matching))
 	t.Print()
@@ -158,13 +158,13 @@ func listProjects(ctx context.Context, confPath string) error {
 		}
 	}
 
-	sort.Slice(matching, func(i, j int) bool { return matching[i].Identifier < matching[j].Identifier })
+	sort.Slice(matching, func(i, j int) bool { return matching[i].Id < matching[j].Id })
 	fmt.Println(len(matching), "projects:")
 
 	t := tabby.New()
 	t.AddHeader("Name", "Description")
 	for _, prj := range matching {
-		t.AddLine(prj.Identifier, prj.DisplayName)
+		t.AddLine(prj.Id, prj.DisplayName)
 	}
 	t.Print()
 	return nil
