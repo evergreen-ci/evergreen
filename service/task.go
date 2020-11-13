@@ -931,8 +931,6 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 	}
 
-	// Check cedar test results first.
-	success := true
 	if uiTask.DisplayOnly {
 		allResults := []uiTestResult{}
 		for i, execTask := range execTasks {
@@ -946,9 +944,9 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				grip.Error(message.WrapError(err, message.Fields{
 					"task_id":   execTask.Id,
 					"execution": execTask.Execution,
-					"message":   "problem getting cedar test results",
+					"message":   "problem getting cedar test results, using evergreen test results",
 				}))
-				success = false
+				allResults = []uiTestResult{}
 				break
 			}
 
@@ -961,9 +959,18 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			}
 		}
 
-		if success {
+		if len(allResults) > 0 {
 			uiTask.TestResults = append(uiTask.TestResults, allResults...)
-			return
+		} else {
+			for i, execTask := range execTasks {
+				for _, tr := range execTask.LocalTestResults {
+					uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+						TestResult: tr,
+						TaskId:     execTaskIDs[i],
+						TaskName:   execTask.DisplayName,
+					})
+				}
+			}
 		}
 	} else {
 		opts := apimodels.GetCedarTestResultsOptions{
@@ -976,44 +983,28 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			grip.Error(message.WrapError(err, message.Fields{
 				"task_id":   taskId,
 				"execution": projCtx.Task.Execution,
-				"message":   "problem getting cedar test results",
+				"message":   "problem getting cedar test results, using evergreen test results",
 			}))
-			success = false
 		}
 
-		if success {
+		if len(testResults) > 0 {
 			for _, tr := range testResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 					TestResult: convertCedarTestResult(tr),
 				})
 			}
-			if uiTask.PartOfDisplay {
-				uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
-			}
-			return
-		}
-	}
-
-	// If cedar test results fail, fall back to db.
-	if uiTask.DisplayOnly {
-		for i, execTask := range execTasks {
-			for _, tr := range execTask.LocalTestResults {
+		} else {
+			for _, tr := range projCtx.Context.Task.LocalTestResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 					TestResult: tr,
-					TaskId:     execTaskIDs[i],
-					TaskName:   execTask.DisplayName,
 				})
 			}
 		}
-	} else {
-		for _, tr := range projCtx.Context.Task.LocalTestResults {
-			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
-		}
+
 		if uiTask.PartOfDisplay {
 			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
 		}
 	}
-
 }
 
 func convertCedarTestResult(result apimodels.CedarTestResult) task.TestResult {
