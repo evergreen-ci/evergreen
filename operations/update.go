@@ -282,6 +282,9 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 
 // Searches a ClientConfig for a ClientBinary with a non-empty URL, whose architecture and OS
 // match that of the current system.
+// kim: TODO: we're going to return multiple ClientBinary objects which map to
+// the same GOOS/GOARCH (one for S3, one for Evergreen app server). The user
+// should attempt to download from both of them.
 func findClientUpdate(clients evergreen.ClientConfig) *evergreen.ClientBinary {
 	for _, c := range clients.ClientBinaries {
 		if c.Arch == runtime.GOARCH && c.OS == runtime.GOOS && len(c.URL) > 0 {
