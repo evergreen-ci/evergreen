@@ -195,6 +195,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 					return err
 				}
 			}
+			tc.logger.Task().Infof("Finished running setup_group for '%s'.", taskGroup.Name)
 		}
 	}
 
