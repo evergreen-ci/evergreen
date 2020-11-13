@@ -144,12 +144,12 @@ type TriggerDefinition struct {
 }
 
 type PatchTriggerDefinition struct {
-	DefinitionAlias   string `bson:"definition_alias" json:"definition_alias"`
-	ChildProject      string `bson:"child_project" json:"child_project"`
-	Status            string `bson:"status,omitempty" json:"status,omitempty"`
-	TaskRegex         string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	BuildVariantRegex string `bson:"buildvariant_regex,omitempty" json:"buildvariant_regex,omitempty"`
-	ParentAsModule    string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	Alias          string `bson:"alias" json:"alias"`
+	ChildProject   string `bson:"child_project" json:"child_project"`
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	TaskRegex      string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	VariantRegex   string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -1191,7 +1191,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
 		return errors.Errorf("invalid status: %s", t.Status)
 	}
-	_, regexErr := regexp.Compile(t.BuildVariantRegex)
+	_, regexErr := regexp.Compile(t.VariantRegex)
 	if regexErr != nil {
 		return errors.Wrap(regexErr, "invalid variant regex")
 	}
