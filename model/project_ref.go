@@ -1188,7 +1188,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 	if childProject.Identifier == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
-	if !utility.StringSliceContains([]string{"", evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
 		return errors.Errorf("invalid status: %s", t.Status)
 	}
 	_, regexErr := regexp.Compile(t.BuildVariantRegex)
