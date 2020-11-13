@@ -382,6 +382,42 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
+// GET /tasks/{task_id}/set_has_results
+
+type taskSetHasResultsHandler struct {
+	taskID string
+	sc     data.Connector
+}
+
+func makeTaskSetHasResultsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &taskSetHasResultsHandler{
+		sc: sc,
+	}
+}
+
+func (rh *taskSetHasResultsHandler) Factory() gimlet.RouteHandler {
+	return &taskSetHasResultsHandler{
+		sc: rh.sc,
+	}
+}
+
+func (rh *taskSetHasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	rh.taskID = gimlet.GetVars(r)["task_id"]
+	return nil
+}
+
+func (rh *taskSetHasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := rh.sc.FindTaskById(rh.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
+	}
+
+	if err = t.SetHasResults(true); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasResults flag for task with ID '%s'", rh.taskID))
+	}
+	return gimlet.NewTextResponse("HasResults flag set in task")
+}
+
 // GET /task/sync_read_credentials
 
 type taskSyncReadCredentialsGetHandler struct {

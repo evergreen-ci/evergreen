@@ -1313,6 +1313,7 @@ func (t *Task) Reset() error {
 		"$unset": bson.M{
 			DetailsKey:           "",
 			ResetWhenFinishedKey: "",
+			HasResultsKey:        "",
 		},
 	}
 
@@ -1342,7 +1343,8 @@ func ResetTasks(taskIds []string) error {
 				FinishTimeKey:    utility.ZeroTime,
 			},
 			"$unset": bson.M{
-				DetailsKey: "",
+				DetailsKey:    "",
+				HasResultsKey: "",
 			},
 		},
 	)

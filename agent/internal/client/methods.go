@@ -585,9 +585,9 @@ func (c *communicatorImpl) SetHasResults(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
-	info.setTaskPathSuffix("set_has_results")
+	info.path = fmt.Sprintf("tasks/%s/set_has_results", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to set the HasResults flag in task '%s'", taskData.ID)

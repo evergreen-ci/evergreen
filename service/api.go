@@ -301,16 +301,6 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, "test results successfully attached")
 }
 
-// SetHasResults sets the HasResults flag to true in the task in the database.
-func (as *APIServer) SetHasResults(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-	if err := t.SetHasResults(true); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	gimlet.WriteJSON(w, "HasResults flag set in task")
-}
-
 // FetchExpansionsForTask is an API hook for returning the
 // unrestricted project variables and parameters associated with a task.
 func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Request) {
@@ -594,7 +584,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/fetch_vars").Wrap(checkTaskSecret).Handler(as.FetchExpansionsForTask).Get()
 	app.Route().Version(2).Route("/task/{taskId}/heartbeat").Wrap(checkTaskSecret, checkHost).Handler(as.Heartbeat).Post()
 	app.Route().Version(2).Route("/task/{taskId}/results").Wrap(checkTaskSecret, checkHost).Handler(as.AttachResults).Post()
-	app.Route().Version(2).Route("/task/{taskId}/set_has_results").Wrap(checkTaskSecret, checkHost).Handler(as.SetHasResults).Post()
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(checkTask, checkHost).Handler(as.GetDistroView).Get()
