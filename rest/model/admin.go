@@ -16,7 +16,6 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
-		Backup:            &APIBackupConfig{},
 		Cedar:             &APICedarConfig{},
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
@@ -53,7 +52,6 @@ type APIAdminSettings struct {
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
-	Backup              *APIBackupConfig                  `json:"backup,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
 	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
@@ -534,42 +532,6 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		PreferredType:           FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
-	}, nil
-}
-
-type APIBackupConfig struct {
-	BucketName *string `bson:"bucket_name" json:"bucket_name" yaml:"bucket_name"`
-	Key        *string `bson:"key" json:"key" yaml:"key"`
-	Secret     *string `bson:"secret" json:"secret" yaml:"secret"`
-	Prefix     *string `bson:"prefix" json:"prefix" yaml:"prefix"`
-	Compress   bool    `bson:"compress" json:"compress" yaml:"compress"`
-}
-
-func (a *APIBackupConfig) BuildFromService(c interface{}) error {
-	switch conf := c.(type) {
-	case evergreen.BackupConfig:
-		a.BucketName = ToStringPtr(conf.BucketName)
-		a.Key = ToStringPtr(conf.Key)
-		a.Secret = ToStringPtr(conf.Secret)
-		a.Compress = conf.Compress
-		a.Prefix = ToStringPtr(conf.Prefix)
-
-		return nil
-	default:
-		return errors.Errorf("%T is not a supported type", c)
-	}
-}
-func (a *APIBackupConfig) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-
-	return evergreen.BackupConfig{
-		BucketName: FromStringPtr(a.BucketName),
-		Key:        FromStringPtr(a.Key),
-		Secret:     FromStringPtr(a.Secret),
-		Prefix:     FromStringPtr(a.Prefix),
-		Compress:   a.Compress,
 	}, nil
 }
 
@@ -1709,7 +1671,6 @@ type APIServiceFlags struct {
 	CommitQueueDisabled           bool `json:"commit_queue_disabled"`
 	PlannerDisabled               bool `json:"planner_disabled"`
 	HostAllocatorDisabled         bool `json:"host_allocator_disabled"`
-	DRBackupDisabled              bool `json:"dr_backup_disabled"`
 	BackgroundReauthDisabled      bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled     bool `json:"background_cleanup_disabled"`
 	AmboyRemoteManagementDisabled bool `json:"amboy_remote_management_disabled"`
@@ -1976,7 +1937,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
-		as.DRBackupDisabled = v.DRBackupDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.AmboyRemoteManagementDisabled = v.AmboyRemoteManagementDisabled
@@ -2013,7 +1973,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CommitQueueDisabled:           as.CommitQueueDisabled,
 		PlannerDisabled:               as.PlannerDisabled,
 		HostAllocatorDisabled:         as.HostAllocatorDisabled,
-		DRBackupDisabled:              as.DRBackupDisabled,
 		BackgroundCleanupDisabled:     as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:      as.BackgroundReauthDisabled,
 		AmboyRemoteManagementDisabled: as.AmboyRemoteManagementDisabled,

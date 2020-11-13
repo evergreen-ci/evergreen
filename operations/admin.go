@@ -10,15 +10,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	amboyCLI "github.com/mongodb/amboy/cli"
-	"github.com/mongodb/anser/backup"
-	amodel "github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -31,7 +27,6 @@ func Admin() cli.Command {
 		Usage: "site administration for an evergreen deployment",
 		Subcommands: []cli.Command{
 			adminSetBanner(),
-			adminBackup(),
 			viewSettings(),
 			updateSettings(),
 			listEvents(),
@@ -404,72 +399,6 @@ func updateRoleCmd() cli.Command {
 			}
 
 			return ac.UpdateRole(&role)
-		},
-	}
-}
-
-func adminBackup() cli.Command {
-	const (
-		collectionNameFlag = "collection"
-		prefixFlagName     = "prefix"
-	)
-
-	return cli.Command{
-		Name:  "backup",
-		Usage: "create a backup (to s3) of a collection",
-		Flags: mergeFlagSlices(
-			serviceConfigFlags(),
-			addDbSettingsFlags(
-				cli.StringFlag{
-					Name:  collectionNameFlag,
-					Usage: "specify the name of the collection to backup",
-				},
-				cli.StringFlag{
-					Name:  prefixFlagName,
-					Value: "archive",
-					Usage: "specify prefix within the bucket to store this archive",
-				},
-			),
-		),
-		Before: requireStringFlag(collectionNameFlag),
-		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			collectionName := c.String(collectionNameFlag)
-
-			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), parseDB(c))
-			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
-			evergreen.SetEnvironment(env)
-
-			// avoid working on remote jobs during the backup
-			env.RemoteQueue().Runner().Close(ctx)
-			env.RemoteQueueGroup().Close(ctx)
-
-			client := utility.GetHTTPClient()
-			client.Timeout = 30 * 24 * time.Hour
-			defer utility.PutHTTPClient(client)
-
-			conf := env.Settings().Backup
-			conf.Prefix = c.String(prefixFlagName)
-			bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, pail.S3Options{
-				Credentials: pail.CreateAWSCredentials(conf.Key, conf.Secret, ""),
-				Permissions: pail.S3PermissionsPrivate,
-				Name:        conf.BucketName,
-				Compress:    conf.Compress,
-				Prefix:      strings.Join([]string{conf.Prefix, time.Now().Format(units.TSFormat), "dump"}, "/"),
-				MaxRetries:  10,
-			})
-			grip.EmergencyFatal(errors.Wrap(err, "problem constructing bucket"))
-			opts := backup.Options{
-				NS: amodel.Namespace{
-					DB:         env.Settings().Database.DB,
-					Collection: collectionName,
-				},
-				EnableLogging: true,
-				Target:        bucket.Writer,
-			}
-			return backup.Collection(ctx, env.Client(), opts)
 		},
 	}
 }
