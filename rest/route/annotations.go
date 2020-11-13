@@ -168,7 +168,7 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 		h.execution, err = strconv.Atoi(execution)
 		if err != nil {
 			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("Invalid execution: '%s' " + err.Error()),
+				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
 				StatusCode: http.StatusBadRequest,
 			}
 		}
