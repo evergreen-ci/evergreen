@@ -415,46 +415,13 @@ func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string,
 		return taskResults
 	}
 	tasksFilteredByBaseStatus := []*TaskResult{}
-
-	// statuses can include a status (i.e. aborted) that is not valid for matching on the DisplayStatusKey
-	validTaskStatuses := []string{}
-	shouldShowAbortedTasks := false
-
-	// filter out unofficial statuses (aborted) and determine if status filters include `aborted` status
-	for _, status := range baseStatuses {
-		if status == evergreen.TaskAborted {
-			shouldShowAbortedTasks = true
-		} else {
-			validTaskStatuses = append(validTaskStatuses, status)
-		}
-	}
-
 	for _, taskResult := range taskResults {
-		aborted := taskResult.Aborted == true
-		taskStatus := baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]
-
-		// only show aborted
-		if shouldShowAbortedTasks && len(validTaskStatuses) == 0 {
-			if aborted {
-				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-			}
-		}
-		// show aborted and specified valid statuses
-		if shouldShowAbortedTasks && len(validTaskStatuses) > 0 {
-			if aborted || utility.StringSliceContains(baseStatuses, taskStatus) {
-				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-			}
-		}
-		// only show specified valid statuses
-		if shouldShowAbortedTasks == false && len(validTaskStatuses) > 0 {
-			if aborted == false && utility.StringSliceContains(baseStatuses, taskStatus) {
-				tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-			}
+		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
+			tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
 		}
 	}
 	return tasksFilteredByBaseStatus
 }
-
 func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, task := range tasks {
@@ -465,7 +432,6 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Status:       task.GetDisplayStatus(),
 			BuildVariant: task.BuildVariant,
 			Blocked:      task.Blocked(),
-			Aborted:      task.Aborted,
 		}
 		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
 			t.BaseStatus = baseTaskStatuses[task.BuildVariant][task.DisplayName]
@@ -834,12 +800,6 @@ func DeleteVolume(ctx context.Context, volumeId string) (bool, int, GqlError, er
 	}
 	if vol == nil {
 		return false, http.StatusBadRequest, ResourceNotFound, errors.Errorf("volume '%s' does not exist", volumeId)
-	}
-	if vol.Host != "" {
-		success, statusCode, gqlErr, detachErr := DetachVolume(ctx, volumeId)
-		if err != nil {
-			return success, statusCode, gqlErr, detachErr
-		}
 	}
 	mgr, err := getEC2Manager(ctx, vol)
 	if err != nil {

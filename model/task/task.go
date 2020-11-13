@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -80,7 +79,6 @@ type Task struct {
 	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
@@ -398,8 +396,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
-				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+			return UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -1215,9 +1212,6 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	if !t.IsFinished() {
-		return t.Status
-	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
 	}
@@ -1695,18 +1689,26 @@ func (t *Task) Insert() error {
 
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
-		if err != nil {
-			return errors.Wrap(err, "error retrieving execution tasks")
-		}
-		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "error archiving execution tasks")
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if execTask == nil {
+				return errors.Errorf("unable to find execution task '%s' from display task '%s'", et, t.Id)
+			}
+			if err = execTask.Archive(); err != nil {
+				return errors.Wrap(err, "error archiving execution task")
+			}
 		}
 	}
 
-	archiveTask := t.makeArchivedTask()
-	err := db.Insert(OldCollection, archiveTask)
+	archiveTask := *t
+	archiveTask.Id = MakeOldID(t.Id, t.Execution)
+	archiveTask.OldTaskId = t.Id
+	archiveTask.Archived = true
+	err := db.Insert(OldCollection, &archiveTask)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"archive_task_id": archiveTask.Id,
@@ -1740,112 +1742,6 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "unable to update host event logs")
 	}
 	return nil
-}
-
-func ArchiveMany(tasks []Task) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]bool{}
-	for _, t := range tasks {
-		execTaskMap[t.Id] = true
-	}
-	additionalTasks := []string{}
-	for _, t := range tasks {
-		// for any display tasks here, make sure that we archive all their execution tasks
-		for _, et := range t.ExecutionTasks {
-			if !execTaskMap[et] {
-				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
-				continue
-			}
-		}
-	}
-	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(ByIds((additionalTasks)))
-		if err != nil {
-			return errors.Wrap(err, "unable to find execution tasks")
-		}
-		tasks = append(tasks, toAdd...)
-	}
-
-	archived := []interface{}{}
-	taskIds := []string{}
-	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedTask())
-		taskIds = append(taskIds, t.Id)
-	}
-
-	mongoClient := evergreen.GetEnvironment().Client()
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-	session, err := mongoClient.StartSession()
-	if err != nil {
-		return errors.Wrap(err, "unable to start session")
-	}
-	defer session.EndSession(ctx)
-
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-		_, err = oldTaskColl.InsertMany(ctx, archived)
-		if err != nil {
-			return nil, err
-		}
-
-		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
-			},
-		},
-			bson.M{
-				"$unset": bson.M{
-					AbortedKey:   "",
-					AbortInfoKey: "",
-				},
-				"$inc": bson.M{
-					ExecutionKey: 1,
-				},
-			})
-		if err != nil {
-			return nil, err
-		}
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
-			},
-			RestartsKey: bson.M{
-				"$gt": 0,
-			},
-		},
-			bson.M{
-				"$inc": bson.M{
-					RestartsKey: 1,
-				},
-			})
-		return nil, err
-	}
-
-	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return errors.Wrap(err, "unable to archive tasks")
-	}
-
-	eventLogErrs := grip.NewBasicCatcher()
-	for _, t := range tasks {
-		eventLogErrs.Add(event.UpdateExecutions(t.HostId, t.Id, t.Execution))
-	}
-
-	return eventLogErrs.Resolve()
-}
-
-func (t *Task) makeArchivedTask() *Task {
-	archiveTask := *t
-	archiveTask.Id = MakeOldID(t.Id, t.Execution)
-	archiveTask.OldTaskId = t.Id
-	archiveTask.Archived = true
-
-	return &archiveTask
 }
 
 // Aggregation
@@ -2586,59 +2482,12 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		addDisplayStatus,
 	}
 	if len(statuses) > 0 {
-		// statuses can include a status (i.e. aborted) that is not valid for matching on the DisplayStatusKey
-		validTaskStatuses := []string{}
-		shouldShowAbortedTasks := false
-
-		// filter out unofficial statuses (aborted) and determine if status filters include `aborted` status
-		for _, status := range statuses {
-			if status == evergreen.TaskAborted {
-				shouldShowAbortedTasks = true
-			} else {
-				validTaskStatuses = append(validTaskStatuses, status)
-			}
-		}
-
-		// only show aborted tasks
-		if shouldShowAbortedTasks && len(validTaskStatuses) == 0 {
-			pipeline = append(pipeline, bson.M{
-				"$match": bson.M{
-					AbortedKey: true,
-				},
-			})
-		}
-		// show aborted and specified valid statuses
-		if shouldShowAbortedTasks && len(validTaskStatuses) > 0 {
-			pipeline = append(pipeline, bson.M{
-				"$match": bson.M{
-					"$or": bson.A{
-						bson.M{
-							DisplayStatusKey: bson.M{"$in": validTaskStatuses},
-						},
-						bson.M{
-							AbortedKey: true,
-						},
-					},
-				},
-			})
-		}
-		// only show specified valid statuses
-		if shouldShowAbortedTasks == false && len(validTaskStatuses) > 0 {
-			pipeline = append(pipeline, bson.M{
-				"$match": bson.M{
-					"$and": bson.A{
-						bson.M{
-							DisplayStatusKey: bson.M{"$in": validTaskStatuses},
-						},
-						bson.M{
-							AbortedKey: nil,
-						},
-					},
-				},
-			})
-		}
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": statuses},
+			},
+		})
 	}
-
 	countPipeline := []bson.M{}
 	for _, stage := range pipeline {
 		countPipeline = append(countPipeline, stage)
@@ -2733,34 +2582,6 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		count = tmp[0].Count
 	}
 	return tasks, count, nil
-}
-
-func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
-	if len(tasks) == 0 {
-		return tasks, nil
-	}
-	taskIDs := []string{}
-	tasksCopy := tasks
-	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
-	}
-	parents, err := FindAll(ByExecutionTasks(taskIDs))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding parent tasks")
-	}
-	childrenToParents := map[string]*Task{}
-	for i, dt := range parents {
-		for _, et := range dt.ExecutionTasks {
-			childrenToParents[et] = &parents[i]
-		}
-	}
-	for i, t := range tasksCopy {
-		if childrenToParents[t.Id] != nil {
-			t.DisplayTask = childrenToParents[t.Id]
-			tasksCopy[i] = t
-		}
-	}
-	return tasksCopy, nil
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
