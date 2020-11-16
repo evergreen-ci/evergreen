@@ -802,7 +802,16 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	testName := vars["test_name"]
 	taskExecutionsAsString := vars["task_execution"]
 	taskExec, err := strconv.Atoi(taskExecutionsAsString)
-	grip.Warning(err)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id":   taskID,
+			"test_name": testName,
+			"message":   "invalid execution",
+		}))
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
 	var (
 		logReader io.ReadCloser
 		testLog   *model.TestLog
@@ -828,7 +837,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		data.Buildlogger = make(chan apimodels.LogMessage, 1024)
 		go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
 	} else {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id":   taskID,
 			"test_name": testName,
 			"message":   "problem getting buildlogger logs",
@@ -939,7 +948,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			}
 			testResults, err := apimodels.GetCedarTestResults(ctx, opts)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Warning(message.WrapError(err, message.Fields{
 					"task_id":   execTask.Id,
 					"execution": execTask.Execution,
 					"message":   "problem getting cedar test results, using evergreen test results",
@@ -950,7 +959,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 
 			for _, tr := range testResults {
 				allResults = append(allResults, uiTestResult{
-					TestResult: convertCedarTestResult(tr),
+					TestResult: task.ConvertCedarTestResult(tr),
 					TaskId:     execTaskIDs[i],
 					TaskName:   execTask.DisplayName,
 				})
@@ -978,7 +987,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 		testResults, err := apimodels.GetCedarTestResults(ctx, opts)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"task_id":   taskId,
 				"execution": projCtx.Task.Execution,
 				"message":   "problem getting cedar test results, using evergreen test results",
@@ -988,7 +997,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		if len(testResults) > 0 {
 			for _, tr := range testResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
-					TestResult: convertCedarTestResult(tr),
+					TestResult: task.ConvertCedarTestResult(tr),
 				})
 			}
 		} else {
@@ -1002,17 +1011,5 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		if uiTask.PartOfDisplay {
 			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
 		}
-	}
-}
-
-func convertCedarTestResult(result apimodels.CedarTestResult) task.TestResult {
-	return task.TestResult{
-		TaskID:    result.TaskID,
-		Execution: result.Execution,
-		TestFile:  result.TestName,
-		LineNum:   result.LineNum,
-		StartTime: float64(result.Start.Unix()),
-		EndTime:   float64(result.End.Unix()),
-		Status:    result.Status,
 	}
 }

@@ -2770,3 +2770,17 @@ func (t *Task) SetTaskGroupInfo() error {
 			TaskGroupMaxHostsKey: t.TaskGroupMaxHosts,
 		}}))
 }
+
+// ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
+// struct.
+func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
+	return TestResult{
+		TaskID:    result.TaskID,
+		Execution: result.Execution,
+		TestFile:  result.TestName,
+		LineNum:   result.LineNum,
+		StartTime: float64(result.Start.Unix()),
+		EndTime:   float64(result.End.Unix()),
+		Status:    result.Status,
+	}
+}
