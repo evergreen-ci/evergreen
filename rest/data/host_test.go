@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -407,19 +406,35 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	s.withNewEnvironment(ctx, func() {
+		opts, err := s.conn.GenerateHostProvisioningScript(ctx, "host1")
+		s.Require().NoError(err)
+		s.NotZero(opts.Content)
+		s.NotZero(opts.Directive)
+	})
 
-	opts, err := s.conn.GenerateHostProvisioningScript(ctx, "host1")
-	s.Require().NoError(err)
-	s.NotZero(opts.Content)
-	s.NotZero(opts.Directive)
 }
 
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := mock.Environment{}
-	s.Require().NoError(env.Configure(ctx))
-	opts, err := s.conn.GenerateHostProvisioningScript(ctx, "foo")
-	s.Error(err)
-	s.Zero(opts)
+	s.withNewEnvironment(ctx, func() {
+		opts, err := s.conn.GenerateHostProvisioningScript(ctx, "foo")
+		s.Error(err)
+		s.Zero(opts)
+	})
+}
+
+func (s *HostConnectorSuite) withNewEnvironment(ctx context.Context, testCase func()) {
+	// We have to set the environment temporarily because the suites in this
+	// package drop the database, but some host tests require that host
+	// credentials collection to be bootstrapped with the CA.
+	oldEnv := evergreen.GetEnvironment()
+	defer func() {
+		evergreen.SetEnvironment(oldEnv)
+	}()
+	env := testutil.NewEnvironment(ctx, s.T())
+	evergreen.SetEnvironment(env)
+
+	testCase()
 }
