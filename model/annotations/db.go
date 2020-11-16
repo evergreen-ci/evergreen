@@ -61,15 +61,15 @@ func FindByID(id string) (*TaskAnnotation, error) {
 	return annotation, nil
 }
 
-func FindAnnotationsByTaskIds(ids []string) ([]TaskAnnotation, error) {
+func FindOneByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
+	return FindOne(db.Query(ByTaskIdAndExecution(id, execution)))
+}
+
+func FindByTaskIds(ids []string) ([]TaskAnnotation, error) {
 	return Find(ByTaskIds(ids))
 }
 
-func FindAnnotationByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
-	return FindOne(ByIdAndExecution(id, execution))
-}
-
-func FindAnnotationsByTaskId(id string) ([]TaskAnnotation, error) {
+func FindByTaskId(id string) ([]TaskAnnotation, error) {
 	return Find(ByTaskId(id))
 }
 
@@ -103,11 +103,11 @@ func ByTaskIds(ids []string) db.Q {
 	return db.Query(q)
 }
 
-// ByIdAndExecution returns the query for a given Task Id and execution number
-func ByIdAndExecution(id string, execution int) db.Q {
+// ByTaskIdAndExecution returns the query for a given Task Id and execution number
+func ByTaskIdAndExecution(id string, execution int) bson.M {
 	q := bson.M{
 		TaskIdKey:        id,
 		TaskExecutionKey: execution,
 	}
-	return db.Query(q)
+	return q
 }

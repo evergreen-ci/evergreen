@@ -102,7 +102,7 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 }
 
 func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
-	allAnnotations, err := annotations.FindAnnotationsByTaskIds(taskIds)
+	allAnnotations, err := annotations.FindByTaskIds(taskIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
 	}
@@ -184,7 +184,7 @@ func (h *annotationByTaskHandler) Parse(ctx context.Context, r *http.Request) er
 func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	// get a specific execution
 	if h.execution != -1 {
-		a, err := annotations.FindAnnotationByTaskIdAndExecution(h.taskId, h.execution)
+		a, err := annotations.FindOneByTaskIdAndExecution(h.taskId, h.execution)
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
 		}
@@ -195,7 +195,7 @@ func (h *annotationByTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse([]model.APITaskAnnotation{*taskAnnotation})
 	}
 
-	allAnnotations, err := annotations.FindAnnotationsByTaskId(h.taskId)
+	allAnnotations, err := annotations.FindByTaskId(h.taskId)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
 	}
