@@ -802,7 +802,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	testName := vars["test_name"]
 	taskExecutionsAsString := vars["task_execution"]
 	taskExec, err := strconv.Atoi(taskExecutionsAsString)
-	if err != nil {
+	if logId == "" && err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"task_id":   taskID,
 			"test_name": testName,
