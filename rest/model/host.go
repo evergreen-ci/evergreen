@@ -311,9 +311,9 @@ type APIOffboardUserResults struct {
 	TerminatedVolumes []string `json:"terminated_volumes"`
 }
 
-// APIHostProvisioningScript represents script to provisiong a host that is
-// meant to be executed in a particular environment type.
-type APIHostProvisioningScript struct {
+// APIHostProvisioningScriptOptions represents script to provision a host that
+// is meant to be executed in a particular environment type.
+type APIHostProvisioningScriptOptions struct {
 	Directive string `json:"directive"`
 	Content   string `json:"content"`
 }
@@ -321,7 +321,7 @@ type APIHostProvisioningScript struct {
 // BuildFromService converts from service level structs to an APIHost. It can
 // be called multiple times with different data types, a service layer host and
 // a service layer task, which are each loaded into the data structure.
-func (a *APIHostProvisioningScript) BuildFromService(i interface{}) error {
+func (a *APIHostProvisioningScriptOptions) BuildFromService(i interface{}) error {
 	switch opts := i.(type) {
 	case *userdata.Options:
 		a.Directive = string(opts.Directive)

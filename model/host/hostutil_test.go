@@ -242,8 +242,7 @@ func TestJasperCommands(t *testing.T) {
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
 			require.NoError(t, err)
 
-			markDone, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			markDone := h.MarkUserDataDoneCommands()
 
 			expectedCmds := []string{
 				setupScript,
@@ -313,8 +312,7 @@ func TestJasperCommands(t *testing.T) {
 				})
 			require.NoError(t, err)
 
-			markDone, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			markDone := h.MarkUserDataDoneCommands()
 
 			expectedCmds := []string{
 				setupScript,
@@ -483,8 +481,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"ProvisioningUserDataForAgent": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, h.Insert())
 
-			checkRerun, err := h.CheckUserDataStartedCommand()
-			require.NoError(t, err)
+			checkRerun := h.CheckUserDataStartedCommand()
 
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
@@ -505,8 +502,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
 			require.NoError(t, err)
 
-			markDone, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			markDone := h.MarkUserDataDoneCommands()
 
 			var expectedCmds []string
 			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
@@ -560,8 +556,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 			require.NoError(t, h.Insert())
 
-			checkRerun, err := h.CheckUserDataStartedCommand()
-			require.NoError(t, err)
+			checkRerun := h.CheckUserDataStartedCommand()
 
 			setupUser, err := h.SetupServiceUserCommands()
 			require.NoError(t, err)
@@ -582,8 +577,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
 			require.NoError(t, err)
 
-			markDone, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			markDone := h.MarkUserDataDoneCommands()
 
 			var expectedCmds []string
 			expectedCmds = append(expectedCmds, h.MakeJasperDirsCommand())
@@ -639,11 +633,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
-				"WithoutJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
-					_, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
-					assert.Error(t, err)
-				},
 				"WithJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 					require.NoError(t, err)
@@ -1221,15 +1210,8 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 					"\r\n/root_dir/bin/bash -l -c @'" +
 					"\nmkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started" +
 					"\n'@"
-				cmd, err := h.CheckUserDataStartedCommand()
-				require.NoError(t, err)
+				cmd := h.CheckUserDataStartedCommand()
 				assert.Equal(t, expectedCmd, cmd)
-			},
-			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
-				h.Distro.BootstrapSettings.JasperBinaryDir = ""
-				cmd, err := h.CheckUserDataStartedCommand()
-				assert.Error(t, err)
-				assert.Empty(t, cmd)
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
@@ -1250,16 +1232,10 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 	t.Run("WithNonWindowsHost", func(t *testing.T) {
 		for testName, testCase := range map[string]func(t *testing.T, h *Host){
 			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
-				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
-				cmd, err := h.CheckUserDataStartedCommand()
-				require.NoError(t, err)
+				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit" +
+					" || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
+				cmd := h.CheckUserDataStartedCommand()
 				assert.Equal(t, expectedCmd, cmd)
-			},
-			"FailsWithoutPathToStartFile": func(t *testing.T, h *Host) {
-				h.Distro.BootstrapSettings.JasperBinaryDir = ""
-				cmd, err := h.CheckUserDataStartedCommand()
-				assert.Error(t, err)
-				assert.Empty(t, cmd)
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
@@ -1279,21 +1255,16 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 
 func TestMarkUserDataDoneCommands(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
-		"FailsWithoutPathToDoneFile": func(t *testing.T) {
+		"CreatesExpectedCommand": func(t *testing.T) {
 			h := &Host{
 				Id: "id",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						JasperBinaryDir: "/jasper_binary_dir",
+					},
+				},
 			}
-			cmd, err := h.MarkUserDataDoneCommands()
-			assert.Error(t, err)
-			assert.Empty(t, cmd)
-		},
-		"SucceedsWithPathToDoneFile": func(t *testing.T) {
-			h := &Host{
-				Id:     "id",
-				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{JasperBinaryDir: "/jasper_binary_dir"}},
-			}
-			cmd, err := h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			cmd := h.MarkUserDataDoneCommands()
 			assert.Equal(t, "touch /jasper_binary_dir/user_data_done", cmd)
 		},
 	} {

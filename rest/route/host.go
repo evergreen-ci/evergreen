@@ -544,24 +544,20 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 // GET /hosts/{host_id}/provisioning_script
 
-// kim: TODO: test
 type hostProvisioningScriptGetHandler struct {
 	sc     data.Connector
-	env    evergreen.Environment
 	hostID string
 }
 
-func makeHostProvisioningScriptGetHandler(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostProvisioningScriptGetHandler(sc data.Connector) gimlet.RouteHandler {
 	return &hostProvisioningScriptGetHandler{
-		sc:  sc,
-		env: env,
+		sc: sc,
 	}
 }
 
 func (rh *hostProvisioningScriptGetHandler) Factory() gimlet.RouteHandler {
 	return &hostProvisioningScriptGetHandler{
-		sc:  rh.sc,
-		env: rh.env,
+		sc: rh.sc,
 	}
 }
 
@@ -579,5 +575,12 @@ func (rh *hostProvisioningScriptGetHandler) Run(ctx context.Context) gimlet.Resp
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	return gimlet.NewJSONResponse(opts.Content)
+	apiOpts := model.APIHostProvisioningScriptOptions{}
+	if err := apiOpts.BuildFromService(opts); err != nil {
+		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "failed to build host provisioning script options").Error(),
+		})
+	}
+	return gimlet.NewJSONResponse(apiOpts)
 }

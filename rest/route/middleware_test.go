@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -334,6 +335,66 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestHostAuthMiddleware(t *testing.T) {
+	m := NewHostAuthMiddleware(&data.DBConnector{})
+	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
+		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.Equal(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithInvalidSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{"foo"},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithoutHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		"FailsWithInvalidHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{"foo"},
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
+		// "": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(host.Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(host.Collection))
+			}()
+			h := &host.Host{
+				Id:     "id",
+				Secret: "secret",
+			}
+			require.NoError(t, h.Insert())
+
+			testCase(t, h, httptest.NewRecorder())
+		})
+	}
 }
 
 func TestProjectViewPermission(t *testing.T) {

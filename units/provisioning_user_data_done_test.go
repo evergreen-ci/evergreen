@@ -39,15 +39,6 @@ func TestUserDataDoneJob(t *testing.T) {
 
 			assert.Empty(t, mngr.Procs)
 		},
-		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
-			h.Distro.BootstrapSettings.JasperBinaryDir = ""
-			_, err := h.Upsert()
-			require.NoError(t, err)
-
-			j := NewUserDataDoneJob(env, h.Id, time.Now())
-			j.Run(ctx)
-			assert.Error(t, j.Error())
-		},
 		"RunChecksForPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jmock.Manager, h *host.Host) {
 			j := NewUserDataDoneJob(env, h.Id, time.Now())
 			j.Run(ctx)
@@ -56,8 +47,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Len(t, mngr.Procs, 1)
 			info := mngr.Procs[0].Info(ctx)
 
-			path, err := h.UserDataDoneFile()
-			require.NoError(t, err)
+			path := h.UserDataDoneFile()
 
 			expectedCmd := []string{h.Distro.BootstrapSettings.ShellPath, "-l", "-c", fmt.Sprintf("ls %s", path)}
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))

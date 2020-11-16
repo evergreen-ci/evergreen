@@ -922,3 +922,48 @@ func TestHostFilterGetHandler(t *testing.T) {
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h2", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }
+
+func TestHostProvisioningScriptGetHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, db.Clear(host.Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(host.Collection))
+	}()
+
+	h := host.Host{
+		Id: "host_id",
+		Distro: distro.Distro{
+			Arch: evergreen.ArchLinuxAmd64,
+		},
+	}
+	require.NoError(t, h.Insert())
+
+	t.Run("SucceedsWithValidHostID", func(t *testing.T) {
+		rh := hostProvisioningScriptGetHandler{
+			sc:     &data.DBConnector{},
+			hostID: h.Id,
+		}
+		resp := rh.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		opts, ok := resp.Data().(model.APIHostProvisioningScriptOptions)
+		require.True(t, ok)
+		assert.NotEmpty(t, opts.Directive)
+		assert.NotEmpty(t, opts.Content)
+	})
+	t.Run("FailsWithoutHostID", func(t *testing.T) {
+		rh := hostProvisioningScriptGetHandler{
+			sc: &data.DBConnector{},
+		}
+		resp := rh.Run(ctx)
+		assert.NotEqual(t, http.StatusOK, resp.Status())
+	})
+	t.Run("FailsWithInvalidHostID", func(t *testing.T) {
+		rh := hostProvisioningScriptGetHandler{
+			sc:     &data.DBConnector{},
+			hostID: "foo",
+		}
+		resp := rh.Run(ctx)
+		assert.NotEqual(t, http.StatusOK, resp.Status())
+	})
+}

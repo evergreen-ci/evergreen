@@ -231,7 +231,6 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
-// kim: TODO: test
 type hostAuthMiddleware struct {
 	sc data.Connector
 }

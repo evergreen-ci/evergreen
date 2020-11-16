@@ -189,7 +189,6 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 	return data, nil
 }
 
-// kim: TODO: test
 func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
 	h, err := host.FindOneId(hostID)
 	if err != nil {
@@ -547,7 +546,6 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	return host, nil
 }
 
-// kim: TODO: not sure if this will work well for tests.
 func (hc *MockHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
 	h, err := hc.FindHostById(hostID)
 	if err != nil {

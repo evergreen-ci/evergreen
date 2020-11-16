@@ -11,17 +11,23 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
+func init() {
+	testutil.Setup()
+}
+
 type HostConnectorSuite struct {
-	ctx   Connector
+	conn  Connector
 	setup func(*HostConnectorSuite)
 	suite.Suite
 }
@@ -36,6 +42,7 @@ func (*HostConnectorSuite) hosts() []host.Host {
 			Distro: distro.Distro{
 				Id:      "distro1",
 				Aliases: []string{"alias125"},
+				Arch:    evergreen.ArchLinuxAmd64,
 			},
 			Status:         evergreen.HostRunning,
 			ExpirationTime: time.Now().Add(time.Hour),
@@ -73,7 +80,7 @@ func (*HostConnectorSuite) hosts() []host.Host {
 
 func TestHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
-	s.ctx = &DBConnector{}
+	s.conn = &DBConnector{}
 
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(user.Collection, host.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -126,7 +133,7 @@ func TestMockHostConnectorSuite(t *testing.T) {
 			"create": evergreen.ScopeCollection,
 		}
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-		s.ctx = &MockConnector{
+		s.conn = &MockConnector{
 			MockHostConnector: MockHostConnector{
 				CachedHosts: s.hosts(),
 			},
@@ -184,32 +191,32 @@ func (s *HostConnectorSuite) TearDownSuite() {
 }
 
 func (s *HostConnectorSuite) TestFindByIdFirst() {
-	h, ok := s.ctx.FindHostById("host1")
+	h, ok := s.conn.FindHostById("host1")
 	s.NoError(ok)
 	s.NotNil(h)
 	s.Equal("host1", h.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdLast() {
-	h, ok := s.ctx.FindHostById("host2")
+	h, ok := s.conn.FindHostById("host2")
 	s.NoError(ok)
 	s.NotNil(h)
 	s.Equal("host2", h.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	h, ok := s.ctx.FindHostById("nonexistent")
+	h, ok := s.conn.FindHostById("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostsByDistro() {
-	hosts, err := s.ctx.FindHostsByDistro("distro5")
+	hosts, err := s.conn.FindHostsByDistro("distro5")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = s.ctx.FindHostsByDistro("alias125")
+	hosts, err = s.conn.FindHostsByDistro("alias125")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host5Found bool
@@ -226,7 +233,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	hosts, err := s.ctx.FindHostsById("", "", testUser, 100)
+	hosts, err := s.conn.FindHostsById("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -235,7 +242,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	hosts, err := s.ctx.FindHostsById("", "", "", 100)
+	hosts, err := s.conn.FindHostsById("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -250,14 +257,14 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 }
 
 func (s *HostConnectorSuite) TestLimit() {
-	hosts, err := s.ctx.FindHostsById("", evergreen.HostTerminated, "", 2)
+	hosts, err := s.conn.FindHostsById("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = s.ctx.FindHostsById("", evergreen.HostTerminated, "", 3)
+	hosts, err = s.conn.FindHostsById("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(3, len(hosts))
@@ -326,52 +333,52 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {
-	h, err := s.ctx.FindHostById("host1")
+	h, err := s.conn.FindHostById("host1")
 	s.NoError(err)
-	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
+	s.NoError(s.conn.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
 
 	for i := 1; i < 5; i++ {
-		h, err := s.ctx.FindHostById(fmt.Sprintf("host%d", i))
+		h, err := s.conn.FindHostById(fmt.Sprintf("host%d", i))
 		s.NoError(err)
 		s.Equal(evergreen.HostTerminated, h.Status)
 	}
 }
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
-	h, err := s.ctx.FindHostById("host1")
+	h, err := s.conn.FindHostById("host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(s.ctx.SetHostExpirationTime(h, expectedTime))
+	s.NoError(s.conn.SetHostExpirationTime(h, expectedTime))
 
-	hCheck, err := s.ctx.FindHostById("host1")
+	hCheck, err := s.conn.FindHostById("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
-	u, err := s.ctx.FindUserById(testUser)
+	u, err := s.conn.FindUserById(testUser)
 	s.NoError(err)
 
-	h, err := s.ctx.FindHostByIdWithOwner("host1", u)
+	h, err := s.conn.FindHostByIdWithOwner("host1", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
-	u, err := s.ctx.FindUserById(testUser)
+	u, err := s.conn.FindUserById(testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
-	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	h, err := s.conn.FindHostByIdWithOwner("host2", u)
 	s.Error(err)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
-	u, err := s.ctx.FindUserById("root")
+	u, err := s.conn.FindUserById("root")
 	s.NoError(err)
 
-	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	h, err := s.conn.FindHostByIdWithOwner("host2", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
@@ -383,16 +390,36 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 		},
 	}
 
-	code, err := s.ctx.CheckHostSecret("", r)
+	code, err := s.conn.CheckHostSecret("", r)
 	s.Error(err)
 	s.Equal(http.StatusBadRequest, code)
 
 	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
-	code, err = s.ctx.CheckHostSecret("host1", r)
+	code, err = s.conn.CheckHostSecret("host1", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 
-	code, err = s.ctx.CheckHostSecret("", r)
+	code, err = s.conn.CheckHostSecret("", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
+}
+
+func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	opts, err := s.conn.GenerateHostProvisioningScript(ctx, "host1")
+	s.Require().NoError(err)
+	s.NotZero(opts.Content)
+	s.NotZero(opts.Directive)
+}
+
+func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := mock.Environment{}
+	s.Require().NoError(env.Configure(ctx))
+	opts, err := s.conn.GenerateHostProvisioningScript(ctx, "foo")
+	s.Error(err)
+	s.Zero(opts)
 }

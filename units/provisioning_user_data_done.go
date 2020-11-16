@@ -74,17 +74,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	path, err := j.host.UserDataDoneFile()
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting user data done file path",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		}))
-		j.AddError(err)
-		return
-	}
+	path := j.host.UserDataDoneFile()
 
 	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 		Args: []string{
