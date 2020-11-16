@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -36,8 +37,9 @@ type APIHost struct {
 	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
 }
 
-// HostPostRequest is a struct that holds the format of a POST request to /hosts
-// the yaml tags are used by hostCreate() when parsing the params from a file
+// HostRequestOptions is a struct that holds the format of a POST request to
+// /hosts the yaml tags are used by hostCreate() when parsing the params from a
+// file
 type HostRequestOptions struct {
 	DistroID              string     `json:"distro" yaml:"distro"`
 	TaskID                string     `json:"task" yaml:"task"`
@@ -307,4 +309,25 @@ type APIHostParams struct {
 type APIOffboardUserResults struct {
 	TerminatedHosts   []string `json:"terminated_hosts"`
 	TerminatedVolumes []string `json:"terminated_volumes"`
+}
+
+// APIHostProvisioningScript represents script to provisiong a host that is
+// meant to be executed in a particular environment type.
+type APIHostProvisioningScript struct {
+	Directive string `json:"directive"`
+	Content   string `json:"content"`
+}
+
+// BuildFromService converts from service level structs to an APIHost. It can
+// be called multiple times with different data types, a service layer host and
+// a service layer task, which are each loaded into the data structure.
+func (a *APIHostProvisioningScript) BuildFromService(i interface{}) error {
+	switch opts := i.(type) {
+	case *userdata.Options:
+		a.Directive = string(opts.Directive)
+		a.Content = opts.Content
+		return nil
+	default:
+		return errors.Errorf("invalid type %T, expected user data options", i)
+	}
 }

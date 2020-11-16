@@ -741,7 +741,7 @@ func TestExtractPersistTags(t *testing.T) {
 }
 
 func TestMakeMultipartUserData(t *testing.T) {
-	populatedUserData, err := NewUserData(userdata.Options{
+	populatedUserData, err := newUserData(userdata.Options{
 		Directive: userdata.ShellScript + "/bin/bash",
 		Content:   "echo foo",
 	})
@@ -783,7 +783,7 @@ func TestWriteUserDataPart(t *testing.T) {
 		boundary := "some_boundary"
 		require.NoError(t, mimeWriter.SetBoundary(boundary))
 
-		userData, err := NewUserData(userdata.Options{
+		userData, err := newUserData(userdata.Options{
 			Directive: userdata.ShellScript + "/bin/bash",
 			Content:   "echo foo",
 		})
@@ -822,7 +822,7 @@ func TestWriteUserDataPart(t *testing.T) {
 	t.Run("FailsForEmptyFileName", func(t *testing.T) {
 		buf := &bytes.Buffer{}
 		mimeWriter := multipart.NewWriter(buf)
-		userData, err := NewUserData(userdata.Options{
+		userData, err := newUserData(userdata.Options{
 			Directive: userdata.ShellScript + "/bin/bash",
 			Content:   "echo foo",
 		})

@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -186,6 +187,40 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 		return nil, errors.Wrap(err, "error getting spawn host data")
 	}
 	return data, nil
+}
+
+// kim: TODO: test
+func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
+	h, err := host.FindOneId(hostID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "finding host with ID '%s'", hostID).Error(),
+		}
+	}
+	if h == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
+		}
+	}
+
+	env := evergreen.GetEnvironment()
+	creds, err := h.GenerateJasperCredentials(ctx, env)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
+		}
+	}
+	opts, err := h.ProvisioningUserData(env.Settings(), creds)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "generating host provisioning script").Error(),
+		}
+	}
+	return opts, nil
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -397,7 +432,7 @@ func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User)
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
-func (hc *MockConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
+func (hc *MockHostConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
 	for _, v := range hc.CachedVolumes {
 		if v.ID == volumeID {
 			return &v, nil
@@ -406,7 +441,7 @@ func (hc *MockConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
 	return nil, nil
 }
 
-func (hc *MockConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
+func (hc *MockHostConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
 	vols := []host.Volume{}
 	for _, v := range hc.CachedVolumes {
 		if v.CreatedBy == user {
@@ -416,7 +451,7 @@ func (hc *MockConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
 	return vols, nil
 }
 
-func (hc *MockConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
+func (hc *MockHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
 	for _, h := range hc.CachedHosts {
 		for _, v := range h.Volumes {
 			if v.VolumeID == volumeID {
@@ -427,7 +462,7 @@ func (hc *MockConnector) FindHostWithVolume(volumeID string) (*host.Host, error)
 	return nil, nil
 }
 
-func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
+func (hc *MockHostConnector) SetVolumeName(volume *host.Volume, name string) error {
 	for i := range hc.CachedVolumes {
 		if hc.CachedVolumes[i].ID == volume.ID {
 			hc.CachedVolumes[i].DisplayName = name
@@ -436,15 +471,15 @@ func (hc *MockConnector) SetVolumeName(volume *host.Volume, name string) error {
 	return nil
 }
 
-func (hc *MockConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
+func (hc *MockHostConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
 	return nil, nil, 0, nil
 }
 
-func (hc *MockConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+func (hc *MockHostConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
 	return nil, nil
 }
 
-func (hc *MockConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
+func (hc *MockHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
 	data := host.SpawnHostUsage{}
 	usersWithHosts := map[string]bool{} // set for existing users
 	data.InstanceTypes = map[string]int{}
@@ -510,4 +545,19 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	}
 
 	return host, nil
+}
+
+// kim: TODO: not sure if this will work well for tests.
+func (hc *MockHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
+	h, err := hc.FindHostById(hostID)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding host by ID")
+	}
+	if h == nil {
+		return nil, errors.Errorf("host with id '%s' not found", hostID)
+	}
+	return &userdata.Options{
+		Directive: userdata.ShellScript + "/bin/bash",
+		Content:   fmt.Sprintf("echo hello world %s", hostID),
+	}, nil
 }

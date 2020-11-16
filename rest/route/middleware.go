@@ -231,6 +231,39 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
+// kim: TODO: test
+type hostAuthMiddleware struct {
+	sc data.Connector
+}
+
+// NewHostAuthMiddleware returns a route middleware that verifies the request's
+// host ID and secret.
+func NewHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &hostAuthMiddleware{sc: sc}
+}
+
+func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	hostID, ok := gimlet.GetVars(r)["host_id"]
+	if !ok {
+		hostID = r.Header.Get(evergreen.HostHeader)
+		if hostID == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "missing host ID",
+			}))
+			return
+		}
+	}
+	if statusCode, err := m.sc.CheckHostSecret(hostID, r); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: statusCode,
+			Message:    err.Error(),
+		}))
+		return
+	}
+	next(rw, r)
+}
+
 func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskAuthMiddleware{
 		sc: sc,

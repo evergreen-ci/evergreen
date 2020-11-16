@@ -541,3 +541,43 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return resp
 }
+
+// GET /hosts/{host_id}/provisioning_script
+
+// kim: TODO: test
+type hostProvisioningScriptGetHandler struct {
+	sc     data.Connector
+	env    evergreen.Environment
+	hostID string
+}
+
+func makeHostProvisioningScriptGetHandler(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &hostProvisioningScriptGetHandler{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (rh *hostProvisioningScriptGetHandler) Factory() gimlet.RouteHandler {
+	return &hostProvisioningScriptGetHandler{
+		sc:  rh.sc,
+		env: rh.env,
+	}
+}
+
+func (rh *hostProvisioningScriptGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	hostID := gimlet.GetVars(r)["host_id"]
+	if hostID == "" {
+		return errors.New("missing host ID")
+	}
+	rh.hostID = hostID
+	return nil
+}
+
+func (rh *hostProvisioningScriptGetHandler) Run(ctx context.Context) gimlet.Responder {
+	opts, err := rh.sc.GenerateHostProvisioningScript(ctx, rh.hostID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	return gimlet.NewJSONResponse(opts.Content)
+}
