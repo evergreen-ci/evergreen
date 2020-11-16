@@ -88,7 +88,6 @@ func MoveSuspectedIssueToIssue(taskId string, execution int, issue IssueLink, us
 	)
 }
 
-// AddIssueToAnnotation is used to add an issue via the UI
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
 	return errors.Wrapf(addIssueToAnnotationByType(taskId, execution, issue, username, IssuesKey),
 		"problem adding task annotation issue for task '%s'", taskId)
