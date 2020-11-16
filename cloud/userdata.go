@@ -25,7 +25,8 @@ type userData struct {
 	userdata.Options
 }
 
-func NewUserData(opts userdata.Options) (*userData, error) {
+// newUserData creates a single userData part from the given options.
+func newUserData(opts userdata.Options) (*userData, error) {
 	u := userData{
 		Options: opts,
 	}
@@ -43,7 +44,7 @@ func (u *userData) merge(other *userData) (*userData, error) {
 			u.Directive, other.Directive)
 	}
 
-	return NewUserData(userdata.Options{
+	return newUserData(userdata.Options{
 		Directive: u.Directive,
 		Content:   strings.Join([]string{u.Content, other.Content}, "\n"),
 		Persist:   u.Persist || other.Persist,
@@ -88,7 +89,7 @@ func parseUserData(userData string) (*userData, error) {
 		}
 	}
 
-	return NewUserData(userdata.Options{
+	return newUserData(userdata.Options{
 		Directive: directive,
 		Content:   userData,
 		Persist:   persist,
@@ -257,7 +258,7 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 	if err != nil {
 		return "", errors.Wrap(err, "could not generate user data for provisioning host")
 	}
-	provision, err := NewUserData(*provisionOpts)
+	provision, err := newUserData(*provisionOpts)
 	if err != nil {
 		return "", errors.Wrap(err, "could not create user data for provisioning from options")
 	}

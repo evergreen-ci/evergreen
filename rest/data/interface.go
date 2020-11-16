@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -162,6 +163,10 @@ type Connector interface {
 
 	// Find a host by ID and queries for full running task
 	GetHostByIdWithTask(hostID string) (*host.Host, error)
+
+	// GenerateHostProvisioningScript generates and returns the script to
+	// provision the host given by host ID.
+	GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
