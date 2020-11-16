@@ -117,3 +117,39 @@ func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 	assert.Len(t, annotationFromDB.SuspectedIssues, 1)
 	assert.Equal(t, "not.annie.black", annotationFromDB.SuspectedIssues[0].Source.Author)
 }
+
+func TestMoveIssueToSuspectedIssue(t *testing.T) {
+	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "this will be overridden"}}
+	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "evergreen user"}}
+	assert.NoError(t, db.Clear(Collection))
+	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue2}}
+	assert.NoError(t, a.Insert())
+
+	assert.NoError(t, MoveIssueToSuspectedIssue("t1", 0, issue1, "someone new"))
+	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotationFromDB)
+	assert.Len(t, annotationFromDB.Issues, 1)
+	assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
+	assert.Len(t, annotationFromDB.SuspectedIssues, 2)
+	assert.Equal(t, "evergreen user", annotationFromDB.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
+}
+
+func TestMoveSuspectedIssueToIssue(t *testing.T) {
+	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "this will be overridden"}}
+	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "evergreen user"}}
+	assert.NoError(t, db.Clear(Collection))
+	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue2}}
+	assert.NoError(t, a.Insert())
+
+	assert.NoError(t, MoveSuspectedIssueToIssue("t1", 0, issue1, "someone new"))
+	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotationFromDB)
+	assert.Len(t, annotationFromDB.SuspectedIssues, 1)
+	assert.Equal(t, "evergreen user", annotationFromDB.SuspectedIssues[0].Source.Author)
+	assert.Len(t, annotationFromDB.Issues, 2)
+	assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
+	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
+}

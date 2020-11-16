@@ -64,6 +64,30 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	return res
 }
 
+func MoveIssueToSuspectedIssue(taskId string, execution int, issue IssueLink, username string) error {
+	newIssue := issue
+	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
+	return db.Update(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$pull": bson.M{IssuesKey: issue},
+			"$push": bson.M{SuspectedIssuesKey: newIssue}},
+	)
+}
+
+func MoveSuspectedIssueToIssue(taskId string, execution int, issue IssueLink, username string) error {
+	newIssue := issue
+	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
+	return db.Update(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$pull": bson.M{SuspectedIssuesKey: issue},
+			"$push": bson.M{IssuesKey: newIssue}},
+	)
+}
+
 // AddIssueToAnnotation is used to add an issue via the UI
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
 	return errors.Wrapf(addIssueToAnnotationByType(taskId, execution, issue, username, IssuesKey),
