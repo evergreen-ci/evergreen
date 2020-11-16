@@ -1768,12 +1768,15 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	if u != nil && u.HasPermission(permissions) {
+	if u == nil {
+		return false, nil
+	}
+	if u.HasPermission(permissions) {
 		return true, nil
 	}
 
 	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      existingPatch.ProjectId,
+		Resource:      restModel.FromStringPtr(existingPatch.ProjectId),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,

@@ -792,7 +792,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 	}
 }
 
-func GetRepoScope(repoId) string {
+func GetRepoScope(repoId string) string {
 	return fmt.Sprintf("repo_%s", repoId)
 }
 
