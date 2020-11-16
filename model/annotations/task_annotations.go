@@ -89,13 +89,37 @@ func MoveSuspectedIssueToIssue(taskId string, execution int, issue IssueLink, us
 }
 
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
-	return errors.Wrapf(addIssueToAnnotationByType(taskId, execution, issue, username, IssuesKey),
-		"problem adding task annotation issue for task '%s'", taskId)
+	issue.Source = &Source{
+		Author:    username,
+		Time:      time.Now(),
+		Requester: UIRequester,
+	}
+
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$push": bson.M{IssuesKey: issue},
+		},
+	)
+	return errors.Wrapf(err, "problem adding task annotation issue for task '%s'", taskId)
 }
 
 func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
-	return errors.Wrapf(addIssueToAnnotationByType(taskId, execution, issue, username, SuspectedIssuesKey),
-		"problem adding task annotation suspected issue for task '%s'", taskId)
+	issue.Source = &Source{
+		Author:    username,
+		Time:      time.Now(),
+		Requester: UIRequester,
+	}
+
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$push": bson.M{SuspectedIssuesKey: issue},
+		},
+	)
+	return errors.Wrapf(err, "problem adding task annotation suspected issue for task '%s'", taskId)
 }
 
 func RemoveIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
@@ -112,30 +136,4 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
 	)
-}
-
-func addIssueToAnnotationByType(taskId string, execution int, issue IssueLink, username, key string) error {
-	issue.Source = &Source{
-		Author:    username,
-		Time:      time.Now(),
-		Requester: UIRequester,
-	}
-
-	existingAnnotation, err := FindOneByTaskIdAndExecution(taskId, execution)
-	if err != nil {
-		return errors.Wrap(err, "error getting task annotation")
-	}
-	if existingAnnotation == nil {
-		newAnnotation := newTaskAnnotation(taskId, execution)
-		if key == IssuesKey {
-			newAnnotation.Issues = []IssueLink{issue}
-		} else {
-			newAnnotation.SuspectedIssues = []IssueLink{issue}
-		}
-		return newAnnotation.Insert()
-	}
-
-	return db.UpdateId(Collection, existingAnnotation.Id, bson.M{
-		"$push": bson.M{key: issue},
-	})
 }
