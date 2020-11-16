@@ -95,6 +95,9 @@ func TestPrefetchProject(t *testing.T) {
 
 func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -106,6 +109,14 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 		Branch:  "master",
 		Admins:  []string{"johnny.appleseed"},
 	}
+	adminRole := gimlet.Role{
+		ID:          "r1",
+		Scope:       "orchard",
+		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+	}
+	assert.NoError(env.RoleManager().UpdateRole(adminRole))
+	adminScope := gimlet.Scope{ID: "orchard", Resources: []string{"orchard"}, Type: evergreen.ProjectResourceType}
+	assert.NoError(env.RoleManager().AddScope(adminScope))
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
 	r, err := http.NewRequest("GET", "/projects/orchard", nil)
@@ -121,7 +132,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusUnauthorized, rw.Code)
 
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "johnny.appleseed"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "johnny.appleseed", SystemRoles: []string{"r1"}})
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
 	rw = httptest.NewRecorder()
