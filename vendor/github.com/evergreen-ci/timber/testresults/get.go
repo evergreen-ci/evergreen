@@ -21,9 +21,11 @@ func GetTestResults(ctx context.Context, opts timber.GetOptions) ([]byte, error)
 		return nil, errors.New("must provide a task id when requesting test results")
 	}
 
-	url := fmt.Sprintf("%s/rest/v1/testresults/test_name/%s", opts.BaseURL, opts.TaskID)
-	if opts.TestName != "" {
-		url += fmt.Sprintf("/%s", opts.TestName)
+	var url string
+	if opts.TestName == "" {
+		url = fmt.Sprintf("%s/rest/v1/test_results/task_id/%s", opts.BaseURL, opts.TaskID)
+	} else {
+		url = fmt.Sprintf("%s/rest/v1/test_results/test_name/%s/%s", opts.BaseURL, opts.TaskID, opts.TestName)
 	}
 	url += fmt.Sprintf("?execution=%d", opts.Execution)
 
