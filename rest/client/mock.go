@@ -200,6 +200,10 @@ func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
 
+func (c *Mock) ListPatchTriggerAliases(ctx context.Context, project string) ([]string, error) {
+	return nil, errors.New("(c *Mock) ListPatchTriggerAliases not implemented")
+}
+
 func (c *Mock) GetParameters(context.Context, string) ([]serviceModel.ParameterInfo, error) {
 	return nil, errors.New("(c *Mock) GetParameters not implemented")
 }

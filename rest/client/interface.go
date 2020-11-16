@@ -80,6 +80,7 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
+	ListPatchTriggerAliases(context.Context, string) ([]string, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
 	// Get parameters for project
