@@ -105,10 +105,6 @@ func makeHostProvisioningScriptFile(workingDir, content string) (string, error) 
 }
 
 func hostProvisioningCommand(directive, scriptPath string) (*jasper.Command, error) {
-	// kim: NOTE: I have some doubts about the PowerShell quoted strings in the
-	// script. I wrote the shell quoting and string buffering hacks specifically
-	// for user data, but I'm unsure if it'll behave the exact same way when
-	// invoked with powershell like this.
 	if directive == string(userdata.PowerShellScript) {
 		return jasper.NewCommand().AppendArgs("powershell", scriptPath), nil
 	}
