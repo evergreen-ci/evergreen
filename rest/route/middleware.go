@@ -247,7 +247,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		hostID = r.Header.Get(evergreen.HostHeader)
 		if hostID == "" {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
+				StatusCode: http.StatusBadRequest,
 				Message:    "missing host ID",
 			}))
 			return
