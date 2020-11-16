@@ -76,15 +76,17 @@ func isValidPath(path string) bool {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost      string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost       string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey             string              `json:"api_key" yaml:"api_key,omitempty"`
-	User               string              `json:"user" yaml:"user,omitempty"`
-	UncommittedChanges bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
-	PreserveCommits    bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
-	Projects           []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	Admin              ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
-	LoadedFrom         string              `json:"-" yaml:"-"`
+	APIServerHost         string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
+	User                  string              `json:"user" yaml:"user,omitempty"`
+	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
+	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
+	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
+	LoadedFrom            string              `json:"-" yaml:"-"`
+	DontSetDefaultProject bool                `json:"dont_set_default_project" yaml:"dont_set_default_project"`
+	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -210,10 +212,20 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	return ac, rc, nil
 }
 
-func (s *ClientSettings) FindDefaultProject() string {
-	for _, p := range s.Projects {
-		if p.Default {
-			return p.Name
+func (s *ClientSettings) FindDefaultProject(useRoot bool) string {
+	cwd, err := os.Getwd()
+	grip.Error(errors.Wrap(err, "unable to get current working directory"))
+	cwd, err = filepath.EvalSymlinks(cwd)
+	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+	if project, exists := s.ProjectsForDirectory[cwd]; exists {
+		return project
+	}
+
+	if useRoot {
+		for _, p := range s.Projects {
+			if p.Default {
+				return p.Name
+			}
 		}
 	}
 	return ""
@@ -235,7 +247,6 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
@@ -302,7 +313,6 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
@@ -328,7 +338,6 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
@@ -338,24 +347,28 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(name string) {
-	var foundDefault bool
-	for i, p := range s.Projects {
-		if p.Name == name {
-			s.Projects[i].Default = true
-			foundDefault = true
-		} else {
-			s.Projects[i].Default = false
-		}
+func (s *ClientSettings) SetDefaultProject(project string) {
+	if s.DontSetDefaultProject {
+		return
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		grip.Error(errors.Wrap(err, "unable to get current working directory"))
+		return
+	}
+	cwd, err = filepath.EvalSymlinks(cwd)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "unable to evaluate symlinks"))
+		return
 	}
 
-	if !foundDefault {
-		s.Projects = append(s.Projects, ClientProjectConf{
-			Name:     name,
-			Default:  true,
-			Alias:    "",
-			Variants: []string{},
-			Tasks:    []string{},
-		})
+	_, found := s.ProjectsForDirectory[cwd]
+	if found {
+		return
 	}
+	if s.ProjectsForDirectory == nil {
+		s.ProjectsForDirectory = map[string]string{}
+	}
+	s.ProjectsForDirectory[cwd] = project
+	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'dont_set_default_project' to true.", project, cwd)
 }

@@ -250,25 +250,25 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
 	if p.Project == "" {
-		p.Project = conf.FindDefaultProject()
-	} else {
-		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
-			conf.SetDefaultProject(p.Project)
-			if err := conf.Write(""); err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"message": "failed to set default project",
-					"project": p.Project,
-				}))
-			}
-		}
+		p.Project = conf.FindDefaultProject(true)
 	}
-
 	if p.Project == "" {
 		return errors.New("Need to specify a project")
 	}
 
 	return nil
+}
+
+func (p *patchParams) setDefaultProject(conf *ClientSettings) {
+	if conf.FindDefaultProject(false) == "" {
+		conf.SetDefaultProject(p.Project)
+		if err := conf.Write(""); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "failed to set default project",
+				"project": p.Project,
+			}))
+		}
+	}
 }
 
 // Sets the patch's alias to either the passed in option or the default

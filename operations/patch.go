@@ -154,7 +154,11 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			return params.displayPatch(conf, newPatch)
+			if err = params.displayPatch(conf, newPatch); err != nil {
+				grip.Error(err)
+			}
+			params.setDefaultProject(conf)
+			return nil
 		},
 	}
 }

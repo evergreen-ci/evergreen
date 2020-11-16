@@ -583,6 +583,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	}
 
 	p.id = patch.Id.Hex()
+	patchParams.setDefaultProject(conf)
 
 	return nil
 }
