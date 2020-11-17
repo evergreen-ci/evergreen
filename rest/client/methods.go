@@ -1510,3 +1510,29 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 
 	return urls, nil
 }
+
+func (c *communicatorImpl) GetHostProvisioningScript(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningScriptOptions, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("/hosts/%s/provisioning_script", hostID),
+	}
+	r, err := c.createRequest(info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create request")
+	}
+	r.Header.Add(evergreen.HostHeader, hostID)
+	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
+	resp, err := c.doRequest(ctx, r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not make request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, respErrorf(resp, "received error response")
+	}
+	var opts restmodel.APIHostProvisioningScriptOptions
+	if err = utility.ReadJSON(resp.Body, &opts); err != nil {
+		return nil, errors.Wrap(err, "reading response")
+	}
+	return &opts, nil
+}
