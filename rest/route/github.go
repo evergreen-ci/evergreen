@@ -144,6 +144,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"ref":       *event.PullRequest.Base.Ref,
 				"pr_number": *event.PullRequest.Number,
 				"hash":      *event.PullRequest.Head.SHA,
+				"user":      *event.Sender.Login,
 				"message":   "pr accepted, attempting to queue",
 			})
 			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin()); err != nil {
@@ -155,6 +156,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.PullRequest.Base.Repo.FullName,
 					"ref":       *event.PullRequest.Base.Ref,
 					"pr_number": *event.PullRequest.Number,
+					"user":      *event.Sender.Login,
 					"message":   "can't add intent",
 				}))
 				return gimlet.NewJSONErrorResponse(err)
