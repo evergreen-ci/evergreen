@@ -146,7 +146,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"hash":      *event.PullRequest.Head.SHA,
 				"message":   "pr accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(event.PullRequest); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -250,7 +250,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "retry triggered",
 				})
-				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber()); err != nil {
+				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Sender.GetLogin(), event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "github hook",
 						"msg_id":    gh.msgID,
@@ -290,7 +290,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, prNumber int) error {
+func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo, initiator string, prNumber int) error {
 	settings, err := gh.sc.GetEvergreenSettings()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
@@ -305,11 +305,11 @@ func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, p
 		return errors.Wrapf(err, "can't get PR for repo %s:%s, PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(pr)
+	return gh.AddIntentForPR(pr, initiator)
 }
 
-func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest) error {
-	ghi, err := patch.NewGithubIntent(gh.msgID, pr)
+func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner string) error {
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, pr)
 	if err != nil {
 		return errors.Wrap(err, "failed to create intent")
 	}
