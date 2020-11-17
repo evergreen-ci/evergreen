@@ -666,8 +666,12 @@ var (
 		Description: "No project settings permissions",
 		Value:       0,
 	}
+	TasksAnnotation = PermissionLevel{
+		Description: "Full task and annotation permissions",
+		Value:       35,
+	}
 	TasksAdmin = PermissionLevel{
-		Description: "Full tasks permissions",
+		Description: "Full tasks permissions, not able to modify annotations",
 		Value:       30,
 	}
 	TasksBasic = PermissionLevel{
@@ -759,6 +763,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 		}
 	case PermissionTasks:
 		return []PermissionLevel{
+			TasksAnnotation,
 			TasksAdmin,
 			TasksBasic,
 			TasksView,

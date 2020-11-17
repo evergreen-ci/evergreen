@@ -39,6 +39,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editRoles := RequiresSuperUserPermission(evergreen.PermissionRoleModify, evergreen.RoleModify)
 	viewTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	editTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
+	// editAnnotations := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksAnnotation)
 	submitPatches := RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
