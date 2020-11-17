@@ -219,6 +219,12 @@ func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, h
 			Message:    errors.Wrap(err, "generating host provisioning script").Error(),
 		}
 	}
+	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "saving Jasper credentials").Error(),
+		}
+	}
 	return opts, nil
 }
 
