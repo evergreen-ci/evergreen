@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -790,10 +789,6 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 	default:
 		return []PermissionLevel{}
 	}
-}
-
-func GetRepoScope(repoId string) string {
-	return fmt.Sprintf("repo_%s", repoId)
 }
 
 // If adding a new type of permissions, i.e. a new array of permission keys, then you must:

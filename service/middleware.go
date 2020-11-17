@@ -382,7 +382,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	}
 
 	// Build a model.Context using the data available.
-	ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
+	ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId, "")
 	pc.Context = ctx
 	if err != nil {
 		return pc, err

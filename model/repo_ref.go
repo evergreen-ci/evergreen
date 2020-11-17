@@ -28,7 +28,6 @@ var (
 	RepoRefRepoKey                = bsonutil.MustHaveTag(RepoRef{}, "Repo")
 	RepoRefEnabledKey             = bsonutil.MustHaveTag(RepoRef{}, "Enabled")
 	RepoRefPrivateKey             = bsonutil.MustHaveTag(RepoRef{}, "Private")
-	RepoRefRestrictedKey          = bsonutil.MustHaveTag(RepoRef{}, "Restricted")
 	RepoRefDisplayNameKey         = bsonutil.MustHaveTag(RepoRef{}, "DisplayName")
 	RepoRefRemotePathKey          = bsonutil.MustHaveTag(RepoRef{}, "RemotePath")
 	RepoRefAdminsKey              = bsonutil.MustHaveTag(RepoRef{}, "Admins")
@@ -39,43 +38,50 @@ var (
 	RepoRefSpawnHostScriptPathKey = bsonutil.MustHaveTag(RepoRef{}, "SpawnHostScriptPath")
 )
 
-func (RepoRef *RepoRef) Insert() error {
-	return db.Insert(RepoRefCollection, RepoRef)
+func (r *RepoRef) Add(creator *user.DBUser) error {
+	err := db.Insert(RepoRefCollection, r)
+	if err != nil {
+		return errors.Wrap(err, "Error inserting distro")
+	}
+	return r.AddPermissions(creator)
 }
 
-func (RepoRef *RepoRef) Update() error {
+func (r *RepoRef) Insert() error {
+	return db.Insert(RepoRefCollection, r)
+}
+
+func (r *RepoRef) Update() error {
 	return db.Update(
 		RepoRefCollection,
 		bson.M{
-			RepoRefIdKey: RepoRef.Id,
+			RepoRefIdKey: r.Id,
 		},
-		RepoRef,
+		r,
 	)
 }
 
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created
-func (RepoRef *RepoRef) Upsert() error {
+func (r *RepoRef) Upsert() error {
 	_, err := db.Upsert(
 		RepoRefCollection,
 		bson.M{
-			RepoRefIdKey: RepoRef.Id,
+			RepoRefIdKey: r.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				RepoRefEnabledKey:             RepoRef.Enabled,
-				RepoRefPrivateKey:             RepoRef.Private,
-				RepoRefRestrictedKey:          RepoRef.Restricted,
-				RepoRefOwnerKey:               RepoRef.Owner,
-				RepoRefRepoKey:                RepoRef.Repo,
-				RepoRefDisplayNameKey:         RepoRef.DisplayName,
-				RepoRefRemotePathKey:          RepoRef.RemotePath,
-				RepoRefAdminsKey:              RepoRef.Admins,
-				RepoRefPRTestingEnabledKey:    RepoRef.PRTestingEnabled,
-				RepoRefPatchingDisabledKey:    RepoRef.PatchingDisabled,
-				RepoRefRepotrackerDisabledKey: RepoRef.RepotrackerDisabled,
-				RepoRefDispatchingDisabledKey: RepoRef.DispatchingDisabled,
-				RepoRefSpawnHostScriptPathKey: RepoRef.SpawnHostScriptPath,
+				RepoRefEnabledKey:             r.Enabled,
+				RepoRefPrivateKey:             r.Private,
+				RepoRefOwnerKey:               r.Owner,
+				RepoRefRepoKey:                r.Repo,
+				RepoRefDisplayNameKey:         r.DisplayName,
+				RepoRefRemotePathKey:          r.RemotePath,
+				RepoRefAdminsKey:              r.Admins,
+				RepoRefPRTestingEnabledKey:    r.PRTestingEnabled,
+				RepoRefPatchingDisabledKey:    r.PatchingDisabled,
+				RepoRefRepotrackerDisabledKey: r.RepotrackerDisabled,
+				RepoRefDispatchingDisabledKey: r.DispatchingDisabled,
+				RepoRefSpawnHostScriptPathKey: r.SpawnHostScriptPath,
 			},
 		},
 	)
@@ -112,24 +118,19 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 
-	parentScope := evergreen.AllProjectsScope
-	if !r.Restricted {
-		parentScope = evergreen.UnrestrictedProjectsScope
-	}
-
 	newScope := gimlet.Scope{
-		ID:          evergreen.GetRepoScope(r.Id),
+		ID:          GetRepoScope(r.Id),
 		Resources:   []string{r.Id},
 		Name:        r.Id,
 		Type:        evergreen.ProjectResourceType,
-		ParentScope: parentScope,
+		ParentScope: evergreen.UnrestrictedProjectsScope,
 	}
 	if err := rm.AddScope(newScope); err != nil {
 		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
 	}
 
 	newRole := gimlet.Role{
-		ID:          fmt.Sprintf("admin_repo_%s", r.Id),
+		ID:          GetRepoRole(r.Id),
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
 	}
@@ -145,4 +146,12 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 		}
 	}
 	return nil
+}
+
+func GetRepoScope(repoId string) string {
+	return fmt.Sprintf("repo_%s", repoId)
+}
+
+func GetRepoRole(repoId string) string {
+	return fmt.Sprintf("admin_repo_%s", repoId)
 }

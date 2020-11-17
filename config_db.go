@@ -91,7 +91,6 @@ var (
 	backgroundReauthDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	amboyRemoteManagementDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRemoteManagementDisabled")
-	projectsTrackBranchesDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ProjectsTrackBranchesDisabled")
 
 	// AuthConfig keys
 	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")

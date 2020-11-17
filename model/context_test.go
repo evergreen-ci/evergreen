@@ -28,12 +28,12 @@ func TestLoadContext(t *testing.T) {
 	assert.NoError(oldTask.Archive())
 
 	// test that current tasks are loaded correctly
-	ctx, err := LoadContext(newTask.Id, "", "", "", myProject.Id)
+	ctx, err := LoadContext(newTask.Id, "", "", "", myProject.Id, "")
 	assert.NoError(err)
 	assert.Equal(newTask.Id, ctx.Task.Id)
 
 	// test that old tasks are loaded correctly
-	ctx, err = LoadContext(oldTask.Id, "", "", "", myProject.Id)
+	ctx, err = LoadContext(oldTask.Id, "", "", "", myProject.Id, "")
 	assert.NoError(err)
 	assert.Equal(oldTask.Id, ctx.Task.Id)
 }

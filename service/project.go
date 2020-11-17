@@ -226,6 +226,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams"`
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
+		UseRepoSettings         bool                           `json:"use_repo_settings"`
 		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled        bool                           `json:"patching_disabled"`
@@ -473,6 +474,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
+	projectRef.UseRepoSettings = responseRef.UseRepoSettings
 	projectRef.Id = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
@@ -649,6 +651,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			err = projectRef.MakeRestricted()
 		} else {
 			err = projectRef.MakeUnrestricted()
+		}
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+	if origProjectRef.UseRepoSettings != projectRef.UseRepoSettings {
+		if projectRef.UseRepoSettings {
+			err = projectRef.AddToRepoScope(ctx, dbUser)
+		} else {
+			err = projectRef.RemoveFromRepoScope()
 		}
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)

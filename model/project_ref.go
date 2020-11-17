@@ -46,7 +46,6 @@ type ProjectRef struct {
 	RepotrackerDisabled bool   `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
 	DispatchingDisabled bool   `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
 	PRTestingEnabled    bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
@@ -94,6 +93,9 @@ type ProjectRef struct {
 	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
+
+	// This is a temporary flag to enable individual projects to use repo settings
+	UseRepoSettings bool `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
 }
 
 type CommitQueueParams struct {
@@ -204,6 +206,7 @@ var (
 	projectRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "CedarTestResultsEnabled")
 	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
+	projectRefUseRepoSettingsKey         = bsonutil.MustHaveTag(ProjectRef{}, "UseRepoSettings")
 	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey             = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefTaskSyncKey                = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
@@ -251,18 +254,54 @@ func (p *ProjectRef) GetRepoId() string {
 	return fmt.Sprintf("%s_%s", p.Owner, p.Repo)
 }
 
-func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
-	rm := evergreen.GetEnvironment().RoleManager()
-	flags, err := evergreen.GetServiceFlags()
+func (p *ProjectRef) AddToRepoScope(ctx context.Context, user *user.DBUser) error {
+	repoId := p.GetRepoId()
+	repoRef, err := FindOneRepoRef(repoId)
 	if err != nil {
-		return errors.Wrap(err, "error getting service flags")
+		return errors.Wrapf(err, "error finding repo ref '%s'", repoId)
+	}
+	if repoRef == nil {
+		repoRef := RepoRef{ProjectRef{
+			Id:      repoId,
+			Admins:  []string{user.Username()},
+			Owner:   p.Owner,
+			Repo:    p.Repo,
+			Enabled: true,
+		}}
+		// creates scope and give user admin access to repo
+		return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref '%s'", repoId)
 	}
 
-	parentScope := evergreen.AllProjectsScope
-	if !flags.ProjectsTrackBranchesDisabled {
-		parentScope = evergreen.GetRepoScope(p.GetRepoId())
-	} else if !p.Restricted {
-		parentScope = evergreen.UnrestrictedProjectsScope
+	// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
+	rm := evergreen.GetEnvironment().RoleManager()
+	repoRole := GetRepoRole(repoId)
+	if !utility.StringSliceContains(user.Roles(), repoRole) {
+		if err = user.AddRole(repoRole); err != nil {
+			return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
+		}
+		repoRef.Admins = append(repoRef.Admins, user.Username())
+		if err = repoRef.Update(); err != nil {
+			return errors.Wrapf(err, "error adding user as repo admin")
+		}
+	}
+	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(repoId), p.Id), "error adding resource to repo '%s' scope", repoId)
+}
+
+func (p *ProjectRef) RemoveFromRepoScope() error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	return rm.RemoveResourceFromScope(GetRepoScope(p.GetRepoId()), p.Id)
+}
+
+func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+
+	// if the branch is restricted, then it's not accessible to repo admins, so we don't use the repo scope
+	parentScope := evergreen.UnrestrictedProjectsScope
+	if p.UseRepoSettings {
+		parentScope = GetRepoScope(p.GetRepoId())
+	}
+	if p.Restricted {
+		parentScope = evergreen.AllProjectsScope
 	}
 
 	// add scope for the branch-level project configurations
@@ -758,6 +797,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefCedarTestResultsEnabledKey: projectRef.CedarTestResultsEnabled,
 				projectRefPRTestingEnabledKey:        projectRef.PRTestingEnabled,
 				projectRefGitTagVersionsEnabledKey:   projectRef.GitTagVersionsEnabled,
+				projectRefUseRepoSettingsKey:         projectRef.UseRepoSettings,
 				projectRefCommitQueueKey:             projectRef.CommitQueue,
 				projectRefTaskSyncKey:                projectRef.TaskSync,
 				projectRefPatchingDisabledKey:        projectRef.PatchingDisabled,
@@ -972,12 +1012,24 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
+
+	// attempt to remove the resource from the repo (which will also remove from its parent)
+	// if the repo scope doesn't exist then we'll remove only from unrestricted
+	err := rm.RemoveResourceFromScope(p.GetRepoId(), p.Id)
+	if err != nil {
+		return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
+	}
+	return nil
 }
 
 func (p *ProjectRef) MakeUnrestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
+	// attempt to add the resource to the repo (which will also add to its parent)
+	// if the repo scope doesn't exist then we'll add only to unrestricted
+	if err := rm.AddResourceToScope(p.GetRepoId(), p.Id); err != nil {
+		return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
+	}
+	return nil
 }
 
 func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {

@@ -196,9 +196,9 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
-	project  string
-	body     []byte
-	username string
+	project string
+	body    []byte
+	user    *user.DBUser
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -221,8 +221,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.project = gimlet.GetVars(r)["project_id"]
-	user := MustHaveUser(ctx)
-	h.username = user.DisplayName()
+	h.user = MustHaveUser(ctx)
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -238,16 +237,14 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	oldProject, err := h.sc.FindProjectById(h.project)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.project))
-	}
-	if oldProject == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", h.project))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	requestProjectRef := &model.APIProjectRef{}
 	if err = requestProjectRef.BuildFromService(*oldProject); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
+
 	// erase contents so requestProjectRef will only be populated with new elements
 	requestProjectRef.Triggers = nil
 	// these fields in the request represent the admins/users to be added
@@ -401,6 +398,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	fmt.Println("even farther")
+
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range newProjectRef.Triggers {
@@ -423,6 +422,29 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			Exists:            false,
 			InvalidRevision:   "",
 			MergeBaseRevision: "",
+		}
+	}
+	if oldProject.Restricted != newProjectRef.Restricted {
+		if newProjectRef.Restricted {
+			err = newProjectRef.MakeRestricted()
+		} else {
+			err = oldProject.MakeUnrestricted()
+		}
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+	fmt.Println("GOT THIS FAR")
+	if oldProject.UseRepoSettings != newProjectRef.UseRepoSettings {
+		if newProjectRef.UseRepoSettings {
+			fmt.Println("THIS IS GOOD")
+			err = newProjectRef.AddToRepoScope(ctx, h.user)
+		} else {
+			err = newProjectRef.RemoveFromRepoScope()
+		}
+		if err != nil {
+			fmt.Println("ALAS")
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
@@ -460,7 +482,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.project))
 	}
-	if err = dbModel.LogProjectModified(projectId, h.username, before, after); err != nil {
+	if err = dbModel.LogProjectModified(projectId, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.project))
 	}
 
