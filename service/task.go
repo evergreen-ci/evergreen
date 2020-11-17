@@ -177,6 +177,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
+	taskId := projCtx.Task.Id
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
@@ -364,56 +365,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if uiTask.DisplayOnly {
-		uiTask.TestResults = []uiTestResult{}
-		execTasks := []task.Task{}
-		execTaskIDs := []string{}
-		for _, t := range projCtx.Task.ExecutionTasks {
-			var et *task.Task
-			if archived {
-				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
-			} else {
-				et, err = task.FindOneId(t)
-			}
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-			if et == nil {
-				grip.Error(message.Fields{
-					"message": "execution task not found",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
-				})
-				continue
-			}
-			execTasks = append(execTasks, *et)
-			execTaskIDs = append(execTaskIDs, t)
-		}
-		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		for i, execTask := range execTasks {
-			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        execTaskIDs[i],
-				Name:      execTask.DisplayName,
-				TimeTaken: execTask.TimeTaken,
-				Status:    execTask.ResultStatus(),
-			})
-			for _, tr := range execTask.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTaskIDs[i], TaskName: execTask.DisplayName})
-			}
-		}
-	} else {
-		for _, tr := range projCtx.Context.Task.LocalTestResults {
-			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
-		}
-		if uiTask.PartOfDisplay {
-			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
-		}
-	}
+	uis.getTestResults(w, r, projCtx, &uiTask, taskId, execution)
 
 	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
@@ -840,67 +792,224 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
+	usr := gimlet.GetUser(r.Context())
+	data := logData{User: usr}
 	vars := gimlet.GetVars(r)
+	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
+
 	logId := vars["log_id"]
-	var (
-		testLog  *model.TestLog
-		err      error
-		taskExec int
-	)
-
-	if logId != "" { // direct link to a log document by its ID
-		testLog, err = model.FindOneTestLogById(logId)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	} else {
-		taskID := vars["task_id"]
-		testName := vars["test_name"]
-		taskExecutionsAsString := vars["task_execution"]
-		taskExec, err = strconv.Atoi(taskExecutionsAsString)
-		if err != nil {
-			http.Error(w, "task execution num must be an int", http.StatusBadRequest)
-			return
-		}
-
-		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	if testLog == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+	taskID := vars["task_id"]
+	testName := vars["test_name"]
+	taskExecutionsAsString := vars["task_execution"]
+	taskExec, err := strconv.Atoi(taskExecutionsAsString)
+	if logId == "" && err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id":   taskID,
+			"test_name": testName,
+			"message":   "invalid execution",
+		}))
+		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	var (
+		logReader io.ReadCloser
+		testLog   *model.TestLog
+	)
 
-	displayLogs := make(chan apimodels.LogMessage)
-	go func() {
-		defer close(displayLogs)
-		for _, line := range testLog.Lines {
-			if ctx.Err() != nil {
+	// Check buildlogger logs first.
+	opts := apimodels.GetBuildloggerLogsOptions{
+		BaseURL:       uis.Settings.Cedar.BaseURL,
+		TaskID:        taskID,
+		TestName:      testName,
+		Execution:     taskExec,
+		PrintPriority: !raw,
+	}
+	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
+	if err == nil {
+		defer func() {
+			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+				"task_id":   taskID,
+				"test_name": testName,
+				"message":   "failed to close buildlogger log ReadCloser",
+			}))
+		}()
+		data.Buildlogger = make(chan apimodels.LogMessage, 1024)
+		go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
+	} else {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id":   taskID,
+			"test_name": testName,
+			"message":   "problem getting buildlogger logs",
+		}))
+	}
+
+	// If buildlogger fails, fall back to db.
+	if logReader == nil {
+		if logId != "" { // direct link to a log document by its ID
+			testLog, err = model.FindOneTestLogById(logId)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			displayLogs <- apimodels.LogMessage{
-				Type:     apimodels.TaskLogPrefix,
-				Severity: apimodels.LogInfoPrefix,
-				Version:  evergreen.LogmessageCurrentVersion,
-				Message:  line,
+		} else {
+			testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
 			}
 		}
-	}()
-	usr := gimlet.GetUser(ctx)
+
+		if testLog == nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		data.Data = make(chan apimodels.LogMessage)
+		go func() {
+			defer close(data.Data)
+			for _, line := range testLog.Lines {
+				if ctx.Err() != nil {
+					return
+				}
+				data.Data <- apimodels.LogMessage{
+					Type:     apimodels.TaskLogPrefix,
+					Severity: apimodels.LogInfoPrefix,
+					Version:  evergreen.LogmessageCurrentVersion,
+					Message:  line,
+				}
+			}
+		}()
+	}
+
 	template := "task_log.html"
-	data := logData{Data: displayLogs, User: usr}
-	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
+	if raw {
 		template = "task_log_raw.html"
 		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
+	}
+}
+
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string, execution int) {
+	ctx := r.Context()
+	var err error
+
+	uiTask.TestResults = []uiTestResult{}
+	execTasks := []task.Task{}
+	execTaskIDs := []string{}
+	if uiTask.DisplayOnly {
+		for _, t := range projCtx.Task.ExecutionTasks {
+			var et *task.Task
+			if uiTask.Archived {
+				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
+			} else {
+				et, err = task.FindOneId(t)
+			}
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if et == nil {
+				grip.Error(message.Fields{
+					"message": "execution task not found",
+					"task":    t,
+					"parent":  projCtx.Task.Id,
+				})
+				continue
+			}
+			execTasks = append(execTasks, *et)
+			execTaskIDs = append(execTaskIDs, t)
+		}
+
+		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		for i, execTask := range execTasks {
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
+				Id:        execTaskIDs[i],
+				Name:      execTask.DisplayName,
+				TimeTaken: execTask.TimeTaken,
+				Status:    execTask.ResultStatus(),
+			})
+		}
+
+		allResults := []uiTestResult{}
+		for i, execTask := range execTasks {
+			opts := apimodels.GetCedarTestResultsOptions{
+				BaseURL:   uis.Settings.Cedar.BaseURL,
+				TaskID:    execTask.Id,
+				Execution: execTask.Execution,
+			}
+			testResults, err := apimodels.GetCedarTestResults(ctx, opts)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"task_id":   execTask.Id,
+					"execution": execTask.Execution,
+					"message":   "problem getting cedar test results, using evergreen test results",
+				}))
+				allResults = []uiTestResult{}
+				break
+			}
+
+			for _, tr := range testResults {
+				allResults = append(allResults, uiTestResult{
+					TestResult: task.ConvertCedarTestResult(tr),
+					TaskId:     execTaskIDs[i],
+					TaskName:   execTask.DisplayName,
+				})
+			}
+		}
+
+		if len(allResults) > 0 {
+			uiTask.TestResults = append(uiTask.TestResults, allResults...)
+		} else {
+			for i, execTask := range execTasks {
+				for _, tr := range execTask.LocalTestResults {
+					uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+						TestResult: tr,
+						TaskId:     execTaskIDs[i],
+						TaskName:   execTask.DisplayName,
+					})
+				}
+			}
+		}
+	} else {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:   uis.Settings.Cedar.BaseURL,
+			TaskID:    taskId,
+			Execution: projCtx.Task.Execution,
+		}
+		testResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id":   taskId,
+				"execution": projCtx.Task.Execution,
+				"message":   "problem getting cedar test results, using evergreen test results",
+			}))
+		}
+
+		if len(testResults) > 0 {
+			for _, tr := range testResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+					TestResult: task.ConvertCedarTestResult(tr),
+				})
+			}
+		} else {
+			for _, tr := range projCtx.Context.Task.LocalTestResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+					TestResult: tr,
+				})
+			}
+		}
+
+		if uiTask.PartOfDisplay {
+			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
+		}
 	}
 }

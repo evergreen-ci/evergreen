@@ -162,14 +162,14 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				return resp, nil
 			} else if resp.StatusCode == http.StatusUnauthorized {
 				defer resp.Body.Close()
-				return nil, AuthError
+				return resp, AuthError
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				defer resp.Body.Close()
 				reader := util.NewResponseReader(resp)
 				if bytes, _ := ioutil.ReadAll(reader); len(bytes) > 0 {
-					return nil, errors.Errorf("server returned %d (%s)", resp.StatusCode, string(bytes))
+					return resp, errors.Errorf("server returned %d (%s)", resp.StatusCode, string(bytes))
 				}
-				return nil, errors.Errorf("server returned %d", resp.StatusCode)
+				return resp, errors.Errorf("server returned %d", resp.StatusCode)
 			} else if resp != nil {
 				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}

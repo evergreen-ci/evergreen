@@ -41,6 +41,7 @@ func TestSendTestResults(t *testing.T) {
 			Project:      "project",
 			Version:      "version",
 			BuildVariant: "build_variant",
+			DisplayName:  "task_name",
 			Execution:    5,
 			Requester:    evergreen.GithubPRRequester,
 		},

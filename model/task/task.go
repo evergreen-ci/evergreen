@@ -81,6 +81,7 @@ type Task struct {
 	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
@@ -894,6 +895,20 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
+func (t *Task) SetHasCedarResults(hasCedarResults bool) error {
+	t.HasCedarResults = hasCedarResults
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				HasCedarResultsKey: hasCedarResults,
+			},
+		},
+	)
+}
+
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
 func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller
@@ -1298,6 +1313,7 @@ func (t *Task) Reset() error {
 		"$unset": bson.M{
 			DetailsKey:           "",
 			ResetWhenFinishedKey: "",
+			HasCedarResultsKey:   "",
 		},
 	}
 
@@ -1327,7 +1343,8 @@ func ResetTasks(taskIds []string) error {
 				FinishTimeKey:    utility.ZeroTime,
 			},
 			"$unset": bson.M{
-				DetailsKey: "",
+				DetailsKey:         "",
+				HasCedarResultsKey: "",
 			},
 		},
 	)
@@ -2752,4 +2769,18 @@ func (t *Task) SetTaskGroupInfo() error {
 			TaskGroupOrderKey:    t.TaskGroupOrder,
 			TaskGroupMaxHostsKey: t.TaskGroupMaxHosts,
 		}}))
+}
+
+// ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
+// struct.
+func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
+	return TestResult{
+		TaskID:    result.TaskID,
+		Execution: result.Execution,
+		TestFile:  result.TestName,
+		LineNum:   result.LineNum,
+		StartTime: float64(result.Start.Unix()),
+		EndTime:   float64(result.End.Unix()),
+		Status:    result.Status,
+	}
 }

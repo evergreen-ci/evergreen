@@ -11,7 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/service/testutil"
-	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
+	"github.com/evergreen-ci/timber/systemmetrics"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/ftdc"
 	"github.com/pkg/errors"
@@ -31,8 +31,8 @@ func (m *mockMetricCollector) name() string {
 	return m.collectorName
 }
 
-func (m *mockMetricCollector) format() sysmetrics.DataFormat {
-	return sysmetrics.DataFormatText
+func (m *mockMetricCollector) format() systemmetrics.DataFormat {
+	return systemmetrics.DataFormatText
 }
 
 func (m *mockMetricCollector) collect(context.Context) ([]byte, error) {
@@ -105,7 +105,7 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
 	s.Assert().Equal(collectors, c.collectors)
-	s.Assert().Equal(sysmetrics.SystemMetricsOptions{
+	s.Assert().Equal(systemmetrics.SystemMetricsOptions{
 		Project:     "Project",
 		Version:     "Version",
 		Variant:     "Variant",
@@ -113,11 +113,11 @@ func (s *SystemMetricsSuite) TestNewSystemMetricsCollectorWithConnection() {
 		TaskId:      "Id",
 		Execution:   0,
 		Mainline:    !s.task.IsPatchRequest(),
-		Compression: sysmetrics.CompressionTypeNone,
-		Schema:      sysmetrics.SchemaTypeRawEvents,
+		Compression: systemmetrics.CompressionTypeNone,
+		Schema:      systemmetrics.SchemaTypeRawEvents,
 	}, c.taskOpts)
 	s.Assert().Equal(time.Minute, c.interval)
-	s.Assert().Equal(sysmetrics.WriteCloserOptions{
+	s.Assert().Equal(systemmetrics.WriteCloserOptions{
 		FlushInterval: time.Minute,
 		NoTimedFlush:  true,
 		MaxBufferSize: 1e7,
@@ -417,7 +417,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 	assert.NotZero(t, len(sentData))
 	for _, data := range sentData {
 		assert.Equal(t, mc.name(), data.Type)
-		assert.Equal(t, mc.format(), sysmetrics.DataFormat(data.Format))
+		assert.Equal(t, mc.format(), systemmetrics.DataFormat(data.Format))
 		assert.NotEmpty(t, data.Data)
 	}
 }

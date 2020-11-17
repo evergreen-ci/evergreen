@@ -176,6 +176,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, checkUser, editTasks).RouteHandler(makeTaskRestartHandler(sc))
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestsForTask(sc))
 	app.AddRoute("/tasks/{task_id}/sync_path").Version(2).Get().Wrap(checkUser).RouteHandler(makeTaskSyncPathGetHandler(sc))
+	app.AddRoute("/tasks/{task_id}/set_has_cedar_results").Version(2).Post().Wrap(checkTask).RouteHandler(makeTaskSetHasCedarResultsHandler(sc))
 	app.AddRoute("/task/sync_read_credentials").Version(2).Get().Wrap(checkUser).RouteHandler(makeTaskSyncReadCredentialsGetHandler(sc))
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetUserConfig(sc))
@@ -192,5 +193,4 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartVersion(sc))
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchAnnotationsByVersion(sc))
-
 }

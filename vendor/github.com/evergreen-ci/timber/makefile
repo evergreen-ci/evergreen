@@ -1,8 +1,8 @@
 name := timber
 buildDir := build
 
-packages := $(name) buildlogger buildlogger-fetcher system_metrics testresults testutil
-testPackages := buildlogger buildlogger-fetcher system_metrics testresults
+packages := $(name) timber buildlogger systemmetrics testresults testutil
+testPackages := timber buildlogger systemmetrics testresults
 
 # start environment setup
 gobin := $(GO_BIN_PATH)

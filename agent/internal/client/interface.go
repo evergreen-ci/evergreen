@@ -69,6 +69,9 @@ type Communicator interface {
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
+	// SetHasCedarResults sets the HasCedarResults flag to true in the
+	// task.
+	SetHasCedarResults(context.Context, TaskData) error
 
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
