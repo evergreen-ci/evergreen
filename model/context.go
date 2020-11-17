@@ -25,7 +25,7 @@ type Context struct {
 // LoadContext builds a Context from the set of given resource ID's
 // by inferring all the relationships between them - for example, e.g. loading a project based on
 // the the task, or the version based on the patch, etc.
-func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context, error) {
+func LoadContext(taskId, buildId, versionId, patchId, projectId, repoId string) (Context, error) {
 	ctx := Context{}
 
 	pID, err := ctx.populateTaskBuildVersion(taskId, buildId, versionId)
@@ -49,6 +49,12 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
 		ctx.ProjectRef, err = FindOneProjectRef(projectId)
+		if err != nil {
+			return ctx, err
+		}
+	}
+	if len(repoId) > 0 {
+		ctx.RepoRef, err = FindOneRepoRef(repoId)
 		if err != nil {
 			return ctx, err
 		}

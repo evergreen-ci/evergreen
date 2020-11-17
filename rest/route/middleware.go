@@ -48,8 +48,9 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
+	repoId := vars["repo_id"]
 
-	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId, repoId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return

@@ -173,7 +173,7 @@ type Connector interface {
 	// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
 	AggregateSpawnhostData() (*host.SpawnHostUsage, error)
 	// FetchContext is a method to fetch a context given a series of identifiers.
-	FetchContext(string, string, string, string, string) (model.Context, error)
+	FetchContext(string, string, string, string, string, string) (model.Context, error)
 
 	// FindDistroById is a method to find the distro matching the given distroId.
 	FindDistroById(string) (*distro.Distro, error)
