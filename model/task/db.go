@@ -956,7 +956,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return Find(ByVersions(versionIds).
-		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
+		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey))
 }
 
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {

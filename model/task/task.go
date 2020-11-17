@@ -1220,7 +1220,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
+		if t.Aborted {
+			return evergreen.TaskAborted
+		}
 		return t.DisplayStatus
+	}
+	if t.Aborted {
+		return evergreen.TaskAborted
 	}
 	if !t.IsFinished() {
 		return t.Status
