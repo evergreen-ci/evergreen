@@ -255,6 +255,7 @@ func (p *ProjectRef) GetRepoId() string {
 }
 
 func (p *ProjectRef) AddToRepoScope(ctx context.Context, user *user.DBUser) error {
+	rm := evergreen.GetEnvironment().RoleManager()
 	repoId := p.GetRepoId()
 	repoRef, err := FindOneRepoRef(repoId)
 	if err != nil {
@@ -270,20 +271,20 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, user *user.DBUser) erro
 		}}
 		// creates scope and give user admin access to repo
 		return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref '%s'", repoId)
+	} else {
+		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
+		repoRole := GetRepoRole(repoId)
+		if !utility.StringSliceContains(user.Roles(), repoRole) {
+			if err = user.AddRole(repoRole); err != nil {
+				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
+			}
+			repoRef.Admins = append(repoRef.Admins, user.Username())
+			if err = repoRef.Update(); err != nil {
+				return errors.Wrapf(err, "error adding user as repo admin")
+			}
+		}
 	}
 
-	// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
-	rm := evergreen.GetEnvironment().RoleManager()
-	repoRole := GetRepoRole(repoId)
-	if !utility.StringSliceContains(user.Roles(), repoRole) {
-		if err = user.AddRole(repoRole); err != nil {
-			return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
-		}
-		repoRef.Admins = append(repoRef.Admins, user.Username())
-		if err = repoRef.Update(); err != nil {
-			return errors.Wrapf(err, "error adding user as repo admin")
-		}
-	}
 	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(repoId), p.Id), "error adding resource to repo '%s' scope", repoId)
 }
 
@@ -294,7 +295,6 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-
 	// if the branch is restricted, then it's not accessible to repo admins, so we don't use the repo scope
 	parentScope := evergreen.UnrestrictedProjectsScope
 	if p.UseRepoSettings {
