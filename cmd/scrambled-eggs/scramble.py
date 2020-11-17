@@ -83,6 +83,9 @@ def should_skip_key(key):
         "gitspec",
         "task_group_infos",
         "version",
+        "status",
+        "r",
+        "revision"
     ]
     return key in special_keys
 
