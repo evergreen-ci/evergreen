@@ -522,7 +522,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return &userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
+		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
 		Content:   strings.Join(bashCmds, "\n"),
 	}, nil
 }
@@ -1280,4 +1280,34 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	})
 
 	return nil
+}
+
+// FetchProvisioningScriptUserData returns the user data to fetch the host
+// provisioning script from the server.
+func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+	if h.Secret == "" {
+		if err := h.CreateSecret(); err != nil {
+			return nil, errors.Wrap(err, "creating host secret")
+		}
+	}
+	var directive userdata.Directive
+	if h.Distro.IsWindows() {
+		directive = userdata.PowerShellScript
+	} else {
+		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
+	}
+	cmd := strings.Join([]string{
+		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		"host",
+		"provision",
+		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--working_dir=%s", h.Distro.BootstrapSettings.JasperBinaryDir),
+	}, " ")
+
+	return &userdata.Options{
+		Content:   cmd,
+		Directive: directive,
+	}, nil
 }
