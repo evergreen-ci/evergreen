@@ -109,8 +109,8 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskDat
 		return errors.Wrap(err, "closing test results record")
 	}
 
-	if err = comm.SetHasResults(ctx, td); err != nil {
-		return errors.Wrap(err, "problem setting HasResults flag in task")
+	if err = comm.SetHasCedarResults(ctx, td); err != nil {
+		return errors.Wrap(err, "problem setting HasCedarResults flag in task")
 	}
 
 	return nil

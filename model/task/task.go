@@ -81,7 +81,7 @@ type Task struct {
 	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasResults        bool                `bson:"has_results,omitempty" json:"has_results,omitempty"`
+	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
@@ -895,15 +895,15 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-func (t *Task) SetHasResults(hasResults bool) error {
-	t.HasResults = hasResults
+func (t *Task) SetHasCedarResults(hasCedarResults bool) error {
+	t.HasCedarResults = hasCedarResults
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				HasResultsKey: hasResults,
+				HasCedarResultsKey: hasCedarResults,
 			},
 		},
 	)
@@ -1313,7 +1313,7 @@ func (t *Task) Reset() error {
 		"$unset": bson.M{
 			DetailsKey:           "",
 			ResetWhenFinishedKey: "",
-			HasResultsKey:        "",
+			HasCedarResultsKey:   "",
 		},
 	}
 
@@ -1343,8 +1343,8 @@ func ResetTasks(taskIds []string) error {
 				FinishTimeKey:    utility.ZeroTime,
 			},
 			"$unset": bson.M{
-				DetailsKey:    "",
-				HasResultsKey: "",
+				DetailsKey:         "",
+				HasCedarResultsKey: "",
 			},
 		},
 	)

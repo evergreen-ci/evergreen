@@ -382,40 +382,40 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// GET /tasks/{task_id}/set_has_results
+// GET /tasks/{task_id}/set_has_cedar_results
 
-type taskSetHasResultsHandler struct {
+type taskSetHasCedarResultsHandler struct {
 	taskID string
 	sc     data.Connector
 }
 
-func makeTaskSetHasResultsHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskSetHasResultsHandler{
+func makeTaskSetHasCedarResultsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &taskSetHasCedarResultsHandler{
 		sc: sc,
 	}
 }
 
-func (rh *taskSetHasResultsHandler) Factory() gimlet.RouteHandler {
-	return &taskSetHasResultsHandler{
+func (rh *taskSetHasCedarResultsHandler) Factory() gimlet.RouteHandler {
+	return &taskSetHasCedarResultsHandler{
 		sc: rh.sc,
 	}
 }
 
-func (rh *taskSetHasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
 	return nil
 }
 
-func (rh *taskSetHasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := rh.sc.FindTaskById(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
 
-	if err = t.SetHasResults(true); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasResults flag for task with ID '%s'", rh.taskID))
+	if err = t.SetHasCedarResults(true); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasCedarResults flag for task with ID '%s'", rh.taskID))
 	}
-	return gimlet.NewTextResponse("HasResults flag set in task")
+	return gimlet.NewTextResponse("HasCedarResults flag set in task")
 }
 
 // GET /task/sync_read_credentials

@@ -579,18 +579,18 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 	return nil
 }
 
-// SetHasResults sets the HasResults flag to true in the given task in the
-// database.
-func (c *communicatorImpl) SetHasResults(ctx context.Context, taskData TaskData) error {
+// SetHasCedarResults sets the HasCedarResults flag to true in the given task
+// in the database.
+func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 		version:  apiVersion2,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_has_results", taskData.ID)
+	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to set the HasResults flag in task '%s'", taskData.ID)
+		return errors.Wrapf(err, "failed to set the HasCedarResults flag in task '%s'", taskData.ID)
 	}
 	defer resp.Body.Close()
 	return nil

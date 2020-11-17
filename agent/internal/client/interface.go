@@ -69,6 +69,9 @@ type Communicator interface {
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
+	// SetHasCedarResults sets the HasCedarResults flag to true in the
+	// task.
+	SetHasCedarResults(context.Context, TaskData) error
 
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
@@ -84,7 +87,6 @@ type Communicator interface {
 	// The following operations use the legacy API server and are
 	// used by task commands.
 	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
-	SetHasResults(context.Context, TaskData) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
