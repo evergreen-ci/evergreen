@@ -254,14 +254,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching trigger aliases")
 		}
-		invalidAliases := []string{}
 		for _, alias := range p.TriggerAliases {
 			if !utility.StringSliceContains(validTriggerAliases, alias) {
-				invalidAliases = append(invalidAliases, alias)
+				return nil, errors.Errorf("Trigger alias '%s' is not defined for project '%s'. Valid aliases are %v", alias, p.Project, validTriggerAliases)
 			}
-		}
-		if len(invalidAliases) > 0 {
-			return nil, errors.Errorf("trigger aliases %v are not defined for project '%s'", invalidAliases, p.Project)
 		}
 	}
 
