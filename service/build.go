@@ -46,7 +46,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("redirect_spruce_users") == "true" {
 		user := MustHaveUser(r)
 		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/version/%s?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.DisplayName), http.StatusTemporaryRedirect)
+			http.Redirect(w, r, fmt.Sprintf("%s/version/%s/tasks?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.DisplayName), http.StatusTemporaryRedirect)
 			return
 		}
 	}
