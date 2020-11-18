@@ -629,6 +629,7 @@ var (
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
+	PermissionAnnotations      = "project_task_annotations"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
 	// Distro permissions.
@@ -666,12 +667,20 @@ var (
 		Description: "No project settings permissions",
 		Value:       0,
 	}
-	TasksAnnotation = PermissionLevel{
-		Description: "Full task and annotation permissions",
-		Value:       35,
+	AnnotationsModify = PermissionLevel{
+		Description: "Modify annotations",
+		Value:       20,
+	}
+	AnnotationsView = PermissionLevel{
+		Description: "View annotations",
+		Value:       10,
+	}
+	AnnotationsNone = PermissionLevel{
+		Description: "No annotations permissions",
+		Value:       0,
 	}
 	TasksAdmin = PermissionLevel{
-		Description: "Full tasks permissions, not able to modify annotations",
+		Description: "Full tasks permissions",
 		Value:       30,
 	}
 	TasksBasic = PermissionLevel{
@@ -739,6 +748,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Project Settings"
 	case PermissionTasks:
 		return "Tasks"
+	case PermissionAnnotations:
+		return "Task Annotations"
 	case PermissionPatches:
 		return "Patches"
 	case PermissionLogs:
@@ -763,11 +774,16 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 		}
 	case PermissionTasks:
 		return []PermissionLevel{
-			TasksAnnotation,
 			TasksAdmin,
 			TasksBasic,
 			TasksView,
 			TasksNone,
+		}
+	case PermissionAnnotations:
+		return []PermissionLevel{
+			AnnotationsModify,
+			AnnotationsView,
+			AnnotationsNone,
 		}
 	case PermissionPatches:
 		return []PermissionLevel{
