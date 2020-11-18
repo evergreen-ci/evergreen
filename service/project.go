@@ -240,6 +240,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
 		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition        `json:"triggers"`
+		PatchTriggerAliases   []model.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
@@ -448,6 +449,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
+	for _, t := range responseRef.PatchTriggerAliases {
+		catcher.Add(t.Validate(id))
+	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
 	}
@@ -482,6 +486,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.RepotrackerDisabled = responseRef.RepotrackerDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
+	projectRef.PatchTriggerAliases = responseRef.PatchTriggerAliases
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}

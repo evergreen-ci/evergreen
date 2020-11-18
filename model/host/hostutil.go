@@ -394,10 +394,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	// permissions that allow it to be modified after user data is finished.
 	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
-	checkUserDataRan, err := h.CheckUserDataStartedCommand()
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating command to check if user data is already done")
-	}
+	checkUserDataRan := h.CheckUserDataStartedCommand()
 
 	var postFetchClient string
 	if h.StartedBy == evergreen.User {
@@ -437,7 +434,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		}
 	}
 
-	markDone, err := h.MarkUserDataDoneCommands()
+	markDone := h.MarkUserDataDoneCommands()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating command to mark when user data is done")
 	}
@@ -525,7 +522,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return &userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
+		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
 		Content:   strings.Join(bashCmds, "\n"),
 	}, nil
 }
@@ -561,20 +558,17 @@ func (h *Host) changeOwnerCommand(path string) string {
 // CheckUserDataStartedCommand checks whether user data has already run on this
 // host. If it has, it exits. Otherwise, it creates the file marking it as
 // started.
-func (h *Host) CheckUserDataStartedCommand() (string, error) {
-	path, err := h.UserDataStartedFile()
-	if err != nil {
-		return "", errors.Wrap(err, "could not get path to user data done file")
-	}
+func (h *Host) CheckUserDataStartedCommand() string {
+	path := h.UserDataStartedFile()
 	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
 	if h.Distro.IsWindows() {
 		return fmt.Sprintf(strings.Join([]string{
 			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
 			fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd)),
-		}, "\r\n")), nil
+		}, "\r\n"))
 	}
 
-	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd), nil
+	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd)
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
@@ -700,10 +694,6 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 // WriteJasperCredentialsFilesCommands builds the command to write the Jasper
 // credentials and Splunk credentials to files.
 func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) (string, error) {
-	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
-		return "", errors.New("cannot write Jasper credentials without a credentials file path")
-	}
-
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
@@ -767,10 +757,6 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 // This is necessary for Windows user data for unknown reasons. If the file
 // isn't written in a buffered way, it gets truncated.
 func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
-	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
-		return nil, errors.New("cannot write Jasper credentials without a credentials file path")
-	}
-
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem exporting credentials to file format")
@@ -1248,32 +1234,23 @@ const (
 	userDataDoneFileName   = "user_data_done"
 )
 
-func (h *Host) UserDataStartedFile() (string, error) {
-	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
-		return "", errors.New("distro jasper binary directory must be specified")
-	}
-
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataStarteFileName), nil
+// UserDataStartedFile returns the path to the provisioning user data started
+// marker file.
+func (h *Host) UserDataStartedFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataStarteFileName)
 }
 
-// UserDataDoneFile returns the path to the user data done marker file.
-func (h *Host) UserDataDoneFile() (string, error) {
-	if h.Distro.BootstrapSettings.JasperBinaryDir == "" {
-		return "", errors.New("distro jasper binary directory must be specified")
-	}
-
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataDoneFileName), nil
+// UserDataDoneFile returns the path to the provisioning user data done marker
+// file.
+func (h *Host) UserDataDoneFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataDoneFileName)
 }
 
 // MarkUserDataDoneCommands creates the command to make the marker file
 // indicating user data has finished executing.
-func (h *Host) MarkUserDataDoneCommands() (string, error) {
-	path, err := h.UserDataDoneFile()
-	if err != nil {
-		return "", errors.Wrap(err, "could not get path to user data done file")
-	}
-
-	return fmt.Sprintf("touch %s", path), nil
+func (h *Host) MarkUserDataDoneCommands() string {
+	path := h.UserDataDoneFile()
+	return fmt.Sprintf("touch %s", path)
 }
 
 // SetUserDataHostProvisioned sets the host to running if it was bootstrapped
@@ -1303,4 +1280,34 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	})
 
 	return nil
+}
+
+// FetchProvisioningScriptUserData returns the user data to fetch the host
+// provisioning script from the server.
+func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+	if h.Secret == "" {
+		if err := h.CreateSecret(); err != nil {
+			return nil, errors.Wrap(err, "creating host secret")
+		}
+	}
+	var directive userdata.Directive
+	if h.Distro.IsWindows() {
+		directive = userdata.PowerShellScript
+	} else {
+		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
+	}
+	cmd := strings.Join([]string{
+		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		"host",
+		"provision",
+		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--working_dir=%s", h.Distro.BootstrapSettings.JasperBinaryDir),
+	}, " ")
+
+	return &userdata.Options{
+		Content:   cmd,
+		Directive: directive,
+	}, nil
 }

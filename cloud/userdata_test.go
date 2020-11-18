@@ -12,38 +12,46 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMakeUserData(t *testing.T) {
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host){
-		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
+		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			userData, err := makeUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 
-			cmd, err := h.CheckUserDataStartedCommand()
-			require.NoError(t, err)
+			cmd := h.CheckUserDataStartedCommand()
 			assert.Contains(t, userData, cmd)
 
 			cmd, err = h.StartAgentMonitorRequest(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd, err = h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			cmd = h.MarkUserDataDoneCommands()
 			assert.Contains(t, userData, cmd)
 		},
-		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"ContainsCommandsToFetchProvisioningScriptIfEnabled": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			h.Distro.BootstrapSettings.FetchProvisioningScript = true
+
+			userData, err := makeUserData(ctx, env, h, "", false)
+			require.NoError(t, err)
+
+			opts, err := h.FetchProvisioningScriptUserData(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, opts.Content)
+		},
+		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			userData, err := makeUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
 		},
-		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			userData, err := makeUserData(ctx, env, h, "", false)
@@ -51,7 +59,7 @@ func TestMakeUserData(t *testing.T) {
 			assert.NotEmpty(t, userData)
 			assert.Contains(t, userData, persistTag)
 		},
-		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			_, err := makeUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
@@ -66,7 +74,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho foo"
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
@@ -75,8 +83,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd, err = h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			cmd = h.MarkUserDataDoneCommands()
 			assert.Contains(t, userData, cmd)
 
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
@@ -89,14 +96,14 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "#!/bin/bash\necho foo"
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
 			assert.Equal(t, customUserData, userData)
 		},
-		"ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
@@ -106,7 +113,7 @@ func TestMakeUserData(t *testing.T) {
 			assert.Contains(t, userData, customUserData)
 			assert.Contains(t, userData, persistTag)
 		},
-		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho foo"
 			userData, err := makeUserData(ctx, env, h, customUserData, true)
 			require.NoError(t, err)
@@ -115,8 +122,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd, err = h.MarkUserDataDoneCommands()
-			require.NoError(t, err)
+			cmd = h.MarkUserDataDoneCommands()
 			assert.Contains(t, userData, cmd)
 
 			custom, err := parseUserData(customUserData)
@@ -131,7 +137,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
+		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			customUserData := "<powershell>\necho foo\n</powershell>\n<persist>true</persist>"
@@ -150,9 +156,9 @@ func TestMakeUserData(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, user.Collection))
+			require.NoError(t, db.ClearCollections(host.Collection, user.Collection, evergreen.CredentialsCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(host.Collection, user.Collection))
+				assert.NoError(t, db.ClearCollections(host.Collection, user.Collection, evergreen.CredentialsCollection))
 			}()
 
 			h := &host.Host{
@@ -172,174 +178,15 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, h.Insert())
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			env := testutil.NewEnvironment(ctx, t)
+			// env := testutil.NewEnvironment(ctx, t)
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
 
 			testCase(ctx, t, env, h)
 		})
 	}
 }
 
-//
-// func TestBootstrapUserData(t *testing.T) {
-//     tctx, cancel := context.WithCancel(context.Background())
-//     defer cancel()
-//
-//     for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host){
-//         "ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             userData, err := bootstrapUserData(ctx, env, h, "", false)
-//             require.NoError(t, err)
-//
-//             cmd, err := h.CheckUserDataStartedCommand()
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             cmd, err = h.StartAgentMonitorRequest(env.Settings())
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             cmd, err = h.MarkUserDataDoneCommands()
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//         },
-//         "PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             userData, err := bootstrapUserData(ctx, env, h, "", false)
-//             require.NoError(t, err)
-//             assert.NotEmpty(t, userData)
-//         },
-//         "PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.Arch = evergreen.ArchWindowsAmd64
-//             h.Distro.BootstrapSettings.ServiceUser = "user"
-//             userData, err := bootstrapUserData(ctx, env, h, "", false)
-//             require.NoError(t, err)
-//             assert.NotEmpty(t, userData)
-//             assert.Contains(t, userData, persistTag)
-//         },
-//         "CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             _, err := bootstrapUserData(ctx, env, h, "", false)
-//             require.NoError(t, err)
-//             assert.Equal(t, h.JasperCredentialsID, h.Id)
-//
-//             assert.Equal(t, h.JasperCredentialsID, h.Id)
-//
-//             dbHost, err := host.FindOneId(h.Id)
-//             require.NoError(t, err)
-//             assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-//
-//             creds, err := h.JasperCredentials(ctx, env)
-//             require.NoError(t, err)
-//             assert.NotNil(t, creds)
-//         },
-//         "PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             customUserData := "#!/bin/bash\necho 'foobar'"
-//             userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
-//             require.NoError(t, err)
-//
-//             cmd, err := h.StartAgentMonitorRequest(env.Settings())
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             cmd, err = h.MarkUserDataDoneCommands()
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             assert.Equal(t, h.JasperCredentialsID, h.Id)
-//
-//             dbHost, err := host.FindOneId(h.Id)
-//             require.NoError(t, err)
-//             assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-//
-//             creds, err := h.JasperCredentials(ctx, env)
-//             require.NoError(t, err)
-//             assert.NotNil(t, creds)
-//         },
-//         "ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-//             customUserData := "foo bar"
-//             userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
-//             require.NoError(t, err)
-//             assert.Equal(t, customUserData, userData)
-//         },
-//         "ReturnsCustomUserDataScriptWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
-//             h.Distro.BootstrapSettings.ServiceUser = "user"
-//             h.Distro.Arch = evergreen.ArchWindowsAmd64
-//             customUserData := "<powershell>echo foo</powershell>"
-//             userData, err := bootstrapUserData(ctx, env, h, customUserData, false)
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, customUserData)
-//             assert.Contains(t, userData, persistTag)
-//         },
-//         "MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             customUserData := "foo bar"
-//             userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
-//             require.NoError(t, err)
-//
-//             cmd, err := h.StartAgentMonitorRequest(env.Settings())
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             cmd, err = h.MarkUserDataDoneCommands()
-//             require.NoError(t, err)
-//             assert.Contains(t, userData, cmd)
-//
-//             assert.Contains(t, userData, customUserData)
-//
-//             dbHost, err := host.FindOneId(h.Id)
-//             require.NoError(t, err)
-//             assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-//
-//             creds, err := h.JasperCredentials(ctx, env)
-//             require.NoError(t, err)
-//             assert.NotNil(t, creds)
-//         },
-//         "MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host) {
-//             h.Distro.Arch = evergreen.ArchWindowsAmd64
-//             h.Distro.BootstrapSettings.ServiceUser = "user"
-//             customUserData := "echo foo"
-//             userData, err := bootstrapUserData(ctx, env, h, customUserData, true)
-//             require.NoError(t, err)
-//
-//             dbHost, err := host.FindOneId(h.Id)
-//             require.NoError(t, err)
-//             assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-//
-//             creds, err := h.JasperCredentials(ctx, env)
-//             require.NoError(t, err)
-//             assert.NotNil(t, creds)
-//
-//             assert.Contains(t, userData, persistTag)
-//         },
-//     } {
-//         t.Run(testName, func(t *testing.T) {
-//             require.NoError(t, db.ClearCollections(host.Collection, user.Collection))
-//             defer func() {
-//                 assert.NoError(t, db.ClearCollections(host.Collection, user.Collection))
-//             }()
-//
-//             h := &host.Host{
-//                 Id: "host_id",
-//                 Distro: distro.Distro{
-//                     Arch: evergreen.ArchLinuxAmd64,
-//                     BootstrapSettings: distro.BootstrapSettings{
-//                         Method:                distro.BootstrapMethodUserData,
-//                         JasperCredentialsPath: "/bar",
-//                         JasperBinaryDir:       "/jasper_binary_dir",
-//                         ClientDir:             "/client_dir",
-//                         ShellPath:             "/bin/bash",
-//                     },
-//                 },
-//                 StartedBy: evergreen.User,
-//             }
-//             require.NoError(t, h.Insert())
-//             ctx, ccancel := context.WithTimeout(tctx, 5*time.Second)
-//             defer ccancel()
-//             env := testutil.NewEnvironment(ctx, t)
-//
-//             testCase(ctx, t, env, h)
-//         })
-//     }
-// }
-//
 func TestUserDataMerge(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		provision   userData
@@ -741,7 +588,7 @@ func TestExtractPersistTags(t *testing.T) {
 }
 
 func TestMakeMultipartUserData(t *testing.T) {
-	populatedUserData, err := NewUserData(userdata.Options{
+	populatedUserData, err := newUserData(userdata.Options{
 		Directive: userdata.ShellScript + "/bin/bash",
 		Content:   "echo foo",
 	})
@@ -783,7 +630,7 @@ func TestWriteUserDataPart(t *testing.T) {
 		boundary := "some_boundary"
 		require.NoError(t, mimeWriter.SetBoundary(boundary))
 
-		userData, err := NewUserData(userdata.Options{
+		userData, err := newUserData(userdata.Options{
 			Directive: userdata.ShellScript + "/bin/bash",
 			Content:   "echo foo",
 		})
@@ -822,7 +669,7 @@ func TestWriteUserDataPart(t *testing.T) {
 	t.Run("FailsForEmptyFileName", func(t *testing.T) {
 		buf := &bytes.Buffer{}
 		mimeWriter := multipart.NewWriter(buf)
-		userData, err := NewUserData(userdata.Options{
+		userData, err := newUserData(userdata.Options{
 			Directive: userdata.ShellScript + "/bin/bash",
 			Content:   "echo foo",
 		})

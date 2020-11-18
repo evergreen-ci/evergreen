@@ -1,0 +1,49 @@
+<md-dialog style="width:650px">
+    <md-dialog-content>
+        <md-card style="width:97.5%">
+            <md-card-title>
+                <div ng-bind="modalTitle()"></div>
+            </md-card-title>
+            <md-card-content>
+                <section layout="row" flex>
+                    <md-input-container flex=50>
+                        <label>Alias:</label>
+                        <input type="text" ng-model="alias.definition_alias" ng-required="true" placeholder="alias name">
+                    </md-input-container>
+                    <md-input-container flex=50>
+                        <label>Project:</label>
+                        <input type="text" ng-model="alias.child_project" ng-required="true" placeholder="project to include tasks from">
+                    </md-input-container>
+                </section>
+                <section layout="row" flex>
+                    <md-input-container flex=50>
+                        <label>Module:</label>
+                        <input type="text" ng-model="alias.parent_as_module" placeholder="apply changes to a module">
+                    </md-input-container>
+                    <md-input-container flex=50>
+                        <label>Wait on:</label>
+                        <md-select ng-model="alias.status">
+                            <md-option value=""></md-option>
+                            <md-option value="*">Any Completed Status</md-option>
+                            <md-option value="succeeded">Success</md-option>
+                            <md-option value="failed">Failed</md-option>
+                        </md-select>
+                    </md-input-container>
+                </section>
+                <section layout="row" flex>
+                    <md-input-container flex=50>
+                        <label>Variant regex:</label>
+                        <input type="text" ng-model="alias.variant_regex" placeholder="select variants matching regex">
+                    </md-input-container>
+                    <md-input-container flex=50>
+                        <label>Task regex:</label>
+                        <input type="text" ng-model="alias.task_regex" placeholder="select tasks matching regex">
+                    </md-input-container>
+                </section>
+            </md-card-content>
+        </md-card>
+        <md-button class="md-raised" ng-click="closeDialog(true)" style="width:20%;float:right">Save Changes</md-button>
+        <md-button class="md-raised" ng-show="aliasIndex!=undefined" ng-click="deleteAlias()" style="width:20%;float:right">Delete Alias</md-button>
+        <md-button class="md-raised" ng-click="closeDialog(false)" style="width:20%;float:right">Cancel</md-button>
+    </md-dialog-content>
+</md-dialog>

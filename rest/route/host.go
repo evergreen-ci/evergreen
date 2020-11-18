@@ -541,3 +541,46 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return resp
 }
+
+// GET /hosts/{host_id}/provisioning_script
+
+type hostProvisioningScriptGetHandler struct {
+	sc     data.Connector
+	hostID string
+}
+
+func makeHostProvisioningScriptGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &hostProvisioningScriptGetHandler{
+		sc: sc,
+	}
+}
+
+func (rh *hostProvisioningScriptGetHandler) Factory() gimlet.RouteHandler {
+	return &hostProvisioningScriptGetHandler{
+		sc: rh.sc,
+	}
+}
+
+func (rh *hostProvisioningScriptGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	hostID := gimlet.GetVars(r)["host_id"]
+	if hostID == "" {
+		return errors.New("missing host ID")
+	}
+	rh.hostID = hostID
+	return nil
+}
+
+func (rh *hostProvisioningScriptGetHandler) Run(ctx context.Context) gimlet.Responder {
+	opts, err := rh.sc.GenerateHostProvisioningScript(ctx, rh.hostID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	apiOpts := model.APIHostProvisioningScriptOptions{}
+	if err := apiOpts.BuildFromService(opts); err != nil {
+		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "failed to build host provisioning script options").Error(),
+		})
+	}
+	return gimlet.NewJSONResponse(apiOpts)
+}

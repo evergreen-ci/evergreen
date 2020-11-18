@@ -295,6 +295,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
+		nextTask.TaskGroup != tc.taskGroup ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
 		return true
 	}

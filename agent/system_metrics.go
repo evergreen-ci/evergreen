@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	sysmetrics "github.com/evergreen-ci/timber/system_metrics"
+	"github.com/evergreen-ci/timber/systemmetrics"
 	"github.com/mongodb/ftdc/metrics"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -27,7 +27,7 @@ type metricCollector interface {
 	// name returns a string indicating the type of metric collected, such as "uptime".
 	name() string
 	// format returns the format of the collected data.
-	format() sysmetrics.DataFormat
+	format() systemmetrics.DataFormat
 	// collect returns the value of the collected metric when the function is called.
 	collect(context.Context) ([]byte, error)
 }
@@ -39,11 +39,11 @@ type systemMetricsCollector struct {
 	stream          sync.WaitGroup
 	close           sync.WaitGroup
 	streamingCancel context.CancelFunc
-	taskOpts        sysmetrics.SystemMetricsOptions
-	writeOpts       sysmetrics.WriteCloserOptions
+	taskOpts        systemmetrics.SystemMetricsOptions
+	writeOpts       systemmetrics.WriteCloserOptions
 	interval        time.Duration
 	collectors      []metricCollector
-	client          *sysmetrics.SystemMetricsClient
+	client          *systemmetrics.SystemMetricsClient
 	catcher         grip.Catcher
 	id              string
 	closed          bool
@@ -107,14 +107,14 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 		interval:   opts.interval,
 		collectors: opts.collectors,
 		taskOpts:   getSystemMetricsInfo(opts.task),
-		writeOpts: sysmetrics.WriteCloserOptions{
+		writeOpts: systemmetrics.WriteCloserOptions{
 			FlushInterval: opts.bufferTimedFlushInterval,
 			NoTimedFlush:  opts.noBufferTimedFlush,
 			MaxBufferSize: opts.maxBufferSize,
 		},
 		catcher: grip.NewBasicCatcher(),
 	}
-	s.client, err = sysmetrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
+	s.client, err = systemmetrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating new system metrics client")
 	}
@@ -137,7 +137,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	streamingCtx, s.streamingCancel = context.WithCancel(ctx)
 
 	for _, collector := range s.collectors {
-		stream, err := s.client.NewSystemMetricsWriteCloser(ctx, sysmetrics.MetricDataOptions{
+		stream, err := s.client.NewSystemMetricsWriteCloser(ctx, systemmetrics.MetricDataOptions{
 			Id:         s.id,
 			MetricType: collector.name(),
 			Format:     collector.format(),
@@ -248,8 +248,8 @@ func (s *systemMetricsCollector) Close() error {
 	return s.catcher.Resolve()
 }
 
-func getSystemMetricsInfo(t *task.Task) sysmetrics.SystemMetricsOptions {
-	return sysmetrics.SystemMetricsOptions{
+func getSystemMetricsInfo(t *task.Task) systemmetrics.SystemMetricsOptions {
+	return systemmetrics.SystemMetricsOptions{
 		Project:     t.Project,
 		Version:     t.Version,
 		Variant:     t.BuildVariant,
@@ -257,8 +257,8 @@ func getSystemMetricsInfo(t *task.Task) sysmetrics.SystemMetricsOptions {
 		TaskId:      t.Id,
 		Execution:   int32(t.Execution),
 		Mainline:    !t.IsPatchRequest(),
-		Compression: sysmetrics.CompressionTypeNone,
-		Schema:      sysmetrics.SchemaTypeRawEvents,
+		Compression: systemmetrics.CompressionTypeNone,
+		Schema:      systemmetrics.SchemaTypeRawEvents,
 	}
 }
 
@@ -289,7 +289,7 @@ type diskUsageWrapper struct {
 
 func (c *diskUsageCollector) name() string { return "disk_usage" }
 
-func (c *diskUsageCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatFTDC }
+func (c *diskUsageCollector) format() systemmetrics.DataFormat { return systemmetrics.DataFormatFTDC }
 
 func (c *diskUsageCollector) collect(ctx context.Context) ([]byte, error) {
 	usage, err := disk.UsageWithContext(ctx, c.dir)
@@ -325,7 +325,7 @@ type uptimeWrapper struct {
 
 func (c *uptimeCollector) name() string { return "uptime" }
 
-func (c *uptimeCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatFTDC }
+func (c *uptimeCollector) format() systemmetrics.DataFormat { return systemmetrics.DataFormatFTDC }
 
 func (c *uptimeCollector) collect(ctx context.Context) ([]byte, error) {
 	uptime, err := host.UptimeWithContext(ctx)
@@ -364,7 +364,7 @@ type processData struct {
 
 func (c *processCollector) name() string { return "process" }
 
-func (c *processCollector) format() sysmetrics.DataFormat { return sysmetrics.DataFormatJSON }
+func (c *processCollector) format() systemmetrics.DataFormat { return systemmetrics.DataFormatJSON }
 
 func (c *processCollector) collect(ctx context.Context) ([]byte, error) {
 	var err error

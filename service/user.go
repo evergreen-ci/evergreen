@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -106,7 +105,7 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 	}
 	uis.umconf.AttachCookie(token, w)
 
-	user, err := uis.env.UserManager().GetUserByToken(r.Context(), token)
+	u, err := uis.env.UserManager().GetUserByToken(r.Context(), token)
 	if err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "could not find user",
@@ -114,11 +113,19 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 		}))
 		return
 	}
+	dbUser, ok := u.(*user.DBUser)
+	if !ok {
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "found user but not from the DB",
+			StatusCode: http.StatusInternalServerError,
+		}))
+		return
+	}
 
-	key := user.GetAPIKey()
+	key := u.GetAPIKey()
 	if key == "" {
 		key = utility.RandomString()
-		if err := model.SetUserAPIKey(user.Username(), key); err != nil {
+		if err := dbUser.UpdateAPIKey(key); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "could not generate key",
 				StatusCode: http.StatusInternalServerError,
@@ -165,7 +172,7 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	newKey := utility.RandomString()
-	if err := model.SetUserAPIKey(currentUser.Id, newKey); err != nil {
+	if err := currentUser.UpdateAPIKey(newKey); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
 		return
 	}

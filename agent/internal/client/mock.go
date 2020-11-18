@@ -59,6 +59,7 @@ type Mock struct {
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults *task.LocalTestResults
+	HasCedarResults  bool
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
@@ -377,6 +378,12 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 // If results are empty or nil, this operation is a noop.
 func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.LocalTestResults) error {
 	c.LocalTestResults = results
+	return nil
+}
+
+// SetHasCedarResults sets the HasCedarResults flag in the task.
+func (c *Mock) SetHasCedarResults(ctx context.Context, td TaskData) error {
+	c.HasCedarResults = true
 	return nil
 }
 

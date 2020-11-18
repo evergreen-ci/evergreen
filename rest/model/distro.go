@@ -201,17 +201,18 @@ func (s *APIDispatcherSettings) ToService() (interface{}, error) {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                *string                 `json:"method"`
-	Communication         *string                 `json:"communication"`
-	ClientDir             *string                 `json:"client_dir"`
-	JasperBinaryDir       *string                 `json:"jasper_binary_dir"`
-	JasperCredentialsPath *string                 `json:"jasper_credentials_path"`
-	ServiceUser           *string                 `json:"service_user"`
-	ShellPath             *string                 `json:"shell_path"`
-	RootDir               *string                 `json:"root_dir"`
-	Env                   []APIEnvVar             `json:"env"`
-	ResourceLimits        APIResourceLimits       `json:"resource_limits"`
-	PreconditionScripts   []APIPreconditionScript `json:"precondition_scripts"`
+	Method                  *string                 `json:"method"`
+	Communication           *string                 `json:"communication"`
+	ClientDir               *string                 `json:"client_dir"`
+	JasperBinaryDir         *string                 `json:"jasper_binary_dir"`
+	JasperCredentialsPath   *string                 `json:"jasper_credentials_path"`
+	ServiceUser             *string                 `json:"service_user"`
+	ShellPath               *string                 `json:"shell_path"`
+	RootDir                 *string                 `json:"root_dir"`
+	Env                     []APIEnvVar             `json:"env"`
+	ResourceLimits          APIResourceLimits       `json:"resource_limits"`
+	PreconditionScripts     []APIPreconditionScript `json:"precondition_scripts"`
+	FetchProvisioningScript bool                    `json:"fetch_provisioning_script"`
 }
 
 type APIEnvVar struct {
@@ -321,6 +322,7 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
 	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
+	s.FetchProvisioningScript = settings.FetchProvisioningScript
 
 	return nil
 }
@@ -369,6 +371,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
 	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
+	settings.FetchProvisioningScript = s.FetchProvisioningScript
 
 	return settings, nil
 }

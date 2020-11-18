@@ -11,7 +11,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/timber/buildlogger/fetcher"
+	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -71,6 +72,7 @@ func GetSeverityMapping(s int) string {
 type GetBuildloggerLogsOptions struct {
 	BaseURL       string
 	TaskID        string
+	TestName      string
 	Execution     int
 	PrintPriority bool
 	Tail          int
@@ -83,12 +85,15 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 	if usr == nil {
 		return nil, errors.New("error getting user from context")
 	}
-	getOpts := fetcher.GetOptions{
-		BaseURL:       fmt.Sprintf("https://%s", opts.BaseURL),
-		UserKey:       usr.GetAPIKey(),
-		UserName:      usr.Username(),
-		TaskID:        opts.TaskID,
-		Execution:     opts.Execution,
+	getOpts := buildlogger.BuildloggerGetOptions{
+		CedarOpts: timber.GetOptions{
+			BaseURL:   fmt.Sprintf("https://%s", opts.BaseURL),
+			UserKey:   usr.GetAPIKey(),
+			UserName:  usr.Username(),
+			TaskID:    opts.TaskID,
+			TestName:  opts.TestName,
+			Execution: opts.Execution,
+		},
 		PrintTime:     true,
 		PrintPriority: opts.PrintPriority,
 		Tail:          opts.Tail,
@@ -102,7 +107,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		getOpts.ProcessName = evergreen.LogTypeAgent
 	}
 
-	logReader, err := fetcher.Logs(ctx, getOpts)
+	logReader, err := buildlogger.GetLogs(ctx, getOpts)
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
 }
 

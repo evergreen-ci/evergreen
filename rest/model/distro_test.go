@@ -87,6 +87,7 @@ func TestDistroToService(t *testing.T) {
 					Script: ToStringPtr("echo foo"),
 				},
 			},
+			FetchProvisioningScript: true,
 		},
 		Note: ToStringPtr("note1"),
 		HomeVolumeSettings: APIHomeVolumeSettings{
@@ -122,6 +123,7 @@ func TestDistroToService(t *testing.T) {
 	require.Len(t, d.BootstrapSettings.PreconditionScripts, 1)
 	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Path), d.BootstrapSettings.PreconditionScripts[0].Path)
 	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
+	assert.True(t, apiDistro.BootstrapSettings.FetchProvisioningScript)
 	assert.Equal(t, FromStringPtr(apiDistro.Note), (d.Note))
 	assert.Equal(t, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
 	assert.Equal(t, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)

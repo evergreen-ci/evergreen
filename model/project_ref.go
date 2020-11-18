@@ -60,6 +60,7 @@ type ProjectRef struct {
 	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 	NotifyOnBuildFailure    bool                      `bson:"notify_on_failure" json:"notify_on_failure"`
 	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PatchTriggerAliases     []PatchTriggerDefinition  `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
 	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
 	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
@@ -146,6 +147,15 @@ type TriggerDefinition struct {
 	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
 }
 
+type PatchTriggerDefinition struct {
+	Alias          string `bson:"alias" json:"alias"`
+	ChildProject   string `bson:"child_project" json:"child_project"`
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	TaskRegex      string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	VariantRegex   string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+}
+
 type PeriodicBuildDefinition struct {
 	ID            string    `bson:"id" json:"id"`
 	ConfigFile    string    `bson:"config_file" json:"config_file"`
@@ -212,6 +222,7 @@ var (
 	projectRefNotifyOnFailureKey         = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey     = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey                = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPatchTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefTagsKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
@@ -757,6 +768,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefNotifyOnFailureKey:         projectRef.NotifyOnBuildFailure,
 				projectRefSpawnHostScriptPathKey:     projectRef.SpawnHostScriptPath,
 				projectRefTriggersKey:                projectRef.Triggers,
+				projectRefPatchTriggerAliasesKey:     projectRef.PatchTriggerAliases,
 				projectRefPeriodicBuildsKey:          projectRef.PeriodicBuilds,
 				projectRefWorkstationConfigKey:       projectRef.WorkstationConfig,
 			},
@@ -1197,6 +1209,32 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	if t.ConfigFile == "" && t.GenerateFile == "" {
 		return errors.New("must provide a config file or generated tasks file")
 	}
+	return nil
+}
+
+func (t *PatchTriggerDefinition) Validate(parentProject string) error {
+	childProject, err := FindOneProjectRef(t.ChildProject)
+	if err != nil {
+		return errors.Wrapf(err, "error finding upstream project %s", t.ChildProject)
+	}
+	if childProject == nil {
+		return errors.Errorf("project '%s' not found", t.ChildProject)
+	}
+	if childProject.Identifier == parentProject {
+		return errors.New("a project cannot trigger itself")
+	}
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
+		return errors.Errorf("invalid status: %s", t.Status)
+	}
+	_, regexErr := regexp.Compile(t.VariantRegex)
+	if regexErr != nil {
+		return errors.Wrap(regexErr, "invalid variant regex")
+	}
+	_, regexErr = regexp.Compile(t.TaskRegex)
+	if regexErr != nil {
+		return errors.Wrap(regexErr, "invalid task regex")
+	}
+
 	return nil
 }
 
