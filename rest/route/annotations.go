@@ -305,24 +305,8 @@ func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 		Time:      time.Now(),
 		Requester: annotations.APIRequester,
 	}
-	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(h.taskId, h.execution)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error getting task annotation"))
-	}
 
-	if existingAnnotation == nil {
-		err = annotations.InsertNewAnnotation(h.taskId, h.execution, a, source)
-		if err != nil {
-			gimlet.NewJSONInternalErrorResponse(err)
-		}
-		responder := gimlet.NewJSONResponse(struct{}{})
-		if err = responder.SetStatus(http.StatusCreated); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
-		}
-		return responder
-	}
-
-	err = annotations.UpdateAnnotation(h.taskId, h.execution, a, existingAnnotation, source)
+	err := annotations.UpdateAnnotation(h.taskId, h.execution, a, source)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

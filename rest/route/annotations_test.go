@@ -419,7 +419,7 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	}
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusCreated, resp.Status())
+	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
 	assert.NotEqual(t, annotation.Id, "")
