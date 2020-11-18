@@ -1,0 +1,27 @@
+{
+  "task_annotation": [
+    {
+      "_id": "my-annotation",
+      "task_id": "task-1234",
+      "execution": 0,
+      "issues": [
+        {
+          "url": "https://link.com",
+          "issue": "EVG-1212",
+          "source": {
+            "author": "chaya.malik"
+          }
+        }
+      ],
+      "suspected_issues": [
+        {
+          "url": "https://link.com",
+          "issue": "EVG-2121",
+          "source": {
+            "author": "annie.black"
+          }
+        }
+      ]
+    }
+  ]
+}
