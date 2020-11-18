@@ -943,6 +943,10 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         return false;
       }
 
+      if (!$scope.alias.task_specifiers.length) {
+        return false;
+      }
+
       return true;
     };
 
