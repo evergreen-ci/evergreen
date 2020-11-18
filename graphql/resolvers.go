@@ -1383,12 +1383,17 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
+	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
 			Status: task.GetDisplayStatus(),
+		}
+		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
+			s := baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			t.BaseStatus = &s
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 		if _, ok := variantDisplayName[task.BuildVariant]; !ok {

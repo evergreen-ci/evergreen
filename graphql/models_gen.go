@@ -83,9 +83,10 @@ type PatchBuildVariant struct {
 }
 
 type PatchBuildVariantTask struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Status     string  `json:"status"`
+	BaseStatus *string `json:"baseStatus"`
 }
 
 type PatchDuration struct {
