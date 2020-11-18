@@ -66,8 +66,8 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host '%s'", hostId)
 	}
 
-	// If the host was provisioned through user data, the host be started with
-	// the intent host ID instead of the _id.
+	// If the host was provisioned through user data, the host will be started
+	// with the intent host ID instead of the _id.
 	h, err := host.FindOneByIdOrTag(hostId)
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostId)
