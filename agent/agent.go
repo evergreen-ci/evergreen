@@ -526,10 +526,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
-	grip.Infof("Sent final status as: %v", detail.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marking task complete")
 	}
+	grip.Infof("Sent final status as: %v", detail.Status)
 
 	return resp, nil
 }
