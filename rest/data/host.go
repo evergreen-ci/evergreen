@@ -190,6 +190,12 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 }
 
 func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
+	if hostID == "" {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "cannot generate host provisioning script without a host ID",
+		}
+	}
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

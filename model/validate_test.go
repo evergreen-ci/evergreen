@@ -58,7 +58,7 @@ func TestValidateHost(t *testing.T) {
 			assert.Equal(t, http.StatusOK, status)
 			assert.Equal(t, h, validatedHost)
 		},
-		"PassesIfHostHasValidJasperCredentialsID": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
+		"PassesIfHostHasValidTag": func(t *testing.T, h *host.Host, tsk *task.Task, header http.Header) {
 			h.Id = ""
 			require.NoError(t, h.Insert())
 
@@ -126,10 +126,10 @@ func TestValidateHost(t *testing.T) {
 			}()
 
 			h := &host.Host{
-				Id:                  hostID,
-				RunningTask:         taskID,
-				Secret:              secret,
-				JasperCredentialsID: hostID,
+				Id:          hostID,
+				Tag:         hostID,
+				RunningTask: taskID,
+				Secret:      secret,
 			}
 
 			tsk := &task.Task{Id: taskID}
