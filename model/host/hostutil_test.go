@@ -263,16 +263,7 @@ func TestJasperCommands(t *testing.T) {
 
 			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
-			currPos := 0
-			offset := strings.Index(userData.Content[currPos:], setupScript)
-			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
-			currPos += offset + len(setupScript)
-
-			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(userData.Content[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
-				currPos += offset + len(expectedCmd)
-			}
+			assertStringContainsOrderedSubstrings(t, userData.Content, expectedCmds)
 		},
 		"ProvisioningUserDataForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, db.Clear(user.Collection))
@@ -334,16 +325,7 @@ func TestJasperCommands(t *testing.T) {
 
 			assert.EqualValues(t, "#!/bin/bash", userData.Directive)
 
-			currPos := 0
-			offset := strings.Index(userData.Content[currPos:], setupScript)
-			require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", setupScript))
-			currPos += offset + len(setupScript)
-
-			for _, expectedCmd := range expectedCmds {
-				offset := strings.Index(userData.Content[currPos:], expectedCmd)
-				require.NotEqual(t, -1, offset, fmt.Sprintf("missing %s", expectedCmd))
-				currPos += offset + len(expectedCmd)
-			}
+			assertStringContainsOrderedSubstrings(t, userData.Content, expectedCmds)
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			cmd := h.ForceReinstallJasperCommand(settings)
@@ -433,7 +415,8 @@ func TestJasperCommands(t *testing.T) {
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
 					},
-					User: "user",
+					User:  "user",
+					Setup: "#!/bin/bash\necho hello world",
 				},
 				StartedBy: evergreen.User,
 			}
@@ -1437,16 +1420,20 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 			opts, err := h.FetchProvisioningScriptUserData(settings)
 			require.NoError(t, err)
 
+			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+			require.NoError(t, err)
 			expectedParts := []string{
+				fetchClient,
+				fixClientOwner,
 				"/home/user/evergreen host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
 				"--host_secret=host_secret",
 				"--working_dir=/jasper_binary_dir",
 			}
-			for _, part := range expectedParts {
-				assert.Contains(t, opts.Content, part)
-			}
+
+			assertStringContainsOrderedSubstrings(t, opts.Content, expectedParts)
 			assert.Equal(t, userdata.ShellScript+userdata.Directive(h.Distro.BootstrapSettings.ShellPath), opts.Directive)
 		},
 		"Windows": func(t *testing.T, h *Host) {
@@ -1455,7 +1442,14 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 			opts, err := h.FetchProvisioningScriptUserData(settings)
 			require.NoError(t, err)
 
+			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			require.NoError(t, err)
+
+			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+
 			expectedParts := []string{
+				util.PowerShellQuotedString(fetchClient),
+				util.PowerShellQuotedString(fixClientOwner),
 				"/home/user/evergreen.exe host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
@@ -1490,7 +1484,15 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 			testCase(t, h)
 		})
 	}
+}
 
+func assertStringContainsOrderedSubstrings(t *testing.T, s string, subs []string) {
+	var currPos int
+	for _, sub := range subs {
+		offset := strings.Index(s[currPos:], sub)
+		require.NotEqual(t, -1, "missing '%s'", sub)
+		currPos += offset + len(sub)
+	}
 }
 
 func newMockCredentials() (*certdepot.Credentials, error) {

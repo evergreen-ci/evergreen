@@ -383,16 +383,21 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
-	bashPrefix := []string{"set -o errexit", "set -o verbose"}
+	var fetchClient, fixClientOwner string
+	var err error
+	// If we're fetching the provisioning script from the app server, the
+	// Evergreen client is already downloaded on the host, so fetching it again
+	// is unnecessary.
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		fetchClient, err = h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating curl command for evergreen client")
+		}
 
-	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating curl command for evergreen client")
+		// User data runs as the privileged user, so ensure that the binary has
+		// permissions that allow it to be modified after user data is finished.
+		fixClientOwner = h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 	}
-
-	// User data runs as the privileged user, so ensure that the binary has
-	// permissions that allow it to be modified after user data is finished.
-	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
 	checkUserDataRan := h.CheckUserDataStartedCommand()
 
@@ -473,19 +478,19 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			fixJasperDirsOwner,
 		)
 
-		var bashCmds []string
-		bashCmds = append(bashCmds, writeSetupScriptCmds...)
-		bashCmds = append(bashCmds, setupJasperCmds...)
-		bashCmds = append(bashCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
+		var shellCmds []string
+		shellCmds = append(shellCmds, writeSetupScriptCmds...)
+		shellCmds = append(shellCmds, setupJasperCmds...)
+		shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
 
-		for i := range bashCmds {
-			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
+		for i := range shellCmds {
+			shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
 		}
 
 		powershellCmds := append([]string{
 			checkUserDataRan,
 			setupUserCmds},
-			bashCmds...,
+			shellCmds...,
 		)
 
 		return &userdata.Options{
@@ -517,7 +522,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		fixJasperDirsOwner,
 	)
 
-	bashCmds := append(bashPrefix, checkUserDataRan, setupScriptCmds)
+	shellPrefix := []string{"set -o errexit", "set -o verbose"}
+
+	bashCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
 	bashCmds = append(bashCmds, setupJasperCmds...)
 	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
@@ -1290,13 +1297,15 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 			return nil, errors.Wrap(err, "creating host secret")
 		}
 	}
-	var directive userdata.Directive
-	if h.Distro.IsWindows() {
-		directive = userdata.PowerShellScript
-	} else {
-		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
+
+	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating curl command for evergreen client")
 	}
-	cmd := strings.Join([]string{
+	// User data runs as the privileged user, so ensure that the binary has
+	// permissions that allow it to be modified after user data is finished.
+	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+	fetchScriptCmd := strings.Join([]string{
 		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
 		"host",
 		"provision",
@@ -1306,8 +1315,30 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 		fmt.Sprintf("--working_dir=%s", h.Distro.BootstrapSettings.JasperBinaryDir),
 	}, " ")
 
+	cmds := []string{
+		fetchClient,
+		fixClientOwner,
+		fetchScriptCmd,
+	}
+
+	if h.Distro.IsWindows() {
+		for i := range cmds {
+			cmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(cmds[i]))
+		}
+	} else {
+		shellPrefix := []string{"set -o errexit", "set -o verbose"}
+		cmds = append(shellPrefix, cmds...)
+	}
+
+	var directive userdata.Directive
+	if h.Distro.IsWindows() {
+		directive = userdata.PowerShellScript
+	} else {
+		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
+	}
+
 	return &userdata.Options{
-		Content:   cmd,
+		Content:   strings.Join(cmds, "\n"),
 		Directive: directive,
 	}, nil
 }
