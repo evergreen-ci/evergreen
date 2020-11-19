@@ -284,7 +284,6 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, user *user.DBUser) erro
 			}
 		}
 	}
-
 	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(repoId), p.Id), "error adding resource to repo '%s' scope", repoId)
 }
 
@@ -1010,26 +1009,37 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 	return true, nil
 }
 
-func (p *ProjectRef) MakeRestricted() error {
+func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-
 	// attempt to remove the resource from the repo (which will also remove from its parent)
 	// if the repo scope doesn't exist then we'll remove only from unrestricted
-	err := rm.RemoveResourceFromScope(p.GetRepoId(), p.Id)
+
+	scopeId := GetRepoScope(p.GetRepoId())
+	scope, err := rm.GetScope(ctx, scopeId)
 	if err != nil {
-		return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
+		return errors.Wrapf(err, "error looking for repo scope")
 	}
-	return nil
+	if scope != nil {
+		return errors.Wrap(rm.RemoveResourceFromScope(scopeId, p.Id), "error removing resource from scope")
+	}
+	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
+
 }
 
-func (p *ProjectRef) MakeUnrestricted() error {
+func (p *ProjectRef) MakeUnrestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// attempt to add the resource to the repo (which will also add to its parent)
 	// if the repo scope doesn't exist then we'll add only to unrestricted
-	if err := rm.AddResourceToScope(p.GetRepoId(), p.Id); err != nil {
-		return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
+
+	scopeId := GetRepoScope(p.GetRepoId())
+	scope, err := rm.GetScope(ctx, scopeId)
+	if err != nil {
+		return errors.Wrapf(err, "error looking for repo scope")
 	}
-	return nil
+	if scope != nil {
+		return errors.Wrap(rm.AddResourceToScope(scopeId, p.Id), "error adding resource to scope")
+	}
+	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
 }
 
 func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {

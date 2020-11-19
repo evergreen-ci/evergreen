@@ -398,8 +398,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	fmt.Println("even farther")
-
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range newProjectRef.Triggers {
@@ -426,24 +424,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if oldProject.Restricted != newProjectRef.Restricted {
 		if newProjectRef.Restricted {
-			err = newProjectRef.MakeRestricted()
+			err = newProjectRef.MakeRestricted(ctx)
 		} else {
-			err = oldProject.MakeUnrestricted()
+			err = oldProject.MakeUnrestricted(ctx)
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
-	fmt.Println("GOT THIS FAR")
 	if oldProject.UseRepoSettings != newProjectRef.UseRepoSettings {
 		if newProjectRef.UseRepoSettings {
-			fmt.Println("THIS IS GOOD")
 			err = newProjectRef.AddToRepoScope(ctx, h.user)
 		} else {
 			err = newProjectRef.RemoveFromRepoScope()
 		}
 		if err != nil {
-			fmt.Println("ALAS")
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
