@@ -96,7 +96,8 @@ type PatchDuration struct {
 }
 
 type PatchMetadata struct {
-	Author string `json:"author"`
+	Author  string `json:"author"`
+	PatchID string `json:"patchID"`
 }
 
 type PatchProject struct {

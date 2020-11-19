@@ -373,7 +373,8 @@ type ComplexityRoot struct {
 	}
 
 	PatchMetadata struct {
-		Author func(childComplexity int) int
+		Author  func(childComplexity int) int
+		PatchID func(childComplexity int) int
 	}
 
 	PatchProject struct {
@@ -2436,6 +2437,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchMetadata.Author(childComplexity), true
+
+	case "PatchMetadata.patchID":
+		if e.complexity.PatchMetadata.PatchID == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.PatchID(childComplexity), true
 
 	case "PatchProject.tasks":
 		if e.complexity.PatchProject.Tasks == nil {
@@ -4667,6 +4675,7 @@ type Dependency {
 
 type PatchMetadata {
   author: String!
+  patchID: String!
 }
 
 type BaseTaskMetadata {
@@ -13052,6 +13061,40 @@ func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Author, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchMetadata_patchID(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23914,6 +23957,11 @@ func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("PatchMetadata")
 		case "author":
 			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "patchID":
+			out.Values[i] = ec._PatchMetadata_patchID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

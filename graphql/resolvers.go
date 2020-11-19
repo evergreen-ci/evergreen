@@ -2126,7 +2126,8 @@ func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
 	}
 	patchMetadata := PatchMetadata{
-		Author: version.Author,
+		Author:  version.Author,
+		PatchID: version.Id,
 	}
 	return &patchMetadata, nil
 }
