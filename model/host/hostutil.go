@@ -383,6 +383,8 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
+	shellPrefix := []string{"set -o errexit", "set -o verbose"}
+
 	var fetchClient, fixClientOwner string
 	var err error
 	// If we're fetching the provisioning script from the app server, the
@@ -487,6 +489,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		)
 
 		var shellCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			shellCmds = append(shellCmds, shellPrefix...)
+		}
 		shellCmds = append(shellCmds, writeSetupScriptCmds...)
 		shellCmds = append(shellCmds, setupJasperCmds...)
 		shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
@@ -531,8 +536,6 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		h.ForceReinstallJasperCommand(settings),
 		fixJasperDirsOwner,
 	)
-
-	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 
 	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
