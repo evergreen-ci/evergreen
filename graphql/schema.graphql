@@ -353,6 +353,7 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+  baseStatus: String
 }
 
 type TaskFiles {
@@ -458,7 +459,7 @@ type TaskResult {
   displayName: String!
   version: String!
   status: String!
-  baseStatus: String!
+  baseStatus: String
   buildVariant: String!
   blocked: Boolean!
 }

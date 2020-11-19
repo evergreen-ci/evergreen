@@ -359,9 +359,10 @@ type ComplexityRoot struct {
 	}
 
 	PatchBuildVariantTask struct {
-		ID     func(childComplexity int) int
-		Name   func(childComplexity int) int
-		Status func(childComplexity int) int
+		BaseStatus func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Status     func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -2365,6 +2366,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchBuildVariant.Variant(childComplexity), true
+
+	case "PatchBuildVariantTask.baseStatus":
+		if e.complexity.PatchBuildVariantTask.BaseStatus == nil {
+			break
+		}
+
+		return e.complexity.PatchBuildVariantTask.BaseStatus(childComplexity), true
 
 	case "PatchBuildVariantTask.id":
 		if e.complexity.PatchBuildVariantTask.ID == nil {
@@ -4457,6 +4465,7 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+  baseStatus: String
 }
 
 type TaskFiles {
@@ -12808,6 +12817,37 @@ func (ec *executionContext) _PatchBuildVariantTask_status(ctx context.Context, f
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchBuildVariantTask_baseStatus(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariantTask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchBuildVariantTask",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
@@ -23700,6 +23740,8 @@ func (ec *executionContext) _PatchBuildVariantTask(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "baseStatus":
+			out.Values[i] = ec._PatchBuildVariantTask_baseStatus(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
