@@ -1420,10 +1420,13 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 			opts, err := h.FetchProvisioningScriptUserData(settings)
 			require.NoError(t, err)
 
+			makeJasperDirs := h.MakeJasperDirsCommand()
 			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
 			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 			require.NoError(t, err)
+
 			expectedParts := []string{
+				makeJasperDirs,
 				fetchClient,
 				fixClientOwner,
 				"/home/user/evergreen host provision",
@@ -1431,6 +1434,7 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 				"--host_id=host_id",
 				"--host_secret=host_secret",
 				"--working_dir=/jasper_binary_dir",
+				"--shell_path=/bin/bash",
 			}
 
 			assertStringContainsOrderedSubstrings(t, opts.Content, expectedParts)
@@ -1442,19 +1446,21 @@ func TestFetchProvisioningScriptUserData(t *testing.T) {
 			opts, err := h.FetchProvisioningScriptUserData(settings)
 			require.NoError(t, err)
 
+			makeJasperDirs := h.MakeJasperDirsCommand()
 			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
 			require.NoError(t, err)
-
 			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
 			expectedParts := []string{
-				util.PowerShellQuotedString(fetchClient),
-				util.PowerShellQuotedString(fixClientOwner),
+				makeJasperDirs,
+				fetchClient,
+				fixClientOwner,
 				"/home/user/evergreen.exe host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
 				"--host_secret=host_secret",
 				"--working_dir=/jasper_binary_dir",
+				"--shell_path=/bin/bash",
 			}
 			for _, part := range expectedParts {
 				assert.Contains(t, opts.Content, part)

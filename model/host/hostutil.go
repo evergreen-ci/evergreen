@@ -554,6 +554,8 @@ func (h *Host) ChangeJasperDirsOwnerCommand() string {
 	}, " && ")
 }
 
+// MakeJasperDirsCommand creates the directories with the correct permissions to
+// provision the host with Jasper.
 func (h *Host) MakeJasperDirsCommand() string {
 	return fmt.Sprintf("mkdir -m 777 -p %s %s %s",
 		h.Distro.BootstrapSettings.JasperBinaryDir,
@@ -1334,7 +1336,10 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
 	}, " ")
 
+	makeJasperDirs := h.MakeJasperDirsCommand()
+
 	cmds := []string{
+		makeJasperDirs,
 		fetchClient,
 		fixClientOwner,
 		fetchScriptCmd,
