@@ -1312,7 +1312,7 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
-		fmt.Sprintf("--working_dir=%s", h.Distro.BootstrapSettings.JasperBinaryDir),
+		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
 	}, " ")
 
 	cmds := []string{
