@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "query_file": "moveIssueToSuspectedIssue.graphql",
+      "result": { "data": { "moveAnnotationIssue": true } }
+    },
+    {
+      "query_file": "moveSuspectedIssueToIssue.graphql",
+      "result": { "data": { "moveAnnotationIssue": true } }
+    }
+  ]
+}

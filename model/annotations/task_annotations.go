@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -64,27 +65,35 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	return res
 }
 
-func MoveIssueToSuspectedIssue(taskId string, execution int, issue IssueLink, username string) error {
+func MoveIssueToSuspectedIssue(annotationId string, issue IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
 	return db.Update(
 		Collection,
-		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
-			"$pull": bson.M{IssuesKey: issue},
-			"$push": bson.M{SuspectedIssuesKey: newIssue}},
+			IdKey: annotationId,
+			bsonutil.GetDottedKeyName(IssuesKey, IssueLinkIssueKey): issue.IssueKey,
+		},
+		bson.M{
+			"$pull": bson.M{IssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
+			"$push": bson.M{SuspectedIssuesKey: newIssue},
+		},
 	)
 }
 
-func MoveSuspectedIssueToIssue(taskId string, execution int, issue IssueLink, username string) error {
+func MoveSuspectedIssueToIssue(annotationId string, issue IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
 	return db.Update(
 		Collection,
-		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
-			"$pull": bson.M{SuspectedIssuesKey: issue},
-			"$push": bson.M{IssuesKey: newIssue}},
+			IdKey: annotationId,
+			bsonutil.GetDottedKeyName(SuspectedIssuesKey, IssueLinkIssueKey): issue.IssueKey,
+		},
+		bson.M{
+			"$pull": bson.M{SuspectedIssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
+			"$push": bson.M{IssuesKey: newIssue},
+		},
 	)
 }
 

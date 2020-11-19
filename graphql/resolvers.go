@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1867,6 +1868,22 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	usr := MustHaveUser(ctx)
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.MoveIssueToSuspectedIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	}
 }
 
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {

@@ -17,6 +17,8 @@ var (
 	NoteKey            = bsonutil.MustHaveTag(TaskAnnotation{}, "Note")
 	IssuesKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "Issues")
 	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
+
+	IssueLinkIssueKey = bsonutil.MustHaveTag(IssueLink{}, "IssueKey")
 )
 
 const (
