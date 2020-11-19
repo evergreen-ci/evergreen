@@ -910,6 +910,12 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     }
 
     $scope.validTaskSpecifier = function(specifier) {
+      // can't specify both an alias and a regex set
+      if (specifier.patch_alias && (specifier.variant_regex || specifier.task_regex)) {
+        return false
+      }
+
+      // must specify either an alias or a complete regex set
       if (!specifier.patch_alias && (!specifier.variant_regex || !specifier.task_regex)) {
         return false
       }

@@ -1237,6 +1237,10 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 			return errors.New("can't specify both a regex set and a patch alias")
 		}
 
+		if specifier.PatchAlias == "" && (specifier.TaskRegex == "" || specifier.VariantRegex == "") {
+			return errors.New("must specify either a patch alias or a complete regex set")
+		}
+
 		if specifier.VariantRegex != "" {
 			_, regexErr := regexp.Compile(specifier.VariantRegex)
 			if regexErr != nil {
@@ -1253,16 +1257,13 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasesForProject(t.ChildProject)
+			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching aliases for project")
 			}
-			for _, alias := range aliases {
-				if alias.Alias == specifier.PatchAlias {
-					return nil
-				}
+			if len(aliases) == 0 {
+				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, t.ChildProject)
 			}
-			return errors.Errorf("patch alias '%s' does not exist for project '%s'", specifier.PatchAlias, t.ChildProject)
 		}
 	}
 
