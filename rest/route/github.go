@@ -252,7 +252,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "retry triggered",
 				})
-				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Sender.GetLogin(), event.Issue.GetNumber()); err != nil {
+				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "github hook",
 						"msg_id":    gh.msgID,
@@ -292,7 +292,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo, initiator string, prNumber int) error {
+func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, prNumber int) error {
 	settings, err := gh.sc.GetEvergreenSettings()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
@@ -307,7 +307,7 @@ func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo, initiato
 		return errors.Wrapf(err, "can't get PR for repo %s:%s, PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(pr, initiator)
+	return gh.AddIntentForPR(pr, pr.User.GetLogin())
 }
 
 func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner string) error {
