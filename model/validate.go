@@ -62,26 +62,21 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		}
 	}
 	secret := r.Header.Get(evergreen.HostSecretHeader)
-
-	h, err := host.FindOne(host.ById(hostId))
-	if h == nil || err != nil {
-		// If the host was provisioned through user data, the host's agent will
-		// be started with the intent host ID intead of the _id. In this case,
-		// the intent host ID should equal the Jasper credentials ID.
-		altHost, altErr := host.FindOneByJasperCredentialsID(hostId)
-		if altHost == nil {
-			return nil, http.StatusBadRequest, errors.Errorf("host %s not found", hostId)
-		}
-		if altErr != nil {
-			return nil, http.StatusInternalServerError, errors.Wrapf(err, "error loading context for host %s", hostId)
-		}
-		h = altHost
-	}
 	if secret == "" {
-		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host %s", h.Id)
+		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host '%s'", hostId)
+	}
+
+	// If the host was provisioned through user data, the host will be started
+	// with the intent host ID instead of the _id.
+	h, err := host.FindOneByIdOrTag(hostId)
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding host '%s'", hostId)
+	}
+	if h == nil {
+		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostId)
 	}
 	if secret != h.Secret {
-		return nil, http.StatusUnauthorized, errors.Errorf("Invalid host secret for host %s", h.Id)
+		return nil, http.StatusUnauthorized, errors.Errorf("Invalid host secret for host '%s'", hostId)
 	}
 
 	// if the task is attached to the context, check host-task relationship
@@ -92,7 +87,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		}
 	}
 	if badHostTaskRelationship(h, t) {
-		return nil, http.StatusConflict, errors.Errorf("Host %s should be running %s, not %s", h.Id, h.RunningTask, t.Id)
+		return nil, http.StatusConflict, errors.Errorf("Host '%s' should be running '%s', not '%s'", hostId, h.RunningTask, t.Id)
 	}
 	return h, http.StatusOK, nil
 }

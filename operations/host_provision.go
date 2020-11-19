@@ -2,15 +2,13 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -23,6 +21,7 @@ func hostProvision() cli.Command {
 		hostSecretFlagName   = "host_secret"
 		workingDirFlagName   = "working_dir"
 		apiServerURLFlagName = "api_server"
+		shellPathFlagName    = "shell_path"
 	)
 	return cli.Command{
 		Name:  "provision",
@@ -44,11 +43,16 @@ func hostProvision() cli.Command {
 				Name:  apiServerURLFlagName,
 				Usage: "the base URL for the API server",
 			},
+			cli.StringFlag{
+				Name:  shellPathFlagName,
+				Usage: "the path to the shell to use",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(hostIDFlagName),
 			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(apiServerURLFlagName),
+			requireStringFlag(shellPathFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -71,17 +75,9 @@ func hostProvision() cli.Command {
 				grip.Error(errors.Wrap(os.RemoveAll(scriptPath), "removing host provisioning file"))
 			}()
 
-			cmd, err := hostProvisioningCommand(opts.Directive, scriptPath)
-			if err != nil {
-				return errors.Wrap(err, "resolving command to execute script")
-			}
-			output, err := runHostProvisioningCommand(ctx, cmd.Directory(workingDir))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, output)
+			cmd := hostProvisioningCommand(c.String(shellPathFlagName), scriptPath)
+			if err := runHostProvisioningCommand(ctx, cmd.Directory(workingDir)); err != nil {
 				return errors.Wrap(err, "running host provisioning script")
-			}
-			if len(output) != 0 {
-				fmt.Println(output)
 			}
 
 			return nil
@@ -89,7 +85,7 @@ func hostProvision() cli.Command {
 	}
 }
 
-func makeHostProvisioningScriptFile(workingDir, content string) (string, error) {
+func makeHostProvisioningScriptFile(workingDir string, content string) (string, error) {
 	if err := os.MkdirAll(workingDir, 0755); err != nil {
 		return "", errors.Wrap(err, "creating working directory")
 	}
@@ -98,30 +94,23 @@ func makeHostProvisioningScriptFile(workingDir, content string) (string, error) 
 	if err != nil {
 		return "", errors.Wrap(err, "making absolute path to the host provisioning script")
 	}
+	// Cygwin shell requires back slashes ('\') to be escaped, so use forward
+	// slashes ('/') instead as the path separator.
+	scriptPath = util.ConsistentFilepath(scriptPath)
 	if err = ioutil.WriteFile(scriptPath, []byte(content), 0700); err != nil {
 		return "", errors.Wrapf(err, "writing script to file '%s'", scriptPath)
 	}
 	return scriptPath, nil
 }
 
-func hostProvisioningCommand(directive, scriptPath string) (*jasper.Command, error) {
-	if directive == string(userdata.PowerShellScript) {
-		return jasper.NewCommand().AppendArgs("powershell", scriptPath), nil
-	}
-	if directive == string(userdata.BatchScript) {
-		return jasper.NewCommand().AppendArgs("cmd", "/c", scriptPath), nil
-	}
-	if strings.HasPrefix(directive, string(userdata.ShellScript)) {
-		return jasper.NewCommand().AppendArgs(scriptPath), nil
-	}
-
-	return nil, errors.Errorf("unrecognized directive '%s', cannot determine how to execute it", directive)
+func hostProvisioningCommand(shellPath, scriptPath string) *jasper.Command {
+	return jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath)
 }
 
-func runHostProvisioningCommand(ctx context.Context, cmd *jasper.Command) (string, error) {
-	buf := util.NewCappedWriter(1024 * 1024)
-	if err := cmd.SetCombinedWriter(buf).Run(ctx); err != nil {
-		return buf.String(), errors.WithStack(err)
+func runHostProvisioningCommand(ctx context.Context, cmd *jasper.Command) error {
+	cmd.SetOutputWriter(utility.NopWriteCloser(os.Stdout)).SetErrorWriter(utility.NopWriteCloser(os.Stderr))
+	if err := cmd.Run(ctx); err != nil {
+		return errors.WithStack(err)
 	}
-	return buf.String(), nil
+	return nil
 }
