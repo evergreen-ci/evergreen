@@ -419,20 +419,13 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			// use the correct SSH key. Additionally, since this can take a long
 			// time to download all the task data, user data may time out this
 			// operation, which would prevent user data from completing and the
-			// host would be stuck in provisioning.
+			// host would be stuck in provisioning. To alleviate this, we
+			// download the task data using Jasper.
 			var fetchCmd []string
 			if h.ProvisionOptions.TaskSync {
-				if h.Distro.BootstrapSettings.FetchProvisioningScript {
-					fetchCmd = h.SpawnHostPullTaskSyncCommand()
-				} else {
-					fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
-				}
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
 			} else {
-				if h.Distro.BootstrapSettings.FetchProvisioningScript {
-					fetchCmd = h.SpawnHostGetTaskDataCommand()
-				} else {
-					fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
-				}
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
 			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
