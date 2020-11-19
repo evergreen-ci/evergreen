@@ -61,13 +61,13 @@ func hostProvision() cli.Command {
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
-			script, err := comm.GetHostProvisioningScript(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
+			opts, err := comm.GetHostProvisioningScript(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
 			if err != nil {
 				return errors.Wrap(err, "failed to get host provisioning script")
 			}
 
 			workingDir := c.String(workingDirFlagName)
-			scriptPath, err := makeHostProvisioningScriptFile(workingDir, script.Content)
+			scriptPath, err := makeHostProvisioningScriptFile(workingDir, opts.Content)
 			if err != nil {
 				return errors.Wrap(err, "write host provisioning script to file")
 			}
@@ -94,8 +94,8 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 	if err != nil {
 		return "", errors.Wrap(err, "making absolute path to the host provisioning script")
 	}
-	// Cygwin bash is unhappy if you use back slashes ('\') without escaping
-	// them, so use forward slashes ('/') instead as the path separator.
+	// Cygwin shell requires back slashes ('\') to be escaped, so use forward
+	// slashes ('/') instead as the path separator.
 	scriptPath = util.ConsistentFilepath(scriptPath)
 	if err = ioutil.WriteFile(scriptPath, []byte(content), 0700); err != nil {
 		return "", errors.Wrapf(err, "writing script to file '%s'", scriptPath)
