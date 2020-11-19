@@ -85,7 +85,7 @@ type ClientSettings struct {
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
 	LoadedFrom            string              `json:"-" yaml:"-"`
-	DontSetDefaultProject bool                `json:"dont_set_default_project" yaml:"dont_set_default_project"`
+	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
 	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 }
 
@@ -212,11 +212,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	return ac, rc, nil
 }
 
-func (s *ClientSettings) FindDefaultProject(useRoot bool) string {
-	cwd, err := os.Getwd()
-	grip.Error(errors.Wrap(err, "unable to get current working directory"))
-	cwd, err = filepath.EvalSymlinks(cwd)
-	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 	if project, exists := s.ProjectsForDirectory[cwd]; exists {
 		return project
 	}
@@ -347,18 +343,8 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(project string) {
-	if s.DontSetDefaultProject {
-		return
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		grip.Error(errors.Wrap(err, "unable to get current working directory"))
-		return
-	}
-	cwd, err = filepath.EvalSymlinks(cwd)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "unable to evaluate symlinks"))
+func (s *ClientSettings) SetDefaultProject(cwd, project string) {
+	if s.DisableAutoDefaulting {
 		return
 	}
 
@@ -370,5 +356,5 @@ func (s *ClientSettings) SetDefaultProject(project string) {
 		s.ProjectsForDirectory = map[string]string{}
 	}
 	s.ProjectsForDirectory[cwd] = project
-	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'dont_set_default_project' to true.", project, cwd)
+	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
 }

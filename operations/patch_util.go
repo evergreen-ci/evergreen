@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -249,8 +250,13 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
+	cwd, err := os.Getwd()
+	grip.Error(errors.Wrap(err, "unable to get current working directory"))
+	cwd, err = filepath.EvalSymlinks(cwd)
+	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+
 	if p.Project == "" {
-		p.Project = conf.FindDefaultProject(true)
+		p.Project = conf.FindDefaultProject(cwd, true)
 	}
 	if p.Project == "" {
 		return errors.New("Need to specify a project")
@@ -260,8 +266,13 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 }
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
-	if conf.FindDefaultProject(false) == "" {
-		conf.SetDefaultProject(p.Project)
+	cwd, err := os.Getwd()
+	grip.Error(errors.Wrap(err, "unable to get current working directory"))
+	cwd, err = filepath.EvalSymlinks(cwd)
+	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+
+	if conf.FindDefaultProject(cwd, false) == "" {
+		conf.SetDefaultProject(cwd, p.Project)
 		if err := conf.Write(""); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "failed to set default project",
