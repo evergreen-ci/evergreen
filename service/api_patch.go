@@ -54,6 +54,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		SyncStatuses      []string           `json:"sync_statuses"`
 		SyncTimeout       time.Duration      `json:"sync_timeout"`
 		Finalize          bool               `json:"finalize"`
+		TriggerAliases    []string           `json:"trigger_aliases"`
 		Alias             string             `json:"alias"`
 	}{}
 	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
@@ -112,18 +113,19 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:         dbUser.Id,
-		Project:      pref.Id,
-		BaseGitHash:  data.Githash,
-		Module:       r.FormValue("module"),
-		PatchContent: patchString,
-		Description:  data.Description,
-		Finalize:     data.Finalize,
-		Parameters:   data.Parameters,
-		Variants:     data.Variants,
-		Tasks:        data.Tasks,
-		Alias:        data.Alias,
-		BackportOf:   data.BackportInfo,
+		User:           dbUser.Id,
+		Project:        pref.Id,
+		BaseGitHash:    data.Githash,
+		Module:         r.FormValue("module"),
+		PatchContent:   patchString,
+		Description:    data.Description,
+		Finalize:       data.Finalize,
+		Parameters:     data.Parameters,
+		Variants:       data.Variants,
+		Tasks:          data.Tasks,
+		Alias:          data.Alias,
+		TriggerAliases: data.TriggerAliases,
+		BackportOf:     data.BackportInfo,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,

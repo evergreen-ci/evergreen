@@ -71,6 +71,7 @@ type patchParams struct {
 	PreserveCommits   bool
 	Ref               string
 	BackportOf        patch.BackportInfo
+	TriggerAliases    []string
 	Parameters        []patch.Parameter
 }
 
@@ -88,6 +89,7 @@ type patchSubmission struct {
 	syncTimeout       time.Duration
 	finalize          bool
 	parameters        []patch.Parameter
+	triggerAliases    []string
 	backportOf        patch.BackportInfo
 }
 
@@ -107,6 +109,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		finalize:          p.Finalize,
 		backportOf:        p.BackportOf,
 		parameters:        p.Parameters,
+		triggerAliases:    p.TriggerAliases,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -210,6 +213,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default parameters: %v\n", err)
 	}
 
+	if err := p.loadTriggerAliases(conf); err != nil {
+		grip.Warningf("warning - failed to set default trigger aliases: %v\n", err)
+	}
+
 	if p.Uncommitted || conf.UncommittedChanges {
 		p.Ref = ""
 	}
@@ -238,6 +245,19 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 		if !validAlias {
 			return nil, errors.Errorf("%s is not a valid alias", p.Alias)
+		}
+	}
+
+	// Validate trigger aliases exist
+	if len(p.TriggerAliases) > 0 {
+		validTriggerAliases, err := comm.ListPatchTriggerAliases(ctx, p.Project)
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching trigger aliases")
+		}
+		for _, alias := range p.TriggerAliases {
+			if !utility.StringSliceContains(validTriggerAliases, alias) {
+				return nil, errors.Errorf("Trigger alias '%s' is not defined for project '%s'. Valid aliases are %v", alias, p.Project, validTriggerAliases)
+			}
 		}
 	}
 
@@ -324,6 +344,23 @@ func (p *patchParams) loadParameters(conf *ClientSettings) error {
 		}
 	} else {
 		p.Parameters = defaultParameters
+	}
+	return nil
+}
+
+func (p *patchParams) loadTriggerAliases(conf *ClientSettings) error {
+	defaultAliases := conf.FindDefaultTriggerAliases(p.Project)
+	if len(p.TriggerAliases) != 0 {
+		if len(defaultAliases) == 0 && !p.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default trigger aliases for project '%v'?",
+				p.TriggerAliases, p.Project), false) {
+			conf.SetDefaultTriggerAliases(p.Project, p.TriggerAliases)
+			if err := conf.Write(""); err != nil {
+				return err
+			}
+		}
+	} else {
+		p.TriggerAliases = defaultAliases
 	}
 	return nil
 }

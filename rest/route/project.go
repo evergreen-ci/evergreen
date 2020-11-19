@@ -832,6 +832,50 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 
 ////////////////////////////////////////////////////////////////////////
 //
+// Handler for the patch trigger aliases defined for project
+//
+//    /projects/{project_id}/parameters
+type GetPatchTriggerAliasHandler struct {
+	projectID string
+	sc        data.Connector
+}
+
+func makeFetchPatchTriggerAliases(sc data.Connector) gimlet.RouteHandler {
+	return &GetPatchTriggerAliasHandler{
+		sc: sc,
+	}
+}
+
+func (p *GetPatchTriggerAliasHandler) Factory() gimlet.RouteHandler {
+	return &GetPatchTriggerAliasHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
+	proj, err := dbModel.FindOneProjectRef(p.projectID)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting project",
+			"project": p.projectID,
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("unable to get project '%s'", p.projectID))
+	}
+
+	triggerAliases := make([]string, 0, len(proj.PatchTriggerAliases))
+	for _, a := range proj.PatchTriggerAliases {
+		triggerAliases = append(triggerAliases, a.Alias)
+	}
+	return gimlet.NewJSONResponse(triggerAliases)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // Handler for the most recent parameters of a project
 //
 //    /projects/{project_id}/parameters
