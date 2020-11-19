@@ -86,8 +86,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  moveIssueToSuspectedIssue(annotationId: String!, apiIssue: AnnotationIssue!): Boolean!
-  moveSuspectedIssueToIssue(annotationId: String!, apiIssue: AnnotationIssue!): Boolean!
+  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!

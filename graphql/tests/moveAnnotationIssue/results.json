@@ -2,11 +2,11 @@
   "tests": [
     {
       "query_file": "moveIssueToSuspectedIssue.graphql",
-      "result": { "data": { "moveIssueToSuspectedIssue": true } }
+      "result": { "data": { "moveAnnotationIssue": true } }
     },
     {
       "query_file": "moveSuspectedIssueToIssue.graphql",
-      "result": { "data": { "moveSuspectedIssueToIssue": true } }
+      "result": { "data": { "moveAnnotationIssue": true } }
     }
   ]
 }

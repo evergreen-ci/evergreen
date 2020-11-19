@@ -280,8 +280,7 @@ type ComplexityRoot struct {
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string) int
-		MoveIssueToSuspectedIssue func(childComplexity int, annotationID string, apiIssue model.APIIssueLink) int
-		MoveSuspectedIssueToIssue func(childComplexity int, annotationID string, apiIssue model.APIIssueLink) int
+		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey           func(childComplexity int, keyName string) int
@@ -721,8 +720,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
-	MoveIssueToSuspectedIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink) (bool, error)
-	MoveSuspectedIssueToIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink) (bool, error)
+	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
@@ -1833,29 +1831,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string)), true
 
-	case "Mutation.moveIssueToSuspectedIssue":
-		if e.complexity.Mutation.MoveIssueToSuspectedIssue == nil {
+	case "Mutation.moveAnnotationIssue":
+		if e.complexity.Mutation.MoveAnnotationIssue == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_moveIssueToSuspectedIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_moveAnnotationIssue_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MoveIssueToSuspectedIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink)), true
-
-	case "Mutation.moveSuspectedIssueToIssue":
-		if e.complexity.Mutation.MoveSuspectedIssueToIssue == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_moveSuspectedIssueToIssue_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.MoveSuspectedIssueToIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink)), true
+		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
@@ -4218,8 +4204,7 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  moveIssueToSuspectedIssue(annotationId: String!, apiIssue: AnnotationIssue!): Boolean!
-  moveSuspectedIssueToIssue(annotationId: String!, apiIssue: AnnotationIssue!): Boolean!
+  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -5114,7 +5099,7 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_moveIssueToSuspectedIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -5133,28 +5118,14 @@ func (ec *executionContext) field_Mutation_moveIssueToSuspectedIssue_args(ctx co
 		}
 	}
 	args["apiIssue"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_moveSuspectedIssueToIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["annotationId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg2 bool
+	if tmp, ok := rawArgs["isIssue"]; ok {
+		arg2, err = ec.unmarshalNBoolean2bool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["annotationId"] = arg0
-	var arg1 model.APIIssueLink
-	if tmp, ok := rawArgs["apiIssue"]; ok {
-		arg1, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["apiIssue"] = arg1
+	args["isIssue"] = arg2
 	return args, nil
 }
 
@@ -10819,7 +10790,7 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_moveIssueToSuspectedIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10835,7 +10806,7 @@ func (ec *executionContext) _Mutation_moveIssueToSuspectedIssue(ctx context.Cont
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_moveIssueToSuspectedIssue_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_moveAnnotationIssue_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -10843,48 +10814,7 @@ func (ec *executionContext) _Mutation_moveIssueToSuspectedIssue(ctx context.Cont
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MoveIssueToSuspectedIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Mutation_moveSuspectedIssueToIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_moveSuspectedIssueToIssue_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MoveSuspectedIssueToIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink))
+		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23425,13 +23355,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "moveIssueToSuspectedIssue":
-			out.Values[i] = ec._Mutation_moveIssueToSuspectedIssue(ctx, field)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "moveSuspectedIssueToIssue":
-			out.Values[i] = ec._Mutation_moveSuspectedIssueToIssue(ctx, field)
+		case "moveAnnotationIssue":
+			out.Values[i] = ec._Mutation_moveAnnotationIssue(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

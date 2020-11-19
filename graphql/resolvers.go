@@ -1865,22 +1865,20 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
-func (r *mutationResolver) MoveIssueToSuspectedIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink) (bool, error) {
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
-	if err := annotations.MoveIssueToSuspectedIssue(annotationID, *issue, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+	if isIssue {
+		if err := annotations.MoveIssueToSuspectedIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
 	}
-	return true, nil
-}
-
-func (r *mutationResolver) MoveSuspectedIssueToIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink) (bool, error) {
-	usr := MustHaveUser(ctx)
-	issue := restModel.APIIssueLinkToService(apiIssue)
-	if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
-	}
-	return true, nil
 }
 
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
