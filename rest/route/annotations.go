@@ -222,11 +222,10 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PUT /rest/v2/task/{task_id}/annotation
 
 type annotationByTaskPutHandler struct {
-	taskId    string
-	execution int
+	taskId string
 
 	user       gimlet.User
-	annotation *annotations.TaskAnnotation
+	annotation *model.APITaskAnnotation
 	sc         data.Connector
 }
 
@@ -244,7 +243,6 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
-
 	h.taskId = gimlet.GetVars(r)["task_id"]
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
@@ -252,43 +250,39 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	execution := r.URL.Query().Get("execution")
-	if execution != "" {
-		h.execution, err = strconv.Atoi(execution)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
+
+	// check if the task exists
+	t, err := task.FindOne(task.ById(h.taskId))
+	if err != nil {
+		return errors.Wrap(err, "error finding task")
+	}
+	if t == nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the task %s does not exist", h.taskId),
+			StatusCode: http.StatusBadRequest,
 		}
-	} else {
-		h.execution = -1
 	}
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	if err = json.NewDecoder(body).Decode(&h.annotation); err != nil {
+	err = json.NewDecoder(body).Decode(h.annotation)
+	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	if h.annotation.TaskId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "TaskID is required",
-			StatusCode: http.StatusBadRequest,
-		}
+	if h.annotation.TaskExecution == nil {
+		h.annotation.TaskExecution = &t.Execution
+	}
+	if h.annotation.TaskId == nil {
+		h.annotation.TaskId = &h.taskId
 	}
 
-	// check if the task exists
-	t, err := task.FindOne(task.ById(h.taskId))
-	if err != nil {
-		return err
-	}
-	if t == nil {
+	if *h.annotation.TaskId != h.taskId {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task %s does not exist", h.taskId),
+			Message:    "TaskID must equal the taskId specified in the annotation",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -306,7 +300,7 @@ func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 		Requester: annotations.APIRequester,
 	}
 
-	err := annotations.UpdateAnnotation(h.taskId, h.execution, a, source)
+	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*a), source)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

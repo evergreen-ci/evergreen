@@ -147,12 +147,8 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 	)
 }
 
-func UpdateAnnotation(taskId string, execution int, a *TaskAnnotation, source *Source) error {
-
-	update := bson.M{
-		TaskIdKey:        taskId,
-		TaskExecutionKey: execution,
-	}
+func UpdateAnnotation(a *TaskAnnotation, source *Source) error {
+	update := bson.M{}
 
 	if a.Metadata != nil {
 		update[MetadataKey] = a.Metadata
@@ -173,13 +169,12 @@ func UpdateAnnotation(taskId string, execution int, a *TaskAnnotation, source *S
 		}
 		update[SuspectedIssuesKey] = a.SuspectedIssues
 	}
-
 	_, err := db.Upsert(
 		Collection,
-		ByTaskIdAndExecution(taskId, execution),
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
 			"$set": update,
 		},
 	)
-	return errors.Wrapf(err, "problem adding task annotation for '%s'", taskId)
+	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
 }

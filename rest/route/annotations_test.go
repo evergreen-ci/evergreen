@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -341,24 +342,36 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
 	tasks := []task.Task{
-		{Id: "t1", Execution: 0},
-		{Id: "t2", Execution: 0},
+		{Id: "t1", Execution: 1},
+		{Id: "t2", Execution: 1},
 	}
+
+	old_tasks := []task.Task{
+		{Id: "t1_0", Execution: 0},
+		{Id: "t2_0", Execution: 0},
+	}
+
 	for _, each := range tasks {
 		assert.NoError(t, each.Insert())
 	}
-	assert.NoError(t, task.ResetTasks([]string{"t1"}))
+
+	for _, each := range old_tasks {
+		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Archive())
+	}
 
 	h := &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
-	a := annotations.TaskAnnotation{
-		Id:            "1",
-		TaskId:        "task-1",
-		TaskExecution: 0,
-		Note:          &annotations.Note{Message: "task-1-note_0"},
+
+	execution0 := 0
+	execution1 := 1
+	a := &model.APITaskAnnotation{
+		Id:     restModel.ToStringPtr("1"),
+		TaskId: restModel.ToStringPtr("t1"),
+		Note:   &model.APINote{Message: restModel.ToStringPtr("task-1-note_0")},
 	}
 
 	jsonBody, err := json.Marshal(a)
@@ -370,15 +383,15 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, h.Parse(ctx, r))
 
 	assert.Equal(t, "t1", h.taskId)
-	assert.Equal(t, -1, h.execution)
-	assert.Equal(t, "task-1-note_0", h.annotation.Note.Message)
+	assert.Equal(t, &execution1, h.annotation.TaskExecution)
+	assert.Equal(t, "task-1-note_0", model.FromStringPtr(h.annotation.Note.Message))
 	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
 
 	//test with a task that doesn't exist
-	a = annotations.TaskAnnotation{
-		Id:            "1",
-		TaskId:        "non-existent",
-		TaskExecution: 0,
+	a = &model.APITaskAnnotation{
+		Id:            restModel.ToStringPtr("1"),
+		TaskId:        restModel.ToStringPtr("non-existent"),
+		TaskExecution: &execution0,
 	}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -390,22 +403,39 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.Contains(t, err.Error(), "the task non-existent does not exist")
 
 	//test with empty taskId
-	a = annotations.TaskAnnotation{}
+	a = &model.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest("PUT", "/task/t1/annotations", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "TaskID is required")
+	assert.Equal(t, "t1", h.taskId)
+
+	//test with id not equal to annotation id
+	a = &model.APITaskAnnotation{
+		Id:            restModel.ToStringPtr("1"),
+		TaskId:        restModel.ToStringPtr("t2"),
+		TaskExecution: &execution0,
+	}
+	jsonBody, err = json.Marshal(a)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("PUT", "/task/t1/annotations", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
+	assert.NoError(t, err)
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "TaskID must equal the taskId specified in the annotation")
 }
 
 func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection))
-	a := annotations.TaskAnnotation{
-		TaskId:        "t1",
-		TaskExecution: 0,
-		Note:          &annotations.Note{Message: "task-1-note_0"},
+	execution0 := 0
+	execution1 := 1
+	a := model.APITaskAnnotation{
+		TaskId:        restModel.ToStringPtr("t1"),
+		TaskExecution: &execution0,
+		Note:          &model.APINote{Message: restModel.ToStringPtr("task-1-note_0")},
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
@@ -413,7 +443,6 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	h := &annotationByTaskPutHandler{
 		sc:         &data.MockConnector{},
 		taskId:     "t1",
-		execution:  0,
 		annotation: &a,
 		user:       &user.DBUser{Id: "test_annotation_user"},
 	}
@@ -428,10 +457,10 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 
 	//test update
-	h.annotation = &annotations.TaskAnnotation{
-		TaskId:        "t1",
-		TaskExecution: 0,
-		Note:          &annotations.Note{Message: "task-1-note_0_updated"},
+	h.annotation = &model.APITaskAnnotation{
+		TaskId:        restModel.ToStringPtr("t1"),
+		TaskExecution: &execution0,
+		Note:          &model.APINote{Message: restModel.ToStringPtr("task-1-note_0_updated")},
 	}
 
 	resp = h.Run(ctx)
@@ -441,4 +470,32 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, annotation.Id, "")
 	assert.Equal(t, "task-1-note_0_updated", annotation.Note.Message)
+
+	//test that it can update old executions
+	h.annotation = &model.APITaskAnnotation{
+		TaskId:        restModel.ToStringPtr("t1"),
+		TaskExecution: &execution1,
+		Note:          &model.APINote{Message: restModel.ToStringPtr("task-1-note_1_updated")},
+	}
+
+	resp = h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
+	require.NoError(t, err)
+	assert.Equal(t, "task-1-note_1_updated", annotation.Note.Message)
+
+	//unspecified execution updates latest
+	h.annotation = &model.APITaskAnnotation{
+		TaskId: restModel.ToStringPtr("t1"),
+		Note:   &model.APINote{Message: restModel.ToStringPtr("task-1-note_1_updated_without_execution_specified")},
+	}
+
+	resp = h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
+	require.NoError(t, err)
+	assert.Equal(t, "task-1-note_1_updated_without_execution_specified", annotation.Note.Message)
+
 }
