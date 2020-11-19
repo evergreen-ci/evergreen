@@ -534,6 +534,7 @@ type Dependency {
 
 type PatchMetadata {
   author: String!
+  patchID: String!
 }
 
 type BaseTaskMetadata {
