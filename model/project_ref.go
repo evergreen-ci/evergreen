@@ -148,12 +148,17 @@ type TriggerDefinition struct {
 }
 
 type PatchTriggerDefinition struct {
-	Alias          string `bson:"alias" json:"alias"`
-	ChildProject   string `bson:"child_project" json:"child_project"`
-	Status         string `bson:"status,omitempty" json:"status,omitempty"`
-	TaskRegex      string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	VariantRegex   string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
-	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	Alias          string          `bson:"alias" json:"alias"`
+	ChildProject   string          `bson:"child_project" json:"child_project"`
+	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
+	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
+	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+}
+
+type TaskSpecifier struct {
+	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
+	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -1226,13 +1231,40 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
 		return errors.Errorf("invalid status: %s", t.Status)
 	}
-	_, regexErr := regexp.Compile(t.VariantRegex)
-	if regexErr != nil {
-		return errors.Wrap(regexErr, "invalid variant regex")
-	}
-	_, regexErr = regexp.Compile(t.TaskRegex)
-	if regexErr != nil {
-		return errors.Wrap(regexErr, "invalid task regex")
+
+	for _, specifier := range t.TaskSpecifiers {
+		if (specifier.VariantRegex != "" || specifier.TaskRegex != "") && specifier.PatchAlias != "" {
+			return errors.New("can't specify both a regex set and a patch alias")
+		}
+
+		if specifier.PatchAlias == "" && (specifier.TaskRegex == "" || specifier.VariantRegex == "") {
+			return errors.New("must specify either a patch alias or a complete regex set")
+		}
+
+		if specifier.VariantRegex != "" {
+			_, regexErr := regexp.Compile(specifier.VariantRegex)
+			if regexErr != nil {
+				return errors.Wrapf(regexErr, "invalid variant regex '%s'", specifier.VariantRegex)
+			}
+		}
+
+		if specifier.TaskRegex != "" {
+			_, regexErr := regexp.Compile(specifier.TaskRegex)
+			if regexErr != nil {
+				return errors.Wrapf(regexErr, "invalid task regex '%s'", specifier.TaskRegex)
+			}
+		}
+
+		if specifier.PatchAlias != "" {
+			var aliases []ProjectAlias
+			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
+			if err != nil {
+				return errors.Wrap(err, "problem fetching aliases for project")
+			}
+			if len(aliases) == 0 {
+				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, t.ChildProject)
+			}
+		}
 	}
 
 	return nil
