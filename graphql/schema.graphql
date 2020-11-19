@@ -546,6 +546,8 @@ type AbortInfo {
   taskID: String
   taskDisplayName: String
   buildVariantDisplayName: String
+  newVersion: String
+  prClosed: Boolean
 }
 
 type Task {

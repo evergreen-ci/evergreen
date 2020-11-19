@@ -130,8 +130,10 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	info := AbortInfo{
-		User:   &at.AbortInfo.User,
-		TaskID: &at.AbortInfo.TaskID,
+		User:       &at.AbortInfo.User,
+		TaskID:     &at.AbortInfo.TaskID,
+		NewVersion: &at.AbortInfo.NewVersion,
+		PrClosed:   &at.AbortInfo.PRClosed,
 	}
 
 	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)

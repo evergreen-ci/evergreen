@@ -59,6 +59,8 @@ type ComplexityRoot struct {
 
 	AbortInfo struct {
 		BuildVariantDisplayName func(childComplexity int) int
+		NewVersion              func(childComplexity int) int
+		PrClosed                func(childComplexity int) int
 		TaskDisplayName         func(childComplexity int) int
 		TaskID                  func(childComplexity int) int
 		User                    func(childComplexity int) int
@@ -850,6 +852,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AbortInfo.BuildVariantDisplayName(childComplexity), true
+
+	case "AbortInfo.newVersion":
+		if e.complexity.AbortInfo.NewVersion == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.NewVersion(childComplexity), true
+
+	case "AbortInfo.prClosed":
+		if e.complexity.AbortInfo.PrClosed == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.PrClosed(childComplexity), true
 
 	case "AbortInfo.taskDisplayName":
 		if e.complexity.AbortInfo.TaskDisplayName == nil {
@@ -4650,6 +4666,8 @@ type AbortInfo {
   taskID: String
   taskDisplayName: String
   buildVariantDisplayName: String
+  newVersion: String
+  prClosed: Boolean
 }
 
 type Task {
@@ -6202,6 +6220,68 @@ func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Conte
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NewVersion, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrClosed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -22068,6 +22148,10 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._AbortInfo_taskDisplayName(ctx, field, obj)
 		case "buildVariantDisplayName":
 			out.Values[i] = ec._AbortInfo_buildVariantDisplayName(ctx, field, obj)
+		case "newVersion":
+			out.Values[i] = ec._AbortInfo_newVersion(ctx, field, obj)
+		case "prClosed":
+			out.Values[i] = ec._AbortInfo_prClosed(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

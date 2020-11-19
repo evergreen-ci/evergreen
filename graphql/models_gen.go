@@ -19,6 +19,8 @@ type AbortInfo struct {
 	TaskID                  *string `json:"taskID"`
 	TaskDisplayName         *string `json:"taskDisplayName"`
 	BuildVariantDisplayName *string `json:"buildVariantDisplayName"`
+	NewVersion              *string `json:"newVersion"`
+	PrClosed                *bool   `json:"prClosed"`
 }
 
 type BaseTaskMetadata struct {
