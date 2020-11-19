@@ -524,13 +524,13 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 
 	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 
-	bashCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
-	bashCmds = append(bashCmds, setupJasperCmds...)
-	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
+	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
+	shellCmds = append(shellCmds, setupJasperCmds...)
+	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return &userdata.Options{
 		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
-		Content:   strings.Join(bashCmds, "\n"),
+		Content:   strings.Join(shellCmds, "\n"),
 	}, nil
 }
 
@@ -1321,19 +1321,15 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 		fetchScriptCmd,
 	}
 
+	var directive userdata.Directive
 	if h.Distro.IsWindows() {
 		for i := range cmds {
 			cmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(cmds[i]))
 		}
+		directive = userdata.PowerShellScript
 	} else {
 		shellPrefix := []string{"set -o errexit", "set -o verbose"}
 		cmds = append(shellPrefix, cmds...)
-	}
-
-	var directive userdata.Directive
-	if h.Distro.IsWindows() {
-		directive = userdata.PowerShellScript
-	} else {
 		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
 	}
 
