@@ -160,11 +160,26 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
+	}
+
+	// parameters cannot be set once the patch has been finalized
+	if parametersModel != nil && len(p.Version) != 0 {
+		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
+	} else if len(parametersModel) != 0 {
+		var parameters []patch.Parameter
+		for _, param := range parametersModel {
+			serviceparam := param.ToService()
+			parameters = append(parameters, serviceparam)
+		}
+		err = p.SetParameters(parameters)
+		if err != nil {
+			return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+		}
 	}
 
 	if p.IsCommitQueuePatch() {

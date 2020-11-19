@@ -292,7 +292,7 @@ type ComplexityRoot struct {
 		RestartPatch              func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask               func(childComplexity int, taskID string) int
 		SaveSubscription          func(childComplexity int, subscription model.APISubscription) int
-		SchedulePatch             func(childComplexity int, patchID string, reconfigure PatchReconfigure) int
+		SchedulePatch             func(childComplexity int, patchID string, reconfigure PatchReconfigure, parameters []*model.APIParameter) int
 		SchedulePatchTasks        func(childComplexity int, patchID string) int
 		ScheduleTask              func(childComplexity int, taskID string) int
 		SetPatchPriority          func(childComplexity int, patchID string, priority int) int
@@ -713,7 +713,7 @@ type HostResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
-	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*model.APIPatch, error)
+	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure, parameters []*model.APIParameter) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
@@ -1981,7 +1981,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["reconfigure"].(PatchReconfigure)), true
+		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["reconfigure"].(PatchReconfigure), args["parameters"].([]*model.APIParameter)), true
 
 	case "Mutation.schedulePatchTasks":
 		if e.complexity.Mutation.SchedulePatchTasks == nil {
@@ -4238,7 +4238,11 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
+  schedulePatch(
+    patchId: String!
+    reconfigure: PatchReconfigure!
+    parameters: [ParameterInput]
+  ): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
@@ -4620,6 +4624,11 @@ type ProjectBuildVariant {
 }
 
 type Parameter {
+  key: String!
+  value: String!
+}
+
+input ParameterInput {
   key: String!
   value: String!
 }
@@ -5387,6 +5396,14 @@ func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Contex
 		}
 	}
 	args["reconfigure"] = arg1
+	var arg2 []*model.APIParameter
+	if tmp, ok := rawArgs["parameters"]; ok {
+		arg2, err = ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["parameters"] = arg2
 	return args, nil
 }
 
@@ -10485,7 +10502,7 @@ func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string), args["reconfigure"].(PatchReconfigure))
+		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string), args["reconfigure"].(PatchReconfigure), args["parameters"].([]*model.APIParameter))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21924,6 +21941,30 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputParameterInput(ctx context.Context, obj interface{}) (model.APIParameter, error) {
+	var it model.APIParameter
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "key":
+			var err error
+			it.Key, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "value":
+			var err error
+			it.Value, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, obj interface{}) (PatchReconfigure, error) {
 	var it PatchReconfigure
 	var asMap = obj.(map[string]interface{})
@@ -29180,6 +29221,38 @@ func (ec *executionContext) unmarshalONotificationsInput2ᚖgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	res, err := ec.unmarshalONotificationsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINotificationPreferences(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) unmarshalOParameterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, v interface{}) (model.APIParameter, error) {
+	return ec.unmarshalInputParameterInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, v interface{}) ([]*model.APIParameter, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*model.APIParameter, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOParameterInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOParameterInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx context.Context, v interface{}) (*model.APIParameter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOParameterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, v)
 	return &res, err
 }
 

@@ -1676,7 +1676,8 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return apiTask, err
 }
 
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure, parameters []*restModel.APIParameter) (*restModel.APIPatch, error) {
+
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(reconfigure)
 	version, err := r.sc.FindVersionById(patchID)
@@ -1687,7 +1688,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, parameters)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}

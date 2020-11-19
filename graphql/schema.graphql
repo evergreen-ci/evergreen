@@ -74,7 +74,11 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
+  schedulePatch(
+    patchId: String!
+    reconfigure: PatchReconfigure!
+    parameters: [ParameterInput]
+  ): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
@@ -456,6 +460,11 @@ type ProjectBuildVariant {
 }
 
 type Parameter {
+  key: String!
+  value: String!
+}
+
+input ParameterInput {
   key: String!
   value: String!
 }

@@ -40,12 +40,18 @@
       "finish_time": {
         "$date": "0001-01-01T00:00:00Z"
       },
-      "build_variants": ["ubuntu1604"],
-      "tasks": ["test-graphql"],
+      "build_variants": [
+        "ubuntu1604"
+      ],
+      "tasks": [
+        "test-graphql"
+      ],
       "variants_tasks": [
         {
           "variant": "ubuntu1604",
-          "tasks": ["test-graphql"],
+          "tasks": [
+            "test-graphql"
+          ],
           "displaytasks": []
         }
       ],

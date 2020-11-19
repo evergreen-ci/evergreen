@@ -63,6 +63,14 @@ type APIParameter struct {
 	Value *string `json:"value"`
 }
 
+// ToService converts a service layer parameter using the data from APIParameter
+func (p *APIParameter) ToService() patch.Parameter {
+	res := patch.Parameter{}
+	res.Key = FromStringPtr(p.Key)
+	res.Value = FromStringPtr(p.Value)
+	return res
+}
+
 // BuildFromService converts from service level structs to an APIPatch
 func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	v, ok := h.(patch.Patch)
