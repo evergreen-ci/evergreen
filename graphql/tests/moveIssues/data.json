@@ -7,7 +7,7 @@
       "issues": [
         {
           "url": "https://link.com",
-          "issue": "EVG-1212",
+          "issue_key": "EVG-1212",
           "source": {
             "author": "chaya.malik"
           }
@@ -16,7 +16,7 @@
       "suspected_issues": [
         {
           "url": "https://link.com",
-          "issue": "EVG-2121",
+          "issue_key": "EVG-2121",
           "source": {
             "author": "annie.black"
           }
