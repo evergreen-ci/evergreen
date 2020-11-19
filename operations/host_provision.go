@@ -104,7 +104,7 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 }
 
 func hostProvisioningCommand(shellPath, scriptPath string) *jasper.Command {
-	return jasper.NewCommand().AppendArgs(shellPath, "-l", "-c", scriptPath)
+	return jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath)
 }
 
 func runHostProvisioningCommand(ctx context.Context, cmd *jasper.Command) error {
