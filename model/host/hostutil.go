@@ -420,9 +420,17 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			// host would be stuck in provisioning.
 			var fetchCmd []string
 			if h.ProvisionOptions.TaskSync {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+				if h.Distro.BootstrapSettings.FetchProvisioningScript {
+					fetchCmd = h.SpawnHostPullTaskSyncCommand()
+				} else {
+					fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
+				}
 			} else {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+				if h.Distro.BootstrapSettings.FetchProvisioningScript {
+					fetchCmd = h.SpawnHostGetTaskDataCommand()
+				} else {
+					fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+				}
 			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
@@ -484,7 +492,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
 
 		for i := range shellCmds {
-			shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
+			if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+				shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
+			}
 		}
 
 		powershellCmds := append([]string{
@@ -569,10 +579,18 @@ func (h *Host) CheckUserDataStartedCommand() string {
 	path := h.UserDataStartedFile()
 	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
 	if h.Distro.IsWindows() {
+		var checkUserDataStarted, makeUserDataStartedFile string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			checkUserDataStarted = fmt.Sprintf("ls %s && exit", h.Distro.AbsPathNotCygwinCompatible(path))
+			makeUserDataStartedFile = makeFileCmd
+		} else {
+			checkUserDataStarted = fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path))
+			makeUserDataStartedFile = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd))
+		}
 		return fmt.Sprintf(strings.Join([]string{
-			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
-			fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd)),
-		}, "\r\n"))
+			checkUserDataStarted,
+			makeUserDataStartedFile,
+		}, "\n"))
 	}
 
 	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd)
@@ -1313,6 +1331,7 @@ func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*u
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
+		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
 	}, " ")
 
 	cmds := []string{

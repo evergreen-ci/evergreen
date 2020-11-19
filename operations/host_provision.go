@@ -5,11 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -23,6 +21,7 @@ func hostProvision() cli.Command {
 		hostSecretFlagName   = "host_secret"
 		workingDirFlagName   = "working_dir"
 		apiServerURLFlagName = "api_server"
+		shellPathFlagName    = "shell_path"
 	)
 	return cli.Command{
 		Name:  "provision",
@@ -44,11 +43,16 @@ func hostProvision() cli.Command {
 				Name:  apiServerURLFlagName,
 				Usage: "the base URL for the API server",
 			},
+			cli.StringFlag{
+				Name:  shellPathFlagName,
+				Usage: "the path to the shell to use",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(hostIDFlagName),
 			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(apiServerURLFlagName),
+			requireStringFlag(shellPathFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -57,13 +61,13 @@ func hostProvision() cli.Command {
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
-			opts, err := comm.GetHostProvisioningScript(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
+			script, err := comm.GetHostProvisioningScript(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
 			if err != nil {
 				return errors.Wrap(err, "failed to get host provisioning script")
 			}
 
 			workingDir := c.String(workingDirFlagName)
-			scriptPath, err := makeHostProvisioningScriptFile(workingDir, opts)
+			scriptPath, err := makeHostProvisioningScriptFile(workingDir, script.Content)
 			if err != nil {
 				return errors.Wrap(err, "write host provisioning script to file")
 			}
@@ -71,10 +75,7 @@ func hostProvision() cli.Command {
 				grip.Error(errors.Wrap(os.RemoveAll(scriptPath), "removing host provisioning file"))
 			}()
 
-			cmd, err := hostProvisioningCommand(opts.Directive, scriptPath)
-			if err != nil {
-				return errors.Wrap(err, "resolving command to execute script")
-			}
+			cmd := hostProvisioningCommand(c.String(shellPathFlagName), scriptPath)
 			if err := runHostProvisioningCommand(ctx, cmd.Directory(workingDir)); err != nil {
 				return errors.Wrap(err, "running host provisioning script")
 			}
@@ -84,7 +85,7 @@ func hostProvision() cli.Command {
 	}
 }
 
-func makeHostProvisioningScriptFile(workingDir string, opts *model.APIHostProvisioningScriptOptions) (string, error) {
+func makeHostProvisioningScriptFile(workingDir string, content string) (string, error) {
 	if err := os.MkdirAll(workingDir, 0755); err != nil {
 		return "", errors.Wrap(err, "creating working directory")
 	}
@@ -93,30 +94,17 @@ func makeHostProvisioningScriptFile(workingDir string, opts *model.APIHostProvis
 	if err != nil {
 		return "", errors.Wrap(err, "making absolute path to the host provisioning script")
 	}
-	var content string
-	if strings.HasPrefix(opts.Directive, string(userdata.ShellScript)) {
-		// Include the shebang line, if present.
-		content = opts.Directive + "\n"
-	}
-	content += opts.Content
+	// Cygwin bash is unhappy if you use back slashes ('\') without escaping
+	// them, so use forward slashes ('/') instead as the path separator.
+	scriptPath = util.ConsistentFilepath(scriptPath)
 	if err = ioutil.WriteFile(scriptPath, []byte(content), 0700); err != nil {
 		return "", errors.Wrapf(err, "writing script to file '%s'", scriptPath)
 	}
 	return scriptPath, nil
 }
 
-func hostProvisioningCommand(directive, scriptPath string) (*jasper.Command, error) {
-	if directive == string(userdata.PowerShellScript) {
-		return jasper.NewCommand().AppendArgs("powershell", scriptPath), nil
-	}
-	if directive == string(userdata.BatchScript) {
-		return jasper.NewCommand().AppendArgs("cmd", "/c", scriptPath), nil
-	}
-	if strings.HasPrefix(directive, string(userdata.ShellScript)) {
-		return jasper.NewCommand().AppendArgs(scriptPath), nil
-	}
-
-	return nil, errors.Errorf("unrecognized directive '%s', cannot determine how to execute it", directive)
+func hostProvisioningCommand(shellPath, scriptPath string) *jasper.Command {
+	return jasper.NewCommand().AppendArgs(shellPath, "-l", "-c", scriptPath)
 }
 
 func runHostProvisioningCommand(ctx context.Context, cmd *jasper.Command) error {

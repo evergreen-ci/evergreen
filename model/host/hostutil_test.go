@@ -1181,7 +1181,7 @@ func TestCheckUserDataStartedCommand(t *testing.T) {
 		for testName, testCase := range map[string]func(t *testing.T, h *Host){
 			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
 				expectedCmd := "if (Test-Path -Path /root_dir/jasper_binary_dir/user_data_started) { exit }" +
-					"\r\n/root_dir/bin/bash -l -c @'" +
+					"\n/root_dir/bin/bash -l -c @'" +
 					"\nmkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started" +
 					"\n'@"
 				cmd := h.CheckUserDataStartedCommand()
