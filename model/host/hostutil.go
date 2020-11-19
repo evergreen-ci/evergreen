@@ -451,10 +451,19 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	if h.Distro.IsWindows() {
-		var writeSetupScriptCmds []string
-		writeSetupScriptCmds, err = h.writeSetupScriptCommands(settings)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get commands to run setup script")
+		var setupScriptCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			var setupScript string
+			setupScript, err = h.setupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "creating setup script")
+			}
+			setupScriptCmds = []string{setupScript}
+		} else {
+			setupScriptCmds, err = h.writeSetupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get commands to run setup script")
+			}
 		}
 
 		var writeCredentialsCmds []string
@@ -485,9 +494,12 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
 			shellCmds = append(shellCmds, shellPrefix...)
 		}
-		shellCmds = append(shellCmds, writeSetupScriptCmds...)
+		shellCmds = append(shellCmds, setupScriptCmds...)
 		shellCmds = append(shellCmds, setupJasperCmds...)
-		shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
+		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
+		}
+		shellCmds = append(shellCmds, postFetchClient, markDone)
 
 		for i := range shellCmds {
 			if !h.Distro.BootstrapSettings.FetchProvisioningScript {
@@ -579,7 +591,7 @@ func (h *Host) CheckUserDataStartedCommand() string {
 	if h.Distro.IsWindows() {
 		var checkUserDataStarted, makeUserDataStartedFile string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			checkUserDataStarted = fmt.Sprintf("ls %s && exit", h.Distro.AbsPathNotCygwinCompatible(path))
+			checkUserDataStarted = fmt.Sprintf("ls %s && exit", path)
 			makeUserDataStartedFile = makeFileCmd
 		} else {
 			checkUserDataStarted = fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path))
@@ -613,6 +625,10 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 		return fmt.Sprintf("cmd.exe /C '%s'", cmd)
 	}
 
+	loginServicePermCmd := fmt.Sprintf("editrights -u %s -a SeServiceLogonRight", h.Distro.BootstrapSettings.ServiceUser)
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		loginServicePermCmd = fmt.Sprintf(`%s -l -c '%s'`, h.Distro.ShellBinary(), loginServicePermCmd)
+	}
 	return strings.Join(
 		[]string{
 			// Create new user.
@@ -622,7 +638,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
-			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, h.Distro.ShellBinary(), h.Distro.BootstrapSettings.ServiceUser),
+			loginServicePermCmd,
 		}, "\n"), nil
 }
 
@@ -775,10 +791,10 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 	return fmt.Sprintf("echo -n '%s' %s %s", content, redirect, path)
 }
 
-// bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
-// WriteJasperCredentialsFilesCommands but writes with multiple commands.
-// This is necessary for Windows user data for unknown reasons. If the file
-// isn't written in a buffered way, it gets truncated.
+// bufferedWriteJasperCredentialsFilesCommands is the same as
+// WriteJasperCredentialsFilesCommands but writes with multiple commands. This
+// is necessary for Windows user data for unknown reasons. If the file isn't
+// written in a buffered way, it gets truncated or the script hangs.
 func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	exportedCreds, err := creds.Export()
 	if err != nil {
