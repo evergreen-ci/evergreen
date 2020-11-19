@@ -22,12 +22,13 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name       string            `json:"name" yaml:"name,omitempty"`
-	Default    bool              `json:"default" yaml:"default,omitempty"`
-	Alias      string            `json:"alias" yaml:"alias,omitempty"`
-	Variants   []string          `json:"variants" yaml:"variants,omitempty"`
-	Tasks      []string          `json:"tasks" yaml:"tasks,omitempty"`
-	Parameters map[string]string `json:"parameters" yaml:"parameters,omitempty"`
+	Name           string            `json:"name" yaml:"name,omitempty"`
+	Default        bool              `json:"default" yaml:"default,omitempty"`
+	Alias          string            `json:"alias" yaml:"alias,omitempty"`
+	Variants       []string          `json:"variants" yaml:"variants,omitempty"`
+	Tasks          []string          `json:"tasks" yaml:"tasks,omitempty"`
+	Parameters     map[string]string `json:"parameters" yaml:"parameters,omitempty"`
+	TriggerAliases []string          `json:"trigger_aliases" yaml:"trigger_aliases"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -242,6 +243,30 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 		Alias:    "",
 		Variants: variants,
 		Tasks:    nil,
+	})
+}
+
+func (s *ClientSettings) FindDefaultTriggerAliases(project string) []string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.TriggerAliases
+		}
+	}
+	return nil
+}
+
+func (s *ClientSettings) SetDefaultTriggerAliases(project string, triggerAliases []string) {
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].TriggerAliases = triggerAliases
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:           project,
+		Default:        true,
+		TriggerAliases: triggerAliases,
 	})
 }
 

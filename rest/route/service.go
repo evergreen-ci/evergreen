@@ -150,6 +150,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(sc))
 	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectTasks(sc))
+	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases(sc))
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchParameters(sc))
 	app.AddRoute("/projects/tag/{tag}").Version(2).Get().Wrap(checkUser, checkProjectAdmin).RouteHandler(makeGetProjectsForTag(sc))
 	app.AddRoute("/projects/{project_id}/tag/{tag}").Version(2).Delete().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProjectTag(sc))

@@ -910,6 +910,32 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	return patchAliases, nil
 }
 
+func (c *communicatorImpl) ListPatchTriggerAliases(ctx context.Context, project string) ([]string, error) {
+	path := fmt.Sprintf("projects/%s/patch_trigger_aliases", project)
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+
+	triggerAliases := []string{}
+	if err = utility.ReadJSON(resp.Body, &triggerAliases); err != nil {
+		return nil, errors.Wrap(err, "failed to parse update manifest from server")
+	}
+
+	return triggerAliases, nil
+}
+
 func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
 	info := requestInfo{
 		path:   "/status/cli_version",
