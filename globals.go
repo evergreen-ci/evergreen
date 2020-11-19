@@ -64,6 +64,10 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
+	// This is not an official task status; however it is used by the front end to distinguish aborted and failing tasks
+	// Tasks can be filtered on the front end by `aborted` status
+	TaskAborted = "aborted"
+
 	TaskStatusBlocked = "blocked"
 	TaskStatusPending = "pending"
 
