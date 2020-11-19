@@ -383,11 +383,15 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, h.Parse(ctx, r))
 
 	assert.Equal(t, "t1", h.taskId)
+	// unspecified execution defaults to latest
 	assert.Equal(t, &execution1, h.annotation.TaskExecution)
 	assert.Equal(t, "task-1-note_0", model.FromStringPtr(h.annotation.Note.Message))
 	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
 
 	//test with a task that doesn't exist
+	h = &annotationByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
 	a = &model.APITaskAnnotation{
 		Id:            restModel.ToStringPtr("1"),
 		TaskId:        restModel.ToStringPtr("non-existent"),
@@ -403,6 +407,9 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.Contains(t, err.Error(), "the task non-existent does not exist")
 
 	//test with empty taskId
+	h = &annotationByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
 	a = &model.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -413,6 +420,9 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.Equal(t, "t1", h.taskId)
 
 	//test with id not equal to annotation id
+	h = &annotationByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
 	a = &model.APITaskAnnotation{
 		Id:            restModel.ToStringPtr("1"),
 		TaskId:        restModel.ToStringPtr("t2"),
@@ -484,18 +494,4 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
 	require.NoError(t, err)
 	assert.Equal(t, "task-1-note_1_updated", annotation.Note.Message)
-
-	//unspecified execution updates latest
-	h.annotation = &model.APITaskAnnotation{
-		TaskId: restModel.ToStringPtr("t1"),
-		Note:   &model.APINote{Message: restModel.ToStringPtr("task-1-note_1_updated_without_execution_specified")},
-	}
-
-	resp = h.Run(ctx)
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
-	require.NoError(t, err)
-	assert.Equal(t, "task-1-note_1_updated_without_execution_specified", annotation.Note.Message)
-
 }

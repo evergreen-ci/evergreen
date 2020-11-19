@@ -265,19 +265,19 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	err = json.NewDecoder(body).Decode(h.annotation)
+	err = json.NewDecoder(body).Decode(&h.annotation)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-
 	if h.annotation.TaskExecution == nil {
 		h.annotation.TaskExecution = &t.Execution
 	}
 	if h.annotation.TaskId == nil {
-		h.annotation.TaskId = &h.taskId
+		taskId := h.taskId
+		h.annotation.TaskId = &taskId
 	}
 
 	if *h.annotation.TaskId != h.taskId {
