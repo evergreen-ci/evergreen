@@ -250,12 +250,11 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
-	cwd, err := os.Getwd()
-	grip.Error(errors.Wrap(err, "unable to get current working directory"))
-	cwd, err = filepath.EvalSymlinks(cwd)
-	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
-
 	if p.Project == "" {
+		cwd, err := os.Getwd()
+		grip.Error(errors.Wrap(err, "unable to get current working directory"))
+		cwd, err = filepath.EvalSymlinks(cwd)
+		grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
 		p.Project = conf.FindDefaultProject(cwd, true)
 	}
 	if p.Project == "" {
