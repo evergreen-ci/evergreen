@@ -272,6 +272,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AbortTask                 func(childComplexity int, taskID string) int
+		AddAnnotationIssue        func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket            func(childComplexity int, taskID string) int
@@ -722,6 +723,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
@@ -1740,6 +1742,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AbortTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.addAnnotationIssue":
+		if e.complexity.Mutation.AddAnnotationIssue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addAnnotationIssue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.addFavoriteProject":
 		if e.complexity.Mutation.AddFavoriteProject == nil {
@@ -4213,6 +4227,7 @@ type Mutation {
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
+  addAnnotationIssue(taskId: String!, execution: Int!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -5007,6 +5022,44 @@ func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, r
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APIIssueLink
+	if tmp, ok := rawArgs["apiIssue"]; ok {
+		arg2, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiIssue"] = arg2
+	var arg3 bool
+	if tmp, ok := rawArgs["isIssue"]; ok {
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isIssue"] = arg3
 	return args, nil
 }
 
@@ -10824,6 +10877,47 @@ func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, f
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_addAnnotationIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_addAnnotationIssue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23397,6 +23491,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "moveAnnotationIssue":
 			out.Values[i] = ec._Mutation_moveAnnotationIssue(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addAnnotationIssue":
+			out.Values[i] = ec._Mutation_addAnnotationIssue(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

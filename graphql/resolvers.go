@@ -1886,6 +1886,23 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID
 	}
 }
 
+func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int,
+	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	usr := MustHaveUser(ctx)
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	}
+}
+
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, issue, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
