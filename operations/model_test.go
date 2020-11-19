@@ -163,7 +163,10 @@ projects:
   tasks: 
     - all
   variants: 
-    - all`), 0600)
+    - all
+projects_for_directory:
+  some/directory: myProj
+`), 0600)
 	assert.NoError(t, err)
 	defer os.Remove(localConfigPath)
 
@@ -188,6 +191,9 @@ projects:
 				Tasks:    []string{"all"},
 				Variants: []string{"all"},
 			},
+		},
+		ProjectsForDirectory: map[string]string{
+			"some/directory": "myProj",
 		},
 	}, *localClientSettings)
 }
