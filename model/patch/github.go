@@ -99,7 +99,7 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(msgDeliveryID, patchOwner string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil || pr.Head.Repo.PushedAt == nil ||
@@ -133,6 +133,9 @@ func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, erro
 	if utility.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
 		return nil, errors.New("pushed at time not set")
 	}
+	if patchOwner == "" {
+		patchOwner = pr.User.GetLogin()
+	}
 
 	return &githubIntent{
 		DocumentID:   msgDeliveryID,
@@ -141,7 +144,7 @@ func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, erro
 		BaseBranch:   pr.Base.GetRef(),
 		HeadRepoName: pr.Head.Repo.GetFullName(),
 		PRNumber:     pr.GetNumber(),
-		User:         pr.User.GetLogin(),
+		User:         patchOwner,
 		UID:          int(pr.User.GetID()),
 		HeadHash:     pr.Head.GetSHA(),
 		Title:        pr.GetTitle(),
