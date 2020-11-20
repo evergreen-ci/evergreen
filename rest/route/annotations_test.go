@@ -295,7 +295,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
-	assert.Equal(t, 1, apiAnnotations[0].TaskExecution)
+	assert.Equal(t, 1, *apiAnnotations[0].TaskExecution)
 	assert.Equal(t, "task-1", model.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", model.FromStringPtr(apiAnnotations[0].Note.Message))
 
@@ -307,7 +307,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
-	assert.Equal(t, 0, apiAnnotations[0].TaskExecution)
+	assert.Equal(t, 0, *apiAnnotations[0].TaskExecution)
 	assert.Equal(t, "task-2", model.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-2-note_0", model.FromStringPtr(apiAnnotations[0].Note.Message))
 
@@ -320,7 +320,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
-	assert.Equal(t, 0, apiAnnotations[0].TaskExecution)
+	assert.Equal(t, 0, *apiAnnotations[0].TaskExecution)
 	assert.Equal(t, "task-1", model.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_0", model.FromStringPtr(apiAnnotations[0].Note.Message))
 

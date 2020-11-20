@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -293,14 +292,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	a := h.annotation
-	source := &annotations.Source{
-		Author:    h.user.DisplayName(),
-		Time:      time.Now(),
-		Requester: annotations.APIRequester,
-	}
-
-	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*a), source)
+	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

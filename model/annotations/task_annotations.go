@@ -147,7 +147,12 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 	)
 }
 
-func UpdateAnnotation(a *TaskAnnotation, source *Source) error {
+func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
 	update := bson.M{}
 
 	if a.Metadata != nil {
