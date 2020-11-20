@@ -404,7 +404,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "the task non-existent does not exist")
+	assert.Contains(t, err.Error(), "the task 'non-existent' does not exist")
 
 	//test with empty taskId
 	h = &annotationByTaskPutHandler{

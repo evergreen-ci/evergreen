@@ -97,10 +97,7 @@ func ById(id string) db.Q {
 
 // ByTaskIdAndExecution returns the query for a given Task Id and execution number
 func ByTaskId(id string) bson.M {
-	q := bson.M{
-		TaskIdKey: id,
-	}
-	return q
+	return bson.M{TaskIdKey: id}
 }
 
 func ByTaskIds(ids []string) db.Q {

@@ -257,7 +257,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	}
 	if t == nil {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task %s does not exist", h.taskId),
+			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -271,15 +271,14 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+	// set TaskExecution to the latest execution
 	if h.annotation.TaskExecution == nil {
 		h.annotation.TaskExecution = &t.Execution
 	}
 	if h.annotation.TaskId == nil {
 		taskId := h.taskId
 		h.annotation.TaskId = &taskId
-	}
-
-	if *h.annotation.TaskId != h.taskId {
+	} else if *h.annotation.TaskId != h.taskId {
 		return gimlet.ErrorResponse{
 			Message:    "TaskID must equal the taskId specified in the annotation",
 			StatusCode: http.StatusBadRequest,
