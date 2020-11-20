@@ -48,9 +48,8 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
-	repoId := vars["repo_id"]
 
-	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId, repoId)
+	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -183,30 +182,44 @@ type projectRepoMiddleware struct {
 
 func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
-	opCtx := MustHaveProjectContext(ctx)
-	user := MustHaveUser(ctx)
-
-	if opCtx == nil || opCtx.RepoRef == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "No project found",
-		}))
-		return
-	}
-
-	isRepoAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.RepoRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if !!isRepoAdmin {
+	u := MustHaveUser(ctx)
+	vars := gimlet.GetVars(r)
+	repoId, ok := vars["repo_id"]
+	if !ok || repoId == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
 		}))
 		return
 	}
+
+	repoRef, err := model.FindOneRepoRef(repoId)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
+	}
+	if repoRef == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("repo with id '%s' not found", repoId),
+		}))
+		return
+	}
+	isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+		Resource:      repoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isRepoAdmin {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	next(rw, r)
 }
 
 // NewTaskHostAuthMiddleware returns route middleware that authenticates a host
