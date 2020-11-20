@@ -30,7 +30,7 @@ type restV1middleware struct {
 func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
 	ctx := r.Context()
-	pctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"], vars["repo_id"])
+	pctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
 	if err != nil {
 		// Some database lookup failed when fetching the data - log it
 		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
