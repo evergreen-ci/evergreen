@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -153,13 +152,66 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	isAdmin := utility.StringSliceContains(opCtx.ProjectRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 	if !isAdmin {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
+// This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
+func NewRepoAdminMiddleware(sc data.Connector) gimlet.Middleware {
+	return &projectRepoMiddleware{
+		sc: sc,
+	}
+}
+
+type projectRepoMiddleware struct {
+	sc data.Connector
+}
+
+func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := MustHaveUser(ctx)
+	vars := gimlet.GetVars(r)
+	repoId, ok := vars["repo_id"]
+	if !ok || repoId == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	repoRef, err := model.FindOneRepoRef(repoId)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
+	}
+	if repoRef == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("repo with id '%s' not found", repoId),
+		}))
+		return
+	}
+	isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+		Resource:      repoRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isRepoAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
@@ -337,7 +389,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	// A superuser or project admin is authorized
-	isAdmin := utility.StringSliceContains(projRef.Admins, user.Username()) || user.HasPermission(gimlet.PermissionOpts{
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
