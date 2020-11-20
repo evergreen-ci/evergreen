@@ -22,7 +22,7 @@ var (
 )
 
 const (
-	Collection   = "task_annotation"
+	Collection   = "task_annotations"
 	UIRequester  = "ui"
 	APIRequester = "api"
 )

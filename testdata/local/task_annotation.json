@@ -1,1 +1,0 @@
-{"_id": "5e4ff3abe3c3317e35206abc", "task_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58", "execution":  0, "issues":  [{"issue_key": "EVG-1234", "url":  "https://link.com", "source" : {"author" : "admin", "time" :{"$date": "2020-11-18T21:11:44.266Z"}, "requester" : "ui"}}]}

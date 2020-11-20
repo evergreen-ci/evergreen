@@ -590,7 +590,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusInternalServerError, errors.WithStack(err)
 	}
 	if projectRef == nil {
-		return nil, http.StatusNotFound, errors.Errorf("error finding the project %s", projectID)
+		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)
 	}
 
 	// check to see if this is an anonymous user requesting a private project
