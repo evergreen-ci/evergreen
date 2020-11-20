@@ -1784,22 +1784,19 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	if u != nil && u.HasPermission(permissions) {
+	if u == nil {
+		return false, nil
+	}
+	if u.HasPermission(permissions) {
 		return true, nil
 	}
 
-	// project admin
-	projectRef, err := r.sc.FindProjectById(patchID)
-	if err != nil {
-		return false, err
-	}
-	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectRef.Id,
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      restModel.FromStringPtr(existingPatch.ProjectId),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	return isProjectAdmin, nil
+	}), nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
