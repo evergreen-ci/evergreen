@@ -1869,6 +1869,8 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+// MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
+// to Suspected Issues, otherwise vice versa.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
@@ -1880,6 +1882,25 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID
 	} else {
 		if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	}
+}
+
+// AddAnnotationIssue adds to the annotation for that taskID/execution.
+// If isIssue is set, it adds to Issues, otherwise it adds to Suspected Issues.
+func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int,
+	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	usr := MustHaveUser(ctx)
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add suspected issue: %s", err.Error()))
 		}
 		return true, nil
 	}
