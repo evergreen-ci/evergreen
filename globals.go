@@ -823,6 +823,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 var ProjectPermissions = []string{
 	PermissionProjectSettings,
 	PermissionTasks,
+	PermissionAnnotations,
 	PermissionPatches,
 	PermissionLogs,
 }
