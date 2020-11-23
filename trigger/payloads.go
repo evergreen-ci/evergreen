@@ -467,7 +467,7 @@ func taskLogLink(uiBase string, taskID string, execution int) string {
 }
 
 func buildLink(uiBase string, buildID string) string {
-	return fmt.Sprintf("%s/build/%s/", uiBase, url.PathEscape(buildID))
+	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(buildID))
 }
 
 func versionLink(uiBase string, versionID string) string {
