@@ -123,7 +123,7 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/task/{task_id}/annotation
+// GET /rest/v2/tasks/{task_id}/annotations
 
 type annotationByTaskGetHandler struct {
 	taskId             string
@@ -218,7 +218,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// PUT /rest/v2/task/{task_id}/annotation
+// PUT /rest/v2/tasks/{task_id}/annotation
 
 type annotationByTaskPutHandler struct {
 	taskId string
