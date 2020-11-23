@@ -95,7 +95,7 @@ func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
-// ByTaskIdAndExecution returns the query for a given Task Id and execution number
+// ByTaskId returns the query for a given Task Id
 func ByTaskId(id string) bson.M {
 	return bson.M{TaskIdKey: id}
 }
