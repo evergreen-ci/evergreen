@@ -152,13 +152,17 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		URL:    "http://www.something.com/absolute",
 		Status: evergreen.TestFailedStatus,
 	}
+	test4 := task.TestResult{
+		LogId:  "abc",
+		Status: evergreen.TestFailedStatus,
+	}
 	t := task.Task{
 		Id:          "taskid",
 		DisplayName: "thetask",
 		Details: apimodels.TaskEndDetail{
 			TimedOut: false,
 		},
-		LocalTestResults: []task.TestResult{test1, test2, test3},
+		LocalTestResults: []task.TestResult{test1, test2, test3, test4},
 	}
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
@@ -166,10 +170,11 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
-	s.Require().Len(tr, 2)
+	s.Require().Len(tr, 3)
 	s.Equal(settings.Ui.Url+test1.URL, tr[0].URL)
 	s.NotEqual(test1.URL, tr[0].URL)
 	s.Equal(test3.URL, tr[1].URL)
+	s.Equal(settings.Ui.Url+"/test_log/abc", tr[2].URL)
 }
 
 func TestTruncateString(t *testing.T) {
