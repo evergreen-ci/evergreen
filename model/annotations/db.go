@@ -72,7 +72,7 @@ func FindByTaskIds(ids []string) ([]TaskAnnotation, error) {
 }
 
 func FindByTaskId(id string) ([]TaskAnnotation, error) {
-	return Find(ByTaskId(id))
+	return Find(db.Query(ByTaskId(id)))
 }
 
 // Insert writes the task_annotation to the database.
@@ -95,9 +95,9 @@ func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
-// ByTaskId returns a query for entries with the given Task Id
-func ByTaskId(taskId string) db.Q {
-	return db.Query(bson.M{TaskIdKey: taskId})
+// ByTaskId returns the query for a given Task Id
+func ByTaskId(id string) bson.M {
+	return bson.M{TaskIdKey: id}
 }
 
 func ByTaskIds(ids []string) db.Q {

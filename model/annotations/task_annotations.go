@@ -146,3 +146,43 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
 	)
 }
+
+func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{}
+
+	if a.Metadata != nil {
+		update[MetadataKey] = a.Metadata
+	}
+	if a.Note != nil {
+		a.Note.Source = source
+		update[NoteKey] = a.Note
+	}
+	if a.Issues != nil {
+		for _, issue := range a.Issues {
+			issue.Source = source
+		}
+		update[IssuesKey] = a.Issues
+	}
+	if a.SuspectedIssues != nil {
+		for _, issue := range a.SuspectedIssues {
+			issue.Source = source
+		}
+		update[SuspectedIssuesKey] = a.SuspectedIssues
+	}
+	if len(update) == 0 {
+		return nil
+	}
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
+		bson.M{
+			"$set": update,
+		},
+	)
+	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
+}
