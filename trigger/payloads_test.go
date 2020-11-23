@@ -6,10 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,6 +27,14 @@ type payloadSuite struct {
 func TestPayloads(t *testing.T) {
 	suite.Run(t, &payloadSuite{})
 }
+
+func (s *payloadSuite) SetupSuite() {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(s.T(), settings, "TestPayloads")
+	s.Require().NoError(db.Clear(evergreen.ConfigCollection))
+	s.Require().NoError(evergreen.UpdateConfig(settings))
+}
+
 func (s *payloadSuite) SetupTest() {
 	s.url = "https://example.com/patch/1234"
 	s.status = "failed"
@@ -138,13 +148,17 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		URL:    "/test_log/success",
 		Status: evergreen.TestSucceededStatus,
 	}
+	test3 := task.TestResult{
+		URL:    "http://www.something.com/absolute",
+		Status: evergreen.TestFailedStatus,
+	}
 	t := task.Task{
 		Id:          "taskid",
 		DisplayName: "thetask",
 		Details: apimodels.TaskEndDetail{
 			TimedOut: false,
 		},
-		LocalTestResults: []task.TestResult{test1, test2},
+		LocalTestResults: []task.TestResult{test1, test2, test3},
 	}
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
@@ -152,9 +166,10 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
-	s.Require().Len(tr, 1)
-	s.Equal(tr[0].URL, settings.Ui.Url+test1.URL)
-	s.NotEqual(tr[0].URL, test1.URL)
+	s.Require().Len(tr, 2)
+	s.Equal(settings.Ui.Url+test1.URL, tr[0].URL)
+	s.NotEqual(test1.URL, tr[0].URL)
+	s.Equal(test3.URL, tr[1].URL)
 }
 
 func TestTruncateString(t *testing.T) {
