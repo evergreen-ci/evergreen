@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -184,6 +185,7 @@ func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testi
 					grip.Info("=== actual ===")
 					grip.Info(actual.Bytes())
 				}
+				additionalChecks(t)
 			}
 
 			t.Run(testCase.QueryFile, singleTest)
@@ -232,6 +234,7 @@ func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
 		}
 	}
 }
+
 func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
@@ -244,6 +247,7 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 		}
 	}
 }
+
 func spawnTestHostAndVolume(t *testing.T) {
 	// Initialize Spawn Host and Spawn Volume used in tests
 	volExp, err := time.Parse(time.RFC3339, "2020-06-06T14:43:06.287Z")
@@ -302,4 +306,21 @@ func addSubnets(t *testing.T) {
 
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
+}
+
+func additionalChecks(t *testing.T) {
+	var checks = map[string]func(*testing.T){
+		// note these 2 are only the same because the same project ID is used
+		"TestAtomicGQLQueries/abortTask/commit-queue-dequeue.graphql":            checkCommitQueueDequeued,
+		"TestAtomicGQLQueries/unschedulePatchTasks/commit-queue-dequeue.graphql": checkCommitQueueDequeued,
+	}
+	if check, exists := checks[t.Name()]; exists {
+		check(t)
+	}
+}
+
+func checkCommitQueueDequeued(t *testing.T) {
+	cq, err := commitqueue.FindOneId("p1")
+	assert.NoError(t, err)
+	assert.Empty(t, cq.Queue)
 }

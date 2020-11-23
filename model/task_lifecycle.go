@@ -90,6 +90,17 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	} else {
 		return nil
 	}
+	if !active && t.Requester == evergreen.MergeTestRequester {
+		projRef, err := FindOneProjectRef(t.Project)
+		if err != nil {
+			return errors.Wrap(err, "unable to find project ref")
+		}
+		if projRef == nil {
+			return errors.New("no project found")
+		}
+		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project,
+			projRef.CommitQueue.PatchType, t.Version, caller)
+	}
 
 	if t.IsPartOfDisplay() {
 		if err := updateDisplayTaskAndCache(t); err != nil {
