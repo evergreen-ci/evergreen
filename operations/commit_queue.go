@@ -261,7 +261,8 @@ func enqueuePatch() cli.Command {
 					multipleCommits = true
 				}
 			}
-			if multipleCommits && !skipConfirm && !confirm("Original patch has multiple commits. Continue? (y/n):", false) {
+			if multipleCommits && !skipConfirm &&
+				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
 				return errors.New("enqueue aborted")
 			}
 
@@ -547,7 +548,8 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	if err != nil {
 		return errors.Wrap(err, "can't get commit count")
 	}
-	if commitCount > 1 && !p.skipConfirm && !confirm("Commit queue patch has multiple commits. Continue? (y/n):", false) {
+	if commitCount > 1 && !p.skipConfirm &&
+		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
 		return errors.New("patch aborted")
 	}
 
@@ -618,7 +620,8 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if commitCount == 0 {
 		return errors.New("No commits for module")
 	}
-	if commitCount > 1 && !p.skipConfirm && !confirm("Commit queue module patch has multiple commits. Continue? (y/n):", false) {
+	if commitCount > 1 && !p.skipConfirm &&
+		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
 		return errors.New("module patch aborted")
 	}
 
