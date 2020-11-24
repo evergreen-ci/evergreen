@@ -223,7 +223,6 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
 	p, err := model.FindOneProjectRef(t.Project)
-
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -432,8 +431,9 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, projectRef)
 }
 
+// listProjects returns the projects merged with the repo settings
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
-	allProjs, err := model.FindAllTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

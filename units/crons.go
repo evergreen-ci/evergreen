@@ -43,7 +43,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllTrackedProjectRefsWithRepoInfo()
+		projects, err := model.FindAllMergedTrackedProjectRefsWithRepoInfo()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -1092,7 +1092,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllTrackedProjectRefs()
+		projects, err := model.FindAllMergedTrackedProjectRefs()
 		if err != nil {
 			return errors.WithStack(err)
 		}

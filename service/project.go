@@ -27,7 +27,7 @@ import (
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
 func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
-	allProjects, err := model.FindAllProjectRefs()
+	allProjects, err := model.FindAllMergedProjectRefs()
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matchingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+	matchingRefs, err := model.FindMergedProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -341,7 +341,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var conflictingRefs []model.ProjectRef
-		conflictingRefs, err = model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+		conflictingRefs, err = model.FindMergedProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -664,7 +664,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if origProjectRef.UseRepoSettings != projectRef.UseRepoSettings {
 		if projectRef.UseRepoSettings {
-			err = projectRef.AddToRepoScope(ctx, dbUser)
+			err = projectRef.AddToRepoScope(dbUser)
 		} else {
 			err = projectRef.RemoveFromRepoScope()
 		}

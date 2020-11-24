@@ -44,6 +44,45 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.DefaultLogger, "buildlogger")
 }
 
+func TestFindMergedProjectRef(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection),
+		"Error clearing collection")
+	projectRef := &ProjectRef{
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "master",
+		UseRepoSettings:  true,
+		RepoKind:         "github",
+		Enabled:          true,
+		PatchingDisabled: false,
+		BatchTime:        10,
+		Id:               "ident",
+		Admins:           []string{"john.smith", "john.doe"},
+	}
+	assert.NoError(t, projectRef.Insert())
+	repoRef := &RepoRef{ProjectRef{
+		Id:                  "mongodb_mci",
+		Enabled:             false,
+		PatchingDisabled:    true,
+		SpawnHostScriptPath: "my-path",
+		Admins:              []string{"john.liu"},
+	}}
+	assert.NoError(t, repoRef.Insert())
+
+	mergedProject, err := FindMergedProjectRef("ident")
+	assert.NoError(t, err)
+	require.NotNil(t, mergedProject)
+	assert.Equal(t, "ident", mergedProject.Id)
+	assert.Len(t, mergedProject.Admins, 2)
+	assert.Contains(t, mergedProject.Admins, "john.smith")
+	assert.Contains(t, mergedProject.Admins, "john.doe")
+	assert.NotContains(t, mergedProject.Admins, "john.liu")
+	assert.False(t, mergedProject.Enabled)
+	assert.True(t, mergedProject.PatchingDisabled)
+	assert.False(t, mergedProject.RepotrackerDisabled)
+	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
+}
+
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	assert := assert.New(t)
 
@@ -193,7 +232,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	assert.NoError(db.Clear(ProjectRefCollection))
 
-	projectRefs, err := FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err := FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -208,7 +247,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		PRTestingEnabled: true,
 	}
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -216,7 +255,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRef.Enabled = true
 	assert.NoError(projectRef.Insert())
 
-	projectRefs, err = FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	require.Len(projectRefs, 1)
 	assert.Equal("ident", projectRefs[0].Id)
@@ -224,7 +263,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	projectRef.Id = "ident2"
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 }

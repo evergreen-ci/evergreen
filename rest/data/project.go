@@ -111,7 +111,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 }
 
 func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
-	conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflictingRefs, err := model.FindMergedProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return errors.Wrap(err, "error finding project refs")
 	}
@@ -263,7 +263,7 @@ func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owne
 }
 
 func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
-	return model.FindEnabledProjectRefsByOwnerAndRepo(owner, repo)
+	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
 func (ac *DBProjectConnector) GetVersionsInProject(identifier, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {

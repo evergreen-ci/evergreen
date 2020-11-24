@@ -275,7 +275,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 // all available projects will be included, otherwise only public projects will be loaded.
 // Sets IsAdmin to true if the user id is located in a project's admin list.
 func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.User) error {
-	allProjs, err := model.FindAllTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return err
 	}

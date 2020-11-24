@@ -61,7 +61,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	pref, err := model.FindOneProjectRef(data.Project)
+	pref, err := model.FindMergedProjectRef(data.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
 		return
