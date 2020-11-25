@@ -966,7 +966,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
-	allProjs, err := model.FindAllTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}

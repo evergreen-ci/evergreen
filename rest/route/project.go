@@ -167,7 +167,7 @@ func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projRef, err := dbModel.FindOneProjectRef(h.project)
+	projRefId, err := dbModel.FindIdForProject(h.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -175,7 +175,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	proj, err := dbModel.FindLastKnownGoodProject(projRef.Id)
+	proj, err := dbModel.FindLastKnownGoodProject(projRefId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -434,7 +434,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if oldProject.UseRepoSettings != newProjectRef.UseRepoSettings {
 		if newProjectRef.UseRepoSettings {
-			err = newProjectRef.AddToRepoScope(ctx, h.user)
+			err = newProjectRef.AddToRepoScope(h.user)
 		} else {
 			err = newProjectRef.RemoveFromRepoScope()
 		}

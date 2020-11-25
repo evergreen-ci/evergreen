@@ -270,7 +270,7 @@ func (p *ProjectRef) GetRepoId() string {
 	return fmt.Sprintf("%s_%s", p.Owner, p.Repo)
 }
 
-func (p *ProjectRef) AddToRepoScope(ctx context.Context, user *user.DBUser) error {
+func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	repoId := p.GetRepoId()
 	repoRef, err := FindOneRepoRef(repoId)
@@ -377,9 +377,56 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 
 }
 
-// FindOneProjectRef gets a project ref given the project identifier
+// FindOneProjectRef gets a project ref given the project identifier.
+// This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQ(byId(identifier))
+}
+
+// FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
+func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
+	pRef, err := FindOneProjectRef(identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
+	}
+	if pRef == nil {
+		return nil, errors.Errorf("project ref '%s' does not exist", identifier)
+	}
+	if pRef.UseRepoSettings {
+		repoRef, err := FindOneRepoRef(pRef.GetRepoId())
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+		}
+		if repoRef == nil {
+			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+		}
+		return mergeBranchAndRepoSettings(pRef, repoRef), nil
+	}
+	return pRef, nil
+}
+
+func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
+	// if a setting is disabled overall, then disable the branch
+	if !repoRef.Enabled {
+		pRef.Enabled = repoRef.Enabled
+	}
+	if repoRef.PatchingDisabled {
+		pRef.PatchingDisabled = repoRef.PatchingDisabled
+	}
+	if repoRef.RepotrackerDisabled {
+		pRef.RepotrackerDisabled = repoRef.RepotrackerDisabled
+	}
+	if pRef.DispatchingDisabled {
+		pRef.DispatchingDisabled = repoRef.DispatchingDisabled
+	}
+	// if the following fields aren't configured, default to the repo configuration
+	if pRef.RemotePath == "" {
+		pRef.RemotePath = repoRef.RemotePath
+	}
+	if pRef.SpawnHostScriptPath == "" {
+		pRef.SpawnHostScriptPath = repoRef.SpawnHostScriptPath
+	}
+	return pRef
 }
 
 func FindIdForProject(identifier string) (string, error) {
@@ -440,26 +487,20 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 		db.NoLimit,
 		&projectRefs,
 	)
-
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
-	return projectRefs, nil
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-// FindAllTrackedProjectRefs returns all project refs in the db
+// FindAllMergedTrackedProjectRefs returns all project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist)
-func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
+func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
@@ -470,15 +511,38 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
+	if err != nil {
+		return nil, err
 	}
 
-	return projectRefs, err
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
+func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error) {
+	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
+	for i, pRef := range pRefs {
+		pRefs[i].checkDefaultLogger()
+		if pRefs[i].UseRepoSettings {
+			repoId := pRef.GetRepoId()
+			repoRef := repoRefs[repoId]
+			if repoRef == nil {
+				var err error
+				repoRef, err = FindOneRepoRef(repoId)
+				if err != nil {
+					return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+				}
+				if repoRef == nil {
+					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+				}
+				repoRefs[repoId] = repoRef
+			}
+			pRefs[i] = *mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+		}
+	}
+	return pRefs, nil
+}
+
+func FindAllMergedTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
@@ -494,16 +558,15 @@ func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
+	if err != nil {
+		return nil, err
 	}
 
-	return projectRefs, err
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-// FindAllProjectRefs returns all project refs in the db
-func FindAllProjectRefs() ([]ProjectRef, error) {
+// FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
+func FindAllMergedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
@@ -514,12 +577,11 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 		db.NoLimit,
 		&projectRefs,
 	)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
+	if err != nil {
+		return nil, err
 	}
 
-	return projectRefs, err
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
 func byOwnerRepoAndBranch(owner, repoName, branch string) db.Q {
@@ -540,9 +602,9 @@ func byId(identifier string) db.Q {
 	})
 }
 
-// FindProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
-// that are enabled and setup for PR testing
-func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+// FindMergedProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
+// that are enabled and setup for PR testing, and merges repo information.
+func FindMergedProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	err := db.FindAllQ(ProjectRefCollection, byOwnerRepoAndBranch(owner, repoName, branch), &projectRefs)
@@ -550,11 +612,7 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
-	return projectRefs, err
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
@@ -587,7 +645,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 // repo/branch that is enabled and setup for PR testing. If more than one
 // is found, an error is returned
 func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (*ProjectRef, error) {
-	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := FindMergedProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -604,10 +662,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		}
 
 		if count > 1 {
-			err = errors.Errorf("attempt to fetch project ref for "+
+			return nil, errors.Errorf("attempt to fetch project ref for "+
 				"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
 				owner, repo, branch, count)
-			return nil, err
 		}
 
 	}
@@ -616,10 +673,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		return nil, nil
 	}
 
-	if projectRefs[target].DefaultLogger == "" {
-		projectRefs[target].checkDefaultLogger()
-	}
-
+	projectRefs[target].checkDefaultLogger()
 	return &projectRefs[target], nil
 }
 
@@ -652,7 +706,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	return projectRef, nil
 }
 
-func FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
+func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	err := db.FindAll(
@@ -672,11 +726,7 @@ func FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, err
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
-	return projectRefs, nil
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
@@ -1221,7 +1271,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}
-	pRef, err := FindOneProjectRef(projectId)
+	pRef, err := FindMergedProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
 	}
@@ -1296,7 +1346,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 	if childProject == nil {
 		return errors.Errorf("project '%s' not found", t.ChildProject)
 	}
-	if childProject.Identifier == parentProject {
+	if childProject.Id == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
