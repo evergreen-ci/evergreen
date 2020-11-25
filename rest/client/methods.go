@@ -1562,3 +1562,31 @@ func (c *communicatorImpl) GetHostProvisioningScript(ctx context.Context, hostID
 	}
 	return &opts, nil
 }
+
+func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string) ([]string, map[string]map[string]string, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "/scheduler/compare_tasks",
+	}
+	body := restmodel.CompareTasksRequest{
+		Tasks: tasks,
+	}
+	r, err := c.createRequest(info, body)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not create request")
+	}
+	resp, err := c.doRequest(ctx, r)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not make request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, respErrorf(resp, "received error response")
+	}
+	var results restmodel.CompareTasksResponse
+	if err = utility.ReadJSON(resp.Body, &results); err != nil {
+		return nil, nil, errors.Wrap(err, "reading response")
+	}
+
+	return results.Order, results.Logic, nil
+}

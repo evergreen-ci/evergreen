@@ -124,4 +124,6 @@ type Communicator interface {
 
 	// GetHostProvisioningScript gets the script options to provision a host.
 	GetHostProvisioningScript(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningScriptOptions, error)
+
+	CompareTasks(context.Context, []string) ([]string, map[string]map[string]string, error)
 }
