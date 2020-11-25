@@ -2583,7 +2583,7 @@
       "result": {
         "errors": [
           {
-            "message": "Unable to remove commit queue item for project exec2, version version: no commit queue found for 'logkeeper'",
+            "message": "Error aborting task exec2: no commit queue found for 'logkeeper'",
             "path": ["abortTask"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }

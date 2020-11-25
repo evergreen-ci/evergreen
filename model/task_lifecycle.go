@@ -100,6 +100,9 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project,
 			projRef.CommitQueue.PatchType, t.Version, caller)
+		if err != nil {
+			return err
+		}
 	}
 
 	if t.IsPartOfDisplay() {
