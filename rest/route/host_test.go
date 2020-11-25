@@ -866,7 +866,7 @@ func TestClearHostsHandler(t *testing.T) {
 }
 
 func TestRemoveAdminHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, dbModel.ProjectRefCollection))
 	projectRef0 := &dbModel.ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "test_repo0",
