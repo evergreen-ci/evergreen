@@ -11,11 +11,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -861,6 +863,51 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.Equal(t, res.TerminatedHosts[0], "h1")
 	require.Len(t, res.TerminatedVolumes, 1)
 	assert.Equal(t, res.TerminatedVolumes[0], "v1")
+}
+
+func TestRemoveAdminHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection))
+	projectRef0 := &dbModel.ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "test_repo0",
+		Branch:    "master",
+		RepoKind:  "github",
+		Enabled:   true,
+		BatchTime: 10,
+		Id:        "test0",
+		Admins:    []string{"user1", "user0"},
+	}
+	projectRef1 := &dbModel.ProjectRef{
+		Owner:     "mongodb",
+		Repo:      "test_repo1",
+		Branch:    "master",
+		RepoKind:  "github",
+		Enabled:   true,
+		BatchTime: 10,
+		Id:        "test1",
+		Admins:    []string{"user1", "user2"},
+	}
+
+	assert.NoError(t, projectRef0.Insert())
+	assert.NoError(t, projectRef1.Insert())
+
+	offboardedUser := "user0"
+	handler := offboardUserHandler{
+		sc:     &data.DBConnector{},
+		dryRun: false,
+		env:    evergreen.GetEnvironment(),
+		user:   offboardedUser,
+	}
+	handler.env.SetUserManager(serviceutil.MockUserManager{})
+
+	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	require.Equal(t, http.StatusOK, resp.Status())
+
+	projectRefs, err := dbModel.FindAllProjectRefs()
+	assert.NoError(t, err)
+	for _, projRef := range projectRefs {
+		assert.NotContains(t, projRef.Admins, offboardedUser)
+	}
 }
 
 func TestHostFilterGetHandler(t *testing.T) {

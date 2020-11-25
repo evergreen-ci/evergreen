@@ -449,6 +449,11 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
+		err = ch.sc.RemoveAdminFromProjects(ch.user)
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error removing admin from projects"))
+		}
+
 		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
 			"message": "could not clear login token",
 			"context": "user offboarding",
