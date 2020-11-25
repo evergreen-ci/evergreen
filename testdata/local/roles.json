@@ -7,4 +7,4 @@
 { "_id" : "admin_super", "name" : "admin_role", "scope" : "super", "permissions" : { "admin_settings": 10} }
 { "_id" : "project_super", "name" : "project_create", "scope" : "super", "permissions" : { "project_create": 10} }
 { "_id" : "distro_super", "name" : "distro_create", "scope" : "super", "permissions" : { "distro_create": 10} }
-{ "_id" : "annotation_super", "name" : "project_task_annotations", "scope" : "evergreen", "permissions" : { "project_task_annotations": 20} }
+{ "_id" : "annotations_evergreen", "name" : "project_task_annotations", "scope" : "evergreen", "permissions" : { "project_task_annotations": 20} }
