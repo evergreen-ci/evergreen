@@ -449,9 +449,11 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
-		if err = ch.sc.RemoveAdminFromProjects(ch.user); err != nil {
-			catcher.Wrapf(err, "error removing user as an admin")
-		}
+		grip.Error(message.WrapError(ch.sc.RemoveAdminFromProjects(ch.user), message.Fields{
+			"message": "could not remove user as an admin",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
 
 		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
 			"message": "could not clear login token",
