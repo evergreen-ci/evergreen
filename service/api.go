@@ -316,6 +316,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 
 	res := apimodels.ExpansionVars{}
 	res.Vars = projectVars.GetUnrestrictedVars()
+	res.RestrictedVars = projectVars.GetRestrictedVars()
 	res.PrivateVars = projectVars.PrivateVars
 
 	v, err := model.VersionFindOne(model.VersionById(t.Version).WithFields(model.VersionParametersKey))
