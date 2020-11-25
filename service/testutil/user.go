@@ -33,5 +33,6 @@ func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { retur
 func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }
 func (MockUserManager) ClearUser(gimlet.User, bool) error {
 	return errors.New("MockUserManager does not support Clear User")
+	// return nil
 }
 func (MockUserManager) GetGroupsForUser(string) ([]string, error) { return []string{}, nil }

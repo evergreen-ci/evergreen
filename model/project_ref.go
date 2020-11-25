@@ -1028,14 +1028,13 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 
 // RemoveAdminFromProjects removes a user from all Admin slices of every project
 func RemoveAdminFromProjects(toDelete string) error {
-	filter := bson.M{}
 	update := bson.M{
 		"$pull": bson.M{
 			ProjectRefAdminsKey: toDelete,
 		},
 	}
 
-	return db.Update(ProjectRefCollection, filter, update)
+	return db.Update(ProjectRefCollection, bson.M{}, update)
 }
 
 func (p *ProjectRef) MakeRestricted(ctx context.Context) error {

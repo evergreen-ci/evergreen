@@ -449,9 +449,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
-		err = ch.sc.RemoveAdminFromProjects(ch.user)
-		if err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error removing admin from projects"))
+		if err = ch.sc.RemoveAdminFromProjects(ch.user); err != nil {
+			catcher.Wrapf(err, "error removing user as an admin")
 		}
 
 		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{

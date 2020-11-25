@@ -866,6 +866,7 @@ func TestClearHostsHandler(t *testing.T) {
 }
 
 func TestRemoveAdminHandler(t *testing.T) {
+	// user.Collection, evergreen.RoleCollection
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, dbModel.ProjectRefCollection))
 	projectRef0 := &dbModel.ProjectRef{
 		Owner:     "mongodb",
@@ -892,19 +893,28 @@ func TestRemoveAdminHandler(t *testing.T) {
 	assert.NoError(t, projectRef1.Insert())
 
 	offboardedUser := "user0"
+	env := evergreen.GetEnvironment()
+	userManager := env.UserManager()
+
 	handler := offboardUserHandler{
 		sc:     &data.DBConnector{},
-		dryRun: false,
-		env:    evergreen.GetEnvironment(),
+		dryRun: true,
+		env:    env,
 		user:   offboardedUser,
 	}
-	handler.env.SetUserManager(serviceutil.MockUserManager{})
-
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
+	assert.Contains(t, projectRef0.Admins, offboardedUser)
+
+	handler.dryRun = false
+	handler.env.SetUserManager(serviceutil.MockUserManager{})
+	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	require.Equal(t, http.StatusOK, resp.Status())
+	env.SetUserManager(userManager)
 
 	projectRefs, err := dbModel.FindAllProjectRefs()
 	assert.NoError(t, err)
+	require.Len(t, projectRefs, 2)
 	for _, projRef := range projectRefs {
 		assert.NotContains(t, projRef.Admins, offboardedUser)
 	}
