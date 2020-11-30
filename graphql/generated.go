@@ -292,7 +292,7 @@ type ComplexityRoot struct {
 		RestartPatch              func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask               func(childComplexity int, taskID string) int
 		SaveSubscription          func(childComplexity int, subscription model.APISubscription) int
-		SchedulePatch             func(childComplexity int, patchID string, reconfigure PatchReconfigure, parameters []*model.APIParameter) int
+		SchedulePatch             func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks        func(childComplexity int, patchID string) int
 		ScheduleTask              func(childComplexity int, taskID string) int
 		SetPatchPriority          func(childComplexity int, patchID string, priority int) int
@@ -713,7 +713,7 @@ type HostResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.UIProjectFields, error)
-	SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure, parameters []*model.APIParameter) (*model.APIPatch, error)
+	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
@@ -1981,7 +1981,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["reconfigure"].(PatchReconfigure), args["parameters"].([]*model.APIParameter)), true
+		return e.complexity.Mutation.SchedulePatch(childComplexity, args["patchId"].(string), args["configure"].(PatchConfigure)), true
 
 	case "Mutation.schedulePatchTasks":
 		if e.complexity.Mutation.SchedulePatchTasks == nil {
@@ -4238,11 +4238,7 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  schedulePatch(
-    patchId: String!
-    reconfigure: PatchReconfigure!
-    parameters: [ParameterInput]
-  ): Patch!
+  schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
@@ -4254,8 +4250,17 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
-  addAnnotationIssue(taskId: String!, execution: Int!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
+  moveAnnotationIssue(
+    annotationId: String!
+    apiIssue: AnnotationIssue!
+    isIssue: Boolean!
+  ): Boolean!
+  addAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: AnnotationIssue!
+    isIssue: Boolean!
+  ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -4338,9 +4343,10 @@ input VolumeHost {
   volumeId: String!
   hostId: String!
 }
-input PatchReconfigure {
+input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
+  parameters: [ParameterInput]
 }
 input VariantTasks {
   variant: String!
@@ -5388,22 +5394,14 @@ func (ec *executionContext) field_Mutation_schedulePatch_args(ctx context.Contex
 		}
 	}
 	args["patchId"] = arg0
-	var arg1 PatchReconfigure
-	if tmp, ok := rawArgs["reconfigure"]; ok {
-		arg1, err = ec.unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx, tmp)
+	var arg1 PatchConfigure
+	if tmp, ok := rawArgs["configure"]; ok {
+		arg1, err = ec.unmarshalNPatchConfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchConfigure(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["reconfigure"] = arg1
-	var arg2 []*model.APIParameter
-	if tmp, ok := rawArgs["parameters"]; ok {
-		arg2, err = ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["parameters"] = arg2
+	args["configure"] = arg1
 	return args, nil
 }
 
@@ -10502,7 +10500,7 @@ func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string), args["reconfigure"].(PatchReconfigure), args["parameters"].([]*model.APIParameter))
+		return ec.resolvers.Mutation().SchedulePatch(rctx, args["patchId"].(string), args["configure"].(PatchConfigure))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21965,8 +21963,8 @@ func (ec *executionContext) unmarshalInputParameterInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, obj interface{}) (PatchReconfigure, error) {
-	var it PatchReconfigure
+func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, obj interface{}) (PatchConfigure, error) {
+	var it PatchConfigure
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -21980,6 +21978,12 @@ func (ec *executionContext) unmarshalInputPatchReconfigure(ctx context.Context, 
 		case "variantsTasks":
 			var err error
 			it.VariantsTasks, err = ec.unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "parameters":
+			var err error
+			it.Parameters, err = ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27531,6 +27535,10 @@ func (ec *executionContext) marshalNPatchBuildVariant2ᚖgithubᚗcomᚋevergree
 	return ec._PatchBuildVariant(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNPatchConfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchConfigure(ctx context.Context, v interface{}) (PatchConfigure, error) {
+	return ec.unmarshalInputPatchConfigure(ctx, v)
+}
+
 func (ec *executionContext) marshalNPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
 	return ec._PatchMetadata(ctx, sel, &v)
 }
@@ -27543,10 +27551,6 @@ func (ec *executionContext) marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._PatchMetadata(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNPatchReconfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchReconfigure(ctx context.Context, v interface{}) (PatchReconfigure, error) {
-	return ec.unmarshalInputPatchReconfigure(ctx, v)
 }
 
 func (ec *executionContext) marshalNPatchTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx context.Context, sel ast.SelectionSet, v PatchTasks) graphql.Marshaler {

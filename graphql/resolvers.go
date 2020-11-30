@@ -1676,10 +1676,10 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return apiTask, err
 }
 
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure, parameters []*restModel.APIParameter) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 
 	patchUpdateReq := PatchVariantsTasksRequest{}
-	patchUpdateReq.BuildFromGqlInput(reconfigure)
+	patchUpdateReq.BuildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
@@ -1688,7 +1688,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, parameters)
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, configure.Parameters)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}

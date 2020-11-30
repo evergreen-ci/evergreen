@@ -91,6 +91,12 @@ type PatchBuildVariantTask struct {
 	BaseStatus *string `json:"baseStatus"`
 }
 
+type PatchConfigure struct {
+	Description   string                `json:"description"`
+	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
+	Parameters    []*model.APIParameter `json:"parameters"`
+}
+
 type PatchDuration struct {
 	Makespan  *string    `json:"makespan"`
 	TimeTaken *string    `json:"timeTaken"`
@@ -105,11 +111,6 @@ type PatchMetadata struct {
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
 	Tasks    []string               `json:"tasks"`
-}
-
-type PatchReconfigure struct {
-	Description   string          `json:"description"`
-	VariantsTasks []*VariantTasks `json:"variantsTasks"`
 }
 
 type PatchTasks struct {
