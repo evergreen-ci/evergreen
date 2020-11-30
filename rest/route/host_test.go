@@ -866,7 +866,6 @@ func TestClearHostsHandler(t *testing.T) {
 }
 
 func TestRemoveAdminHandler(t *testing.T) {
-	// user.Collection, evergreen.RoleCollection
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, dbModel.ProjectRefCollection))
 	projectRef0 := &dbModel.ProjectRef{
 		Owner:     "mongodb",
@@ -912,7 +911,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Status())
 	env.SetUserManager(userManager)
 
-	projectRefs, err := dbModel.FindAllProjectRefs()
+	projectRefs, err := dbModel.FindAllMergedProjectRefs()
 	assert.NoError(t, err)
 	require.Len(t, projectRefs, 2)
 	for _, projRef := range projectRefs {
