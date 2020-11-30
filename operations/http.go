@@ -523,6 +523,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncTimeout       time.Duration      `json:"sync_timeout"`
 		Finalize          bool               `json:"finalize"`
 		BackportInfo      patch.BackportInfo `json:"backport_info"`
+		TriggerAliases    []string           `json:"trigger_aliases"`
 		Parameters        []patch.Parameter  `json:"parameters"`
 	}{
 		Description:       incomingPatch.description,
@@ -538,6 +539,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncTimeout:       incomingPatch.syncTimeout,
 		Finalize:          incomingPatch.finalize,
 		BackportInfo:      incomingPatch.backportOf,
+		TriggerAliases:    incomingPatch.triggerAliases,
 		Parameters:        incomingPatch.parameters,
 	}
 

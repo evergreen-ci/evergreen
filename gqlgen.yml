@@ -37,6 +37,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
   Volume:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+  Annotation:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAnnotation
+  AnnotationIssue:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:

@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -88,6 +89,12 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ScopeCollection: evergreen.ScopeCollection,
 	})
 
+	depot, err := BootstrapCredentialsCollection(ctx, e.MongoClient, e.EvergreenSettings.Database.Url, e.EvergreenSettings.Database.DB, e.EvergreenSettings.DomainName)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	e.Depot = depot
+
 	// Although it would make more sense to call
 	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
 	// cycle where this package would transitively depend on the database
@@ -99,6 +106,42 @@ func (e *Environment) Configure(ctx context.Context) error {
 	e.userManager = um
 
 	return nil
+}
+
+// BootstrapCredentialsCollection initializes the credentials collection with
+// the required CA configuration and returns the credentials depot.
+func BootstrapCredentialsCollection(ctx context.Context, client *mongo.Client, dbURL, dbName, domainName string) (certdepot.Depot, error) {
+	maxExpiration := time.Duration(math.MaxInt64)
+	bootstrapConfig := certdepot.BootstrapDepotConfig{
+		CAName: evergreen.CAName,
+		MongoDepot: &certdepot.MongoDBOptions{
+			MongoDBURI:     dbURL,
+			DatabaseName:   dbName,
+			CollectionName: evergreen.CredentialsCollection,
+			DepotOptions: certdepot.DepotOptions{
+				CA:                evergreen.CAName,
+				DefaultExpiration: 365 * 24 * time.Hour,
+			},
+		},
+		CAOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: evergreen.CAName,
+			Expires:    maxExpiration,
+		},
+		ServiceName: domainName,
+		ServiceOpts: &certdepot.CertificateOptions{
+			CA:         evergreen.CAName,
+			CommonName: domainName,
+			Host:       domainName,
+			Expires:    maxExpiration,
+		},
+	}
+
+	depot, err := certdepot.BootstrapDepotWithMongoClient(ctx, client, bootstrapConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not bootstrap %s collection", evergreen.CredentialsCollection)
+	}
+	return depot, nil
 }
 
 func (e *Environment) Context() (context.Context, context.CancelFunc) {

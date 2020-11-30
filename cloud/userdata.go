@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -224,12 +225,8 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 // makeUserData returns the user data with logic to provision and set up the
 // host as well as run custom user data.
 // If mergeParts is true, the provisioning part and the custom part will
-// be combined into a single user datapart, so they must be the same type (e.g.
+// be combined into a single user data part, so they must be the same type (e.g.
 // if shell scripts, both must be the same shell scripting language).
-// Care should be taken when adding more content to user data, since the user
-// data length is subject to a 16 kB hard limit
-// (https://docs.aws.amazon.com/sdk-for-go/api/service/ec2/#RunInstancesInput).
-// We could possibly increase the length by gzip compressing it.
 func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, custom string, mergeParts bool) (string, error) {
 	var err error
 	var customUserData *userData
@@ -249,18 +246,27 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 
 	settings := env.Settings()
 
-	creds, err := h.GenerateJasperCredentials(ctx, env)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem generating Jasper credentials for host '%s'", h.Id)
-	}
+	var provisionOpts *userdata.Options
+	var creds *certdepot.Credentials
+	if h.Distro.BootstrapSettings.FetchProvisioningScript {
+		provisionOpts, err = h.FetchProvisioningScriptUserData(settings)
+		if err != nil {
+			return "", errors.Wrap(err, "creating user data script to fetch provisioning script")
+		}
+	} else {
+		creds, err = h.GenerateJasperCredentials(ctx, env)
+		if err != nil {
+			return "", errors.Wrapf(err, "generating Jasper credentials")
+		}
 
-	provisionOpts, err := h.ProvisioningUserData(settings, creds)
-	if err != nil {
-		return "", errors.Wrap(err, "could not generate user data for provisioning host")
+		provisionOpts, err = h.ProvisioningUserData(settings, creds)
+		if err != nil {
+			return "", errors.Wrap(err, "could not generate user data for provisioning host")
+		}
 	}
 	provision, err := newUserData(*provisionOpts)
 	if err != nil {
-		return "", errors.Wrap(err, "could not create user data for provisioning from options")
+		return "", errors.Wrap(err, "could not create provisioning user data from options")
 	}
 
 	if mergeParts {
@@ -273,7 +279,14 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 		} else {
 			mergedUserData = provision
 		}
-		return ensureWindowsUserDataScriptPersists(h, mergedUserData).String(), errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+
+		if creds != nil {
+			if err = h.SaveJasperCredentials(ctx, env, creds); err != nil {
+				return "", errors.Wrap(err, "saving host's Jasper credentials")
+			}
+		}
+
+		return ensureWindowsUserDataScriptPersists(h, mergedUserData).String(), nil
 	}
 
 	parts := map[string]*userData{
@@ -287,7 +300,13 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 		return "", errors.Wrap(err, "error creating user data with multiple parts")
 	}
 
-	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+	if creds != nil {
+		if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
+			return "", errors.Wrap(err, "saving host's Jasper credentials")
+		}
+	}
+
+	return multipartUserData, nil
 }
 
 // ensureWindowsUserDataScriptPersists adds tags to user data scripts on Windows

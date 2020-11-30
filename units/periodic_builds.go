@@ -66,15 +66,12 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 	var err error
-	j.project, err = model.FindOneProjectRef(j.ProjectID)
+	j.project, err = model.FindMergedProjectRef(j.ProjectID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding project"))
 		return
 	}
-	if j.project == nil {
-		j.AddError(errors.New("project not found"))
-		return
-	}
+
 	var definition *model.PeriodicBuildDefinition
 	for _, d := range j.project.PeriodicBuilds {
 		if d.ID == j.DefinitionID {

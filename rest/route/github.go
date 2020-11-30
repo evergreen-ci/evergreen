@@ -144,9 +144,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"ref":       *event.PullRequest.Base.Ref,
 				"pr_number": *event.PullRequest.Number,
 				"hash":      *event.PullRequest.Head.SHA,
+				"user":      *event.Sender.Login,
 				"message":   "pr accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(event.PullRequest); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -155,6 +156,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.PullRequest.Base.Repo.FullName,
 					"ref":       *event.PullRequest.Base.Ref,
 					"pr_number": *event.PullRequest.Number,
+					"user":      *event.Sender.Login,
 					"message":   "can't add intent",
 				}))
 				return gimlet.NewJSONErrorResponse(err)
@@ -305,11 +307,11 @@ func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, p
 		return errors.Wrapf(err, "can't get PR for repo %s:%s, PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(pr)
+	return gh.AddIntentForPR(pr, pr.User.GetLogin())
 }
 
-func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest) error {
-	ghi, err := patch.NewGithubIntent(gh.msgID, pr)
+func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner string) error {
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, pr)
 	if err != nil {
 		return errors.Wrap(err, "failed to create intent")
 	}

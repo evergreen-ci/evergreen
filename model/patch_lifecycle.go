@@ -111,12 +111,9 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		return nil, "", errors.Errorf("Patch %v already finalized", p.Version)
 	}
 
-	projectRef, err := FindOneProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
-	}
-	if projectRef == nil {
-		return nil, "", errors.Errorf("no project exists with identifier '%s", p.Project)
 	}
 
 	project := &Project{}
@@ -563,12 +560,9 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 	}
 
 	// verify the commit queue is on
-	projectRef, err := FindOneProjectRef(existingPatch.Project)
+	projectRef, err := FindMergedProjectRef(existingPatch.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("no project '%s' exists", existingPatch.Project)
 	}
 	if err = projectRef.CommitQueueIsOn(); err != nil {
 		return nil, errors.WithStack(err)

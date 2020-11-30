@@ -108,6 +108,7 @@ type Connector interface {
 	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
 	AddTagsToProject(string, ...string) error
 	RemoveTagFromProject(string, string) error
+	RemoveAdminFromProjects(string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)

@@ -451,7 +451,20 @@ func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			testResult.URL = settings.Ui.Url + testResult.URL
+			if testResult.URL != "" {
+				logURL, err := url.Parse(testResult.URL)
+				if err != nil {
+					return nil, errors.Wrapf(err, "unable to parse URL %s", testResult.URL)
+				}
+				if logURL.Host == "" {
+					testResult.URL = settings.Ui.Url + testResult.URL
+				} else {
+					testResult.URL = logURL.String()
+				}
+			} else if testResult.LogId != "" {
+				testResult.URL = logURL(testResult, settings.Ui.Url)
+			}
+
 			result = append(result, testResult)
 		}
 	}
@@ -467,7 +480,7 @@ func taskLogLink(uiBase string, taskID string, execution int) string {
 }
 
 func buildLink(uiBase string, buildID string) string {
-	return fmt.Sprintf("%s/build/%s/", uiBase, url.PathEscape(buildID))
+	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(buildID))
 }
 
 func versionLink(uiBase string, versionID string) string {

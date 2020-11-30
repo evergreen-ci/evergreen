@@ -16,6 +16,7 @@ import (
 const (
 	patchDescriptionFlagName = "description"
 	patchVerboseFlagName     = "verbose"
+	patchTriggerAliasFlag    = "trigger-alias"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -49,6 +50,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.BoolFlag{
 				Name:  patchVerboseFlagName,
 				Usage: "show patch summary",
+			},
+			cli.StringSliceFlag{
+				Name:  patchTriggerAliasFlag,
+				Usage: "patch trigger alias (set by project admin) specifying tasks from other projects",
 			},
 		))
 }
@@ -93,6 +98,7 @@ func Patch() cli.Command {
 				Ref:               c.String(refFlagName),
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
+				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
 			}
 
 			var err error
@@ -154,7 +160,11 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			return params.displayPatch(conf, newPatch)
+			if err = params.displayPatch(conf, newPatch); err != nil {
+				grip.Error(err)
+			}
+			params.setDefaultProject(conf)
+			return nil
 		},
 	}
 }

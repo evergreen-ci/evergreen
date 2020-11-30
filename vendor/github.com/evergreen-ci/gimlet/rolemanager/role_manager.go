@@ -276,6 +276,9 @@ func (m *mongoBackedRoleManager) GetScope(ctx context.Context, id string) (*giml
 	scopeCollection := m.client.Database(m.db).Collection(m.scopeColl)
 	result := scopeCollection.FindOne(ctx, bson.M{"_id": id})
 	if err = result.Err(); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 	scope := &gimlet.Scope{}

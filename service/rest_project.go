@@ -22,7 +22,7 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 // getProjectsIds returns a JSON response of an array of active project Ids.
 // Users must use credentials to see private projects.
 func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
-	refs, err := model.FindAllProjectRefs()
+	refs, err := model.FindAllMergedProjectRefs()
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{
 			Message: fmt.Sprintf("error finding projects: %v", err),

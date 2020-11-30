@@ -167,7 +167,7 @@ func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projRef, err := dbModel.FindOneProjectRef(h.project)
+	projRefId, err := dbModel.FindIdForProject(h.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -175,7 +175,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	proj, err := dbModel.FindLastKnownGoodProject(projRef.Id)
+	proj, err := dbModel.FindLastKnownGoodProject(projRefId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -196,9 +196,9 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
-	project  string
-	body     []byte
-	username string
+	project string
+	body    []byte
+	user    *user.DBUser
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -221,8 +221,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.project = gimlet.GetVars(r)["project_id"]
-	user := MustHaveUser(ctx)
-	h.username = user.DisplayName()
+	h.user = MustHaveUser(ctx)
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -238,16 +237,14 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	oldProject, err := h.sc.FindProjectById(h.project)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.project))
-	}
-	if oldProject == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", h.project))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	requestProjectRef := &model.APIProjectRef{}
 	if err = requestProjectRef.BuildFromService(*oldProject); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
+
 	// erase contents so requestProjectRef will only be populated with new elements
 	requestProjectRef.Triggers = nil
 	// these fields in the request represent the admins/users to be added
@@ -425,6 +422,26 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			MergeBaseRevision: "",
 		}
 	}
+	if oldProject.Restricted != newProjectRef.Restricted {
+		if newProjectRef.Restricted {
+			err = newProjectRef.MakeRestricted(ctx)
+		} else {
+			err = oldProject.MakeUnrestricted(ctx)
+		}
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+	if oldProject.UseRepoSettings != newProjectRef.UseRepoSettings {
+		if newProjectRef.UseRepoSettings {
+			err = newProjectRef.AddToRepoScope(h.user)
+		} else {
+			err = newProjectRef.RemoveFromRepoScope()
+		}
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
 
 	// complete all updates
 	if err = h.sc.UpdateProject(newProjectRef); err != nil {
@@ -460,7 +477,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.project))
 	}
-	if err = dbModel.LogProjectModified(projectId, h.username, before, after); err != nil {
+	if err = dbModel.LogProjectModified(projectId, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.project))
 	}
 
@@ -828,6 +845,50 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	return gimlet.NewJSONResponse(variantTasks)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for the patch trigger aliases defined for project
+//
+//    /projects/{project_id}/parameters
+type GetPatchTriggerAliasHandler struct {
+	projectID string
+	sc        data.Connector
+}
+
+func makeFetchPatchTriggerAliases(sc data.Connector) gimlet.RouteHandler {
+	return &GetPatchTriggerAliasHandler{
+		sc: sc,
+	}
+}
+
+func (p *GetPatchTriggerAliasHandler) Factory() gimlet.RouteHandler {
+	return &GetPatchTriggerAliasHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
+	proj, err := dbModel.FindOneProjectRef(p.projectID)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting project",
+			"project": p.projectID,
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("unable to get project '%s'", p.projectID))
+	}
+
+	triggerAliases := make([]string, 0, len(proj.PatchTriggerAliases))
+	for _, a := range proj.PatchTriggerAliases {
+		triggerAliases = append(triggerAliases, a.Alias)
+	}
+	return gimlet.NewJSONResponse(triggerAliases)
 }
 
 ////////////////////////////////////////////////////////////////////////

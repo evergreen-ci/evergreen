@@ -486,8 +486,8 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			continue
 		}
 
-		projectRef, err := model.FindOneProjectRef(nextTask.Project)
-		if err != nil || projectRef == nil {
+		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
+		if err != nil {
 			grip.Alert(message.Fields{
 				"task_id":            nextTask.Id,
 				"message":            "could not find project ref for next task, skipping",

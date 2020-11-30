@@ -122,14 +122,14 @@ func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 
 func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "this will be overridden"}}
-	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "evergreen user"}}
-	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "different user"}}
+	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &Source{Author: "evergreen user"}}
+	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &Source{Author: "different user"}}
 	assert.NoError(t, db.Clear(Collection))
-	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue3}}
+	a := TaskAnnotation{Id: "my-annotation", TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue3}}
 	assert.NoError(t, a.Insert())
 
-	assert.NoError(t, MoveIssueToSuspectedIssue("t1", 0, issue1, "someone new"))
-	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
+	assert.NoError(t, MoveIssueToSuspectedIssue("my-annotation", issue1, "someone new"))
+	annotationFromDB, err := FindByID("my-annotation")
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.Issues, 1)
@@ -141,14 +141,14 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 
 func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "this will be overridden"}}
-	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "evergreen user"}}
-	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "different user"}}
+	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &Source{Author: "evergreen user"}}
+	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &Source{Author: "different user"}}
 
 	assert.NoError(t, db.Clear(Collection))
-	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue3}}
+	a := TaskAnnotation{Id: "my-annotation", TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue3}}
 	assert.NoError(t, a.Insert())
 
-	assert.NoError(t, MoveSuspectedIssueToIssue("t1", 0, issue1, "someone new"))
+	assert.NoError(t, MoveSuspectedIssueToIssue("my-annotation", issue1, "someone new"))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)

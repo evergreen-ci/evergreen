@@ -80,6 +80,7 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
+	ListPatchTriggerAliases(context.Context, string) ([]string, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
 	// Get parameters for project
@@ -120,4 +121,7 @@ type Communicator interface {
 	// GetClientURLs returns the all URLs that can be used to request the
 	// Evergreen binary for a given distro.
 	GetClientURLs(ctx context.Context, distroID string) ([]string, error)
+
+	// GetHostProvisioningScript gets the script options to provision a host.
+	GetHostProvisioningScript(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningScriptOptions, error)
 }

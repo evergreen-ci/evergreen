@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -47,10 +48,6 @@ func (c *Mock) SetMaxAttempts(attempts int)                { c.maxAttempts = att
 
 func (c *Mock) SetAPIUser(apiUser string) { c.apiUser = apiUser }
 func (c *Mock) SetAPIKey(apiKey string)   { c.apiKey = apiKey }
-
-func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
-	return []string{"https://example.com"}, nil
-}
 
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
@@ -200,6 +197,10 @@ func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
 
+func (c *Mock) ListPatchTriggerAliases(ctx context.Context, project string) ([]string, error) {
+	return nil, errors.New("(c *Mock) ListPatchTriggerAliases not implemented")
+}
+
 func (c *Mock) GetParameters(context.Context, string) ([]serviceModel.ParameterInfo, error) {
 	return nil, errors.New("(c *Mock) GetParameters not implemented")
 }
@@ -330,4 +331,15 @@ func (c *Mock) GetServiceUsers(context.Context) ([]model.APIDBUser, error) {
 }
 func (c *Mock) GetMessageForPatch(context.Context, string) (string, error) {
 	return "", nil
+}
+
+func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
+	return []string{"https://example.com"}, nil
+}
+
+func (c *Mock) GetHostProvisioningScript(context.Context, string, string) (*restmodel.APIHostProvisioningScriptOptions, error) {
+	return &restmodel.APIHostProvisioningScriptOptions{
+		Directive: string(userdata.ShellScript) + "/bin/bash",
+		Content:   "echo hello world",
+	}, nil
 }

@@ -90,13 +90,9 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	ref, err := model.FindOneProjectRef(j.ProjectID)
+	ref, err := model.FindMergedProjectRef(j.ProjectID)
 	if err != nil {
 		j.AddError(err)
-		return
-	}
-	if ref == nil {
-		j.AddError(errors.New("can't find project ref for project"))
 		return
 	}
 

@@ -383,16 +383,23 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
-	bashPrefix := []string{"set -o errexit", "set -o verbose"}
+	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 
-	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating curl command for evergreen client")
+	var fetchClient, fixClientOwner string
+	var err error
+	// If we're fetching the provisioning script from the app server, the
+	// Evergreen client is already downloaded on the host, so fetching it again
+	// is unnecessary.
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		fetchClient, err = h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating curl command for evergreen client")
+		}
+
+		// User data runs as the privileged user, so ensure that the binary has
+		// permissions that allow it to be modified after user data is finished.
+		fixClientOwner = h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 	}
-
-	// User data runs as the privileged user, so ensure that the binary has
-	// permissions that allow it to be modified after user data is finished.
-	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
 	checkUserDataRan := h.CheckUserDataStartedCommand()
 
@@ -412,7 +419,8 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			// use the correct SSH key. Additionally, since this can take a long
 			// time to download all the task data, user data may time out this
 			// operation, which would prevent user data from completing and the
-			// host would be stuck in provisioning.
+			// host would be stuck in provisioning. To alleviate this, we
+			// download the task data using Jasper.
 			var fetchCmd []string
 			if h.ProvisionOptions.TaskSync {
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
@@ -443,10 +451,19 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	if h.Distro.IsWindows() {
-		var writeSetupScriptCmds []string
-		writeSetupScriptCmds, err = h.writeSetupScriptCommands(settings)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get commands to run setup script")
+		var setupScriptCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			var setupScript string
+			setupScript, err = h.setupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "creating setup script")
+			}
+			setupScriptCmds = []string{setupScript}
+		} else {
+			setupScriptCmds, err = h.writeSetupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get commands to run setup script")
+			}
 		}
 
 		var writeCredentialsCmds []string
@@ -473,19 +490,27 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 			fixJasperDirsOwner,
 		)
 
-		var bashCmds []string
-		bashCmds = append(bashCmds, writeSetupScriptCmds...)
-		bashCmds = append(bashCmds, setupJasperCmds...)
-		bashCmds = append(bashCmds, fetchClient, fixClientOwner, h.SetupCommand(), postFetchClient, markDone)
+		var shellCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			shellCmds = append(shellCmds, shellPrefix...)
+		}
+		shellCmds = append(shellCmds, setupScriptCmds...)
+		shellCmds = append(shellCmds, setupJasperCmds...)
+		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
+		}
+		shellCmds = append(shellCmds, postFetchClient, markDone)
 
-		for i := range bashCmds {
-			bashCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(bashCmds[i]))
+		for i := range shellCmds {
+			if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+				shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
+			}
 		}
 
 		powershellCmds := append([]string{
 			checkUserDataRan,
 			setupUserCmds},
-			bashCmds...,
+			shellCmds...,
 		)
 
 		return &userdata.Options{
@@ -517,13 +542,13 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		fixJasperDirsOwner,
 	)
 
-	bashCmds := append(bashPrefix, checkUserDataRan, setupScriptCmds)
-	bashCmds = append(bashCmds, setupJasperCmds...)
-	bashCmds = append(bashCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
+	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
+	shellCmds = append(shellCmds, setupJasperCmds...)
+	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
 	return &userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
-		Content:   strings.Join(bashCmds, "\n"),
+		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
+		Content:   strings.Join(shellCmds, "\n"),
 	}, nil
 }
 
@@ -537,6 +562,8 @@ func (h *Host) ChangeJasperDirsOwnerCommand() string {
 	}, " && ")
 }
 
+// MakeJasperDirsCommand creates the directories with the correct permissions to
+// provision the host with Jasper.
 func (h *Host) MakeJasperDirsCommand() string {
 	return fmt.Sprintf("mkdir -m 777 -p %s %s %s",
 		h.Distro.BootstrapSettings.JasperBinaryDir,
@@ -562,10 +589,18 @@ func (h *Host) CheckUserDataStartedCommand() string {
 	path := h.UserDataStartedFile()
 	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
 	if h.Distro.IsWindows() {
+		var checkUserDataStarted, makeUserDataStartedFile string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			checkUserDataStarted = fmt.Sprintf("ls %s && exit", path)
+			makeUserDataStartedFile = makeFileCmd
+		} else {
+			checkUserDataStarted = fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path))
+			makeUserDataStartedFile = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd))
+		}
 		return fmt.Sprintf(strings.Join([]string{
-			fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path)),
-			fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd)),
-		}, "\r\n"))
+			checkUserDataStarted,
+			makeUserDataStartedFile,
+		}, "\n"))
 	}
 
 	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd)
@@ -590,6 +625,10 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 		return fmt.Sprintf("cmd.exe /C '%s'", cmd)
 	}
 
+	loginServicePermCmd := fmt.Sprintf("editrights -u %s -a SeServiceLogonRight", h.Distro.BootstrapSettings.ServiceUser)
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		loginServicePermCmd = fmt.Sprintf(`%s -l -c '%s'`, h.Distro.ShellBinary(), loginServicePermCmd)
+	}
 	return strings.Join(
 		[]string{
 			// Create new user.
@@ -599,7 +638,7 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
-			fmt.Sprintf(`%s -l -c 'editrights -u %s -a SeServiceLogonRight'`, h.Distro.ShellBinary(), h.Distro.BootstrapSettings.ServiceUser),
+			loginServicePermCmd,
 		}, "\n"), nil
 }
 
@@ -752,10 +791,10 @@ func writeToFileCommand(path, content string, overwrite bool) string {
 	return fmt.Sprintf("echo -n '%s' %s %s", content, redirect, path)
 }
 
-// bufferedWriteJasperCredentialsFilesCommandsBuffered is the same as
-// WriteJasperCredentialsFilesCommands but writes with multiple commands.
-// This is necessary for Windows user data for unknown reasons. If the file
-// isn't written in a buffered way, it gets truncated.
+// bufferedWriteJasperCredentialsFilesCommands is the same as
+// WriteJasperCredentialsFilesCommands but writes with multiple commands. This
+// is necessary for Windows user data for unknown reasons. If the file isn't
+// written in a buffered way, it gets truncated or the script hangs.
 func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
 	exportedCreds, err := creds.Export()
 	if err != nil {
@@ -1280,4 +1319,58 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	})
 
 	return nil
+}
+
+// FetchProvisioningScriptUserData returns the user data to fetch the host
+// provisioning script from the server.
+func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+	if h.Secret == "" {
+		if err := h.CreateSecret(); err != nil {
+			return nil, errors.Wrap(err, "creating host secret")
+		}
+	}
+
+	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating curl command for evergreen client")
+	}
+	// User data runs as the privileged user, so ensure that the binary has
+	// permissions that allow it to be modified after user data is finished.
+	fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+	fetchScriptCmd := strings.Join([]string{
+		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		"host",
+		"provision",
+		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--working_dir=%s", h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperBinaryDir)),
+		fmt.Sprintf("--shell_path=%s", h.Distro.ShellBinary()),
+	}, " ")
+
+	makeJasperDirs := h.MakeJasperDirsCommand()
+
+	cmds := []string{
+		makeJasperDirs,
+		fetchClient,
+		fixClientOwner,
+		fetchScriptCmd,
+	}
+
+	var directive userdata.Directive
+	if h.Distro.IsWindows() {
+		for i := range cmds {
+			cmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(cmds[i]))
+		}
+		directive = userdata.PowerShellScript
+	} else {
+		shellPrefix := []string{"set -o errexit", "set -o verbose"}
+		cmds = append(shellPrefix, cmds...)
+		directive = userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath)
+	}
+
+	return &userdata.Options{
+		Content:   strings.Join(cmds, "\n"),
+		Directive: directive,
+	}, nil
 }

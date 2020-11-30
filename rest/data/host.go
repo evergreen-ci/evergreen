@@ -190,7 +190,13 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 }
 
 func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
-	h, err := host.FindOneId(hostID)
+	if hostID == "" {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "cannot generate host provisioning script without a host ID",
+		}
+	}
+	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -217,6 +223,12 @@ func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, h
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "generating host provisioning script").Error(),
+		}
+	}
+	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "saving Jasper credentials").Error(),
 		}
 	}
 	return opts, nil

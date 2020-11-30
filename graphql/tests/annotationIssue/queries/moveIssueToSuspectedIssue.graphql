@@ -1,0 +1,7 @@
+mutation {
+    moveAnnotationIssue(
+        annotationId: "my-annotation",
+        apiIssue: {url: "https://link.com", issueKey:"EVG-1212"}
+        isIssue: true
+    )
+}

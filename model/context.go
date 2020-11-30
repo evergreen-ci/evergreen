@@ -52,6 +52,7 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 			return ctx, err
 		}
 	}
+
 	return ctx, nil
 }
 
