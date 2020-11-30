@@ -191,6 +191,11 @@ func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd,
 	return project.UpdateAdminRoles(toAdd, toDelete)
 }
 
+// RemoveAdminFromProjects removes a user from all Admins slices of every project
+func (pc *DBProjectConnector) RemoveAdminFromProjects(toDelete string) error {
+	return model.RemoveAdminFromProjects(toDelete)
+}
+
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
@@ -423,6 +428,10 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 }
 
 func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
+	return nil
+}
+
+func (pc *MockProjectConnector) RemoveAdminFromProjects(toDelete string) error {
 	return nil
 }
 

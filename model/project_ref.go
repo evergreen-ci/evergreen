@@ -1076,6 +1076,17 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 	return true, nil
 }
 
+// RemoveAdminFromProjects removes a user from all Admin slices of every project
+func RemoveAdminFromProjects(toDelete string) error {
+	update := bson.M{
+		"$pull": bson.M{
+			ProjectRefAdminsKey: toDelete,
+		},
+	}
+
+	return db.Update(ProjectRefCollection, bson.M{}, update)
+}
+
 func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// attempt to remove the resource from the repo (which will also remove from its parent)

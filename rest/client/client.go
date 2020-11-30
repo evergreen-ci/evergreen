@@ -38,8 +38,8 @@ func NewCommunicator(serverURL string) Communicator {
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
 	}
-
 	c.resetClient()
+
 	return c
 }
 

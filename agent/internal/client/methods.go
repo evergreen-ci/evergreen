@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -39,7 +38,9 @@ func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get agent setup info")
+		err = utility.RespErrorf(resp, "failed to get agent setup info: %s", err.Error())
+		grip.Alert(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, out); err != nil {
@@ -65,8 +66,7 @@ func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) err
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to start task %s", taskData.ID)
-		return err
+		return utility.RespErrorf(resp, "failed to start task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 	grip.Info(message.Fields{
@@ -93,8 +93,7 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	info.setTaskPathSuffix("end")
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to end task %s", taskData.ID)
-		return nil, err
+		return nil, utility.RespErrorf(resp, "failed to end task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
@@ -120,13 +119,9 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get task %s", taskData.ID)
-		return nil, err
+		return nil, utility.RespErrorf(resp, "failed to get task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
 	if err = utility.ReadJSON(resp.Body, task); err != nil {
 		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
 		return nil, err
@@ -143,19 +138,11 @@ func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, 
 		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("display_task")
-	// TODO (EVG-13389): this should probably retry, but retryRequest doesn't
-	// deal with 404s well.
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get display task of task %s", td.ID)
+		return "", utility.RespErrorf(resp, "failed to get display task of task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return "", nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", respErrorf(resp, "getting display task of task %s", td.ID)
-	}
 
 	name, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -176,13 +163,9 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get project ref for task %s", taskData.ID)
-		return nil, err
+		return nil, utility.RespErrorf(resp, "failed to get project ref for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
 	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
 		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
 		return nil, err
@@ -199,13 +182,9 @@ func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
-		return nil, err
+		return nil, utility.RespErrorf(resp, "failed to get distro for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
 	var dv apimodels.DistroView
 	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
 		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
@@ -227,12 +206,9 @@ func (c *communicatorImpl) GetDistroAMI(ctx context.Context, distro, region stri
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", err
+		return "", utility.RespErrorf(resp, "failed to get distro AMI for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return "", errors.New("conflict; wrong secret")
-	}
 	out, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
@@ -249,11 +225,7 @@ func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get project for task %s", taskData.ID)
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
+		return nil, utility.RespErrorf(resp, "failed to get project for task %s: %s", taskData.ID, err.Error())
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -272,13 +244,10 @@ func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get expansions for task %s", taskData.ID)
+		return nil, utility.RespErrorf(resp, "failed to get expansions for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict; wrong secret")
-	}
 	err = utility.ReadJSON(resp.Body, &e)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
@@ -331,14 +300,9 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 	info.setTaskPathSuffix("fetch_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get task for task %s", taskData.ID)
-		return nil, err
+		return nil, utility.RespErrorf(resp, "failed to get expansion vars for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
-		err = errors.Errorf("fetching expansions failed: got 'unauthorized' response.")
-		return nil, err
-	}
 	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
 		err = errors.Wrapf(err, "failed to read vars from response for task %s", taskData.ID)
 		return nil, err
@@ -356,7 +320,9 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	info.path = "agent/next_task"
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get task")
+		err = utility.RespErrorf(resp, "failed to get next task: %s", err.Error())
+		grip.Critical(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, nextTask); err != nil {
@@ -379,7 +345,9 @@ func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cedar service info")
+		err = utility.RespErrorf(resp, "failed to get cedar config: %s", err.Error())
+		grip.Critical(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -450,11 +418,11 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 			return
 		}
 	}()
-	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
-		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
+	resp, err := c.retryRequest(ctx, info, &payload)
+	if err != nil {
+		return utility.RespErrorf(resp, "problem sending %d log messages for task %s: %s", len(msgs), taskData.ID, err.Error())
 	}
-	grip.Debugf("successfully sent %d log messages", payload.MessageCount)
-
+	defer resp.Body.Close()
 	return nil
 }
 
@@ -470,10 +438,11 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("results")
-	if _, err := c.retryRequest(ctx, info, r); err != nil {
-		return errors.Wrapf(err, "problem adding %d results to task %s", len(r.Results), taskData.ID)
+	resp, err := c.retryRequest(ctx, info, r)
+	if err != nil {
+		return utility.RespErrorf(resp, "problem adding %d results to task %s: %s", len(r.Results), taskData.ID, err.Error())
 	}
-
+	defer resp.Body.Close()
 	return nil
 }
 
@@ -490,13 +459,10 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) 
 	info.setTaskPathSuffix("git/patch")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get patch for %s", taskData.ID)
+		return nil, utility.RespErrorf(resp, "failed to get patch for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("could not fetch patch for task with id '%s'; expected status code 200 OK, got %d %s", taskData.ID, resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
 	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
 		return nil, errors.Wrapf(err, "problem parsing patch response for %s", taskData.ID)
 	}
@@ -515,7 +481,7 @@ func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not get file %s for patch %ss", patchFileID, taskData.ID)
+		return "", utility.RespErrorf(resp, "failed to get patch file %s for task %s: %s", patchFileID, taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -543,7 +509,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem sending task log '%+v' for %s", *log, taskData.ID)
+		return "", utility.RespErrorf(resp, "failed to send test log for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -573,7 +539,7 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
 	if err != nil {
-		return errors.Wrapf(err, "failed to post results '%+v' for task %s", *results, taskData.ID)
+		return utility.RespErrorf(resp, "failed to send test results for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -590,7 +556,7 @@ func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData Task
 	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to set the HasCedarResults flag in task '%s'", taskData.ID)
+		return utility.RespErrorf(resp, "failed to set HasCedarResults for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -610,7 +576,7 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
-		return errors.Wrapf(err, "failed to post task files for task %s", taskData.ID)
+		return utility.RespErrorf(resp, "failed to post files for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -626,7 +592,7 @@ func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem loading manifest for %s", taskData.ID)
+		return nil, utility.RespErrorf(resp, "failed to load manifest for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -647,15 +613,9 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	info.setTaskPathSuffix("s3Copy/s3Copy")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
+		return "", utility.RespErrorf(resp, "failed to copy file in S3 for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
-
-	response := gimlet.ErrorResponse{}
-	if err = utility.ReadJSON(resp.Body, &response); err == nil {
-		return response.Message, nil
-	}
-
 	return "", nil
 }
 
@@ -668,7 +628,7 @@ func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
 	if err != nil {
-		return errors.Wrapf(err, "problem with keyval increment operation for %s", taskData.ID)
+		return utility.RespErrorf(resp, "failed to increment key for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -688,7 +648,7 @@ func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
 	if err != nil {
-		return errors.Wrapf(err, "problem with post json data operation for %s", taskData.ID)
+		return utility.RespErrorf(resp, "failed to post json data for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -708,7 +668,7 @@ func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, t
 	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem with get json data operation for %s", taskData.ID)
+		return nil, utility.RespErrorf(resp, "failed to get json data for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -736,7 +696,7 @@ func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData
 	info.setTaskPathSuffix(path)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem json history document for %s at %s", taskData.ID, path)
+		return nil, utility.RespErrorf(resp, "failed to get json history for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -770,7 +730,7 @@ func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem sending `generate.tasks` request")
+		return nil, utility.RespErrorf(resp, "failed to send generate.tasks request for task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 	generated := &apimodels.GeneratePollResponse{}
@@ -790,7 +750,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem sending `create.host` request")
+		return nil, utility.RespErrorf(resp, "failed to send create.host request for task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -811,7 +771,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
+		return nil, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -831,7 +791,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem requesting distro named '%s", id)
+		return nil, utility.RespErrorf(resp, "failed to get distro named %s: %s", id, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -858,7 +818,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, respErrorf(resp, "getting container status")
+		return nil, utility.RespErrorf(resp, "getting container status")
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -895,7 +855,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, respErrorf(resp, "getting logs for container id '%s'", hostID)
+		return nil, utility.RespErrorf(resp, "getting logs for container id '%s'", hostID)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
