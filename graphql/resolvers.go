@@ -1079,7 +1079,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			}
 			jBaseStatus := ""
 			if taskResults[j].BaseStatus != nil {
-				iBaseStatus = *taskResults[j].BaseStatus
+				jBaseStatus = *taskResults[j].BaseStatus
 			}
 			if sortDirParam == 1 {
 				return iBaseStatus < jBaseStatus
