@@ -1073,10 +1073,18 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
-			if sortDirParam == 1 {
-				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			iBaseStatus := ""
+			if taskResults[i].BaseStatus != nil {
+				iBaseStatus = *taskResults[i].BaseStatus
 			}
-			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
+			jBaseStatus := ""
+			if taskResults[j].BaseStatus != nil {
+				iBaseStatus = *taskResults[j].BaseStatus
+			}
+			if sortDirParam == 1 {
+				return iBaseStatus < jBaseStatus
+			}
+			return iBaseStatus > jBaseStatus
 		})
 	}
 
