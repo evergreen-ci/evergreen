@@ -5,6 +5,11 @@
       "branch": "evergreen",
       "identifier": "evergreen",
       "r": "patch_request"
+    },
+    {
+      "_id": "7",
+      "r": "merge_test",
+      "identifier": "p1"
     }
   ],
   "tasks": [
@@ -13,7 +18,17 @@
     { "_id": "3", "version": "5e4ff3abe3c3317e352062e4" },
     { "_id": "4", "version": "5e4ff3abe3c3317e352062e4" },
     { "_id": "5", "version": "5e4ff3abe3c3317e352062e4" },
-    { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" }
+    { "_id": "6", "version": "5e4ff3abe3c3317e352062e4" },
+    {
+      "_id": "7",
+      "display_name": "cq merge",
+      "branch": "p1",
+      "status": "started",
+      "build_id": "7",
+      "r": "merge_test",
+      "commit_queue_merge": true,
+      "version": "7"
+    }
   ],
   "builds": [
     {
@@ -46,6 +61,13 @@
       "r": "gitter_request",
       "time_taken": 30000000000000,
       "predicted_makespan": 70000000000000
+    },
+    {
+      "_id": "7",
+      "status": "started",
+      "build_variant": "commit-queue",
+      "display_name": "~ Commit Queue",
+      "tasks": [{ "id": "7" }]
     }
   ],
   "patches": [
@@ -99,13 +121,21 @@
       ]
     }
   ],
-  "projects": [
+  "project_ref": [
     {
-      "_id": "evergreen",
-      "identifier": "evergreen",
+      "_id": "p1",
+      "identifier": "p1",
       "commit_queue": {
-        "patch_type": "PR"
+        "enabled": true,
+        "patch_type": "CLI"
       }
+    }
+  ],
+  "commit_queue": [
+    {
+      "_id": "p1",
+      "processing": true,
+      "queue": [{ "version": "7", "issue": "7" }]
     }
   ]
 }

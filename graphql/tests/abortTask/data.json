@@ -1,0 +1,45 @@
+{
+  "tasks": [
+    {
+      "_id": "t1",
+      "display_name": "cq merge",
+      "branch": "p1",
+      "status": "started",
+      "build_id": "b1",
+      "r": "merge_test",
+      "commit_queue_merge": true,
+      "version": "v1"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "b1",
+      "status": "started",
+      "build_variant": "commit-queue",
+      "display_name": "~ Commit Queue",
+      "tasks": [{ "id": "t1" }]
+    }
+  ],
+  "versions": [
+    {
+      "_id": "v1"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "p1",
+      "identifier": "p1",
+      "commit_queue": {
+        "enabled": true,
+        "patch_type": "CLI"
+      }
+    }
+  ],
+  "commit_queue": [
+    {
+      "_id": "p1",
+      "processing": true,
+      "queue": [{ "version": "v1", "issue": "v1" }]
+    }
+  ]
+}

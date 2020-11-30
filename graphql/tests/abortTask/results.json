@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "commit-queue-dequeue.graphql",
+      "result": {
+        "data": {
+          "abortTask": {
+            "activated": false,
+            "aborted": true
+          }
+        }
+      }
+    }
+  ]
+}
