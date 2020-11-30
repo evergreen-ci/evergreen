@@ -86,12 +86,6 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 				"project_id": spawnTask.Project,
 				"task_id":    spawnTask.Id,
 			}))
-		} else if pRef == nil {
-			grip.Error(message.Fields{
-				"message":    "project is nil",
-				"project_id": spawnTask.Project,
-				"task_id":    spawnTask.Id,
-			})
 		} else {
 			setupScriptPath = pRef.SpawnHostScriptPath
 		}

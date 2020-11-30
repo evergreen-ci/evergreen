@@ -64,6 +64,10 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 	TaskSetupFailed  = "setup-failed"
 
+	// This is not an official task status; however it is used by the front end to distinguish aborted and failing tasks
+	// Tasks can be filtered on the front end by `aborted` status
+	TaskAborted = "aborted"
+
 	TaskStatusBlocked = "blocked"
 	TaskStatusPending = "pending"
 
@@ -629,6 +633,7 @@ var (
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
 	PermissionTasks            = "project_tasks"
+	PermissionAnnotations      = "project_task_annotations"
 	PermissionPatches          = "project_patches"
 	PermissionLogs             = "project_logs"
 	// Distro permissions.
@@ -664,6 +669,18 @@ var (
 	}
 	ProjectSettingsNone = PermissionLevel{
 		Description: "No project settings permissions",
+		Value:       0,
+	}
+	AnnotationsModify = PermissionLevel{
+		Description: "Modify annotations",
+		Value:       20,
+	}
+	AnnotationsView = PermissionLevel{
+		Description: "View annotations",
+		Value:       10,
+	}
+	AnnotationsNone = PermissionLevel{
+		Description: "No annotations permissions",
 		Value:       0,
 	}
 	TasksAdmin = PermissionLevel{
@@ -735,6 +752,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Project Settings"
 	case PermissionTasks:
 		return "Tasks"
+	case PermissionAnnotations:
+		return "Task Annotations"
 	case PermissionPatches:
 		return "Patches"
 	case PermissionLogs:
@@ -763,6 +782,12 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 			TasksBasic,
 			TasksView,
 			TasksNone,
+		}
+	case PermissionAnnotations:
+		return []PermissionLevel{
+			AnnotationsModify,
+			AnnotationsView,
+			AnnotationsNone,
 		}
 	case PermissionPatches:
 		return []PermissionLevel{
@@ -798,6 +823,7 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 var ProjectPermissions = []string{
 	PermissionProjectSettings,
 	PermissionTasks,
+	PermissionAnnotations,
 	PermissionPatches,
 	PermissionLogs,
 }

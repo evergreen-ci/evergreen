@@ -52,6 +52,7 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
@@ -60,6 +61,7 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.project = "dimoxinil"
 	h.body = json
+	h.user = &user.DBUser{Id: "me"}
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -75,6 +77,7 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.project = "non-existent"
 	h.body = json
+	h.user = &user.DBUser{Id: "me"}
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -88,6 +91,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.project = "dimoxinil"
 	h.body = json
+	h.user = &user.DBUser{Id: "me"}
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
@@ -106,6 +110,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.project = "dimoxinil"
 	h.body = jsonBody
+	h.user = &user.DBUser{Id: "me"}
+
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
@@ -114,8 +120,23 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
+func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection))
+	ctx := context.Background()
+	jsonBody := []byte(`{"use_repo_settings": true}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.user = &user.DBUser{Id: "me"}
+	h.project = "dimoxinil"
+	h.body = jsonBody
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+}
+
 func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	h := s.rm.(*projectIDPatchHandler)
+	h.user = &user.DBUser{Id: "me"}
 
 	projectID := "evergreen"
 	// a new definition for the github alias is added

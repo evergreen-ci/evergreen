@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -130,8 +131,10 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	info := AbortInfo{
-		User:   &at.AbortInfo.User,
-		TaskID: &at.AbortInfo.TaskID,
+		User:       &at.AbortInfo.User,
+		TaskID:     &at.AbortInfo.TaskID,
+		NewVersion: &at.AbortInfo.NewVersion,
+		PrClosed:   &at.AbortInfo.PRClosed,
 	}
 
 	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
@@ -963,7 +966,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
-	allProjs, err := model.FindAllTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -1383,12 +1386,17 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
+	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
 	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
 			Status: task.GetDisplayStatus(),
+		}
+		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
+			s := baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			t.BaseStatus = &s
 		}
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 		if _, ok := variantDisplayName[task.BuildVariant]; !ok {
@@ -1776,22 +1784,19 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	if u != nil && u.HasPermission(permissions) {
+	if u == nil {
+		return false, nil
+	}
+	if u.HasPermission(permissions) {
 		return true, nil
 	}
 
-	// project admin
-	projectRef, err := r.sc.FindProjectById(patchID)
-	if err != nil {
-		return false, err
-	}
-	isProjectAdmin := utility.StringSliceContains(projectRef.Admins, u.Username()) || u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectRef.Id,
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      restModel.FromStringPtr(existingPatch.ProjectId),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	return isProjectAdmin, nil
+	}), nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
@@ -1862,6 +1867,43 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+// MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
+// to Suspected Issues, otherwise vice versa.
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	usr := MustHaveUser(ctx)
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.MoveIssueToSuspectedIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		return true, nil
+	}
+}
+
+// AddAnnotationIssue adds to the annotation for that taskID/execution.
+// If isIssue is set, it adds to Issues, otherwise it adds to Suspected Issues.
+func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int,
+	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	usr := MustHaveUser(ctx)
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add suspected issue: %s", err.Error()))
+		}
+		return true, nil
+	}
 }
 
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
@@ -2104,7 +2146,8 @@ func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
 	}
 	patchMetadata := PatchMetadata{
-		Author: version.Author,
+		Author:  version.Author,
+		PatchID: version.Id,
 	}
 	return &patchMetadata, nil
 }

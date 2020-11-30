@@ -1237,6 +1237,9 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
+	if t.Aborted && t.IsFinished() {
+		return evergreen.TaskAborted
+	}
 	if !t.IsFinished() {
 		return t.Status
 	}

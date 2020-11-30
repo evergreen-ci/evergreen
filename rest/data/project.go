@@ -111,7 +111,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 }
 
 func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
-	conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflictingRefs, err := model.FindMergedProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return errors.Wrap(err, "error finding project refs")
 	}
@@ -191,6 +191,11 @@ func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd,
 	return project.UpdateAdminRoles(toAdd, toDelete)
 }
 
+// RemoveAdminFromProjects removes a user from all Admins slices of every project
+func (pc *DBProjectConnector) RemoveAdminFromProjects(toDelete string) error {
+	return model.RemoveAdminFromProjects(toDelete)
+}
+
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
@@ -263,7 +268,7 @@ func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owne
 }
 
 func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
-	return model.FindEnabledProjectRefsByOwnerAndRepo(owner, repo)
+	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
 func (ac *DBProjectConnector) GetVersionsInProject(identifier, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
@@ -423,6 +428,10 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 }
 
 func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
+	return nil
+}
+
+func (pc *MockProjectConnector) RemoveAdminFromProjects(toDelete string) error {
 	return nil
 }
 

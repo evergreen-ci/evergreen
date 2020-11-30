@@ -86,6 +86,8 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
+  addAnnotationIssue(taskId: String!, execution: Int!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -260,6 +262,11 @@ input UpdateVolumeInput {
   volumeId: String!
 }
 
+input AnnotationIssue {
+  url: String!
+  issueKey: String!
+}
+
 type TaskQueueItem {
   id: ID!
   displayName: String!
@@ -353,6 +360,7 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+  baseStatus: String
 }
 
 type TaskFiles {
@@ -458,7 +466,7 @@ type TaskResult {
   displayName: String!
   version: String!
   status: String!
-  baseStatus: String!
+  baseStatus: String
   buildVariant: String!
   blocked: Boolean!
 }
@@ -534,6 +542,7 @@ type Dependency {
 
 type PatchMetadata {
   author: String!
+  patchID: String!
 }
 
 type BaseTaskMetadata {
@@ -546,6 +555,8 @@ type AbortInfo {
   taskID: String
   taskDisplayName: String
   buildVariantDisplayName: String
+  newVersion: String
+  prClosed: Boolean
 }
 
 type Task {

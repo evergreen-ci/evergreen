@@ -148,6 +148,7 @@ type Patch struct {
 	Activated       bool                   `bson:"activated"`
 	PatchedConfig   string                 `bson:"patched_config"`
 	Alias           string                 `bson:"alias"`
+	TriggerAliases  []string               `bson:"trigger_aliases"`
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`

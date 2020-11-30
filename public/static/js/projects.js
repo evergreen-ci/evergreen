@@ -394,6 +394,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
+          use_repo_settings: data.ProjectRef.use_repo_settings || false,
           commit_queue: data.ProjectRef.commit_queue || {},
           workstation_config: data.ProjectRef.workstation_config || {},
           notify_on_failure: $scope.projectRef.notify_on_failure,
@@ -887,9 +888,40 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
   };
 
   function newPatchTriggerAliasController($scope, $mdDialog) {
+    $scope.new_task_specifier = {};
+    $scope.alias = {task_specifiers: []};
+
     if ($scope.data.aliasToEdit) {
       $scope.alias = $scope.data.aliasToEdit;
+      $scope.alias.task_specifiers = $scope.alias.task_specifiers || [];
       $scope.aliasIndex = $scope.data.index;
+    }
+
+    $scope.removeTaskSpecifier = function(index) {
+      $scope.alias.task_specifiers.splice(index, 1);
+    }
+
+    $scope.addTaskSpecifier = function() {
+      if (!$scope.validTaskSpecifier($scope.new_task_specifier)) {
+        return
+      }
+
+      $scope.alias.task_specifiers.push($scope.new_task_specifier);
+      $scope.new_task_specifier = {};
+    }
+
+    $scope.validTaskSpecifier = function(specifier) {
+      // can't specify both an alias and a regex set
+      if (specifier.patch_alias && (specifier.variant_regex || specifier.task_regex)) {
+        return false
+      }
+
+      // must specify either an alias or a complete regex set
+      if (!specifier.patch_alias && (!specifier.variant_regex || !specifier.task_regex)) {
+        return false
+      }
+
+      return true;
     }
 
     $scope.closeDialog = function (save) {
@@ -914,7 +946,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     };
 
     $scope.validTriggerAlias = function () {
-      if (!$scope.alias.definition_alias || !$scope.alias.child_project) {
+      if (!$scope.alias.alias || !$scope.alias.child_project) {
+        return false;
+      }
+
+      if (!$scope.alias.task_specifiers.length) {
         return false;
       }
 

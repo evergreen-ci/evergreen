@@ -364,7 +364,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 
 func getProjectRefCache() (map[string]model.ProjectRef, error) {
 	out := map[string]model.ProjectRef{}
-	refs, err := model.FindAllProjectRefs()
+	refs, err := model.FindAllMergedProjectRefs()
 	if err != nil {
 		return out, err
 	}

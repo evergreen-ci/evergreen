@@ -19,6 +19,8 @@ type AbortInfo struct {
 	TaskID                  *string `json:"taskID"`
 	TaskDisplayName         *string `json:"taskDisplayName"`
 	BuildVariantDisplayName *string `json:"buildVariantDisplayName"`
+	NewVersion              *string `json:"newVersion"`
+	PrClosed                *bool   `json:"prClosed"`
 }
 
 type BaseTaskMetadata struct {
@@ -83,9 +85,10 @@ type PatchBuildVariant struct {
 }
 
 type PatchBuildVariantTask struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Status     string  `json:"status"`
+	BaseStatus *string `json:"baseStatus"`
 }
 
 type PatchDuration struct {
@@ -95,7 +98,8 @@ type PatchDuration struct {
 }
 
 type PatchMetadata struct {
-	Author string `json:"author"`
+	Author  string `json:"author"`
+	PatchID string `json:"patchID"`
 }
 
 type PatchProject struct {

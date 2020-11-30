@@ -59,6 +59,8 @@ type ComplexityRoot struct {
 
 	AbortInfo struct {
 		BuildVariantDisplayName func(childComplexity int) int
+		NewVersion              func(childComplexity int) int
+		PrClosed                func(childComplexity int) int
 		TaskDisplayName         func(childComplexity int) int
 		TaskID                  func(childComplexity int) int
 		User                    func(childComplexity int) int
@@ -272,6 +274,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AbortTask                 func(childComplexity int, taskID string) int
+		AddAnnotationIssue        func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket            func(childComplexity int, taskID string) int
@@ -280,6 +283,7 @@ type ComplexityRoot struct {
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string) int
+		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey           func(childComplexity int, keyName string) int
@@ -359,9 +363,10 @@ type ComplexityRoot struct {
 	}
 
 	PatchBuildVariantTask struct {
-		ID     func(childComplexity int) int
-		Name   func(childComplexity int) int
-		Status func(childComplexity int) int
+		BaseStatus func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Status     func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -371,7 +376,8 @@ type ComplexityRoot struct {
 	}
 
 	PatchMetadata struct {
-		Author func(childComplexity int) int
+		Author  func(childComplexity int) int
+		PatchID func(childComplexity int) int
 	}
 
 	PatchProject struct {
@@ -719,6 +725,8 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
+	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
@@ -850,6 +858,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AbortInfo.BuildVariantDisplayName(childComplexity), true
+
+	case "AbortInfo.newVersion":
+		if e.complexity.AbortInfo.NewVersion == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.NewVersion(childComplexity), true
+
+	case "AbortInfo.prClosed":
+		if e.complexity.AbortInfo.PrClosed == nil {
+			break
+		}
+
+		return e.complexity.AbortInfo.PrClosed(childComplexity), true
 
 	case "AbortInfo.taskDisplayName":
 		if e.complexity.AbortInfo.TaskDisplayName == nil {
@@ -1738,6 +1760,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AbortTask(childComplexity, args["taskId"].(string)), true
 
+	case "Mutation.addAnnotationIssue":
+		if e.complexity.Mutation.AddAnnotationIssue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addAnnotationIssue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+
 	case "Mutation.addFavoriteProject":
 		if e.complexity.Mutation.AddFavoriteProject == nil {
 			break
@@ -1828,6 +1862,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string)), true
+
+	case "Mutation.moveAnnotationIssue":
+		if e.complexity.Mutation.MoveAnnotationIssue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_moveAnnotationIssue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
@@ -2366,6 +2412,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchBuildVariant.Variant(childComplexity), true
 
+	case "PatchBuildVariantTask.baseStatus":
+		if e.complexity.PatchBuildVariantTask.BaseStatus == nil {
+			break
+		}
+
+		return e.complexity.PatchBuildVariantTask.BaseStatus(childComplexity), true
+
 	case "PatchBuildVariantTask.id":
 		if e.complexity.PatchBuildVariantTask.ID == nil {
 			break
@@ -2414,6 +2467,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchMetadata.Author(childComplexity), true
+
+	case "PatchMetadata.patchID":
+		if e.complexity.PatchMetadata.PatchID == nil {
+			break
+		}
+
+		return e.complexity.PatchMetadata.PatchID(childComplexity), true
 
 	case "PatchProject.tasks":
 		if e.complexity.PatchProject.Tasks == nil {
@@ -4190,6 +4250,8 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
+  addAnnotationIssue(taskId: String!, execution: Int!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -4364,6 +4426,11 @@ input UpdateVolumeInput {
   volumeId: String!
 }
 
+input AnnotationIssue {
+  url: String!
+  issueKey: String!
+}
+
 type TaskQueueItem {
   id: ID!
   displayName: String!
@@ -4457,6 +4524,7 @@ type PatchBuildVariantTask {
   id: ID!
   name: String!
   status: String!
+  baseStatus: String
 }
 
 type TaskFiles {
@@ -4638,6 +4706,7 @@ type Dependency {
 
 type PatchMetadata {
   author: String!
+  patchID: String!
 }
 
 type BaseTaskMetadata {
@@ -4650,6 +4719,8 @@ type AbortInfo {
   taskID: String
   taskDisplayName: String
   buildVariantDisplayName: String
+  newVersion: String
+  prClosed: Boolean
 }
 
 type Task {
@@ -4981,6 +5052,44 @@ func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APIIssueLink
+	if tmp, ok := rawArgs["apiIssue"]; ok {
+		arg2, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiIssue"] = arg2
+	var arg3 bool
+	if tmp, ok := rawArgs["isIssue"]; ok {
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isIssue"] = arg3
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -5076,6 +5185,36 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 		}
 	}
 	args["patchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["annotationId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["annotationId"] = arg0
+	var arg1 model.APIIssueLink
+	if tmp, ok := rawArgs["apiIssue"]; ok {
+		arg1, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiIssue"] = arg1
+	var arg2 bool
+	if tmp, ok := rawArgs["isIssue"]; ok {
+		arg2, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isIssue"] = arg2
 	return args, nil
 }
 
@@ -6202,6 +6341,68 @@ func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Conte
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NewVersion, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AbortInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrClosed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -10740,6 +10941,88 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_moveAnnotationIssue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_addAnnotationIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_addAnnotationIssue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_removeItemFromCommitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12810,6 +13093,37 @@ func (ec *executionContext) _PatchBuildVariantTask_status(ctx context.Context, f
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _PatchBuildVariantTask_baseStatus(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariantTask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchBuildVariantTask",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -12921,6 +13235,40 @@ func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Author, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchMetadata_patchID(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21381,6 +21729,30 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAnnotationIssue(ctx context.Context, obj interface{}) (model.APIIssueLink, error) {
+	var it model.APIIssueLink
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "url":
+			var err error
+			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "issueKey":
+			var err error
+			it.IssueKey, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	var asMap = obj.(map[string]interface{})
@@ -22068,6 +22440,10 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._AbortInfo_taskDisplayName(ctx, field, obj)
 		case "buildVariantDisplayName":
 			out.Values[i] = ec._AbortInfo_buildVariantDisplayName(ctx, field, obj)
+		case "newVersion":
+			out.Values[i] = ec._AbortInfo_newVersion(ctx, field, obj)
+		case "prClosed":
+			out.Values[i] = ec._AbortInfo_prClosed(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23240,6 +23616,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "moveAnnotationIssue":
+			out.Values[i] = ec._Mutation_moveAnnotationIssue(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addAnnotationIssue":
+			out.Values[i] = ec._Mutation_addAnnotationIssue(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "removeItemFromCommitQueue":
 			out.Values[i] = ec._Mutation_removeItemFromCommitQueue(ctx, field)
 		case "updateUserSettings":
@@ -23700,6 +24086,8 @@ func (ec *executionContext) _PatchBuildVariantTask(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "baseStatus":
+			out.Values[i] = ec._PatchBuildVariantTask_baseStatus(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23752,6 +24140,11 @@ func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("PatchMetadata")
 		case "author":
 			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "patchID":
+			out.Values[i] = ec._PatchMetadata_patchID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -26077,6 +26470,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (model.APIIssueLink, error) {
+	return ec.unmarshalInputAnnotationIssue(ctx, v)
+}
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)

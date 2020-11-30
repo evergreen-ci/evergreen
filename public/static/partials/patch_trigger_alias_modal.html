@@ -8,7 +8,7 @@
                 <section layout="row" flex>
                     <md-input-container flex=50>
                         <label>Alias:</label>
-                        <input type="text" ng-model="alias.definition_alias" ng-required="true" placeholder="alias name">
+                        <input type="text" ng-model="alias.alias" ng-required="true" placeholder="alias name">
                     </md-input-container>
                     <md-input-container flex=50>
                         <label>Project:</label>
@@ -30,15 +30,49 @@
                         </md-select>
                     </md-input-container>
                 </section>
-                <section layout="row" flex>
-                    <md-input-container flex=50>
-                        <label>Variant regex:</label>
-                        <input type="text" ng-model="alias.variant_regex" placeholder="select variants matching regex">
-                    </md-input-container>
-                    <md-input-container flex=50>
-                        <label>Task regex:</label>
-                        <input type="text" ng-model="alias.task_regex" placeholder="select tasks matching regex">
-                    </md-input-container>
+                <section layout="column" flex>
+                    <label> One of patch alias and variant/task regex set </label>
+                    <section layout="row" flex ng-repeat="(index, specifier) in alias.task_specifiers">
+                        <md-input-container flex>
+                            <input type="text" ng-disabled="specifier.variant_regex || specifier.task_regex" ng-model="specifier.patch_alias" placeholder="patch alias">
+                        </md-input-container>
+                        <md-divider></md-divider>
+                        <div layout="row" flex=55>
+                            <md-input-container flex>
+                                <input type="text" ng-disabled="specifier.patch_alias" ng-model="specifier.variant_regex" placeholder="variant regex">
+                            </md-input-container>
+                            <md-input-container  flex>
+                                <input type="text" ng-disabled="specifier.patch_alias" ng-model="specifier.task_regex" placeholder="task regex">
+                            </md-input-container>
+                        </div>
+                        <div>
+                            <button class="btn btn-default btn-danger" type="button"
+                                style="float: left" ng-click="removeTaskSpecifier(index)">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </section>
+                    <section layout="row" flex>
+                        <md-input-container flex>
+                            <input type="text" ng-disabled="new_task_specifier.variant_regex || new_task_specifier.task_regex" ng-model="new_task_specifier.patch_alias" placeholder="patch alias">
+                        </md-input-container>
+                        <md-divider></md-divider>
+                        <div layout="row" flex=55>
+                            <md-input-container flex>
+                                <input type="text" ng-disabled="new_task_specifier.patch_alias" ng-model="new_task_specifier.variant_regex" placeholder="variant regex">
+                            </md-input-container>
+                            <md-input-container flex>
+                                <input type="text" ng-disabled="new_task_specifier.patch_alias" ng-model="new_task_specifier.task_regex" placeholder="task regex">
+                            </md-input-container>
+                        </div>
+                        <div>
+                            <button class="plus-button btn btn-primary"
+                                ng-disabled="!validTaskSpecifier(new_task_specifier)" type="button"
+                                style="float: left" ng-click="addTaskSpecifier()">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                        </div>
+                    </section>
                 </section>
             </md-card-content>
         </md-card>

@@ -32,7 +32,7 @@ func (s *repotrackerJobSuite) TestJob() {
 	s.Equal("repotracker:1:mci", j.ID())
 	j.Run(context.Background())
 	s.Error(j.Error())
-	s.Contains(j.Error().Error(), "can't find project ref for project")
+	s.Contains(j.Error().Error(), "project ref 'mci' does not exist")
 	s.True(j.Status().Completed)
 }
 

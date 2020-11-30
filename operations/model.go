@@ -22,12 +22,13 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name       string            `json:"name" yaml:"name,omitempty"`
-	Default    bool              `json:"default" yaml:"default,omitempty"`
-	Alias      string            `json:"alias" yaml:"alias,omitempty"`
-	Variants   []string          `json:"variants" yaml:"variants,omitempty"`
-	Tasks      []string          `json:"tasks" yaml:"tasks,omitempty"`
-	Parameters map[string]string `json:"parameters" yaml:"parameters,omitempty"`
+	Name           string            `json:"name" yaml:"name,omitempty"`
+	Default        bool              `json:"default" yaml:"default,omitempty"`
+	Alias          string            `json:"alias" yaml:"alias,omitempty"`
+	Variants       []string          `json:"variants" yaml:"variants,omitempty"`
+	Tasks          []string          `json:"tasks" yaml:"tasks,omitempty"`
+	Parameters     map[string]string `json:"parameters" yaml:"parameters,omitempty"`
+	TriggerAliases []string          `json:"trigger_aliases" yaml:"trigger_aliases"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -76,15 +77,17 @@ func isValidPath(path string) bool {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost      string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost       string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey             string              `json:"api_key" yaml:"api_key,omitempty"`
-	User               string              `json:"user" yaml:"user,omitempty"`
-	UncommittedChanges bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
-	PreserveCommits    bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
-	Projects           []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	Admin              ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
-	LoadedFrom         string              `json:"-" yaml:"-"`
+	APIServerHost         string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
+	User                  string              `json:"user" yaml:"user,omitempty"`
+	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
+	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
+	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
+	LoadedFrom            string              `json:"-" yaml:"-"`
+	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -210,10 +213,16 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	return ac, rc, nil
 }
 
-func (s *ClientSettings) FindDefaultProject() string {
-	for _, p := range s.Projects {
-		if p.Default {
-			return p.Name
+func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
+	if project, exists := s.ProjectsForDirectory[cwd]; exists {
+		return project
+	}
+
+	if useRoot {
+		for _, p := range s.Projects {
+			if p.Default {
+				return p.Name
+			}
 		}
 	}
 	return ""
@@ -235,13 +244,36 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
 		Alias:    "",
 		Variants: variants,
 		Tasks:    nil,
+	})
+}
+
+func (s *ClientSettings) FindDefaultTriggerAliases(project string) []string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.TriggerAliases
+		}
+	}
+	return nil
+}
+
+func (s *ClientSettings) SetDefaultTriggerAliases(project string, triggerAliases []string) {
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].TriggerAliases = triggerAliases
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:           project,
+		Default:        true,
+		TriggerAliases: triggerAliases,
 	})
 }
 
@@ -302,7 +334,6 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
@@ -328,7 +359,6 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 			return
 		}
 	}
-
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,
@@ -338,24 +368,18 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(name string) {
-	var foundDefault bool
-	for i, p := range s.Projects {
-		if p.Name == name {
-			s.Projects[i].Default = true
-			foundDefault = true
-		} else {
-			s.Projects[i].Default = false
-		}
+func (s *ClientSettings) SetDefaultProject(cwd, project string) {
+	if s.DisableAutoDefaulting {
+		return
 	}
 
-	if !foundDefault {
-		s.Projects = append(s.Projects, ClientProjectConf{
-			Name:     name,
-			Default:  true,
-			Alias:    "",
-			Variants: []string{},
-			Tasks:    []string{},
-		})
+	_, found := s.ProjectsForDirectory[cwd]
+	if found {
+		return
 	}
+	if s.ProjectsForDirectory == nil {
+		s.ProjectsForDirectory = map[string]string{}
+	}
+	s.ProjectsForDirectory[cwd] = project
+	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
 }

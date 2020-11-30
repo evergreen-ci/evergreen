@@ -136,6 +136,11 @@ var (
 				"$switch": bson.M{
 					"branches": []bson.M{
 						{"case": bson.M{
+							"$eq": []interface{}{"$" + AbortedKey, true},
+						},
+							"then": evergreen.TaskAborted,
+						},
+						{"case": bson.M{
 							"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
 						},
 							"then": evergreen.TaskSucceeded,
@@ -952,7 +957,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 
 func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 	return Find(ByVersions(versionIds).
-		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
+		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey))
 }
 
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {

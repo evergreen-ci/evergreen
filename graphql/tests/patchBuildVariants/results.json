@@ -12,17 +12,20 @@
                 {
                   "id": "2",
                   "name": "test-cloud",
-                  "status": "failed"
+                  "status": "failed",
+                  "baseStatus": null
                 },
                 {
                   "id": "5",
                   "name": "test-docker",
-                  "status": "success"
+                  "status": "success",
+                  "baseStatus": null
                 },
                 {
                   "id": "1",
                   "name": "test-thirdparty-docker",
-                  "status": "success"
+                  "status": "success",
+                  "baseStatus": null
                 }
               ]
             },
@@ -33,12 +36,14 @@
                 {
                   "id": "4",
                   "name": "compile",
-                  "status": "failed"
+                  "status": "failed",
+                  "baseStatus": null
                 },
                 {
                   "id": "7",
                   "name": "lint",
-                  "status": "success"
+                  "status": "success",
+                  "baseStatus": null
                 }
               ]
             },
@@ -49,7 +54,8 @@
                 {
                   "id": "9",
                   "name": "lint-graphql",
-                  "status": "started"
+                  "status": "started",
+                  "baseStatus": null
                 }
               ]
             }

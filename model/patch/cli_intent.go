@@ -73,6 +73,9 @@ type cliIntent struct {
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
 
+	// TriggerAliases alias sets of tasks to include in child patches
+	TriggerAliases []string `bson:"trigger_aliases"`
+
 	// BackportOf specifies what to backport
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
 }
@@ -150,18 +153,19 @@ func (g *cliIntent) RequesterIdentity() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:   c.Description,
-		Author:        c.User,
-		Project:       c.ProjectID,
-		Githash:       c.BaseHash,
-		Status:        evergreen.PatchCreated,
-		BuildVariants: c.BuildVariants,
-		Parameters:    c.Parameters,
-		Alias:         c.Alias,
-		Tasks:         c.Tasks,
-		SyncAtEndOpts: c.SyncAtEndOpts,
-		BackportOf:    c.BackportOf,
-		Patches:       []ModulePatch{},
+		Description:    c.Description,
+		Author:         c.User,
+		Project:        c.ProjectID,
+		Githash:        c.BaseHash,
+		Status:         evergreen.PatchCreated,
+		BuildVariants:  c.BuildVariants,
+		Parameters:     c.Parameters,
+		Alias:          c.Alias,
+		TriggerAliases: c.TriggerAliases,
+		Tasks:          c.Tasks,
+		SyncAtEndOpts:  c.SyncAtEndOpts,
+		BackportOf:     c.BackportOf,
+		Patches:        []ModulePatch{},
 	}
 	if p.BackportOf.PatchID == "" { // the intent processor adds the patches if backporting by patch ID
 		p.Patches = append(p.Patches,
@@ -177,19 +181,20 @@ func (c *cliIntent) NewPatch() *Patch {
 }
 
 type CLIIntentParams struct {
-	User         string
-	Project      string
-	BaseGitHash  string
-	Module       string
-	PatchContent string
-	Description  string
-	Finalize     bool
-	BackportOf   BackportInfo
-	Parameters   []Parameter
-	Variants     []string
-	Tasks        []string
-	Alias        string
-	SyncParams   SyncAtEndOptions
+	User           string
+	Project        string
+	BaseGitHash    string
+	Module         string
+	PatchContent   string
+	Description    string
+	Finalize       bool
+	BackportOf     BackportInfo
+	Parameters     []Parameter
+	Variants       []string
+	Tasks          []string
+	Alias          string
+	TriggerAliases []string
+	SyncParams     SyncAtEndOptions
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -229,21 +234,22 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:    mgobson.NewObjectId().Hex(),
-		IntentType:    CliIntentType,
-		PatchContent:  params.PatchContent,
-		Description:   params.Description,
-		BuildVariants: params.Variants,
-		Tasks:         params.Tasks,
-		Parameters:    params.Parameters,
-		SyncAtEndOpts: params.SyncParams,
-		User:          params.User,
-		ProjectID:     params.Project,
-		BaseHash:      params.BaseGitHash,
-		Finalize:      params.Finalize,
-		Module:        params.Module,
-		Alias:         params.Alias,
-		BackportOf:    params.BackportOf,
+		DocumentID:     mgobson.NewObjectId().Hex(),
+		IntentType:     CliIntentType,
+		PatchContent:   params.PatchContent,
+		Description:    params.Description,
+		BuildVariants:  params.Variants,
+		Tasks:          params.Tasks,
+		Parameters:     params.Parameters,
+		SyncAtEndOpts:  params.SyncParams,
+		User:           params.User,
+		ProjectID:      params.Project,
+		BaseHash:       params.BaseGitHash,
+		Finalize:       params.Finalize,
+		Module:         params.Module,
+		Alias:          params.Alias,
+		TriggerAliases: params.TriggerAliases,
+		BackportOf:     params.BackportOf,
 	}, nil
 }
 
