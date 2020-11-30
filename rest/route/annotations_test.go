@@ -476,6 +476,7 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
+
 	//test update
 	h.annotation = &model.APITaskAnnotation{
 		TaskId:        restModel.ToStringPtr("t1"),
@@ -490,6 +491,9 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, annotation.Id, "")
 	assert.Equal(t, "task-1-note_0_updated", annotation.Note.Message)
+	// suspected issues and issues don't get updated when not defined
+	require.Nil(t, annotation.SuspectedIssues)
+	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 
 	//test that it can update old executions
 	h.annotation = &model.APITaskAnnotation{
