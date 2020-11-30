@@ -10,10 +10,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/jpillora/backoff"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -129,13 +132,55 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
-	resp, err := utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
-	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, AuthError
-	} else if err != nil {
-		return resp, err
+	var dur time.Duration
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	backoff := c.getBackoff()
+	for i := 1; i <= c.maxAttempts; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("request canceled")
+		case t := <-timer.C:
+			grip.Debugf("retrying request for attempt %d at time %s", i, t.String())
+			if data != nil {
+				r.Body = ioutil.NopCloser(bytes.NewReader(out))
+			}
+
+			resp, err := c.doRequest(ctx, r)
+			// TODO (EVG-13389): handle response status codes better.
+			if err != nil {
+				// for an error, don't return, just retry
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "error response from api server",
+					"attempt":   i,
+					"max":       c.maxAttempts,
+					"path":      info.path,
+					"len":       len(out),
+					"wait_secs": backoff.ForAttempt(float64(i)).Seconds(),
+				}))
+			} else if resp.StatusCode == http.StatusOK {
+				return resp, nil
+			} else if resp.StatusCode == http.StatusUnauthorized {
+				defer resp.Body.Close()
+				return resp, AuthError
+			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+				defer resp.Body.Close()
+				reader := util.NewResponseReader(resp)
+				if bytes, _ := ioutil.ReadAll(reader); len(bytes) > 0 {
+					return resp, errors.Errorf("server returned %d (%s)", resp.StatusCode, string(bytes))
+				}
+				return resp, errors.Errorf("server returned %d", resp.StatusCode)
+			} else if resp != nil {
+				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
+			}
+
+			dur = backoff.Duration()
+			grip.Debugf("resetting timer for attempt %d to %s", i, dur.String())
+			timer.Reset(dur)
+		}
+
 	}
-	return resp, nil
+	return nil, errors.Errorf("Failed to make request after %d attempts", c.maxAttempts)
 }
 
 func (c *communicatorImpl) getBackoff() *backoff.Backoff {

@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
@@ -297,4 +300,27 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// respErrorf attempts to read a gimlet.ErrorResponse from the response body
+// JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
+// HTTP status code and the formatted error message. Otherwise, it returns an
+// error message with the HTTP status and raw response body.
+func respErrorf(resp *http.Response, format string, args ...interface{}) error {
+	wrapError := func(err error) error {
+		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
+		return errors.Wrapf(err, format, args...)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return wrapError(errors.Wrap(err, "could not read response body"))
+	}
+
+	respErr := gimlet.ErrorResponse{}
+	if err = json.Unmarshal(b, &respErr); err != nil {
+		return wrapError(errors.Errorf("received response: %s", string(b)))
+	}
+
+	return wrapError(respErr)
 }

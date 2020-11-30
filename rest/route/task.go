@@ -338,7 +338,10 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task %s", rh.taskID))
 	}
 	if dt == nil {
-		return gimlet.NewTextResponse("")
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with ID %s is not part of a display task", rh.taskID),
+		})
 	}
 
 	return gimlet.NewTextResponse(dt.DisplayName)

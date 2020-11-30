@@ -22,6 +22,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+// respErrorf attempts to read a gimlet.ErrorResponse from the response body
+// JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
+// HTTP status code and the formatted error message. Otherwise, it returns an
+// error message with the HTTP status and raw response body.
+func respErrorf(resp *http.Response, format string, args ...interface{}) error {
+	wrapError := func(err error) error {
+		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
+		return errors.Wrapf(err, format, args...)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return wrapError(errors.Wrap(err, "could not read response body"))
+	}
+
+	respErr := gimlet.ErrorResponse{}
+	if err = json.Unmarshal(b, &respErr); err != nil {
+		return wrapError(errors.Errorf("received response: %s", string(b)))
+	}
+
+	return wrapError(respErr)
+}
+
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 
@@ -41,7 +64,7 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "spawning host")
+		return nil, respErrorf(resp, "spawning host")
 	}
 
 	spawnHostResp := model.APIHost{}
@@ -70,7 +93,7 @@ func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*mo
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting host '%s'", hostId)
+		return nil, respErrorf(resp, "getting host '%s'", hostId)
 	}
 
 	spawnHostResp := model.APIHost{}
@@ -98,7 +121,7 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "modifying host '%s'", hostID)
+		return respErrorf(resp, "modifying host '%s'", hostID)
 	}
 
 	return nil
@@ -124,7 +147,7 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "stopping host '%s'", hostID)
+		return respErrorf(resp, "stopping host '%s'", hostID)
 	}
 
 	if wait {
@@ -150,7 +173,7 @@ func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "attaching volume to host '%s'", hostID)
+		return respErrorf(resp, "attaching volume to host '%s'", hostID)
 	}
 
 	return nil
@@ -175,7 +198,7 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
+		return respErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
 	}
 
 	return nil
@@ -197,7 +220,7 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating volume")
+		return nil, respErrorf(resp, "creating volume")
 	}
 
 	createVolumeResp := model.APIVolume{}
@@ -223,7 +246,7 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting volume '%s'", volumeID)
+		return respErrorf(resp, "deleting volume '%s'", volumeID)
 	}
 
 	return nil
@@ -244,7 +267,7 @@ func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, op
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "modifying volume '%s'", volumeID)
+		return respErrorf(resp, "modifying volume '%s'", volumeID)
 	}
 
 	return nil
@@ -266,7 +289,7 @@ func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*mod
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting volume '%s'", volumeID)
+		return nil, respErrorf(resp, "getting volume '%s'", volumeID)
 	}
 
 	volumeResp := &model.APIVolume{}
@@ -293,7 +316,7 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting volumes for user '%s'", c.apiUser)
+		return nil, respErrorf(resp, "getting volumes for user '%s'", c.apiUser)
 	}
 
 	getVolumesResp := []model.APIVolume{}
@@ -324,7 +347,7 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, su
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "starting host '%s'", hostID)
+		return respErrorf(resp, "starting host '%s'", hostID)
 	}
 
 	if wait {
@@ -362,7 +385,7 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 				return AuthError
 			}
 			if resp.StatusCode != http.StatusOK {
-				return utility.RespErrorf(resp, "getting host status")
+				return respErrorf(resp, "getting host status")
 			}
 			hostResp := model.APIHost{}
 			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
@@ -391,7 +414,7 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "terminating host '%s'", hostID)
+		return respErrorf(resp, "terminating host '%s'", hostID)
 	}
 
 	return nil
@@ -415,7 +438,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "changing RDP password on host '%s'", hostID)
+		return respErrorf(resp, "changing RDP password on host '%s'", hostID)
 	}
 
 	return nil
@@ -439,7 +462,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "changing expiration of host '%s'", hostID)
+		return respErrorf(resp, "changing expiration of host '%s'", hostID)
 	}
 	return nil
 }
@@ -461,7 +484,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting hosts")
+		return nil, respErrorf(resp, "getting hosts")
 	}
 
 	hosts := []*model.APIHost{}
@@ -485,7 +508,7 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string,
 		Theme:  string(theme),
 	})
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to set banner: %s", err.Error())
+		return errors.Wrap(err, "problem setting banner")
 	}
 	defer resp.Body.Close()
 
@@ -520,7 +543,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 
 	resp, err := c.retryRequest(ctx, info, f)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to set service flags: %s", err.Error())
+		return errors.Wrap(err, "problem setting service flags")
 	}
 	defer resp.Body.Close()
 
@@ -677,7 +700,7 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "running script on distro '%s'", distro)
+		return nil, respErrorf(resp, "running script on distro '%s'", distro)
 	}
 
 	if err = utility.ReadJSON(resp.Body, &result); err != nil {
@@ -701,7 +724,7 @@ func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUs
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting service users")
+		return nil, respErrorf(resp, "getting service users")
 	}
 	var result []model.APIDBUser
 	if err = utility.ReadJSON(resp.Body, &result); err != nil {
@@ -731,7 +754,7 @@ func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, disp
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "updating service user")
+		return respErrorf(resp, "updating service user")
 	}
 
 	return nil
@@ -752,7 +775,7 @@ func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username strin
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting service user")
+		return respErrorf(resp, "deleting service user")
 	}
 
 	return nil
@@ -794,7 +817,7 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting key list")
+		return nil, respErrorf(resp, "getting key list")
 	}
 
 	keys := []model.APIPubKey{}
@@ -826,7 +849,7 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "adding key")
+		return respErrorf(resp, "adding key")
 	}
 
 	return nil
@@ -847,7 +870,7 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting key")
+		return respErrorf(resp, "deleting key")
 	}
 
 	return nil
@@ -991,7 +1014,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting subscriptions")
+		return nil, respErrorf(resp, "getting subscriptions")
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -1054,7 +1077,7 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating version from config")
+		return nil, respErrorf(resp, "creating version from config")
 	}
 
 	v := &serviceModel.Version{}
@@ -1080,7 +1103,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "fetching commit queue list")
+		return nil, respErrorf(resp, "fetching commit queue list")
 	}
 
 	cq := model.APICommitQueue{}
@@ -1103,7 +1126,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return utility.RespErrorf(resp, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+		return respErrorf(resp, "problem deleting item '%s' from commit queue '%s'", item, projectID)
 	}
 
 	return nil
@@ -1127,7 +1150,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 		return 0, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return 0, utility.RespErrorf(resp, "enqueueing commit queue item")
+		return 0, respErrorf(resp, "enqueueing commit queue item")
 	}
 
 	positionResp := model.APICommitQueuePosition{}
@@ -1215,7 +1238,7 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 		return AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "sending '%s' notification", notificationType)
+		return respErrorf(resp, "sending '%s' notification", notificationType)
 	}
 
 	return nil
@@ -1234,7 +1257,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting container status")
+		return nil, respErrorf(resp, "getting container status")
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -1270,7 +1293,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting logs for container id '%s'", hostID)
+		return nil, respErrorf(resp, "getting logs for container id '%s'", hostID)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1296,7 +1319,7 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting manifest for task '%s'", taskId)
+		return nil, respErrorf(resp, "getting manifest for task '%s'", taskId)
 	}
 	mfest := manifest.Manifest{}
 	if err := utility.ReadJSON(resp.Body, &mfest); err != nil {
@@ -1330,7 +1353,7 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 				return nil, AuthError
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, utility.RespErrorf(resp, "running script on host")
+				return nil, respErrorf(resp, "running script on host")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1374,7 +1397,7 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 				return nil, AuthError
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, utility.RespErrorf(resp, "running script on host")
+				return nil, respErrorf(resp, "running script on host")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1410,7 +1433,7 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "problem getting versions for project '%s'", projectID)
+		return nil, respErrorf(resp, "problem getting versions for project '%s'", projectID)
 	}
 
 	getVersionsResp := []model.APIVersion{}
@@ -1436,7 +1459,7 @@ func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*eve
 		return nil, AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting task read-only credentials")
+		return nil, respErrorf(resp, "getting task read-only credentials")
 	}
 	creds := &evergreen.S3Credentials{}
 	if err := utility.ReadJSON(resp.Body, creds); err != nil {
@@ -1461,7 +1484,7 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 		return "", AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", utility.RespErrorf(resp, "getting task sync path")
+		return "", respErrorf(resp, "getting task sync path")
 	}
 	path, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -1479,7 +1502,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get distro named %s: %s", id, err.Error())
+		return nil, errors.Wrapf(err, "problem requesting distro named '%s", id)
 	}
 	defer resp.Body.Close()
 
@@ -1499,11 +1522,11 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get clients: %s", err.Error())
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting client URLs")
+		return nil, respErrorf(resp, "getting client URLs")
 	}
 
 	var urls []string
@@ -1531,7 +1554,7 @@ func (c *communicatorImpl) GetHostProvisioningScript(ctx context.Context, hostID
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "received error response")
+		return nil, respErrorf(resp, "received error response")
 	}
 	var opts restmodel.APIHostProvisioningScriptOptions
 	if err = utility.ReadJSON(resp.Body, &opts); err != nil {
