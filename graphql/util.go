@@ -173,11 +173,9 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	} else if len(parametersModel) != 0 {
 		var parameters []patch.Parameter
 		for _, param := range parametersModel {
-			serviceparam := param.ToService()
-			parameters = append(parameters, serviceparam)
+			parameters = append(parameters, param.ToService())
 		}
-		err = p.SetParameters(parameters)
-		if err != nil {
+		if err = p.SetParameters(parameters); err != nil {
 			return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
 		}
 	}

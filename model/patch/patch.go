@@ -270,6 +270,7 @@ func (p *Patch) UpdateVariantsTasks(variantsTasks []VariantTasks) {
 }
 
 func (p *Patch) SetParameters(parameters []Parameter) error {
+	p.Parameters = parameters
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
