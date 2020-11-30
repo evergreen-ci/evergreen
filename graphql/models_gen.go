@@ -183,14 +183,14 @@ type TaskQueueDistro struct {
 }
 
 type TaskResult struct {
-	ID           string `json:"id"`
-	Aborted      bool   `json:"aborted"`
-	DisplayName  string `json:"displayName"`
-	Version      string `json:"version"`
-	Status       string `json:"status"`
-	BaseStatus   string `json:"baseStatus"`
-	BuildVariant string `json:"buildVariant"`
-	Blocked      bool   `json:"blocked"`
+	ID           string  `json:"id"`
+	Aborted      bool    `json:"aborted"`
+	DisplayName  string  `json:"displayName"`
+	Version      string  `json:"version"`
+	Status       string  `json:"status"`
+	BaseStatus   *string `json:"baseStatus"`
+	BuildVariant string  `json:"buildVariant"`
+	Blocked      bool    `json:"blocked"`
 }
 
 type TaskTestResult struct {

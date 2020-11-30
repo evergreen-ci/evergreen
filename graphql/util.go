@@ -435,7 +435,8 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Aborted:      task.Aborted,
 		}
 		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			t.BaseStatus = baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			baseStatus := baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			t.BaseStatus = &baseStatus
 		}
 		taskResults = append(taskResults, &t)
 	}
