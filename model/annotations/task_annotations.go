@@ -163,14 +163,14 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		update[NoteKey] = a.Note
 	}
 	if a.Issues != nil {
-		for _, issue := range a.Issues {
-			issue.Source = source
+		for i := range a.Issues {
+			a.Issues[i].Source = source
 		}
 		update[IssuesKey] = a.Issues
 	}
 	if a.SuspectedIssues != nil {
-		for _, issue := range a.SuspectedIssues {
-			issue.Source = source
+		for i := range a.SuspectedIssues {
+			a.SuspectedIssues[i].Source = source
 		}
 		update[SuspectedIssuesKey] = a.SuspectedIssues
 	}

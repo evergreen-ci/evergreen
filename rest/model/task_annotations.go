@@ -135,6 +135,9 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 }
 
 func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []APIIssueLink {
+	if t == nil {
+		return nil
+	}
 	m := []APIIssueLink{}
 	for _, e := range t {
 		m = append(m, *APIIssueLinkBuildFromService(e))
@@ -143,6 +146,9 @@ func ArrtaskannotationsIssueLinkArrAPIIssueLink(t []annotations.IssueLink) []API
 }
 
 func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.IssueLink {
+	if t == nil {
+		return nil
+	}
 	m := []annotations.IssueLink{}
 	for _, e := range t {
 		m = append(m, *APIIssueLinkToService(e))
