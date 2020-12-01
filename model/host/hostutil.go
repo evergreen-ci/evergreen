@@ -383,8 +383,6 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
-	shellPrefix := []string{"set -o errexit", "set -o verbose"}
-
 	var fetchClient, fixClientOwner string
 	var err error
 	// If we're fetching the provisioning script from the app server, the
@@ -492,7 +490,10 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 
 		var shellCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			shellCmds = append(shellCmds, shellPrefix...)
+			// We cannot run Windows user data with verbose output because
+			// PowerShell user data hangs if too much output is produced.
+			shellPrefix := "set -o errexit"
+			shellCmds = append(shellCmds, shellPrefix)
 		}
 		shellCmds = append(shellCmds, setupScriptCmds...)
 		shellCmds = append(shellCmds, setupJasperCmds...)
@@ -542,6 +543,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		fixJasperDirsOwner,
 	)
 
+	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
 	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
