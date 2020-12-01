@@ -435,7 +435,8 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			Aborted:      task.Aborted,
 		}
 		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			t.BaseStatus = baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			baseStatus := baseTaskStatuses[task.BuildVariant][task.DisplayName]
+			t.BaseStatus = &baseStatus
 		}
 		taskResults = append(taskResults, &t)
 	}
@@ -479,10 +480,10 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			if proj == nil {
 				projRef, err := model.FindOneProjectRef(version.Identifier)
 				if err != nil {
-					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
+					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
 				}
 				if projRef == nil {
-					return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
+					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
 				}
 				proj = projRef
 			}

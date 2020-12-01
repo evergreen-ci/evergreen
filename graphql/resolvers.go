@@ -1073,10 +1073,18 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
-			if sortDirParam == 1 {
-				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			iBaseStatus := ""
+			if taskResults[i].BaseStatus != nil {
+				iBaseStatus = *taskResults[i].BaseStatus
 			}
-			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
+			jBaseStatus := ""
+			if taskResults[j].BaseStatus != nil {
+				jBaseStatus = *taskResults[j].BaseStatus
+			}
+			if sortDirParam == 1 {
+				return iBaseStatus < jBaseStatus
+			}
+			return iBaseStatus > jBaseStatus
 		})
 	}
 
@@ -1834,12 +1842,6 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	err = model.AbortTask(taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
-	}
-	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version, user)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
-		}
 	}
 	t, err = r.sc.FindTaskById(taskID)
 	if err != nil {
