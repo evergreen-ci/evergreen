@@ -13,6 +13,8 @@ import (
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/jpillora/backoff"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
@@ -335,8 +337,15 @@ func RetryRequest(ctx context.Context, r *http.Request, maxAttempts int, minBack
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, _ := client.Do(r)
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			resp, err := client.Do(r)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "error response from server",
+					"attempt":   i,
+					"max":       maxAttempts,
+					"wait_secs": b.ForAttempt(float64(i)).Seconds(),
+				}))
+			} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				return resp, nil
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				return resp, errors.Errorf("server returned status %f", resp.StatusCode)
