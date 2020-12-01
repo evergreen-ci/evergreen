@@ -67,13 +67,13 @@ func TestCompareTasks(t *testing.T) {
 	order, logic, err := s.CompareTasks([]string{"t1", "t2"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t2", "t1"}, order)
-	assert.Equal(t, "priority is higher", logic[t1.Id][t2.Id])
+	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
 	order, logic, err = s.CompareTasks([]string{"t1", "t2", "t3"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t3", "t2", "t1"}, order)
-	assert.Equal(t, "higher task is a generator", logic[t2.Id][t3.Id])
-	assert.Equal(t, "priority is higher", logic[t1.Id][t2.Id])
+	assert.Equal(t, "task generator: higher task is a generator", logic[t2.Id][t3.Id])
+	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
 	order, logic, err = s.CompareTasks([]string{"t1", "t2", "t3", "cqt1"})
 	assert.NoError(t, err)

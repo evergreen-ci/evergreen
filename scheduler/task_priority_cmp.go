@@ -28,7 +28,7 @@ type byPriority struct{}
 
 func (c *byPriority) name() string { return "task priority" }
 func (c *byPriority) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
-	reason := "priority is higher"
+	reason := "higher is first"
 	if t1.Priority > t2.Priority {
 		return 1, reason, nil
 	}
@@ -46,7 +46,7 @@ type byNumDeps struct{}
 
 func (c *byNumDeps) name() string { return "number of dependencies" }
 func (c *byNumDeps) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
-	reason := "greater number of dependencies"
+	reason := "more dependencies is first"
 	if t1.NumDependents > t2.NumDependents {
 		return 1, reason, nil
 	}
@@ -77,7 +77,7 @@ func (c *byAge) name() string { return "task age" }
 func (c *byAge) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
 	reason := ""
 	if tasksAreCommitBuilds(t1, t2) && tasksAreFromOneProject(t1, t2) {
-		reason = "earlier commit from the same project"
+		reason = "earlier commit from the same project is first"
 		if t1.RevisionOrderNumber > t2.RevisionOrderNumber {
 			return 1, reason, nil
 		} else if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
@@ -87,11 +87,11 @@ func (c *byAge) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, strin
 		}
 	}
 
-	reason = "earlier ingest time"
+	reason = "older is first"
 	if t1.IngestTime.Before(t2.IngestTime) {
-		return 1, "", nil
+		return 1, reason, nil
 	} else if t2.IngestTime.Before(t1.IngestTime) {
-		return -1, "", nil
+		return -1, reason, nil
 	} else {
 		return 0, "", nil
 	}
@@ -108,7 +108,7 @@ func (c *byRuntime) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, s
 	oneExpected := t1.FetchExpectedDuration().Average
 	twoExpected := t2.FetchExpectedDuration().Average
 
-	reason := fmt.Sprintf("expected durations: %s is %s; %s is %s", t1.Id, oneExpected.String(), t2.Id, twoExpected.String())
+	reason := fmt.Sprintf("%s is %s; %s is %s", t1.Id, oneExpected.String(), t2.Id, twoExpected.String())
 	if oneExpected == 0 || twoExpected == 0 {
 		return 0, "", nil
 	}
@@ -133,13 +133,12 @@ type byTaskGroupOrder struct{}
 func (c *byTaskGroupOrder) name() string { return "order within task group" }
 func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
 	// Try other comparators if both tasks are not in task groups
-	reason := "neither task in a group"
 	if t1.TaskGroup == "" && t2.TaskGroup == "" {
 		return 0, "", nil
 	}
 
 	// If one task is in a task group, sort that one higher, which keeps the pre-byTaskGroupOrder order.
-	reason = "higher task is in a group"
+	reason := "one is in a group and one is not"
 	if t2.TaskGroup == "" && t1.TaskGroup != "" {
 		return 1, reason, nil
 	}
@@ -148,7 +147,7 @@ func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) 
 	}
 
 	// If tasks are in the same task group and build, apply the task group comparator.
-	reason = "tasks are in same group, higher task is earlier"
+	reason = "earlier in sequence"
 	if t1.TaskGroup == t2.TaskGroup && t1.BuildId == t2.BuildId {
 		if t1.TaskGroupOrder > t2.TaskGroupOrder {
 			return -1, reason, nil
@@ -161,7 +160,7 @@ func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) 
 	// Otherwise, both tasks are in task groups but in different task groups or builds. Since
 	// returning 0 would cause other comparators to run, which could change the task group
 	// order, sort them using the same rules as the pre-sort step.
-	reason = "tasks are in different groups, sorting lexically"
+	reason = "different groups, sorting lexically"
 	if fmt.Sprintf("%s-%s", t1.BuildId, t1.TaskGroup) < fmt.Sprintf("%s-%s", t2.BuildId, t2.TaskGroup) {
 		return 1, reason, nil
 	}
@@ -171,14 +170,13 @@ func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) 
 // byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.
 type byGenerateTasks struct{}
 
-func (c *byGenerateTasks) name() string { return "task is a generator" }
+func (c *byGenerateTasks) name() string { return "task generator" }
 func (c *byGenerateTasks) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
-	reason := "both tasks are or are not generators"
 	if t1.GenerateTask == t2.GenerateTask {
 		return 0, "", nil
 	}
 
-	reason = "higher task is a generator"
+	reason := "higher task is a generator"
 	if t1.GenerateTask {
 		return 1, reason, nil
 	}
@@ -188,9 +186,9 @@ func (c *byGenerateTasks) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (
 // byCommitQueue schedules commit queue merges first
 type byCommitQueue struct{}
 
-func (c *byCommitQueue) name() string { return "task is a commit queue merge" }
+func (c *byCommitQueue) name() string { return "commit queue merge" }
 func (c *byCommitQueue) compare(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, string, error) {
-	reason := "higher task is a commit queue merge"
+	reason := "one task is a merge and one is not"
 	if comparator.versions[t1.Version].Requester == evergreen.MergeTestRequester &&
 		comparator.versions[t2.Version].Requester != evergreen.MergeTestRequester {
 		return 1, reason, nil
@@ -200,7 +198,6 @@ func (c *byCommitQueue) compare(t1, t2 task.Task, comparator *CmpBasedTaskCompar
 		return -1, reason, nil
 	}
 
-	reason = "both or neither task is a commit queue merge"
 	return 0, "", nil
 }
 
