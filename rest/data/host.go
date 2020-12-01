@@ -189,7 +189,7 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 	return data, nil
 }
 
-func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
+func (hc *DBHostConnector) GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error) {
 	if hostID == "" {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -558,7 +558,7 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	return host, nil
 }
 
-func (hc *MockHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error) {
+func (hc *MockHostConnector) GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error) {
 	h, err := hc.FindHostById(hostID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding host by ID")

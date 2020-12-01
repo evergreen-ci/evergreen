@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -61,7 +60,7 @@ func hostProvision() cli.Command {
 			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
-			opts, err := comm.GetHostProvisioningScript(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
+			opts, err := comm.GetHostProvisioningOptions(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
 			if err != nil {
 				return errors.Wrap(err, "failed to get host provisioning script")
 			}
@@ -69,14 +68,13 @@ func hostProvision() cli.Command {
 			workingDir := c.String(workingDirFlagName)
 			scriptPath, err := makeHostProvisioningScriptFile(workingDir, opts.Content)
 			if err != nil {
-				return errors.Wrap(err, "write host provisioning script to file")
+				return errors.Wrap(err, "writing host provisioning script file")
 			}
 			defer func() {
 				grip.Error(errors.Wrap(os.RemoveAll(scriptPath), "removing host provisioning file"))
 			}()
 
-			cmd := hostProvisioningCommand(c.String(shellPathFlagName), scriptPath)
-			if err := runHostProvisioningCommand(ctx, cmd.Directory(workingDir)); err != nil {
+			if err := runHostProvisioningScript(ctx, c.String(shellPathFlagName), scriptPath, workingDir); err != nil {
 				return errors.Wrap(err, "running host provisioning script")
 			}
 
@@ -85,6 +83,11 @@ func hostProvision() cli.Command {
 	}
 }
 
+// makeHostProvisioningScriptFile creates the working directory with the host
+// provisioning script in it. Returns the
+// Note: we have to write the host provisioning script to a file instead of
+// running it directly like with 'sh -c "<script>"' because the script will exit
+// before it finishes executing on Windows.
 func makeHostProvisioningScriptFile(workingDir string, content string) (string, error) {
 	if err := os.MkdirAll(workingDir, 0755); err != nil {
 		return "", errors.Wrap(err, "creating working directory")
@@ -98,17 +101,13 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 	// slashes ('/') instead as the path separator.
 	scriptPath = util.ConsistentFilepath(scriptPath)
 	if err = ioutil.WriteFile(scriptPath, []byte(content), 0700); err != nil {
-		return "", errors.Wrapf(err, "writing script to file '%s'", scriptPath)
+		return "", errors.Wrapf(err, "writing script file '%s'", scriptPath)
 	}
 	return scriptPath, nil
 }
 
-func hostProvisioningCommand(shellPath, scriptPath string) *jasper.Command {
-	return jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath)
-}
-
-func runHostProvisioningCommand(ctx context.Context, cmd *jasper.Command) error {
-	cmd.SetOutputWriter(utility.NopWriteCloser(os.Stdout)).SetErrorWriter(utility.NopWriteCloser(os.Stderr))
+func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, workingDir string) error {
+	cmd := jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath).Directory(workingDir)
 	if err := cmd.Run(ctx); err != nil {
 		return errors.WithStack(err)
 	}
