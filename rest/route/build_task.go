@@ -123,10 +123,13 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if tbh.fetchParentIds {
-			parentTask, err := tasks[i].GetDisplayTask()
+			var parentTask *task.Task
+
+			parentTask, err = tasks[i].GetDisplayTask()
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
+
 			if parentTask != nil {
 				taskModel.ParentTaskId = parentTask.Id
 			}

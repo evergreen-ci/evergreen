@@ -1202,7 +1202,7 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"build_id": "test"})
 
-	tbh.Parse(ctx, r)
+	assert.NoError(t, tbh.Parse(ctx, r))
 	assert.False(t, tbh.fetchAllExecutions)
 	assert.True(t, tbh.fetchParentIds)
 
