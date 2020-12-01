@@ -28,9 +28,6 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// kim: TODO: have to update this to handle multiple URLs (first the S3 URL,
-// which could fail if we deploy a custom build and the deployer fails to turn
-// off S3 binary downloads) instead of just one.
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
 	version, err := gh.sc.GetCLIUpdate()
 	if err != nil || version == nil {

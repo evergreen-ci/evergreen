@@ -26,8 +26,9 @@ func (a *APICLIUpdate) ToService() (interface{}, error) {
 }
 
 type APIClientConfig struct {
-	ClientBinaries []APIClientBinary `json:"client_binaries,omitempty"`
-	LatestRevision *string           `json:"latest_revision"`
+	ClientBinaries   []APIClientBinary `json:"client_binaries,omitempty"`
+	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries,omitempty"`
+	LatestRevision   *string           `json:"latest_revision"`
 }
 
 func (a *APIClientConfig) BuildFromService(h interface{}) error {
@@ -35,12 +36,19 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting client config")
 	}
-	a.ClientBinaries = make([]APIClientBinary, len(c.ClientBinaries))
+
 	catcher := grip.NewBasicCatcher()
+	a.ClientBinaries = make([]APIClientBinary, len(c.ClientBinaries))
 	for i := range a.ClientBinaries {
 		catcher.Add(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]))
 	}
+	a.S3ClientBinaries = make([]APIClientBinary, len(c.S3ClientBinaries))
+	for i := range a.S3ClientBinaries {
+		catcher.Add(a.S3ClientBinaries[i].BuildFromService(c.S3ClientBinaries[i]))
+	}
+
 	a.LatestRevision = ToStringPtr(c.LatestRevision)
+
 	return catcher.Resolve()
 }
 
@@ -53,9 +61,29 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 	for i := range c.ClientBinaries {
 		var err error
 		bin, err := a.ClientBinaries[i].ToService()
-		c.ClientBinaries[i] = bin.(evergreen.ClientBinary)
 		if err != nil {
 			catcher.Add(err)
+			continue
+		}
+		var ok bool
+		c.ClientBinaries[i], ok = bin.(evergreen.ClientBinary)
+		if !ok {
+			catcher.Errorf("programmatic error: incorrect type %T returned from service-level conversion", bin)
+		}
+	}
+
+	c.S3ClientBinaries = make([]evergreen.ClientBinary, len(a.S3ClientBinaries))
+	for i := range a.S3ClientBinaries {
+		var err error
+		bin, err := a.S3ClientBinaries[i].ToService()
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		var ok bool
+		c.S3ClientBinaries[i], ok = bin.(evergreen.ClientBinary)
+		if !ok {
+			catcher.Errorf("programmatic error: incorrect type %T returned from service-level conversion", bin)
 		}
 	}
 
