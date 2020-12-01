@@ -118,11 +118,13 @@ func (s *mdbService) registerHandlers() error {
 		ScriptingTestCommand:      s.scriptingTest,
 
 		// jasper.LoggingCache commands
-		LoggingCacheCreateCommand: s.loggingCreate,
-		LoggingCacheGetCommand:    s.loggingGet,
-		LoggingCacheRemoveCommand: s.loggingRemove,
-		LoggingCachePruneCommand:  s.loggingPrune,
-		LoggingCacheSizeCommand:   s.loggingSize,
+		LoggingCacheCreateCommand:         s.loggingCreate,
+		LoggingCacheGetCommand:            s.loggingGet,
+		LoggingCacheRemoveCommand:         s.loggingRemove,
+		LoggingCacheCloseAndRemoveCommand: s.loggingCloseAndRemove,
+		LoggingCacheClearCommand:          s.loggingClear,
+		LoggingCachePruneCommand:          s.loggingPrune,
+		LoggingCacheSizeCommand:           s.loggingSize,
 	} {
 		if err := s.RegisterOperation(&mongowire.OpScope{
 			Type:    mongowire.OP_COMMAND,

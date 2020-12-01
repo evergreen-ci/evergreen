@@ -265,6 +265,14 @@ type loggingCacheRemoveRequest struct {
 	ID string `bson:"logging_cache_remove"`
 }
 
+type loggingCacheCloseAndRemoveRequest struct {
+	ID string `bson:"logging_cache_close_and_remove"`
+}
+
+type loggingCacheClearRequest struct {
+	Clear int `bson:"logging_cache_clear"`
+}
+
 type loggingCacheCreateAndGetResponse struct {
 	shell.ErrorResponse `bson:"error_response,inline"`
 	CachedLogger        options.CachedLogger `bson:"cached_logger"`

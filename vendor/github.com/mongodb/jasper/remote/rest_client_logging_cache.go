@@ -77,6 +77,26 @@ func (lc *restLoggingCache) Remove(id string) {
 	grip.Debug(errors.WithStack(handleError(resp)))
 }
 
+func (lc *restLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
+	resp, err := lc.client.doRequest(ctx, http.MethodDelete, lc.client.getURL("/logging/id/%s/close", id), nil)
+	if err != nil {
+		return errors.Wrap(err, "request returned error")
+	}
+	defer resp.Body.Close()
+
+	return errors.WithStack(handleError(resp))
+}
+
+func (lc *restLoggingCache) Clear(ctx context.Context) error {
+	resp, err := lc.client.doRequest(ctx, http.MethodDelete, lc.client.getURL("/logging/clear"), nil)
+	if err != nil {
+		return errors.Wrap(err, "request returned error")
+	}
+	defer resp.Body.Close()
+
+	return errors.WithStack(handleError(resp))
+}
+
 func (lc *restLoggingCache) Prune(ts time.Time) {
 	resp, err := lc.client.doRequest(lc.ctx, http.MethodDelete, lc.client.getURL("/logging/prune/%s", ts.Format(time.RFC3339)), nil)
 	if err != nil {

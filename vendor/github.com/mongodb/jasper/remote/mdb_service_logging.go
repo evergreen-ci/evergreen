@@ -12,11 +12,13 @@ import (
 
 // Constants representing logging cache commands.
 const (
-	LoggingCacheSizeCommand   = "logging_cache_size"
-	LoggingCacheCreateCommand = "logging_cache_create"
-	LoggingCacheRemoveCommand = "logging_cache_remove"
-	LoggingCacheGetCommand    = "logging_cache_get"
-	LoggingCachePruneCommand  = "logging_cache_prune"
+	LoggingCacheSizeCommand           = "logging_cache_size"
+	LoggingCacheCreateCommand         = "logging_cache_create"
+	LoggingCacheRemoveCommand         = "logging_cache_remove"
+	LoggingCacheCloseAndRemoveCommand = "logging_cache_close_and_remove"
+	LoggingCacheClearCommand          = "logging_cache_clear"
+	LoggingCacheGetCommand            = "logging_cache_get"
+	LoggingCachePruneCommand          = "logging_cache_prune"
 )
 
 func (s *mdbService) loggingCreate(ctx context.Context, w io.Writer, msg mongowire.Message) {
@@ -67,6 +69,35 @@ func (s *mdbService) loggingRemove(ctx context.Context, w io.Writer, msg mongowi
 	lc.Remove(req.ID)
 
 	s.loggingCacheResponse(ctx, w, nil, LoggingCacheRemoveCommand)
+}
+
+func (s *mdbService) loggingCloseAndRemove(ctx context.Context, w io.Writer, msg mongowire.Message) {
+	req := &loggingCacheCloseAndRemoveRequest{}
+	lc := s.loggingCacheRequest(ctx, w, msg, req, LoggingCacheCloseAndRemoveCommand)
+	if lc == nil {
+		return
+	}
+
+	if err := lc.CloseAndRemove(ctx, req.ID); err != nil {
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, err, LoggingCacheCloseAndRemoveCommand)
+		return
+	}
+
+	s.loggingCacheResponse(ctx, w, nil, LoggingCacheCloseAndRemoveCommand)
+}
+
+func (s *mdbService) loggingClear(ctx context.Context, w io.Writer, msg mongowire.Message) {
+	lc := s.loggingCacheRequest(ctx, w, msg, nil, LoggingCacheClearCommand)
+	if lc == nil {
+		return
+	}
+
+	if err := lc.Clear(ctx); err != nil {
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, err, LoggingCacheClearCommand)
+		return
+	}
+
+	s.loggingCacheResponse(ctx, w, nil, LoggingCacheClearCommand)
 }
 
 func (s *mdbService) loggingPrune(ctx context.Context, w io.Writer, msg mongowire.Message) {

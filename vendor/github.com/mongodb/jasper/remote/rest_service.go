@@ -90,6 +90,8 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/logging/id/{id}").Version(1).Post().Handler(s.loggingCacheCreate)
 	app.AddRoute("/logging/id/{id}").Version(1).Get().Handler(s.loggingCacheGet)
 	app.AddRoute("/logging/id/{id}").Version(1).Delete().Handler(s.loggingCacheRemove)
+	app.AddRoute("/logging/id/{id}/close").Version(1).Delete().Handler(s.loggingCacheCloseAndRemove)
+	app.AddRoute("/logging/clear").Version(1).Delete().Handler(s.loggingCacheClear)
 	app.AddRoute("/logging/prune/{time}").Version(1).Delete().Handler(s.loggingCachePrune)
 	app.AddRoute("/logging/len").Version(1).Get().Handler(s.loggingCacheLen)
 	app.AddRoute("/logging/id/{id}/send").Version(1).Post().Handler(s.sendMessages)
@@ -889,6 +891,49 @@ func (s *Service) loggingCacheRemove(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	lc.Remove(id)
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) loggingCacheCloseAndRemove(rw http.ResponseWriter, r *http.Request) {
+	id := gimlet.GetVars(r)["id"]
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+
+	if err := lc.CloseAndRemove(r.Context(), id); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
+
+	gimlet.WriteJSON(rw, struct{}{})
+}
+
+func (s *Service) loggingCacheClear(rw http.ResponseWriter, r *http.Request) {
+	lc := s.manager.LoggingCache(r.Context())
+	if lc == nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "logging cache is not supported",
+		})
+		return
+	}
+
+	if err := lc.Clear(r.Context()); err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+		return
+	}
 
 	gimlet.WriteJSON(rw, struct{}{})
 }

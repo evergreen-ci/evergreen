@@ -63,6 +63,30 @@ func (lc *rpcLoggingCache) Remove(id string) {
 	_, _ = lc.client.LoggingCacheRemove(lc.ctx, &internal.LoggingCacheArgs{Id: id})
 }
 
+func (lc *rpcLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
+	resp, err := lc.client.LoggingCacheCloseAndRemove(ctx, &internal.LoggingCacheArgs{Id: id})
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return errors.Errorf("failed to close and remove: %s", resp.Text)
+	}
+	return nil
+}
+
+func (lc *rpcLoggingCache) Clear(ctx context.Context) error {
+	resp, err := lc.client.LoggingCacheClear(ctx, &empty.Empty{})
+	if err != nil {
+		return err
+	}
+
+	if !resp.Success {
+		return errors.Errorf("failed to clear the logging cache: %s", resp.Text)
+	}
+	return nil
+}
+
 func (lc *rpcLoggingCache) Prune(ts time.Time) {
 	pbts, err := ptypes.TimestampProto(ts)
 	if err != nil {

@@ -30,6 +30,20 @@ type CachedLogger struct {
 	Output send.Sender `bson:"-" json:"-" yaml:"-"`
 }
 
+// Close closes the underlying senders in the CachedLogger.
+func (cl *CachedLogger) Close() error {
+	catcher := grip.NewBasicCatcher()
+
+	if cl.Output != nil {
+		catcher.Add(cl.Output.Close())
+	}
+	if cl.Error != nil && cl.Error != cl.Output {
+		catcher.Add(cl.Error.Close())
+	}
+
+	return errors.Wrap(catcher.Resolve(), "problem clearing logger cache")
+}
+
 func (cl *CachedLogger) getSender(preferError bool) (send.Sender, error) {
 	if preferError && cl.Error != nil {
 		return cl.Error, nil
