@@ -160,11 +160,23 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
+	}
+
+	// parameters cannot be set once the patch has been finalized
+	if parametersModel != nil && p.Version != "" {
+		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
+	}
+	var parameters []patch.Parameter
+	for _, param := range parametersModel {
+		parameters = append(parameters, param.ToService())
+	}
+	if err = p.SetParameters(parameters); err != nil {
+		return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
 	}
 
 	if p.IsCommitQueuePatch() {
@@ -378,8 +390,8 @@ type PatchVariantsTasksRequest struct {
 	Description   string               `json:"description"`
 }
 
-// BuildFromGqlInput takes a PatchReconfigure gql type and returns a PatchVariantsTasksRequest type
-func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchReconfigure) {
+// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchVariantsTasksRequest type
+func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchConfigure) {
 	p.Description = r.Description
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{

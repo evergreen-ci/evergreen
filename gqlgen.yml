@@ -27,6 +27,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParameterInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   VariantTask:
