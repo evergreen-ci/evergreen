@@ -168,7 +168,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 
 	// parameters cannot be set once the patch has been finalized
-	if parametersModel != nil && len(p.Version) != 0 {
+	if len(parametersModel) != 0 && p.Version != "" {
 		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
 	} else if len(parametersModel) != 0 {
 		var parameters []patch.Parameter
