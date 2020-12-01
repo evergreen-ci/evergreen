@@ -10,12 +10,14 @@ import (
 
 // Constants representing the jasper.LoggingCache interface as CLI commands.
 const (
-	LoggingCacheCommand       = "logging-cache"
-	LoggingCacheCreateCommand = "create"
-	LoggingCacheGetCommand    = "get"
-	LoggingCacheRemoveCommand = "remove"
-	LoggingCachePruneCommand  = "prune"
-	LoggingCacheLenCommand    = "len"
+	LoggingCacheCommand               = "logging-cache"
+	LoggingCacheCreateCommand         = "create"
+	LoggingCacheGetCommand            = "get"
+	LoggingCacheRemoveCommand         = "remove"
+	LoggingCacheCloseAndRemoveCommand = "close-and-remove"
+	LoggingCacheClearCommand          = "clear"
+	LoggingCachePruneCommand          = "prune"
+	LoggingCacheLenCommand            = "len"
 )
 
 // LoggingCache creates a cli.Command that supports the jasper.LoggingCache
@@ -28,6 +30,8 @@ func LoggingCache() cli.Command {
 			loggingCacheCreate(),
 			loggingCacheGet(),
 			loggingCacheRemove(),
+			loggingCacheCloseAndRemove(),
+			loggingCacheClear(),
 			loggingCachePrune(),
 			loggingCacheLen(),
 		},
@@ -92,6 +96,43 @@ func loggingCacheRemove() cli.Command {
 				}
 				lc.Remove(input.ID)
 				return makeOutcomeResponse(nil)
+			})
+		},
+	}
+}
+
+func loggingCacheCloseAndRemove() cli.Command {
+	return cli.Command{
+		Name:   LoggingCacheCloseAndRemoveCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			input := IDInput{}
+			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
+				lc := client.LoggingCache(ctx)
+				if lc == nil {
+					return makeOutcomeResponse(errors.New("logging cache not supported"))
+				}
+				err := lc.CloseAndRemove(ctx, input.ID)
+				return makeOutcomeResponse(err)
+			})
+		},
+	}
+}
+
+func loggingCacheClear() cli.Command {
+	return cli.Command{
+		Name:   LoggingCacheClearCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			return doPassthroughOutput(c, func(ctx context.Context, client remote.Manager) interface{} {
+				lc := client.LoggingCache(ctx)
+				if lc == nil {
+					return makeOutcomeResponse(errors.New("logging cache not supported"))
+				}
+				err := lc.Clear(ctx)
+				return makeOutcomeResponse(err)
 			})
 		},
 	}

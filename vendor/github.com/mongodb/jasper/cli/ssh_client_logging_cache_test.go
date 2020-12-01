@@ -96,6 +96,50 @@ func TestSSHLoggingCache(t *testing.T) {
 
 			lc.Remove("foo")
 		},
+		"CloseAndRemovePasses": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := &IDInput{}
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				inputChecker,
+				makeOutcomeResponse(nil),
+			)
+
+			assert.NoError(t, lc.CloseAndRemove(ctx, "foo"))
+		},
+		"CloseAndRemoveFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := &IDInput{}
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				inputChecker,
+				invalidResponse(),
+			)
+
+			assert.Error(t, lc.CloseAndRemove(ctx, "foo"))
+		},
+		"ClearPasses": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := &IDInput{}
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				inputChecker,
+				makeOutcomeResponse(nil),
+			)
+
+			assert.NoError(t, lc.Clear(ctx))
+		},
+		"ClearFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
+			inputChecker := &IDInput{}
+			baseManager.Create = makeCreateFunc(
+				t, client,
+				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				inputChecker,
+				invalidResponse(),
+			)
+
+			assert.Error(t, lc.Clear(ctx))
+		},
 		"PrunePasses": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
 			inputChecker := &LoggingCachePruneInput{}
 			baseManager.Create = makeCreateFunc(
