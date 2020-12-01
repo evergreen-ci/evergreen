@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1214,9 +1215,8 @@ func TestParentTaskInfo(t *testing.T) {
 	expectedParentIDs := []string{dtID, dtID, ""}
 	for i := range data {
 		task, ok := data[i].(*model.APITask)
-		if assert.True(t, ok) {
-			assert.Equal(t, expectedParentIDs[i], task.ParentTaskId)
-		}
+		require.True(t, ok)
+		assert.Equal(t, expectedParentIDs[i], task.ParentTaskId)
 	}
 }
 
