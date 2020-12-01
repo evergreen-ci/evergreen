@@ -451,6 +451,9 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	if h.Distro.IsWindows() {
 		var setupScriptCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// If we're fetching the provisioning script, we can just execute
+			// the setup script commands directly rather than write it to an
+			// intermediate file.
 			var setupScript string
 			setupScript, err = h.setupScriptCommands(settings)
 			if err != nil {
@@ -490,14 +493,17 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 
 		var shellCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			// We cannot run Windows user data with verbose output because
-			// PowerShell user data hangs if too much output is produced.
+			// We cannot run Windows user data with verbose output (i.e. 'set -o
+			// verbose') because PowerShell user data hangs if too much output
+			// is produced.
 			shellPrefix := "set -o errexit"
 			shellCmds = append(shellCmds, shellPrefix)
 		}
 		shellCmds = append(shellCmds, setupScriptCmds...)
 		shellCmds = append(shellCmds, setupJasperCmds...)
 		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// The setup script is only written to a file if we're not fetching
+			// the provisioning script.
 			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
 		}
 		shellCmds = append(shellCmds, postFetchClient, markDone)
