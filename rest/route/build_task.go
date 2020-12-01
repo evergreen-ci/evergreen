@@ -15,6 +15,7 @@ type tasksByBuildHandler struct {
 	buildId            string
 	status             string
 	fetchAllExecutions bool
+	fetchParentIds     bool
 	sc                 data.Connector
 	limit              int
 	key                string
@@ -53,7 +54,8 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.WithStack(err)
 	}
 
-	_, tbh.fetchAllExecutions = vals["fetch_all_executions"]
+	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
+	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == "true"
 
 	return nil
 }
@@ -117,6 +119,19 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.sc.GetURL()); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
+			}
+		}
+
+		if tbh.fetchParentIds {
+			var parentTask *task.Task
+
+			parentTask, err = tasks[i].GetDisplayTask()
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+
+			if parentTask != nil {
+				taskModel.ParentTaskId = parentTask.Id
 			}
 		}
 

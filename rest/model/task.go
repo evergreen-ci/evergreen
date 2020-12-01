@@ -56,6 +56,7 @@ type APITask struct {
 	GeneratedBy        string              `json:"generated_by"`
 	Artifacts          []APIFile           `json:"artifacts"`
 	DisplayOnly        bool                `json:"display_only"`
+	ParentTaskId       string              `json:"parent_task_id"`
 	ExecutionTasks     []*string           `json:"execution_tasks,omitempty"`
 	Mainline           bool                `json:"mainline"`
 	TaskGroup          string              `json:"task_group,omitempty"`
