@@ -32,7 +32,7 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 FileLoop:
 	for file := range pathsToAdd {
 		if ctx.Err() != nil {
-			return numFilesArchived, ctx.Err()
+			return numFilesArchived, errors.Wrap(ctx.Err(), "timeout when building archive")
 		}
 
 		var intarball string
@@ -94,22 +94,22 @@ FileLoop:
 		numFilesArchived++
 		err := tarWriter.WriteHeader(hdr)
 		if err != nil {
-			return numFilesArchived, err
+			return numFilesArchived, errors.Wrapf(err, "Error writing header for %s", intarball)
 		}
 
 		in, err := os.Open(file.Path)
 		if err != nil {
-			return numFilesArchived, err
+			return numFilesArchived, errors.Wrapf(err, "Error opening %s", file.Path)
 		}
 		amountWrote, err := io.Copy(tarWriter, in)
 		if err != nil {
 			logger.Debug(in.Close())
-			return numFilesArchived, err
+			return numFilesArchived, errors.Wrapf(err, "Error writing into tar for %s", file.Path)
 		}
 
 		if amountWrote != hdr.Size {
 			logger.Debug(in.Close())
-			return numFilesArchived, err
+			return numFilesArchived, errors.Errorf("Error writing to archive for %s: header size %d but wrote %d", intarball, hdr.Size, amountWrote)
 		}
 		logger.Debug(in.Close())
 		logger.Warning(tarWriter.Flush())
