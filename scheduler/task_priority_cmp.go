@@ -138,7 +138,7 @@ func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) 
 	}
 
 	// If one task is in a task group, sort that one higher, which keeps the pre-byTaskGroupOrder order.
-	reason := "one is in a group and one is not"
+	reason := "the task in a task group is first"
 	if t2.TaskGroup == "" && t1.TaskGroup != "" {
 		return 1, reason, nil
 	}
@@ -147,7 +147,7 @@ func (c *byTaskGroupOrder) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) 
 	}
 
 	// If tasks are in the same task group and build, apply the task group comparator.
-	reason = "earlier in sequence"
+	reason = "earlier in the same task group"
 	if t1.TaskGroup == t2.TaskGroup && t1.BuildId == t2.BuildId {
 		if t1.TaskGroupOrder > t2.TaskGroupOrder {
 			return -1, reason, nil
@@ -188,7 +188,7 @@ type byCommitQueue struct{}
 
 func (c *byCommitQueue) name() string { return "commit queue merge" }
 func (c *byCommitQueue) compare(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, string, error) {
-	reason := "one task is a merge and one is not"
+	reason := "task that is part of the CQ is higher"
 	if comparator.versions[t1.Version].Requester == evergreen.MergeTestRequester &&
 		comparator.versions[t2.Version].Requester != evergreen.MergeTestRequester {
 		return 1, reason, nil
