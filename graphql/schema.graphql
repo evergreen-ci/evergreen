@@ -86,6 +86,12 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  editAnnotationNote(
+    taskId: String!
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
     apiIssue: AnnotationIssue!
