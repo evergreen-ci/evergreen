@@ -23,117 +23,99 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
 
 	numFilesArchived := 0
-	done := make(chan bool)
-	errChan := make(chan error)
-	go func(inputChan <-chan ArchiveContentFile) {
-		defer func() {
-			errChan <- recovery.HandlePanicWithError(recover(), nil,
-				"building archive")
-		}()
-		processed := map[string]bool{}
-		logger.Infof("beginning to build archive")
-	FileChanLoop:
-		for file := range inputChan {
-			if ctx.Err() != nil {
-				return
-			}
-
-			var intarball string
-			// Tarring symlinks doesn't work reliably right now, so if the file is
-			// a symlink, leave intarball path intact but write from the file
-			// underlying the symlink.
-			if file.Info.Mode()&os.ModeSymlink > 0 {
-				symlinkPath, err := filepath.EvalSymlinks(file.Path)
-				if err != nil {
-					logger.Warningf("Could not follow symlink %s, ignoring", file.Path)
-					continue
-				} else {
-					logger.Infof("Following symlink in %s, got: %s", file.Path, symlinkPath)
-					symlinkFileInfo, err := os.Stat(symlinkPath)
-					if err != nil {
-						logger.Warningf("Failed to get underlying file '%s' for symlink '%s', ignoring", symlinkPath, file.Path)
-						continue
-					}
-
-					intarball = strings.Replace(file.Path, "\\", "/", -1)
-					file.Path = symlinkPath
-					file.Info = symlinkFileInfo
-				}
-			} else {
-				intarball = strings.Replace(file.Path, "\\", "/", -1)
-			}
-			rootPathPrefix := strings.Replace(rootPath, "\\", "/", -1)
-			intarball = strings.Replace(intarball, "\\", "/", -1)
-			intarball = strings.Replace(intarball, rootPathPrefix, "", 1)
-			intarball = filepath.Clean(intarball)
-			intarball = strings.Replace(intarball, "\\", "/", -1)
-
-			//strip any leading slash from the tarball header path
-			intarball = strings.TrimLeft(intarball, "/")
-
-			logger.Infoln("adding to tarball:", intarball)
-			if _, hasKey := processed[intarball]; hasKey {
-				continue
-			} else {
-				processed[intarball] = true
-			}
-			if file.Info.IsDir() {
-				continue
-			}
-
-			_, fileName := filepath.Split(file.Path)
-			for _, ignore := range excludes {
-				if match, _ := filepath.Match(ignore, fileName); match {
-					continue FileChanLoop
-				}
-			}
-
-			hdr := new(tar.Header)
-			hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
-			hdr.Mode = int64(file.Info.Mode())
-			hdr.Size = file.Info.Size()
-			hdr.ModTime = file.Info.ModTime()
-
-			numFilesArchived++
-			err := tarWriter.WriteHeader(hdr)
-			if err != nil {
-				errChan <- errors.Wrapf(err, "Error writing header for %v", intarball)
-				return
-			}
-
-			in, err := os.Open(file.Path)
-			if err != nil {
-				errChan <- errors.Wrapf(err, "Error opening %v", file.Path)
-				return
-			}
-			amountWrote, err := io.Copy(tarWriter, in)
-			if err != nil {
-				logger.Debug(in.Close())
-				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.Path)
-				return
-			}
-
-			if amountWrote != hdr.Size {
-				logger.Debug(in.Close())
-				errChan <- errors.Errorf(`Error writing to archive for %v:
-					header size %v but wrote %v`,
-					intarball, hdr.Size, amountWrote)
-				return
-			}
-			logger.Debug(in.Close())
-			logger.Warning(tarWriter.Flush())
+	defer func() {
+		grip.Alert(recovery.HandlePanicWithError(recover(), nil,
+			"building archive"))
+	}()
+	processed := map[string]bool{}
+	logger.Infof("beginning to build archive")
+FileLoop:
+	for file := range pathsToAdd {
+		if ctx.Err() != nil {
+			return numFilesArchived, ctx.Err()
 		}
-		done <- true
-	}(pathsToAdd)
 
-	select {
-	case <-ctx.Done():
-		return numFilesArchived, errors.New("archive creation operation canceled")
-	case <-done:
-		return numFilesArchived, nil
-	case err := <-errChan:
-		return numFilesArchived, err
+		var intarball string
+		// Tarring symlinks doesn't work reliably right now, so if the file is
+		// a symlink, leave intarball path intact but write from the file
+		// underlying the symlink.
+		if file.Info.Mode()&os.ModeSymlink > 0 {
+			symlinkPath, err := filepath.EvalSymlinks(file.Path)
+			if err != nil {
+				logger.Warningf("Could not follow symlink %s, ignoring", file.Path)
+				continue
+			} else {
+				logger.Infof("Following symlink in %s, got: %s", file.Path, symlinkPath)
+				symlinkFileInfo, err := os.Stat(symlinkPath)
+				if err != nil {
+					logger.Warningf("Failed to get underlying file '%s' for symlink '%s', ignoring", symlinkPath, file.Path)
+					continue
+				}
+
+				intarball = strings.Replace(file.Path, "\\", "/", -1)
+				file.Path = symlinkPath
+				file.Info = symlinkFileInfo
+			}
+		} else {
+			intarball = strings.Replace(file.Path, "\\", "/", -1)
+		}
+		rootPathPrefix := strings.Replace(rootPath, "\\", "/", -1)
+		intarball = strings.Replace(intarball, "\\", "/", -1)
+		intarball = strings.Replace(intarball, rootPathPrefix, "", 1)
+		intarball = filepath.Clean(intarball)
+		intarball = strings.Replace(intarball, "\\", "/", -1)
+
+		//strip any leading slash from the tarball header path
+		intarball = strings.TrimLeft(intarball, "/")
+
+		logger.Infoln("adding to tarball:", intarball)
+		if _, hasKey := processed[intarball]; hasKey {
+			continue
+		} else {
+			processed[intarball] = true
+		}
+		if file.Info.IsDir() {
+			continue
+		}
+
+		_, fileName := filepath.Split(file.Path)
+		for _, ignore := range excludes {
+			if match, _ := filepath.Match(ignore, fileName); match {
+				continue FileLoop
+			}
+		}
+
+		hdr := new(tar.Header)
+		hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
+		hdr.Mode = int64(file.Info.Mode())
+		hdr.Size = file.Info.Size()
+		hdr.ModTime = file.Info.ModTime()
+
+		numFilesArchived++
+		err := tarWriter.WriteHeader(hdr)
+		if err != nil {
+			return numFilesArchived, err
+		}
+
+		in, err := os.Open(file.Path)
+		if err != nil {
+			return numFilesArchived, err
+		}
+		amountWrote, err := io.Copy(tarWriter, in)
+		if err != nil {
+			logger.Debug(in.Close())
+			return numFilesArchived, err
+		}
+
+		if amountWrote != hdr.Size {
+			logger.Debug(in.Close())
+			return numFilesArchived, err
+		}
+		logger.Debug(in.Close())
+		logger.Warning(tarWriter.Flush())
 	}
+
+	return numFilesArchived, nil
 }
 
 func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
