@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -425,7 +426,134 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	if err = processTriggerAliases(ctx, p, projectRef); err != nil {
+		return nil, errors.Wrap(err, "problem processing trigger aliases")
+	}
+
 	return patchVersion, nil
+}
+
+func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *ProjectRef) error {
+	if len(p.TriggerAliases) == 0 {
+		return nil
+	}
+
+	type aliasGroup struct {
+		project        string
+		status         string
+		parentAsModule string
+	}
+	aliasGroups := make(map[aliasGroup][]PatchTriggerDefinition)
+	for _, aliasName := range p.TriggerAliases {
+		aliasFound := false
+		var alias PatchTriggerDefinition
+		for _, alias = range projectRef.PatchTriggerAliases {
+			if alias.Alias == aliasName {
+				aliasFound = true
+				break
+			}
+		}
+		if !aliasFound {
+			// the user specified a non-existent alias
+			continue
+		}
+
+		// group patches on project, status, parentAsModule
+		group := aliasGroup{
+			project:        alias.ChildProject,
+			status:         alias.Status,
+			parentAsModule: alias.ParentAsModule,
+		}
+		aliasGroups[group] = append(aliasGroups[group], alias)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for group, definitions := range aliasGroups {
+		if group.status == "" {
+			catcher.Add(errors.Wrap(makePatchFromDefinitions(ctx, p, group.project, group.parentAsModule, definitions), "problem creating patch for alias definitions"))
+		} else {
+			catcher.Add(errors.Wrap(subscribeOnPatchOutcome(p, group.status, definitions), "problem subscribing alias definitions on patch outcome"))
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) error {
+	if len(definitions) == 0 {
+		return nil
+	}
+
+	v, project, err := FindLatestVersionWithValidProject(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "problem getting last known project for '%s'", projectID)
+	}
+
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshal child project")
+	}
+
+	matchingTasks, err := project.VariantTasksForSelectors(definitions, p.GetRequester())
+	if err != nil {
+		return errors.Wrap(err, "problem matching tasks to alias definitions")
+	}
+
+	user, err := user.FindOneById(p.Author)
+	if err != nil {
+		return errors.Wrapf(err, "can't get user '%s'", p.Author)
+	}
+	if user == nil {
+		return errors.New("can't find parent patch author")
+	}
+
+	patchNumber, err := user.IncPatchNumber()
+	if err != nil {
+		return errors.Wrapf(err, "can't increment patch number for '%s'", user.Id)
+	}
+
+	patchDoc := &patch.Patch{
+		Id:            mgobson.NewObjectId(),
+		Githash:       v.Revision,
+		VariantsTasks: matchingTasks,
+		Project:       projectID,
+		Author:        p.Author,
+		Description:   fmt.Sprintf("Child patch for '%s'", p.Id.Hex()),
+		Status:        evergreen.PatchCreated,
+		CreateTime:    time.Now(),
+		PatchNumber:   patchNumber,
+		PatchedConfig: string(yamlBytes),
+	}
+
+	if parentAsModule != "" {
+		for _, p := range p.Patches {
+			if p.ModuleName == "" {
+				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+					ModuleName: parentAsModule,
+					PatchSet:   p.PatchSet,
+				})
+				break
+			}
+		}
+	}
+
+	if err = patchDoc.Insert(); err != nil {
+		return errors.Wrap(err, "can't insert child patch")
+	}
+
+	token, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "error getting github token from settings")
+	}
+
+	_, err = FinalizePatch(ctx, patchDoc, patchDoc.GetRequester(), token)
+	return errors.Wrap(err, "problem finalizing child patch")
+}
+
+func subscribeOnPatchOutcome(patch *patch.Patch, status string, definitions []PatchTriggerDefinition) error {
+	// TODO
+	return nil
 }
 
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {

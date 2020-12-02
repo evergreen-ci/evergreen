@@ -34,9 +34,10 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			project, err := FindLastKnownGoodProject(projRef.Id)
+			version, project, err := FindLatestVersionWithValidProject(projRef.Id)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
+			So(version, ShouldBeNil)
 		})
 
 		Convey("if the project file exists and is valid, the project spec within"+
@@ -58,7 +59,7 @@ func TestFindProject(t *testing.T) {
 				Branch: "fakebranch",
 			}
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, err := FindLastKnownGoodProject(p.Id)
+			_, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
@@ -86,10 +87,11 @@ func TestFindProject(t *testing.T) {
 			}
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
-			p, err := FindLastKnownGoodProject("project_test")
+			v, p, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
 			So(p, ShouldNotBeNil)
 			So(p.Owner, ShouldEqual, "fakeowner")
+			So(v.Id, ShouldEqual, "good_version")
 		})
 
 	})
@@ -672,7 +674,7 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
+	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]})
 	s.NoError(err)
 	s.Len(pairs, 11)
 	pairStrs := make([]string, len(pairs))
@@ -694,7 +696,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -703,7 +705,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[2].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -712,7 +714,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[3].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -721,7 +723,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex selects the union of both
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -730,20 +732,20 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test for display tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]})
 	s.NoError(err)
 	s.Empty(pairs)
 	s.Require().Len(displayTaskPairs, 1)
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test for alias including a task belong to a disabled variant
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]})
 	s.NoError(err)
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
 	s.Empty(displayTaskPairs)
 
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[8].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]})
 	s.NoError(err)
 	s.Require().Len(pairs, 2)
 	s.Equal("bv_2/a_task_1", pairs[0].String())
