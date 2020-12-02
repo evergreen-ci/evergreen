@@ -124,6 +124,19 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
+type Patches struct {
+	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int               `json:"filteredPatchCount"`
+}
+
+type PatchesInput struct {
+	Limit              *int     `json:"limit"`
+	Page               *int     `json:"page"`
+	PatchName          *string  `json:"patchName"`
+	Statuses           []string `json:"statuses"`
+	IncludeCommitQueue *bool    `json:"includeCommitQueue"`
+}
+
 type ProjectBuildVariant struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"displayName"`

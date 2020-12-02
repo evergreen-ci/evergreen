@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Task() TaskResolver
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
+	User() UserResolver
 	Volume() VolumeResolver
 }
 
@@ -396,6 +397,11 @@ type ComplexityRoot struct {
 		SubmittedAt func(childComplexity int) int
 	}
 
+	Patches struct {
+		FilteredPatchCount func(childComplexity int) int
+		Patches            func(childComplexity int) int
+	}
+
 	Project struct {
 		DisplayName func(childComplexity int) int
 		Identifier  func(childComplexity int) int
@@ -656,6 +662,7 @@ type ComplexityRoot struct {
 	User struct {
 		DisplayName  func(childComplexity int) int
 		EmailAddress func(childComplexity int) int
+		Patches      func(childComplexity int, patchesInput PatchesInput) int
 		UserID       func(childComplexity int) int
 	}
 
@@ -825,6 +832,9 @@ type TaskQueueItemResolver interface {
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
+}
+type UserResolver interface {
+	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -2524,6 +2534,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchTime.SubmittedAt(childComplexity), true
 
+	case "Patches.filteredPatchCount":
+		if e.complexity.Patches.FilteredPatchCount == nil {
+			break
+		}
+
+		return e.complexity.Patches.FilteredPatchCount(childComplexity), true
+
+	case "Patches.patches":
+		if e.complexity.Patches.Patches == nil {
+			break
+		}
+
+		return e.complexity.Patches.Patches(childComplexity), true
+
 	case "Project.displayName":
 		if e.complexity.Project.DisplayName == nil {
 			break
@@ -3902,6 +3926,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.User.EmailAddress(childComplexity), true
 
+	case "User.patches":
+		if e.complexity.User.Patches == nil {
+			break
+		}
+
+		args, err := ec.field_User_patches_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.User.Patches(childComplexity, args["patchesInput"].(PatchesInput)), true
+
 	case "User.userId":
 		if e.complexity.User.UserID == nil {
 			break
@@ -4392,6 +4428,14 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+input PatchesInput {
+  limit: Int = 0
+  page: Int = 0
+  patchName: String = ""
+  statuses: [String!] = []
+  includeCommitQueue: Boolean = false
+}
+
 input SpawnHostInput {
   distroId: String!
   region: String!
@@ -4562,6 +4606,11 @@ type FileDiff {
 }
 
 type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+type Patches {
   patches: [Patch!]!
   filteredPatchCount: Int!
 }
@@ -4822,6 +4871,7 @@ type User {
   displayName: String!
   userId: String!
   emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type RecentTaskLogs {
@@ -6164,6 +6214,20 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["userId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_User_patches_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 PatchesInput
+	if tmp, ok := rawArgs["patchesInput"]; ok {
+		arg0, err = ec.unmarshalNPatchesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchesInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchesInput"] = arg0
 	return args, nil
 }
 
@@ -13532,6 +13596,74 @@ func (ec *executionContext) _PatchTime_submittedAt(ctx context.Context, field gr
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patches",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Patches, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPatch)
+	fc.Result = res
+	return ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patches_filteredPatchCount(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patches",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredPatchCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_identifier(ctx context.Context, field graphql.CollectedField, obj *model.UIProjectFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -19798,6 +19930,47 @@ func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _User_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "User",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_User_patches_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().Patches(rctx, obj, args["patchesInput"].(PatchesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Patches)
+	fc.Result = res
+	return ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UserConfig_user(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21984,6 +22157,48 @@ func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, ob
 		case "parameters":
 			var err error
 			it.Parameters, err = ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj interface{}) (PatchesInput, error) {
+	var it PatchesInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "limit":
+			var err error
+			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "page":
+			var err error
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchName":
+			var err error
+			it.PatchName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "statuses":
+			var err error
+			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeCommitQueue":
+			var err error
+			it.IncludeCommitQueue, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -24296,6 +24511,38 @@ func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var patchesImplementors = []string{"Patches"}
+
+func (ec *executionContext) _Patches(ctx context.Context, sel ast.SelectionSet, obj *Patches) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, patchesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Patches")
+		case "patches":
+			out.Values[i] = ec._Patches_patches(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filteredPatchCount":
+			out.Values[i] = ec._Patches_filteredPatchCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var projectImplementors = []string{"Project"}
 
 func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, obj *model.UIProjectFields) graphql.Marshaler {
@@ -26018,18 +26265,32 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "userId":
 			out.Values[i] = ec._User_userId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "emailAddress":
 			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "patches":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_patches(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27565,6 +27826,24 @@ func (ec *executionContext) marshalNPatchTasks2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTasks(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPatches2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx context.Context, sel ast.SelectionSet, v Patches) graphql.Marshaler {
+	return ec._Patches(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx context.Context, sel ast.SelectionSet, v *Patches) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Patches(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPatchesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchesInput(ctx context.Context, v interface{}) (PatchesInput, error) {
+	return ec.unmarshalInputPatchesInput(ctx, v)
 }
 
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐUIProjectFields(ctx context.Context, sel ast.SelectionSet, v model.UIProjectFields) graphql.Marshaler {

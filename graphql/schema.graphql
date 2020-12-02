@@ -228,6 +228,14 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+input PatchesInput {
+  limit: Int = 0
+  page: Int = 0
+  patchName: String = ""
+  statuses: [String!] = []
+  includeCommitQueue: Boolean = false
+}
+
 input SpawnHostInput {
   distroId: String!
   region: String!
@@ -398,6 +406,11 @@ type FileDiff {
 }
 
 type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+type Patches {
   patches: [Patch!]!
   filteredPatchCount: Int!
 }
@@ -658,6 +671,7 @@ type User {
   displayName: String!
   userId: String!
   emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type RecentTaskLogs {

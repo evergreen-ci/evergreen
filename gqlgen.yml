@@ -74,6 +74,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
+    fields:
+      patches:
+        resolver: true
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskEventLogData:

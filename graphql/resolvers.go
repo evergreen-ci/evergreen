@@ -62,11 +62,15 @@ func (r *Resolver) Volume() VolumeResolver {
 func (r *Resolver) TaskQueueItem() TaskQueueItemResolver {
 	return &taskQueueItemResolver{r}
 }
+func (r *Resolver) User() UserResolver {
+	return &userResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -2115,6 +2119,19 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 		EmailAddress: &email,
 	}
 	return &user, nil
+}
+
+func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(*obj.UserID, *patchesInput.PatchName, patchesInput.Statuses, *patchesInput.IncludeCommitQueue, *patchesInput.Page, *patchesInput.Limit)
+	patchPointers := []*restModel.APIPatch{}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
+	}
+
+	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
 }
 
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
