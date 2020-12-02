@@ -231,7 +231,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 	return dependencies, nil
 }
 
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
@@ -243,16 +243,15 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
-	return &restModel.UIProjectFields{
-		DisplayName: p.DisplayName,
-		Identifier:  p.Identifier,
-		Repo:        p.Repo,
-		Owner:       p.Owner,
-	}, nil
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, &gqlerror.Error{
@@ -276,12 +275,12 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		}
 	}
 
-	return &restModel.UIProjectFields{
-		DisplayName: p.DisplayName,
-		Identifier:  p.Identifier,
-		Repo:        p.Repo,
-		Owner:       p.Owner,
-	}, nil
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
@@ -976,28 +975,25 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	}
 
 	usr := MustHaveUser(ctx)
-	groupsMap := make(map[string][]*restModel.UIProjectFields)
-	favorites := []*restModel.UIProjectFields{}
+	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	favorites := []*restModel.APIProjectRef{}
 
 	for _, p := range allProjs {
 		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-
-		uiProj := restModel.UIProjectFields{
-			DisplayName: p.DisplayName,
-			Identifier:  p.Identifier,
-			Repo:        p.Repo,
-			Owner:       p.Owner,
+		apiProjectRef := restModel.APIProjectRef{}
+		pErr := apiProjectRef.BuildFromService(p)
+		if pErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 		}
-
 		// favorite projects are filtered out and appended to their own array
 		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
-			favorites = append(favorites, &uiProj)
+			favorites = append(favorites, &apiProjectRef)
 			continue
 		}
 		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &uiProj)
+			groupsMap[groupName] = append(projs, &apiProjectRef)
 		} else {
-			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
+			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
 		}
 	}
 

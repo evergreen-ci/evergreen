@@ -63,8 +63,8 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                   `json:"name"`
-	Projects []*model.UIProjectFields `json:"projects"`
+	Name     string                 `json:"name"`
+	Projects []*model.APIProjectRef `json:"projects"`
 }
 
 type HostEvents struct {
@@ -144,8 +144,8 @@ type ProjectBuildVariant struct {
 }
 
 type Projects struct {
-	Favorites     []*model.UIProjectFields `json:"favorites"`
-	OtherProjects []*GroupedProjects       `json:"otherProjects"`
+	Favorites     []*model.APIProjectRef `json:"favorites"`
+	OtherProjects []*GroupedProjects     `json:"otherProjects"`
 }
 
 type PublicKeyInput struct {

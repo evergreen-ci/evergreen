@@ -71,7 +71,7 @@ models:
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   Project:
-    model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
     fields:
