@@ -21,13 +21,6 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 		}
 	}
 
-	if err := update.BuildFromService(*config); err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		}
-	}
-
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -35,9 +28,19 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 			Message:    err.Error(),
 		}
 	}
-	if flags != nil {
-		update.IgnoreUpdate = flags.CLIUpdatesDisabled
+	if flags.S3BinaryDownloadsDisabled {
+		config.S3ClientBinaries = nil
 	}
+
+	if err := update.BuildFromService(*config); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+
+	update.IgnoreUpdate = flags.CLIUpdatesDisabled
+
 	return update, nil
 }
 
