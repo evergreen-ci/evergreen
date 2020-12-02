@@ -153,19 +153,19 @@ func (g *cliIntent) RequesterIdentity() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:    c.Description,
-		Author:         c.User,
-		Project:        c.ProjectID,
-		Githash:        c.BaseHash,
-		Status:         evergreen.PatchCreated,
-		BuildVariants:  c.BuildVariants,
-		Parameters:     c.Parameters,
-		Alias:          c.Alias,
-		TriggerAliases: c.TriggerAliases,
-		Tasks:          c.Tasks,
-		SyncAtEndOpts:  c.SyncAtEndOpts,
-		BackportOf:     c.BackportOf,
-		Patches:        []ModulePatch{},
+		Description:   c.Description,
+		Author:        c.User,
+		Project:       c.ProjectID,
+		Githash:       c.BaseHash,
+		Status:        evergreen.PatchCreated,
+		BuildVariants: c.BuildVariants,
+		Parameters:    c.Parameters,
+		Alias:         c.Alias,
+		Triggers:      TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:         c.Tasks,
+		SyncAtEndOpts: c.SyncAtEndOpts,
+		BackportOf:    c.BackportOf,
+		Patches:       []ModulePatch{},
 	}
 	if p.BackportOf.PatchID == "" { // the intent processor adds the patches if backporting by patch ID
 		p.Patches = append(p.Patches,

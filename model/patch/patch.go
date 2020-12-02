@@ -148,7 +148,7 @@ type Patch struct {
 	Activated       bool                   `bson:"activated"`
 	PatchedConfig   string                 `bson:"patched_config"`
 	Alias           string                 `bson:"alias"`
-	TriggerAliases  []string               `bson:"trigger_aliases"`
+	Triggers        TriggerInfo            `bson:"triggers"`
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
@@ -173,6 +173,22 @@ type PatchSet struct {
 	PatchFileId    string               `bson:"patch_file_id,omitempty"`
 	CommitMessages []string             `bson:"commit_messages,omitempty"`
 	Summary        []thirdparty.Summary `bson:"summary"`
+}
+
+type TriggerInfo struct {
+	Aliases      []string `bson:"aliases,omitempty"`
+	ParentPatch  string   `bson:"parent_patch,omitempty"`
+	ChildPatches []string `bson:"child_patches,omitempty"`
+}
+
+func (p *Patch) AppendChildPatches(childPatchIDs []string) error {
+	p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, childPatchIDs...)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$push": bson.M{bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey): bson.M{"$each": childPatchIDs}},
+		},
+	)
 }
 
 // SetDescription sets a patch's description in the database

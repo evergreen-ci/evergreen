@@ -435,7 +435,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 }
 
 func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *ProjectRef) error {
-	if len(p.TriggerAliases) == 0 {
+	if len(p.Triggers.Aliases) == 0 {
 		return nil
 	}
 
@@ -445,7 +445,7 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 		parentAsModule string
 	}
 	aliasGroups := make(map[aliasGroup][]PatchTriggerDefinition)
-	for _, aliasName := range p.TriggerAliases {
+	for _, aliasName := range p.Triggers.Aliases {
 		aliasFound := false
 		var alias PatchTriggerDefinition
 		for _, alias = range projectRef.PatchTriggerAliases {
@@ -468,53 +468,63 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 		aliasGroups[group] = append(aliasGroups[group], alias)
 	}
 
-	catcher := grip.NewBasicCatcher()
+	childPatchIDs := []string{}
 	for group, definitions := range aliasGroups {
 		if group.status == "" {
-			catcher.Add(errors.Wrap(makePatchFromDefinitions(ctx, p, group.project, group.parentAsModule, definitions), "problem creating patch for alias definitions"))
+			childPatchID, err := makePatchFromDefinitions(ctx, p, group.project, group.parentAsModule, definitions)
+			if err != nil {
+				return errors.Wrap(err, "problem creating patch for alias definitions")
+			}
+			if childPatchID != "" {
+				childPatchIDs = append(childPatchIDs, childPatchID)
+			}
 		} else {
-			catcher.Add(errors.Wrap(subscribeOnPatchOutcome(p, group.status, definitions), "problem subscribing alias definitions on patch outcome"))
+			if err := subscribeOnPatchOutcome(p, group.status, definitions); err != nil {
+				return errors.Wrap(err, "problem subscribing alias definitions on patch outcome")
+			}
+
 		}
 	}
 
-	return catcher.Resolve()
+	return p.AppendChildPatches(childPatchIDs)
 }
 
-func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) error {
+func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) (string, error) {
 	if len(definitions) == 0 {
-		return nil
+		return "", nil
 	}
 
 	v, project, err := FindLatestVersionWithValidProject(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "problem getting last known project for '%s'", projectID)
+		return "", errors.Wrapf(err, "problem getting last known project for '%s'", projectID)
 	}
 
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return errors.Wrap(err, "can't marshal child project")
+		return "", errors.Wrap(err, "can't marshal child project")
 	}
 
 	matchingTasks, err := project.VariantTasksForSelectors(definitions, p.GetRequester())
 	if err != nil {
-		return errors.Wrap(err, "problem matching tasks to alias definitions")
+		return "", errors.Wrap(err, "problem matching tasks to alias definitions")
 	}
 
 	user, err := user.FindOneById(p.Author)
 	if err != nil {
-		return errors.Wrapf(err, "can't get user '%s'", p.Author)
+		return "", errors.Wrapf(err, "can't get user '%s'", p.Author)
 	}
 	if user == nil {
-		return errors.New("can't find parent patch author")
+		return "", errors.New("can't find parent patch author")
 	}
 
 	patchNumber, err := user.IncPatchNumber()
 	if err != nil {
-		return errors.Wrapf(err, "can't increment patch number for '%s'", user.Id)
+		return "", errors.Wrapf(err, "can't increment patch number for '%s'", user.Id)
 	}
 
+	newPatchID := mgobson.NewObjectId()
 	patchDoc := &patch.Patch{
-		Id:            mgobson.NewObjectId(),
+		Id:            newPatchID,
 		Githash:       v.Revision,
 		VariantsTasks: matchingTasks,
 		Project:       projectID,
@@ -524,6 +534,7 @@ func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, pa
 		CreateTime:    time.Now(),
 		PatchNumber:   patchNumber,
 		PatchedConfig: string(yamlBytes),
+		Triggers:      patch.TriggerInfo{ParentPatch: p.Id.Hex()},
 	}
 
 	if parentAsModule != "" {
@@ -539,16 +550,20 @@ func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, pa
 	}
 
 	if err = patchDoc.Insert(); err != nil {
-		return errors.Wrap(err, "can't insert child patch")
+		return "", errors.Wrap(err, "can't insert child patch")
 	}
 
 	token, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
 	if err != nil {
-		return errors.Wrap(err, "error getting github token from settings")
+		return "", errors.Wrap(err, "error getting github token from settings")
 	}
 
 	_, err = FinalizePatch(ctx, patchDoc, patchDoc.GetRequester(), token)
-	return errors.Wrap(err, "problem finalizing child patch")
+	if err != nil {
+		return "", errors.Wrap(err, "problem finalizing child patch")
+	}
+
+	return newPatchID.Hex(), nil
 }
 
 func subscribeOnPatchOutcome(patch *patch.Patch, status string, definitions []PatchTriggerDefinition) error {
