@@ -105,7 +105,7 @@ message BuildloggerV3Info {
   int32 execution = 6;
   string test_name = 7;
   int32 trial = 8;
-  string process_name = 9;
+  string proc_name = 9;
   LogFormat format = 10;
   repeated string tags = 11;
   map<string, string> args = 12;

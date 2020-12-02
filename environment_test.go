@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,8 +86,8 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	}
 
 	folders := []string{
-		"darwin_amd64_obviouslynotherealone",
-		"linux_z80_obviouslynotherealone",
+		"darwin_amd64_obviouslynottherealone",
+		"linux_z80_obviouslynottherealone",
 	}
 	for _, folder := range folders {
 		path := root + "/" + folder
@@ -101,15 +102,15 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		}()
 	}
 
-	client, err := getClientConfig("https://example.com")
-	s.NoError(err)
+	client, err := getClientConfig("https://example.com", "")
+	s.Require().NoError(err)
 	s.Require().NotNil(client)
 
 	s.Equal(ClientVersion, client.LatestRevision)
 
 	cb := []ClientBinary{}
 	for _, b := range client.ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynotherealone/") {
+		if strings.Contains(b.URL, "_obviouslynottherealone/") {
 			cb = append(cb, b)
 		}
 	}
@@ -117,8 +118,44 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Require().Len(cb, 2)
 	s.Equal("amd64", cb[0].Arch)
 	s.Equal("darwin", cb[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynotherealone/evergreen", cb[0].URL)
+	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", cb[0].URL)
 	s.Equal("z80", cb[1].Arch)
 	s.Equal("linux", cb[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", cb[1].URL)
+	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
+
+	client, err = getClientConfig("https://example.com", "https://another-example.com")
+	s.Require().NoError(err)
+	s.Require().NotNil(client)
+
+	s.Equal(ClientVersion, client.LatestRevision)
+
+	var binaries []ClientBinary
+	for _, b := range client.ClientBinaries {
+		if strings.Contains(b.URL, "_obviouslynottherealone/") {
+			binaries = append(binaries, b)
+		}
+	}
+
+	s.Require().Len(binaries, 2)
+	s.Equal("amd64", binaries[0].Arch)
+	s.Equal("darwin", binaries[0].OS)
+	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", binaries[0].URL)
+	s.Equal("z80", binaries[1].Arch)
+	s.Equal("linux", binaries[1].OS)
+	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", binaries[1].URL)
+
+	var s3Binaries []ClientBinary
+	for _, b := range client.S3ClientBinaries {
+		if strings.Contains(b.URL, "_obviouslynottherealone/") {
+			s3Binaries = append(s3Binaries, b)
+		}
+	}
+
+	s.Require().Len(s3Binaries, 2)
+	s.Equal("amd64", s3Binaries[0].Arch)
+	s.Equal("darwin", s3Binaries[0].OS)
+	s.Equal(fmt.Sprintf("https://another-example.com/%s/darwin_amd64_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[0].URL)
+	s.Equal("z80", s3Binaries[1].Arch)
+	s.Equal("linux", s3Binaries[1].OS)
+	s.Equal(fmt.Sprintf("https://another-example.com/%s/linux_z80_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[1].URL)
 }
