@@ -123,36 +123,42 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		})
 	}
 	apiPatch.Parameters = params
-	codeChanges := []APIModulePatch{}
-	apiURL := evergreen.GetEnvironment().Settings().ApiUrl
-	for patchNumber, modPatch := range v.Patches {
-		branchName := modPatch.ModuleName
-		if branchName == "" {
-			branchName = v.Project
-		}
-		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-		fileDiffs := []FileDiff{}
-		for _, file := range modPatch.PatchSet.Summary {
-			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
-			fileName := file.Name
-			fileDiff := FileDiff{
-				FileName:  &fileName,
-				Additions: file.Additions,
-				Deletions: file.Deletions,
-				DiffLink:  &diffLink,
+
+	if env := evergreen.GetEnvironment(); env != nil {
+		codeChanges := []APIModulePatch{}
+		apiURL := env.Settings().ApiUrl
+
+		for patchNumber, modPatch := range v.Patches {
+			branchName := modPatch.ModuleName
+			if branchName == "" {
+				branchName = v.Project
 			}
-			fileDiffs = append(fileDiffs, fileDiff)
+			htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+			rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+			fileDiffs := []FileDiff{}
+			for _, file := range modPatch.PatchSet.Summary {
+				diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
+				fileName := file.Name
+				fileDiff := FileDiff{
+					FileName:  &fileName,
+					Additions: file.Additions,
+					Deletions: file.Deletions,
+					DiffLink:  &diffLink,
+				}
+				fileDiffs = append(fileDiffs, fileDiff)
+			}
+			apiModPatch := APIModulePatch{
+				BranchName: &branchName,
+				HTMLLink:   &htmlLink,
+				RawLink:    &rawLink,
+				FileDiffs:  fileDiffs,
+			}
+			codeChanges = append(codeChanges, apiModPatch)
 		}
-		apiModPatch := APIModulePatch{
-			BranchName: &branchName,
-			HTMLLink:   &htmlLink,
-			RawLink:    &rawLink,
-			FileDiffs:  fileDiffs,
-		}
-		codeChanges = append(codeChanges, apiModPatch)
+
+		apiPatch.ModuleCodeChanges = codeChanges
 	}
-	apiPatch.ModuleCodeChanges = codeChanges
+
 	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = ToStringPtr(v.Project)
 	apiPatch.CanEnqueueToCommitQueue = v.CanEnqueueToCommitQueue()
