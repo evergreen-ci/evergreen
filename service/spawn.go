@@ -49,8 +49,21 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	currentUser := MustHaveUser(r)
-	spruceLink := fmt.Sprintf("%s/spawn", uis.Settings.Ui.UIv2Url)
 
+	hasQueryParams := false
+	spruceQueryParams := "/host?spawnHost=True"
+	if len(r.FormValue("distro_id")) > 0 {
+		spruceQueryParams += fmt.Sprintf("&distroId=%s", r.FormValue("distro_id"))
+		hasQueryParams = true
+	}
+	if len(r.FormValue("task_id")) > 0 {
+		spruceQueryParams += fmt.Sprintf("&taskId=%s", r.FormValue("task_id"))
+		hasQueryParams = true
+	}
+	spruceLink := fmt.Sprintf("%s/spawn", uis.Settings.Ui.UIv2Url)
+	if hasQueryParams {
+		spruceLink += spruceQueryParams
+	}
 	if currentUser.Settings.UseSpruceOptions.SpruceV1 {
 		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
 		return
