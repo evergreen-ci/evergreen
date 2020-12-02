@@ -228,6 +228,7 @@ type envState struct {
 	client                  *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
+	s3ClientBinaries        []ClientBinary
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
 	roleManager             gimlet.RoleManager
@@ -503,13 +504,11 @@ func (e *envState) initClientConfig() {
 	}
 	var err error
 
-	e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
-
+	e.clientConfig, err = getClientConfig(e.settings.Ui.Url, e.settings.HostInit.S3BaseURL)
 	if err != nil {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "problem finding local clients",
 			"cause":   "infrastructure configuration issue",
-			"impact":  "agent deploys",
 		}))
 	} else if len(e.clientConfig.ClientBinaries) == 0 {
 		grip.Critical("No clients are available for this server")
@@ -956,7 +955,7 @@ func (e *envState) Close(ctx context.Context) error {
 //
 // If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func getClientConfig(baseURL string) (*ClientConfig, error) {
+func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
@@ -979,13 +978,25 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 		parts := strings.Split(path, string(filepath.Separator))
 		buildInfo := strings.Split(parts[len(parts)-2], "_")
 		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
+		archPath := strings.Join(parts[len(parts)-2:], "/")
 		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL: fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory,
-				strings.Join(parts[len(parts)-2:], "/")),
+			URL:         fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory, archPath),
 			OS:          buildInfo[0],
 			Arch:        buildInfo[1],
 			DisplayName: displayName,
 		})
+		if s3BaseURL != "" {
+			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
+				URL: strings.Join([]string{
+					strings.TrimSuffix(s3BaseURL, "/"),
+					BuildRevision,
+					archPath,
+				}, "/"),
+				OS:          buildInfo[0],
+				Arch:        buildInfo[1],
+				DisplayName: displayName,
+			})
+		}
 
 		return nil
 	})
