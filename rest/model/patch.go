@@ -123,9 +123,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		})
 	}
 	apiPatch.Parameters = params
-	codeChanges := []APIModulePatch{}
 
 	if env := evergreen.GetEnvironment(); env != nil {
+		codeChanges := []APIModulePatch{}
 		apiURL := env.Settings().ApiUrl
 
 		for patchNumber, modPatch := range v.Patches {
@@ -155,9 +155,10 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 			}
 			codeChanges = append(codeChanges, apiModPatch)
 		}
+
+		apiPatch.ModuleCodeChanges = codeChanges
 	}
 
-	apiPatch.ModuleCodeChanges = codeChanges
 	apiPatch.PatchedConfig = ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = ToStringPtr(v.Project)
 	apiPatch.CanEnqueueToCommitQueue = v.CanEnqueueToCommitQueue()
