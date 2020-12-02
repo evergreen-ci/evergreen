@@ -5,9 +5,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -108,6 +110,13 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 
 func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, workingDir string) error {
 	cmd := jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath).Directory(workingDir)
+	if runtime.GOOS != "windows" {
+		// For non-Windows distros, it is beneficial to have output from the
+		// script. However, on Windows, we have to suppress it because it can
+		// cause the PowerShell environment that it's executing in to hang if it
+		// produces too much output.
+		cmd.SetOutputWriter(utility.NopWriteCloser(os.Stdout)).SetErrorWriter(utility.NopWriteCloser(os.Stderr))
+	}
 	if err := cmd.Run(ctx); err != nil {
 		return errors.WithStack(err)
 	}
