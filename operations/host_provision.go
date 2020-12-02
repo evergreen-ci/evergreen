@@ -86,7 +86,7 @@ func hostProvision() cli.Command {
 }
 
 // makeHostProvisioningScriptFile creates the working directory with the host
-// provisioning script in it. Returns the
+// provisioning script in it. Returns the absolute path to the script.
 // Note: we have to write the host provisioning script to a file instead of
 // running it directly like with 'sh -c "<script>"' because the script will exit
 // before it finishes executing on Windows.

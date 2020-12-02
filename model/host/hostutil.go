@@ -451,9 +451,8 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	if h.Distro.IsWindows() {
 		var setupScriptCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			// If we're fetching the provisioning script, we can just execute
-			// the setup script commands directly rather than write it to an
-			// intermediate file.
+			// If we're fetching the provisioning script, we do not need to
+			// write the setup script to its own intermediate file.
 			var setupScript string
 			setupScript, err = h.setupScriptCommands(settings)
 			if err != nil {
