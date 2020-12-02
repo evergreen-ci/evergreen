@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -23,10 +22,6 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
 
 	numFilesArchived := 0
-	defer func() {
-		grip.Alert(recovery.HandlePanicWithError(recover(), nil,
-			"building archive"))
-	}()
 	processed := map[string]bool{}
 	logger.Infof("beginning to build archive")
 FileLoop:
