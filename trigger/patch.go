@@ -2,12 +2,14 @@ package trigger
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -152,6 +154,10 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			Color:     slackColor,
 		})
 	}
+	finishTime := t.patch.FinishTime
+	if utility.IsZeroTime(finishTime) {
+		finishTime = time.Now()
+	}
 
 	data.slack = append(data.slack, message.SlackAttachment{
 		Title:     "Evergreen Patch",
@@ -160,8 +166,8 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		Color:     slackColor,
 		Fields: []*message.SlackAttachmentField{
 			{
-				Title: "Makespan",
-				Value: t.patch.FinishTime.Sub(t.patch.StartTime).String(),
+				Title: "Time Taken",
+				Value: finishTime.Sub(t.patch.StartTime).String(),
 			},
 		},
 	})
