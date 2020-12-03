@@ -378,10 +378,10 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
-// GenerateUserDataProvisioningScript creates the script to provision the host
-// through user data. If, for some reason, this script gets interrupted, there's
-// no guarantee that it will succeed if run again, since we cannot enforce
-// idempotency on the setup script.
+// GenerateUserDataProvisioningScript creates a script to provision a host that
+// is provisioning in user data. If, for some reason, this script gets
+// interrupted, there's no guarantee that it will succeed if run again, since we
+// cannot enforce idempotency on the setup script.
 func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
 	var err error
 	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
@@ -1223,8 +1223,8 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	return nil
 }
 
-// GenerateFetchProvisioningScriptUserData creates the user data to fetch the
-// host provisioning script from the server.
+// GenerateFetchProvisioningScriptUserData creates the user data script to fetch
+// the host provisioning script.
 func (h *Host) GenerateFetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
 	if h.Secret == "" {
 		if err := h.CreateSecret(); err != nil {
