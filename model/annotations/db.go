@@ -18,7 +18,6 @@ var (
 	IssuesKey          = bsonutil.MustHaveTag(TaskAnnotation{}, "Issues")
 	SuspectedIssuesKey = bsonutil.MustHaveTag(TaskAnnotation{}, "SuspectedIssues")
 
-	NoteMessageKey    = bsonutil.MustHaveTag(Note{}, "Message")
 	IssueLinkIssueKey = bsonutil.MustHaveTag(IssueLink{}, "IssueKey")
 )
 

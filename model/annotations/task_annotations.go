@@ -109,7 +109,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
-		return errors.New("note has already been updated")
+		return errors.New("note is out of sync, please try again")
 	}
 	_, err = db.Upsert(
 		Collection,
