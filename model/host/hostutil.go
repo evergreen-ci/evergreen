@@ -383,8 +383,6 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // it will succeed if run again, since we cannot enforce idempotency on the
 // setup script.
 func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
-	shellPrefix := []string{"set -o errexit", "set -o verbose"}
-
 	var fetchClient, fixClientOwner string
 	var err error
 	// If we're fetching the provisioning script from the app server, the
@@ -453,6 +451,8 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	if h.Distro.IsWindows() {
 		var setupScriptCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// If we're fetching the provisioning script, we do not need to
+			// write the setup script to its own intermediate file.
 			var setupScript string
 			setupScript, err = h.setupScriptCommands(settings)
 			if err != nil {
@@ -492,11 +492,17 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 
 		var shellCmds []string
 		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			shellCmds = append(shellCmds, shellPrefix...)
+			// We cannot run Windows user data with verbose output (i.e. 'set -o
+			// verbose') because PowerShell user data hangs if too much output
+			// is produced.
+			shellPrefix := "set -o errexit"
+			shellCmds = append(shellCmds, shellPrefix)
 		}
 		shellCmds = append(shellCmds, setupScriptCmds...)
 		shellCmds = append(shellCmds, setupJasperCmds...)
 		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// The setup script is only written to a file if we're not fetching
+			// the provisioning script.
 			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
 		}
 		shellCmds = append(shellCmds, postFetchClient, markDone)
@@ -542,6 +548,7 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 		fixJasperDirsOwner,
 	)
 
+	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
 	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)

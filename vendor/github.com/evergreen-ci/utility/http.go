@@ -1,13 +1,21 @@
 package utility
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/json"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/jpillora/backoff"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
 
@@ -280,4 +288,73 @@ func IsTemporaryError(err error) bool {
 		return terr.Temporary()
 	}
 	return false
+}
+
+// RespErrorf attempts to read a gimlet.ErrorResponse from the response body
+// JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
+// HTTP status code and the formatted error message. Otherwise, it returns an
+// error message with the HTTP status and raw response body.
+func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
+	if resp == nil {
+		return errors.Errorf(format, args)
+	}
+	wrapError := func(err error) error {
+		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
+		return errors.Wrapf(err, format, args...)
+	}
+
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return wrapError(errors.Wrap(err, "could not read response body"))
+	}
+
+	respErr := gimlet.ErrorResponse{}
+	if err = json.Unmarshal(b, &respErr); err != nil {
+		return wrapError(errors.Errorf("received response: %s", string(b)))
+	}
+
+	return wrapError(respErr)
+}
+
+// RetryRequest takes an http.Request and makes the request until it's successful,
+// hits a max number of retries, or times out
+func RetryRequest(ctx context.Context, r *http.Request, maxAttempts int, minBackoff, maxBackoff time.Duration) (*http.Response, error) {
+	var dur time.Duration
+	b := backoff.Backoff{
+		Min:    minBackoff,
+		Max:    maxBackoff,
+		Factor: 2,
+		Jitter: true,
+	}
+	r = r.WithContext(ctx)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	client := GetDefaultHTTPRetryableClient()
+	defer PutHTTPClient(client)
+	for i := 1; i <= maxAttempts; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("request canceled")
+		case <-timer.C:
+			resp, err := client.Do(r)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "error response from server",
+					"attempt":   i,
+					"max":       maxAttempts,
+					"wait_secs": b.ForAttempt(float64(i)).Seconds(),
+				}))
+			} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return resp, nil
+			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+				return resp, errors.Errorf("server returned status %f", resp.StatusCode)
+			}
+
+			// if we get here it should most likely be a 5xx status code
+			dur = b.Duration()
+			timer.Reset(dur)
+		}
+	}
+	return nil, errors.Errorf("Failed to make request after %d attempts", maxAttempts)
 }

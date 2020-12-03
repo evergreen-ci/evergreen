@@ -289,6 +289,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 	}
+	if newProjectRef.RepoRefId != oldProject.RepoRefId {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "can't change repo ref ID manually",
+		})
+	}
 
 	before, err := h.sc.GetProjectSettingsEvent(newProjectRef)
 	if err != nil {
@@ -432,13 +438,17 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
-	if oldProject.UseRepoSettings != newProjectRef.UseRepoSettings {
-		if newProjectRef.UseRepoSettings {
-			err = newProjectRef.AddToRepoScope(h.user)
-		} else {
-			err = newProjectRef.RemoveFromRepoScope()
+
+	// if owner/repo has changed or we're toggling repo settings off, update scope
+	if newProjectRef.Owner != oldProject.Owner || newProjectRef.Repo != oldProject.Repo ||
+		(!newProjectRef.UseRepoSettings && oldProject.UseRepoSettings) {
+		if err = newProjectRef.RemoveFromRepoScope(); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
 		}
-		if err != nil {
+		newProjectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
+	}
+	if newProjectRef.UseRepoSettings && newProjectRef.RepoRefId == "" {
+		if err = newProjectRef.AddToRepoScope(h.user); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
