@@ -1144,17 +1144,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
-func (bv *BuildVariant) GetDisplayTask(execTask string) *patch.DisplayTask {
-	for _, dt := range bv.DisplayTasks {
-		for _, et := range dt.ExecTasks {
-			if et == execTask {
-				return &dt
-			}
-		}
-	}
-	return nil
-}
-
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
@@ -1402,28 +1391,50 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 }
 
 // extractDisplayTasks adds display tasks and all their execution tasks when
+// pairs.DisplayTasks includes the display task or when
 // one consituent execution task is included
 func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
+	displayTasksToExecTasks := make(map[TVPair][]TVPair)
+	execTaskToDisplayTask := make(map[TVPair]TVPair)
+	for _, bv := range p.BuildVariants {
+		for _, dt := range bv.DisplayTasks {
+			displayTV := TVPair{Variant: bv.Name, TaskName: dt.Name}
+			execTVPairs := make([]TVPair, 0, len(dt.ExecTasks))
+			for _, et := range dt.ExecTasks {
+				exexTV := TVPair{Variant: bv.Name, TaskName: et}
+				execTaskToDisplayTask[exexTV] = displayTV
+				execTVPairs = append(execTVPairs, exexTV)
+			}
+			displayTasksToExecTasks[displayTV] = execTVPairs
+		}
+	}
+
+	// slices -> sets
 	displayTaskSet := make(map[TVPair]bool)
-	executionTaskSet := make(map[TVPair]bool)
 	for _, dt := range pairs.DisplayTasks {
 		displayTaskSet[dt] = true
 	}
+	executionTaskSet := make(map[TVPair]bool)
 	for _, et := range pairs.ExecTasks {
 		executionTaskSet[et] = true
 	}
 
-	for _, pair := range pairs.ExecTasks {
-		bv := p.FindBuildVariant(pair.Variant)
-		dt := bv.GetDisplayTask(pair.TaskName)
-		if dt != nil {
-			displayTaskSet[TVPair{Variant: pair.Variant, TaskName: dt.Name}] = true
-			for _, et := range dt.ExecTasks {
-				executionTaskSet[TVPair{Variant: pair.Variant, TaskName: et}] = true
-			}
+	// include a display task when one of its execution tasks was specified
+	for et := range executionTaskSet {
+		dt, ok := execTaskToDisplayTask[et]
+		if ok {
+			displayTaskSet[dt] = true
 		}
 	}
 
+	// include every execution task of the all the display tasks
+	for dt := range displayTaskSet {
+		for _, et := range displayTasksToExecTasks[dt] {
+			executionTaskSet[et] = true
+		}
+	}
+
+	// sets -> slices
 	displayTasks := make(TVPairSet, 0, len(displayTaskSet))
 	execTasks := make(TVPairSet, 0, len(executionTaskSet))
 	for dt := range displayTaskSet {

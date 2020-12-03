@@ -1540,6 +1540,97 @@ func checkEqualVTs(t *testing.T, expected []patch.VariantTasks, actual []patch.V
 	}
 }
 
+func TestExtractDisplayTasks(t *testing.T) {
+	p := Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv0",
+				DisplayTasks: []patch.DisplayTask{
+					{Name: "dt0", ExecTasks: []string{"dt0_et0", "dt0_et1"}},
+					{Name: "dt1", ExecTasks: []string{"dt1_et0", "dt1_et1"}},
+				},
+			}},
+	}
+
+	incomingPairs := TaskVariantPairs{
+		DisplayTasks: TVPairSet{{Variant: "bv0", TaskName: "dt0"}},
+		ExecTasks:    TVPairSet{{Variant: "bv0", TaskName: "dt1_et0"}},
+	}
+
+	resultingPairs := p.extractDisplayTasks(incomingPairs)
+
+	expectedDisplayTasks := []string{"dt0", "dt1"}
+	expectedExecTasks := []string{"dt0_et0", "dt0_et1", "dt1_et0", "dt1_et1"}
+	assert.Len(t, resultingPairs.DisplayTasks, len(expectedDisplayTasks))
+	assert.Len(t, resultingPairs.ExecTasks, len(expectedExecTasks))
+	for _, tvPair := range resultingPairs.DisplayTasks {
+		assert.Contains(t, expectedDisplayTasks, tvPair.TaskName)
+	}
+	for _, tvPair := range resultingPairs.ExecTasks {
+		assert.Contains(t, expectedExecTasks, tvPair.TaskName)
+	}
+}
+
+func TestVariantTasksForSelectors(t *testing.T) {
+	require.NoError(t, db.Clear(ProjectAliasCollection))
+	projectID := "mci"
+	alias := "alias"
+	patchAlias := ProjectAlias{
+		ProjectID: projectID,
+		Alias:     alias,
+		Variant:   "bv0",
+		Task:      "t0",
+	}
+	require.NoError(t, patchAlias.Upsert())
+
+	project := Project{
+		Identifier: projectID,
+		BuildVariants: []BuildVariant{
+			{
+				Name:         "bv0",
+				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
+				Tasks:        []BuildVariantTaskUnit{{Name: "t0"}, {Name: "t1"}},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: "t0"},
+			{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}},
+		},
+	}
+
+	for testName, test := range map[string]func(*testing.T){
+		"patch alias selector": func(t *testing.T) {
+			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{PatchAlias: alias}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 1)
+			assert.Equal(t, vts[0].Tasks[0], "t0")
+		},
+		"selector with dependency": func(t *testing.T) {
+			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 2)
+			assert.Contains(t, vts[0].Tasks, "t0")
+			assert.Contains(t, vts[0].Tasks, "t1")
+		},
+		"selector with display task": func(t *testing.T) {
+			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 1)
+			assert.Contains(t, vts[0].Tasks, "t0")
+			require.Len(t, vts[0].DisplayTasks, 1)
+			assert.Equal(t, vts[0].DisplayTasks[0].Name, "dt0")
+		},
+	} {
+		t.Run(testName, test)
+	}
+}
+
 func TestSkipOnPatch(t *testing.T) {
 	falseTmp := false
 	bvt := BuildVariantTaskUnit{Patchable: &falseTmp}
