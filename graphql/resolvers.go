@@ -65,12 +65,16 @@ func (r *Resolver) TaskQueueItem() TaskQueueItemResolver {
 func (r *Resolver) User() UserResolver {
 	return &userResolver{r}
 }
+func (r *Resolver) Project() ProjectResolver {
+	return &projectResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
+type projectResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -884,6 +888,32 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
+func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+	project, err := r.sc.FindProjectById(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProject from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
+}
+
+func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(*obj.Identifier, *patchesInput.PatchName, patchesInput.Statuses, *patchesInput.IncludeCommitQueue, *patchesInput.Page, *patchesInput.Limit)
+	patchPointers := []*restModel.APIPatch{}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
+	}
+
+	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
+}
+
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := MustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
@@ -1677,7 +1707,6 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
-
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
