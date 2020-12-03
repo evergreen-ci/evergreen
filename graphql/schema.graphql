@@ -11,7 +11,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
-  project(id: String!): Project!
+  project(projectId: String!): Project!
   patchTasks(
     patchId: String!
     sortBy: TaskSortCategory = STATUS

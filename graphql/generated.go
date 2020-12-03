@@ -446,7 +446,7 @@ type ComplexityRoot struct {
 		Patch                   func(childComplexity int, id string) int
 		PatchBuildVariants      func(childComplexity int, patchID string) int
 		PatchTasks              func(childComplexity int, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
-		Project                 func(childComplexity int, id string) int
+		Project                 func(childComplexity int, projectID string) int
 		Projects                func(childComplexity int) int
 		SpruceConfig            func(childComplexity int) int
 		SubnetAvailabilityZones func(childComplexity int) int
@@ -777,7 +777,7 @@ type QueryResolver interface {
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Projects(ctx context.Context) (*Projects, error)
-	Project(ctx context.Context, id string) (*model.APIProjectRef, error)
+	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
@@ -2836,7 +2836,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Project(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.Project(childComplexity, args["projectId"].(string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -4250,7 +4250,7 @@ var sources = []*ast.Source{
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
-  project(id: String!): Project!
+  project(projectId: String!): Project!
   patchTasks(
     patchId: String!
     sortBy: TaskSortCategory = STATUS
@@ -6067,13 +6067,13 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
+	if tmp, ok := rawArgs["projectId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -14402,7 +14402,7 @@ func (ec *executionContext) _Query_project(ctx context.Context, field graphql.Co
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Project(rctx, args["id"].(string))
+		return ec.resolvers.Query().Project(rctx, args["projectId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
