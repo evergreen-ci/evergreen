@@ -52,6 +52,7 @@ type Distro struct {
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
+	FutureHostFraction    float64               `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
 
 type DistroData struct {

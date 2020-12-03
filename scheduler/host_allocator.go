@@ -13,12 +13,12 @@ import (
 type HostAllocator func(context.Context, HostAllocatorData) (int, error)
 
 type HostAllocatorData struct {
-	Distro           distro.Distro
-	ExistingHosts    []host.Host
-	FreeHostFraction float64
-	UsesContainers   bool
-	ContainerPool    *evergreen.ContainerPool
-	DistroQueueInfo  model.DistroQueueInfo
+	Distro             distro.Distro
+	ExistingHosts      []host.Host
+	FutureHostFraction float64
+	UsesContainers     bool
+	ContainerPool      *evergreen.ContainerPool
+	DistroQueueInfo    model.DistroQueueInfo
 }
 
 func GetHostAllocator(name string) HostAllocator {
