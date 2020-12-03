@@ -48,22 +48,9 @@ func TestMakeUserData(t *testing.T) {
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
 
-			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			cmd, err := h.CurlCommand(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
-
-			cmd = h.MarkUserDataProvisioningDoneCommand()
-			assert.Contains(t, userData, cmd)
-
-			assert.Equal(t, h.JasperCredentialsID, h.Id)
-
-			dbHost, err := host.FindOneId(h.Id)
-			require.NoError(t, err)
-			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-
-			creds, err := h.JasperCredentials(ctx, env)
-			require.NoError(t, err)
-			assert.NotNil(t, creds)
 		},
 		"ReturnsUserDataUnmodifiedIfNotProvisioningWithUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
@@ -87,24 +74,13 @@ func TestMakeUserData(t *testing.T) {
 			userData, err := makeUserData(ctx, env, h, customUserData, true)
 			require.NoError(t, err)
 
-			cmd, err := h.StartAgentMonitorRequest(env.Settings())
+			cmd, err := h.CurlCommandWithDefaultRetry(env.Settings())
 			require.NoError(t, err)
-			assert.Contains(t, userData, cmd)
-
-			cmd = h.MarkUserDataProvisioningDoneCommand()
 			assert.Contains(t, userData, cmd)
 
 			custom, err := parseUserData(customUserData)
 			require.NoError(t, err)
 			assert.Contains(t, userData, custom.Content)
-
-			dbHost, err := host.FindOneId(h.Id)
-			require.NoError(t, err)
-			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-
-			creds, err := h.JasperCredentials(ctx, env)
-			require.NoError(t, err)
-			assert.NotNil(t, creds)
 		},
 		"MergesUserDataPartsIntoOneWithPersistOnWindows": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
@@ -112,14 +88,6 @@ func TestMakeUserData(t *testing.T) {
 			customUserData := "<powershell>\necho foo\n</powershell>\n<persist>true</persist>"
 			userData, err := makeUserData(ctx, env, h, customUserData, true)
 			require.NoError(t, err)
-
-			dbHost, err := host.FindOneId(h.Id)
-			require.NoError(t, err)
-			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-
-			creds, err := h.JasperCredentials(ctx, env)
-			require.NoError(t, err)
-			assert.NotNil(t, creds)
 
 			assert.Contains(t, userData, persistTag)
 		},

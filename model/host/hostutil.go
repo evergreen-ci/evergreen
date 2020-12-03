@@ -85,6 +85,12 @@ func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, ma
 	return strings.Join(cmds, " && "), nil
 }
 
+// CurlCommandWithDefaultRetry is the same as CurlCommandWithRetry using the
+// default retry parameters.
+func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string, error) {
+	return h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+}
+
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -1175,7 +1181,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(settings *evergreen.Setti
 		}
 	}
 
-	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	fetchClient, err := h.CurlCommandWithDefaultRetry(settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating curl command for evergreen client")
 	}

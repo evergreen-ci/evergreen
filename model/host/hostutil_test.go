@@ -1326,7 +1326,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 			require.NoError(t, err)
 
 			makeJasperDirs := h.MakeJasperDirsCommand()
-			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			fetchClient, err := h.CurlCommandWithDefaultRetry(settings)
 			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 			require.NoError(t, err)
 
@@ -1352,7 +1352,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 			require.NoError(t, err)
 
 			makeJasperDirs := h.MakeJasperDirsCommand()
-			fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+			fetchClient, err := h.CurlCommandWithDefaultRetry(settings)
 			require.NoError(t, err)
 			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
