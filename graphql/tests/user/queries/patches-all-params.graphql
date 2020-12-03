@@ -1,0 +1,21 @@
+{
+  user(userId: "testuser") {
+    patches(
+      patchesInput: {
+        includeCommitQueue: true
+        statuses: ["failed", "succeeded"]
+        patchName: "2"
+        page: 0
+        limit: 2
+      }
+    ) {
+      patches {
+        status
+        id
+        description
+        alias
+      }
+      filteredPatchCount
+    }
+  }
+}
