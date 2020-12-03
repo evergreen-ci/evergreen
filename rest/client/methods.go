@@ -1558,7 +1558,7 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string) ([]
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, respErrorf(resp, "received error response")
+		return nil, nil, utility.RespErrorf(resp, "received error response")
 	}
 	var results restmodel.CompareTasksResponse
 	if err = utility.ReadJSON(resp.Body, &results); err != nil {
