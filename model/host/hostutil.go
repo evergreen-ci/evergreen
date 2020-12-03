@@ -667,51 +667,6 @@ func (h *Host) WriteJasperPreconditionScriptsCommands() string {
 	return strings.Join(cmds, "\n")
 }
 
-func bufferedWriteFileCommands(path, content string) []string {
-	var cmds []string
-	n := 2018
-	firstWrite := true
-	for start := 0; start < len(content); start += n {
-		end := start + n
-		if end > len(content) {
-			end = len(content)
-		}
-		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
-		firstWrite = false
-	}
-	cmds = append(cmds, fmt.Sprintf("chmod 666 %s", path))
-	return cmds
-}
-
-func writeToFileCommand(path, content string, overwrite bool) string {
-	var redirect string
-	if overwrite {
-		redirect = ">"
-	} else {
-		redirect = ">>"
-	}
-	return fmt.Sprintf("echo -n '%s' %s %s", content, redirect, path)
-}
-
-// bufferedWriteJasperCredentialsFilesCommands is the same as
-// WriteJasperCredentialsFilesCommands but writes with multiple commands. This
-// is necessary for Windows user data for unknown reasons. If the file isn't
-// written in a buffered way, it gets truncated or the script hangs.
-func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
-	exportedCreds, err := creds.Export()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem exporting credentials to file format")
-	}
-
-	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
-
-	if splunk.Populated() && h.StartedBy == evergreen.User {
-		cmds = append(cmds, writeToFileCommand(h.splunkTokenFilePath(), splunk.Token, true))
-	}
-
-	return cmds, nil
-}
-
 func (h *Host) splunkTokenFilePath() string {
 	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return ""
@@ -906,18 +861,6 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 		return "", errors.Wrap(err, "error expanding setup script variables")
 	}
 	return setupScript, nil
-}
-
-// writeSetupScriptCommands is the same as setupScriptCommands but writes the
-// setup script commands to a file in multiple commands.
-func (h *Host) writeSetupScriptCommands(settings *evergreen.Settings) ([]string, error) {
-	script, err := h.setupScriptCommands(settings)
-	if err != nil {
-		return nil, err
-	}
-
-	path := filepath.Join(h.Distro.HomeDir(), evergreen.SetupScriptName)
-	return bufferedWriteFileCommands(path, script), nil
 }
 
 // StartAgentMonitorRequest builds the Jasper client request that starts the

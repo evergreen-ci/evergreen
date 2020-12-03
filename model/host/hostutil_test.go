@@ -464,7 +464,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
@@ -473,8 +473,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone := h.MarkUserDataProvisioningDoneCommand()
 
 			var expectedCmds []string
-			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript)
-			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript, writeCredentialsCmd)
 			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
@@ -513,7 +512,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 			require.NoError(t, err)
 
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
@@ -522,8 +521,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			markDone := h.MarkUserDataProvisioningDoneCommand()
 
 			var expectedCmds []string
-			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript)
-			expectedCmds = append(expectedCmds, writeCredentialsCmd...)
+			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript, writeCredentialsCmd)
 			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
 				h.ForceReinstallJasperCommand(settings),
@@ -862,34 +860,6 @@ func TestJasperProcess(t *testing.T) {
 				},
 				Host: "localhost",
 			}, opts)
-		})
-	}
-}
-
-func TestBufferedWriteFileCommands(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, path, content string){
-		"BufferedWriteFileCommandsUsesSingleCommandForShortFile": func(t *testing.T, path, content string) {
-			cmds := bufferedWriteFileCommands(path, content)
-			require.Len(t, cmds, 2)
-			assert.Equal(t, writeToFileCommand(path, content, true), cmds[0])
-			assert.Equal(t, fmt.Sprintf("chmod 666 %s", path), cmds[1])
-		},
-		"BufferedWriteFileCommandsUsesMultipleCommandsForLongFile": func(t *testing.T, path, content string) {
-			content = strings.Repeat(content, 1000)
-			cmds := bufferedWriteFileCommands(path, content)
-			require.NotZero(t, len(cmds))
-		},
-		"WriteToFileCommandRedirectsOnOverwrite": func(t *testing.T, path, content string) {
-			cmd := writeToFileCommand(path, content, true)
-			assert.Equal(t, fmt.Sprintf("echo -n '%s' > %s", content, path), cmd)
-		},
-		"WriteToFileCommandAppendsOnNoOverwrite": func(t *testing.T, path, content string) {
-			cmd := writeToFileCommand(path, content, false)
-			assert.Equal(t, fmt.Sprintf("echo -n '%s' >> %s", content, path), cmd)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			testCase(t, "/path/to/file", "foobar")
 		})
 	}
 }
