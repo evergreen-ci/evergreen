@@ -148,6 +148,16 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 	return nil
 }
 
+func addAdminToRepo(repoId, admin string) error {
+	return db.UpdateId(
+		RepoRefCollection,
+		repoId,
+		bson.M{
+			"$push": bson.M{RepoRefAdminsKey: admin},
+		},
+	)
+}
+
 func GetRepoScope(repoId string) string {
 	return fmt.Sprintf("repo_%s", repoId)
 }
