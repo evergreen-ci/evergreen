@@ -945,20 +945,24 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
 	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
-	s.Len(patchDoc.BuildVariants, 1)
+	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
-	s.Len(patchDoc.Tasks, 1)
+	s.Len(patchDoc.Tasks, 3)
 	s.Contains(patchDoc.Tasks, "very_task")
-	s.Len(patchDoc.VariantsTasks, 1)
+	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+	s.Len(patchDoc.VariantsTasks, 2)
 	for _, vt := range patchDoc.VariantsTasks {
 		if vt.Variant == "bv_1" {
-			s.Len(vt.Tasks, 1)
+			s.Len(vt.Tasks, 2)
 			s.Contains(vt.Tasks, "very_task")
-			s.Empty(vt.DisplayTasks, 1)
-		} else {
-			s.T().Fail()
+			s.Contains(patchDoc.Tasks, "9001_task")
+			s.Len(vt.DisplayTasks, 1)
+		} else if vt.Variant == "bv_2" {
+			s.Len(vt.Tasks, 1)
+			s.Contains(vt.Tasks, "a_task_2")
+			s.Empty(vt.DisplayTasks)
 		}
-		s.Empty(vt.DisplayTasks)
 	}
 }
 
