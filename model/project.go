@@ -1293,6 +1293,8 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 		for _, t := range tasks {
 			if p.FindTaskForVariant(t, v) != nil {
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
+			} else if p.GetDisplayTask(v, t) != nil {
+				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
 			}
 		}
 	}
