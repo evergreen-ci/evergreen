@@ -13,8 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTaskImportanceComparators(t *testing.T) {
+var (
+	byPriorityCmp       = &byPriority{}
+	byRuntimeCmp        = &byRuntime{}
+	byNumDepsCmp        = &byNumDeps{}
+	byAgeCmp            = &byAge{}
+	byTaskGroupOrderCmp = &byTaskGroupOrder{}
+	byGenerateTasksCmp  = &byGenerateTasks{}
+	byCommitQueueCmp    = &byCommitQueue{}
+)
 
+func TestTaskImportanceComparators(t *testing.T) {
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
 	var tasks []task.Task
@@ -36,19 +45,19 @@ func TestTaskImportanceComparators(t *testing.T) {
 			tasks[0].Priority = 2
 			tasks[1].Priority = 2
 
-			cmpResult, err := byPriority(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err := byPriorityCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
 			tasks[0].Priority = 2
 			tasks[1].Priority = 1
-			cmpResult, err = byPriority(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err = byPriorityCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 1)
 
 			tasks[0].Priority = 1
 			tasks[1].Priority = 2
-			cmpResult, err = byPriority(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err = byPriorityCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 		})
@@ -56,22 +65,22 @@ func TestTaskImportanceComparators(t *testing.T) {
 		Convey("all other things being equal, the longer"+
 			"running tasks should be before tests", func() {
 
-			result, err := byRuntime(tasks[0], tasks[1], taskComparator)
+			result, _, err := byRuntimeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, 0)
 
 			tasks[0].ExpectedDuration = 20 * time.Minute
 			tasks[1].ExpectedDuration = time.Hour
 
-			result, err = byRuntime(tasks[0], tasks[1], taskComparator)
+			result, _, err = byRuntimeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, -1)
 
-			result, err = byRuntime(tasks[1], tasks[0], taskComparator)
+			result, _, err = byRuntimeCmp.compare(tasks[1], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, 1)
 
-			result, err = byRuntime(tasks[0], tasks[0], taskComparator)
+			result, _, err = byRuntimeCmp.compare(tasks[0], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, 0)
 
@@ -79,11 +88,11 @@ func TestTaskImportanceComparators(t *testing.T) {
 			tasks[0].DurationPrediction.Value = time.Duration(1)
 			tasks[0].DurationPrediction.TTL = time.Hour
 
-			result, err = byRuntime(tasks[0], tasks[1], taskComparator)
+			result, _, err = byRuntimeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, -1)
 
-			result, err = byRuntime(tasks[1], tasks[0], taskComparator)
+			result, _, err = byRuntimeCmp.compare(tasks[1], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, 1)
 		})
@@ -91,24 +100,24 @@ func TestTaskImportanceComparators(t *testing.T) {
 		Convey("the dependent count comparator should prioritize a task"+
 			" if its number of dependents is higher", func() {
 
-			cmpResult, err := byNumDeps(tasks[0], tasks[1],
+			cmpResult, _, err := byNumDepsCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
 			tasks[0].NumDependents = 1
-			cmpResult, err = byNumDeps(tasks[0], tasks[1],
+			cmpResult, _, err = byNumDepsCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 1)
 
-			cmpResult, err = byNumDeps(tasks[1], tasks[0],
+			cmpResult, _, err = byNumDepsCmp.compare(tasks[1], tasks[0],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 
 			tasks[1].NumDependents = 1
-			cmpResult, err = byNumDeps(tasks[0], tasks[1],
+			cmpResult, _, err = byNumDepsCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
@@ -122,24 +131,24 @@ func TestTaskImportanceComparators(t *testing.T) {
 			tasks[0].Requester = evergreen.RepotrackerVersionRequester
 			tasks[1].Requester = evergreen.RepotrackerVersionRequester
 
-			cmpResult, err := byAge(tasks[0], tasks[1],
+			cmpResult, _, err := byAgeCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
 			tasks[0].RevisionOrderNumber = 1
-			cmpResult, err = byAge(tasks[0], tasks[1],
+			cmpResult, _, err = byAgeCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 1)
 
-			cmpResult, err = byAge(tasks[1], tasks[0],
+			cmpResult, _, err = byAgeCmp.compare(tasks[1], tasks[0],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 
 			tasks[0].Project = "project"
-			cmpResult, err = byAge(tasks[0], tasks[1],
+			cmpResult, _, err = byAgeCmp.compare(tasks[0], tasks[1],
 				taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
@@ -153,32 +162,32 @@ func TestTaskImportanceComparators(t *testing.T) {
 			tasks[0].Requester = evergreen.PatchVersionRequester
 			tasks[1].Requester = evergreen.PatchVersionRequester
 
-			cmpResult, err := byAge(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err := byAgeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
 			// change one ingest time - should still be zero since the
 			// projects are the same
 			tasks[0].IngestTime = time.Now()
-			cmpResult, err = byAge(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err = byAgeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 
 			tasks[0].Project = "project"
-			cmpResult, err = byAge(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err = byAgeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 
-			cmpResult, err = byAge(tasks[1], tasks[0], taskComparator)
+			cmpResult, _, err = byAgeCmp.compare(tasks[1], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 1)
 
 			tasks[1].IngestTime = tasks[0].IngestTime
-			cmpResult, err = byAge(tasks[0], tasks[1], taskComparator)
+			cmpResult, _, err = byAgeCmp.compare(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
-			cmpResult, err = byAge(tasks[1], tasks[0], taskComparator)
+			cmpResult, _, err = byAgeCmp.compare(tasks[1], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 		})
@@ -201,23 +210,23 @@ func TestByTaskGroupOrder(t *testing.T) {
 	}
 
 	// empty task groups
-	result, err := byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err := byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(0, result)
 	tasks[0].TaskGroup = "example_task_group"
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(1, result)
 	tasks[0].TaskGroup = ""
 	tasks[1].TaskGroup = "example_task_group"
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)
 
 	// mismatched task groups
 	tasks[0].TaskGroup = "example_task_group"
 	tasks[1].TaskGroup = "another_task_group"
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)
 
@@ -226,7 +235,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	tasks[1].TaskGroup = "example_task_group"
 	tasks[0].BuildId = "build_id"
 	tasks[1].BuildId = "another_build_id"
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)
 
@@ -248,14 +257,14 @@ func TestByTaskGroupOrder(t *testing.T) {
 	require.NoError(v.Insert())
 	taskComparator.tasks = tasks
 	taskComparator.versions = map[string]model.Version{"version_id": *v}
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(1, result)
 
 	// t2 is earlier
 	tasks[0].TaskGroupOrder = 2
 	tasks[1].TaskGroupOrder = 1
-	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)
 }
@@ -319,7 +328,7 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	require.NoError(tasks.Insert())
 
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, err := prioritizer.PrioritizeTasks("distro", tasks.Export(), versions)
+	sorted, _, err := prioritizer.PrioritizeTasks("distro", tasks.Export(), versions)
 	require.NoError(err)
 	assert.Equal("task_4", sorted[0].Id)
 	assert.Equal("task_1", sorted[1].Id)
@@ -378,7 +387,7 @@ func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 	}
 
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
+	sorted, _, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
 	assert.NoError(err)
 	list := []string{}
 	for _, t := range sorted {
@@ -415,22 +424,22 @@ func TestByGenerateTasks(t *testing.T) {
 		},
 	}
 	comparator := &CmpBasedTaskComparator{}
-	c, err := byGenerateTasks(tasks[0], tasks[2], comparator)
+	c, _, err := byGenerateTasksCmp.compare(tasks[0], tasks[2], comparator)
 	assert.NoError(err)
 	assert.Equal(0, c)
-	c, err = byGenerateTasks(tasks[1], tasks[3], comparator)
+	c, _, err = byGenerateTasksCmp.compare(tasks[1], tasks[3], comparator)
 	assert.NoError(err)
 	assert.Equal(0, c)
-	c, err = byGenerateTasks(tasks[0], tasks[1], comparator)
+	c, _, err = byGenerateTasksCmp.compare(tasks[0], tasks[1], comparator)
 	assert.NoError(err)
 	assert.Equal(1, c)
-	c, err = byGenerateTasks(tasks[2], tasks[3], comparator)
+	c, _, err = byGenerateTasksCmp.compare(tasks[2], tasks[3], comparator)
 	assert.NoError(err)
 	assert.Equal(1, c)
-	c, err = byGenerateTasks(tasks[1], tasks[0], comparator)
+	c, _, err = byGenerateTasksCmp.compare(tasks[1], tasks[0], comparator)
 	assert.NoError(err)
 	assert.Equal(-1, c)
-	c, err = byGenerateTasks(tasks[3], tasks[2], comparator)
+	c, _, err = byGenerateTasksCmp.compare(tasks[3], tasks[2], comparator)
 	assert.NoError(err)
 	assert.Equal(-1, c)
 }
@@ -447,19 +456,19 @@ func TestByCommitQueue(t *testing.T) {
 		"v1": model.Version{Requester: evergreen.PatchVersionRequester},
 	}}
 
-	c, err := byCommitQueue(tasks[0], tasks[1], comparator)
+	c, _, err := byCommitQueueCmp.compare(tasks[0], tasks[1], comparator)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c)
 
-	c, err = byCommitQueue(tasks[2], tasks[3], comparator)
+	c, _, err = byCommitQueueCmp.compare(tasks[2], tasks[3], comparator)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, c)
 
-	c, err = byCommitQueue(tasks[1], tasks[2], comparator)
+	c, _, err = byCommitQueueCmp.compare(tasks[1], tasks[2], comparator)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, c)
 
-	c, err = byCommitQueue(tasks[2], tasks[1], comparator)
+	c, _, err = byCommitQueueCmp.compare(tasks[2], tasks[1], comparator)
 	assert.NoError(t, err)
 	assert.Equal(t, -1, c)
 }

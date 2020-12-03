@@ -350,4 +350,6 @@ type Connector interface {
 
 	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
 	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+
+	CompareTasks([]string) ([]string, map[string]map[string]string, error)
 }

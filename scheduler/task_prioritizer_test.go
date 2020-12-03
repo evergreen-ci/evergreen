@@ -8,6 +8,40 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+type alwaysEqual struct{}
+
+func (c *alwaysEqual) name() string { return "always equal" }
+func (c *alwaysEqual) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (
+	int, string, error) {
+	return 0, "", nil
+}
+
+type alwaysMoreImportant struct{}
+
+func (c *alwaysMoreImportant) name() string { return "always more important" }
+func (c *alwaysMoreImportant) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
+	return 1, "", nil
+}
+
+type alwaysLessImportant struct{}
+
+func (c *alwaysLessImportant) name() string { return "always less important" }
+func (c *alwaysLessImportant) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
+	return -1, "", nil
+}
+
+type idComparator struct{}
+
+func (c *idComparator) name() string { return "id" }
+func (c *idComparator) compare(t1, t2 task.Task, p *CmpBasedTaskComparator) (int, string, error) {
+	if t1.Id > t2.Id {
+		return 1, "", nil
+	}
+	if t1.Id < t2.Id {
+		return -1, "", nil
+	}
+	return 0, "", nil
+}
 func TestCmpBasedTaskComparator(t *testing.T) {
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
@@ -24,32 +58,6 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 			{Id: taskIds[1]},
 		}
 
-		alwaysEqual := func(t1, t2 task.Task, p *CmpBasedTaskComparator) (
-			int, error) {
-			return 0, nil
-		}
-
-		alwaysMoreImportant := func(t1, t2 task.Task,
-			p *CmpBasedTaskComparator) (int, error) {
-			return 1, nil
-		}
-
-		alwaysLessImportant := func(t1, t2 task.Task,
-			p *CmpBasedTaskComparator) (int, error) {
-			return -1, nil
-		}
-
-		idComparator := func(t1, t2 task.Task, p *CmpBasedTaskComparator) (
-			int, error) {
-			if t1.Id > t2.Id {
-				return 1, nil
-			}
-			if t1.Id < t2.Id {
-				return -1, nil
-			}
-			return 0, nil
-		}
-
 		Convey("when using the comparator functions to compare two tasks",
 			func() {
 
@@ -57,12 +65,12 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					" default (no error)", func() {
 					taskComparator.comparators = nil
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, _, err := taskComparator.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
@@ -70,14 +78,14 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there are no comparator functions, the default is"+
 					" always returned", func() {
-					taskComparator.comparators = []taskPriorityCmp{}
+					taskComparator.comparators = []taskComparer{}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, _, err := taskComparator.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
@@ -85,16 +93,16 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there is only one comparator function, that"+
 					" function is definitive", func() {
-					taskComparator.comparators = []taskPriorityCmp{
-						alwaysMoreImportant,
+					taskComparator.comparators = []taskComparer{
+						&alwaysMoreImportant{},
 					}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, _, err := taskComparator.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
@@ -102,19 +110,19 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there are multiple comparator functions, the first"+
 					" definitive one wins", func() {
-					taskComparator.comparators = []taskPriorityCmp{
-						alwaysEqual,
-						idComparator,
-						alwaysMoreImportant,
-						alwaysLessImportant,
+					taskComparator.comparators = []taskComparer{
+						&alwaysEqual{},
+						&idComparator{},
+						&alwaysMoreImportant{},
+						&alwaysLessImportant{},
 					}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, _, err := taskComparator.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
@@ -122,12 +130,12 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					// for the next two, the ids are the same so the id
 					// comparator func isn't definitive
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[0], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, _, err = taskComparator.taskMoreImportantThan(
 						tasks[1], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)

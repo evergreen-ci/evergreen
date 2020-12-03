@@ -32,6 +32,7 @@ type DBConnector struct {
 	TaskReliabilityConnector
 	DBCommitQueueConnector
 	DBProjectTagConnector
+	SchedulerConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }
@@ -67,6 +68,7 @@ type MockConnector struct {
 	MockTaskReliabilityConnector
 	MockCommitQueueConnector
 	MockProjectTagConnector
+	MockSchedulerConnector
 }
 
 func (ctx *MockConnector) GetURL() string          { return ctx.URL }
