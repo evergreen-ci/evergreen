@@ -3,7 +3,7 @@
     {
       "_id": "my-annotation",
       "task_id": "task-1234",
-      "execution": 0,
+      "task_execution": 0,
       "issues": [
         {
           "url": "https://link.com",
@@ -21,7 +21,24 @@
             "author": "annie.black"
           }
         }
-      ]
+      ],
+      "note": {
+        "message": "my message",
+        "source": {
+          "author": "annie.black"
+        }
+      }
+    },
+    {
+      "_id":  "my-other-annotation",
+      "task_id": "task-5678",
+      "task_execution": 0,
+      "note": {
+        "message": "my other message",
+        "source": {
+          "author": "annie.black"
+        }
+      }
     }
   ]
 }

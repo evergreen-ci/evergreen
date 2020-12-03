@@ -1872,6 +1872,15 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+// EditAnnotationNote updates the note for the annotation, assuming it hasn't been updated in the meantime.
+func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage, newMessage string) (bool, error) {
+	usr := MustHaveUser(ctx)
+	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
+	}
+	return true, nil
+}
+
 // MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
 // to Suspected Issues, otherwise vice versa.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {

@@ -281,6 +281,7 @@ type ComplexityRoot struct {
 		ClearMySubscriptions      func(childComplexity int) int
 		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
+		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string) int
 		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
@@ -725,6 +726,7 @@ type MutationResolver interface {
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
+	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
@@ -1838,6 +1840,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DetachVolumeFromHost(childComplexity, args["volumeId"].(string)), true
+
+	case "Mutation.editAnnotationNote":
+		if e.complexity.Mutation.EditAnnotationNote == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editAnnotationNote_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditAnnotationNote(childComplexity, args["taskId"].(string), args["execution"].(int), args["originalMessage"].(string), args["newMessage"].(string)), true
 
 	case "Mutation.editSpawnHost":
 		if e.complexity.Mutation.EditSpawnHost == nil {
@@ -4250,6 +4264,12 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  editAnnotationNote(
+    taskId: String!
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
     apiIssue: AnnotationIssue!
@@ -5172,6 +5192,44 @@ func (ec *executionContext) field_Mutation_detachVolumeFromHost_args(ctx context
 		}
 	}
 	args["volumeId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_editAnnotationNote_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["originalMessage"]; ok {
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["originalMessage"] = arg2
+	var arg3 string
+	if tmp, ok := rawArgs["newMessage"]; ok {
+		arg3, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["newMessage"] = arg3
 	return args, nil
 }
 
@@ -10940,6 +10998,47 @@ func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, fiel
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().SaveSubscription(rctx, args["subscription"].(model.APISubscription))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_editAnnotationNote(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_editAnnotationNote_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditAnnotationNote(rctx, args["taskId"].(string), args["execution"].(int), args["originalMessage"].(string), args["newMessage"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23655,6 +23754,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "saveSubscription":
 			out.Values[i] = ec._Mutation_saveSubscription(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "editAnnotationNote":
+			out.Values[i] = ec._Mutation_editAnnotationNote(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
