@@ -230,11 +230,11 @@ input UseSpruceOptionsInput {
 }
 
 input PatchesInput {
-  limit: Int = 0
-  page: Int = 0
-  patchName: String = ""
-  statuses: [String!] = []
-  includeCommitQueue: Boolean = false
+  limit: Int! = 0
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  includeCommitQueue: Boolean! = false
 }
 
 input SpawnHostInput {

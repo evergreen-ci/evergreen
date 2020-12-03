@@ -4469,11 +4469,11 @@ input UseSpruceOptionsInput {
 }
 
 input PatchesInput {
-  limit: Int = 0
-  page: Int = 0
-  patchName: String = ""
-  statuses: [String!] = []
-  includeCommitQueue: Boolean = false
+  limit: Int! = 0
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  includeCommitQueue: Boolean! = false
 }
 
 input SpawnHostInput {
@@ -22360,31 +22360,31 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		switch k {
 		case "limit":
 			var err error
-			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			it.Limit, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "page":
 			var err error
-			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			it.Page, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "patchName":
 			var err error
-			it.PatchName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.PatchName, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "statuses":
 			var err error
-			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			it.Statuses, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "includeCommitQueue":
 			var err error
-			it.IncludeCommitQueue, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			it.IncludeCommitQueue, err = ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
