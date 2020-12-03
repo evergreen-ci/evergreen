@@ -2354,7 +2354,7 @@ func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty
 }
 
 func (r *ticketFieldsResolver) JiraStatus(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
-	if obj.AssignedTeam == nil {
+	if obj.Status == nil {
 		return nil, nil
 	}
 	return &obj.Status.Name, nil
