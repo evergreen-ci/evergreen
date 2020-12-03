@@ -637,6 +637,7 @@ type ComplexityRoot struct {
 	}
 
 	TicketFields struct {
+		AssignedTeam        func(childComplexity int) int
 		AssigneeDisplayName func(childComplexity int) int
 		Created             func(childComplexity int) int
 		ResolutionName      func(childComplexity int) int
@@ -827,6 +828,8 @@ type TaskQueueItemResolver interface {
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
+
+	AssignedTeam(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -3839,6 +3842,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.TestFile(childComplexity), true
 
+	case "TicketFields.assignedTeam":
+		if e.complexity.TicketFields.AssignedTeam == nil {
+			break
+		}
+
+		return e.complexity.TicketFields.AssignedTeam(childComplexity), true
+
 	case "TicketFields.assigneeDisplayName":
 		if e.complexity.TicketFields.AssigneeDisplayName == nil {
 			break
@@ -5055,6 +5065,7 @@ type TicketFields {
   created: String!
   updated: String!
   status: JiraStatus!
+  assignedTeam: String
 }
 
 type JiraStatus {
@@ -19702,6 +19713,37 @@ func (ec *executionContext) _TicketFields_status(ctx context.Context, field grap
 	return ec.marshalNJiraStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TicketFields_assignedTeam(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TicketFields",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.TicketFields().AssignedTeam(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26047,6 +26089,17 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "assignedTeam":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._TicketFields_assignedTeam(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
