@@ -344,6 +344,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job_type": j.Type().Name,
 		}))
 		return
+	} else {
+		grip.Info(message.Fields{
+			"message": "host successfully terminated",
+			"host_id": j.host.Id,
+			"job":     j.ID(),
+			"reason":  j.Reason,
+		})
 	}
 
 	hostBillingEnds := j.host.TerminationTime
