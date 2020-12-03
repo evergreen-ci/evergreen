@@ -22,27 +22,11 @@ import (
 
 func TestMakeUserData(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
-		"ContainsCommandsToSetupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+		"ContainsCommandsToStartHostProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			userData, err := makeUserData(ctx, env, h, "", false)
 			require.NoError(t, err)
 
-			cmd := h.CheckUserDataStartedCommand()
-			assert.Contains(t, userData, cmd)
-
-			cmd, err = h.StartAgentMonitorRequest(env.Settings())
-			require.NoError(t, err)
-			assert.Contains(t, userData, cmd)
-
-			cmd = h.MarkUserDataDoneCommands()
-			assert.Contains(t, userData, cmd)
-		},
-		"ContainsCommandsToFetchProvisioningScriptIfEnabled": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			h.Distro.BootstrapSettings.FetchProvisioningScript = true
-
-			userData, err := makeUserData(ctx, env, h, "", false)
-			require.NoError(t, err)
-
-			opts, err := h.FetchProvisioningScriptUserData(env.Settings())
+			opts, err := h.GenerateFetchProvisioningScriptUserData(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, opts.Content)
 		},
@@ -59,21 +43,6 @@ func TestMakeUserData(t *testing.T) {
 			assert.NotEmpty(t, userData)
 			assert.Contains(t, userData, persistTag)
 		},
-		"CreatesHostJasperCredentials": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			_, err := makeUserData(ctx, env, h, "", false)
-			require.NoError(t, err)
-			assert.Equal(t, h.JasperCredentialsID, h.Id)
-
-			assert.Equal(t, h.JasperCredentialsID, h.Id)
-
-			dbHost, err := host.FindOneId(h.Id)
-			require.NoError(t, err)
-			assert.Equal(t, h.Id, dbHost.JasperCredentialsID)
-
-			creds, err := h.JasperCredentials(ctx, env)
-			require.NoError(t, err)
-			assert.NotNil(t, creds)
-		},
 		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho foo"
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
@@ -83,7 +52,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd = h.MarkUserDataDoneCommands()
+			cmd = h.MarkUserDataProvisioningDoneCommand()
 			assert.Contains(t, userData, cmd)
 
 			assert.Equal(t, h.JasperCredentialsID, h.Id)
@@ -96,7 +65,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, creds)
 		},
-		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+		"ReturnsUserDataUnmodifiedIfNotProvisioningWithUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "#!/bin/bash\necho foo"
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
@@ -122,7 +91,7 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 
-			cmd = h.MarkUserDataDoneCommands()
+			cmd = h.MarkUserDataProvisioningDoneCommand()
 			assert.Contains(t, userData, cmd)
 
 			custom, err := parseUserData(customUserData)
@@ -178,7 +147,6 @@ func TestMakeUserData(t *testing.T) {
 			require.NoError(t, h.Insert())
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			// env := testutil.NewEnvironment(ctx, t)
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 

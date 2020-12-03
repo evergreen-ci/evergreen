@@ -577,16 +577,12 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	opts, err := rh.sc.GenerateHostProvisioningOptions(ctx, rh.hostID)
+	script, err := rh.sc.GenerateHostProvisioningOptions(ctx, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	apiOpts := model.APIHostProvisioningOptions{}
-	if err := apiOpts.BuildFromService(opts); err != nil {
-		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "failed to build host provisioning script options").Error(),
-		})
+	apiOpts := model.APIHostProvisioningOptions{
+		Content: script,
 	}
 	return gimlet.NewJSONResponse(apiOpts)
 }

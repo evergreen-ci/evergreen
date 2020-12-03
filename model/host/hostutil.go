@@ -378,39 +378,32 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
-// ProvisioningUserData creates the user data parameters to provision the host.
-// If, for some reason, this script gets interrupted, there's no guarantee that
-// it will succeed if run again, since we cannot enforce idempotency on the
-// setup script.
-func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
-	var fetchClient, fixClientOwner string
+// GenerateUserDataProvisioningScript creates the script to provision the host
+// through user data. If, for some reason, this script gets interrupted, there's
+// no guarantee that it will succeed if run again, since we cannot enforce
+// idempotency on the setup script.
+func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
 	var err error
-	// If we're fetching the provisioning script from the app server, the
-	// Evergreen client is already downloaded on the host, so fetching it again
-	// is unnecessary.
-	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
-		fetchClient, err = h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
+	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
+
+	var setupUserCmds string
+	if h.Distro.IsWindows() {
+		setupUserCmds, err = h.SetupServiceUserCommands()
 		if err != nil {
-			return nil, errors.Wrap(err, "creating curl command for evergreen client")
+			return "", errors.Wrap(err, "could not get commands to set up service user")
 		}
-
-		// User data runs as the privileged user, so ensure that the binary has
-		// permissions that allow it to be modified after user data is finished.
-		fixClientOwner = h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 	}
-
-	checkUserDataRan := h.CheckUserDataStartedCommand()
 
 	var postFetchClient string
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
-			return nil, errors.Wrap(err, "error creating command to start agent monitor")
+			return "", errors.Wrap(err, "error creating command to start agent monitor")
 		}
 	} else if h.ProvisionOptions != nil && h.UserHost {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
-			return nil, errors.Wrap(err, "error creating commands to load task data")
+			return "", errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
 			// We have to run this in the Cygwin shell in order for git clone to
@@ -434,111 +427,32 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 					Tags: []string{evergreen.HostFetchTag},
 				})
 			if err != nil {
-				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
+				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
 			postFetchClient += " && " + getTaskDataCmd
 		}
 	}
 
-	markDone := h.MarkUserDataDoneCommands()
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating command to mark when user data is done")
-	}
-
 	makeJasperDirs := h.MakeJasperDirsCommand()
-	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
-	if h.Distro.IsWindows() {
-		var setupScriptCmds []string
-		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			// If we're fetching the provisioning script, we do not need to
-			// write the setup script to its own intermediate file.
-			var setupScript string
-			setupScript, err = h.setupScriptCommands(settings)
-			if err != nil {
-				return nil, errors.Wrap(err, "creating setup script")
-			}
-			setupScriptCmds = []string{setupScript}
-		} else {
-			setupScriptCmds, err = h.writeSetupScriptCommands(settings)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not get commands to run setup script")
-			}
-		}
-
-		var writeCredentialsCmds []string
-		writeCredentialsCmds, err = h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
-		}
-
-		var setupUserCmds string
-		setupUserCmds, err = h.SetupServiceUserCommands()
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get commands to set up service user")
-		}
-
-		var setupJasperCmds []string
-		setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
-		setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds...)
-		if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
-			setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
-		}
-		setupJasperCmds = append(setupJasperCmds,
-			h.FetchJasperCommand(settings.HostJasper),
-			h.ForceReinstallJasperCommand(settings),
-			fixJasperDirsOwner,
-		)
-
-		var shellCmds []string
-		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			// We cannot run Windows user data with verbose output (i.e. 'set -o
-			// verbose') because PowerShell user data hangs if too much output
-			// is produced.
-			shellPrefix := "set -o errexit"
-			shellCmds = append(shellCmds, shellPrefix)
-		}
-		shellCmds = append(shellCmds, setupScriptCmds...)
-		shellCmds = append(shellCmds, setupJasperCmds...)
-		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
-			// The setup script is only written to a file if we're not fetching
-			// the provisioning script.
-			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
-		}
-		shellCmds = append(shellCmds, postFetchClient, markDone)
-
-		for i := range shellCmds {
-			if !h.Distro.BootstrapSettings.FetchProvisioningScript {
-				shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
-			}
-		}
-
-		powershellCmds := append([]string{
-			checkUserDataRan,
-			setupUserCmds},
-			shellCmds...,
-		)
-
-		return &userdata.Options{
-			Directive: userdata.PowerShellScript,
-			Content:   strings.Join(powershellCmds, "\n"),
-			Persist:   true,
-		}, nil
+	markDone := h.MarkUserDataProvisioningDoneCommand()
+	if err != nil {
+		return "", errors.Wrap(err, "creating command to mark when user data is done")
 	}
+
+	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get commands to run setup script")
+		return "", errors.Wrap(err, "creating setup script")
 	}
 
 	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
+		return "", errors.Wrap(err, "creating commands to write Jasper credentials file")
 	}
 
-	var setupJasperCmds []string
-	setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
-	setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds)
+	setupJasperCmds := []string{makeJasperDirs, writeCredentialsCmds}
 	if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
 		setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
 	}
@@ -549,14 +463,12 @@ func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdep
 	)
 
 	shellPrefix := []string{"set -o errexit", "set -o verbose"}
-	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
+	shellCmds := append(shellPrefix, checkProvisioningStarted, setupUserCmds, setupScriptCmds)
+	shellCmds = append(shellCmds, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
-	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
+	shellCmds = append(shellCmds, postFetchClient, markDone)
 
-	return &userdata.Options{
-		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
-		Content:   strings.Join(shellCmds, "\n"),
-	}, nil
+	return strings.Join(shellCmds, "\n"), nil
 }
 
 // changeJasperDirsOwnerCommand returns the command to ensure that the Jasper
@@ -589,32 +501,18 @@ func (h *Host) changeOwnerCommand(path string) string {
 	return "sudo " + cmd
 }
 
-// CheckUserDataStartedCommand checks whether user data has already run on this
-// host. If it has, it exits. Otherwise, it creates the file marking it as
-// started.
-func (h *Host) CheckUserDataStartedCommand() string {
-	path := h.UserDataStartedFile()
+// CheckUserDataProvisioningStarted checks whether the provisioning script has
+// already run on a user data host. If it has, it exits. Otherwise, it creates
+// the file marking it as started.
+func (h *Host) CheckUserDataProvisioningStartedCommand() string {
+	path := h.UserDataProvisioningStartedFile()
 	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
-	if h.Distro.IsWindows() {
-		var checkUserDataStarted, makeUserDataStartedFile string
-		if h.Distro.BootstrapSettings.FetchProvisioningScript {
-			checkUserDataStarted = fmt.Sprintf("ls %s && exit", path)
-			makeUserDataStartedFile = makeFileCmd
-		} else {
-			checkUserDataStarted = fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path))
-			makeUserDataStartedFile = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd))
-		}
-		return fmt.Sprintf(strings.Join([]string{
-			checkUserDataStarted,
-			makeUserDataStartedFile,
-		}, "\n"))
-	}
-
 	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd)
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
-// service user in the Administrator group in Windows.
+// service user in the Administrator group in Windows. It also creates the
+// service user's password if none is set.
 func (h *Host) SetupServiceUserCommands() (string, error) {
 	if !h.Distro.IsWindows() {
 		return "", nil
@@ -633,9 +531,6 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 	}
 
 	loginServicePermCmd := fmt.Sprintf("editrights -u %s -a SeServiceLogonRight", h.Distro.BootstrapSettings.ServiceUser)
-	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
-		loginServicePermCmd = fmt.Sprintf(`%s -l -c '%s'`, h.Distro.ShellBinary(), loginServicePermCmd)
-	}
 	return strings.Join(
 		[]string{
 			// Create new user.
@@ -1276,26 +1171,26 @@ func (h *Host) SpawnHostPullTaskSyncCommand() []string {
 }
 
 const (
-	userDataStarteFileName = "user_data_started"
-	userDataDoneFileName   = "user_data_done"
+	userDataProvisioningStartedFile = "user_data_started"
+	userDataProvisioningDoneFile    = "user_data_done"
 )
 
-// UserDataStartedFile returns the path to the provisioning user data started
-// marker file.
-func (h *Host) UserDataStartedFile() string {
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataStarteFileName)
+// UserDataProvisioningStartedFile returns the path to the user data
+// provisioning started marker file.
+func (h *Host) UserDataProvisioningStartedFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataProvisioningStartedFile)
 }
 
-// UserDataDoneFile returns the path to the provisioning user data done marker
-// file.
-func (h *Host) UserDataDoneFile() string {
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataDoneFileName)
+// UserDataProvisioningDoneFile returns the path to the user data provisioning
+// done marker file.
+func (h *Host) UserDataProvisioningDoneFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataProvisioningDoneFile)
 }
 
-// MarkUserDataDoneCommands creates the command to make the marker file
-// indicating user data has finished executing.
-func (h *Host) MarkUserDataDoneCommands() string {
-	path := h.UserDataDoneFile()
+// MarkUserDataDoneProvisioningCommand creates the command to make the marker
+// file indicating user data provisioning has finished executing.
+func (h *Host) MarkUserDataProvisioningDoneCommand() string {
+	path := h.UserDataProvisioningDoneFile()
 	return fmt.Sprintf("touch %s", path)
 }
 
@@ -1328,9 +1223,9 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	return nil
 }
 
-// FetchProvisioningScriptUserData returns the user data to fetch the host
-// provisioning script from the server.
-func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+// GenerateFetchProvisioningScriptUserData creates the user data to fetch the
+// host provisioning script from the server.
+func (h *Host) GenerateFetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
 	if h.Secret == "" {
 		if err := h.CreateSecret(); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
