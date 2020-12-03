@@ -49,8 +49,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		"Error clearing collection")
 	projectRef := &ProjectRef{
 		Owner:            "mongodb",
-		Repo:             "mci",
-		Branch:           "master",
+		RepoRefId:        "mongodb_mci",
 		UseRepoSettings:  true,
 		RepoKind:         "github",
 		Enabled:          true,
@@ -62,6 +61,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.NoError(t, projectRef.Insert())
 	repoRef := &RepoRef{ProjectRef{
 		Id:                  "mongodb_mci",
+		Repo:                "mci",
+		Branch:              "master",
 		Enabled:             false,
 		PatchingDisabled:    true,
 		SpawnHostScriptPath: "my-path",

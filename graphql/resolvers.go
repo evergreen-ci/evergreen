@@ -1073,10 +1073,18 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 
 	if *sortBy == TaskSortCategoryBaseStatus {
 		sort.SliceStable(taskResults, func(i, j int) bool {
-			if sortDirParam == 1 {
-				return taskResults[i].BaseStatus < taskResults[j].BaseStatus
+			iBaseStatus := ""
+			if taskResults[i].BaseStatus != nil {
+				iBaseStatus = *taskResults[i].BaseStatus
 			}
-			return taskResults[i].BaseStatus > taskResults[j].BaseStatus
+			jBaseStatus := ""
+			if taskResults[j].BaseStatus != nil {
+				jBaseStatus = *taskResults[j].BaseStatus
+			}
+			if sortDirParam == 1 {
+				return iBaseStatus < jBaseStatus
+			}
+			return iBaseStatus > jBaseStatus
 		})
 	}
 
@@ -1668,9 +1676,10 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return apiTask, err
 }
 
-func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, reconfigure PatchReconfigure) (*restModel.APIPatch, error) {
+func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
+
 	patchUpdateReq := PatchVariantsTasksRequest{}
-	patchUpdateReq.BuildFromGqlInput(reconfigure)
+	patchUpdateReq.BuildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
@@ -1679,7 +1688,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, re
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, configure.Parameters)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}
@@ -1835,12 +1844,6 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
-	if t.Requester == evergreen.MergeTestRequester {
-		_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, p.CommitQueue.PatchType, t.Version, user)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to remove commit queue item for project %s, version %s: %s", taskID, t.Version, err.Error()))
-		}
-	}
 	t, err = r.sc.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
@@ -1867,6 +1870,15 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+// EditAnnotationNote updates the note for the annotation, assuming it hasn't been updated in the meantime.
+func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage, newMessage string) (bool, error) {
+	usr := MustHaveUser(ctx)
+	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it

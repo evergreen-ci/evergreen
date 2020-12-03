@@ -1119,6 +1119,38 @@ func TestManagerImplementations(t *testing.T) {
 							},
 						},
 						clientTestCase{
+							Name: "LoggingCacheCloseAndRemoveSucceeds",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								lc := client.LoggingCache(ctx)
+								logger1, err := lc.Create("logger1", &options.Output{})
+								require.NoError(t, err)
+								logger2, err := lc.Create("logger2", &options.Output{})
+								require.NoError(t, err)
+
+								require.NotNil(t, lc.Get(logger1.ID))
+								require.NotNil(t, lc.Get(logger2.ID))
+								require.NoError(t, lc.CloseAndRemove(ctx, logger2.ID))
+								require.NotNil(t, lc.Get(logger1.ID))
+								require.Nil(t, lc.Get(logger2.ID))
+							},
+						},
+						clientTestCase{
+							Name: "LoggingCacheClearSucceeds",
+							Case: func(ctx context.Context, t *testing.T, client Manager) {
+								lc := client.LoggingCache(ctx)
+								logger1, err := lc.Create("logger1", &options.Output{})
+								require.NoError(t, err)
+								logger2, err := lc.Create("logger2", &options.Output{})
+								require.NoError(t, err)
+
+								require.NotNil(t, lc.Get(logger1.ID))
+								require.NotNil(t, lc.Get(logger2.ID))
+								require.NoError(t, lc.Clear(ctx))
+								require.Nil(t, lc.Get(logger1.ID))
+								require.Nil(t, lc.Get(logger2.ID))
+							},
+						},
+						clientTestCase{
 							Name: "LoggingCachePruneSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
 								lc := client.LoggingCache(ctx)
@@ -1171,10 +1203,6 @@ func TestManagerImplementations(t *testing.T) {
 						clientTestCase{
 							Name: "SendMessagesSucceeds",
 							Case: func(ctx context.Context, t *testing.T, client Manager) {
-								if runtime.GOOS == "windows" {
-									// TODO (EVG-13101): do not skip this test
-									t.Skip("Windows will fail because of the leaked file handle from not closing the sender in the remote service")
-								}
 								lc := client.LoggingCache(ctx)
 								tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "logging_cache")
 								require.NoError(t, err)
@@ -1196,6 +1224,9 @@ func TestManagerImplementations(t *testing.T) {
 									Loggers: []*options.LoggerConfig{config},
 								})
 								require.NoError(t, err)
+								defer func() {
+									assert.NoError(t, lc.Clear(ctx))
+								}()
 
 								payload := options.LoggingPayload{
 									LoggerID: logger.ID,

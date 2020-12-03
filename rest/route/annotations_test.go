@@ -446,6 +446,16 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 		TaskId:        restModel.ToStringPtr("t1"),
 		TaskExecution: &execution0,
 		Note:          &model.APINote{Message: restModel.ToStringPtr("task-1-note_0")},
+		Issues: []model.APIIssueLink{
+			{
+				URL:      model.ToStringPtr("some_url_0"),
+				IssueKey: model.ToStringPtr("some key 0"),
+			},
+			{
+				URL:      model.ToStringPtr("some_url_1"),
+				IssueKey: model.ToStringPtr("some key 1"),
+			},
+		},
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
@@ -465,6 +475,7 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1-note_0", annotation.Note.Message)
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
+	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
 
 	//test update
 	h.annotation = &model.APITaskAnnotation{
@@ -480,6 +491,9 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, annotation.Id, "")
 	assert.Equal(t, "task-1-note_0_updated", annotation.Note.Message)
+	// suspected issues and issues don't get updated when not defined
+	require.Nil(t, annotation.SuspectedIssues)
+	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 
 	//test that it can update old executions
 	h.annotation = &model.APITaskAnnotation{

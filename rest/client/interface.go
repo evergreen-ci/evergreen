@@ -122,8 +122,8 @@ type Communicator interface {
 	// Evergreen binary for a given distro.
 	GetClientURLs(ctx context.Context, distroID string) ([]string, error)
 
-	// GetHostProvisioningScript gets the script options to provision a host.
-	GetHostProvisioningScript(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningScriptOptions, error)
+	// GetHostProvisioningOptions gets the options to provision a host.
+	GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error)
 
 	CompareTasks(context.Context, []string) ([]string, map[string]map[string]string, error)
 }

@@ -662,13 +662,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if origProjectRef.UseRepoSettings != projectRef.UseRepoSettings {
-		if projectRef.UseRepoSettings {
-			err = projectRef.AddToRepoScope(dbUser)
-		} else {
-			err = projectRef.RemoveFromRepoScope()
+
+	// if owner/repo has changed or we're toggling repo settings off, update scope
+	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
+		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
+		if err = projectRef.RemoveFromRepoScope(); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
+			return
 		}
-		if err != nil {
+		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
+	}
+	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
+		if err = projectRef.AddToRepoScope(dbUser); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

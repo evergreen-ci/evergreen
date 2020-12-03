@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // The ProjectRef struct contains general information, independent of any
@@ -53,6 +54,7 @@ type ProjectRef struct {
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
 	// The following fields can be defined only at the branch level.
+	RepoRefId               string                    `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 	Branch                  string                    `bson:"branch_name" json:"branch_name" yaml:"branch"`
 	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
@@ -206,6 +208,7 @@ var (
 	ProjectRefRestrictedKey              = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey               = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey              = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefRepoRefIdKey               = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
 	ProjectRefDisplayNameKey             = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
 	ProjectRefDeactivatePreviousKey      = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
@@ -266,46 +269,47 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	return p.AddPermissions(creator)
 }
 
-func (p *ProjectRef) GetRepoId() string {
-	return fmt.Sprintf("%s_%s", p.Owner, p.Repo)
-}
-
 func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	repoId := p.GetRepoId()
-	repoRef, err := FindOneRepoRef(repoId)
-	if err != nil {
-		return errors.Wrapf(err, "error finding repo ref '%s'", repoId)
+	if p.RepoRefId == "" {
+		repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
+		}
+		if repoRef == nil {
+			p.RepoRefId = mgobson.NewObjectId().Hex()
+			repoRef := RepoRef{ProjectRef{
+				Id:      p.RepoRefId,
+				Admins:  []string{user.Username()},
+				Owner:   p.Owner,
+				Repo:    p.Repo,
+				Enabled: true,
+			}}
+			// creates scope and give user admin access to repo
+			return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref for '%s/%s'", p.Owner, p.Repo)
+		}
+		p.RepoRefId = repoRef.Id
 	}
-	if repoRef == nil {
-		repoRef := RepoRef{ProjectRef{
-			Id:      repoId,
-			Admins:  []string{user.Username()},
-			Owner:   p.Owner,
-			Repo:    p.Repo,
-			Enabled: true,
-		}}
-		// creates scope and give user admin access to repo
-		return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref '%s'", repoId)
-	} else {
-		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
-		repoRole := GetRepoRole(repoId)
-		if !utility.StringSliceContains(user.Roles(), repoRole) {
-			if err = user.AddRole(repoRole); err != nil {
-				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
-			}
-			repoRef.Admins = append(repoRef.Admins, user.Username())
-			if err = repoRef.Update(); err != nil {
-				return errors.Wrapf(err, "error adding user as repo admin")
-			}
+
+	// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
+	repoRole := GetRepoRole(p.RepoRefId)
+	if !utility.StringSliceContains(user.Roles(), repoRole) {
+		if err := user.AddRole(repoRole); err != nil {
+			return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
+		}
+		if err := addAdminToRepo(p.RepoRefId, user.Username()); err != nil {
+			return errors.Wrapf(err, "error adding user as repo admin")
 		}
 	}
-	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(repoId), p.Id), "error adding resource to repo '%s' scope", repoId)
+	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(p.RepoRefId), p.Id), "error adding resource to repo '%s' scope", p.RepoRefId)
 }
 
 func (p *ProjectRef) RemoveFromRepoScope() error {
+	if p.RepoRefId == "" {
+		return nil
+	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	return rm.RemoveResourceFromScope(GetRepoScope(p.GetRepoId()), p.Id)
+	return rm.RemoveResourceFromScope(GetRepoScope(p.RepoRefId), p.Id)
 }
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
@@ -313,7 +317,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	// if the branch is restricted, then it's not accessible to repo admins, so we don't use the repo scope
 	parentScope := evergreen.UnrestrictedProjectsScope
 	if p.UseRepoSettings {
-		parentScope = GetRepoScope(p.GetRepoId())
+		parentScope = GetRepoScope(p.RepoRefId)
 	}
 	if p.Restricted {
 		parentScope = evergreen.AllProjectsScope
@@ -393,12 +397,12 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		return nil, errors.Errorf("project ref '%s' does not exist", identifier)
 	}
 	if pRef.UseRepoSettings {
-		repoRef, err := FindOneRepoRef(pRef.GetRepoId())
+		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
 		if repoRef == nil {
-			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
 		return mergeBranchAndRepoSettings(pRef, repoRef), nil
 	}
@@ -407,6 +411,8 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 
 func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
 	// if a setting is disabled overall, then disable the branch
+	pRef.Owner = repoRef.Owner
+	pRef.Repo = repoRef.Repo
 	if !repoRef.Enabled {
 		pRef.Enabled = repoRef.Enabled
 	}
@@ -523,18 +529,17 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 	for i, pRef := range pRefs {
 		pRefs[i].checkDefaultLogger()
 		if pRefs[i].UseRepoSettings {
-			repoId := pRef.GetRepoId()
-			repoRef := repoRefs[repoId]
+			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
 				var err error
-				repoRef, err = FindOneRepoRef(repoId)
+				repoRef, err = FindOneRepoRef(pRef.RepoRefId)
 				if err != nil {
-					return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+					return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 				}
 				if repoRef == nil {
-					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.GetRepoId(), pRef.Identifier)
+					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 				}
-				repoRefs[repoId] = repoRef
+				repoRefs[pRef.RepoRefId] = repoRef
 			}
 			pRefs[i] = *mergeBranchAndRepoSettings(&pRefs[i], repoRef)
 		}
@@ -837,6 +842,7 @@ func (projectRef *ProjectRef) Upsert() error {
 		bson.M{
 			"$set": bson.M{
 				ProjectRefIdentifierKey:              projectRef.Identifier,
+				ProjectRefRepoRefIdKey:               projectRef.RepoRefId,
 				ProjectRefRepoKindKey:                projectRef.RepoKind,
 				ProjectRefEnabledKey:                 projectRef.Enabled,
 				ProjectRefPrivateKey:                 projectRef.Private,
@@ -1076,12 +1082,23 @@ func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
 	return true, nil
 }
 
+// RemoveAdminFromProjects removes a user from all Admin slices of every project
+func RemoveAdminFromProjects(toDelete string) error {
+	update := bson.M{
+		"$pull": bson.M{
+			ProjectRefAdminsKey: toDelete,
+		},
+	}
+
+	return db.Update(ProjectRefCollection, bson.M{}, update)
+}
+
 func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// attempt to remove the resource from the repo (which will also remove from its parent)
 	// if the repo scope doesn't exist then we'll remove only from unrestricted
 
-	scopeId := GetRepoScope(p.GetRepoId())
+	scopeId := GetRepoScope(p.RepoRefId)
 	scope, err := rm.GetScope(ctx, scopeId)
 	if err != nil {
 		return errors.Wrapf(err, "error looking for repo scope")
@@ -1098,7 +1115,7 @@ func (p *ProjectRef) MakeUnrestricted(ctx context.Context) error {
 	// attempt to add the resource to the repo (which will also add to its parent)
 	// if the repo scope doesn't exist then we'll add only to unrestricted
 
-	scopeId := GetRepoScope(p.GetRepoId())
+	scopeId := GetRepoScope(p.RepoRefId)
 	scope, err := rm.GetScope(ctx, scopeId)
 	if err != nil {
 		return errors.Wrapf(err, "error looking for repo scope")

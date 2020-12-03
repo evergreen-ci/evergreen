@@ -269,6 +269,18 @@ func (p *Patch) UpdateVariantsTasks(variantsTasks []VariantTasks) {
 	p.VariantsTasks = variantsTasks
 }
 
+func (p *Patch) SetParameters(parameters []Parameter) error {
+	p.Parameters = parameters
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				ParametersKey: parameters,
+			},
+		},
+	)
+}
+
 // ResolveVariantTasks returns a set of all build variants and a set of all
 // tasks that will run based on the given VariantTasks.
 func ResolveVariantTasks(vts []VariantTasks) (bvs []string, tasks []string) {

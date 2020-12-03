@@ -91,6 +91,12 @@ type PatchBuildVariantTask struct {
 	BaseStatus *string `json:"baseStatus"`
 }
 
+type PatchConfigure struct {
+	Description   string                `json:"description"`
+	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
+	Parameters    []*model.APIParameter `json:"parameters"`
+}
+
 type PatchDuration struct {
 	Makespan  *string    `json:"makespan"`
 	TimeTaken *string    `json:"timeTaken"`
@@ -105,11 +111,6 @@ type PatchMetadata struct {
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
 	Tasks    []string               `json:"tasks"`
-}
-
-type PatchReconfigure struct {
-	Description   string          `json:"description"`
-	VariantsTasks []*VariantTasks `json:"variantsTasks"`
 }
 
 type PatchTasks struct {
@@ -183,14 +184,14 @@ type TaskQueueDistro struct {
 }
 
 type TaskResult struct {
-	ID           string `json:"id"`
-	Aborted      bool   `json:"aborted"`
-	DisplayName  string `json:"displayName"`
-	Version      string `json:"version"`
-	Status       string `json:"status"`
-	BaseStatus   string `json:"baseStatus"`
-	BuildVariant string `json:"buildVariant"`
-	Blocked      bool   `json:"blocked"`
+	ID           string  `json:"id"`
+	Aborted      bool    `json:"aborted"`
+	DisplayName  string  `json:"displayName"`
+	Version      string  `json:"version"`
+	Status       string  `json:"status"`
+	BaseStatus   *string `json:"baseStatus"`
+	BuildVariant string  `json:"buildVariant"`
+	Blocked      bool    `json:"blocked"`
 }
 
 type TaskTestResult struct {

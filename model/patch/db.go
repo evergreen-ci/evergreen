@@ -37,6 +37,7 @@ var (
 	VariantsTasksKey    = bsonutil.MustHaveTag(Patch{}, "VariantsTasks")
 	SyncAtEndOptionsKey = bsonutil.MustHaveTag(Patch{}, "SyncAtEndOpts")
 	PatchesKey          = bsonutil.MustHaveTag(Patch{}, "Patches")
+	ParametersKey       = bsonutil.MustHaveTag(Patch{}, "Parameters")
 	ActivatedKey        = bsonutil.MustHaveTag(Patch{}, "Activated")
 	PatchedConfigKey    = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
 	AliasKey            = bsonutil.MustHaveTag(Patch{}, "Alias")

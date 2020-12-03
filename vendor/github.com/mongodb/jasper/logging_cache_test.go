@@ -1,6 +1,7 @@
 package jasper
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -78,6 +79,64 @@ func TestLoggingCacheImplementation(t *testing.T) {
 				require.NoError(t, err)
 
 				assert.True(t, time.Since(cl.Accessed) <= time.Millisecond)
+			},
+		},
+		{
+			Name: "CloseAndRemove",
+			Case: func(t *testing.T, cache LoggingCache) {
+				ctx := context.TODO()
+				sender := options.NewMockSender("output")
+
+				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+					Output: sender,
+				}))
+				require.NoError(t, cache.Put("id1", &options.CachedLogger{}))
+				require.NotNil(t, cache.Get("id0"))
+				require.NoError(t, cache.CloseAndRemove(ctx, "id0"))
+				require.Nil(t, cache.Get("id0"))
+				assert.NotNil(t, cache.Get("id1"))
+				require.True(t, sender.Closed)
+
+				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+					Output: sender,
+				}))
+				require.NotNil(t, cache.Get("id0"))
+				assert.Error(t, cache.CloseAndRemove(ctx, "id0"))
+				require.Nil(t, cache.Get("id0"))
+			},
+		},
+		{
+			Name: "Clear",
+			Case: func(t *testing.T, cache LoggingCache) {
+				ctx := context.TODO()
+				sender0 := options.NewMockSender("output")
+				sender1 := options.NewMockSender("output")
+
+				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+					Output: sender0,
+				}))
+				require.NoError(t, cache.Put("id1", &options.CachedLogger{
+					Output: sender1,
+				}))
+				require.NotNil(t, cache.Get("id0"))
+				require.NotNil(t, cache.Get("id1"))
+				require.NoError(t, cache.Clear(ctx))
+				require.Nil(t, cache.Get("id0"))
+				require.Nil(t, cache.Get("id1"))
+				require.True(t, sender0.Closed)
+				require.True(t, sender1.Closed)
+
+				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+					Output: sender0,
+				}))
+				require.NoError(t, cache.Put("id1", &options.CachedLogger{
+					Output: sender1,
+				}))
+				require.NotNil(t, cache.Get("id0"))
+				require.NotNil(t, cache.Get("id1"))
+				assert.Error(t, cache.Clear(ctx))
+				assert.Nil(t, cache.Get("id0"))
+				assert.Nil(t, cache.Get("id1"))
 			},
 		},
 	} {

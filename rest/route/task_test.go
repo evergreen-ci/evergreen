@@ -237,7 +237,7 @@ func TestGetDisplayTaskName(t *testing.T) {
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 		},
-		"ReturnsNotFoundIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
+		"ReturnsOkIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
 			h := makeGetDisplayTaskHandler(&data.MockConnector{
 				MockTaskConnector: data.MockTaskConnector{
@@ -250,7 +250,7 @@ func TestGetDisplayTaskName(t *testing.T) {
 
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
-			assert.Equal(t, http.StatusNotFound, resp.Status())
+			assert.Equal(t, http.StatusOK, resp.Status())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

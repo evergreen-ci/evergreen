@@ -337,8 +337,8 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 	return []string{"https://example.com"}, nil
 }
 
-func (c *Mock) GetHostProvisioningScript(context.Context, string, string) (*restmodel.APIHostProvisioningScriptOptions, error) {
-	return &restmodel.APIHostProvisioningScriptOptions{
+func (c *Mock) GetHostProvisioningOptions(context.Context, string, string) (*restmodel.APIHostProvisioningOptions, error) {
+	return &restmodel.APIHostProvisioningOptions{
 		Directive: string(userdata.ShellScript) + "/bin/bash",
 		Content:   "echo hello world",
 	}, nil

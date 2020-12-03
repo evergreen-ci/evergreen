@@ -32,6 +32,14 @@
           "unschedulePatchTasks": "5e4ff3abe3c3317e352062e4"
         }
       }
+    },
+    {
+      "query_file": "commit-queue-dequeue.graphql",
+      "result": {
+        "data": {
+          "unschedulePatchTasks": "7"
+        }
+      }
     }
   ]
 }

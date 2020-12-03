@@ -13,6 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -26,6 +27,7 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1160,6 +1162,62 @@ func TestTaskResetExecute(t *testing.T) {
 		})
 	})
 
+}
+
+func TestParentTaskInfo(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	sc := data.MockConnector{
+		URL: "http://evergreen.example.net",
+	}
+	buildID := "test"
+	dtID := "displayTask"
+	displayTask := task.Task{
+		Id:             dtID,
+		BuildId:        buildID,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"execTask0", "execTask1"},
+	}
+	execTask0 := task.Task{
+		Id:      "execTask0",
+		BuildId: buildID,
+	}
+	execTask1 := task.Task{
+		Id:      "execTask1",
+		BuildId: buildID,
+	}
+	randomTask := task.Task{
+		Id:      "randomTask",
+		BuildId: buildID,
+	}
+
+	assert.NoError(t, displayTask.Insert())
+	sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, displayTask, execTask0, execTask1, randomTask)
+	ctx := context.Background()
+	tbh := &tasksByBuildHandler{
+		limit: 100,
+		sc:    &sc,
+	}
+	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
+	r, err := http.NewRequest("GET", route, nil)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"build_id": "test"})
+
+	assert.NoError(t, tbh.Parse(ctx, r))
+	assert.False(t, tbh.fetchAllExecutions)
+	assert.True(t, tbh.fetchParentIds)
+
+	resp := tbh.Run(ctx)
+	data, ok := resp.Data().([]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, 3, len(data))
+
+	expectedParentIDs := []string{dtID, dtID, ""}
+	for i := range data {
+		task, ok := data[i].(*model.APITask)
+		require.True(t, ok)
+		assert.Equal(t, expectedParentIDs[i], task.ParentTaskId)
+	}
 }
 
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {

@@ -86,6 +86,33 @@ func TestCLILoggingCache(t *testing.T) {
 					assert.False(t, getResp.Successful())
 					assert.Zero(t, getResp.Logger)
 				},
+				"CloseAndRemoveSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					logger := createCachedLoggerFromCLI(t, c, "id")
+
+					input, err := json.Marshal(IDInput{ID: logger.ID})
+					require.NoError(t, err)
+					resp := &OutcomeResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, loggingCacheCloseAndRemove(), input, resp))
+					require.True(t, resp.Successful())
+
+					getResp := &CachedLoggerResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, loggingCacheGet(), input, getResp))
+					assert.False(t, getResp.Successful())
+					assert.Zero(t, getResp.Logger)
+				},
+				"ClearSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					_ = createCachedLoggerFromCLI(t, c, "id0")
+					_ = createCachedLoggerFromCLI(t, c, "id1")
+
+					resp := &OutcomeResponse{}
+					require.NoError(t, execCLICommandOutput(t, c, loggingCacheClear(), resp))
+					require.True(t, resp.Successful())
+
+					getResp := &LoggingCacheLenResponse{}
+					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), getResp))
+					assert.True(t, getResp.Successful())
+					assert.Zero(t, getResp.Length)
+				},
 				"RemoveWithNonexistentIDNoops": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					logger := createCachedLoggerFromCLI(t, c, "id")
 

@@ -1,8 +1,10 @@
 package mock
 
 import (
+	"context"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -61,6 +63,30 @@ func (c *LoggingCache) Get(id string) *options.CachedLogger { return c.Cache[id]
 
 // Remove removes an object from the in-memory logging cache.
 func (c *LoggingCache) Remove(id string) { delete(c.Cache, id) }
+
+// CloseAndRemove closes the cached logger and removes it from the in-memory
+// logging cache.
+func (c *LoggingCache) CloseAndRemove(_ context.Context, id string) error {
+	var err error
+	logger, ok := c.Cache[id]
+	if ok {
+		err = logger.Close()
+		delete(c.Cache, id)
+	}
+
+	return errors.Wrapf(err, "problem closing logger with id %s", id)
+}
+
+// Clear closes and removes all objects in the in-memory logging cache.
+func (c *LoggingCache) Clear(_ context.Context) error {
+	catcher := grip.NewBasicCatcher()
+	for _, logger := range c.Cache {
+		catcher.Add(logger.Close())
+	}
+	c.Cache = map[string]*options.CachedLogger{}
+
+	return catcher.Resolve()
+}
 
 // Prune removes all items from the cache whose most recent access time is older
 // than lastAccessed.

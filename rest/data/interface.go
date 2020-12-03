@@ -108,6 +108,7 @@ type Connector interface {
 	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
 	AddTagsToProject(string, ...string) error
 	RemoveTagFromProject(string, string) error
+	RemoveAdminFromProjects(string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
@@ -164,9 +165,9 @@ type Connector interface {
 	// Find a host by ID and queries for full running task
 	GetHostByIdWithTask(hostID string) (*host.Host, error)
 
-	// GenerateHostProvisioningScript generates and returns the script to
+	// GenerateHostProvisioningOptions generates and returns the options to
 	// provision the host given by host ID.
-	GenerateHostProvisioningScript(ctx context.Context, hostID string) (*userdata.Options, error)
+	GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)

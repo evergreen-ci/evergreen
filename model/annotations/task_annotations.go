@@ -97,6 +97,30 @@ func MoveSuspectedIssueToIssue(annotationId string, issue IssueLink, username st
 	)
 }
 
+func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMessage, username string) error {
+	note := Note{
+		Message: newMessage,
+		Source:  &Source{Requester: UIRequester, Author: username, Time: time.Now()},
+	}
+
+	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
+	if err != nil {
+		return errors.Wrapf(err, "error finding task annotation")
+	}
+
+	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
+		return errors.New("note is out of sync, please try again")
+	}
+	_, err = db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$set": bson.M{NoteKey: note},
+		},
+	)
+	return errors.Wrapf(err, "problem updating note for task '%s'", taskId)
+}
+
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
@@ -163,14 +187,14 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		update[NoteKey] = a.Note
 	}
 	if a.Issues != nil {
-		for _, issue := range a.Issues {
-			issue.Source = source
+		for i := range a.Issues {
+			a.Issues[i].Source = source
 		}
 		update[IssuesKey] = a.Issues
 	}
 	if a.SuspectedIssues != nil {
-		for _, issue := range a.SuspectedIssues {
-			issue.Source = source
+		for i := range a.SuspectedIssues {
+			a.SuspectedIssues[i].Source = source
 		}
 		update[SuspectedIssuesKey] = a.SuspectedIssues
 	}
