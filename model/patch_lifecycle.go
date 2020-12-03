@@ -459,9 +459,14 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 			continue
 		}
 
+		childProjectID, err := FindIdForProject(alias.ChildProject)
+		if err != nil {
+			return errors.Wrapf(err, "can't get ID for child project '%s'", alias.ChildProject)
+		}
+
 		// group patches on project, status, parentAsModule
 		group := aliasGroup{
-			project:        alias.ChildProject,
+			project:        childProjectID,
 			status:         alias.Status,
 			parentAsModule: alias.ParentAsModule,
 		}
