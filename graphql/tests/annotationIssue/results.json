@@ -25,7 +25,7 @@
       "result": {
         "errors": [
           {
-            "message": "couldn't update note: note has already been updated",
+            "message": "couldn't update note: note is out of sync, please try again",
             "path": [
               "editAnnotationNote"
             ],
