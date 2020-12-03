@@ -74,6 +74,26 @@ func (lc *sshLoggingCache) Remove(id string) {
 	}
 }
 
+func (lc *sshLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
+	output, err := lc.runCommand(ctx, LoggingCacheCloseAndRemoveCommand, IDInput{ID: id})
+	if err != nil {
+		return errors.Wrap(err, "problem running command")
+	}
+
+	_, err = ExtractOutcomeResponse(output)
+	return err
+}
+
+func (lc *sshLoggingCache) Clear(ctx context.Context) error {
+	output, err := lc.runCommand(ctx, LoggingCacheCloseAndRemoveCommand, nil)
+	if err != nil {
+		return errors.Wrap(err, "problem running command")
+	}
+
+	_, err = ExtractOutcomeResponse(output)
+	return err
+}
+
 func (lc *sshLoggingCache) Prune(ts time.Time) {
 	output, err := lc.runCommand(lc.ctx, LoggingCachePruneCommand, LoggingCachePruneInput{LastAccessed: ts})
 	if err != nil {

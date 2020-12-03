@@ -591,7 +591,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, variantToSchedule)
 	}
-	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, variantTasks)
+	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, variantTasks, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to schedule patch"))
 	}

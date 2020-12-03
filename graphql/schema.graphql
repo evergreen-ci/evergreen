@@ -74,7 +74,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  schedulePatch(patchId: String!, reconfigure: PatchReconfigure!): Patch!
+  schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
@@ -86,8 +86,17 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  moveAnnotationIssue(annotationId: String!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
-  addAnnotationIssue(taskId: String!, execution: Int!, apiIssue: AnnotationIssue!, isIssue: Boolean!): Boolean!
+  moveAnnotationIssue(
+    annotationId: String!
+    apiIssue: AnnotationIssue!
+    isIssue: Boolean!
+  ): Boolean!
+  addAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: AnnotationIssue!
+    isIssue: Boolean!
+  ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -170,9 +179,10 @@ input VolumeHost {
   volumeId: String!
   hostId: String!
 }
-input PatchReconfigure {
+input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
+  parameters: [ParameterInput]
 }
 input VariantTasks {
   variant: String!
@@ -456,6 +466,11 @@ type ProjectBuildVariant {
 }
 
 type Parameter {
+  key: String!
+  value: String!
+}
+
+input ParameterInput {
   key: String!
   value: String!
 }

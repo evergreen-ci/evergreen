@@ -34,9 +34,10 @@ message BufferOptions {
 
 enum LogFormat {
   LOGFORMATUNKNOWN = 0;
-  LOGFORMATDEFAULT = 1;
+  LOGFORMATPLAIN = 1;
   LOGFORMATJSON = 2;
-  LOGFORMATPLAIN = 3;
+  LOGFORMATBSON = 3;
+  LOGFORMATDEFAULT = 4;
 }
 
 message BaseOptions {
@@ -104,19 +105,20 @@ message BuildloggerV3Info {
   int32 execution = 6;
   string test_name = 7;
   int32 trial = 8;
-  string process_name = 9;
+  string proc_name = 9;
   LogFormat format = 10;
   repeated string tags = 11;
   map<string, string> args = 12;
   bool mainline = 13;
-  int64 max_buffer_size = 14;
-  int64 flush_interval = 15;
-  bool disable_new_line_check = 16;
-  string base_address = 17;
-  string rpc_port = 18;
-  bool insecure = 19;
-  string username = 20;
-  string api_key = 21;
+  string prefix = 14;
+  int64 max_buffer_size = 15;
+  int64 flush_interval = 16;
+  bool disable_new_line_check = 17;
+  string base_address = 18;
+  string rpc_port = 19;
+  bool insecure = 20;
+  string username = 21;
+  string api_key = 22;
 }
 
 message BuildloggerV3Options {
@@ -463,6 +465,8 @@ service JasperProcessManager {
   rpc LoggingCacheCreate(LoggingCacheCreateArgs) returns (LoggingCacheInstance);
   rpc LoggingCacheGet(LoggingCacheArgs) returns (LoggingCacheInstance);
   rpc LoggingCacheRemove(LoggingCacheArgs) returns (OperationOutcome);
+  rpc LoggingCacheCloseAndRemove(LoggingCacheArgs) returns (OperationOutcome);
+  rpc LoggingCacheClear(google.protobuf.Empty) returns (OperationOutcome);
   rpc LoggingCacheLen(google.protobuf.Empty) returns (LoggingCacheSize);
   rpc LoggingCachePrune(google.protobuf.Timestamp) returns (OperationOutcome);
 

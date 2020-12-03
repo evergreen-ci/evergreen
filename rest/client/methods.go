@@ -1514,10 +1514,10 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
-func (c *communicatorImpl) GetHostProvisioningScript(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningScriptOptions, error) {
+func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   fmt.Sprintf("/hosts/%s/provisioning_script", hostID),
+		path:   fmt.Sprintf("/hosts/%s/provisioning_options", hostID),
 	}
 	r, err := c.createRequest(info, nil)
 	if err != nil {
@@ -1533,7 +1533,7 @@ func (c *communicatorImpl) GetHostProvisioningScript(ctx context.Context, hostID
 	if resp.StatusCode != http.StatusOK {
 		return nil, utility.RespErrorf(resp, "received error response")
 	}
-	var opts restmodel.APIHostProvisioningScriptOptions
+	var opts restmodel.APIHostProvisioningOptions
 	if err = utility.ReadJSON(resp.Body, &opts); err != nil {
 		return nil, errors.Wrap(err, "reading response")
 	}

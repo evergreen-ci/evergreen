@@ -548,26 +548,26 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-// GET /hosts/{host_id}/provisioning_script
+// GET /hosts/{host_id}/provisioning_options
 
-type hostProvisioningScriptGetHandler struct {
+type hostProvisioningOptionsGetHandler struct {
 	sc     data.Connector
 	hostID string
 }
 
-func makeHostProvisioningScriptGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &hostProvisioningScriptGetHandler{
+func makeHostProvisioningOptionsGetHandler(sc data.Connector) gimlet.RouteHandler {
+	return &hostProvisioningOptionsGetHandler{
 		sc: sc,
 	}
 }
 
-func (rh *hostProvisioningScriptGetHandler) Factory() gimlet.RouteHandler {
-	return &hostProvisioningScriptGetHandler{
+func (rh *hostProvisioningOptionsGetHandler) Factory() gimlet.RouteHandler {
+	return &hostProvisioningOptionsGetHandler{
 		sc: rh.sc,
 	}
 }
 
-func (rh *hostProvisioningScriptGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostID := gimlet.GetVars(r)["host_id"]
 	if hostID == "" {
 		return errors.New("missing host ID")
@@ -576,12 +576,12 @@ func (rh *hostProvisioningScriptGetHandler) Parse(ctx context.Context, r *http.R
 	return nil
 }
 
-func (rh *hostProvisioningScriptGetHandler) Run(ctx context.Context) gimlet.Responder {
-	opts, err := rh.sc.GenerateHostProvisioningScript(ctx, rh.hostID)
+func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	opts, err := rh.sc.GenerateHostProvisioningOptions(ctx, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	apiOpts := model.APIHostProvisioningScriptOptions{}
+	apiOpts := model.APIHostProvisioningOptions{}
 	if err := apiOpts.BuildFromService(opts); err != nil {
 		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

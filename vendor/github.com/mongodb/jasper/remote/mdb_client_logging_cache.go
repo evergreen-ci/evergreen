@@ -77,6 +77,44 @@ func (lc *mdbLoggingCache) Remove(id string) {
 	_, _ = lc.client.doRequest(lc.ctx, req)
 }
 
+func (lc *mdbLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &loggingCacheCloseAndRemoveRequest{ID: id})
+	if err != nil {
+		return errors.Wrap(err, "could not create request")
+	}
+
+	msg, err := lc.client.doRequest(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	var resp shell.ErrorResponse
+	if err = shell.MessageToResponse(msg, &resp); err != nil {
+		return errors.Wrap(err, "could not read response")
+	}
+
+	return resp.SuccessOrError()
+}
+
+func (lc *mdbLoggingCache) Clear(ctx context.Context) error {
+	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &loggingCacheClearRequest{Clear: 1})
+	if err != nil {
+		return errors.Wrap(err, "could not create request")
+	}
+
+	msg, err := lc.client.doRequest(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	var resp shell.ErrorResponse
+	if err = shell.MessageToResponse(msg, &resp); err != nil {
+		return errors.Wrap(err, "could not read response")
+	}
+
+	return resp.SuccessOrError()
+}
+
 func (lc *mdbLoggingCache) Prune(lastAccessed time.Time) {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, &loggingCachePruneRequest{LastAccessed: lastAccessed})
 	if err != nil {
