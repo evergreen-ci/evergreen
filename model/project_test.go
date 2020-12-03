@@ -1051,6 +1051,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v1 := Version{
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf1",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now(),
 		RevisionOrderNumber: 1,
@@ -1059,6 +1060,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v2 := Version{
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf2",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now().Add(1 * time.Minute),
 		RevisionOrderNumber: 2,
@@ -1067,25 +1069,29 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v3 := Version{
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf3",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now().Add(5 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
 	s.NoError(v3.Insert())
 	b1 := build.Build{
-		Id:      "b1",
-		Version: v1.Id,
-		Tasks:   []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
+		Id:       "b1",
+		Version:  v1.Id,
+		Revision: v1.Revision,
+		Tasks:    []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
 	}
 	s.NoError(b1.Insert())
 	b2 := build.Build{
-		Id:      "b2",
-		Version: v2.Id,
+		Id:       "b2",
+		Version:  v2.Id,
+		Revision: v2.Revision,
 	}
 	s.NoError(b2.Insert())
 	b3 := build.Build{
-		Id:      "b3",
-		Version: v3.Id,
+		Id:       "b3",
+		Version:  v3.Id,
+		Revision: v3.Revision,
 	}
 	s.NoError(b3.Insert())
 	t1 := task.Task{
@@ -1109,6 +1115,9 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	s.Equal(b1.Id, builds[v1.Id][0].Id)
 	s.Equal(b2.Id, builds[v2.Id][0].Id)
 	s.Equal(b3.Id, builds[v3.Id][0].Id)
+	s.Equal(v1.Revision, builds[v1.Id][0].Revision)
+	s.Equal(v2.Revision, builds[v2.Id][0].Revision)
+	s.Equal(v3.Revision, builds[v3.Id][0].Revision)
 	s.Equal(t1.Id, tasks[b1.Id][0].Id)
 	s.Equal(t2.Id, tasks[b1.Id][1].Id)
 }
