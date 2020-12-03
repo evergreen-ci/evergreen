@@ -98,7 +98,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq, nil)
+	err, status, successMessage, versionId := graphql.SchedulePatch(projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq, nil)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
