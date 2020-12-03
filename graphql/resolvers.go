@@ -2346,6 +2346,20 @@ func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thi
 	return &obj.Assignee.DisplayName, nil
 }
 
+func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.AssignedTeam == nil {
+		return nil, nil
+	}
+	return &obj.AssignedTeam.Value, nil
+}
+
+func (r *ticketFieldsResolver) JiraStatus(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Status == nil {
+		return nil, nil
+	}
+	return &obj.Status.Name, nil
+}
+
 func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
 	if obj.Resolution == nil {
 		return nil, nil
