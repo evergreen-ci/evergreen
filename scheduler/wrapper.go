@@ -23,9 +23,8 @@ const (
 )
 
 type Configuration struct {
-	DistroID           string
-	TaskFinder         string
-	FutureHostFraction float64
+	DistroID   string
+	TaskFinder string
 }
 
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {

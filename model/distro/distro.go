@@ -52,7 +52,6 @@ type Distro struct {
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
-	FutureHostFraction    float64               `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
 
 type DistroData struct {
@@ -216,6 +215,7 @@ type HostAllocatorSettings struct {
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
+	FutureHostPercent      int           `bson:"future_host_percent" json:"future_host_percent" mapstructure:"future_host_percent"`
 }
 
 type FinderSettings struct {
@@ -635,6 +635,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
+		FutureHostPercent:      has.FutureHostPercent,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -648,6 +649,9 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	if resolved.FutureHostPercent == 0 {
+		resolved.FutureHostPercent = config.DefaultFutureHostPercent
 	}
 	if catcher.HasErrors() {
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)

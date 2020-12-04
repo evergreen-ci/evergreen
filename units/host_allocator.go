@@ -137,13 +137,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostAllocationBegins := time.Now()
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
+
 	hostAllocatorData := scheduler.HostAllocatorData{
-		Distro:             *distro,
-		ExistingHosts:      upHosts,
-		FutureHostFraction: distro.FutureHostFraction,
-		UsesContainers:     (containerPool != nil),
-		ContainerPool:      containerPool,
-		DistroQueueInfo:    distroQueueInfo,
+		Distro:          *distro,
+		ExistingHosts:   upHosts,
+		UsesContainers:  (containerPool != nil),
+		ContainerPool:   containerPool,
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	// nHosts is the number of additional hosts desired.

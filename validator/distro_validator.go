@@ -415,6 +415,12 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 			Level:   Error,
 		})
 	}
+	if settings.FutureHostPercent < 0 || settings.FutureHostPercent > 100 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid host_allocator_settings.future_host_percent value of %d for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.FutureHostPercent, d.Id),
+			Level:   Error,
+		})
+	}
 
 	return errs
 }
