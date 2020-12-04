@@ -196,7 +196,7 @@ func (pc *DBPatchConnector) FindPatchesByProjectPatchNameStatusesCommitQueue(pro
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
+			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
@@ -217,7 +217,7 @@ func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user s
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
+			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
