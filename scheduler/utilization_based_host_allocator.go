@@ -145,7 +145,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 
 	// determine how many free hosts we have that are already up
 	var futureHostFraction float64
-	futureHostFraction = 100.0 / float64(futureHostPercent)
+	futureHostFraction = float64(futureHostPercent) / float64(100)
 	startAt := time.Now()
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
