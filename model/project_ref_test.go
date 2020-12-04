@@ -557,6 +557,19 @@ func TestProjectRefTags(t *testing.T) {
 	})
 }
 
+func TestGetPatchTriggerAlias(t *testing.T) {
+	projRef := ProjectRef{
+		PatchTriggerAliases: []PatchTriggerDefinition{{Alias: "a0"}},
+	}
+
+	alias, found := projRef.GetPatchTriggerAlias("a0")
+	assert.True(t, found)
+	assert.Equal(t, "a0", alias.Alias)
+
+	alias, found = projRef.GetPatchTriggerAlias("a1")
+	assert.False(t, found)
+}
+
 func TestFindDownstreamProjects(t *testing.T) {
 	require.NoError(t, db.Clear(ProjectRefCollection))
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"

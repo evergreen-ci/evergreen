@@ -446,27 +446,14 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 	}
 	aliasGroups := make(map[aliasGroup][]PatchTriggerDefinition)
 	for _, aliasName := range p.Triggers.Aliases {
-		aliasFound := false
-		var alias PatchTriggerDefinition
-		for _, alias = range projectRef.PatchTriggerAliases {
-			if alias.Alias == aliasName {
-				aliasFound = true
-				break
-			}
-		}
-		if !aliasFound {
-			// the user specified a non-existent alias
-			continue
-		}
-
-		childProjectID, err := FindIdForProject(alias.ChildProject)
-		if err != nil {
-			return errors.Wrapf(err, "can't get ID for child project '%s'", alias.ChildProject)
+		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
+		if !found {
+			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
 
 		// group patches on project, status, parentAsModule
 		group := aliasGroup{
-			project:        childProjectID,
+			project:        alias.ChildProject,
 			status:         alias.Status,
 			parentAsModule: alias.ParentAsModule,
 		}
@@ -494,7 +481,7 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 	return p.AppendChildPatches(childPatchIDs)
 }
 
-func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) (string, error) {
+func makePatchFromDefinitions(ctx context.Context, parentPatch *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) (string, error) {
 	if len(definitions) == 0 {
 		return "", nil
 	}
@@ -504,19 +491,22 @@ func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, pa
 		return "", errors.Wrapf(err, "problem getting last known project for '%s'", projectID)
 	}
 
+	matchingTasks, err := project.VariantTasksForSelectors(definitions, parentPatch.GetRequester())
+	if err != nil {
+		return "", errors.Wrap(err, "problem matching tasks to alias definitions")
+	}
+	if len(matchingTasks) == 0 {
+		return "", nil
+	}
+
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
 		return "", errors.Wrap(err, "can't marshal child project")
 	}
 
-	matchingTasks, err := project.VariantTasksForSelectors(definitions, p.GetRequester())
+	user, err := user.FindOneById(parentPatch.Author)
 	if err != nil {
-		return "", errors.Wrap(err, "problem matching tasks to alias definitions")
-	}
-
-	user, err := user.FindOneById(p.Author)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't get user '%s'", p.Author)
+		return "", errors.Wrapf(err, "can't get user '%s'", parentPatch.Author)
 	}
 	if user == nil {
 		return "", errors.New("can't find parent patch author")
@@ -533,17 +523,16 @@ func makePatchFromDefinitions(ctx context.Context, p *patch.Patch, projectID, pa
 		Githash:       v.Revision,
 		VariantsTasks: matchingTasks,
 		Project:       projectID,
-		Author:        p.Author,
-		Description:   fmt.Sprintf("Child patch for '%s'", p.Id.Hex()),
+		Author:        parentPatch.Author,
 		Status:        evergreen.PatchCreated,
 		CreateTime:    time.Now(),
 		PatchNumber:   patchNumber,
 		PatchedConfig: string(yamlBytes),
-		Triggers:      patch.TriggerInfo{ParentPatch: p.Id.Hex()},
+		Triggers:      patch.TriggerInfo{ParentPatch: parentPatch.Id.Hex()},
 	}
 
 	if parentAsModule != "" {
-		for _, p := range p.Patches {
+		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 					ModuleName: parentAsModule,

@@ -269,6 +269,16 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	return p.AddPermissions(creator)
 }
 
+func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (PatchTriggerDefinition, bool) {
+	for _, alias := range p.PatchTriggerAliases {
+		if alias.Alias == aliasName {
+			return alias, true
+		}
+	}
+
+	return PatchTriggerDefinition{}, false
+}
+
 func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if p.RepoRefId == "" {

@@ -1309,7 +1309,11 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars)
 			catcher.Add(errors.Wrap(err, "failed to get task/variant pairs for alias"))
 		}
-		grip.Error(catcher.Resolve())
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message": "problem adding variants/tasks for alias",
+			"alias":   alias,
+			"project": p.Identifier,
+		}))
 
 		if !catcher.HasErrors() {
 			pairs.ExecTasks = append(pairs.ExecTasks, aliasPairs...)
