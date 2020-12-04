@@ -230,6 +230,8 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
 
+	// create a separate context from the one the callar has so that the caller
+	// can't interrupt the db operations here
 	ctx := context.Background()
 	if p.Version != "" {
 		p.Activated = true
