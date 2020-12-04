@@ -481,14 +481,14 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *Proj
 	return p.AppendChildPatches(childPatchIDs)
 }
 
-func makePatchFromDefinitions(ctx context.Context, parentPatch *patch.Patch, projectID, parentAsModule string, definitions []PatchTriggerDefinition) (string, error) {
+func makePatchFromDefinitions(ctx context.Context, parentPatch *patch.Patch, childProjectID, parentAsModule string, definitions []PatchTriggerDefinition) (string, error) {
 	if len(definitions) == 0 {
 		return "", nil
 	}
 
-	v, project, err := FindLatestVersionWithValidProject(projectID)
+	v, project, err := FindLatestVersionWithValidProject(childProjectID)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem getting last known project for '%s'", projectID)
+		return "", errors.Wrapf(err, "problem getting last known project for '%s'", childProjectID)
 	}
 
 	matchingTasks, err := project.VariantTasksForSelectors(definitions, parentPatch.GetRequester())
@@ -522,7 +522,7 @@ func makePatchFromDefinitions(ctx context.Context, parentPatch *patch.Patch, pro
 		Id:            newPatchID,
 		Githash:       v.Revision,
 		VariantsTasks: matchingTasks,
-		Project:       projectID,
+		Project:       childProjectID,
 		Author:        parentPatch.Author,
 		Status:        evergreen.PatchCreated,
 		CreateTime:    time.Now(),
