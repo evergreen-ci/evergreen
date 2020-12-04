@@ -135,7 +135,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxUnexpirableVolumesPerUser int
 		MaxVolumeSizePerUser         int
 		SetupScriptPath              string
-		newUILink                    string
+		NewUILink                    string
 		ViewData
 	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
 		setupScriptPath, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
