@@ -156,7 +156,8 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 
 		s.True(newHosts >= 0)
 		s.True(newHosts <= queueSize)
-		futureHostFraction = 100.0 / float(s.futureHostPercent)
+		var futureHostFraction float64
+		futureHostFraction = 100.0 / float64(s.futureHostPercent)
 		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*futureHostFraction)
 		// the task duration per host will always be less than 2x the max duration per host (30min)
 		// because the longest task used in this test is 1 hr
