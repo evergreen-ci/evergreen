@@ -1011,9 +1011,8 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	for _, p := range allProjs {
 		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
 		apiProjectRef := restModel.APIProjectRef{}
-		pErr := apiProjectRef.BuildFromService(p)
-		if pErr != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		if pErr := apiProjectRef.BuildFromService(p); pErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", pErr.Error()))
 		}
 		// favorite projects are filtered out and appended to their own array
 		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
