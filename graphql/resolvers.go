@@ -902,11 +902,11 @@ func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIP
 }
 
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	patches, count, err := r.sc.FindPatchesByProjectPatchNameStatusesCommitQueue(*obj.Identifier, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
-	patchPointers := []*restModel.APIPatch{}
+	patches, count, err := r.sc.FindPatchesByProjectPatchNameStatusesCommitQueue(*obj.Id, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	patchPointers := []*restModel.APIPatch{}
 	for i := range patches {
 		patchPointers = append(patchPointers, &patches[i])
 	}
