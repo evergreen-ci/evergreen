@@ -48,7 +48,7 @@ func TestMakeUserData(t *testing.T) {
 			userData, err := makeUserData(ctx, env, h, customUserData, false)
 			require.NoError(t, err)
 
-			cmd, err := h.CurlCommand(env.Settings())
+			cmd, err := h.CurlCommandWithDefaultRetry(env.Settings())
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 		},
