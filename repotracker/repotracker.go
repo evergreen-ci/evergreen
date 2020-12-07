@@ -923,6 +923,18 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"version": v.Id,
 	}))
 
+	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
+		"message":    "version has no builds",
+		"version":    v.Id,
+		"revision":   v.Revision,
+		"author":     v.Author,
+		"identifier": v.Identifier,
+		"requester":  v.Requester,
+		"owner":      v.Owner,
+		"repo":       v.Repo,
+		"branch":     v.Branch,
+	})
+
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
