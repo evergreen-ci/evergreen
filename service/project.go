@@ -227,6 +227,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
 		UseRepoSettings         bool                           `json:"use_repo_settings"`
+		Hidden                  bool                           `json:"hidden"`
 		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled        bool                           `json:"patching_disabled"`
@@ -479,6 +480,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.UseRepoSettings = responseRef.UseRepoSettings
+	projectRef.Hidden = responseRef.Hidden
 	projectRef.Id = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
