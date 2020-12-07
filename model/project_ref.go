@@ -96,6 +96,7 @@ type ProjectRef struct {
 	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
+	Hidden  bool `bson:"hidden" json:"hidden"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`

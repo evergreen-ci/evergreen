@@ -658,6 +658,82 @@ func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// DELETE /rest/v2/projects/{project_id}
+
+type projectDeleteHandler struct {
+	projectName string
+	sc          data.Connector
+}
+
+func makeDeleteProject(sc data.Connector) gimlet.RouteHandler {
+	return &projectDeleteHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectDeleteHandler) Factory() gimlet.RouteHandler {
+	return &projectDeleteHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectName = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	project, err := dbModel.FindMergedProjectRef(h.projectName)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	if project.Hidden {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
+	}
+
+	if !project.UseRepoSettings {
+		return gimlet.MakeJSONErrorResponder(
+			errors.Errorf("project '%s' must have UseRepoSettings enabled to be eligible for deletion", h.projectName))
+	}
+
+	skeletonProj := dbModel.ProjectRef{
+		Id:              project.Id,
+		Owner:           project.Owner,
+		Repo:            project.Repo,
+		Branch:          project.Branch,
+		RepoRefId:       project.RepoRefId,
+		Enabled:         false,
+		UseRepoSettings: true,
+		Hidden:          true,
+	}
+	if updateErr := skeletonProj.Update(); updateErr != nil {
+		return gimlet.MakeJSONErrorResponder(updateErr)
+	}
+
+	projectAliases, err := dbModel.FindAliasesForProject(h.projectName)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	for _, alias := range projectAliases {
+		if err := dbModel.RemoveProjectAlias(alias.ID.Hex()); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	skeletonProjVars := dbModel.ProjectVars{
+		Id: h.projectName,
+	}
+	if _, err := skeletonProjVars.Upsert(); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /rest/v2/projects/{project_id}
 
 type projectIDGetHandler struct {
