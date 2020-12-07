@@ -40,9 +40,15 @@ models:
   Volume:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
   Annotation:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAnnotation
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
+  Note:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINote
   AnnotationIssue:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  IssueLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  Source:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISource
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:

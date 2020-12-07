@@ -1,0 +1,59 @@
+{
+  "task_annotations": [
+    {
+      "_id": "5e4aa5abe3c3317e35206kqh",
+      "task_id": "task_annotation_test",
+      "task_execution": 1,
+      "metadata": {
+        "something_random": "salted caramel the second"
+      },
+      "note": {
+        "message": "what happened in this note the second?",
+        "source": {
+          "author": "Some Smart Bot",
+          "time": {
+            "$date": "2020-11-15T21:10:14.266Z"
+          },
+          "requester": "api"
+        }
+      },
+      "issues": [
+        {
+          "url": "https://jira.mongodb.org/browse/EVG-12879",
+          "issue_key": "EVG-12879",
+          "source": {
+            "author": "Some Smart Bot",
+            "time": {
+              "$date": "2020-11-15T21:09:24.266Z"
+            },
+            "requester": "api"
+          }
+        }
+      ],
+      "suspected_issues": [
+        {
+          "url": "https://jira.mongodb.org/browse/EVG-13158",
+          "issue_key": "EVG-13158",
+          "source": {
+            "author": "Chaya Malik",
+            "time": {
+              "$date": "2020-11-18T21:11:41.266Z"
+            },
+            "requester": "ui"
+          }
+        },
+        {
+          "url": "https://jira.mongodb.org/browse/EVG-13270",
+          "issue_key": "EVG-13270",
+          "source": {
+            "author": "Chaya Malik",
+            "time": {
+              "$date": "2020-11-17T21:10:27.266Z"
+            },
+            "requester": "ui"
+          }
+        }
+      ]
+    }
+  ]
+}

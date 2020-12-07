@@ -1,0 +1,54 @@
+{
+  "tests": [
+    {
+      "query_file": "annotations.graphql",
+      "result": {
+        "data": {
+          "annotation": {
+            "taskId": "task_annotation_test",
+            "taskExecution": 1,
+            "Note": {
+              "source": {
+                "author": "Some Smart Bot",
+                "time": "2020-11-15T21:10:14Z",
+                "requester": "api"
+              },
+              "message": "what happened in this note the second?"
+            },
+            "issues": [
+              {
+                "issueKey": "EVG-12879",
+                "url": "https://jira.mongodb.org/browse/EVG-12879",
+                "source": {
+                  "author": "Some Smart Bot",
+                  "time": "2020-11-15T21:09:24Z",
+                  "requester": "api"
+                }
+              }
+            ],
+            "suspectedIssues": [
+              {
+                "issueKey": "EVG-13158",
+                "url": "https://jira.mongodb.org/browse/EVG-13158",
+                "source": {
+                  "author": "Chaya Malik",
+                  "time": "2020-11-18T21:11:41Z",
+                  "requester": "ui"
+                }
+              },
+              {
+                "issueKey": "EVG-13270",
+                "url": "https://jira.mongodb.org/browse/EVG-13270",
+                "source": {
+                  "author": "Chaya Malik",
+                  "time": "2020-11-17T21:10:27Z",
+                  "requester": "ui"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -71,6 +71,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  annotation(taskId: String!, execution: Int!): Annotation
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -900,6 +901,31 @@ type TicketFields {
 type JiraStatus {
   id: String!
   name: String!
+}
+
+type Annotation {
+  taskId: String!
+  taskExecution: Int!
+  Note: Note
+  issues: [IssueLink]
+  suspectedIssues: [IssueLink]
+}
+
+type Note {
+  message: String!
+  source: Source!
+}
+
+type IssueLink {
+  issueKey: String
+  url: String
+  source: Source!
+}
+
+type Source {
+  author: String!
+  time: Time!
+  requester: String!
 }
 
 scalar Time
