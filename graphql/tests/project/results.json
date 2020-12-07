@@ -1,48 +1,10 @@
 {
   "tests": [
     {
-      "query_file": "user.graphql",
-      "result": {
-        "data": {
-          "user": {
-            "displayName": "testuser",
-            "userId": "testuser",
-            "emailAddress": "testuser@mongodb.com"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "user-with-param.graphql",
-      "result": {
-        "data": {
-          "user": {
-            "displayName": "Bob Smith",
-            "userId": "bob.smith"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "user-error.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "Could not find user from user ID",
-            "path": ["user"],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
       "query_file": "patches-all-params.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 {
@@ -68,7 +30,7 @@
       "query_file": "patches-default-params.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -85,7 +47,7 @@
       "query_file": "patches-include-commit-queue.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -106,10 +68,10 @@
       "result": {
         "errors": [
           {
-            "message": "Could not find user from user ID",
-            "path": ["user"],
+            "message": "Error finding project by id not a real project: 404 (Not Found): project with id 'not a real project' not found",
+            "path": ["project"],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "INTERNAL_SERVER_ERROR"
             }
           }
         ],
@@ -120,7 +82,7 @@
       "query_file": "patches-page-0-limit-3.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -137,7 +99,7 @@
       "query_file": "patches-page-1-limit-3.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e5" },
@@ -154,7 +116,7 @@
       "query_file": "patches-patchName.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e7", "description": "222" },
@@ -171,7 +133,7 @@
       "query_file": "patches-statuses.graphql",
       "result": {
         "data": {
-          "user": {
+          "project": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e7", "status": "failed" },

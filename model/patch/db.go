@@ -108,9 +108,14 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 }
 
 func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
-	queryInterface := bson.M{
-		AuthorKey: user,
-	}
+	return byPatchNameStatusesCommitQueuePaginated(bson.M{AuthorKey: user}, patchName, statuses, includeCommitQueue, page, limit)
+}
+
+func ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
+	return byPatchNameStatusesCommitQueuePaginated(bson.M{ProjectKey: projectId}, patchName, statuses, includeCommitQueue, page, limit)
+}
+
+func byPatchNameStatusesCommitQueuePaginated(queryInterface map[string]interface{}, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
 	if patchName != "" {
 		queryInterface[DescriptionKey] = bson.M{"$regex": patchName, "$options": "i"}
 	}

@@ -63,8 +63,8 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                   `json:"name"`
-	Projects []*model.UIProjectFields `json:"projects"`
+	Name     string                 `json:"name"`
+	Projects []*model.APIProjectRef `json:"projects"`
 }
 
 type HostEvents struct {
@@ -124,6 +124,19 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
+type Patches struct {
+	Patches            []*model.APIPatch `json:"patches"`
+	FilteredPatchCount int               `json:"filteredPatchCount"`
+}
+
+type PatchesInput struct {
+	Limit              int      `json:"limit"`
+	Page               int      `json:"page"`
+	PatchName          string   `json:"patchName"`
+	Statuses           []string `json:"statuses"`
+	IncludeCommitQueue bool     `json:"includeCommitQueue"`
+}
+
 type ProjectBuildVariant struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"displayName"`
@@ -131,8 +144,8 @@ type ProjectBuildVariant struct {
 }
 
 type Projects struct {
-	Favorites     []*model.UIProjectFields `json:"favorites"`
-	OtherProjects []*GroupedProjects       `json:"otherProjects"`
+	Favorites     []*model.APIProjectRef `json:"favorites"`
+	OtherProjects []*GroupedProjects     `json:"otherProjects"`
 }
 
 type PublicKeyInput struct {

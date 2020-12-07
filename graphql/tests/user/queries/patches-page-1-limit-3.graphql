@@ -1,0 +1,10 @@
+{
+  user {
+    patches(patchesInput: { includeCommitQueue: true, page: 1, limit: 3 }) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

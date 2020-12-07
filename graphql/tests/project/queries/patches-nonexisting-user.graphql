@@ -1,0 +1,10 @@
+{
+  project(projectId: "not a real project") {
+    patches(patchesInput: {}) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

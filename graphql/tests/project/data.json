@@ -1,32 +1,16 @@
 {
-  "users": [
+  "project_ref": [
     {
-      "first_name": "Mohamed",
-      "last_name": "Khelif",
-      "settings": {
-        "timezone": "America/New_York",
-        "region": "us-east-1",
-        "github_user": {
-          "last_known_as": "khelif96"
-        }
-      }
-    },
-    {
-      "_id": "bob.smith",
-      "display_name": "Bob Smith",
-      "first_name": "Bob",
-      "last_name": "Smith",
-      "settings": {
-        "timezone": "America/New_York",
-        "region": "us-west-1",
-        "github_user": {
-          "last_known_as": "bob_smith_1"
-        }
+      "_id": "evergreen",
+      "identifier": "evergreen",
+      "commit_queue": {
+        "patch_type": "PR"
       }
     }
   ],
   "patches": [
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:01Z" },
@@ -35,6 +19,7 @@
       "alias": "__commit_queue"
     },
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:02Z" },
@@ -43,6 +28,7 @@
       "alias": "__commit_queue"
     },
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:03Z" },
@@ -51,6 +37,7 @@
       "alias": "__commit_queue"
     },
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:04Z" },
@@ -59,6 +46,7 @@
       "alias": "__github"
     },
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:05Z" },
@@ -67,6 +55,7 @@
       "alias": "__github"
     },
     {
+      "branch": "evergreen",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
       "author": "testuser",
       "create_time": { "$date": "2019-01-01T00:00:06Z" },

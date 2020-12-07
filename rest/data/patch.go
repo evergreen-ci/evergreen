@@ -182,6 +182,27 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
+func (pc *DBPatchConnector) FindPatchesByProjectPatchNameStatusesCommitQueue(projectId string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
+	patches, err := patch.Find(patch.ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName, statuses, includeCommitQueue, page, limit))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
+	}
+	count, err := patch.Count(patch.ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName, statuses, includeCommitQueue, 0, 0))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "problem counting patches for project %s", projectId)
+	}
+	apiPatches := []restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(p)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
+		}
+		apiPatches = append(apiPatches, apiPatch)
+	}
+	return apiPatches, &count, nil
+}
+
 func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
 	patches, err := patch.Find(patch.ByUserPatchNameStatusesCommitQueuePaginated(user, patchName, statuses, includeCommitQueue, page, limit))
 	if err != nil {
@@ -196,7 +217,7 @@ func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user s
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, fmt.Sprintf("problem building APIPatch from service for patch: %s", p.Id.Hex()))
+			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
@@ -366,6 +387,10 @@ func (pc *MockPatchConnector) SetPatchActivated(ctx context.Context, patchId str
 }
 
 func (hp *MockPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
+	return nil, nil, nil
+}
+
+func (hp *MockPatchConnector) FindPatchesByProjectPatchNameStatusesCommitQueue(projectId string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
 	return nil, nil, nil
 }
 
