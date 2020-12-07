@@ -432,9 +432,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if err = p.SetActivated(ctx, patchVersion.Id); err != nil {
-			return nil, errors.WithStack(err)
-		}
 		return nil, err
 	}
 
@@ -442,8 +439,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to archive tasks")
 	}
-	p.Activated = true
-	p.Version = patchVersion.Id
+	if err = p.SetActivated(patchVersion.Id); err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	return patchVersion, nil
 }

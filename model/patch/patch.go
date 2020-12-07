@@ -490,10 +490,10 @@ func (p *Patch) ConfigChanged(remotePath string) bool {
 }
 
 // SetActivated sets the patch to activated in the db, in a way that's safe for transactions.
-func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
+func (p *Patch) SetActivated(versionId string) error {
 	p.Version = versionId
 	p.Activated = true
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -502,7 +502,6 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 			},
 		},
 	)
-	return err
 }
 
 // SetActivation sets the patch to the desired activation state without
