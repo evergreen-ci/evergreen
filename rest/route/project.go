@@ -683,9 +683,12 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := dbModel.FindMergedProjectRef(h.projectName)
+	project, err := dbModel.FindOneProjectRef(h.projectName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
+	}
+	if project == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' does not exist", h.projectName))
 	}
 
 	if project.Hidden {
@@ -711,7 +714,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(updateErr)
 	}
 
-	projectAliases, err := dbModel.FindAliasesForProject(h.projectName)
+	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -723,7 +726,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	skeletonProjVars := dbModel.ProjectVars{
-		Id: h.projectName,
+		Id: project.Id,
 	}
 	if _, err := skeletonProjVars.Upsert(); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
