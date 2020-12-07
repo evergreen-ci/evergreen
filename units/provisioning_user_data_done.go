@@ -74,7 +74,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	path := j.host.UserDataDoneFile()
+	path := j.host.UserDataProvisioningDoneFile()
 
 	if output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 		Args: []string{
@@ -121,7 +121,8 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	}
 
 	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
-		// Don't wait on setup script to finish, particularly for hosts waiting on task data.
+		// Run the spawn host setup script in a separate job to avoid forcing
+		// this job to wait for task data to be loaded.
 		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, 0)))
 	}
 
