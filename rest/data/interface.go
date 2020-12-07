@@ -164,9 +164,9 @@ type Connector interface {
 	// Find a host by ID and queries for full running task
 	GetHostByIdWithTask(hostID string) (*host.Host, error)
 
-	// GenerateHostProvisioningOptions generates and returns the script to
+	// GenerateHostProvisioningScript generates and returns the script to
 	// provision the host given by host ID.
-	GenerateHostProvisioningOptions(ctx context.Context, hostID string) (string, error)
+	GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)

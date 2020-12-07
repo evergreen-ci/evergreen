@@ -1086,50 +1086,25 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 }
 
 func TestCheckUserDataProvisioningStartedCommand(t *testing.T) {
-	t.Run("WithWindowsHost", func(t *testing.T) {
-		for testName, testCase := range map[string]func(t *testing.T, h *Host){
-			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
-				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
-				cmd := h.CheckUserDataProvisioningStartedCommand()
-				assert.Equal(t, expectedCmd, cmd)
-			},
-		} {
-			t.Run(testName, func(t *testing.T) {
-				h := &Host{
-					Distro: distro.Distro{
-						Arch: evergreen.ArchWindowsAmd64,
-						BootstrapSettings: distro.BootstrapSettings{
-							JasperBinaryDir: "/jasper_binary_dir",
-							ShellPath:       "/bin/bash",
-						},
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"CreatesExpectedCommand": func(t *testing.T, h *Host) {
+			expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit" +
+				" || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
+			cmd := h.CheckUserDataProvisioningStartedCommand()
+			assert.Equal(t, expectedCmd, cmd)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			h := &Host{
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						JasperBinaryDir: "/jasper_binary_dir",
 					},
-				}
-				testCase(t, h)
-			})
-		}
-	})
-	t.Run("WithNonWindowsHost", func(t *testing.T) {
-		for testName, testCase := range map[string]func(t *testing.T, h *Host){
-			"CreatesExpectedCommand": func(t *testing.T, h *Host) {
-				expectedCmd := "[ -a /jasper_binary_dir/user_data_started ] && exit" +
-					" || mkdir -m 777 -p /jasper_binary_dir && touch /jasper_binary_dir/user_data_started"
-				cmd := h.CheckUserDataProvisioningStartedCommand()
-				assert.Equal(t, expectedCmd, cmd)
-			},
-		} {
-			t.Run(testName, func(t *testing.T) {
-				h := &Host{
-					Distro: distro.Distro{
-						Arch: evergreen.ArchLinuxAmd64,
-						BootstrapSettings: distro.BootstrapSettings{
-							JasperBinaryDir: "/jasper_binary_dir",
-						},
-					},
-				}
-				testCase(t, h)
-			})
-		}
-	})
+				},
+			}
+			testCase(t, h)
+		})
+	}
 }
 
 func TestMarkUserDataProvisioningDoneCommand(t *testing.T) {

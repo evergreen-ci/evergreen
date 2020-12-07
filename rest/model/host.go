@@ -310,7 +310,7 @@ type APIOffboardUserResults struct {
 	TerminatedVolumes []string `json:"terminated_volumes"`
 }
 
-// APIHostProvisioningOptions represents script to provision a host.
+// APIHostProvisioningOptions represents the script to provision a host.
 type APIHostProvisioningOptions struct {
 	Content string `json:"content"`
 }
