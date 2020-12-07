@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
@@ -154,9 +155,14 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			Color:     slackColor,
 		})
 	}
-	finishTime := t.patch.FinishTime
-	if utility.IsZeroTime(finishTime) {
-		finishTime = time.Now()
+	var makespan time.Duration
+	if utility.IsZeroTime(t.patch.FinishTime) {
+		patchTasks, err := task.Find(task.ByVersion(t.patch.Id.Hex()))
+		if err == nil {
+			_, makespan = task.GetTimeSpent(patchTasks)
+		}
+	} else {
+		makespan = t.patch.FinishTime.Sub(t.patch.StartTime)
 	}
 
 	data.slack = append(data.slack, message.SlackAttachment{
@@ -167,7 +173,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Time Taken",
-				Value: finishTime.Sub(t.patch.StartTime).String(),
+				Value: makespan.String(),
 			},
 		},
 	})
