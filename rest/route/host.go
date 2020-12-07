@@ -577,7 +577,7 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	script, err := rh.sc.GenerateHostProvisioningOptions(ctx, rh.hostID)
+	script, err := rh.sc.GenerateHostProvisioningScript(ctx, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
