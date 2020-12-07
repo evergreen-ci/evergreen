@@ -1564,6 +1564,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 				bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey),
 				build.VersionKey,
 				build.DisplayNameKey,
+				build.RevisionKey,
 			))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching builds from database")

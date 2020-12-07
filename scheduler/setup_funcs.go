@@ -22,7 +22,7 @@ type project struct {
 
 // PopulateCaches runs setup functions and is used by the new/tunable
 // scheduler to reprocess tasks before running the new planner.
-func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task, error) {
+func PopulateCaches(id string, tasks []task.Task) ([]task.Task, error) {
 	cmp := &CmpBasedTaskComparator{
 		tasks:     tasks,
 		runtimeID: id,
@@ -30,7 +30,7 @@ func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task,
 			cacheExpectedDurations,
 		},
 	}
-	if err := cmp.setupForSortingTasks(distroID); err != nil {
+	if err := cmp.setupForSortingTasks(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

@@ -71,9 +71,15 @@ models:
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
   Project:
-    model: github.com/evergreen-ci/evergreen/rest/model.UIProjectFields
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+    fields:
+      patches:
+        resolver: true
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
+    fields:
+      patches:
+        resolver: true
   TaskEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskEventLogData:

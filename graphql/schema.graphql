@@ -11,6 +11,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
+  project(projectId: String!): Project!
   patchTasks(
     patchId: String!
     sortBy: TaskSortCategory = STATUS
@@ -86,6 +87,12 @@ type Mutation {
   setTaskPriority(taskId: String!, priority: Int!): Task!
   restartTask(taskId: String!): Task!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  editAnnotationNote(
+    taskId: String!
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
     apiIssue: AnnotationIssue!
@@ -226,6 +233,14 @@ input SubscriberInput {
 input UseSpruceOptionsInput {
   hasUsedSpruceBefore: Boolean
   spruceV1: Boolean
+}
+
+input PatchesInput {
+  limit: Int! = 0
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  includeCommitQueue: Boolean! = false
 }
 
 input SpawnHostInput {
@@ -398,6 +413,11 @@ type FileDiff {
 }
 
 type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+type Patches {
   patches: [Patch!]!
   filteredPatchCount: Int!
 }
@@ -643,9 +663,11 @@ type GroupedProjects {
 
 type Project {
   identifier: String!
+  id: String!
   displayName: String!
   repo: String!
   owner: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type File {
@@ -658,6 +680,7 @@ type User {
   displayName: String!
   userId: String!
   emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type RecentTaskLogs {
@@ -871,6 +894,7 @@ type TicketFields {
   created: String!
   updated: String!
   status: JiraStatus!
+  assignedTeam: String
 }
 
 type JiraStatus {

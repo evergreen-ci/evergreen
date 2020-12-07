@@ -43,16 +43,17 @@ type JiraSearchResults struct {
 }
 
 type TicketFields struct {
-	IssueType   *TicketType     `json:"issuetype"`
-	Summary     string          `json:"summary"`
-	Description string          `json:"description"`
-	Reporter    *User           `json:"reporter"`
-	Assignee    *User           `json:"assignee"`
-	Project     *JiraProject    `json:"project"`
-	Resolution  *JiraResolution `json:"resolution"`
-	Created     string          `json:"created"`
-	Updated     string          `json:"updated"`
-	Status      *JiraStatus     `json:"status"`
+	IssueType    *TicketType      `json:"issuetype"`
+	Summary      string           `json:"summary"`
+	Description  string           `json:"description"`
+	Reporter     *User            `json:"reporter"`
+	Assignee     *User            `json:"assignee"`
+	Project      *JiraProject     `json:"project"`
+	Resolution   *JiraResolution  `json:"resolution"`
+	Created      string           `json:"created"`
+	Updated      string           `json:"updated"`
+	Status       *JiraStatus      `json:"status"`
+	AssignedTeam *JiraCustomField `json:"customfield_12751"`
 }
 
 // JiraCreateTicketResponse contains the results of a JIRA create ticket API call.
@@ -60,6 +61,12 @@ type JiraCreateTicketResponse struct {
 	Id   string `json:"id"`
 	Key  string `json:"key"`
 	Self string `json:"self"`
+}
+
+type JiraCustomField struct {
+	Id    string `json:"id"`
+	Value string `json:"value"`
+	Self  string `json:"self"`
 }
 
 type JiraStatus struct {

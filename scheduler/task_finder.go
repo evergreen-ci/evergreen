@@ -378,7 +378,7 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 
 // GetRunnableTasksAndVersions finds tasks whose versions have already been
 // created, and returns those tasks, as well as a map of version IDs to versions.
-func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]model.Version, error) {
+func FilterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]model.Version, error) {
 	ids := make(map[string]struct{})
 
 	for _, t := range tasks {

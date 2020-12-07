@@ -215,9 +215,12 @@ type Connector interface {
 	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
-	// FindPatchesByUser fetches a page of patches for the input user ordered by creation
-	// time and filters when given statuses, patch name, and commit queue parameters
+	// FindPatchesByUserPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input user ID
+	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
 	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
+	// FindPatchesByProjectPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input project ID
+	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
+	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
@@ -350,4 +353,6 @@ type Connector interface {
 
 	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
 	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+
+	CompareTasks([]string) ([]string, map[string]map[string]string, error)
 }

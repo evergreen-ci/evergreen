@@ -163,6 +163,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/permissions").Version(2).Get().RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
+	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(checkUser).RouteHandler(makeCompareTasksRoute(sc))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchNotifcationStatusRoute(sc))

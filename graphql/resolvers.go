@@ -62,11 +62,19 @@ func (r *Resolver) Volume() VolumeResolver {
 func (r *Resolver) TaskQueueItem() TaskQueueItemResolver {
 	return &taskQueueItemResolver{r}
 }
+func (r *Resolver) User() UserResolver {
+	return &userResolver{r}
+}
+func (r *Resolver) Project() ProjectResolver {
+	return &projectResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }
+type projectResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -227,7 +235,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 	return dependencies, nil
 }
 
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
@@ -239,16 +247,15 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-
-	return &restModel.UIProjectFields{
-		DisplayName: p.DisplayName,
-		Identifier:  p.Identifier,
-		Repo:        p.Repo,
-		Owner:       p.Owner,
-	}, nil
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.UIProjectFields, error) {
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, &gqlerror.Error{
@@ -272,12 +279,12 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		}
 	}
 
-	return &restModel.UIProjectFields{
-		DisplayName: p.DisplayName,
-		Identifier:  p.Identifier,
-		Repo:        p.Repo,
-		Owner:       p.Owner,
-	}, nil
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
@@ -881,6 +888,32 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
+func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+	project, err := r.sc.FindProjectById(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(project)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProject from service: %s", err.Error()))
+	}
+	return &apiProjectRef, nil
+}
+
+func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
+	patches, count, err := r.sc.FindPatchesByProjectPatchNameStatusesCommitQueue(*obj.Id, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	patchPointers := []*restModel.APIPatch{}
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
+	}
+
+	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
+}
+
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := MustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
@@ -972,28 +1005,24 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	}
 
 	usr := MustHaveUser(ctx)
-	groupsMap := make(map[string][]*restModel.UIProjectFields)
-	favorites := []*restModel.UIProjectFields{}
+	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	favorites := []*restModel.APIProjectRef{}
 
 	for _, p := range allProjs {
 		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-
-		uiProj := restModel.UIProjectFields{
-			DisplayName: p.DisplayName,
-			Identifier:  p.Identifier,
-			Repo:        p.Repo,
-			Owner:       p.Owner,
+		apiProjectRef := restModel.APIProjectRef{}
+		if err = apiProjectRef.BuildFromService(p); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 		}
-
 		// favorite projects are filtered out and appended to their own array
 		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
-			favorites = append(favorites, &uiProj)
+			favorites = append(favorites, &apiProjectRef)
 			continue
 		}
 		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &uiProj)
+			groupsMap[groupName] = append(projs, &apiProjectRef)
 		} else {
-			groupsMap[groupName] = []*restModel.UIProjectFields{&uiProj}
+			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
 		}
 	}
 
@@ -1677,7 +1706,6 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
-
 	patchUpdateReq := PatchVariantsTasksRequest{}
 	patchUpdateReq.BuildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
@@ -1688,7 +1716,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, configure.Parameters)
+	err, _, _, versionID := SchedulePatch(patchID, version, patchUpdateReq, configure.Parameters)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}
@@ -1870,6 +1898,15 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+// EditAnnotationNote updates the note for the annotation, assuming it hasn't been updated in the meantime.
+func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage, newMessage string) (bool, error) {
+	usr := MustHaveUser(ctx)
+	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
@@ -2117,6 +2154,19 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	return &user, nil
 }
 
+func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
+	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(*obj.UserID, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	patchPointers := []*restModel.APIPatch{}
+	for i := range patches {
+		patchPointers = append(patchPointers, &patches[i])
+	}
+
+	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
+}
+
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {
@@ -2335,6 +2385,20 @@ func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thi
 		return nil, nil
 	}
 	return &obj.Assignee.DisplayName, nil
+}
+
+func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.AssignedTeam == nil {
+		return nil, nil
+	}
+	return &obj.AssignedTeam.Value, nil
+}
+
+func (r *ticketFieldsResolver) JiraStatus(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
+	if obj.Status == nil {
+		return nil, nil
+	}
+	return &obj.Status.Name, nil
 }
 
 func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {

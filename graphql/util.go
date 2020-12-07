@@ -160,7 +160,7 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
+func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -230,6 +230,9 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
 
+	// create a separate context from the one the callar has so that the caller
+	// can't interrupt the db operations here
+	ctx := context.Background()
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
@@ -264,10 +267,6 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if err != nil {
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
-
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
 
 		requester := p.GetRequester()
 		ver, err := model.FinalizePatch(ctx, p, requester, githubOauthToken)
