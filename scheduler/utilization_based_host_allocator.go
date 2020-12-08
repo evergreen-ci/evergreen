@@ -153,6 +153,10 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	freeHostDur := time.Since(startAt)
 
+	grip.Info(message.Fields{
+		"message":              "future host fraction test",
+		"future_host_fraction": futureHostFraction,
+	})
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks)
 
