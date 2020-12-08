@@ -196,7 +196,7 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
@@ -323,7 +323,7 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("error querying  '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
