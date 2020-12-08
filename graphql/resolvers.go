@@ -2416,7 +2416,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
 	}
 	if annotation == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find annotation %s", *obj.Id))
+		return nil, nil
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
 
