@@ -110,6 +110,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			}
 			j.sendGitHubErrorStatus(patchDoc)
 			grip.Error(message.WrapError(err, message.Fields{
+				"job":          j.ID(),
 				"message":      "sent github status error",
 				"github_error": j.gitHubError,
 				"owner":        patchDoc.GithubPatchData.BaseOwner,
@@ -543,7 +544,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	isMember, err := authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
+	isMember, err := j.authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -619,13 +620,14 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	return u, err
 }
 
-func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
+func (j *patchIntentProcessor) authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
+			"job":          j.ID(),
 			"message":      "Failed to authenticate github PR",
 			"source":       "patch intents",
 			"creator":      githubUser,
@@ -641,6 +643,7 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
+			"job":          j.ID(),
 			"message":      "Failed to authenticate github PR",
 			"source":       "patch intents",
 			"creator":      githubUser,

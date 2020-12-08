@@ -35,6 +35,12 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 	}
 
 	if err := intent.Insert(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "couldn't insert patch intent",
+			"id":        intent.ID(),
+			"type":      intent.GetType(),
+			"requester": intent.RequesterIdentity(),
+		}))
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "couldn't insert patch intent",
