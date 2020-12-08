@@ -97,8 +97,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 			ValidHostAllocators, c.HostAllocator)
 	}
 
-	if c.FutureHostPercent < 0 || c.FutureHostPercent > 100 {
-		return errors.New("default future host percent must be between 0 and 100 (inclusive)")
+	if c.FutureHostPercent < 1 || c.FutureHostPercent > 100 {
+		// traditional default
+		c.FutureHostPercent = 40
 	}
 
 	if c.CacheDurationSeconds > 600 {
