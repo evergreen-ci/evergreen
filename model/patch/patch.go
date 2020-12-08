@@ -489,7 +489,7 @@ func (p *Patch) ConfigChanged(remotePath string) bool {
 	return false
 }
 
-// SetActivated sets the patch to activated in the db, in a way that's safe for transactions.
+// SetActivated sets the patch to activated in the db
 func (p *Patch) SetActivated(versionId string) error {
 	p.Version = versionId
 	p.Activated = true

@@ -437,7 +437,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	_, err = session.WithTransaction(ctx, txFunc)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to archive tasks")
+		return nil, errors.Wrap(err, "unable to finalize patch")
 	}
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
