@@ -651,7 +651,8 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
 	if resolved.FutureHostPercent == 0 {
-		resolved.FutureHostPercent = config.DefaultFutureHostPercent
+		// I have to do this due to grandfathering a float64 into a percent
+		resolved.FutureHostPercent = int(config.DefaultFutureHostPercent)
 	}
 	if catcher.HasErrors() {
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)
