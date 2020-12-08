@@ -47,7 +47,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Len(t, mngr.Procs, 1)
 			info := mngr.Procs[0].Info(ctx)
 
-			path := h.UserDataProvisioningDoneFile()
+			path := h.UserDataDoneFile()
 
 			expectedCmd := []string{h.Distro.BootstrapSettings.ShellPath, "-l", "-c", fmt.Sprintf("ls %s", path)}
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))

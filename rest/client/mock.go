@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -338,6 +339,7 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 
 func (c *Mock) GetHostProvisioningOptions(context.Context, string, string) (*restmodel.APIHostProvisioningOptions, error) {
 	return &restmodel.APIHostProvisioningOptions{
-		Content: "echo hello world",
+		Directive: string(userdata.ShellScript) + "/bin/bash",
+		Content:   "echo hello world",
 	}, nil
 }

@@ -85,12 +85,6 @@ func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, ma
 	return strings.Join(cmds, " && "), nil
 }
 
-// CurlCommandWithDefaultRetry is the same as CurlCommandWithRetry using the
-// default retry parameters.
-func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string, error) {
-	return h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
-}
-
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -384,32 +378,39 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
-// GenerateUserDataProvisioningScript creates a script to provision a host that
-// is provisioning in user data. If, for some reason, this script gets
-// interrupted, there's no guarantee that it will succeed if run again, since we
-// cannot enforce idempotency on the setup script.
-func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+// ProvisioningUserData creates the user data parameters to provision the host.
+// If, for some reason, this script gets interrupted, there's no guarantee that
+// it will succeed if run again, since we cannot enforce idempotency on the
+// setup script.
+func (h *Host) ProvisioningUserData(settings *evergreen.Settings, creds *certdepot.Credentials) (*userdata.Options, error) {
+	var fetchClient, fixClientOwner string
 	var err error
-	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
-
-	var setupUserCmds string
-	if h.Distro.IsWindows() {
-		setupUserCmds, err = h.SetupServiceUserCommands()
+	// If we're fetching the provisioning script from the app server, the
+	// Evergreen client is already downloaded on the host, so fetching it again
+	// is unnecessary.
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		fetchClient, err = h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
 		if err != nil {
-			return "", errors.Wrap(err, "could not get commands to set up service user")
+			return nil, errors.Wrap(err, "creating curl command for evergreen client")
 		}
+
+		// User data runs as the privileged user, so ensure that the binary has
+		// permissions that allow it to be modified after user data is finished.
+		fixClientOwner = h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 	}
+
+	checkUserDataRan := h.CheckUserDataStartedCommand()
 
 	var postFetchClient string
 	if h.StartedBy == evergreen.User {
 		// Start the host with an agent monitor to run tasks.
 		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
-			return "", errors.Wrap(err, "error creating command to start agent monitor")
+			return nil, errors.Wrap(err, "error creating command to start agent monitor")
 		}
 	} else if h.ProvisionOptions != nil && h.UserHost {
 		// Set up a spawn host.
 		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
-			return "", errors.Wrap(err, "error creating commands to load task data")
+			return nil, errors.Wrap(err, "error creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
 			// We have to run this in the Cygwin shell in order for git clone to
@@ -433,32 +434,111 @@ func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, 
 					Tags: []string{evergreen.HostFetchTag},
 				})
 			if err != nil {
-				return "", errors.Wrap(err, "could not construct Jasper command to fetch task data")
+				return nil, errors.Wrap(err, "could not construct Jasper command to fetch task data")
 			}
 			postFetchClient += " && " + getTaskDataCmd
 		}
 	}
 
-	makeJasperDirs := h.MakeJasperDirsCommand()
-
-	markDone := h.MarkUserDataProvisioningDoneCommand()
+	markDone := h.MarkUserDataDoneCommands()
 	if err != nil {
-		return "", errors.Wrap(err, "creating command to mark when user data is done")
+		return nil, errors.Wrap(err, "error creating command to mark when user data is done")
 	}
 
+	makeJasperDirs := h.MakeJasperDirsCommand()
 	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
+
+	if h.Distro.IsWindows() {
+		var setupScriptCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// If we're fetching the provisioning script, we do not need to
+			// write the setup script to its own intermediate file.
+			var setupScript string
+			setupScript, err = h.setupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "creating setup script")
+			}
+			setupScriptCmds = []string{setupScript}
+		} else {
+			setupScriptCmds, err = h.writeSetupScriptCommands(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get commands to run setup script")
+			}
+		}
+
+		var writeCredentialsCmds []string
+		writeCredentialsCmds, err = h.bufferedWriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
+		}
+
+		var setupUserCmds string
+		setupUserCmds, err = h.SetupServiceUserCommands()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get commands to set up service user")
+		}
+
+		var setupJasperCmds []string
+		setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
+		setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds...)
+		if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
+			setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
+		}
+		setupJasperCmds = append(setupJasperCmds,
+			h.FetchJasperCommand(settings.HostJasper),
+			h.ForceReinstallJasperCommand(settings),
+			fixJasperDirsOwner,
+		)
+
+		var shellCmds []string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// We cannot run Windows user data with verbose output (i.e. 'set -o
+			// verbose') because PowerShell user data hangs if too much output
+			// is produced.
+			shellPrefix := "set -o errexit"
+			shellCmds = append(shellCmds, shellPrefix)
+		}
+		shellCmds = append(shellCmds, setupScriptCmds...)
+		shellCmds = append(shellCmds, setupJasperCmds...)
+		if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+			// The setup script is only written to a file if we're not fetching
+			// the provisioning script.
+			shellCmds = append(shellCmds, fetchClient, fixClientOwner, h.SetupCommand())
+		}
+		shellCmds = append(shellCmds, postFetchClient, markDone)
+
+		for i := range shellCmds {
+			if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+				shellCmds[i] = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(shellCmds[i]))
+			}
+		}
+
+		powershellCmds := append([]string{
+			checkUserDataRan,
+			setupUserCmds},
+			shellCmds...,
+		)
+
+		return &userdata.Options{
+			Directive: userdata.PowerShellScript,
+			Content:   strings.Join(powershellCmds, "\n"),
+			Persist:   true,
+		}, nil
+	}
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)
 	if err != nil {
-		return "", errors.Wrap(err, "creating setup script")
+		return nil, errors.Wrap(err, "could not get commands to run setup script")
 	}
 
 	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
 	if err != nil {
-		return "", errors.Wrap(err, "creating commands to write Jasper credentials file")
+		return nil, errors.Wrap(err, "could not get commands to write Jasper credentials file")
 	}
 
-	setupJasperCmds := []string{makeJasperDirs, writeCredentialsCmds}
+	var setupJasperCmds []string
+	setupJasperCmds = append(setupJasperCmds, makeJasperDirs)
+	setupJasperCmds = append(setupJasperCmds, writeCredentialsCmds)
 	if writePreconditionScriptsCmd := h.WriteJasperPreconditionScriptsCommands(); len(writePreconditionScriptsCmd) != 0 {
 		setupJasperCmds = append(setupJasperCmds, writePreconditionScriptsCmd)
 	}
@@ -469,12 +549,14 @@ func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, 
 	)
 
 	shellPrefix := []string{"set -o errexit", "set -o verbose"}
-	shellCmds := append(shellPrefix, checkProvisioningStarted, setupUserCmds, setupScriptCmds)
-	shellCmds = append(shellCmds, setupScriptCmds)
+	shellCmds := append(shellPrefix, checkUserDataRan, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
-	shellCmds = append(shellCmds, postFetchClient, markDone)
+	shellCmds = append(shellCmds, fetchClient, fixClientOwner, postFetchClient, markDone)
 
-	return strings.Join(shellCmds, "\n"), nil
+	return &userdata.Options{
+		Directive: userdata.ShellScript + userdata.Directive(h.Distro.BootstrapSettings.ShellPath),
+		Content:   strings.Join(shellCmds, "\n"),
+	}, nil
 }
 
 // changeJasperDirsOwnerCommand returns the command to ensure that the Jasper
@@ -507,18 +589,32 @@ func (h *Host) changeOwnerCommand(path string) string {
 	return "sudo " + cmd
 }
 
-// CheckUserDataProvisioningStarted checks whether the provisioning script has
-// already run on a user data host. If it has, it exits. Otherwise, it creates
-// the file marking it as started.
-func (h *Host) CheckUserDataProvisioningStartedCommand() string {
-	path := h.UserDataProvisioningStartedFile()
+// CheckUserDataStartedCommand checks whether user data has already run on this
+// host. If it has, it exits. Otherwise, it creates the file marking it as
+// started.
+func (h *Host) CheckUserDataStartedCommand() string {
+	path := h.UserDataStartedFile()
 	makeFileCmd := fmt.Sprintf("mkdir -m 777 -p %s && touch %s", filepath.Dir(path), path)
+	if h.Distro.IsWindows() {
+		var checkUserDataStarted, makeUserDataStartedFile string
+		if h.Distro.BootstrapSettings.FetchProvisioningScript {
+			checkUserDataStarted = fmt.Sprintf("ls %s && exit", path)
+			makeUserDataStartedFile = makeFileCmd
+		} else {
+			checkUserDataStarted = fmt.Sprintf("if (Test-Path -Path %s) { exit }", h.Distro.AbsPathNotCygwinCompatible(path))
+			makeUserDataStartedFile = fmt.Sprintf("%s -l -c %s", h.Distro.ShellBinary(), util.PowerShellQuotedString(makeFileCmd))
+		}
+		return fmt.Sprintf(strings.Join([]string{
+			checkUserDataStarted,
+			makeUserDataStartedFile,
+		}, "\n"))
+	}
+
 	return fmt.Sprintf("[ -a %s ] && exit || %s", path, makeFileCmd)
 }
 
 // SetupServiceUserCommands returns the commands to create a passwordless
-// service user in the Administrator group in Windows. It also creates the
-// service user's password if none is set.
+// service user in the Administrator group in Windows.
 func (h *Host) SetupServiceUserCommands() (string, error) {
 	if !h.Distro.IsWindows() {
 		return "", nil
@@ -537,6 +633,9 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 	}
 
 	loginServicePermCmd := fmt.Sprintf("editrights -u %s -a SeServiceLogonRight", h.Distro.BootstrapSettings.ServiceUser)
+	if !h.Distro.BootstrapSettings.FetchProvisioningScript {
+		loginServicePermCmd = fmt.Sprintf(`%s -l -c '%s'`, h.Distro.ShellBinary(), loginServicePermCmd)
+	}
 	return strings.Join(
 		[]string{
 			// Create new user.
@@ -671,6 +770,51 @@ func (h *Host) WriteJasperPreconditionScriptsCommands() string {
 		cmds = append(cmds, fmt.Sprintf("chmod 755 %s", ps.Path))
 	}
 	return strings.Join(cmds, "\n")
+}
+
+func bufferedWriteFileCommands(path, content string) []string {
+	var cmds []string
+	n := 2018
+	firstWrite := true
+	for start := 0; start < len(content); start += n {
+		end := start + n
+		if end > len(content) {
+			end = len(content)
+		}
+		cmds = append(cmds, writeToFileCommand(path, content[start:end], firstWrite))
+		firstWrite = false
+	}
+	cmds = append(cmds, fmt.Sprintf("chmod 666 %s", path))
+	return cmds
+}
+
+func writeToFileCommand(path, content string, overwrite bool) string {
+	var redirect string
+	if overwrite {
+		redirect = ">"
+	} else {
+		redirect = ">>"
+	}
+	return fmt.Sprintf("echo -n '%s' %s %s", content, redirect, path)
+}
+
+// bufferedWriteJasperCredentialsFilesCommands is the same as
+// WriteJasperCredentialsFilesCommands but writes with multiple commands. This
+// is necessary for Windows user data for unknown reasons. If the file isn't
+// written in a buffered way, it gets truncated or the script hangs.
+func (h *Host) bufferedWriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) ([]string, error) {
+	exportedCreds, err := creds.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem exporting credentials to file format")
+	}
+
+	cmds := bufferedWriteFileCommands(h.Distro.BootstrapSettings.JasperCredentialsPath, string(exportedCreds))
+
+	if splunk.Populated() && h.StartedBy == evergreen.User {
+		cmds = append(cmds, writeToFileCommand(h.splunkTokenFilePath(), splunk.Token, true))
+	}
+
+	return cmds, nil
 }
 
 func (h *Host) splunkTokenFilePath() string {
@@ -867,6 +1011,18 @@ func (h *Host) setupScriptCommands(settings *evergreen.Settings) (string, error)
 		return "", errors.Wrap(err, "error expanding setup script variables")
 	}
 	return setupScript, nil
+}
+
+// writeSetupScriptCommands is the same as setupScriptCommands but writes the
+// setup script commands to a file in multiple commands.
+func (h *Host) writeSetupScriptCommands(settings *evergreen.Settings) ([]string, error) {
+	script, err := h.setupScriptCommands(settings)
+	if err != nil {
+		return nil, err
+	}
+
+	path := filepath.Join(h.Distro.HomeDir(), evergreen.SetupScriptName)
+	return bufferedWriteFileCommands(path, script), nil
 }
 
 // StartAgentMonitorRequest builds the Jasper client request that starts the
@@ -1120,26 +1276,26 @@ func (h *Host) SpawnHostPullTaskSyncCommand() []string {
 }
 
 const (
-	userDataProvisioningStartedFile = "user_data_started"
-	userDataProvisioningDoneFile    = "user_data_done"
+	userDataStarteFileName = "user_data_started"
+	userDataDoneFileName   = "user_data_done"
 )
 
-// UserDataProvisioningStartedFile returns the path to the user data
-// provisioning started marker file.
-func (h *Host) UserDataProvisioningStartedFile() string {
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataProvisioningStartedFile)
+// UserDataStartedFile returns the path to the provisioning user data started
+// marker file.
+func (h *Host) UserDataStartedFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataStarteFileName)
 }
 
-// UserDataProvisioningDoneFile returns the path to the user data provisioning
-// done marker file.
-func (h *Host) UserDataProvisioningDoneFile() string {
-	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataProvisioningDoneFile)
+// UserDataDoneFile returns the path to the provisioning user data done marker
+// file.
+func (h *Host) UserDataDoneFile() string {
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, userDataDoneFileName)
 }
 
-// MarkUserDataDoneProvisioningCommand creates the command to make the marker
-// file indicating user data provisioning has finished executing.
-func (h *Host) MarkUserDataProvisioningDoneCommand() string {
-	path := h.UserDataProvisioningDoneFile()
+// MarkUserDataDoneCommands creates the command to make the marker file
+// indicating user data has finished executing.
+func (h *Host) MarkUserDataDoneCommands() string {
+	path := h.UserDataDoneFile()
 	return fmt.Sprintf("touch %s", path)
 }
 
@@ -1172,16 +1328,16 @@ func (h *Host) SetUserDataHostProvisioned() error {
 	return nil
 }
 
-// GenerateFetchProvisioningScriptUserData creates the user data script to fetch
-// the host provisioning script.
-func (h *Host) GenerateFetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
+// FetchProvisioningScriptUserData returns the user data to fetch the host
+// provisioning script from the server.
+func (h *Host) FetchProvisioningScriptUserData(settings *evergreen.Settings) (*userdata.Options, error) {
 	if h.Secret == "" {
 		if err := h.CreateSecret(); err != nil {
 			return nil, errors.Wrap(err, "creating host secret")
 		}
 	}
 
-	fetchClient, err := h.CurlCommandWithDefaultRetry(settings)
+	fetchClient, err := h.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating curl command for evergreen client")
 	}
