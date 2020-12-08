@@ -652,7 +652,19 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.FutureHostPercent == 0 {
 		// I have to do this due to grandfathering a float64 into a percent
+		grip.Info(message.Fields{
+			"message": "before debug FHP",
+			"distro":  d.Id,
+			"FHP":     resolved.FutureHostPercent,
+			"c.FHP":   config.FutureHostPercent,
+		})
 		resolved.FutureHostPercent = int(config.FutureHostPercent)
+		grip.Info(message.Fields{
+			"message": "after debug FHP",
+			"distro":  d.Id,
+			"FHP":     resolved.FutureHostPercent,
+			"c.FHP":   config.FutureHostPercent,
+		})
 	}
 	if catcher.HasErrors() {
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)

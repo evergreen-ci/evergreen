@@ -98,6 +98,14 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
 		return
 	}
+	if _, err = distro.GetResolvedHostAllocatorSettings(config); err != nil {
+		j.AddError(errors.Errorf("distro '%s' host allocator settings failed to resolve", j.DistroID))
+		return
+	}
+	grip.Info(message.Fields{
+		"message": "final debug FHP",
+		"FHP":     distro.HostAllocatorSettings.FutureHostPercent,
+	})
 
 	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
 		j.AddError(errors.Wrap(err, "problem updating static hosts"))
@@ -136,6 +144,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	////////////////////////
 
 	hostAllocationBegins := time.Now()
+
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 
 	hostAllocatorData := scheduler.HostAllocatorData{
