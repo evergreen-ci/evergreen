@@ -449,7 +449,6 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Annotation              func(childComplexity int, taskID string, execution int) int
 		AwsRegions              func(childComplexity int) int
 		BbGetCreatedTickets     func(childComplexity int, taskID string) int
 		BuildBaron              func(childComplexity int, taskID string, execution int) int
@@ -525,6 +524,7 @@ type ComplexityRoot struct {
 		ActivatedBy         func(childComplexity int) int
 		ActivatedTime       func(childComplexity int) int
 		Ami                 func(childComplexity int) int
+		Annotation          func(childComplexity int) int
 		BaseTaskMetadata    func(childComplexity int) int
 		Blocked             func(childComplexity int) int
 		BuildId             func(childComplexity int) int
@@ -832,10 +832,11 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
-	Annotation(ctx context.Context, taskID string, execution int) (*model.APITaskAnnotation, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
+
+	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
@@ -951,7 +952,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Annotation.Issues(childComplexity), true
 
-	case "Annotation.Note":
+	case "Annotation.note":
 		if e.complexity.Annotation.Note == nil {
 			break
 		}
@@ -2766,18 +2767,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PublicKey.Name(childComplexity), true
 
-	case "Query.annotation":
-		if e.complexity.Query.Annotation == nil {
-			break
-		}
-
-		args, err := ec.field_Query_annotation_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Annotation(childComplexity, args["taskId"].(string), args["execution"].(int)), true
-
 	case "Query.awsRegions":
 		if e.complexity.Query.AwsRegions == nil {
 			break
@@ -3271,6 +3260,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Ami(childComplexity), true
+
+	case "Task.annotation":
+		if e.complexity.Task.Annotation == nil {
+			break
+		}
+
+		return e.complexity.Task.Annotation(childComplexity), true
 
 	case "Task.baseTaskMetadata":
 		if e.complexity.Task.BaseTaskMetadata == nil {
@@ -4464,7 +4460,6 @@ var sources = []*ast.Source{
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  annotation(taskId: String!, execution: Int!): Annotation
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -4489,13 +4484,13 @@ type Mutation {
   ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   addAnnotationIssue(
     taskId: String!
     execution: Int!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
@@ -4681,7 +4676,7 @@ input UpdateVolumeInput {
   volumeId: String!
 }
 
-input AnnotationIssue {
+input IssueLinkInput {
   url: String!
   issueKey: String!
 }
@@ -4994,6 +4989,7 @@ type Task {
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
+  annotation: Annotation
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
@@ -5299,7 +5295,7 @@ type JiraStatus {
 type Annotation {
   taskId: String!
   taskExecution: Int!
-  Note: Note
+  note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
 }
@@ -5367,7 +5363,7 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 	args["execution"] = arg1
 	var arg2 model.APIIssueLink
 	if tmp, ok := rawArgs["apiIssue"]; ok {
-		arg2, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		arg2, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -5533,7 +5529,7 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 	args["annotationId"] = arg0
 	var arg1 model.APIIssueLink
 	if tmp, ok := rawArgs["apiIssue"]; ok {
-		arg1, err = ec.unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		arg1, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -5971,28 +5967,6 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_annotation_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["execution"]; ok {
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
 	return args, nil
 }
 
@@ -6869,7 +6843,7 @@ func (ec *executionContext) _Annotation_taskExecution(ctx context.Context, field
 	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Annotation_Note(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+func (ec *executionContext) _Annotation_note(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -15962,44 +15936,6 @@ func (ec *executionContext) _Query_bbGetCreatedTickets(ctx context.Context, fiel
 	return ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_annotation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Query",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_annotation_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Annotation(rctx, args["taskId"].(string), args["execution"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APITaskAnnotation)
-	fc.Result = res
-	return ec.marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -16890,6 +16826,37 @@ func (ec *executionContext) _Task_activatedTime(ctx context.Context, field graph
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_annotation(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Annotation(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITaskAnnotation)
+	fc.Result = res
+	return ec.marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -22884,30 +22851,6 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputAnnotationIssue(ctx context.Context, obj interface{}) (model.APIIssueLink, error) {
-	var it model.APIIssueLink
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "url":
-			var err error
-			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "issueKey":
-			var err error
-			it.IssueKey, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	var asMap = obj.(map[string]interface{})
@@ -23025,6 +22968,30 @@ func (ec *executionContext) unmarshalInputInstanceTagInput(ctx context.Context, 
 		case "value":
 			var err error
 			it.Value, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, obj interface{}) (model.APIIssueLink, error) {
+	var it model.APIIssueLink
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "url":
+			var err error
+			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "issueKey":
+			var err error
+			it.IssueKey, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -23703,8 +23670,8 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Note":
-			out.Values[i] = ec._Annotation_Note(ctx, field, obj)
+		case "note":
+			out.Values[i] = ec._Annotation_note(ctx, field, obj)
 		case "issues":
 			out.Values[i] = ec._Annotation_issues(ctx, field, obj)
 		case "suspectedIssues":
@@ -26209,17 +26176,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "annotation":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_annotation(ctx, field)
-				return res
-			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -26463,6 +26419,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_activatedBy(ctx, field, obj)
 		case "activatedTime":
 			out.Values[i] = ec._Task_activatedTime(ctx, field, obj)
+		case "annotation":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_annotation(ctx, field, obj)
+				return res
+			})
 		case "ami":
 			out.Values[i] = ec._Task_ami(ctx, field, obj)
 		case "blocked":
@@ -27939,10 +27906,6 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) unmarshalNAnnotationIssue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (model.APIIssueLink, error) {
-	return ec.unmarshalInputAnnotationIssue(ctx, v)
-}
-
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	return graphql.UnmarshalBoolean(v)
 }
@@ -28608,6 +28571,10 @@ func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	return ec.marshalNInt2int(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (model.APIIssueLink, error) {
+	return ec.unmarshalInputIssueLinkInput(ctx, v)
 }
 
 func (ec *executionContext) marshalNJiraStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraStatus) graphql.Marshaler {

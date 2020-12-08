@@ -71,7 +71,6 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  annotation(taskId: String!, execution: Int!): Annotation
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -96,13 +95,13 @@ type Mutation {
   ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   addAnnotationIssue(
     taskId: String!
     execution: Int!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
@@ -288,7 +287,7 @@ input UpdateVolumeInput {
   volumeId: String!
 }
 
-input AnnotationIssue {
+input IssueLinkInput {
   url: String!
   issueKey: String!
 }
@@ -601,6 +600,7 @@ type Task {
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
+  annotation: Annotation
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
@@ -906,7 +906,7 @@ type JiraStatus {
 type Annotation {
   taskId: String!
   taskExecution: Int!
-  Note: Note
+  note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
 }
