@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -64,6 +66,67 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		return nil, err
 	}
 	return projectVars, nil
+}
+
+// FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
+func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
+	project, err := FindOneProjectRef(projectID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project '%s'", projectID)
+	}
+	if project == nil {
+		return nil, errors.New(fmt.Sprintf("project '%s' does not exist", projectID))
+	}
+
+	projectVars, err := FindOneProjectVars(projectID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project vars for project '%s'", projectID)
+	}
+	if !project.UseRepoSettings {
+		return projectVars, nil
+	}
+
+	repoVars, err := FindOneProjectVars(project.RepoRefId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
+	}
+
+	mergedVars := &ProjectVars{}
+	if projectVars != nil {
+		mergedVars = projectVars
+	} else if repoVars != nil {
+		mergedVars = repoVars
+		mergedVars.Id = project.Id
+	} else {
+		return nil, nil
+	}
+
+	if mergedVars.Vars == nil {
+		mergedVars.Vars = map[string]string{}
+	}
+	if mergedVars.PrivateVars == nil {
+		mergedVars.PrivateVars = map[string]bool{}
+	}
+	if mergedVars.RestrictedVars == nil {
+		mergedVars.RestrictedVars = map[string]bool{}
+	}
+
+	// Merge repo vars into project vars
+	if repoVars != nil && projectVars != nil {
+		for key, val := range repoVars.Vars {
+			if _, ok := projectVars.Vars[key]; !ok {
+				mergedVars.Vars[key] = val
+				if v, ok := repoVars.PrivateVars[key]; ok {
+					mergedVars.PrivateVars[key] = v
+				}
+				if v, ok := repoVars.RestrictedVars[key]; ok {
+					mergedVars.RestrictedVars[key] = v
+				}
+			}
+		}
+	}
+
+	return mergedVars, nil
 }
 
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {

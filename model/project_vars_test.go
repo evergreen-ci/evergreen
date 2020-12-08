@@ -34,6 +34,95 @@ func TestFindOneProjectVar(t *testing.T) {
 	assert.Equal(vars, projectVarsFromDB.Vars)
 }
 
+func TestFindMergedProjectVars(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection, RepoRefCollection))
+
+	repo := RepoRef{ProjectRef{
+		Id:    "repo_ref",
+		Owner: "mongodb",
+		Repo:  "test_repo",
+	}}
+	require.NoError(t, repo.Insert())
+
+	project0 := ProjectRef{
+		Id:              "project_0",
+		Owner:           "mongodb",
+		Branch:          "branch_0",
+		Repo:            "test_repo",
+		RepoRefId:       "repo_ref",
+		UseRepoSettings: true,
+	}
+	project1 := ProjectRef{
+		Id:              "project_1",
+		Owner:           "mongodb",
+		Branch:          "branch_1",
+		Repo:            "test_repo",
+		RepoRefId:       "repo_ref",
+		UseRepoSettings: true,
+	}
+	require.NoError(t, project0.Insert())
+	require.NoError(t, project1.Insert())
+
+	repoVars := ProjectVars{
+		Id:             repo.Id,
+		Vars:           map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
+		PrivateVars:    map[string]bool{"world": true},
+		RestrictedVars: map[string]bool{"beep": true},
+	}
+	project0Vars := ProjectVars{
+		Id:   project0.Id,
+		Vars: map[string]string{"world": "goodbye", "new": "var"},
+	}
+	require.NoError(t, repoVars.Insert())
+	require.NoError(t, project0Vars.Insert())
+
+	// Testing merging of project vars and repo vars
+	expectedMergedVars := ProjectVars{
+		Id:             project0.Id,
+		Vars:           map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var"},
+		PrivateVars:    map[string]bool{},
+		RestrictedVars: map[string]bool{"beep": true},
+	}
+	mergedVars, err := FindMergedProjectVars(project0.Id)
+	assert.NoError(err)
+	assert.Equal(expectedMergedVars, *mergedVars)
+
+	// Testing existing repo vars but no project vars
+	expectedMergedVars = repoVars
+	expectedMergedVars.Id = project1.Id
+	mergedVars, err = FindMergedProjectVars(project1.Id)
+	assert.NoError(err)
+	assert.Equal(expectedMergedVars, *mergedVars)
+
+	// Testing existing project vars but no repo vars
+	require.NoError(t, db.Clear(ProjectVarsCollection))
+	require.NoError(t, project0Vars.Insert())
+	mergedVars, err = FindMergedProjectVars(project0.Id)
+	assert.NoError(err)
+	assert.Equal(project0Vars.Vars, mergedVars.Vars)
+	assert.Equal(0, len(mergedVars.PrivateVars))
+	assert.Equal(0, len(mergedVars.RestrictedVars))
+
+	// Testing ProjectRef.UseRepoSettings == false
+	project0.UseRepoSettings = false
+	require.NoError(t, project0.Update())
+	mergedVars, err = FindMergedProjectVars(project0.Id)
+	assert.NoError(err)
+	assert.Equal(project0Vars, *mergedVars)
+
+	// Testing no project vars and no repo vars
+	require.NoError(t, db.Clear(ProjectVarsCollection))
+	mergedVars, err = FindMergedProjectVars(project1.Id)
+	assert.NoError(err)
+	assert.Nil(mergedVars)
+
+	// Testing non-existent project
+	mergedVars, err = FindMergedProjectVars("bad_project")
+	assert.Error(err)
+	assert.Nil(mergedVars)
+}
+
 func TestProjectVarsInsert(t *testing.T) {
 	assert := assert.New(t)
 
