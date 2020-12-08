@@ -1595,7 +1595,7 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 type APISchedulerConfig struct {
 	TaskFinder                    *string `json:"task_finder"`
 	HostAllocator                 *string `json:"host_allocator"`
-	DefaultFutureHostPercent      int     `json:"default_future_host_fraction"`
+	DefaultFutureHostPercent      int     `json:"default_future_host_percent"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
 	TargetTimeSeconds             int     `json:"target_time_seconds"`
