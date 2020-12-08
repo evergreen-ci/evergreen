@@ -403,25 +403,24 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 	s.Equal(http.StatusOK, code)
 }
 
-func (s *HostConnectorSuite) TestGenerateHostProvisioningOptionsSucceeds() {
+func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		opts, err := s.conn.GenerateHostProvisioningOptions(ctx, "host1")
+		script, err := s.conn.GenerateHostProvisioningScript(ctx, "host1")
 		s.Require().NoError(err)
-		s.NotZero(opts.Content)
-		s.NotZero(opts.Directive)
+		s.NotZero(script)
 	})
 
 }
 
-func (s *HostConnectorSuite) TestGenerateHostProvisioningOptionsFailsWithInvalidHostID() {
+func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		opts, err := s.conn.GenerateHostProvisioningOptions(ctx, "foo")
+		script, err := s.conn.GenerateHostProvisioningScript(ctx, "foo")
 		s.Error(err)
-		s.Zero(opts)
+		s.Zero(script)
 	})
 }
 

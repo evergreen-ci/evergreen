@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -189,22 +188,22 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 	return data, nil
 }
 
-func (hc *DBHostConnector) GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error) {
+func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
 	if hostID == "" {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "cannot generate host provisioning script without a host ID",
 		}
 	}
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding host with ID '%s'", hostID).Error(),
 		}
 	}
 	if h == nil {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}
@@ -213,25 +212,25 @@ func (hc *DBHostConnector) GenerateHostProvisioningOptions(ctx context.Context, 
 	env := evergreen.GetEnvironment()
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	opts, err := h.ProvisioningUserData(env.Settings(), creds)
+	script, err := h.GenerateUserDataProvisioningScript(env.Settings(), creds)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "generating host provisioning script").Error(),
 		}
 	}
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
-		return nil, gimlet.ErrorResponse{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "saving Jasper credentials").Error(),
 		}
 	}
-	return opts, nil
+	return script, nil
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -558,16 +557,13 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	return host, nil
 }
 
-func (hc *MockHostConnector) GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error) {
+func (hc *MockHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
 	h, err := hc.FindHostById(hostID)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding host by ID")
+		return "", errors.Wrap(err, "finding host by ID")
 	}
 	if h == nil {
-		return nil, errors.Errorf("host with id '%s' not found", hostID)
+		return "", errors.Errorf("host with id '%s' not found", hostID)
 	}
-	return &userdata.Options{
-		Directive: userdata.ShellScript + "/bin/bash",
-		Content:   fmt.Sprintf("echo hello world %s", hostID),
-	}, nil
+	return "echo hello world", nil
 }

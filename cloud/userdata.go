@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -246,23 +245,9 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 
 	settings := env.Settings()
 
-	var provisionOpts *userdata.Options
-	var creds *certdepot.Credentials
-	if h.Distro.BootstrapSettings.FetchProvisioningScript {
-		provisionOpts, err = h.FetchProvisioningScriptUserData(settings)
-		if err != nil {
-			return "", errors.Wrap(err, "creating user data script to fetch provisioning script")
-		}
-	} else {
-		creds, err = h.GenerateJasperCredentials(ctx, env)
-		if err != nil {
-			return "", errors.Wrapf(err, "generating Jasper credentials")
-		}
-
-		provisionOpts, err = h.ProvisioningUserData(settings, creds)
-		if err != nil {
-			return "", errors.Wrap(err, "could not generate user data for provisioning host")
-		}
+	provisionOpts, err := h.GenerateFetchProvisioningScriptUserData(settings)
+	if err != nil {
+		return "", errors.Wrap(err, "creating user data script to fetch provisioning script")
 	}
 	provision, err := newUserData(*provisionOpts)
 	if err != nil {
@@ -280,12 +265,6 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 			mergedUserData = provision
 		}
 
-		if creds != nil {
-			if err = h.SaveJasperCredentials(ctx, env, creds); err != nil {
-				return "", errors.Wrap(err, "saving host's Jasper credentials")
-			}
-		}
-
 		return ensureWindowsUserDataScriptPersists(h, mergedUserData).String(), nil
 	}
 
@@ -298,12 +277,6 @@ func makeUserData(ctx context.Context, env evergreen.Environment, h *host.Host, 
 	multipartUserData, err := makeMultipartUserData(parts)
 	if err != nil {
 		return "", errors.Wrap(err, "error creating user data with multiple parts")
-	}
-
-	if creds != nil {
-		if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
-			return "", errors.Wrap(err, "saving host's Jasper credentials")
-		}
 	}
 
 	return multipartUserData, nil
