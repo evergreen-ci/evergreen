@@ -829,13 +829,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 		}
 	}
-	if len(pairsToCreate) == 0 {
-		aliasString := ""
-		for _, a := range aliases {
-			aliasString += a.Alias + ","
-		}
-		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
-	}
 
 	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
 	grip.Warning(message.WrapError(err, message.Fields{
@@ -923,6 +916,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				Activated:  false,
 			},
 		})
+	}
+	if len(buildsToCreate) == 0 {
+		aliasString := ""
+		for _, a := range aliases {
+			aliasString += a.Alias + ","
+		}
+		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
