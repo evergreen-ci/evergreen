@@ -829,6 +829,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 		}
 	}
+	if len(pairsToCreate) == 0 {
+		aliasString := ""
+		for _, a := range aliases {
+			aliasString += a.Alias + ","
+		}
+		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
+	}
 
 	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
 	grip.Warning(message.WrapError(err, message.Fields{
