@@ -148,17 +148,11 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	commits, resp, err := client.Repositories.ListCommits(ctx, owner, repo, &options)
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return nil, 0, parseGithubErrorResponse(resp)
 		}
-	}
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
-		grip.Error(errMsg)
-		return nil, 0, APIResponseError{errMsg}
-	}
-	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%s/%s' ref %s", owner, repo, ref)
+	} else {
+		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
 		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
@@ -198,17 +192,11 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{filepath: path}
 		}
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
@@ -232,12 +220,11 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 		repoOwner, repo, baseRevision, currentCommitHash)
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return "", parseGithubErrorResponse(resp)
 		}
-	}
-	if err != nil {
-		errMsg := fmt.Sprintf("error getting merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
+	} else {
+		errMsg := fmt.Sprintf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(errMsg)
 		return "", APIResponseError{errMsg}
 	}
@@ -263,12 +250,11 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	commit, resp, err := client.Repositories.GetCommit(ctx, repoOwner, repo, githash)
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return nil, parseGithubErrorResponse(resp)
 		}
-	}
-	if err != nil {
-		err = errors.Wrapf(err, "problem querying repo %s/%s for %s", repoOwner, repo, githash)
+	} else {
+		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", repoOwner, repo, githash)
 		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
 			"repo":    repoOwner + "/" + repo,
@@ -305,12 +291,11 @@ func GetRawPatchCommit(ctx context.Context, oauthToken, repoOwner, repo, sha str
 	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Patch})
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return "", parseGithubErrorResponse(resp)
 		}
-	}
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying  '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
+	} else {
+		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", repoOwner, repo, sha, err)
 		grip.Error(message.Fields{
 			"message": errMsg,
 			"owner":   repoOwner,
@@ -334,11 +319,10 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 	branchEvent, resp, err := client.Repositories.GetBranch(ctx, repoOwner, repo, branch)
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			return nil, parseGithubErrorResponse(resp)
 		}
-	}
-	if err != nil {
+	} else {
 		errMsg := fmt.Sprintf("error querying  '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
@@ -503,7 +487,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	user, resp, err := client.Users.Get(ctx, "")
 	if resp != nil {
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
 			var respBody []byte
 			respBody, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
@@ -511,9 +495,9 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 			}
 			return nil, false, APIResponseError{string(respBody)}
 		}
-	}
-	if err != nil {
+	} else {
 		return nil, false, errors.WithStack(err)
+
 	}
 
 	var isMember bool
