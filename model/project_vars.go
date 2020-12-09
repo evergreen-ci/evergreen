@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -75,10 +73,10 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 		return nil, errors.Wrapf(err, "problem getting project '%s'", projectID)
 	}
 	if project == nil {
-		return nil, errors.New(fmt.Sprintf("project '%s' does not exist", projectID))
+		return nil, errors.Errorf("project '%s' does not exist", projectID)
 	}
 
-	projectVars, err := FindOneProjectVars(projectID)
+	projectVars, err := FindOneProjectVars(project.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project vars for project '%s'", projectID)
 	}
@@ -90,32 +88,34 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
 	}
-	if repoVars != nil {
-		if projectVars == nil {
-			projectVars = repoVars
-			projectVars.Id = project.Id
-		} else {
-			if projectVars.Vars == nil {
-				projectVars.Vars = map[string]string{}
-			}
-			if projectVars.PrivateVars == nil {
-				projectVars.PrivateVars = map[string]bool{}
-			}
-			if projectVars.RestrictedVars == nil {
-				projectVars.RestrictedVars = map[string]bool{}
-			}
+	if repoVars == nil {
+		return projectVars, nil
+	}
+	if projectVars == nil {
+		repoVars.Id = project.Id
+		return repoVars, nil
+	}
 
-			// Merge repo vars and project vars
-			for key, val := range repoVars.Vars {
-				if _, ok := projectVars.Vars[key]; !ok {
-					projectVars.Vars[key] = val
-					if v, ok := repoVars.PrivateVars[key]; ok {
-						projectVars.PrivateVars[key] = v
-					}
-					if v, ok := repoVars.RestrictedVars[key]; ok {
-						projectVars.RestrictedVars[key] = v
-					}
-				}
+	if projectVars.Vars == nil {
+		projectVars.Vars = map[string]string{}
+	}
+	if projectVars.PrivateVars == nil {
+		projectVars.PrivateVars = map[string]bool{}
+	}
+	if projectVars.RestrictedVars == nil {
+		projectVars.RestrictedVars = map[string]bool{}
+	}
+
+	// Merge repo vars and project vars
+	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
+	for key, val := range repoVars.Vars {
+		if _, ok := projectVars.Vars[key]; !ok {
+			projectVars.Vars[key] = val
+			if v, ok := repoVars.PrivateVars[key]; ok {
+				projectVars.PrivateVars[key] = v
+			}
+			if v, ok := repoVars.RestrictedVars[key]; ok {
+				projectVars.RestrictedVars[key] = v
 			}
 		}
 	}
