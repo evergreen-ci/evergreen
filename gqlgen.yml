@@ -47,6 +47,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   IssueLink:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  DisplayTicket:
+    model: github.com/evergreen-ci/evergreen/rest/model.DisplayTicket
   Source:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
   Task:

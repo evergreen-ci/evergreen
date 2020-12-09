@@ -907,8 +907,13 @@ type Annotation {
   taskId: String!
   taskExecution: Int!
   note: Note
-  issues: [IssueLink]
-  suspectedIssues: [IssueLink]
+  issues: [DisplayTicket]
+  suspectedIssues: [DisplayTicket]
+}
+
+type DisplayTicket {
+  issueData: IssueLink
+  jiraTicket: JiraTicket
 }
 
 type Note {
