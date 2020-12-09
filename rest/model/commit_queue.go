@@ -2,7 +2,6 @@ package model
 
 import (
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -23,7 +22,6 @@ type APICommitQueueItem struct {
 	EnqueueTime     *time.Time  `json:"enqueueTime"`
 	Modules         []APIModule `json:"modules"`
 	Patch           *APIPatch   `json:"patch"`
-	TitleOverride   *string     `json:"title_override"`
 	MessageOverride *string     `json:"message_override"`
 }
 
@@ -70,7 +68,6 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	item.Issue = ToStringPtr(cqItemService.Issue)
 	item.Version = ToStringPtr(cqItemService.Version)
 	item.EnqueueTime = ToTimePtr(cqItemService.EnqueueTime)
-	item.TitleOverride = ToStringPtr(cqItemService.TitleOverride)
 	item.MessageOverride = ToStringPtr(cqItemService.MessageOverride)
 
 	for _, module := range cqItemService.Modules {
@@ -87,7 +84,6 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	serviceItem := commitqueue.CommitQueueItem{
 		Issue:           FromStringPtr(item.Issue),
 		Version:         FromStringPtr(item.Version),
-		TitleOverride:   FromStringPtr(item.TitleOverride),
 		MessageOverride: FromStringPtr(item.MessageOverride),
 	}
 	for _, module := range item.Modules {
@@ -102,13 +98,29 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 
 type GithubCommentCqData struct {
 	Modules         []APIModule
-	TitleOverride   string
 	MessageOverride string
 }
 
 func ParseGitHubComment(comment string) GithubCommentCqData {
 	data := GithubCommentCqData{}
-	comment = strings.TrimSpace(comment)
+
+	lineRegex := regexp.MustCompile(`(\A.*)(?:\n*)([\S\s]*)`)
+	lines := lineRegex.FindAllStringSubmatch(comment, -1)
+	if len(lines) == 0 {
+		return data
+	}
+	for index, line := range lines[0] {
+		if index == 1 {
+			data = parseFirstLine(line)
+		} else if index == 2 {
+			data.MessageOverride = line
+		}
+	}
+
+	return data
+}
+
+func parseFirstLine(comment string) GithubCommentCqData {
 	modules := []APIModule{}
 
 	moduleRegex := regexp.MustCompile(`(?:--module|-m)\s+(\w+):(\d+)`)
@@ -119,23 +131,8 @@ func ParseGitHubComment(comment string) GithubCommentCqData {
 			Issue:  ToStringPtr(moduleSlice[2]),
 		})
 	}
+
+	data := GithubCommentCqData{}
 	data.Modules = modules
-
-	titleOverride := ""
-	titleRegex := regexp.MustCompile(`(?:--title|-t)\s+\"([^\"]+)\"`)
-	titleMatch := titleRegex.FindStringSubmatch(comment)
-	if len(titleMatch) >= 2 {
-		titleOverride = titleMatch[1]
-	}
-	data.TitleOverride = titleOverride
-
-	messageOverride := ""
-	messageRegex := regexp.MustCompile(`(?:--message|-m)\s+\"([^\"]+)\"`)
-	messageMatch := messageRegex.FindStringSubmatch(comment)
-	if len(messageMatch) >= 2 {
-		messageOverride = messageMatch[1]
-	}
-	data.MessageOverride = messageOverride
-
 	return data
 }

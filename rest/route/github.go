@@ -565,7 +565,6 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	}
 	item := restModel.APICommitQueueItem{
 		Issue:           restModel.ToStringPtr(strconv.Itoa(PRNum)),
-		TitleOverride:   &cqInfo.TitleOverride,
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
 	}

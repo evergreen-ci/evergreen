@@ -128,7 +128,7 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 
 func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef", "", ""))
+	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef", ""))
 
 	selectors := []event.Selector{
 		event.Selector{
