@@ -144,9 +144,9 @@ Evergreen - Distros
                   name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">
               </div>
               <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostFraction.$dirty && form.hostAllocatorSettingsFutureHostFraction.$error.required ||
-                form.hostAllocatorSettingsFutureHostPercent.$invalid ||
-                form.hostAllocatorSettingsFutureHostPercent.$modelValue > 1 ||
-                form.hostAllocatorSettingsFutureHostPercent.$modelValue < 0 "> future host fraction must fall in the interval [0,1]
+                form.hostAllocatorSettingsFutureHostFraction.$invalid ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue > 1 ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue < 0 "> future host fraction must fall in the interval [0,1]
               </div>
             </div>
           </div>
