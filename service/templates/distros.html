@@ -140,7 +140,7 @@ Evergreen - Distros
 
               <div>
                 <label class="distro-label">Future Host Fraction</label>
-                <input ng-readonly="readOnly" type="number"
+                <input ng-readonly="readOnly" type="number" step=".01" min="0" max="1"
                   name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">
               </div>
               <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostFraction.$dirty && form.hostAllocatorSettingsFutureHostFraction.$error.required ||
