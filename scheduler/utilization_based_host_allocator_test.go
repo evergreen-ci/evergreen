@@ -149,9 +149,9 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 		Id:       s.distroName,
 		Provider: evergreen.ProviderNameEc2Auto,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
-			MinimumHosts:      0,
-			MaximumHosts:      50,
-			FutureHostPercent: 50,
+			MinimumHosts:       0,
+			MaximumHosts:       50,
+			FutureHostFraction: .5,
 		},
 	}
 }
@@ -930,8 +930,8 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
 		CountOverThreshold:   1,
 	}
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
@@ -940,7 +940,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 
@@ -1040,8 +1040,8 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		CountOverThreshold:   4,
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
@@ -1055,7 +1055,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }
@@ -1165,8 +1165,8 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		},
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
@@ -1180,7 +1180,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(3, hosts)
 }
@@ -1208,8 +1208,8 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 		},
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{},
@@ -1217,7 +1217,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(2, hosts)
 }
@@ -1306,8 +1306,8 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2},
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3},
@@ -1315,7 +1315,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }
@@ -1468,8 +1468,8 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2, taskGroupInfo3},
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
@@ -1477,7 +1477,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	// robust handling of task groups would request 2 hosts rather than 1 here
 	s.Equal(1, hosts)
@@ -1512,8 +1512,8 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
 	}
 
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostPercent
-	s.distro.HostAllocatorSettings.FutureHostPercent = 100
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3},
@@ -1521,7 +1521,7 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
-	s.distro.HostAllocatorSettings.FutureHostPercent = defaultPct
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }

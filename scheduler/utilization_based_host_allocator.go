@@ -79,7 +79,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			ctx,
 			distro,
 			taskGroupData,
-			distro.HostAllocatorSettings.FutureHostPercent,
+			distro.HostAllocatorSettings.FutureHostFraction,
 			hostAllocatorData.ContainerPool,
 			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
 			maxHosts)
@@ -119,7 +119,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
-func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostPercent int, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, error) {
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, error) {
 	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
@@ -144,8 +144,6 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 
 	// determine how many free hosts we have that are already up
-	var futureHostFraction float64
-	futureHostFraction = float64(futureHostPercent) / float64(100)
 	startAt := time.Now()
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
@@ -153,10 +151,6 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	freeHostDur := time.Since(startAt)
 
-	grip.Info(message.Fields{
-		"message":              "future host fraction test",
-		"future_host_fraction": futureHostFraction,
-	})
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks)
 

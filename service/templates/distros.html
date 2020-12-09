@@ -139,15 +139,14 @@ Evergreen - Distros
               </div>
 
               <div>
-                <label class="distro-label">Future Host Percent</label>
+                <label class="distro-label">Future Host Fraction</label>
                 <input ng-readonly="readOnly" type="number"
-                  name="hostAllocatorSettingsFutureHostPercent" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_percent" placeholder="Set to 0 to use its global default">
+                  name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">
               </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostPercent.$dirty && form.hostAllocatorSettingsFutureHostPercent.$error.required ||
+              <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostFraction.$dirty && form.hostAllocatorSettingsFutureHostFraction.$error.required ||
                 form.hostAllocatorSettingsFutureHostPercent.$invalid ||
-                form.hostAllocatorSettingsFutureHostPercent.$modelValue > 100 ||
-                form.hostAllocatorSettingsFutureHostPercent.$modelValue < 0 ||
-                form.hostAllocatorSettingsFutureHostPercent.$modelValue % 1 != 0"> future host percent must be an integer between 0 and 100
+                form.hostAllocatorSettingsFutureHostPercent.$modelValue > 1 ||
+                form.hostAllocatorSettingsFutureHostPercent.$modelValue < 0 "> future host fraction must fall in the interval [0,1]
               </div>
             </div>
           </div>
