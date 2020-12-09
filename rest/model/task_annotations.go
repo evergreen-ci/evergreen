@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 type APITaskAnnotation struct {
@@ -162,27 +161,23 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTickets(issuelinks []APIIssueLink) ([]APIIssueLink, error) {
+func GetJiraTickets(issuelinks []APIIssueLink) ([]*APIIssueLink, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	catcher := grip.NewBasicCatcher()
 
-	var res []APIIssueLink
+	var res []*APIIssueLink
 	for _, issue := range issuelinks {
 		urlObject, err := url.Parse(*issue.URL)
-		if err != nil {
-			catcher.Add(errors.Wrap(err, "problem parsing issue string"))
-		}
-		if urlObject.Host == "jira.mongodb.org" {
+		catcher.Wrap(err, "problem parsing the issue url")
+		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
 			jiraIssue, err := jiraHandler.GetJIRATicket(*issue.IssueKey)
-			if err != nil {
-				catcher.Add(errors.Wrap(err, "error getting Jira ticket"))
-			}
+			catcher.Wrap(err, "error getting Jira ticket")
 			if jiraIssue != nil {
 				issue.JiraTicket = jiraIssue
 			}
 		}
-		res = append(res, issue)
+		res = append(res, &issue)
 	}
 	return res, catcher.Resolve()
 }

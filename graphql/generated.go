@@ -39,6 +39,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Annotation() AnnotationResolver
 	Host() HostResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
@@ -742,6 +743,10 @@ type ComplexityRoot struct {
 	}
 }
 
+type AnnotationResolver interface {
+	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+}
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 
@@ -6894,13 +6899,13 @@ func (ec *executionContext) _Annotation_issues(ctx context.Context, field graphq
 		Object:   "Annotation",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Issues, nil
+		return ec.resolvers.Annotation().Issues(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6909,9 +6914,9 @@ func (ec *executionContext) _Annotation_issues(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]model.APIIssueLink)
+	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
-	return ec.marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -6925,13 +6930,13 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 		Object:   "Annotation",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SuspectedIssues, nil
+		return ec.resolvers.Annotation().SuspectedIssues(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6940,9 +6945,9 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]model.APIIssueLink)
+	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
-	return ec.marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -23703,19 +23708,37 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 		case "taskId":
 			out.Values[i] = ec._Annotation_taskId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "taskExecution":
 			out.Values[i] = ec._Annotation_taskExecution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "note":
 			out.Values[i] = ec._Annotation_note(ctx, field, obj)
 		case "issues":
-			out.Values[i] = ec._Annotation_issues(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_issues(ctx, field, obj)
+				return res
+			})
 		case "suspectedIssues":
-			out.Values[i] = ec._Annotation_suspectedIssues(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_suspectedIssues(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -30639,7 +30662,7 @@ func (ec *executionContext) marshalOIssueLink2githubᚗcomᚋevergreenᚑciᚋev
 	return ec._IssueLink(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v []model.APIIssueLink) graphql.Marshaler {
+func (ec *executionContext) marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v []*model.APIIssueLink) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -30666,7 +30689,7 @@ func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOIssueLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, sel, v[i])
+			ret[i] = ec.marshalOIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -30677,6 +30700,13 @@ func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑci�
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalOIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v *model.APIIssueLink) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._IssueLink(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOJiraConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v model.APIJiraConfig) graphql.Marshaler {

@@ -69,6 +69,9 @@ func (r *Resolver) User() UserResolver {
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
+func (r *Resolver) Annotation() AnnotationResolver {
+	return &annotationResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
@@ -76,6 +79,7 @@ type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type annotationResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -2424,17 +2428,17 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, nil
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
-	issues, err := restModel.GetJiraTickets(apiAnnotation.Issues)
-	apiAnnotation.Issues = issues
-	if err != nil {
-		catcher.Add(err)
-	}
-	suspectedIssues, err := restModel.GetJiraTickets(apiAnnotation.SuspectedIssues)
-	apiAnnotation.SuspectedIssues = suspectedIssues
-	if err != nil {
-		catcher.Add(err)
-	}
 	return apiAnnotation, catcher.Resolve()
+}
+
+func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	issues, err := restModel.GetJiraTickets(obj.Issues)
+	return issues, err
+}
+
+func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	suspectedIssues, err := restModel.GetJiraTickets(obj.SuspectedIssues)
+	return suspectedIssues, err
 }
 
 // New injects resources into the resolvers, such as the data connector
