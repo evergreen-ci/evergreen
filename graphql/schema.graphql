@@ -335,9 +335,9 @@ type Host {
 }
 
 type InstanceTag {
-  key: String
-  value: String
-  canBeModified: Boolean
+  key: String!
+  value: String!
+  canBeModified: Boolean!
 }
 
 input InstanceTagInput {
