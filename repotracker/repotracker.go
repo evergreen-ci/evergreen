@@ -837,6 +837,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"version": v.Id,
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
+	debuggingData := map[string]string{}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
@@ -859,9 +860,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"project": projectInfo.Ref.Id,
 				"version": v.Id,
 			}))
+			debuggingData[buildvariant.Name] = "error creating build"
 			continue
 		}
 		if len(tasks) == 0 {
+			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
 			continue
 		}
 		buildsToCreate = append(buildsToCreate, *b)
@@ -899,12 +902,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message": "activating build",
-			"name":    buildvariant.Name,
-			"project": projectInfo.Ref.Id,
-			"version": v.Id,
-			"time":    activateVariantAt,
-			"runner":  RunnerName,
+			"message":           "activating build",
+			"name":              buildvariant.Name,
+			"project":           projectInfo.Ref.Id,
+			"version":           v.Id,
+			"time":              activateVariantAt,
+			"runner":            RunnerName,
+			"buildvariant_data": debuggingData,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
