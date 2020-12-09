@@ -907,13 +907,8 @@ type Annotation {
   taskId: String!
   taskExecution: Int!
   note: Note
-  issues: [DisplayTicket]
-  suspectedIssues: [DisplayTicket]
-}
-
-type DisplayTicket {
-  issueData: IssueLink
-  jiraTicket: JiraTicket
+  issues: [IssueLink]
+  suspectedIssues: [IssueLink]
 }
 
 type Note {
@@ -925,6 +920,7 @@ type IssueLink {
   issueKey: String
   url: String
   source: Source!
+  jiraTicket: JiraTicket
 }
 
 type Source {

@@ -1,13 +1,10 @@
 package annotations
 
 import (
-	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -42,11 +39,6 @@ type Source struct {
 type Note struct {
 	Message string  `bson:"message,omitempty" json:"message,omitempty"`
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
-}
-
-type DisplayTicket struct {
-	issueData  IssueLink              `bson:"issue_data,omitempty" json:"issue_data,omitempty"`
-	jiraTicket *thirdparty.JiraTicket `bson:"jira_ticket,omitempty" json:"jira_ticket,omitempty"`
 }
 
 func newTaskAnnotation(taskId string, execution int) TaskAnnotation {
@@ -217,37 +209,4 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		},
 	)
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
-}
-
-func GetJiraTickets(issuelinks []IssueLink) ([]DisplayTicket, error) {
-	var displayTickets []DisplayTicket
-
-	settings := evergreen.GetEnvironment().Settings()
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
-
-	for _, issue := range issuelinks {
-		displayTicket := DisplayTicket{}
-
-		urlObject, err := url.Parse(issue.URL)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem parsing issue string")
-		}
-
-		if urlObject.Host != "jira.mongodb.org" {
-			displayTicket.issueData = issue
-			displayTickets = append(displayTickets, displayTicket)
-		}
-
-		jiraIssue, err := jiraHandler.GetJIRATicket(issue.IssueKey)
-		if err != nil {
-			return nil, err
-		}
-		if jiraIssue != nil {
-			displayTicket.jiraTicket = jiraIssue
-		}
-		displayTicket.issueData = issue
-		displayTickets = append(displayTickets, displayTicket)
-	}
-
-	return displayTickets, nil
 }

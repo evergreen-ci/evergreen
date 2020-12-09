@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -31,12 +32,9 @@ type APISource struct {
 	Requester *string    `bson:"requester,omitempty" json:"requester,omitempty"`
 }
 type APIIssueLink struct {
-	URL      *string    `bson:"url" json:"url"`
-	IssueKey *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source   *APISource `bson:"source,omitempty" json:"source,omitempty"`
-}
-type DisplayTicket struct {
-	IssueData  *APIIssueLink          `bson:"issue_data,omitempty" json:"issue_data,omitempty"`
+	URL        *string                `bson:"url" json:"url"`
+	IssueKey   *string                `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source     *APISource             `bson:"source,omitempty" json:"source,omitempty"`
 	JiraTicket *thirdparty.JiraTicket `bson:"jira_ticket,omitempty" json:"jira_ticket,omitempty"`
 }
 
@@ -164,35 +162,27 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTickets(issuelinks []APIIssueLink) ([]*DisplayTicket, error) {
-	var displayTickets []*DisplayTicket
-
+func GetJiraTickets(issuelinks []APIIssueLink) ([]APIIssueLink, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	catcher := grip.NewBasicCatcher()
 
+	var res []APIIssueLink
 	for _, issue := range issuelinks {
-		displayTicket := DisplayTicket{}
-
 		urlObject, err := url.Parse(*issue.URL)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem parsing issue string")
+			catcher.Add(errors.Wrap(err, "problem parsing issue string"))
 		}
-
-		if urlObject.Host != "jira.mongodb.org" {
-			displayTicket.IssueData = &issue
-			displayTickets = append(displayTickets, &displayTicket)
+		if urlObject.Host == "jira.mongodb.org" {
+			jiraIssue, err := jiraHandler.GetJIRATicket(*issue.IssueKey)
+			if err != nil {
+				catcher.Add(errors.Wrap(err, "error getting Jira ticket"))
+			}
+			if jiraIssue != nil {
+				issue.JiraTicket = jiraIssue
+			}
 		}
-
-		jiraIssue, err := jiraHandler.GetJIRATicket(*issue.IssueKey)
-		if err != nil {
-			return nil, err
-		}
-		if jiraIssue != nil {
-			displayTicket.JiraTicket = jiraIssue
-		}
-		displayTicket.IssueData = &issue
-		displayTickets = append(displayTickets, &displayTicket)
+		res = append(res, issue)
 	}
-
-	return displayTickets, nil
+	return res, catcher.Resolve()
 }

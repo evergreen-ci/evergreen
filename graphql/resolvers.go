@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
@@ -69,17 +70,12 @@ func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
 
-func (r *Resolver) Annotation() AnnotationResolver {
-	return &annotationResolver{r}
-}
-
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
-type annotationResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -2419,6 +2415,7 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
+	catcher := grip.NewBasicCatcher()
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
@@ -2427,26 +2424,17 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, nil
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
-
-	//todo: get jira ticket objects before returning
-
-	return apiAnnotation, nil
-}
-
-func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.DisplayTicket, error) {
-	displayTickets, err := restModel.GetJiraTickets(obj.Issues)
+	issues, err := restModel.GetJiraTickets(apiAnnotation.Issues)
+	apiAnnotation.Issues = issues
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting Jira tickets: %s", err.Error()))
+		catcher.Add(err)
 	}
-	return displayTickets, nil
-}
-
-func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.DisplayTicket, error) {
-	displayTickets, err := restModel.GetJiraTickets(obj.SuspectedIssues)
+	suspectedIssues, err := restModel.GetJiraTickets(apiAnnotation.SuspectedIssues)
+	apiAnnotation.SuspectedIssues = suspectedIssues
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting Jira tickets: %s", err.Error()))
+		catcher.Add(err)
 	}
-	return displayTickets, nil
+	return apiAnnotation, catcher.Resolve()
 }
 
 // New injects resources into the resolvers, such as the data connector
