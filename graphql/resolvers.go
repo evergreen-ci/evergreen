@@ -2410,6 +2410,21 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
+func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
+	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
+	}
+	if annotation == nil {
+		return nil, nil
+	}
+	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
+
+	//todo: get jira ticket objects before returning
+
+	return apiAnnotation, nil
+}
+
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	return Config{

@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -408,23 +409,40 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
+	mongoClient := evergreen.GetEnvironment().Client()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to start session")
+	}
+	defer session.EndSession(ctx)
 
-	if err = patchVersion.Insert(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if err = intermediateProject.Insert(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if err = buildsToInsert.InsertMany(ctx, false); err != nil {
-		return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
-	}
-	if err = tasksToInsert.InsertUnordered(ctx); err != nil {
-		return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
+	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		db := evergreen.GetEnvironment().DB()
+		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error inserting version '%s'", patchVersion.Id)
+		}
+		_, err = db.Collection(ParserProjectCollection).InsertOne(ctx, intermediateProject)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
+		}
+		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
+			return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
+		}
+		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
+		}
+		return nil, err
 	}
 
+	_, err = session.WithTransaction(ctx, txFunc)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to finalize patch")
+	}
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	return patchVersion, nil
 }
 
