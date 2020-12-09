@@ -162,9 +162,9 @@ func listProjects(ctx context.Context, confPath string) error {
 	fmt.Println(len(matching), "projects:")
 
 	t := tabby.New()
-	t.AddHeader("Name", "Description")
+	t.AddHeader("Name", "Identifier", "Description")
 	for _, prj := range matching {
-		t.AddLine(prj.Id, prj.DisplayName)
+		t.AddLine(prj.Id, prj.Identifier, prj.DisplayName)
 	}
 	t.Print()
 	return nil
