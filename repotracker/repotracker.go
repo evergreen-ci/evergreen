@@ -902,13 +902,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message":           "activating build",
-			"name":              buildvariant.Name,
-			"project":           projectInfo.Ref.Id,
-			"version":           v.Id,
-			"time":              activateVariantAt,
-			"runner":            RunnerName,
-			"buildvariant_data": debuggingData,
+			"message": "activating build",
+			"name":    buildvariant.Name,
+			"project": projectInfo.Ref.Id,
+			"version": v.Id,
+			"time":    activateVariantAt,
+			"runner":  RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
@@ -928,15 +927,16 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}))
 
 	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
-		"message":    "version has no builds",
-		"version":    v.Id,
-		"revision":   v.Revision,
-		"author":     v.Author,
-		"identifier": v.Identifier,
-		"requester":  v.Requester,
-		"owner":      v.Owner,
-		"repo":       v.Repo,
-		"branch":     v.Branch,
+		"message":           "version has no builds",
+		"version":           v.Id,
+		"revision":          v.Revision,
+		"author":            v.Author,
+		"identifier":        v.Identifier,
+		"requester":         v.Requester,
+		"owner":             v.Owner,
+		"repo":              v.Repo,
+		"branch":            v.Branch,
+		"buildvariant_data": debuggingData,
 	})
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
