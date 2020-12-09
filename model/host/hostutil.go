@@ -470,7 +470,6 @@ func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, 
 
 	shellPrefix := []string{"set -o errexit", "set -o verbose"}
 	shellCmds := append(shellPrefix, checkProvisioningStarted, setupUserCmds, setupScriptCmds)
-	shellCmds = append(shellCmds, setupScriptCmds)
 	shellCmds = append(shellCmds, setupJasperCmds...)
 	shellCmds = append(shellCmds, postFetchClient, markDone)
 

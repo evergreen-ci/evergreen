@@ -837,6 +837,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"version": v.Id,
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
+	debuggingData := map[string]string{}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
@@ -859,9 +860,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"project": projectInfo.Ref.Id,
 				"version": v.Id,
 			}))
+			debuggingData[buildvariant.Name] = "error creating build"
 			continue
 		}
 		if len(tasks) == 0 {
+			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
 			continue
 		}
 		buildsToCreate = append(buildsToCreate, *b)
@@ -929,6 +932,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"runner":  RunnerName,
 		"version": v.Id,
 	}))
+
+	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
+		"message":           "version has no builds",
+		"version":           v.Id,
+		"revision":          v.Revision,
+		"author":            v.Author,
+		"identifier":        v.Identifier,
+		"requester":         v.Requester,
+		"owner":             v.Owner,
+		"repo":              v.Repo,
+		"branch":            v.Branch,
+		"buildvariant_data": debuggingData,
+	})
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
