@@ -206,16 +206,19 @@ func TestRedactPrivateVars(t *testing.T) {
 
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
-	require.NoError(db.ClearCollections(ProjectVarsCollection))
+	require.NoError(db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
 	assert := assert.New(t)
-	project := "mci"
+	project := ProjectRef{
+		Id: "mci",
+	}
+	assert.NoError(project.Insert())
 
 	// empty vars
 	newVars := &ProjectVars{
-		Id: project,
+		Id: project.Id,
 	}
 	require.NoError(newVars.Insert())
-	k, err := GetAWSKeyForProject(project)
+	k, err := GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
 	assert.Empty(k.Name)
 	assert.Empty(k.Value)
@@ -228,7 +231,7 @@ func TestAWSVars(t *testing.T) {
 		"a": true,
 	}
 	projectVars := ProjectVars{
-		Id:          project,
+		Id:          project.Id,
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
@@ -236,7 +239,7 @@ func TestAWSVars(t *testing.T) {
 	assert.NoError(err)
 
 	// canaries
-	found, err := FindOneProjectVars(project)
+	found, err := FindOneProjectVars(project.Id)
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
@@ -244,7 +247,7 @@ func TestAWSVars(t *testing.T) {
 	assert.Equal(false, found.PrivateVars["b"])
 
 	// empty aws values
-	k, err = GetAWSKeyForProject(project)
+	k, err = GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
 	assert.Empty(k.Name)
 	assert.Empty(k.Value)
@@ -254,14 +257,14 @@ func TestAWSVars(t *testing.T) {
 		Name:  "aws_key_name",
 		Value: "aws_key_value",
 	}
-	assert.NoError(SetAWSKeyForProject(project, k))
-	k, err = GetAWSKeyForProject(project)
+	assert.NoError(SetAWSKeyForProject(project.Id, k))
+	k, err = GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
 	assert.Equal("aws_key_name", k.Name)
 	assert.Equal("aws_key_value", k.Value)
 
 	// canaries, again
-	found, err = FindOneProjectVars(project)
+	found, err = FindOneProjectVars(project.Id)
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])

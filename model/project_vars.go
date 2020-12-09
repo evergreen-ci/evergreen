@@ -90,43 +90,41 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
 	}
+	if repoVars != nil && projectVars == nil {
+		projectVars = repoVars
+		projectVars.Id = project.Id
+	}
+	if repoVars != nil {
+		if projectVars == nil {
+			projectVars = repoVars
+			projectVars.Id = project.Id
+		} else {
+			if projectVars.Vars == nil {
+				projectVars.Vars = map[string]string{}
+			}
+			if projectVars.PrivateVars == nil {
+				projectVars.PrivateVars = map[string]bool{}
+			}
+			if projectVars.RestrictedVars == nil {
+				projectVars.RestrictedVars = map[string]bool{}
+			}
 
-	mergedVars := &ProjectVars{}
-	if projectVars != nil {
-		mergedVars = projectVars
-	} else if repoVars != nil {
-		mergedVars = repoVars
-		mergedVars.Id = project.Id
-	} else {
-		return nil, nil
-	}
-
-	if mergedVars.Vars == nil {
-		mergedVars.Vars = map[string]string{}
-	}
-	if mergedVars.PrivateVars == nil {
-		mergedVars.PrivateVars = map[string]bool{}
-	}
-	if mergedVars.RestrictedVars == nil {
-		mergedVars.RestrictedVars = map[string]bool{}
-	}
-
-	// Merge repo vars into project vars
-	if repoVars != nil && projectVars != nil {
-		for key, val := range repoVars.Vars {
-			if _, ok := projectVars.Vars[key]; !ok {
-				mergedVars.Vars[key] = val
-				if v, ok := repoVars.PrivateVars[key]; ok {
-					mergedVars.PrivateVars[key] = v
-				}
-				if v, ok := repoVars.RestrictedVars[key]; ok {
-					mergedVars.RestrictedVars[key] = v
+			// Merge repo vars and project vars
+			for key, val := range repoVars.Vars {
+				if _, ok := projectVars.Vars[key]; !ok {
+					projectVars.Vars[key] = val
+					if v, ok := repoVars.PrivateVars[key]; ok {
+						projectVars.PrivateVars[key] = v
+					}
+					if v, ok := repoVars.RestrictedVars[key]; ok {
+						projectVars.RestrictedVars[key] = v
+					}
 				}
 			}
 		}
 	}
 
-	return mergedVars, nil
+	return projectVars, nil
 }
 
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
@@ -152,7 +150,7 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 }
 
 func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
-	vars, err := FindOneProjectVars(projectId)
+	vars, err := FindMergedProjectVars(projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting project vars")
 	}

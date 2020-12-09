@@ -89,7 +89,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projVars, err := model.FindOneProjectVars(id)
+	projVars, err := model.FindMergedProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
