@@ -920,18 +920,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
-	if len(buildsToCreate) == 0 {
-		aliasString := ""
-		for _, a := range aliases {
-			aliasString += a.Alias + ","
-		}
-		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
-	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
-		"message": "unable to get all activation times",
-		"runner":  RunnerName,
-		"version": v.Id,
-	}))
 
 	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
 		"message":           "version has no builds",
@@ -945,6 +933,18 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"branch":            v.Branch,
 		"buildvariant_data": debuggingData,
 	})
+	if len(buildsToCreate) == 0 {
+		aliasString := ""
+		for _, a := range aliases {
+			aliasString += a.Alias + ","
+		}
+		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
+	}
+	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+		"message": "unable to get all activation times",
+		"runner":  RunnerName,
+		"version": v.Id,
+	}))
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
