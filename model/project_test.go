@@ -299,7 +299,8 @@ buildvariants:
     github_org: wut?
 `
 	projectRef := &ProjectRef{
-		Id: "mci",
+		Id:         "mci",
+		Identifier: "mci-favorite",
 	}
 	assert.NoError(projectRef.Insert())
 	v := &Version{
@@ -341,6 +342,7 @@ buildvariants:
 	assert.Equal("magic", expansions.Get("build_variant"))
 	assert.Equal("0ed7cbd33263043fa95aadb3f6068ef8d076854a", expansions.Get("revision"))
 	assert.Equal("mci", expansions.Get("project"))
+	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
