@@ -26,6 +26,7 @@ func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
 	defer cancel()
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
