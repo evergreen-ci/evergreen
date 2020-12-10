@@ -78,16 +78,17 @@ func TestParseGitHubComment(t *testing.T) {
 	data = ParseGitHubComment(comment)
 	assert.Len(data.Modules, 0)
 
-	comment = `evergreen merge --title "!$&*);" -m "a     b"`
-	data = ParseGitHubComment(comment)
-	assert.Equal("!$&*);", data.TitleOverride)
-	assert.Equal("a     b", data.MessageOverride)
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234
 
-	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 -t "my title here" --message "hello"`
+
+this is my commit message
+some more lines
+    extra whitespace  `
 	data = ParseGitHubComment(comment)
 	assert.Len(data.Modules, 1)
 	assert.Equal(ToStringPtr("module1"), data.Modules[0].Module)
 	assert.Equal(ToStringPtr("1234"), data.Modules[0].Issue)
-	assert.Equal("my title here", data.TitleOverride)
-	assert.Equal("hello", data.MessageOverride)
+	assert.Equal(`this is my commit message
+some more lines
+    extra whitespace  `, data.MessageOverride)
 }

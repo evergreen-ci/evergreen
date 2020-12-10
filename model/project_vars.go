@@ -66,6 +66,63 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	return projectVars, nil
 }
 
+// FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
+func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
+	project, err := FindOneProjectRef(projectID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project '%s'", projectID)
+	}
+	if project == nil {
+		return nil, errors.Errorf("project '%s' does not exist", projectID)
+	}
+
+	projectVars, err := FindOneProjectVars(project.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project vars for project '%s'", projectID)
+	}
+	if !project.UseRepoSettings {
+		return projectVars, nil
+	}
+
+	repoVars, err := FindOneProjectVars(project.RepoRefId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
+	}
+	if repoVars == nil {
+		return projectVars, nil
+	}
+	if projectVars == nil {
+		repoVars.Id = project.Id
+		return repoVars, nil
+	}
+
+	if projectVars.Vars == nil {
+		projectVars.Vars = map[string]string{}
+	}
+	if projectVars.PrivateVars == nil {
+		projectVars.PrivateVars = map[string]bool{}
+	}
+	if projectVars.RestrictedVars == nil {
+		projectVars.RestrictedVars = map[string]bool{}
+	}
+
+	// Merge repo vars and project vars
+	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
+	for key, val := range repoVars.Vars {
+		if _, ok := projectVars.Vars[key]; !ok {
+			projectVars.Vars[key] = val
+			if v, ok := repoVars.PrivateVars[key]; ok {
+				projectVars.PrivateVars[key] = v
+			}
+			if v, ok := repoVars.RestrictedVars[key]; ok {
+				projectVars.RestrictedVars[key] = v
+			}
+		}
+	}
+
+	return projectVars, nil
+}
+
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars, err := FindOneProjectVars(projectId)
 	if err != nil {
@@ -89,7 +146,7 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 }
 
 func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
-	vars, err := FindOneProjectVars(projectId)
+	vars, err := FindMergedProjectVars(projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting project vars")
 	}

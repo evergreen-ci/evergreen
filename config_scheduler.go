@@ -12,7 +12,7 @@ import (
 type SchedulerConfig struct {
 	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
-	FreeHostFraction              float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
@@ -59,7 +59,7 @@ func (c *SchedulerConfig) Set() error {
 		"$set": bson.M{
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,
-			"free_host_fraction":                c.FreeHostFraction,
+			"free_host_fraction":                c.FutureHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
 			"target_time_seconds":               c.TargetTimeSeconds,
@@ -99,8 +99,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 			ValidHostAllocators, c.HostAllocator)
 	}
 
-	if c.FreeHostFraction < 0 || c.FreeHostFraction > 1 {
-		return errors.New("free host fraction must be between 0 and 1")
+	if c.FutureHostFraction < 0 || c.FutureHostFraction > 1 {
+		// traditional default
+		c.FutureHostFraction = .4
 	}
 
 	if c.CacheDurationSeconds > 600 {

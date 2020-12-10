@@ -140,12 +140,23 @@ Evergreen - Distros
               <div>
                 <label class="distro-label"></label>
                 <input ng-readonly="readOnly" type="number"
-                  name="hostAllocatorSettingsAcceptableHostIdleTime" class="form-control" ng-model="activeDistro.host_allocator_settings.acceptable_host_idle_time" placeholder="Set to 0 to use its global default">
+                  name="hostAllocatorSettingsRoundRule" class="form-control" ng-model="activeDistro.host_allocator_settings.round_rule" placeholder="Set to 0 to use its global default">
               </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostIdleTime.$dirty && form.hostAllocatorSettingsAcceptableHostIdleTime.$error.required ||
-                form.hostAllocatorSettingsAcceptableHostIdleTime.$invalid ||
-                form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue < 0 ||
-                form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsRoundRule.$dirty && form.hostAllocatorSettingsRoundRule.$error.required ||
+                form.hostAllocatorSettingsRoundRule.$invalid ||
+                form.hostAllocatorSettingsRoundRule.$modelValue < -1 ||
+		form.hostAllocatorSettingsRoundRule.$modelValue > 1 ||
+                form.hostAllocatorSettingsRoundRule.$modelValue % 1 != 0"> Round Rule must a non-negative integer
+
+              <div>
+                <label class="distro-label">Future Host Fraction</label>
+                <input ng-readonly="readOnly" type="number" step=".01" min="0" max="1"
+                  name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostFraction.$dirty && form.hostAllocatorSettingsFutureHostFraction.$error.required ||
+                form.hostAllocatorSettingsFutureHostFraction.$invalid ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue > 1 ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue < 0 "> future host fraction must fall in the interval [0,1]
               </div>
             </div>
           </div>
@@ -949,12 +960,6 @@ Evergreen - Distros
             <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.use_legacy_agent">
             Use legacy version of agent for this distro.
           </p>
-          <div ng-show="activeDistro.bootstrap_settings.method == 'user-data'">
-            <span class="distro-checkbox checkbox">
-              <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.bootstrap_settings.fetch_provisioning_script" />
-              Fetch host provisioning script from Evergreen after user data has started
-            </span>
-          </div>
         </div>
         <div class="dropdown">
           <span class="distro-menu-title">Project Cloning Method:</span>

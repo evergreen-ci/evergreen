@@ -300,7 +300,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	config0 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             112358,
@@ -350,7 +350,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config0 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             112358,
@@ -401,7 +401,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config1 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             10,
@@ -448,7 +448,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config2 := evergreen.SchedulerConfig{
 		TaskFinder:                    "",
 		HostAllocator:                 "",
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             12345,

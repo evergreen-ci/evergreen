@@ -28,17 +28,17 @@ type fuzzerSettings struct {
 }
 
 type HostAllocatorFuzzerSuite struct {
-	ctx              context.Context
-	distroName       string
-	distro           distro.Distro
-	projectName      string
-	freeHostFraction float64
-	roundRule        int
-	allocator        HostAllocator
-	testData         HostAllocatorData
-	soonToBeFree     float64
-	freeHosts        int
-	settings         fuzzerSettings
+	ctx                context.Context
+	distroName         string
+	distro             distro.Distro
+	projectName        string
+	futureHostFraction float64
+	allocator          HostAllocator
+	testData           HostAllocatorData
+	soonToBeFree       float64
+	freeHosts          int
+	settings           fuzzerSettings
+	roundRule          int
 
 	suite.Suite
 }
@@ -61,7 +61,7 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 		Provider: evergreen.ProviderNameEc2Auto,
 	}
 	s.projectName = "testProject"
-	s.freeHostFraction = 0.5
+	s.futureHostFraction = .5
 	s.roundRule = -1 // round down
 	s.ctx = context.Background()
 	s.settings = fuzzerSettings{
@@ -141,10 +141,9 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	s.testData = HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    hosts,
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   hosts,
+		DistroQueueInfo: distroQueueInfo,
 	}
 }
 
@@ -159,7 +158,9 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 
 		s.True(newHosts >= 0)
 		s.True(newHosts <= queueSize)
-		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*s.freeHostFraction)
+		var futureHostFraction float64
+		futureHostFraction = s.futureHostFraction
+		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*futureHostFraction)
 		// the task duration per host will always be less than 2x the max duration per host (30min)
 		// because the longest task used in this test is 1 hr
 		s.True(queueDuration.Hours()/numFree < float64(2*evergreen.MaxDurationPerDistroHost),

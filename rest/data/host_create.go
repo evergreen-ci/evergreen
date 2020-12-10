@@ -203,7 +203,7 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 // updateExpansions updates expansions with project variables and patch
 // parameters.
 func updateExpansions(expansions *util.Expansions, projectId string, params []patch.Parameter) error {
-	projVars, err := model.FindOneProjectVars(projectId)
+	projVars, err := model.FindMergedProjectVars(projectId)
 	if err != nil {
 		return errors.Wrap(err, "error finding project vars")
 	}

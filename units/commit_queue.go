@@ -241,7 +241,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, nextItem.TitleOverride)
+	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias)
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
@@ -323,7 +323,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id, nextItem.TitleOverride, nextItem.MessageOverride)
+	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id, nextItem.MessageOverride)
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
 		j.dequeue(cq, nextItem)
@@ -546,7 +546,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID, titleOverride, messageOverride string) error {
+func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID, messageOverride string) error {
 	prs := make([]event.PRInfo, 0, len(modulePRs)+1)
 	for _, modulePR := range modulePRs {
 		prs = append(prs, event.PRInfo{
@@ -564,7 +564,6 @@ func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest,
 		PRNum:           *pr.Number,
 		CommitTitle:     fmt.Sprintf("%s (#%d)", *pr.Title, *pr.Number),
 		MessageOverride: messageOverride,
-		TitleOverride:   titleOverride,
 	})
 
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{

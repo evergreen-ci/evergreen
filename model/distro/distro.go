@@ -76,10 +76,9 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                     []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits          ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts     []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
-	FetchProvisioningScript bool                 `bson:"fetch_provisioning_script,omitempty" json:"fetch_provisioning_script,omitempty" mapstructure:"fetch_provisioning_script,omitempty"`
+	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
@@ -216,6 +215,7 @@ type HostAllocatorSettings struct {
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
 	RoundRule              int           `bson:"round_rule" json:"round_rule" mapstructure:"round_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
+	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
 
 type FinderSettings struct {
@@ -636,6 +636,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		MaximumHosts:           has.MaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
 		RoundRule:              has.RoundRule,
+		FutureHostFraction:     has.FutureHostFraction,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -652,6 +653,9 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.RoundRule == 0 {
 		resolved.RoundRule = config.RoundRule
+	}
+	if resolved.FutureHostFraction == 0 {
+		resolved.FutureHostFraction = config.FutureHostFraction
 	}
 	if catcher.HasErrors() {
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)

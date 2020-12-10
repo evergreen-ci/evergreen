@@ -1004,7 +1004,6 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Status())
 		opts, ok := resp.Data().(model.APIHostProvisioningOptions)
 		require.True(t, ok)
-		assert.NotEmpty(t, opts.Directive)
 		assert.NotEmpty(t, opts.Content)
 	})
 	t.Run("FailsWithoutHostID", func(t *testing.T) {

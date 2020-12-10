@@ -109,7 +109,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if err != nil {
 		return "", errors.Wrap(err, "error getting github token")
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, j.project.RemotePath, "")
+	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, "")
 	if err != nil {
 		return "", errors.Wrap(err, "error getting config file from github")
 	}
