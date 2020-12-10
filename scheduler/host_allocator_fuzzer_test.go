@@ -33,6 +33,7 @@ type HostAllocatorFuzzerSuite struct {
 	distro           distro.Distro
 	projectName      string
 	freeHostFraction float64
+	roundRule        int
 	allocator        HostAllocator
 	testData         HostAllocatorData
 	soonToBeFree     float64
@@ -61,6 +62,7 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	}
 	s.projectName = "testProject"
 	s.freeHostFraction = 0.5
+	s.roundRule = -1 // round down
 	s.ctx = context.Background()
 	s.settings = fuzzerSettings{
 		taskDurations: []time.Duration{

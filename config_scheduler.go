@@ -18,6 +18,7 @@ type SchedulerConfig struct {
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
+	RoundRule                     int     `bson:"round_rule" json:"round_rule" yaml:"round_rule"`
 	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
 	PatchTimeInQueueFactor        int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
 	CommitQueueFactor             int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
@@ -64,6 +65,7 @@ func (c *SchedulerConfig) Set() error {
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
+			"round_rule":                        c.RoundRule,
 			"patch_zipper_factor":               c.PatchFactor,
 			"patch_time_in_queue_factor":        c.PatchTimeInQueueFactor,
 			"commit_queue_factor":               c.CommitQueueFactor,

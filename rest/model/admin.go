@@ -1596,6 +1596,7 @@ type APISchedulerConfig struct {
 	TaskFinder                    *string `json:"task_finder"`
 	HostAllocator                 *string `json:"host_allocator"`
 	FreeHostFraction              float64 `json:"free_host_fraction"`
+	RoundRule                     int     `json:"round_rule"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
 	TargetTimeSeconds             int     `json:"target_time_seconds"`
@@ -1615,6 +1616,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.TaskFinder = ToStringPtr(v.TaskFinder)
 		a.HostAllocator = ToStringPtr(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
+		a.RoundRule = v.RoundRule
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.Planner = ToStringPtr(v.Planner)
 		a.TargetTimeSeconds = v.TargetTimeSeconds
@@ -1637,6 +1639,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		TaskFinder:                    FromStringPtr(a.TaskFinder),
 		HostAllocator:                 FromStringPtr(a.HostAllocator),
 		FreeHostFraction:              a.FreeHostFraction,
+		RoundRule:                     a.RoundRule,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
 		Planner:                       FromStringPtr(a.Planner),
 		TargetTimeSeconds:             a.TargetTimeSeconds,
