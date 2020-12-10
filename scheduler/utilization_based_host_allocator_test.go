@@ -1021,16 +1021,18 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 
 	defaultRound := s.distro.HostAllocatorSettings.RoundRule
 	s.distro.HostAllocatorSettings.RoundRule = 1 //round Up
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
 	s.NoError(err)
 	s.distro.HostAllocatorSettings.RoundRule = defaultRound
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.Equal(1, hosts)
 }
 
