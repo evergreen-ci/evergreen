@@ -329,6 +329,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	// test distro-first override when RoundRule != 0
 	d0.HostAllocatorSettings.RoundRule = 1
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, resolved0.RoundRule)
 }
 
