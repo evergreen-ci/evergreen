@@ -125,11 +125,10 @@ func TestGroupByTaskGroup(t *testing.T) {
 }
 
 type UtilizationAllocatorSuite struct {
-	ctx              context.Context
-	distroName       string
-	distro           distro.Distro
-	projectName      string
-	freeHostFraction float64
+	ctx         context.Context
+	distroName  string
+	distro      distro.Distro
+	projectName string
 	suite.Suite
 }
 
@@ -141,7 +140,6 @@ func TestUtilizationAllocatorSuite(t *testing.T) {
 func (s *UtilizationAllocatorSuite) SetupSuite() {
 	s.distroName = "testDistro"
 	s.projectName = "testProject"
-	s.freeHostFraction = 0.5
 }
 
 func (s *UtilizationAllocatorSuite) SetupTest() {
@@ -151,8 +149,9 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 		Id:       s.distroName,
 		Provider: evergreen.ProviderNameEc2Auto,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
-			MinimumHosts: 0,
-			MaximumHosts: 50,
+			MinimumHosts:       0,
+			MaximumHosts:       50,
+			FutureHostFraction: .5,
 		},
 	}
 }
@@ -236,10 +235,9 @@ func (s *UtilizationAllocatorSuite) TestNoExistingHosts() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -309,10 +307,9 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -363,10 +360,9 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -419,10 +415,9 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 	minimumHostsThreshold := 10
 	s.distro.HostAllocatorSettings.MinimumHosts = minimumHostsThreshold
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -445,9 +440,8 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThresholdForDisabled() {
 	s.distro.HostAllocatorSettings.MinimumHosts = minimumHostsThreshold
 	s.distro.Disabled = true
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
+		Distro:        s.distro,
+		ExistingHosts: []host.Host{h1, h2},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -500,10 +494,9 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -561,10 +554,9 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          distro,
+		ExistingHosts:   []host.Host{h1, h2},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -613,10 +605,9 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -652,10 +643,9 @@ func (s *UtilizationAllocatorSuite) TestOverrunTask() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -742,10 +732,9 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -775,10 +764,9 @@ func (s *UtilizationAllocatorSuite) TestExcessHosts() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -861,10 +849,9 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
@@ -943,17 +930,20 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
 		CountOverThreshold:   1,
 	}
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
+
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
@@ -1050,12 +1040,13 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		CountOverThreshold:   4,
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		FreeHostFraction: 1,
-		UsesContainers:   true,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		UsesContainers:  true,
+		DistroQueueInfo: distroQueueInfo,
 		ContainerPool: &evergreen.ContainerPool{
 			Id:            "test-pool",
 			MaxContainers: 10,
@@ -1064,6 +1055,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }
@@ -1173,12 +1165,13 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		},
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		FreeHostFraction: 1,
-		UsesContainers:   true,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		UsesContainers:  true,
+		DistroQueueInfo: distroQueueInfo,
 		ContainerPool: &evergreen.ContainerPool{
 			Id:            "test-pool",
 			MaxContainers: 10,
@@ -1187,6 +1180,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(3, hosts)
 }
@@ -1214,14 +1208,16 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 		},
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(2, hosts)
 }
@@ -1310,14 +1306,16 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2},
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }
@@ -1470,14 +1468,16 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2, taskGroupInfo3},
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	// robust handling of task groups would request 2 hosts rather than 1 here
 	s.Equal(1, hosts)
@@ -1512,14 +1512,16 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
 	}
 
+	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
+	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3},
-		FreeHostFraction: 1,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
 	s.NoError(err)
 	s.Equal(0, hosts)
 }
@@ -1614,10 +1616,9 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 	}
 
 	hostAllocatorData := HostAllocatorData{
-		Distro:           s.distro,
-		ExistingHosts:    []host.Host{h1, h2, h3, h4},
-		FreeHostFraction: s.freeHostFraction,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4},
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)

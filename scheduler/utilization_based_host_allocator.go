@@ -79,7 +79,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			ctx,
 			distro,
 			taskGroupData,
-			hostAllocatorData.FreeHostFraction,
+			distro.HostAllocatorSettings.FutureHostFraction,
 			hostAllocatorData.ContainerPool,
 			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
 			maxHosts)
@@ -119,7 +119,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
-func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, freeHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, error) {
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, error) {
 	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
@@ -145,7 +145,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 
 	// determine how many free hosts we have that are already up
 	startAt := time.Now()
-	numFreeHosts, err := calcExistingFreeHosts(existingHosts, freeHostFraction, maxDurationThreshold)
+	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
 		return numNewHosts, err
 	}
@@ -259,8 +259,10 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 }
 
 // calcNewHostsNeeded returns the number of new hosts needed based
-// on a heuristic that utilizes the total duration scheduled tasks,
-// targeting a maximum average duration for each task on all hosts
+// on a heuristic that utilizes the total duration of scheduled tasks.
+// We should allocate enough hosts to run all tasks with runtime < maxDurationPerHost in less than maxDurationPerHost,
+// and one host for each task with runtime > maxDurationPerHost.
+// Alternatively, we should allocate sufficient hosts to schedule all tasks within maxDurationPerHost.
 func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, numExistingHosts, numHostsNeededAlready int) int {
 	// number of hosts needed to meet the duration based turnaround requirement
 	// may be a decimal because we care about the difference between 0.5 and 0 hosts
@@ -287,10 +289,10 @@ func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, num
 
 // calcExistingFreeHosts returns the number of hosts that are not running a task,
 // plus hosts that will soon be free scaled by some fraction
-func calcExistingFreeHosts(existingHosts []host.Host, freeHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
+func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
 	numFreeHosts := 0
-	if freeHostFactor > 1 {
-		return numFreeHosts, errors.New("free host factor cannot be greater than 1")
+	if futureHostFactor > 1 {
+		return numFreeHosts, errors.New("future host factor cannot be greater than 1")
 	}
 
 	for _, existingHost := range existingHosts {
@@ -299,7 +301,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, freeHostFactor float64, ma
 		}
 	}
 
-	soonToBeFree, err := getSoonToBeFreeHosts(existingHosts, freeHostFactor, maxDurationPerHost)
+	soonToBeFree, err := getSoonToBeFreeHosts(existingHosts, futureHostFactor, maxDurationPerHost)
 	if err != nil {
 		return 0, err
 	}
@@ -311,7 +313,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, freeHostFactor float64, ma
 // to be free for some fraction of the next maxDurationPerHost interval
 // the final value is scaled by some fraction representing how confident we are that
 // the hosts will actually be free in the expected amount of time
-func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, maxDurationPerHost time.Duration) (float64, error) {
+func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64, maxDurationPerHost time.Duration) (float64, error) {
 	runningTaskIds := []string{}
 
 	for _, existingDistroHost := range existingHosts {
@@ -341,7 +343,7 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, max
 
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func() {
-			defer recovery.LogStackTraceAndContinue("panic during free host calculation")
+			defer recovery.LogStackTraceAndContinue("panic during future free host calculation")
 			defer wg.Done()
 			for t := range source {
 				durationStats := t.FetchExpectedDuration()
@@ -353,22 +355,22 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, max
 				// calculate what fraction of the host will be free within the max duration.
 				// for example if we estimate 20 minutes left on the task and the target duration
 				// for tasks is 30 minutes, assume that this host can be 1/3 of a free host
-				var freeHostFraction float64
+				var fractionalHostFree float64
 				if elapsedTime > evergreen.MaxDurationPerDistroHost && durationStdDev > 0 && elapsedTime > expectedDuration+3*durationStdDev {
 					// if the task has taken over 3 std deviations longer (so longer than 99.7% of past runs),
 					// assume that the host will be busy the entire duration. This is to avoid unusually long
 					// tasks preventing us from starting any hosts
-					freeHostFraction = 0
+					fractionalHostFree = 0
 				} else {
-					freeHostFraction = float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
+					fractionalHostFree = float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
 				}
-				if freeHostFraction < 0 {
-					freeHostFraction = 0
+				if fractionalHostFree < 0 {
+					fractionalHostFree = 0
 				}
-				if freeHostFraction > 1 {
-					freeHostFraction = 1
+				if fractionalHostFree > 1 {
+					fractionalHostFree = 1
 				}
-				nums <- freeHostFactor * freeHostFraction // tune this by the free host factor
+				nums <- futureHostFraction * fractionalHostFree // tune this by the future host fraction
 			}
 		}()
 	}
