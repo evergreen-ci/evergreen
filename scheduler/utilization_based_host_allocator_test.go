@@ -1008,21 +1008,28 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		StartTime:        time.Now(),
 	}
 	s.NoError(t5.Insert())
+	taskGroupInfo := model.TaskGroupInfo{
+		Name:                  "",
+		Count:                 8,
+		ExpectedDuration:      (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		CountOverThreshold:    3,
+		DurationOverThreshold: (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
+	}
 
 	distroQueueInfo := model.DistroQueueInfo{
 		Length: 8,
-		// 1 long task + 68 minutes of tasks should need 3 hosts and change
-		// 3.0 free hosts in the next 30 mins (factor = 1)
-		// round up so we need 1 hosts
-		ExpectedDuration:     (30 * time.Minute) + (20 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (1 * time.Minute) + (20 * time.Minute),
+		// 3 long tasks + 37min of new tasks
+		// these should need 4 total hosts, but there is 1 idle host
+		// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
+		// so we only need 4 new hosts
+		ExpectedDuration:     (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
 		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   1,
+		CountOverThreshold:   3,
+		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	defaultRound := s.distro.HostAllocatorSettings.RoundRule
 	s.distro.HostAllocatorSettings.RoundRule = 1 //round Up
-	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
-	s.distro.HostAllocatorSettings.FutureHostFraction = 1
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
@@ -1032,8 +1039,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
 	s.NoError(err)
 	s.distro.HostAllocatorSettings.RoundRule = defaultRound
-	s.distro.HostAllocatorSettings.FutureHostFraction = defaultPct
-	s.Equal(1, hosts)
+	s.Equal(4, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {

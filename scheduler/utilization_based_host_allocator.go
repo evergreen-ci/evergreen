@@ -157,6 +157,11 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	} else {
 		roundDown = true
 	}
+	grip.Info(message.Fields{
+		"message":                             "debug of evalHostUtilization",
+		"taskGroupInfo.ExpectedDuration":      taskGroupInfo.ExpectedDuration,
+		"taskGroupInfo.DurationOverThreshold": taskGroupInfo.DurationOverThreshold,
+	})
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks, roundDown)
 
@@ -291,6 +296,13 @@ func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, num
 	} else {
 		numNewHosts = int(math.Ceil(numNewHostsNeeded))
 	}
+	grip.Info(message.Fields{
+		"message":                          "debug of calcNewHostsNeeded",
+		"numHostsForTurnaroundRequirement": numHostsForTurnaroundRequirement,
+		"numExistingHosts":                 numExistingHosts,
+		"numHostsNeededAlready":            numHostsNeededAlready,
+		"numNewHostsNeeded":                numNewHostsNeeded,
+	})
 
 	// return 0 if numNewHosts is less than 0
 	if numNewHosts < 0 {
