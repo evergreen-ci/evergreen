@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -374,18 +373,6 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 	catcher := grip.NewBasicCatcher()
 	for _, pRef := range projectRefs {
 		var existingVersion *model.Version
-		noExistingVersionMessage := message.Fields{
-			"source":  "github hook",
-			"message": "",
-			"ref":     event.GetRef(),
-			"event":   gh.eventType,
-			"project": pRef.Id,
-			"branch":  pRef.Branch,
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"hash":    hash,
-			"tag":     tag,
-		}
 		err = util.Retry(
 			ctx,
 			func() (bool, error) {
@@ -393,24 +380,30 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
 				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
 				if err != nil {
-					catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
-						pRef.Id, hash, tag.Tag))
 					return true, err
 				}
-
 				if existingVersion == nil {
-					noExistingVersionMessage["message"] = fmt.Sprintf("no version to add tag '%s' to; attempting to retry", tag.Tag)
-					grip.Debug(noExistingVersionMessage)
-					return true, errors.New("version is nil; retrying")
+					return true, errors.New("no existing version to add tag to")
 				}
-
 				return false, nil
 			}, 5, time.Second, time.Second*10)
 
 		if err != nil {
+			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
+				pRef.Id, hash, tag.Tag))
 			if existingVersion == nil {
-				noExistingVersionMessage["message"] = fmt.Sprintf("no version to add tag '%s' to", tag.Tag)
-				grip.Debug(noExistingVersionMessage)
+				grip.Debug(message.Fields{
+					"source":  "github hook",
+					"message": "no version to add tag to",
+					"ref":     event.GetRef(),
+					"event":   gh.eventType,
+					"project": pRef.Id,
+					"branch":  pRef.Branch,
+					"owner":   pRef.Owner,
+					"repo":    pRef.Repo,
+					"hash":    hash,
+					"tag":     tag,
+				})
 			}
 			continue
 		}
