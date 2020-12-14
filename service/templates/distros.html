@@ -137,6 +137,17 @@ Evergreen - Distros
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue < 0 ||
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
               </div>
+
+              <div>
+                <label class="distro-label">Future Host Fraction</label>
+                <input ng-readonly="readOnly" type="number" step=".01" min="0" max="1"
+                  name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsFutureHostFraction.$dirty && form.hostAllocatorSettingsFutureHostFraction.$error.required ||
+                form.hostAllocatorSettingsFutureHostFraction.$invalid ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue > 1 ||
+                form.hostAllocatorSettingsFutureHostFraction.$modelValue < 0 "> future host fraction must fall in the interval [0,1]
+              </div>
             </div>
           </div>
           <br>

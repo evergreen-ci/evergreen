@@ -68,6 +68,9 @@ func (r *Resolver) User() UserResolver {
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
+func (r *Resolver) Annotation() AnnotationResolver {
+	return &annotationResolver{r}
+}
 
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
@@ -75,6 +78,7 @@ type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type annotationResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -2391,7 +2395,10 @@ func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty
 	if obj.AssignedTeam == nil {
 		return nil, nil
 	}
-	return &obj.AssignedTeam.Value, nil
+	if len(obj.AssignedTeam) != 0 {
+		return &obj.AssignedTeam[0].Value, nil
+	}
+	return nil, nil
 }
 
 func (r *ticketFieldsResolver) JiraStatus(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
@@ -2419,10 +2426,15 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, nil
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
-
-	//todo: get jira ticket objects before returning
-
 	return apiAnnotation, nil
+}
+
+func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	return restModel.GetJiraTickets(obj.Issues)
+}
+
+func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	return restModel.GetJiraTickets(obj.SuspectedIssues)
 }
 
 // New injects resources into the resolvers, such as the data connector
