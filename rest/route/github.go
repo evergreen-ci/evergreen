@@ -2,9 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,6 +16,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -370,26 +373,45 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, pRef := range projectRefs {
-		// if a version for this revision exists for this project, add tag
-		existingVersion, err := gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
-				pRef.Id, hash, tag.Tag))
-			continue
+		var existingVersion *model.Version
+		noExistingVersionMessage := message.Fields{
+			"source":  "github hook",
+			"message": "",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"project": pRef.Id,
+			"branch":  pRef.Branch,
+			"owner":   pRef.Owner,
+			"repo":    pRef.Repo,
+			"hash":    hash,
+			"tag":     tag,
 		}
-		if existingVersion == nil {
-			grip.Debug(message.Fields{
-				"source":  "github hook",
-				"message": "no version to add tag to",
-				"ref":     event.GetRef(),
-				"event":   gh.eventType,
-				"project": pRef.Id,
-				"branch":  pRef.Branch,
-				"owner":   pRef.Owner,
-				"repo":    pRef.Repo,
-				"hash":    hash,
-				"tag":     tag,
-			})
+		err = util.Retry(
+			ctx,
+			func() (bool, error) {
+				// If a version for this revision exists for this project, add tag
+				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
+				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
+				if err != nil {
+					catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
+						pRef.Id, hash, tag.Tag))
+					return true, err
+				}
+
+				if existingVersion == nil {
+					noExistingVersionMessage["message"] = fmt.Sprintf("no version to add tag '%s' to; attempting to retry", tag.Tag)
+					grip.Debug(noExistingVersionMessage)
+					return true, errors.New("version is nil; retrying")
+				}
+
+				return false, nil
+			}, 5, time.Second, time.Second*10)
+
+		if err != nil {
+			if existingVersion == nil {
+				noExistingVersionMessage["message"] = fmt.Sprintf("no version to add tag '%s' to", tag.Tag)
+				grip.Debug(noExistingVersionMessage)
+			}
 			continue
 		}
 
