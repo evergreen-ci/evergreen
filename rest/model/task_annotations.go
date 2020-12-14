@@ -161,21 +161,19 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTickets(issuelinks []APIIssueLink) ([]*APIIssueLink, error) {
+func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	catcher := grip.NewBasicCatcher()
 
 	var res []*APIIssueLink
-	for _, issue := range issuelinks {
+	for _, issue := range issueLinks {
 		urlObject, err := url.Parse(*issue.URL)
 		catcher.Wrap(err, "problem parsing the issue url")
 		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
 			jiraIssue, err := jiraHandler.GetJIRATicket(*issue.IssueKey)
+			issue.JiraTicket = jiraIssue
 			catcher.Wrap(err, "error getting Jira ticket")
-			if jiraIssue != nil {
-				issue.JiraTicket = jiraIssue
-			}
 		}
 		res = append(res, &issue)
 	}

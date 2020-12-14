@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
@@ -2419,7 +2418,6 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
-	catcher := grip.NewBasicCatcher()
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
@@ -2428,17 +2426,15 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, nil
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
-	return apiAnnotation, catcher.Resolve()
+	return apiAnnotation, nil
 }
 
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	issues, err := restModel.GetJiraTickets(obj.Issues)
-	return issues, err
+	return restModel.GetJiraTickets(obj.Issues)
 }
 
 func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	suspectedIssues, err := restModel.GetJiraTickets(obj.SuspectedIssues)
-	return suspectedIssues, err
+	return restModel.GetJiraTickets(obj.SuspectedIssues)
 }
 
 // New injects resources into the resolvers, such as the data connector
