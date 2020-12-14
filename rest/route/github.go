@@ -391,20 +391,6 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		if err != nil {
 			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
 				pRef.Id, hash, tag.Tag))
-			if existingVersion == nil {
-				grip.Debug(message.Fields{
-					"source":  "github hook",
-					"message": "no version to add tag to",
-					"ref":     event.GetRef(),
-					"event":   gh.eventType,
-					"project": pRef.Id,
-					"branch":  pRef.Branch,
-					"owner":   pRef.Owner,
-					"repo":    pRef.Repo,
-					"hash":    hash,
-					"tag":     tag,
-				})
-			}
 			continue
 		}
 
