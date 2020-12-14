@@ -138,15 +138,15 @@ Evergreen - Distros
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
               </div>
               <div>
-                <label class="distro-label"></label>
+                <label class="distro-label">Rounding Rule</label>
                 <input ng-readonly="readOnly" type="number"
-                  name="hostAllocatorSettingsRoundRule" class="form-control" ng-model="activeDistro.host_allocator_settings.round_rule" placeholder="Set to 0 to use its global default">
+                  name="hostAllocatorSettingsRoundingRule" class="form-control" ng-model="activeDistro.host_allocator_settings.rounding_rule" placeholder="Set to 0 to use its global default">
               </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsRoundRule.$dirty && form.hostAllocatorSettingsRoundRule.$error.required ||
-                form.hostAllocatorSettingsRoundRule.$invalid ||
-                form.hostAllocatorSettingsRoundRule.$modelValue < -1 ||
-		form.hostAllocatorSettingsRoundRule.$modelValue > 1 ||
-                form.hostAllocatorSettingsRoundRule.$modelValue % 1 != 0"> Round Rule must be -1, 0, or 1
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsRoundingRule.$dirty && form.hostAllocatorSettingsRoundingRule.$error.required ||
+                form.hostAllocatorSettingsRoundingRule.$invalid ||
+                form.hostAllocatorSettingsRoundingRule.$modelValue < -1 ||
+		form.hostAllocatorSettingsRoundingRule.$modelValue > 1 ||
+                form.hostAllocatorSettingsRoundingRule.$modelValue % 1 != 0"> Rounding Rule must be -1, 0, or 1
 
               <div>
                 <label class="distro-label">Future Host Fraction</label>

@@ -294,7 +294,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 			MinimumHosts:           4,
 			MaximumHosts:           10,
 			AcceptableHostIdleTime: 0,
-			RoundRule:              0,
+			RoundingRule:           0,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
@@ -311,7 +311,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		CommitQueueFactor:             50,
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
-		RoundRule:                     -1,
+		HostAllocatorRoundingRule:     -1,
 	}
 
 	settings0 := &evergreen.Settings{Scheduler: config0}
@@ -322,15 +322,15 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, evergreen.HostAllocatorUtilization, resolved0.Version)
 	assert.Equal(t, 4, resolved0.MinimumHosts)
 	assert.Equal(t, 10, resolved0.MaximumHosts)
-	assert.Equal(t, -1, resolved0.RoundRule)
+	assert.Equal(t, -1, resolved0.RoundingRule)
 	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
 	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
 
-	// test distro-first override when RoundRule != 0
-	d0.HostAllocatorSettings.RoundRule = 1
+	// test distro-first override when RoundingRule != 0
+	d0.HostAllocatorSettings.RoundingRule = 1
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, resolved0.RoundRule)
+	assert.Equal(t, 1, resolved0.RoundingRule)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {

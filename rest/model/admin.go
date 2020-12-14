@@ -1595,7 +1595,7 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 type APISchedulerConfig struct {
 	TaskFinder                    *string `json:"task_finder"`
 	HostAllocator                 *string `json:"host_allocator"`
-	RoundRule                     int     `json:"round_rule"`
+	HostAllocatorRoundingRule     int     `json:"host_allocator_rounding_rule"`
 	FutureHostFraction            float64 `json:"free_host_fraction"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
@@ -1615,7 +1615,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = ToStringPtr(v.TaskFinder)
 		a.HostAllocator = ToStringPtr(v.HostAllocator)
-		a.RoundRule = v.RoundRule
+		a.HostAllocatorRoundingRule = v.HostAllocatorRoundingRule
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.Planner = ToStringPtr(v.Planner)
@@ -1638,7 +1638,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
 		TaskFinder:                    FromStringPtr(a.TaskFinder),
 		HostAllocator:                 FromStringPtr(a.HostAllocator),
-		RoundRule:                     a.RoundRule,
+		HostAllocatorRoundingRule:     a.HostAllocatorRoundingRule,
 		FutureHostFraction:            a.FutureHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
 		Planner:                       FromStringPtr(a.Planner),

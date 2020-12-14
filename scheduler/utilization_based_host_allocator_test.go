@@ -151,7 +151,7 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts:       0,
 			MaximumHosts:       50,
-			RoundRule:          -1,
+			RoundingRule:       distro.RoundDown,
 			FutureHostFraction: .5,
 		},
 	}
@@ -1028,8 +1028,8 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
 	}
 
-	defaultRound := s.distro.HostAllocatorSettings.RoundRule
-	s.distro.HostAllocatorSettings.RoundRule = 1 //round Up
+	defaultRound := s.distro.HostAllocatorSettings.RoundingRule
+	s.distro.HostAllocatorSettings.RoundingRule = distro.RoundUp
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
@@ -1038,7 +1038,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
 	s.NoError(err)
-	s.distro.HostAllocatorSettings.RoundRule = defaultRound
+	s.distro.HostAllocatorSettings.RoundingRule = defaultRound
 	s.Equal(4, hosts)
 }
 

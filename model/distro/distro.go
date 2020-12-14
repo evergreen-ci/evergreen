@@ -219,7 +219,7 @@ type HostAllocatorSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
-	RoundRule              int           `bson:"round_rule" json:"round_rule" mapstructure:"round_rule"`
+	RoundingRule           int           `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
 	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
@@ -641,7 +641,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
-		RoundRule:              has.RoundRule,
+		RoundingRule:           has.RoundingRule,
 		FutureHostFraction:     has.FutureHostFraction,
 	}
 
@@ -657,8 +657,8 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
-	if resolved.RoundRule == RoundDefault {
-		resolved.RoundRule = config.RoundRule
+	if resolved.RoundingRule == RoundDefault {
+		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
 	if resolved.FutureHostFraction == 0 {
 		resolved.FutureHostFraction = config.FutureHostFraction
