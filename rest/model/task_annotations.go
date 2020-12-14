@@ -171,8 +171,7 @@ func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
 		urlObject, err := url.Parse(*issue.URL)
 		catcher.Wrap(err, "problem parsing the issue url")
 		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
-			jiraIssue, err := jiraHandler.GetJIRATicket(*issue.IssueKey)
-			issue.JiraTicket = jiraIssue
+			issue.JiraTicket, err = jiraHandler.GetJIRATicket(*issue.IssueKey)
 			catcher.Wrap(err, "error getting Jira ticket")
 		}
 		res = append(res, &issue)
