@@ -920,6 +920,7 @@ type IssueLink {
   issueKey: String
   url: String
   source: Source!
+  jiraTicket: JiraTicket
 }
 
 type Source {
