@@ -151,11 +151,9 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	freeHostDur := time.Since(startAt)
 
-	var roundDown bool
-	if 0 < d.HostAllocatorSettings.RoundRule {
+	roundDown := true
+	if d.HostAllocatorSettings.RoundRule == distro.RoundUp {
 		roundDown = false
-	} else {
-		roundDown = true
 	}
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks, roundDown)

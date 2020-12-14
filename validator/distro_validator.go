@@ -396,7 +396,7 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 			Level:   Error,
 		})
 	}
-	if settings.RoundRule < -1 || 1 < settings.RoundRule {
+	if settings.RoundRule != distro.RoundUp && settings.RoundRule != distro.RoundDown && settings.RoundRule != distro.RoundDefault {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid host_allocator_settings.round_rule value of %d for distro '%s' - its value must be -1, 0, or 1", settings.RoundRule, d.Id),
 			Level:   Error,

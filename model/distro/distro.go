@@ -21,6 +21,12 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
+const (
+	RoundUp      int = 1
+	RoundDefault int = 0
+	RoundDown    int = -1
+)
+
 type Distro struct {
 	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
 	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
@@ -651,7 +657,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
-	if resolved.RoundRule == 0 {
+	if resolved.RoundRule == RoundDefault {
 		resolved.RoundRule = config.RoundRule
 	}
 	if resolved.FutureHostFraction == 0 {
