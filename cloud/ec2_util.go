@@ -223,15 +223,16 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 }
 
 func usesHourlyBilling(h *host.Host) bool {
-	hourly := false
 	if !strings.Contains(h.Distro.Arch, "linux") {
 		// windows or osx
-		hourly = true
+		return true
 	}
+	// one exception is OK. If we start adding more,
+	// might be time to add some more abstract handling
 	if strings.Contains(h.Distro.Id, "suse") {
-		hourly = true
+		return true
 	}
-	return hourly
+	return false
 }
 
 // Determines how long until a payment is due for the specified host, for hosts
