@@ -89,6 +89,22 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
+	for i, t := range projRef.PatchTriggerAliases {
+		childProject, err := model.FindOneProjectRef(t.ChildProject)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		if childProject == nil {
+			gimlet.WriteJSONResponse(w, http.StatusNotFound,
+				gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child project '%s' of patch trigger alias cannot be found", t.ChildProject),
+				})
+		}
+		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
+	}
+
 	projVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -451,8 +467,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
-	for _, t := range responseRef.PatchTriggerAliases {
+	for i, t := range responseRef.PatchTriggerAliases {
 		catcher.Add(t.Validate(id))
+		responseRef.PatchTriggerAliases[i].ChildProject = t.ChildProject
 	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
