@@ -91,7 +91,8 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
 	for i, t := range projRef.PatchTriggerAliases {
-		childProject, err := model.FindOneProjectRef(t.ChildProject)
+		var childProject *model.ProjectRef
+		childProject, err = model.FindOneProjectRef(t.ChildProject)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
