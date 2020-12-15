@@ -852,6 +852,9 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, settin
 	if h.NeedsReprovision == host.ReprovisionNone {
 		return false
 	}
+	if !utility.StringSliceContains([]string{evergreen.HostProvisioning, evergreen.HostRunning}, h.Status) {
+		return false
+	}
 
 	if err := h.StopAgentMonitor(ctx, env); err != nil {
 		// Stopping the agent monitor should not stop reprovisioning as long as

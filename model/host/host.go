@@ -1038,7 +1038,10 @@ func (h *Host) MarkAsReprovisioning() error {
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 
-	err := UpdateOne(bson.M{IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision},
+	err := UpdateOne(bson.M{
+		IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision,
+		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+	},
 		bson.M{
 			"$set": bson.M{
 				AgentStartTimeKey:       utility.ZeroTime,
