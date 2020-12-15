@@ -910,7 +910,8 @@ func (h *Host) UpdateStartingToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
-	// Ignore hosts spawned by tasks.
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks).
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
 		return nil
 	}
@@ -930,11 +931,26 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	if h.NeedsReprovision == ReprovisionJasperRestart {
 		return nil
 	}
+
+	// While these checks aren't strictly necessary since they're already
+	// filtered in ther query, they do return more useful error messages.
+	if h.NeedsReprovision != "" {
+		return errors.Errorf("cannot restart Jasper when host is already reprovisioning")
+	}
+	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
+	if !utility.StringSliceContains(allowedStatuses, h.Status) {
+		return errors.Errorf("cannot restart Jasper when host status is '%s'", h.Status)
+	}
+	allowedBootstrapMethods := []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}
+	if !utility.StringSliceContains(allowedBootstrapMethods, h.Distro.BootstrapSettings.Method) {
+		return errors.Errorf("cannot restart Jasper when host is provisioned as '%s'", h.Distro.BootstrapSettings.Method)
+	}
+
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
 		IdKey:        h.Id,
-		StatusKey:    bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
-		bootstrapKey: bson.M{"$in": []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}},
+		StatusKey:    bson.M{"$in": allowedStatuses},
+		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
@@ -953,6 +969,57 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	h.NeedsReprovision = ReprovisionJasperRestart
 
 	event.LogHostJasperRestarting(h.Id, user)
+
+	return nil
+}
+
+func (h *Host) SetNeedsConvertProvisioning(user string) error {
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks).
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
+		return nil
+	}
+	if err := h.setAwaitingConvertProvisioning(user); err != nil {
+		return err
+	}
+	return h.MarkAsReprovisioning()
+}
+
+func (h *Host) setAwaitingConvertProvisioning(user string) error {
+	if h.NeedsReprovision == ReprovisionToNew {
+		return nil
+	}
+
+	// While these checks aren't strictly necessary since they're already
+	// filtered in ther query, they do return more useful error messages.
+	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
+	if !utility.StringSliceContains(allowedStatuses, h.Status) {
+		return errors.Errorf("cannot convert provisioning when host status is '%s'", h.Status)
+	}
+	allowedBootstrapMethods := []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}
+	if !utility.StringSliceContains(allowedBootstrapMethods, h.Distro.BootstrapSettings.Method) {
+		return errors.Errorf("cannot convert provisioning when host is provisioned as '%s'", h.Distro.BootstrapSettings.Method)
+	}
+
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	if err := UpdateOne(bson.M{
+		IdKey:                   h.Id,
+		StatusKey:               bson.M{"$in": allowedStatuses},
+		bootstrapKey:            bson.M{"$in": allowedBootstrapMethods},
+		ReprovisioningLockedKey: bson.M{"$ne": true},
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+	}, bson.M{
+		"$set": bson.M{
+			NeedsReprovisionKey: ReprovisionToNew,
+		},
+	}); err != nil {
+		return err
+	}
+
+	h.NeedsReprovision = ReprovisionToNew
+
+	event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method, user)
 
 	return nil
 }

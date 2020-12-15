@@ -95,6 +95,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["distro_id"]
 	shouldDeco := r.FormValue("deco") == "true"
 	shouldRestartJasper := r.FormValue("restart_jasper") == "true"
+	shouldConvertProvisioning := r.FormValue("convert_provisioning") == "true"
 
 	u := MustHaveUser(r)
 
@@ -172,7 +173,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shouldDeco || shouldRestartJasper {
+	if shouldDeco || shouldRestartJasper || shouldConvertProvisioning {
 		hosts, err := host.Find(db.Query(host.ByDistroIDs(newDistro.Id)))
 		if err != nil {
 			message := fmt.Sprintf("error finding hosts: %s", err.Error())
@@ -191,6 +192,20 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			}
 			for _, h := range hosts {
 				event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
+			}
+		} else if shouldConvertProvisioning {
+			catcher := grip.NewBasicCatcher()
+			for _, h := range hosts {
+				if err = h.SetNeedsConvertProvisioning(u.Username()); err != nil {
+					catcher.Wrapf(err, "could not mark host '%s' as needing to reprovision", h.Id)
+					continue
+				}
+			}
+			if catcher.HasErrors() {
+				message := fmt.Sprintf("error marking hosts as needing to reprovision: %s", err.Error())
+				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+				gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(errors.Wrap(err, "error marking hosts as needing to reprovision")))
+				return
 			}
 		} else if shouldRestartJasper {
 			catcher := grip.NewBasicCatcher()

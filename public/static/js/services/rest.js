@@ -145,6 +145,14 @@ mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function (
       baseSvc.putResource(resource, [hostID], config, callbacks);
     };
 
+    service.setConvertProvisioning = function(hostID, action, data, callbacks) {
+      var config = {
+        data: data
+      };
+      config.data['action'] = action
+      baseSvc.putResource(resource, [hostID], config, callbacks);
+    };
+
     return service;
 }]);
 
@@ -163,6 +171,14 @@ mciServices.rest.factory('mciHostsRestService', ['mciBaseRestService', function 
     };
 
     service.setRestartJasper = function(hostIDs, action, data, callbacks) {
+      var config = {
+        data: data
+      };
+      config.data['action'] = action;
+      config.data['host_ids'] = hostIDs,
+      baseSvc.putResource(resource, [], config, callbacks);
+    };
+    service.setConvertProvisioning = function(hostIDs, action, data, callbacks) {
       var config = {
         data: data
       };
@@ -407,12 +423,13 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
         baseSvc.putResource(resource, [], config, callbacks);
     }
 
-    service.modifyDistro = function (distroId, data, shouldDeco, shouldRestartJasper, callbacks) {
+    service.modifyDistro = function (distroId, data, shouldDeco, shouldRestartJasper, shouldConvertProvisioning, callbacks) {
         var config = {
             data: data,
             params: {
                 deco: shouldDeco,
-                restart_jasper: shouldRestartJasper
+                restart_jasper: shouldRestartJasper,
+                convert_provisioning: shouldConvertProvisioning,
             }
         };
         baseSvc.postResource(resource, [distroId], config, callbacks);

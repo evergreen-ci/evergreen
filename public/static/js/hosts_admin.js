@@ -40,7 +40,28 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
           window.location.reload();
         },
         error: function(resp) {
-          notifier.pushNotification('Error marking hosts as needing Jasper service restarted: ' + resp.data, 'errorModal');
+          notifier.pushNotification('Error marking host(s) as needing Jasper service restarted: ' + resp.data, 'errorModal');
+        }
+      }
+    );
+  };
+
+  $scope.setConvertProvisioning = function() {
+    var selectedHosts = $scope.selectedHosts();
+    var hostIDs = [];
+    for (var i = 0; i < selectedHosts.length; ++i) {
+      hostIDs.push(selectedHosts[i].id);
+    }
+    hostsRestService.setConvertProvisioning(
+      hostIDs,
+      'convertProvisioning',
+      {},
+      {
+        success: function(resp) {
+          window.location.reload();
+        },
+        error: function(resp) {
+          notifier.pushNotification('Error marking host(s) as needing to reprovision: ' + resp.data, 'errorModal');
         }
       }
     );
@@ -56,7 +77,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
 
     var modal = $('#admin-modal').modal('show');
 
-    if (opt === 'statusChange' || opt === 'restartJasper') {
+    if (opt === 'statusChange' || opt === 'restartJasper' || opt === 'convertProvisioning') {
       modal.on('shown.bs.modal', function() {
         $scope.modalOpen = true;
       });
@@ -70,11 +91,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
       if ($scope.modalOpen && ev.keyCode === 13) {
         if ($scope.adminOption === 'statusChange') {
           $scope.updateStatus();
-          $('#admin-modal').modal('hide');
         } else if ($scope.adminOption === 'restartJasper') {
           $scope.setRestartJasper();
-          $('#admin-modal').modal('hide');
+        } else if ($scope.adminOption === 'convertProvisioning') {
+          $scope.setConvertProvisioning();
         }
+        $('#admin-modal').modal('hide');
       }
     });
   };
@@ -97,6 +119,22 @@ mciModule.directive('adminRestartJasper', function() {
         'Restart Jasper service on [[hostCount]] [[hostCount | pluralize:\'host\']]?' +
         '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setRestartJasper()" ng-disabled="noClose">' +
+          '<span ng-if="!noClose">Yes</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>'
+  };
+});
+
+mciModule.directive('adminConvertProvisioning', function() {
+  return {
+    restrict: 'E',
+    template: 
+    '<div class="row">' +
+      '<div class="col-lg-12">' +
+        'Reprovision [[hostCount]] [[hostCount | pluralize:\'host\']]?' +
+        '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setConvertProvisioning()" ng-disabled="noClose">' +
           '<span ng-if="!noClose">Yes</span>' +
         '</button>' +
       '</div>' +

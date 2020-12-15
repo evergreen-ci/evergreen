@@ -191,6 +191,13 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostRestartJasperConfirm))
 		gimlet.WriteJSON(w, api.HostRestartJasperConfirm)
+	case "convertProvisioning":
+		if err := h.SetNeedsConvertProvisioning(u.Username()); err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostReprovisionConfirm))
+		gimlet.WriteJSON(w, api.HostReprovisionConfirm)
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 	}
@@ -233,6 +240,13 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
+	case "convertProvisioning":
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetConvertProvisioningCallback(user.Username()))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error marking selected hosts as needing to reprovision: %s", err.Error()), httpStatus)
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing to reprovision", hostsUpdated)))
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
