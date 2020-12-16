@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -64,7 +65,8 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	if hasQueryParams {
 		spruceLink += spruceQueryParams
 	}
-	if currentUser.Settings.UseSpruceOptions.SpruceV1 {
+	// Redirect the user to spruce only if they aren't visiting this page from spruce already and have spruce enabled
+	if currentUser.Settings.UseSpruceOptions.SpruceV1 && !strings.Contains(r.Referer(), uis.Settings.Ui.UIv2Url) {
 		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
 		return
 	}
