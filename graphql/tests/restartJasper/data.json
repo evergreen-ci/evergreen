@@ -11,7 +11,21 @@
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
         "provider": "ec2-fleet",
-        "user": "ubuntu"
+        "user": "ubuntu",
+        "bootstrap_settings": {
+          "method": "user-data",
+          "communication": "rpc",
+          "client_dir": "/opt/evergreen",
+          "jasper_binary_dir": "/opt/evergreen",
+          "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+          "shell_path": "/bin/bash",
+          "resource_limits": {
+            "num_files": 64000,
+            "num_processes": -1,
+            "locked_memory": -1,
+            "virtual_memory": -1
+          }
+        }
       },
       "host_type": "ec2-fleet",
       "ext_identifier": "",
@@ -263,7 +277,7 @@
       "user": "ubuntu",
       "tag": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "distro": {
-        "_id": "ubuntu1604-small",
+        "_id": "osx",
         "aliases": ["ubuntu1604", "ubuntu1604-test"],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
