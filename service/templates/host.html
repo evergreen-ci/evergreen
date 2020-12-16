@@ -51,14 +51,14 @@ Evergreen - Host {{.Host.Id}}
             </li>
             <li ng-class="{'admin-disabled': !canReprovision()}">
               <a tabindex="-1" href="#" ng-hide="readOnly || (host.distro.bootstrap_settings.method === 'legacy-ssh')"
-                ng-click="canReprovision() && openAdminModal('convertProvisioning')">Reprovision</a>
+                ng-click="canReprovision() && openAdminModal('reprovisionToNew')">Reprovision</a>
             </li>
           </ul>
         </div>
         <admin-modal>
           <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
           <admin-restart-jasper ng-if="adminOption === 'restartJasper'"></admin-restart-jasper>
-          <admin-convert-provisioning ng-if="adminOption === 'convertProvisioning'"></admin-convert-provisioning>
+          <admin-reprovision-to-new ng-if="adminOption === 'reprovisionToNew'"></admin-reprovision-to-new>
         </admin-modal>
       </div>
     {{end}}

@@ -323,12 +323,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // prepareForReprovision readies host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, w http.ResponseWriter) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
@@ -347,7 +347,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		}
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
+			grip.Warning(message.WrapError(err, "problem enqueueing jobs to restart Jasper"))
 		}
 	}
 
@@ -860,7 +860,7 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, settin
 		// Stopping the agent monitor should not stop reprovisioning as long as
 		// the host is not currently running a task.
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "problem stopping agent monitor",
+			"message":       "problem stopping agent monitor for reprovisioning",
 			"host_id":       h.Id,
 			"operation":     "next_task",
 			"revision":      evergreen.BuildRevision,

@@ -129,9 +129,9 @@ func GetRestartJasperCallback(username string) func(h *host.Host) (int, error) {
 	}
 }
 
-func GetConvertProvisioningCallback(username string) func(h *host.Host) (int, error) {
+func GetReprovisionToNewCallback(username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
-		modifyErr := h.SetNeedsConvertProvisioning(username)
+		modifyErr := h.SetNeedsReprovisionToNew(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}

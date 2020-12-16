@@ -159,7 +159,7 @@ func LogHostJasperRestartError(hostId string, err error) {
 }
 
 func LogHostConvertingProvisioning(hostID, method, user string) {
-	LogHostEvent(hostID, EventHostConvertingProvisioning, HostEventData{ProvisioningMethod: method})
+	LogHostEvent(hostID, EventHostConvertingProvisioning, HostEventData{ProvisioningMethod: method, User: user})
 }
 
 func LogHostConvertedProvisioning(hostID, method string) {

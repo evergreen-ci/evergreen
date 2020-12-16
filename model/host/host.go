@@ -910,11 +910,6 @@ func (h *Host) UpdateStartingToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
-	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
-	// tasks).
-	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
-		return nil
-	}
 	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
@@ -928,15 +923,22 @@ func (h *Host) SetNeedsJasperRestart(user string) error {
 // the given user but is not yet ready to reprovision now (i.e. the agent
 // monitor is still running).
 func (h *Host) setAwaitingJasperRestart(user string) error {
-	if h.NeedsReprovision == ReprovisionJasperRestart {
+	// While these checks aren't strictly necessary since they're already
+	// filtered in the query, they do return more useful error messages.
+
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks) and legacy SSH hosts.
+	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	// While these checks aren't strictly necessary since they're already
-	// filtered in ther query, they do return more useful error messages.
-	if h.NeedsReprovision != "" {
+	if h.NeedsReprovision == ReprovisionJasperRestart {
+		return nil
+	}
+	if h.NeedsReprovision != ReprovisionNone {
 		return errors.Errorf("cannot restart Jasper when host is already reprovisioning")
 	}
+
 	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
 	if !utility.StringSliceContains(allowedStatuses, h.Status) {
 		return errors.Errorf("cannot restart Jasper when host status is '%s'", h.Status)
@@ -973,29 +975,40 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	return nil
 }
 
-func (h *Host) SetNeedsConvertProvisioning(user string) error {
-	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
-	// tasks).
-	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodNone {
-		return nil
-	}
-	if err := h.setAwaitingConvertProvisioning(user); err != nil {
+// SetNeedsReprovisionToNew marks a host that is currently using new
+// provisioning to provision again.
+func (h *Host) SetNeedsReprovisionToNew(user string) error {
+	if err := h.setAwaitingReprovisionToNew(user); err != nil {
 		return err
+	}
+	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+		return nil
 	}
 	return h.MarkAsReprovisioning()
 }
 
-func (h *Host) setAwaitingConvertProvisioning(user string) error {
-	if h.NeedsReprovision == ReprovisionToNew {
+func (h *Host) setAwaitingReprovisionToNew(user string) error {
+	// While these checks aren't strictly necessary since they're already
+	// filtered in the query, they do return more useful error messages.
+
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks) and legacy SSH hosts.
+	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
 		return nil
 	}
 
-	// While these checks aren't strictly necessary since they're already
-	// filtered in ther query, they do return more useful error messages.
+	switch h.NeedsReprovision {
+	case ReprovisionToNew:
+		return nil
+	case ReprovisionToLegacy:
+		return errors.New("cannot reprovision a host that is already converting to legacy provisioning")
+	}
+
 	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
 	if !utility.StringSliceContains(allowedStatuses, h.Status) {
 		return errors.Errorf("cannot convert provisioning when host status is '%s'", h.Status)
 	}
+
 	allowedBootstrapMethods := []string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}
 	if !utility.StringSliceContains(allowedBootstrapMethods, h.Distro.BootstrapSettings.Method) {
 		return errors.Errorf("cannot convert provisioning when host is provisioned as '%s'", h.Distro.BootstrapSettings.Method)
@@ -1003,9 +1016,13 @@ func (h *Host) setAwaitingConvertProvisioning(user string) error {
 
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	if err := UpdateOne(bson.M{
-		IdKey:                   h.Id,
-		StatusKey:               bson.M{"$in": allowedStatuses},
-		bootstrapKey:            bson.M{"$in": allowedBootstrapMethods},
+		IdKey:        h.Id,
+		StatusKey:    bson.M{"$in": allowedStatuses},
+		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
+		"$or": []bson.M{
+			{NeedsReprovisionKey: bson.M{"$exists": false}},
+			{NeedsReprovisionKey: ReprovisionToNew},
+		},
 		ReprovisioningLockedKey: bson.M{"$ne": true},
 		HasContainersKey:        bson.M{"$ne": true},
 		ParentIDKey:             bson.M{"$exists": false},
@@ -1024,8 +1041,8 @@ func (h *Host) setAwaitingConvertProvisioning(user string) error {
 	return nil
 }
 
-// MarkAsReprovisioning puts the host in a state that means it is going to be
-// reprovisioned.
+// MarkAsReprovisioning puts the host in a state that means it is ready to be
+// reprovisioned immediately.
 func (h *Host) MarkAsReprovisioning() error {
 	var needsAgent bool
 	var needsAgentMonitor bool
@@ -1039,8 +1056,9 @@ func (h *Host) MarkAsReprovisioning() error {
 	}
 
 	err := UpdateOne(bson.M{
-		IdKey: h.Id, NeedsReprovisionKey: h.NeedsReprovision,
-		StatusKey: bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		IdKey:               h.Id,
+		NeedsReprovisionKey: h.NeedsReprovision,
+		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
 	},
 		bson.M{
 			"$set": bson.M{

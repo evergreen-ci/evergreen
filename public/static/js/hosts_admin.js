@@ -46,15 +46,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
     );
   };
 
-  $scope.setConvertProvisioning = function() {
+  $scope.setReprovisionToNew = function() {
     var selectedHosts = $scope.selectedHosts();
     var hostIDs = [];
     for (var i = 0; i < selectedHosts.length; ++i) {
       hostIDs.push(selectedHosts[i].id);
     }
-    hostsRestService.setConvertProvisioning(
+    hostsRestService.setReprovisionToNew(
       hostIDs,
-      'convertProvisioning',
+      'reprovisionToNew',
       {},
       {
         success: function(resp) {
@@ -77,7 +77,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
 
     var modal = $('#admin-modal').modal('show');
 
-    if (opt === 'statusChange' || opt === 'restartJasper' || opt === 'convertProvisioning') {
+    if (opt === 'statusChange' || opt === 'restartJasper' || opt === 'reprovisionToNew') {
       modal.on('shown.bs.modal', function() {
         $scope.modalOpen = true;
       });
@@ -93,8 +93,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
           $scope.updateStatus();
         } else if ($scope.adminOption === 'restartJasper') {
           $scope.setRestartJasper();
-        } else if ($scope.adminOption === 'convertProvisioning') {
-          $scope.setConvertProvisioning();
+        } else if ($scope.adminOption === 'reprovisionToNew') {
+          $scope.setReprovisionToNew();
         }
         $('#admin-modal').modal('hide');
       }
@@ -126,7 +126,7 @@ mciModule.directive('adminRestartJasper', function() {
   };
 });
 
-mciModule.directive('adminConvertProvisioning', function() {
+mciModule.directive('adminReprovisionToNew', function() {
   return {
     restrict: 'E',
     template: 
@@ -134,7 +134,7 @@ mciModule.directive('adminConvertProvisioning', function() {
       '<div class="col-lg-12">' +
         'Reprovision [[hostCount]] [[hostCount | pluralize:\'host\']]?' +
         '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
-        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setConvertProvisioning()" ng-disabled="noClose">' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setReprovisionToNew()" ng-disabled="noClose">' +
           '<span ng-if="!noClose">Yes</span>' +
         '</button>' +
       '</div>' +
