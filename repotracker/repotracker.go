@@ -646,7 +646,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			"aliases": aliases,
 		})
 	} else if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProject(projectInfo.Ref.Id, metadata.Alias)
+		aliases, err = model.FindAliasInProjectOrRepo(projectInfo.Ref.Id, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}

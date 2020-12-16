@@ -128,7 +128,7 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 }
 
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
-	aliases, err := FindAliasInProject(projectID, evergreen.GitTagAlias)
+	aliases, err := FindAliasInProjectOrRepo(projectID, evergreen.GitTagAlias)
 	if err != nil {
 		return nil, err
 	}
