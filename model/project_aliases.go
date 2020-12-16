@@ -98,6 +98,35 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// FindAliasInProjectOrRepo finds all aliases with a given name for a project.
+// If the project has no aliases, the repo is checked for aliases.
+func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
+	aliases, err := FindAliasInProject(projectID, alias)
+	if err != nil {
+		return aliases, errors.Wrapf(err, "error finding aliases for project '%s'", projectID)
+	}
+	if len(aliases) > 0 {
+		return aliases, nil
+	}
+
+	project, err := FindOneProjectRef(projectID)
+	if err != nil {
+		return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
+	}
+	if project == nil {
+		return aliases, errors.Errorf("project '%s' does not exist", projectID)
+	}
+	if !project.UseRepoSettings {
+		return aliases, nil
+	}
+
+	aliases, err = FindAliasInProject(project.RepoRefId, alias)
+	if err != nil {
+		return aliases, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
+	}
+	return aliases, nil
+}
+
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
 	aliases, err := FindAliasInProject(projectID, evergreen.GitTagAlias)
 	if err != nil {
