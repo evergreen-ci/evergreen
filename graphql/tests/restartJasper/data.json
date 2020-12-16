@@ -263,7 +263,7 @@
       "user": "ubuntu",
       "tag": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "distro": {
-        "_id": "osx",
+        "_id": "ubuntu1604-small",
         "aliases": ["ubuntu1604", "ubuntu1604-test"],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
