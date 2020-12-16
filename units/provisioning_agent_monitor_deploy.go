@@ -268,6 +268,10 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 // runSetupScript runs the setup script on the host through the host's Jasper
 // service.
 func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *evergreen.Settings) error {
+	if j.host.Distro.Setup == "" {
+		return nil
+	}
+
 	grip.Info(message.Fields{
 		"message":       "running setup script on host",
 		"host_id":       j.host.Id,
