@@ -190,7 +190,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			staticHost.Status = dbHost.Status
 		}
 
-		if dbHost != nil && provisionChange != host.ReprovisionNone && provisionChange != dbHost.NeedsReprovision {
+		if dbHost != nil && provisionChange != dbHost.NeedsReprovision {
 			switch provisionChange {
 			case host.ReprovisionJasperRestart:
 				event.LogHostJasperRestarting(staticHost.Id, evergreen.User)

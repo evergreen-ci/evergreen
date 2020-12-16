@@ -13,7 +13,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
   $scope.notes={};
 
   $scope.canReprovision = function() {
-    return host.distro.bootstrap_settings.method !== 'legacy-ssh' && host.status === 'running';
+    return host.status === 'running' && (host.distro.bootstrap_settings.method === 'ssh' || host.distro.bootstrap_settings.method === 'user-data');
   }
 
   $scope.updateStatus = function() {
