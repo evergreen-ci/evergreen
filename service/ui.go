@@ -54,18 +54,20 @@ type UIServer struct {
 
 // ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	User                *user.DBUser
-	ProjectData         projectContext
-	Project             model.Project
-	Flashes             []interface{}
-	Banner              string
-	BannerTheme         string
-	Csrf                htmlTemplate.HTML
-	JiraHost            string
-	NewRelic            evergreen.NewRelicConfig
-	IsAdmin             bool
-	NewUILink           string
-	ValidDefaultLoggers []string
+	User                                   *user.DBUser
+	ProjectData                            projectContext
+	Project                                model.Project
+	Flashes                                []interface{}
+	Banner                                 string
+	BannerTheme                            string
+	Csrf                                   htmlTemplate.HTML
+	JiraHost                               string
+	NewRelic                               evergreen.NewRelicConfig
+	IsAdmin                                bool
+	NewUILink                              string
+	ValidDefaultLoggers                    []string
+	ValidDefaultHostAllocatorRoundingRules []string
+	ValidHostAllocatorRoundingRules        []string
 }
 
 const hostCacheTTL = 30 * time.Second
@@ -233,6 +235,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.JiraHost = uis.Settings.Jira.Host
 	viewData.NewRelic = settings.NewRelic
 	viewData.ValidDefaultLoggers = []string{model.EvergreenLogSender, model.BuildloggerLogSender}
+	viewData.ValidDefaultHostAllocatorRoundingRules = evergreen.ValidDefaultHostAllocatorRoundingRules
+	viewData.ValidHostAllocatorRoundingRules = evergreen.ValidHostAllocatorRoundingRules
 	return viewData
 }
 

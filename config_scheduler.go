@@ -12,13 +12,13 @@ import (
 type SchedulerConfig struct {
 	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	HostAllocatorRoundingRule     string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
 	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
-	HostAllocatorRoundingRule     int     `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
 	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
 	PatchTimeInQueueFactor        int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
 	CommitQueueFactor             int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
@@ -59,13 +59,13 @@ func (c *SchedulerConfig) Set() error {
 		"$set": bson.M{
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,
+			"host_allocator_rounding_rule":      c.HostAllocatorRoundingRule,
 			"free_host_fraction":                c.FutureHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
-			"host_allocator_rounding_rule":      c.HostAllocatorRoundingRule,
 			"patch_zipper_factor":               c.PatchFactor,
 			"patch_time_in_queue_factor":        c.PatchTimeInQueueFactor,
 			"commit_queue_factor":               c.CommitQueueFactor,
@@ -97,6 +97,15 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if !utility.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
 		return errors.Errorf("supported host allocators are %s; %s is not supported",
 			ValidHostAllocators, c.HostAllocator)
+	}
+
+	if c.HostAllocatorRoundingRule == "" {
+		c.HostAllocatorRoundingRule = HostAllocatorRoundDown
+	}
+
+	if !utility.StringSliceContains(ValidDefaultHostAllocatorRoundingRules, c.HostAllocatorRoundingRule) {
+		return errors.Errorf("supported host allocator rounding rules are %s; %s is not supported",
+			ValidHostAllocatorRoundingRules, c.HostAllocatorRoundingRule)
 	}
 
 	if c.FutureHostFraction < 0 || c.FutureHostFraction > 1 {

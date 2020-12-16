@@ -151,7 +151,7 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts:       0,
 			MaximumHosts:       50,
-			RoundingRule:       distro.RoundDown,
+			RoundingRule:       evergreen.HostAllocatorRoundDown,
 			FutureHostFraction: .5,
 		},
 	}
@@ -1029,7 +1029,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 	}
 
 	defaultRound := s.distro.HostAllocatorSettings.RoundingRule
-	s.distro.HostAllocatorSettings.RoundingRule = distro.RoundUp
+	s.distro.HostAllocatorSettings.RoundingRule = evergreen.HostAllocatorRoundUp
 	hostAllocatorData := HostAllocatorData{
 		Distro:          s.distro,
 		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
