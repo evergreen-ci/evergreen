@@ -2609,7 +2609,7 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
 
-	const tempParentKey = "parent"
+	const tempParentKey = "_parent"
 	pipeline := []bson.M{
 		{"$match": match},
 		// do a self join to filter off execution tasks
