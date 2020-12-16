@@ -1100,17 +1100,93 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 
 			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
-		"FailsIfAlreadyNeedsReprovision": func(t *testing.T, h *Host) {
+		"FailsIfAlreadyNeedsOtherReprovisioning": func(t *testing.T, h *Host) {
 			h.NeedsReprovision = ReprovisionToLegacy
 			require.NoError(t, h.Insert())
 
 			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
-		"FailsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
+		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
-			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
+			require.NoError(t, h.SetNeedsJasperRestart(evergreen.User))
+
+			assert.True(t, h.Provisioned)
+			assert.Equal(t, ReprovisionNone, h.NeedsReprovision)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:          "id",
+				Status:      evergreen.HostRunning,
+				Provisioned: true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
+				},
+			}
+			testCase(t, h)
+		})
+	}
+}
+
+func TestSetNeedsReprovisionToNew(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"SetsProvisioningFields": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.False(t, h.Provisioned)
+			assert.Equal(t, ReprovisionToNew, h.NeedsReprovision)
+		},
+		"SucceedsIfAlreadyNeedsReprovisionToNew": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToNew
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+			assert.False(t, h.Provisioned)
+			assert.Equal(t, ReprovisionToNew, h.NeedsReprovision)
+		},
+		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
+			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+		},
+		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
+			h.ReprovisioningLocked = true
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+		},
+		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+		},
+		"FailsIfAlreadyNeedsReprovisioningToLegacy": func(t *testing.T, h *Host) {
+			h.NeedsReprovision = ReprovisionToLegacy
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
+		},
+		"NoopsIfLegacyProvisionedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, h.SetNeedsReprovisionToNew(evergreen.User))
+
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+			assert.True(t, h.Provisioned)
+			assert.Equal(t, ReprovisionNone, h.NeedsReprovision)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

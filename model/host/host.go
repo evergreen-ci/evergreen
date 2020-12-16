@@ -910,6 +910,12 @@ func (h *Host) UpdateStartingToRunning() error {
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
 func (h *Host) SetNeedsJasperRestart(user string) error {
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks) and legacy SSH hosts.
+	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
+		return nil
+	}
+
 	if err := h.setAwaitingJasperRestart(user); err != nil {
 		return err
 	}
@@ -925,12 +931,6 @@ func (h *Host) SetNeedsJasperRestart(user string) error {
 func (h *Host) setAwaitingJasperRestart(user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
-
-	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
-	// tasks) and legacy SSH hosts.
-	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
-		return nil
-	}
 
 	if h.NeedsReprovision == ReprovisionJasperRestart {
 		return nil
@@ -978,6 +978,12 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 // SetNeedsReprovisionToNew marks a host that is currently using new
 // provisioning to provision again.
 func (h *Host) SetNeedsReprovisionToNew(user string) error {
+	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
+	// tasks) and legacy SSH hosts.
+	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
+		return nil
+	}
+
 	if err := h.setAwaitingReprovisionToNew(user); err != nil {
 		return err
 	}
@@ -990,12 +996,6 @@ func (h *Host) SetNeedsReprovisionToNew(user string) error {
 func (h *Host) setAwaitingReprovisionToNew(user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
-
-	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
-	// tasks) and legacy SSH hosts.
-	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
-		return nil
-	}
 
 	switch h.NeedsReprovision {
 	case ReprovisionToNew:
