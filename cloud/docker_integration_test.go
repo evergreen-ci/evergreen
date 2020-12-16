@@ -25,8 +25,7 @@ type DockerIntegrationSuite struct {
 
 func TestDockerIntegrationSuite(t *testing.T) {
 	dns := os.Getenv("DOCKER_HOST")
-	isRunningOnDocker := os.Getenv("IS_DOCKER")
-	if dns == "" || isRunningOnDocker == "true" {
+	if dns == "" {
 		t.Skip()
 	}
 	settings := testutil.TestConfig()

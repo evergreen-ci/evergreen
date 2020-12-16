@@ -39,6 +39,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Annotation() AnnotationResolver
 	Host() HostResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
@@ -249,9 +250,10 @@ type ComplexityRoot struct {
 	}
 
 	IssueLink struct {
-		IssueKey func(childComplexity int) int
-		Source   func(childComplexity int) int
-		URL      func(childComplexity int) int
+		IssueKey   func(childComplexity int) int
+		JiraTicket func(childComplexity int) int
+		Source     func(childComplexity int) int
+		URL        func(childComplexity int) int
 	}
 
 	JiraConfig struct {
@@ -741,6 +743,10 @@ type ComplexityRoot struct {
 	}
 }
 
+type AnnotationResolver interface {
+	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+}
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 
@@ -1728,6 +1734,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.IssueLink.IssueKey(childComplexity), true
+
+	case "IssueLink.jiraTicket":
+		if e.complexity.IssueLink.JiraTicket == nil {
+			break
+		}
+
+		return e.complexity.IssueLink.JiraTicket(childComplexity), true
 
 	case "IssueLink.source":
 		if e.complexity.IssueLink.Source == nil {
@@ -4724,9 +4737,9 @@ type Host {
 }
 
 type InstanceTag {
-  key: String
-  value: String
-  canBeModified: Boolean
+  key: String!
+  value: String!
+  canBeModified: Boolean!
 }
 
 input InstanceTagInput {
@@ -5309,6 +5322,7 @@ type IssueLink {
   issueKey: String
   url: String
   source: Source!
+  jiraTicket: JiraTicket
 }
 
 type Source {
@@ -6885,13 +6899,13 @@ func (ec *executionContext) _Annotation_issues(ctx context.Context, field graphq
 		Object:   "Annotation",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Issues, nil
+		return ec.resolvers.Annotation().Issues(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6900,9 +6914,9 @@ func (ec *executionContext) _Annotation_issues(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]model.APIIssueLink)
+	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
-	return ec.marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -6916,13 +6930,13 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 		Object:   "Annotation",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SuspectedIssues, nil
+		return ec.resolvers.Annotation().SuspectedIssues(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6931,9 +6945,9 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]model.APIIssueLink)
+	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
-	return ec.marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -10321,11 +10335,14 @@ func (ec *executionContext) _InstanceTag_key(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2string(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _InstanceTag_value(ctx context.Context, field graphql.CollectedField, obj *host.Tag) (ret graphql.Marshaler) {
@@ -10352,11 +10369,14 @@ func (ec *executionContext) _InstanceTag_value(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2string(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, field graphql.CollectedField, obj *host.Tag) (ret graphql.Marshaler) {
@@ -10383,11 +10403,14 @@ func (ec *executionContext) _InstanceTag_canBeModified(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _IssueLink_issueKey(ctx context.Context, field graphql.CollectedField, obj *model.APIIssueLink) (ret graphql.Marshaler) {
@@ -10484,6 +10507,37 @@ func (ec *executionContext) _IssueLink_source(ctx context.Context, field graphql
 	res := resTmp.(*model.APISource)
 	fc.Result = res
 	return ec.marshalNSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IssueLink_jiraTicket(ctx context.Context, field graphql.CollectedField, obj *model.APIIssueLink) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "IssueLink",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraTicket, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*thirdparty.JiraTicket)
+	fc.Result = res
+	return ec.marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
@@ -23663,19 +23717,37 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 		case "taskId":
 			out.Values[i] = ec._Annotation_taskId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "taskExecution":
 			out.Values[i] = ec._Annotation_taskExecution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "note":
 			out.Values[i] = ec._Annotation_note(ctx, field, obj)
 		case "issues":
-			out.Values[i] = ec._Annotation_issues(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_issues(ctx, field, obj)
+				return res
+			})
 		case "suspectedIssues":
-			out.Values[i] = ec._Annotation_suspectedIssues(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_suspectedIssues(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24572,10 +24644,19 @@ func (ec *executionContext) _InstanceTag(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = graphql.MarshalString("InstanceTag")
 		case "key":
 			out.Values[i] = ec._InstanceTag_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "value":
 			out.Values[i] = ec._InstanceTag_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "canBeModified":
 			out.Values[i] = ec._InstanceTag_canBeModified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24607,6 +24688,8 @@ func (ec *executionContext) _IssueLink(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "jiraTicket":
+			out.Values[i] = ec._IssueLink_jiraTicket(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -30597,7 +30680,7 @@ func (ec *executionContext) marshalOIssueLink2githubᚗcomᚋevergreenᚑciᚋev
 	return ec._IssueLink(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v []model.APIIssueLink) graphql.Marshaler {
+func (ec *executionContext) marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v []*model.APIIssueLink) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -30624,7 +30707,7 @@ func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOIssueLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, sel, v[i])
+			ret[i] = ec.marshalOIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -30637,6 +30720,13 @@ func (ec *executionContext) marshalOIssueLink2ᚕgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
+func (ec *executionContext) marshalOIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v *model.APIIssueLink) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._IssueLink(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOJiraConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v model.APIJiraConfig) graphql.Marshaler {
 	return ec._JiraConfig(ctx, sel, &v)
 }
@@ -30646,6 +30736,17 @@ func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._JiraConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOJiraTicket2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraTicket) graphql.Marshaler {
+	return ec._JiraTicket(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraTicket) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._JiraTicket(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModule) graphql.Marshaler {

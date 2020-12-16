@@ -852,6 +852,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Id)
+	expansions.Put("project_identifier", projectRef.Identifier)
 	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {

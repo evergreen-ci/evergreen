@@ -335,9 +335,9 @@ type Host {
 }
 
 type InstanceTag {
-  key: String
-  value: String
-  canBeModified: Boolean
+  key: String!
+  value: String!
+  canBeModified: Boolean!
 }
 
 input InstanceTagInput {
@@ -920,6 +920,7 @@ type IssueLink {
   issueKey: String
   url: String
   source: Source!
+  jiraTicket: JiraTicket
 }
 
 type Source {
