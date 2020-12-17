@@ -1430,7 +1430,7 @@ func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants [
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair, error) {
-	vars, err := FindAliasInProject(p.Identifier, alias)
+	vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
 	if err != nil || vars == nil {
 		return nil, nil, err
 	}
