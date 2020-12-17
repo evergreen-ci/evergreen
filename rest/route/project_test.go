@@ -218,6 +218,7 @@ func (s *ProjectPutSuite) TestParse() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
+				"hidden": true,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
@@ -247,6 +248,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
+				"hidden": true,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
