@@ -1401,7 +1401,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectOrRepo(t.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching aliases for project")
 			}
