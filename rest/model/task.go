@@ -58,6 +58,7 @@ type APITask struct {
 	DisplayOnly        bool                `json:"display_only"`
 	ParentTaskId       string              `json:"parent_task_id"`
 	ExecutionTasks     []*string           `json:"execution_tasks,omitempty"`
+	ExecutionTasksFull []APITask           `json:"execution_tasks_full,omitempty"`
 	Mainline           bool                `json:"mainline"`
 	TaskGroup          string              `json:"task_group,omitempty"`
 	TaskGroupMaxHosts  int                 `json:"task_group_max_hosts,omitempty"`
@@ -263,6 +264,17 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.ExecutionTasks = ets
 		}
+		if len(v.ExecutionTasksFull) > 0 {
+			ets := []APITask{}
+			for _, t := range v.ExecutionTasksFull {
+				at := APITask{}
+				if err := at.BuildFromService(t); err != nil {
+					return err
+				}
+				ets = append(ets, at)
+			}
+			at.ExecutionTasksFull = ets
+		}
 
 		if len(v.DependsOn) > 0 {
 			dependsOn := make([]APIDependency, len(v.DependsOn))
@@ -359,6 +371,17 @@ func (ad *APITask) ToService() (interface{}, error) {
 			ets = append(ets, FromStringPtr(t))
 		}
 		st.ExecutionTasks = ets
+	}
+	if len(ad.ExecutionTasksFull) > 0 {
+		ets := []task.Task{}
+		for _, at := range ad.ExecutionTasksFull {
+			taskData, err := at.ToService()
+			if err != nil {
+				return nil, err
+			}
+			ets = append(ets, *taskData.(*task.Task))
+		}
+		st.ExecutionTasksFull = ets
 	}
 
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
