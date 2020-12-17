@@ -94,9 +94,8 @@ type ProjectRef struct {
 
 	// The following fields are used by Evergreen and are not discoverable.
 	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
-	//Tracked determines whether or not the project is discoverable in the UI
-	Tracked bool `bson:"tracked" json:"tracked"`
-	Hidden  bool `bson:"hidden" json:"hidden"`
+	// Hidden determines whether or not the project is discoverable/tracked in the UI
+	Hidden bool `bson:"hidden" json:"hidden"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -213,7 +212,6 @@ var (
 	ProjectRefDisplayNameKey             = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
 	ProjectRefDeactivatePreviousKey      = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefTrackedKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 	ProjectRefHiddenKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerError           = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefFilesIgnoredFromCache      = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
@@ -507,12 +505,12 @@ func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, 
 
 // FindAllMergedTrackedProjectRefs returns all project refs in the db
 // that are currently being tracked (i.e. their project files
-// still exist)
+// still exist and the project is not hidden)
 func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
-		bson.M{ProjectRefTrackedKey: true},
+		bson.M{ProjectRefHiddenKey: false},
 		db.NoProjection,
 		db.NoSort,
 		db.NoSkip,
@@ -554,10 +552,10 @@ func FindAllMergedTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefTrackedKey: true,
-			ProjectRefOwnerKey:   bson.M{"$exists": true, "$ne": ""},
-			ProjectRefRepoKey:    bson.M{"$exists": true, "$ne": ""},
-			ProjectRefBranchKey:  bson.M{"$exists": true, "$ne": ""},
+			ProjectRefHiddenKey: false,
+			ProjectRefOwnerKey:  bson.M{"$exists": true, "$ne": ""},
+			ProjectRefRepoKey:   bson.M{"$exists": true, "$ne": ""},
+			ProjectRefBranchKey: bson.M{"$exists": true, "$ne": ""},
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -856,9 +854,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefDisplayNameKey:             projectRef.DisplayName,
 				projectRefTagsKey:                    projectRef.Tags,
 				ProjectRefDeactivatePreviousKey:      projectRef.DeactivatePrevious,
-				ProjectRefTrackedKey:                 projectRef.Tracked,
 				ProjectRefRemotePathKey:              projectRef.RemotePath,
-				ProjectRefTrackedKey:                 projectRef.Tracked,
 				ProjectRefHiddenKey:                  projectRef.Hidden,
 				ProjectRefRepotrackerError:           projectRef.RepotrackerError,
 				ProjectRefFilesIgnoredFromCache:      projectRef.FilesIgnoredFromCache,

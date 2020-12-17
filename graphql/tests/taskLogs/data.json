@@ -21,7 +21,7 @@
       "display_name": "Curator",
       "local_config": "",
       "deactivate_previous": true,
-      "tracked": true,
+      "hidden": false,
       "admins": ["sam.kleinman"],
       "repotracker_error": null,
       "commit_queue": {

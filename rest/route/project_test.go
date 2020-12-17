@@ -218,7 +218,6 @@ func (s *ProjectPutSuite) TestParse() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
-				"tracked": false,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
@@ -248,7 +247,6 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
-				"tracked": false,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
@@ -345,7 +343,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
 	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
 	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
-	s.Equal(cachedProject.Tracked, projectRef.Tracked)
+	s.Equal(cachedProject.Hidden, projectRef.Hidden)
 	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
 	s.Equal(cachedProject.Admins, model.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
@@ -474,7 +472,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: false,
 					},
-					Tracked:               true,
+					Hidden:                false,
 					PatchingDisabled:      false,
 					Admins:                []string{"langdon.alger"},
 					NotifyOnBuildFailure:  false,

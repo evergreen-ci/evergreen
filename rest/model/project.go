@@ -27,7 +27,7 @@ type APIProject struct {
 	Private               bool                 `json:"private"`
 	RemotePath            *string              `json:"remote_path"`
 	Repo                  *string              `json:"repo_name"`
-	Tracked               bool                 `json:"tracked"`
+	Hidden                bool                 `json:"hidden"`
 	DeactivatePrevious    bool                 `json:"deactivate_previous"`
 	Admins                []*string            `json:"admins"`
 	Tags                  []*string            `json:"tags"`
@@ -65,7 +65,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Private = v.Private
 	apiProject.RemotePath = ToStringPtr(v.RemotePath)
 	apiProject.Repo = ToStringPtr(v.Repo)
-	apiProject.Tracked = v.Tracked
+	apiProject.Hidden = v.Hidden
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
 	apiProject.GitTagVersionsEnabled = v.GitTagVersionsEnabled
@@ -253,7 +253,7 @@ type APIProjectRef struct {
 	DefaultLogger               *string              `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
-	Tracked                     bool                 `json:"tracked"`
+	Hidden                      bool                 `json:"hidden"`
 	PatchingDisabled            bool                 `json:"patching_disabled"`
 	RepotrackerDisabled         bool                 `json:"repotracker_disabled"`
 	DispatchingDisabled         bool                 `json:"dispatching_disabled"`
@@ -323,7 +323,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
 		WorkstationConfig:     workstationConfig,
-		Tracked:               p.Tracked,
+		Hidden:                p.Hidden,
 		PatchingDisabled:      p.PatchingDisabled,
 		RepotrackerDisabled:   p.RepotrackerDisabled,
 		DispatchingDisabled:   p.DispatchingDisabled,
@@ -405,7 +405,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
 	p.WorkstationConfig = workstationConfig
-	p.Tracked = projectRef.Tracked
+	p.Hidden = projectRef.Hidden
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.DispatchingDisabled = projectRef.DispatchingDisabled
