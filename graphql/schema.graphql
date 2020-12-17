@@ -504,7 +504,6 @@ type TaskResult {
   baseStatus: String
   buildVariant: String!
   blocked: Boolean!
-  executionTasksFull: [Task!]
 }
 
 type PatchDuration {
@@ -621,7 +620,6 @@ type Task {
   estimatedStart: Duration
   execution: Int
   executionTasks: [String!]
-  executionTasksFull: [Task!]
   expectedDuration: Duration
   totalTestCount: Int!
   failedTestCount: Int!

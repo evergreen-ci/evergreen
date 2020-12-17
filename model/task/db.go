@@ -65,7 +65,6 @@ var (
 	CostKey                     = bsonutil.MustHaveTag(Task{}, "Cost")
 	SpawnedHostCostKey          = bsonutil.MustHaveTag(Task{}, "SpawnedHostCost")
 	ExecutionTasksKey           = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
-	ExecutionTasksFullKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasksFull")
 	DisplayOnlyKey              = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey                = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey        = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")

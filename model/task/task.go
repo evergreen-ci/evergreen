@@ -154,11 +154,10 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly        bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks     []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	ExecutionTasksFull []Task   `bson:"execution_tasks_full" json:"-"` // this is a local pointer from a display task to its execution tasks
-	ResetWhenFinished  bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask        *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
@@ -2609,29 +2608,8 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
 
-	const tempParentKey = "_parent"
 	pipeline := []bson.M{
 		{"$match": match},
-		// do a self join to filter off execution tasks
-		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   IdKey,
-			"foreignField": ExecutionTasksKey,
-			"as":           tempParentKey,
-		}},
-		{
-			"$match": bson.M{
-				tempParentKey: []interface{}{},
-			},
-		},
-		// expand execution tasks in display tasks
-		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   ExecutionTasksKey,
-			"foreignField": IdKey,
-			"as":           ExecutionTasksFullKey,
-		}},
-		// add a field for the display status of each task
 		addDisplayStatus,
 	}
 	if len(statuses) > 0 {
