@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -54,18 +55,18 @@ type ProjectRef struct {
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
 	// The following fields can be defined only at the branch level.
-	RepoRefId               string                    `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
-	Branch                  string                    `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
-	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure    bool                      `bson:"notify_on_failure" json:"notify_on_failure"`
-	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
-	PatchTriggerAliases     []PatchTriggerDefinition  `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
-	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
-	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
-	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
-	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	RepoRefId               string                         `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+	Branch                  string                         `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	BatchTime               int                            `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious      bool                           `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DefaultLogger           string                         `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure    bool                           `bson:"notify_on_failure" json:"notify_on_failure"`
+	Triggers                []TriggerDefinition            `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PatchTriggerAliases     []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
+	PeriodicBuilds          []PeriodicBuildDefinition      `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
+	Tags                    []string                       `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
+	CedarTestResultsEnabled bool                           `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CommitQueue             CommitQueueParams              `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
@@ -149,20 +150,6 @@ type TriggerDefinition struct {
 	Command      string `bson:"command,omitempty" json:"command,omitempty"`
 	GenerateFile string `bson:"generate_file,omitempty" json:"generate_file,omitempty"`
 	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
-}
-
-type PatchTriggerDefinition struct {
-	Alias          string          `bson:"alias" json:"alias"`
-	ChildProject   string          `bson:"child_project" json:"child_project"`
-	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
-	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
-}
-
-type TaskSpecifier struct {
-	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
-	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -269,14 +256,14 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	return p.AddPermissions(creator)
 }
 
-func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (PatchTriggerDefinition, bool) {
+func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerDefinition, bool) {
 	for _, alias := range p.PatchTriggerAliases {
 		if alias.Alias == aliasName {
 			return alias, true
 		}
 	}
 
-	return PatchTriggerDefinition{}, false
+	return patch.PatchTriggerDefinition{}, false
 }
 
 func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
@@ -1365,22 +1352,24 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-func (t *PatchTriggerDefinition) Validate(parentProject string) error {
-	childProject, err := FindOneProjectRef(t.ChildProject)
-	if err != nil {
-		return errors.Wrapf(err, "error finding upstream project %s", t.ChildProject)
-	}
-	if childProject == nil {
-		return errors.Errorf("project '%s' not found", t.ChildProject)
-	}
-	if childProject.Id == parentProject {
+func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) error {
+	if definition.ChildProject == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
-		return errors.Errorf("invalid status: %s", t.Status)
+
+	childProject, err := FindOneProjectRef(definition.ChildProject)
+	if err != nil {
+		return errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
+	}
+	if childProject == nil {
+		return errors.Errorf("child project '%s' not found", definition.ChildProject)
 	}
 
-	for _, specifier := range t.TaskSpecifiers {
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+		return errors.Errorf("invalid status: %s", definition.Status)
+	}
+
+	for _, specifier := range definition.TaskSpecifiers {
 		if (specifier.VariantRegex != "" || specifier.TaskRegex != "") && specifier.PatchAlias != "" {
 			return errors.New("can't specify both a regex set and a patch alias")
 		}
@@ -1405,12 +1394,12 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProject(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching aliases for project")
 			}
 			if len(aliases) == 0 {
-				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, t.ChildProject)
+				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, definition.ChildProject)
 			}
 		}
 	}

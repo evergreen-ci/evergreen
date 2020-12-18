@@ -1501,7 +1501,7 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, [
 	return pairs, displayTaskPairs, nil
 }
 
-func (p *Project) VariantTasksForSelectors(definitions []PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
+func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
 	projectAliases := []ProjectAlias{}
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {

@@ -1604,7 +1604,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 
 	for testName, test := range map[string]func(*testing.T){
 		"patch alias selector": func(t *testing.T) {
-			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{PatchAlias: alias}}}}
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: alias}}}}
 			vts, err := project.VariantTasksForSelectors(definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
@@ -1612,7 +1612,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			assert.Equal(t, vts[0].Tasks[0], "t0")
 		},
 		"selector with dependency": func(t *testing.T) {
-			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
 			vts, err := project.VariantTasksForSelectors(definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
@@ -1621,7 +1621,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			assert.Contains(t, vts[0].Tasks, "t1")
 		},
 		"selector with display task": func(t *testing.T) {
-			definitions := []PatchTriggerDefinition{{TaskSpecifiers: []TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
 			vts, err := project.VariantTasksForSelectors(definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)

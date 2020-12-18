@@ -613,26 +613,6 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	}
 }
 
-func TestAppendChildPatches(t *testing.T) {
-	require.NoError(t, db.Clear(Collection))
-	p := &Patch{}
-	require.NoError(t, p.Insert())
-
-	p, err := FindOne(db.Query(nil))
-	require.NoError(t, err)
-	require.NotNil(t, p)
-
-	childPatches := []string{"1", "2", "3"}
-	assert.Empty(t, p.Triggers.ChildPatches)
-	assert.NoError(t, p.AppendChildPatches(childPatches))
-	assert.Equal(t, childPatches, p.Triggers.ChildPatches)
-
-	dbP, err := FindOneId(p.Id.Hex())
-	require.NoError(t, err)
-	require.NotNil(t, dbP)
-	assert.Equal(t, childPatches, dbP.Triggers.ChildPatches)
-}
-
 func TestMergeVariantsTasks(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		vt1      []VariantTasks

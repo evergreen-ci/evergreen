@@ -181,14 +181,18 @@ type TriggerInfo struct {
 	ChildPatches []string `bson:"child_patches,omitempty"`
 }
 
-func (p *Patch) AppendChildPatches(childPatchIDs []string) error {
-	p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, childPatchIDs...)
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$push": bson.M{bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey): bson.M{"$each": childPatchIDs}},
-		},
-	)
+type PatchTriggerDefinition struct {
+	Alias          string          `bson:"alias" json:"alias"`
+	ChildProject   string          `bson:"child_project" json:"child_project"`
+	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
+	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
+	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+}
+
+type TaskSpecifier struct {
+	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
+	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
 // SetDescription sets a patch's description in the database
@@ -618,6 +622,10 @@ func (p *Patch) IsCommitQueuePatch() bool {
 
 func (p *Patch) IsBackport() bool {
 	return len(p.BackportOf.PatchID) != 0 || len(p.BackportOf.SHA) != 0
+}
+
+func (p *Patch) IsChild() bool {
+	return p.Triggers.ParentPatch != ""
 }
 
 func (p *Patch) GetRequester() string {

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -559,7 +560,7 @@ func TestProjectRefTags(t *testing.T) {
 
 func TestGetPatchTriggerAlias(t *testing.T) {
 	projRef := ProjectRef{
-		PatchTriggerAliases: []PatchTriggerDefinition{{Alias: "a0"}},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{{Alias: "a0"}},
 	}
 
 	alias, found := projRef.GetPatchTriggerAlias("a0")
