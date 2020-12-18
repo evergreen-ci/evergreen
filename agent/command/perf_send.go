@@ -29,7 +29,7 @@ type perfSend struct {
 
 	// Prefix specifies the global prefix to use within the s3 bucket for
 	// any artifacts without a prefix specified.
-	Prefix string `mapstructure:"region" plugin:"expand"`
+	Prefix string `mapstructure:"prefix" plugin:"expand"`
 
 	// File is the file containing either the json or yaml representation
 	// of the performance report tests.
@@ -55,6 +55,9 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 
 func (c *perfSend) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	if err := c.applyExpansions(conf); err != nil {
+		return err
+	}
 
 	// Read the file and add the evergreen info.
 	filename := filepath.Join(conf.WorkDir, c.File)
@@ -91,4 +94,37 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) 
 	report.BucketConf.Name = c.Bucket
 	report.BucketConf.Prefix = c.Prefix
 	report.BucketConf.Region = c.Region
+}
+
+func (c *perfSend) applyExpansions(tc *internal.TaskConfig) error {
+	if tc == nil || tc.Expansions == nil {
+		return nil
+	}
+	var err error
+	c.AWSKey, err = tc.Expansions.ExpandString(c.AWSKey)
+	if err != nil {
+		return errors.Wrap(err, "error expanding aws_key")
+	}
+	c.AWSSecret, err = tc.Expansions.ExpandString(c.AWSSecret)
+	if err != nil {
+		return errors.Wrap(err, "error expanding aws_secret")
+	}
+	c.Region, err = tc.Expansions.ExpandString(c.Region)
+	if err != nil {
+		return errors.Wrap(err, "error expanding region")
+	}
+	c.Bucket, err = tc.Expansions.ExpandString(c.Bucket)
+	if err != nil {
+		return errors.Wrap(err, "error expanding bucket")
+	}
+	c.Prefix, err = tc.Expansions.ExpandString(c.Prefix)
+	if err != nil {
+		return errors.Wrap(err, "error expanding prefix")
+	}
+	c.File, err = tc.Expansions.ExpandString(c.File)
+	if err != nil {
+		return errors.Wrap(err, "error expanding file")
+	}
+
+	return nil
 }
