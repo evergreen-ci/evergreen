@@ -1937,6 +1937,9 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
+	if err := annotations.ValidateIssueURL(issue.URL); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
+	}
 	if isIssue {
 		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))

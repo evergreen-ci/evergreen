@@ -388,6 +388,35 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.Equal(t, "task-1-note_0", model.FromStringPtr(h.annotation.Note.Message))
 	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
 
+	// test with an annotation with invalid URL in Issues
+	h = &annotationByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
+	a.Issues = []model.APIIssueLink{
+		model.APIIssueLink{
+			URL: restModel.ToStringPtr("issuelink.com"),
+		},
+		model.APIIssueLink{
+			URL: restModel.ToStringPtr("https://issuelink.com/ticket"),
+		},
+	}
+	a.SuspectedIssues = []model.APIIssueLink{
+		model.APIIssueLink{
+			URL: restModel.ToStringPtr("https://issuelinkcom"),
+		},
+	}
+	jsonBody, err = json.Marshal(a)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("PUT", "/task/t1/annotations", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
+
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "invalid URI for request")
+	assert.Contains(t, err.Error(), "must have a domain and extension")
+
 	//test with a task that doesn't exist
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},

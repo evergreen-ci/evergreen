@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -271,6 +272,21 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, issue := range h.annotation.Issues {
+		catcher.Add(annotations.ValidateIssueURL(*issue.URL))
+	}
+	for _, issue := range h.annotation.SuspectedIssues {
+		catcher.Add(annotations.ValidateIssueURL(*issue.URL))
+	}
+	if catcher.HasErrors() {
+		return gimlet.ErrorResponse{
+			Message:    catcher.Resolve().Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
 	// set TaskExecution to the latest execution
 	if h.annotation.TaskExecution == nil {
 		h.annotation.TaskExecution = &t.Execution

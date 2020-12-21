@@ -158,3 +158,21 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
 }
+
+func TestValidateIssueURL(t *testing.T) {
+	issue := IssueLink{URL: "issuelink.com"}
+	err := ValidateIssueURL(issue.URL)
+	assert.Contains(t, err.Error(), "error parsing request uri")
+
+	issue.URL = "http://issuelink.com/"
+	err = ValidateIssueURL(issue.URL)
+	assert.NoError(t, err)
+
+	issue.URL = "http://issuelinkcom/ticket"
+	err = ValidateIssueURL(issue.URL)
+	assert.Contains(t, err.Error(), "must have a domain and extension")
+
+	issue.URL = "https://issuelink.com/browse/ticket"
+	err = ValidateIssueURL(issue.URL)
+	assert.NoError(t, err)
+}

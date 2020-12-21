@@ -1,6 +1,8 @@
 package annotations
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -209,4 +211,25 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		},
 	)
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
+}
+
+// ValidateIssueURL checks the URL of an IssueLink to make sure that it has a scheme and a host.
+func ValidateIssueURL(issueURL string) error {
+	u, err := url.ParseRequestURI(issueURL)
+	if err != nil {
+		return errors.Wrapf(err, "error parsing request uri")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return errors.Errorf("issue url scheme '%s' should either be 'http' or 'https'", u.Scheme)
+	}
+	if u.Host == "" {
+		return errors.Errorf("issue url '%s' must have a host name", issueURL)
+	}
+	// Check to make sure that there is something in the host that could resemble a domain with an extension
+	// i.e. "example.com", "sub.example.com", etc.
+	domainParts := strings.Split(u.Host, ".")
+	if len(domainParts) < 2 {
+		return errors.Errorf("issue url '%s' must have a domain and extension", issueURL)
+	}
+	return nil
 }
