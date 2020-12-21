@@ -217,10 +217,10 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 func ValidateIssueURL(issueURL string) error {
 	u, err := url.ParseRequestURI(issueURL)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing request uri")
+		return errors.Wrapf(err, "error parsing request uri '%s'", issueURL)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return errors.Errorf("issue url scheme '%s' should either be 'http' or 'https'", u.Scheme)
+		return errors.Errorf("issue url '%s' scheme '%s' should either be 'http' or 'https'", issueURL, u.Scheme)
 	}
 	if u.Host == "" {
 		return errors.Errorf("issue url '%s' must have a host name", issueURL)
