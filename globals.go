@@ -210,6 +210,10 @@ const (
 	HostAllocatorDeficit     = "deficit"
 	HostAllocatorUtilization = "utilization"
 
+	HostAllocatorRoundDown    = "round-down"
+	HostAllocatorRoundUp      = "round-up"
+	HostAllocatorRoundDefault = ""
+
 	// CommitQueueAlias and GithubAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias = "__commit_queue"
 	GithubAlias      = "__github"
@@ -542,6 +546,17 @@ var (
 	// Set of valid Host Allocators types
 	ValidHostAllocators = []string{
 		HostAllocatorUtilization,
+	}
+
+	ValidHostAllocatorRoundingRules = []string{
+		HostAllocatorRoundDown,
+		HostAllocatorRoundUp,
+		HostAllocatorRoundDefault,
+	}
+
+	ValidDefaultHostAllocatorRoundingRules = []string{
+		HostAllocatorRoundDown,
+		HostAllocatorRoundUp,
 	}
 
 	// constant arrays for db update logic

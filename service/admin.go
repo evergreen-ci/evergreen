@@ -30,8 +30,9 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ViewData
-		CanClearTokens bool
-	}{uis.GetCommonViewData(w, r, true, true), uis.env.UserManagerInfo().CanClearTokens}
+		CanClearTokens                         bool
+		ValidDefaultHostAllocatorRoundingRules []string
+	}{uis.GetCommonViewData(w, r, true, true), uis.env.UserManagerInfo().CanClearTokens, evergreen.ValidDefaultHostAllocatorRoundingRules}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
