@@ -99,6 +99,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateTaskDependencies,
 	validateTaskRuns,
 	validateTaskNames,
+	validateModuleBranches,
 	validateBVNames,
 	validateBVBatchTimes,
 	validateDisplayTaskNames,
@@ -578,6 +579,20 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
 				Message: "task should not be named 'all' because it is ambiguous in task specifications for patches",
+			})
+		}
+	}
+	return errs
+}
+
+// validateModuleBranches checks to make sure that branches of modules have a set branch.
+func validateModuleBranches(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, module := range project.Modules {
+		if module.Branch == "" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("module '%s' should have a set branch", module.Name),
 			})
 		}
 	}

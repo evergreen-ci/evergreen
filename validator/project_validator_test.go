@@ -700,6 +700,32 @@ func TestValidateTaskNames(t *testing.T) {
 	})
 }
 
+func TestValidateModuleBranches(t *testing.T) {
+	Convey("When validating a project's modules", t, func() {
+		Convey("An error should be returned when the module does not have a branch", func() {
+			project := &model.Project{
+				Modules: model.ModuleList{
+					model.Module{
+						Name:   "module-0",
+						Branch: "master",
+					},
+					model.Module{
+						Name: "module-1",
+					},
+					model.Module{
+						Name: "module-2",
+					},
+					model.Module{
+						Name:   "module-3",
+						Branch: "other",
+					},
+				},
+			}
+			So(len(validateModuleBranches(project)), ShouldEqual, 2)
+		})
+	})
+}
+
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
 		Convey("if any variant has a duplicate entry, an error should be returned", func() {
