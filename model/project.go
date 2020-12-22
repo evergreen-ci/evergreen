@@ -1399,7 +1399,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 
 // extractDisplayTasks adds display tasks and all their execution tasks when
 // pairs.DisplayTasks includes the display task or when
-// one consituent execution task is included
+// one constituent execution task is included
 func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 	displayTasksToExecTasks := make(map[TVPair][]TVPair)
 	execTaskToDisplayTask := make(map[TVPair]TVPair)
