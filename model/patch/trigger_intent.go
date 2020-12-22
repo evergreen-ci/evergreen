@@ -25,8 +25,8 @@ type TriggerIntent struct {
 }
 
 var (
-	triggerIDKey        = bsonutil.MustHaveTag(TriggerIntent{}, "_id")
-	triggerProcessedKey = bsonutil.MustHaveTag(TriggerIntent{}, "processed")
+	triggerIDKey        = bsonutil.MustHaveTag(TriggerIntent{}, "Id")
+	triggerProcessedKey = bsonutil.MustHaveTag(TriggerIntent{}, "Processed")
 )
 
 func (t *TriggerIntent) ID() string {
