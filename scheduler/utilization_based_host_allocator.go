@@ -151,8 +151,12 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	freeHostDur := time.Since(startAt)
 
+	roundDown := true
+	if d.HostAllocatorSettings.RoundingRule == evergreen.HostAllocatorRoundUp {
+		roundDown = false
+	}
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
-	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks)
+	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks, roundDown)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > taskGroupInfo.Count {
@@ -263,7 +267,7 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 // We should allocate enough hosts to run all tasks with runtime < maxDurationPerHost in less than maxDurationPerHost,
 // and one host for each task with runtime > maxDurationPerHost.
 // Alternatively, we should allocate sufficient hosts to schedule all tasks within maxDurationPerHost.
-func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, numExistingHosts, numHostsNeededAlready int) int {
+func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, numExistingHosts, numHostsNeededAlready int, roundDown bool) int {
 	// number of hosts needed to meet the duration based turnaround requirement
 	// may be a decimal because we care about the difference between 0.5 and 0 hosts
 	numHostsForTurnaroundRequirement := float64(scheduledDuration) / float64(maxDurationPerHost)
@@ -277,8 +281,14 @@ func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, num
 		return 1
 	}
 
-	// round the # of hosts needed down
-	numNewHosts := int(math.Floor(numNewHostsNeeded))
+	// round the # of hosts needed down or up depending
+
+	var numNewHosts int
+	if roundDown {
+		numNewHosts = int(math.Floor(numNewHostsNeeded))
+	} else {
+		numNewHosts = int(math.Ceil(numNewHostsNeeded))
+	}
 
 	// return 0 if numNewHosts is less than 0
 	if numNewHosts < 0 {

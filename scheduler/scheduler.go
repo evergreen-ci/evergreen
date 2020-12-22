@@ -168,7 +168,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			distroExpectedDuration += duration
 		}
 
-		if duration >= maxDurationThreshold {
+		if duration > maxDurationThreshold {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				if info != nil {
 					info.CountOverThreshold++
