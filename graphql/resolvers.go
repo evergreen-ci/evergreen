@@ -2447,6 +2447,22 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	return apiAnnotation, nil
 }
 
+func (r *annotationResolver) UserModifyPermission(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	t, err := r.sc.FindTaskById(*obj.TaskId)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	permissions := gimlet.PermissionOpts{
+		Resource:      t.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	return authUser.HasPermission(permissions), nil
+
+}
+
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
 	return restModel.GetJiraTickets(obj.Issues)
 }
