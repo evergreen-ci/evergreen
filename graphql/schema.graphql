@@ -11,6 +11,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   projects: Projects!
+  project(projectId: String!): Project!
   patchTasks(
     patchId: String!
     sortBy: TaskSortCategory = STATUS
@@ -94,13 +95,19 @@ type Mutation {
   ): Boolean!
   moveAnnotationIssue(
     annotationId: String!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   addAnnotationIssue(
     taskId: String!
     execution: Int!
-    apiIssue: AnnotationIssue!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  removeAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
@@ -234,6 +241,14 @@ input UseSpruceOptionsInput {
   spruceV1: Boolean
 }
 
+input PatchesInput {
+  limit: Int! = 0
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  includeCommitQueue: Boolean! = false
+}
+
 input SpawnHostInput {
   distroId: String!
   region: String!
@@ -278,7 +293,7 @@ input UpdateVolumeInput {
   volumeId: String!
 }
 
-input AnnotationIssue {
+input IssueLinkInput {
   url: String!
   issueKey: String!
 }
@@ -326,9 +341,9 @@ type Host {
 }
 
 type InstanceTag {
-  key: String
-  value: String
-  canBeModified: Boolean
+  key: String!
+  value: String!
+  canBeModified: Boolean!
 }
 
 input InstanceTagInput {
@@ -404,6 +419,11 @@ type FileDiff {
 }
 
 type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+type Patches {
   patches: [Patch!]!
   filteredPatchCount: Int!
 }
@@ -586,6 +606,7 @@ type Task {
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
+  annotation: Annotation
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
@@ -649,9 +670,11 @@ type GroupedProjects {
 
 type Project {
   identifier: String!
+  id: String!
   displayName: String!
   repo: String!
   owner: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type File {
@@ -664,6 +687,7 @@ type User {
   displayName: String!
   userId: String!
   emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches!
 }
 
 type RecentTaskLogs {
@@ -877,11 +901,38 @@ type TicketFields {
   created: String!
   updated: String!
   status: JiraStatus!
+  assignedTeam: String
 }
 
 type JiraStatus {
   id: String!
   name: String!
+}
+
+type Annotation {
+  taskId: String!
+  taskExecution: Int!
+  note: Note
+  issues: [IssueLink]
+  suspectedIssues: [IssueLink]
+}
+
+type Note {
+  message: String!
+  source: Source!
+}
+
+type IssueLink {
+  issueKey: String
+  url: String
+  source: Source!
+  jiraTicket: JiraTicket
+}
+
+type Source {
+  author: String!
+  time: Time!
+  requester: String!
 }
 
 scalar Time

@@ -301,7 +301,8 @@ buildvariants:
     github_org: wut?
 `
 	projectRef := &ProjectRef{
-		Id: "mci",
+		Id:         "mci",
+		Identifier: "mci-favorite",
 	}
 	assert.NoError(projectRef.Insert())
 	v := &Version{
@@ -334,7 +335,7 @@ buildvariants:
 	assert.NoError(err)
 	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 19)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -343,6 +344,7 @@ buildvariants:
 	assert.Equal("magic", expansions.Get("build_variant"))
 	assert.Equal("0ed7cbd33263043fa95aadb3f6068ef8d076854a", expansions.Get("revision"))
 	assert.Equal("mci", expansions.Get("project"))
+	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
@@ -367,7 +369,7 @@ buildvariants:
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 20)
+	assert.Len(map[string]string(expansions), 21)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_repo"))
@@ -386,7 +388,7 @@ buildvariants:
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 22)
+	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
@@ -401,7 +403,7 @@ buildvariants:
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
@@ -423,7 +425,7 @@ buildvariants:
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
@@ -446,7 +448,7 @@ buildvariants:
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 31)
+	assert.Len(map[string]string(expansions), 32)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -1057,6 +1059,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v1 := Version{
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf1",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now(),
 		RevisionOrderNumber: 1,
@@ -1065,6 +1068,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v2 := Version{
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf2",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now().Add(1 * time.Minute),
 		RevisionOrderNumber: 2,
@@ -1073,25 +1077,29 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	v3 := Version{
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
+		Revision:            "asdf3",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		CreateTime:          time.Now().Add(5 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
 	s.NoError(v3.Insert())
 	b1 := build.Build{
-		Id:      "b1",
-		Version: v1.Id,
-		Tasks:   []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
+		Id:       "b1",
+		Version:  v1.Id,
+		Revision: v1.Revision,
+		Tasks:    []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
 	}
 	s.NoError(b1.Insert())
 	b2 := build.Build{
-		Id:      "b2",
-		Version: v2.Id,
+		Id:       "b2",
+		Version:  v2.Id,
+		Revision: v2.Revision,
 	}
 	s.NoError(b2.Insert())
 	b3 := build.Build{
-		Id:      "b3",
-		Version: v3.Id,
+		Id:       "b3",
+		Version:  v3.Id,
+		Revision: v3.Revision,
 	}
 	s.NoError(b3.Insert())
 	t1 := task.Task{
@@ -1115,6 +1123,9 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	s.Equal(b1.Id, builds[v1.Id][0].Id)
 	s.Equal(b2.Id, builds[v2.Id][0].Id)
 	s.Equal(b3.Id, builds[v3.Id][0].Id)
+	s.Equal(v1.Revision, builds[v1.Id][0].Revision)
+	s.Equal(v2.Revision, builds[v2.Id][0].Revision)
+	s.Equal(v3.Revision, builds[v3.Id][0].Revision)
 	s.Equal(t1.Id, tasks[b1.Id][0].Id)
 	s.Equal(t2.Id, tasks[b1.Id][1].Id)
 }

@@ -90,6 +90,25 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
+	for i, t := range projRef.PatchTriggerAliases {
+		var childProject *model.ProjectRef
+		childProject, err = model.FindOneProjectRef(t.ChildProject)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			continue
+		}
+		if childProject == nil {
+			gimlet.WriteJSONResponse(w, http.StatusNotFound,
+				gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child project '%s' of patch trigger alias cannot be found", t.ChildProject),
+				})
+			continue
+		}
+		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
+	}
+
 	projVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -228,6 +247,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
 		UseRepoSettings         bool                           `json:"use_repo_settings"`
+		Hidden                  bool                           `json:"hidden"`
 		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
 		PatchingDisabled        bool                           `json:"patching_disabled"`
@@ -451,8 +471,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
-	for _, t := range responseRef.PatchTriggerAliases {
-		catcher.Add(model.ValidateTriggerDefinition(t, id))
+	for i := range responseRef.PatchTriggerAliases {
+		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
+		catcher.Add(err)
 	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
@@ -480,6 +501,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
 	projectRef.UseRepoSettings = responseRef.UseRepoSettings
+	projectRef.Hidden = responseRef.Hidden
 	projectRef.Id = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.CommitQueue = commitQueueParams
@@ -848,7 +870,7 @@ func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []mo
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProject(projectIdentifier, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectIdentifier, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

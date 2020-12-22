@@ -1,10 +1,14 @@
 package model
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
 )
 
 type APITaskAnnotation struct {
@@ -27,9 +31,10 @@ type APISource struct {
 	Requester *string    `bson:"requester,omitempty" json:"requester,omitempty"`
 }
 type APIIssueLink struct {
-	URL      *string    `bson:"url" json:"url"`
-	IssueKey *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source   *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	URL        *string                `bson:"url" json:"url"`
+	IssueKey   *string                `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source     *APISource             `bson:"source,omitempty" json:"source,omitempty"`
+	JiraTicket *thirdparty.JiraTicket `bson:"jira_ticket,omitempty" json:"jira_ticket,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -154,4 +159,23 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 		m = append(m, *APIIssueLinkToService(e))
 	}
 	return m
+}
+
+func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
+	settings := evergreen.GetEnvironment().Settings()
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	catcher := grip.NewBasicCatcher()
+
+	var res []*APIIssueLink
+	for _, issue := range issueLinks {
+		urlObject, err := url.Parse(*issue.URL)
+		catcher.Wrap(err, "problem parsing the issue url")
+		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
+			issue.JiraTicket, err = jiraHandler.GetJIRATicket(*issue.IssueKey)
+			catcher.Wrap(err, "error getting Jira ticket")
+		}
+		issueToAdd := issue
+		res = append(res, &issueToAdd)
+	}
+	return res, catcher.Resolve()
 }

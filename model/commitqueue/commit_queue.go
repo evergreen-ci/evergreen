@@ -32,7 +32,6 @@ type CommitQueueItem struct {
 	Version         string    `bson:"version,omitempty"`
 	EnqueueTime     time.Time `bson:"enqueue_time"`
 	Modules         []Module  `bson:"modules"`
-	TitleOverride   string    `bson:"title_override"`
 	MessageOverride string    `bson:"message_override"`
 }
 

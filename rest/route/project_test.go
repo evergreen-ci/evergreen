@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -542,4 +543,129 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(string(respJson), `"version_id":"v4"`)
 	assert.NotContains(string(respJson), `"version_id":"v3"`)
+}
+
+func TestDeleteProject(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(
+		serviceModel.ProjectRefCollection,
+		serviceModel.RepoRefCollection,
+		serviceModel.ProjectAliasCollection,
+		serviceModel.ProjectVarsCollection,
+	))
+
+	repo := serviceModel.RepoRef{
+		ProjectRef: serviceModel.ProjectRef{
+			Id:      "repo_ref",
+			Owner:   "mongodb",
+			Repo:    "test_repo",
+			Enabled: true,
+		},
+	}
+	assert.NoError(t, repo.Insert())
+
+	// Projects expected to be successfully deleted
+	numGoodProjects := 2
+	var projects []serviceModel.ProjectRef
+	for i := 0; i < numGoodProjects; i++ {
+		project := serviceModel.ProjectRef{
+			Id:                   fmt.Sprintf("id_%d", i),
+			Owner:                "mongodb",
+			Repo:                 "test_repo",
+			Branch:               fmt.Sprintf("branch_%d", i),
+			Enabled:              true,
+			RepoKind:             "github",
+			Private:              true,
+			DisplayName:          fmt.Sprintf("display_%d", i),
+			UseRepoSettings:      true,
+			RepoRefId:            "repo_ref",
+			TracksPushEvents:     true,
+			PRTestingEnabled:     true,
+			Admins:               []string{"admin0", "admin1"},
+			NotifyOnBuildFailure: true,
+		}
+
+		projects = append(projects, project)
+		require.NoError(t, project.Insert())
+	}
+
+	numAliases := 2
+	var aliases []serviceModel.ProjectAlias
+	for i := 0; i < numAliases; i++ {
+		projAlias := serviceModel.ProjectAlias{
+			ProjectID: projects[0].Id,
+			Alias:     fmt.Sprintf("alias_%d", i),
+			Variant:   fmt.Sprintf("variant_%d", i),
+			Task:      fmt.Sprintf("task_%d", i),
+		}
+
+		aliases = append(aliases, projAlias)
+		require.NoError(t, projAlias.Upsert())
+	}
+
+	projVars := serviceModel.ProjectVars{
+		Id:   projects[0].Id,
+		Vars: map[string]string{"hello": "world"},
+	}
+	_, err := projVars.Upsert()
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	pdh := projectDeleteHandler{
+		sc: &data.DBConnector{},
+	}
+
+	// Test cases:
+	// 0) Project with 2 ProjectAliases and a ProjectVars
+	// 1) Project with 0 ProjectAliases and no ProjectVars
+	for i := 0; i < numGoodProjects; i++ {
+		pdh.projectName = projects[i].Id
+		resp := pdh.Run(ctx)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id)
+		assert.NoError(t, err)
+		skeletonProj := serviceModel.ProjectRef{
+			Id:              projects[i].Id,
+			Owner:           repo.Owner,
+			Repo:            repo.Repo,
+			Branch:          projects[i].Branch,
+			RepoRefId:       repo.Id,
+			Enabled:         false,
+			UseRepoSettings: true,
+			Hidden:          true,
+		}
+		assert.Equal(t, skeletonProj, *hiddenProj)
+
+		projAliases, err := serviceModel.FindAliasesForProject(projects[i].Id)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(projAliases))
+
+		skeletonProjVars := serviceModel.ProjectVars{
+			Id: projects[i].Id,
+		}
+		projVars, err := serviceModel.FindOneProjectVars(projects[i].Id)
+		assert.NoError(t, err)
+		assert.Equal(t, skeletonProjVars, *projVars)
+	}
+
+	// Testing projects ineligible for deletion
+	// Project that's already hidden
+	pdh.projectName = projects[0].Id
+	resp := pdh.Run(ctx)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// Non-existent project
+	pdh.projectName = "bad_project"
+	resp = pdh.Run(ctx)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+
+	// Project with UseRepoSettings == false
+	badProject := serviceModel.ProjectRef{
+		Id:              "bad_project",
+		UseRepoSettings: false,
+	}
+	require.NoError(t, badProject.Insert())
+	pdh.projectName = badProject.Id
+	resp = pdh.Run(ctx)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
 }

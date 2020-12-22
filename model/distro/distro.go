@@ -76,10 +76,9 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                     []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits          ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts     []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
-	FetchProvisioningScript bool                 `bson:"fetch_provisioning_script,omitempty" json:"fetch_provisioning_script,omitempty" mapstructure:"fetch_provisioning_script,omitempty"`
+	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
@@ -214,7 +213,9 @@ type HostAllocatorSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	RoundingRule           string        `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
+	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
 
 type FinderSettings struct {
@@ -634,6 +635,8 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
+		RoundingRule:           has.RoundingRule,
+		FutureHostFraction:     has.FutureHostFraction,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -647,6 +650,12 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
+		resolved.RoundingRule = config.HostAllocatorRoundingRule
+	}
+	if resolved.FutureHostFraction == 0 {
+		resolved.FutureHostFraction = config.FutureHostFraction
 	}
 	if catcher.HasErrors() {
 		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)

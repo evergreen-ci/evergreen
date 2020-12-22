@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -165,9 +164,9 @@ type Connector interface {
 	// Find a host by ID and queries for full running task
 	GetHostByIdWithTask(hostID string) (*host.Host, error)
 
-	// GenerateHostProvisioningOptions generates and returns the options to
+	// GenerateHostProvisioningScript generates and returns the script to
 	// provision the host given by host ID.
-	GenerateHostProvisioningOptions(ctx context.Context, hostID string) (*userdata.Options, error)
+	GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(context.Context, *restModel.HostRequestOptions, *user.DBUser, *evergreen.Settings) (*host.Host, error)
@@ -215,9 +214,12 @@ type Connector interface {
 	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
-	// FindPatchesByUser fetches a page of patches for the input user ordered by creation
-	// time and filters when given statuses, patch name, and commit queue parameters
+	// FindPatchesByUserPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input user ID
+	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
 	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
+	// FindPatchesByProjectPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input project ID
+	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
+	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
@@ -350,4 +352,6 @@ type Connector interface {
 
 	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
 	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+
+	CompareTasks([]string) ([]string, map[string]map[string]string, error)
 }

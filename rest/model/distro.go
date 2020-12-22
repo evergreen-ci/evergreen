@@ -75,6 +75,7 @@ type APIHostAllocatorSettings struct {
 	Version                *string     `json:"version"`
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
+	RoundingRule           *string     `json:"rounding_rule"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 }
 
@@ -98,6 +99,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
+	s.RoundingRule = ToStringPtr(settings.RoundingRule)
 
 	return nil
 }
@@ -112,6 +114,7 @@ func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
+	settings.RoundingRule = FromStringPtr(s.RoundingRule)
 
 	return interface{}(settings), nil
 }
@@ -201,18 +204,17 @@ func (s *APIDispatcherSettings) ToService() (interface{}, error) {
 // APIBootstrapSettings is the model to be returned by the API whenever distro.BootstrapSettings are fetched
 
 type APIBootstrapSettings struct {
-	Method                  *string                 `json:"method"`
-	Communication           *string                 `json:"communication"`
-	ClientDir               *string                 `json:"client_dir"`
-	JasperBinaryDir         *string                 `json:"jasper_binary_dir"`
-	JasperCredentialsPath   *string                 `json:"jasper_credentials_path"`
-	ServiceUser             *string                 `json:"service_user"`
-	ShellPath               *string                 `json:"shell_path"`
-	RootDir                 *string                 `json:"root_dir"`
-	Env                     []APIEnvVar             `json:"env"`
-	ResourceLimits          APIResourceLimits       `json:"resource_limits"`
-	PreconditionScripts     []APIPreconditionScript `json:"precondition_scripts"`
-	FetchProvisioningScript bool                    `json:"fetch_provisioning_script"`
+	Method                *string                 `json:"method"`
+	Communication         *string                 `json:"communication"`
+	ClientDir             *string                 `json:"client_dir"`
+	JasperBinaryDir       *string                 `json:"jasper_binary_dir"`
+	JasperCredentialsPath *string                 `json:"jasper_credentials_path"`
+	ServiceUser           *string                 `json:"service_user"`
+	ShellPath             *string                 `json:"shell_path"`
+	RootDir               *string                 `json:"root_dir"`
+	Env                   []APIEnvVar             `json:"env"`
+	ResourceLimits        APIResourceLimits       `json:"resource_limits"`
+	PreconditionScripts   []APIPreconditionScript `json:"precondition_scripts"`
 }
 
 type APIEnvVar struct {
@@ -322,7 +324,6 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
 	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
-	s.FetchProvisioningScript = settings.FetchProvisioningScript
 
 	return nil
 }
@@ -371,7 +372,6 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
 	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
-	settings.FetchProvisioningScript = s.FetchProvisioningScript
 
 	return settings, nil
 }

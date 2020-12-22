@@ -852,6 +852,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Id)
+	expansions.Put("project_identifier", projectRef.Identifier)
 	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {
@@ -1301,7 +1302,7 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := FindAliasInProject(p.Identifier, alias)
+		vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
 		catcher.Add(errors.Wrap(err, "can't get alias from project"))
 
 		var aliasPairs, displayTaskPairs []TVPair
@@ -1506,7 +1507,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {
 			if specifier.PatchAlias != "" {
-				aliases, err := FindAliasInProject(p.Identifier, specifier.PatchAlias)
+				aliases, err := FindAliasInProjectOrRepo(p.Identifier, specifier.PatchAlias)
 				if err != nil {
 					return nil, errors.Wrap(err, "can't get alias from project")
 				}
@@ -1617,6 +1618,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 				bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey),
 				build.VersionKey,
 				build.DisplayNameKey,
+				build.RevisionKey,
 			))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching builds from database")

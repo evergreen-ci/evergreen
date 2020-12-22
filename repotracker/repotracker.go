@@ -646,7 +646,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			"aliases": aliases,
 		})
 	} else if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProject(projectInfo.Ref.Id, metadata.Alias)
+		aliases, err = model.FindAliasInProjectOrRepo(projectInfo.Ref.Id, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}
@@ -837,6 +837,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"version": v.Id,
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
+	debuggingData := map[string]string{}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		args := model.BuildCreateArgs{
@@ -859,9 +860,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"project": projectInfo.Ref.Id,
 				"version": v.Id,
 			}))
+			debuggingData[buildvariant.Name] = "error creating build"
 			continue
 		}
 		if len(tasks) == 0 {
+			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
 			continue
 		}
 		buildsToCreate = append(buildsToCreate, *b)
@@ -916,6 +919,26 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				Activated:  false,
 			},
 		})
+	}
+
+	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
+		"message":           "version has no builds",
+		"version":           v.Id,
+		"revision":          v.Revision,
+		"author":            v.Author,
+		"identifier":        v.Identifier,
+		"requester":         v.Requester,
+		"owner":             v.Owner,
+		"repo":              v.Repo,
+		"branch":            v.Branch,
+		"buildvariant_data": debuggingData,
+	})
+	if len(buildsToCreate) == 0 {
+		aliasString := ""
+		for _, a := range aliases {
+			aliasString += a.Alias + ","
+		}
+		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",

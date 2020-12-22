@@ -221,10 +221,17 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
-	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
+	terminateReason := ""
+
+	if communicationTime >= idleThreshold {
+		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %d over threshold minutes %d", communicationTime, idleThreshold)
+	} else if idleTime >= idleThreshold {
+		terminateReason = fmt.Sprintf("host is idle or unreachable, idleTime %d over threshold minutes %d", idleTime, idleThreshold)
+	}
+	if terminateReason != "" {
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, "host is idle or unreachable"))
+		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))
 	}
 	return nil
 }

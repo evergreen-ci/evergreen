@@ -294,12 +294,14 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 			MinimumHosts:           4,
 			MaximumHosts:           10,
 			AcceptableHostIdleTime: 0,
+			RoundingRule:           evergreen.HostAllocatorRoundDefault,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		HostAllocatorRoundingRule:     evergreen.HostAllocatorRoundDown,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             112358,
@@ -320,8 +322,15 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, evergreen.HostAllocatorUtilization, resolved0.Version)
 	assert.Equal(t, 4, resolved0.MinimumHosts)
 	assert.Equal(t, 10, resolved0.MaximumHosts)
+	assert.Equal(t, evergreen.HostAllocatorRoundDown, resolved0.RoundingRule)
 	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
 	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
+
+	// test distro-first override when RoundingRule is not HostAllocatorRoundDefault
+	d0.HostAllocatorSettings.RoundingRule = evergreen.HostAllocatorRoundUp
+	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostAllocatorRoundUp, resolved0.RoundingRule)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {
@@ -342,7 +351,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config0 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             112358,
@@ -393,7 +402,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config1 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             10,
@@ -440,7 +449,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	config2 := evergreen.SchedulerConfig{
 		TaskFinder:                    "",
 		HostAllocator:                 "",
-		FreeHostFraction:              0.1,
+		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             12345,

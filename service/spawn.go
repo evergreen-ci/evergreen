@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -47,6 +48,29 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error
+
+	currentUser := MustHaveUser(r)
+
+	hasQueryParams := false
+	spruceQueryParams := "/host?spawnHost=True"
+	if len(r.FormValue("distro_id")) > 0 {
+		spruceQueryParams += fmt.Sprintf("&distroId=%s", r.FormValue("distro_id"))
+		hasQueryParams = true
+	}
+	if len(r.FormValue("task_id")) > 0 {
+		spruceQueryParams += fmt.Sprintf("&taskId=%s", r.FormValue("task_id"))
+		hasQueryParams = true
+	}
+	spruceLink := fmt.Sprintf("%s/spawn", uis.Settings.Ui.UIv2Url)
+	if hasQueryParams {
+		spruceLink += spruceQueryParams
+	}
+	// Redirect the user to spruce only if they aren't visiting this page from spruce already and have spruce enabled
+	if currentUser.Settings.UseSpruceOptions.SpruceV1 && !strings.Contains(r.Referer(), uis.Settings.Ui.UIv2Url) {
+		http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
+		return
+	}
+
 	if len(r.FormValue("distro_id")) > 0 {
 		var dat distro.AliasLookupTable
 		dat, err = distro.NewDistroAliasesLookupTable()
@@ -100,6 +124,11 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		maxHosts = settings.Spawnhost.SpawnHostsPerUser
 	}
 
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro                       distro.Distro
 		Task                         *task.Task
@@ -108,9 +137,10 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		MaxUnexpirableVolumesPerUser int
 		MaxVolumeSizePerUser         int
 		SetupScriptPath              string
+		NewUILink                    string
 		ViewData
 	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
-		setupScriptPath, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+		setupScriptPath, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {

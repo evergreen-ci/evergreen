@@ -98,6 +98,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
 		return
 	}
+	if _, err = distro.GetResolvedHostAllocatorSettings(config); err != nil {
+		j.AddError(errors.Errorf("distro '%s' host allocator settings failed to resolve", j.DistroID))
+		return
+	}
 
 	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
 		j.AddError(errors.Wrap(err, "problem updating static hosts"))
@@ -136,14 +140,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	////////////////////////
 
 	hostAllocationBegins := time.Now()
+
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
+
 	hostAllocatorData := scheduler.HostAllocatorData{
-		Distro:           *distro,
-		ExistingHosts:    upHosts,
-		FreeHostFraction: config.Scheduler.FreeHostFraction,
-		UsesContainers:   (containerPool != nil),
-		ContainerPool:    containerPool,
-		DistroQueueInfo:  distroQueueInfo,
+		Distro:          *distro,
+		ExistingHosts:   upHosts,
+		UsesContainers:  (containerPool != nil),
+		ContainerPool:   containerPool,
+		DistroQueueInfo: distroQueueInfo,
 	}
 
 	// nHosts is the number of additional hosts desired.

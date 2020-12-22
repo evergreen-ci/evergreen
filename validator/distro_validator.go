@@ -396,6 +396,12 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 			Level:   Error,
 		})
 	}
+	if !utility.StringSliceContains(evergreen.ValidHostAllocatorRoundingRules, settings.RoundingRule) {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid host_allocator_settings.rounding_rule value of %s for distro '%s' - its value must be %s", settings.RoundingRule, d.Id, evergreen.ValidHostAllocatorRoundingRules),
+			Level:   Error,
+		})
+	}
 	if settings.AcceptableHostIdleTime < 0 {
 		ms := settings.AcceptableHostIdleTime / time.Millisecond
 		errs = append(errs, ValidationError{
@@ -412,6 +418,12 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 		ms := settings.AcceptableHostIdleTime / time.Millisecond
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid host_allocator_settings.acceptable_host_idle_time value of %dms for distro '%s' - its millisecond value must convert directly to units of seconds", ms, d.Id),
+			Level:   Error,
+		})
+	}
+	if settings.FutureHostFraction < 0 || settings.FutureHostFraction > 1 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid host_allocator_settings.future_host_fraction value of %f for distro '%s' - its value must be a fraction between 0 and 1, inclusive", settings.FutureHostFraction, d.Id),
 			Level:   Error,
 		})
 	}

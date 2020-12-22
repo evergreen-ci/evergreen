@@ -97,6 +97,7 @@ type ProjectRef struct {
 	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
+	Hidden  bool `bson:"hidden" json:"hidden"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -200,6 +201,7 @@ var (
 	ProjectRefDeactivatePreviousKey      = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
 	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefTrackedKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
+	ProjectRefHiddenKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerError           = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefFilesIgnoredFromCache      = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
 	ProjectRefDisabledStatsCache         = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
@@ -854,6 +856,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefTrackedKey:                 projectRef.Tracked,
 				ProjectRefRemotePathKey:              projectRef.RemotePath,
 				ProjectRefTrackedKey:                 projectRef.Tracked,
+				ProjectRefHiddenKey:                  projectRef.Hidden,
 				ProjectRefRepotrackerError:           projectRef.RepotrackerError,
 				ProjectRefFilesIgnoredFromCache:      projectRef.FilesIgnoredFromCache,
 				ProjectRefDisabledStatsCache:         projectRef.DisabledStatsCache,
@@ -1352,59 +1355,62 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) error {
+func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
-		return errors.New("a project cannot trigger itself")
+		return definition, errors.New("a project cannot trigger itself")
 	}
 
 	childProject, err := FindOneProjectRef(definition.ChildProject)
 	if err != nil {
-		return errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
+		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
 	}
 	if childProject == nil {
-		return errors.Errorf("child project '%s' not found", definition.ChildProject)
+		return definition, errors.Errorf("child project '%s' not found", definition.ChildProject)
 	}
 
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
-		return errors.Errorf("invalid status: %s", definition.Status)
+		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
+
+	// ChildProject should be saved using its ID, in case the user used the project's Identifier
+	definition.ChildProject = childProject.Id
 
 	for _, specifier := range definition.TaskSpecifiers {
 		if (specifier.VariantRegex != "" || specifier.TaskRegex != "") && specifier.PatchAlias != "" {
-			return errors.New("can't specify both a regex set and a patch alias")
+			return definition, errors.New("can't specify both a regex set and a patch alias")
 		}
 
 		if specifier.PatchAlias == "" && (specifier.TaskRegex == "" || specifier.VariantRegex == "") {
-			return errors.New("must specify either a patch alias or a complete regex set")
+			return definition, errors.New("must specify either a patch alias or a complete regex set")
 		}
 
 		if specifier.VariantRegex != "" {
 			_, regexErr := regexp.Compile(specifier.VariantRegex)
 			if regexErr != nil {
-				return errors.Wrapf(regexErr, "invalid variant regex '%s'", specifier.VariantRegex)
+				return definition, errors.Wrapf(regexErr, "invalid variant regex '%s'", specifier.VariantRegex)
 			}
 		}
 
 		if specifier.TaskRegex != "" {
 			_, regexErr := regexp.Compile(specifier.TaskRegex)
 			if regexErr != nil {
-				return errors.Wrapf(regexErr, "invalid task regex '%s'", specifier.TaskRegex)
+				return definition, errors.Wrapf(regexErr, "invalid task regex '%s'", specifier.TaskRegex)
 			}
 		}
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProject(definition.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectOrRepo(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
-				return errors.Wrap(err, "problem fetching aliases for project")
+				return definition, errors.Wrap(err, "problem fetching aliases for project")
 			}
 			if len(aliases) == 0 {
-				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, definition.ChildProject)
+				return definition, errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, definition.ChildProject)
 			}
 		}
 	}
 
-	return nil
+	return definition, nil
 }
 
 func (d *PeriodicBuildDefinition) Validate() error {

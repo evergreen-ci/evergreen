@@ -304,7 +304,7 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 // unrestricted project variables and parameters associated with a task.
 func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	projectVars, err := model.FindOneProjectVars(t.Project)
+	projectVars, err := model.FindMergedProjectVars(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

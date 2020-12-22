@@ -214,7 +214,6 @@ functions:
         GOOS: ${goos}
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
-        IS_DOCKER: ${is_docker}
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -416,7 +415,7 @@ tasks:
     tags: ["db", "test"]
     name: test-db
   - <<: *run-go-test-suite-with-docker
-    tags: ["db", "test"]
+    tags: ["db"]
     name: test-cloud
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -606,6 +605,7 @@ buildvariants:
       - name: "js-test"
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
+      - name: test-cloud
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
@@ -620,7 +620,6 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
-      is_docker: "true"
     tasks:
       - name: "dist"
       - name: ".smoke"

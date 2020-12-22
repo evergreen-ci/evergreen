@@ -1,0 +1,10 @@
+{
+  project(projectId: "evergreen") {
+    patches(patchesInput: { includeCommitQueue: true }) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

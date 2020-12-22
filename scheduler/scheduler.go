@@ -37,7 +37,7 @@ func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOption
 func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	var err error
 
-	tasks, err = PopulateCaches(opts.ID, d.Id, tasks)
+	tasks, err = PopulateCaches(opts.ID, tasks)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -59,7 +59,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 // Legacy Scheduler Implementation
 
 func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
-	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
+	runnableTasks, versions, err := FilterTasksWithVersionCache(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while filtering tasks against the versions' cache")
 	}
@@ -101,7 +101,7 @@ type distroScheduler struct {
 }
 
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
-	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
+	prioritizedTasks, _, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error prioritizing tasks for distro '%s'", distroID)
 
@@ -168,7 +168,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			distroExpectedDuration += duration
 		}
 
-		if duration >= maxDurationThreshold {
+		if duration > maxDurationThreshold {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				if info != nil {
 					info.CountOverThreshold++

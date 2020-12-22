@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script>
 	window.validDefaultLoggers = {{.ValidDefaultLoggers }};
+	window.validDefaultHostAllocatorRoundingRules = {{.ValidDefaultHostAllocatorRoundingRules}};
 	window.can_clear_tokens = {{.CanClearTokens }};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
@@ -604,9 +605,16 @@ Admin Settings
 										<label>Host Allocator</label>
 										<input type="text" ng-model="Settings.scheduler.host_allocator">
 									</md-input-container>
+									<md-input-container class="control" style="width:60%;">
+										<label>Rounding Rule</label>
+										<md-select ng-model="Settings.scheduler.host_allocator_rounding_rule">
+											<md-option ng-repeat="rule in validDefaultHostAllocatorRoundingRules" value="[[rule]]">
+												[[rule]]</md-option>
+										</md-select>
+									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Free Host Fraction</label>
-										<input type="number" step="0.01" min="0" max="1"
+										<label>Default Future Host Fraction</label>
+										<input type="number" step=".01" min="0" max="1"
 											ng-model="Settings.scheduler.free_host_fraction">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">

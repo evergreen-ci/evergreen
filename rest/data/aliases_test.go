@@ -150,7 +150,7 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 	a.Empty(path)
 
 	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
-	a.NoError(err)
+	a.Error(err)
 	a.False(hasAliases)
 	a.Empty(path)
 
