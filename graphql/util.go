@@ -108,12 +108,6 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-// IsURL returns true if str is a url with scheme and domain name
-func IsURL(str string) bool {
-	u, err := url.ParseRequestURI(str)
-	return err == nil && u.Scheme != "" && u.Host != ""
-}
-
 func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error) {
 	version, err := d.FindVersionById(versionID)
 	if err != nil {

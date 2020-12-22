@@ -415,7 +415,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
-	assert.Contains(t, err.Error(), "issue url 'https://issuelinkcom' must have a domain and extension")
+	assert.Contains(t, err.Error(), "url 'https://issuelinkcom' must have a domain and extension")
 
 	//test with a task that doesn't exist
 	h = &annotationByTaskPutHandler{

@@ -275,10 +275,10 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 
 	catcher := grip.NewBasicCatcher()
 	for _, issue := range h.annotation.Issues {
-		catcher.Add(annotations.ValidateIssueURL(*issue.URL))
+		catcher.Add(util.CheckURL(model.FromStringPtr(issue.URL)))
 	}
 	for _, issue := range h.annotation.SuspectedIssues {
-		catcher.Add(annotations.ValidateIssueURL(*issue.URL))
+		catcher.Add(util.CheckURL(model.FromStringPtr(issue.URL)))
 	}
 	if catcher.HasErrors() {
 		return gimlet.ErrorResponse{
