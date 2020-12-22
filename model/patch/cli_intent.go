@@ -101,13 +101,16 @@ var (
 )
 
 func (c *cliIntent) Insert() error {
-	patchFileID := mgobson.NewObjectId()
-	if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
-		return err
+	if len(c.PatchContent) > 0 {
+		patchFileID := mgobson.NewObjectId()
+		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
+			return err
+		}
+
+		c.PatchContent = ""
+		c.PatchFileID = patchFileID
 	}
 
-	c.PatchContent = ""
-	c.PatchFileID = patchFileID
 	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
 	if err := db.Insert(IntentCollection, c); err != nil {
@@ -167,7 +170,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		BackportOf:    c.BackportOf,
 		Patches:       []ModulePatch{},
 	}
-	if p.BackportOf.PatchID == "" { // the intent processor adds the patches if backporting by patch ID
+	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
 			ModulePatch{
 				ModuleName: c.Module,

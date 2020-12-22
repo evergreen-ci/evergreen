@@ -91,15 +91,16 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		j.AddError(err)
-	}
-	if j.intent == nil {
-		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
-		j.AddError(err)
-		j.IntentType = j.intent.GetType()
+		return
 	}
 
-	if j.HasErrors() {
-		return
+	if j.intent == nil {
+		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		j.IntentType = j.intent.GetType()
 	}
 
 	patchDoc := j.intent.NewPatch()
@@ -178,9 +179,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		catcher.Add(j.buildTriggerPatchDoc(ctx, patchDoc))
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
-	}
-	if len(patchDoc.Patches) != 1 {
-		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len(patchDoc.Patches)))
 	}
 
 	if err = catcher.Resolve(); err != nil {
@@ -262,15 +260,18 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	// TODO: add only user-defined parameters to patch/version
 	patchDoc.PatchedConfig = projectYaml
-	if patchDoc.Patches[0].ModuleName != "" {
-		// is there a module? validate it.
-		var module *model.Module
-		module, err = project.GetModuleByName(patchDoc.Patches[0].ModuleName)
-		if err != nil {
-			return errors.Wrapf(err, "could not find module '%s'", patchDoc.Patches[0].ModuleName)
-		}
-		if module == nil {
-			return errors.Errorf("no module named '%s'", patchDoc.Patches[0].ModuleName)
+
+	for _, modulePatch := range patchDoc.Patches {
+		if modulePatch.ModuleName != "" {
+			// validate the module exists
+			var module *model.Module
+			module, err = project.GetModuleByName(modulePatch.ModuleName)
+			if err != nil {
+				return errors.Wrapf(err, "could not find module '%s'", modulePatch.ModuleName)
+			}
+			if module == nil {
+				return errors.Errorf("no module named '%s'", modulePatch.ModuleName)
+			}
 		}
 	}
 
