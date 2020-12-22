@@ -42,7 +42,7 @@ func (t *TriggerIntent) SetProcessed() error {
 	return updateOneIntent(
 		bson.M{triggerIDKey: t.Id},
 		bson.M{"$set": bson.M{
-			cliProcessedKey: true,
+			triggerProcessedKey: true,
 		}},
 	)
 }
