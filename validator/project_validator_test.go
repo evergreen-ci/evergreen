@@ -706,18 +706,14 @@ func TestValidateModuleBranches(t *testing.T) {
 			project := &model.Project{
 				Modules: model.ModuleList{
 					model.Module{
-						Name:   "module-0",
+						Name: "module-0",
+					},
+					model.Module{
+						Name:   "module-1",
 						Branch: "master",
 					},
 					model.Module{
-						Name: "module-1",
-					},
-					model.Module{
 						Name: "module-2",
-					},
-					model.Module{
-						Name:   "module-3",
-						Branch: "other",
 					},
 				},
 			}
