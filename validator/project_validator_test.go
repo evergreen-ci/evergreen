@@ -702,7 +702,7 @@ func TestValidateTaskNames(t *testing.T) {
 
 func TestValidateModules(t *testing.T) {
 	Convey("When validating a project's modules", t, func() {
-		Convey("An error should be returned when more than one module shares the same name", func() {
+		Convey("An error should be returned when more than one module shares the same name or is empty", func() {
 			project := &model.Project{
 				Modules: model.ModuleList{
 					model.Module{
