@@ -730,9 +730,13 @@ func TestValidateModules(t *testing.T) {
 						Branch: "master",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
+					model.Module{
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
 				},
 			}
-			So(len(validateModules(project)), ShouldEqual, 2)
+			So(len(validateModules(project)), ShouldEqual, 3)
 		})
 
 		Convey("An error should be returned when the module does not have a branch", func() {

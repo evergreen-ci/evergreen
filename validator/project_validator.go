@@ -592,8 +592,13 @@ func validateModules(project *model.Project) ValidationErrors {
 	moduleNames := map[string]bool{}
 
 	for _, module := range project.Modules {
-		// Warn if name is a duplicate
-		if moduleNames[module.Name] {
+		// Warn if name is a duplicate or empty
+		if module.Name == "" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: "module cannot have an empty name",
+			})
+		} else if moduleNames[module.Name] {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
 				Message: fmt.Sprintf("module '%s' already exists", module.Name),
