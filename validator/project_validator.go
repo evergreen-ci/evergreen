@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -99,7 +100,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateTaskDependencies,
 	validateTaskRuns,
 	validateTaskNames,
-	validateModuleBranches,
+	validateModules,
 	validateBVNames,
 	validateBVBatchTimes,
 	validateDisplayTaskNames,
@@ -585,17 +586,45 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateModuleBranches checks to make sure that branches of modules have a set branch.
-func validateModuleBranches(project *model.Project) ValidationErrors {
+// validateModules checks to make sure that the module's name, branch, and repo are correct.
+func validateModules(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
+	moduleNames := map[string]bool{}
+
 	for _, module := range project.Modules {
+		// Warn if name is a duplicate
+		if moduleNames[module.Name] {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("module '%s' already exists", module.Name),
+			})
+		} else {
+			moduleNames[module.Name] = true
+		}
+
+		// Warn if branch is empty
 		if module.Branch == "" {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
 				Message: fmt.Sprintf("module '%s' should have a set branch", module.Name),
 			})
 		}
+
+		// Warn if repo is empty or does not conform to Git URL format
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: errors.Wrapf(err, "module '%s' does not have a valid repo URL format", module.Name).Error(),
+			})
+		} else if owner == "" || repo == "" {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("module '%s' repo '%s' is missing an owner or repo name", module.Name, module.Repo),
+			})
+		}
 	}
+
 	return errs
 }
 
