@@ -45,10 +45,11 @@ type VariantTask struct {
 }
 
 type FileDiff struct {
-	FileName  *string `json:"file_name"`
-	Additions int     `json:"additions"`
-	Deletions int     `json:"deletions"`
-	DiffLink  *string `json:"diff_link"`
+	FileName    *string `json:"file_name"`
+	Additions   int     `json:"additions"`
+	Deletions   int     `json:"deletions"`
+	DiffLink    *string `json:"diff_link"`
+	Description string  `json:"description"`
 }
 
 type APIModulePatch struct {
@@ -140,10 +141,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 				diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
 				fileName := file.Name
 				fileDiff := FileDiff{
-					FileName:  &fileName,
-					Additions: file.Additions,
-					Deletions: file.Deletions,
-					DiffLink:  &diffLink,
+					FileName:    &fileName,
+					Additions:   file.Additions,
+					Deletions:   file.Deletions,
+					DiffLink:    &diffLink,
+					Description: file.Description,
 				}
 				fileDiffs = append(fileDiffs, fileDiff)
 			}
