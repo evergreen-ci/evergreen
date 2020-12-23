@@ -21,7 +21,7 @@ type cliIntent struct {
 	DocumentID string `bson:"_id"`
 
 	// PatchFileID is the object id of the patch file created in gridfs
-	PatchFileID mgobson.ObjectId `bson:"patch_file_id"`
+	PatchFileID mgobson.ObjectId `bson:"patch_file_id,omitempty"`
 
 	// PatchContent is the patch as supplied by the client. It is saved
 	// separately from the patch intent
