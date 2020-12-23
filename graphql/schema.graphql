@@ -104,6 +104,12 @@ type Mutation {
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
+  removeAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!

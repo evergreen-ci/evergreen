@@ -33,6 +33,22 @@
       }
     },
     {
+      "query_file": "removeIssue.graphql",
+      "result": {
+        "data": {
+          "removeAnnotationIssue": true
+        }
+      }
+    },
+    {
+      "query_file": "removeSuspectedIssue.graphql",
+      "result": {
+        "data": {
+          "removeAnnotationIssue": true
+        }
+      }
+    },
+    {
       "query_file": "editNote.graphql",
       "result": {
         "data": {

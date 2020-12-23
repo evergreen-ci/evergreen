@@ -1953,6 +1953,24 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	}
 }
 
+// RemoveAnnotationIssue adds to the annotation for that taskID/execution.
+// If isIssue is set, it adds to Issues, otherwise it adds to Suspected Issues.
+func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID string, execution int,
+	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.RemoveIssueFromAnnotation(taskID, execution, *issue); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete issue: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.RemoveSuspectedIssueFromAnnotation(taskID, execution, *issue); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete suspected issue: %s", err.Error()))
+		}
+		return true, nil
+	}
+}
+
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	result, err := r.sc.CommitQueueRemoveItem(commitQueueID, issue, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
