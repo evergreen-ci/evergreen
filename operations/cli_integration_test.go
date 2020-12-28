@@ -518,8 +518,7 @@ func TestCLIFunctions(t *testing.T) {
 					So(err, ShouldBeNil)
 					patches, err := ac.GetPatches(0)
 					So(err, ShouldBeNil)
-					So(patches[0].Patches[0].ModuleName, ShouldEqual, "")
-					So(patches[0].Patches[1].ModuleName, ShouldEqual, "render-module")
+					So(patches[0].Patches[0].ModuleName, ShouldEqual, "render-module")
 					Convey("Removing the module from the patch should work as designed even with empty patch", func() {
 						So(ac.DeletePatchModule(newPatch.Id.Hex(), "render-module"), ShouldBeNil)
 						patches, err := ac.GetPatches(0)
