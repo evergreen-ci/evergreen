@@ -523,7 +523,7 @@ func TestCLIFunctions(t *testing.T) {
 						So(ac.DeletePatchModule(newPatch.Id.Hex(), "render-module"), ShouldBeNil)
 						patches, err := ac.GetPatches(0)
 						So(err, ShouldBeNil)
-						So(len(patches[0].Patches), ShouldEqual, 1)
+						So(len(patches[0].Patches), ShouldEqual, 0)
 						Convey("Finalizing the patch should start with no version field and then be populated", func() {
 							So(patches[0].Version, ShouldEqual, "")
 							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
