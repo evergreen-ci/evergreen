@@ -503,14 +503,26 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		patchDoc.Githash = *commit.SHA
 	}
 
-	readCloser, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+	if len(patchDoc.Patches) > 0 {
+		if patchDoc.Patches[0], err = getModulePatch(patchDoc.Patches[0]); err != nil {
+			return errors.Wrap(err, "problem getting ModulePatch from GridFS")
+		}
+	}
+
+	return nil
+}
+
+// getModulePatch reads the patch from GridFS, processes it, and
+// stores the resulting summaries in the returned ModulePatch
+func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
+	readCloser, err := db.GetGridFile(patch.GridFSPrefix, modulePatch.PatchSet.PatchFileId)
 	if err != nil {
-		return errors.Wrap(err, "error getting patch file")
+		return modulePatch, errors.Wrap(err, "error getting patch file")
 	}
 	defer readCloser.Close()
 	patchBytes, err := ioutil.ReadAll(readCloser)
 	if err != nil {
-		return errors.Wrap(err, "error parsing patch")
+		return modulePatch, errors.Wrap(err, "error parsing patch")
 	}
 
 	var summaries []thirdparty.Summary
@@ -518,20 +530,20 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		var commitMessages []string
 		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(string(patchBytes))
 		if err != nil {
-			return errors.Wrapf(err, "error getting summaries by commit")
+			return modulePatch, errors.Wrapf(err, "error getting summaries by commit")
 		}
-		patchDoc.Patches[0].PatchSet.CommitMessages = commitMessages
+		modulePatch.PatchSet.CommitMessages = commitMessages
 	} else {
 		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
 		if err != nil {
-			return err
+			return modulePatch, err
 		}
 	}
 
-	patchDoc.Patches[0].IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
-	patchDoc.Patches[0].ModuleName = ""
-	patchDoc.Patches[0].PatchSet.Summary = summaries
-	return nil
+	modulePatch.IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
+	modulePatch.ModuleName = ""
+	modulePatch.PatchSet.Summary = summaries
+	return modulePatch, nil
 }
 
 func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projectRef *model.ProjectRef, patchDoc *patch.Patch) error {
