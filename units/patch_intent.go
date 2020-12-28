@@ -536,7 +536,7 @@ func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
 	} else {
 		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
 		if err != nil {
-			return modulePatch, err
+			return modulePatch, errors.Wrap(err, "error getting patch summaries")
 		}
 	}
 
