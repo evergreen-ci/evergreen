@@ -191,10 +191,16 @@ func (s *AgentSuite) TestNextTaskConflict() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	agentCtx, agentCancel := context.WithCancel(ctx)
+	defer agentCancel()
+
 	errs := make(chan error, 1)
 	go func() {
-		errs <- s.a.loop(ctx)
+		errs <- s.a.loop(agentCtx)
 	}()
+	time.Sleep(1 * time.Second)
+	agentCancel()
+
 	select {
 	case err := <-errs:
 		s.NoError(err)
