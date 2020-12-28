@@ -188,19 +188,18 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 
 func (s *AgentSuite) TestNextTaskConflict() {
 	s.mockCommunicator.NextTaskShouldConflict = true
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	errs := make(chan error, 1)
 	go func() {
 		errs <- s.a.loop(ctx)
 	}()
-	time.Sleep(time.Millisecond)
 	select {
 	case err := <-errs:
 		s.NoError(err)
-	default:
-		// pass
+	case <-ctx.Done():
+		s.FailNow(ctx.Err().Error())
 	}
 }
 
