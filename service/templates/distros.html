@@ -8,6 +8,7 @@
   window.containerPoolDistros = {{.ContainerPoolDistros}};
   window.containerPoolIds = {{.ContainerPoolIds}};
   window.architectures = {{.ArchDisplayNames}}
+  window.validHostAllocatorRoundingRules = {{.ValidHostAllocatorRoundingRules}}
 </script>
 {{end}}
 {{define "title"}}
@@ -106,6 +107,19 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.hostAllocatorSettingsVersion.$dirty && form.hostAllocatorSettingsVersion.$error.required ||
               form.hostAllocatorSettingsVersion.$invalid">Host Allocator Version is required
             </div>
+
+            <div ng-show="!isStatic() && activeDistro.host_allocator_settings.version == 'utilization'" class="dropdown">
+              <span class="distro-menu-title">Host Allocator Rounding Rule:</span>
+                <button style="margin-left:5px;" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
+                  ng-disabled="readOnly">
+                  <strong class="distro-menu-item">[[ activeDistro.host_allocator_settings.rounding_rule ]]<span class="fa fa-caret-down"></span></strong>
+                </button>
+                <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                  <li required name="hostAllocatorSettingsRoundingRule" ng-click="form.$setDirty();activeDistro.host_allocator_settings.rounding_rule = rule" ng-repeat="rule in validHostAllocatorRoundingRules"
+                    role="presentation"><a role="menuitem" tabindex="-1">[[rule]]</a></li>
+                </ul>
+            </div>
+
             <div ng-show="!isStatic() && activeDistro.provider != 'docker'">
               <div>
                 <label class="distro-label">Maximum Number of Hosts Allowed:</label>
@@ -137,7 +151,6 @@ Evergreen - Distros
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue < 0 ||
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
               </div>
-
               <div>
                 <label class="distro-label">Future Host Fraction</label>
                 <input ng-readonly="readOnly" type="number" step=".01" min="0" max="1"

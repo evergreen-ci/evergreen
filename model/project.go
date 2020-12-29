@@ -852,6 +852,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Id)
+	expansions.Put("project_identifier", projectRef.Identifier)
 	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {
@@ -1429,7 +1430,7 @@ func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants [
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair, error) {
-	vars, err := FindAliasInProject(p.Identifier, alias)
+	vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
 	if err != nil || vars == nil {
 		return nil, nil, err
 	}

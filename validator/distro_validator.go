@@ -396,6 +396,12 @@ func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, 
 			Level:   Error,
 		})
 	}
+	if !utility.StringSliceContains(evergreen.ValidHostAllocatorRoundingRules, settings.RoundingRule) {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid host_allocator_settings.rounding_rule value of %s for distro '%s' - its value must be %s", settings.RoundingRule, d.Id, evergreen.ValidHostAllocatorRoundingRules),
+			Level:   Error,
+		})
+	}
 	if settings.AcceptableHostIdleTime < 0 {
 		ms := settings.AcceptableHostIdleTime / time.Millisecond
 		errs = append(errs, ValidationError{

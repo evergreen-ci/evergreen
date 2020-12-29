@@ -151,20 +151,21 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts:       0,
 			MaximumHosts:       50,
+			RoundingRule:       evergreen.HostAllocatorRoundDown,
 			FutureHostFraction: .5,
 		},
 	}
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 0, 0))
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0))
-	s.Equal(1, calcNewHostsNeeded(1*time.Second, 30*time.Minute, 0, 0))
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0))
-	s.Equal(3, calcNewHostsNeeded(3*time.Minute, 1*time.Minute, 0, 0))
-	s.Equal(11, calcNewHostsNeeded(6*time.Hour, 30*time.Minute, 1, 0))
-	s.Equal(10, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0))
-	s.Equal(11, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 1))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 0, 0, true))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, true))
+	s.Equal(1, calcNewHostsNeeded(1*time.Second, 30*time.Minute, 0, 0, true))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, true))
+	s.Equal(3, calcNewHostsNeeded(3*time.Minute, 1*time.Minute, 0, 0, true))
+	s.Equal(11, calcNewHostsNeeded(6*time.Hour, 30*time.Minute, 1, 0, true))
+	s.Equal(10, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, true))
+	s.Equal(11, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 1, true))
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
@@ -944,6 +945,101 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	s.NoError(err)
 	s.Equal(0, hosts)
 
+}
+
+func (s *UtilizationAllocatorSuite) TestRoundingUp() {
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: "t1",
+	}
+	h2 := host.Host{
+		Id:          "h2",
+		RunningTask: "t2",
+	}
+	h3 := host.Host{
+		Id:          "h3",
+		RunningTask: "t3",
+	}
+	h4 := host.Host{
+		Id:          "h4",
+		RunningTask: "t4",
+	}
+	h5 := host.Host{
+		Id:          "h5",
+		RunningTask: "t5",
+	}
+	t1 := task.Task{
+		Id:               "t1",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-40 * time.Minute),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:               "t2",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-30 * time.Minute),
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:               "t3",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-20 * time.Minute),
+	}
+	s.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:               "t4",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-10 * time.Minute),
+	}
+	s.NoError(t4.Insert())
+	t5 := task.Task{
+		Id:               "t5",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t5.Insert())
+	taskGroupInfo := model.TaskGroupInfo{
+		Name:                  "",
+		Count:                 8,
+		ExpectedDuration:      (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		CountOverThreshold:    3,
+		DurationOverThreshold: (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
+	}
+
+	distroQueueInfo := model.DistroQueueInfo{
+		Length: 8,
+		// 3 long tasks + 37min of new tasks
+		// these should need 4 total hosts, but there is 1 idle host
+		// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
+		// so we only need 4 new hosts
+		ExpectedDuration:     (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
+		CountOverThreshold:   3,
+		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+	}
+
+	defaultRound := s.distro.HostAllocatorSettings.RoundingRule
+	s.distro.HostAllocatorSettings.RoundingRule = evergreen.HostAllocatorRoundUp
+	hostAllocatorData := HostAllocatorData{
+		Distro:          s.distro,
+		ExistingHosts:   []host.Host{h1, h2, h3, h4, h5},
+		DistroQueueInfo: distroQueueInfo,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.NoError(err)
+	s.distro.HostAllocatorSettings.RoundingRule = defaultRound
+	s.Equal(4, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {

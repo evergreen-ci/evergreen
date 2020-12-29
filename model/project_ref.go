@@ -1376,6 +1376,9 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 		return errors.Errorf("invalid status: %s", t.Status)
 	}
 
+	// ChildProject should be saved using its ID, in case the user used the project's Identifier
+	t.ChildProject = childProject.Id
+
 	for _, specifier := range t.TaskSpecifiers {
 		if (specifier.VariantRegex != "" || specifier.TaskRegex != "") && specifier.PatchAlias != "" {
 			return errors.New("can't specify both a regex set and a patch alias")
@@ -1401,7 +1404,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectOrRepo(t.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching aliases for project")
 			}

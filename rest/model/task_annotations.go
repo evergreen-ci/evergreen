@@ -174,7 +174,8 @@ func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
 			issue.JiraTicket, err = jiraHandler.GetJIRATicket(*issue.IssueKey)
 			catcher.Wrap(err, "error getting Jira ticket")
 		}
-		res = append(res, &issue)
+		issueToAdd := issue
+		res = append(res, &issueToAdd)
 	}
 	return res, catcher.Resolve()
 }
