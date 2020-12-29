@@ -24,7 +24,7 @@ type APIGithubPRSubscriber struct {
 
 type APIGithubCheckSubscriber struct {
 	Owner *string `json:"owner" mapstructure:"owner"`
-	Repo  *string `json:"owner" mapstructure:"repo"`
+	Repo  *string `json:"repo" mapstructure:"repo"`
 	Ref   *string `json:"ref" mapstructure:"ref"`
 }
 
