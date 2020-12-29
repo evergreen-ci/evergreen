@@ -447,7 +447,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 			"runner":  RunnerName,
 			"message": "github status updates are disabled, not updating status",
 		})
-		return nil
+		return catcher.Resolve()
 	}
 	env := evergreen.GetEnvironment()
 	uiConfig := evergreen.UIConfig{}
@@ -457,7 +457,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	}
 	urlBase := uiConfig.Url
 	if urlBase == "" {
-		catcher.Add(errors.Errorf("url base doesn't exist"))
+		catcher.New("url base doesn't exist")
 		return catcher.Resolve()
 	}
 	status := &message.GithubStatus{

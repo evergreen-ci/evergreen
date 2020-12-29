@@ -248,7 +248,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	if buildDoc == nil {
 		return nil, errors.New("could not find build while building email payload")
 	}
-	hasPatch := buildDoc.Requester != evergreen.RepotrackerVersionRequester
+	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
 	projectRef, err := model.FindOneProjectRef(t.task.Project)
 	if err != nil {

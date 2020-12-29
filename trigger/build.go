@@ -265,7 +265,6 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
-	hasPatch := t.build.Requester != evergreen.RepotrackerVersionRequester
 	data := commonTemplateData{
 		ID:              t.build.Id,
 		EventID:         t.event.ID,
@@ -273,7 +272,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		DisplayName:     t.build.DisplayName,
 		Object:          event.ObjectBuild,
 		Project:         t.build.Project,
-		URL:             buildLink(t.uiConfig.Url, t.build.Id, hasPatch),
+		URL:             buildLink(t.uiConfig.Url, t.build.Id, evergreen.IsPatchRequester(t.build.Requester)),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
@@ -296,7 +295,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 }
 
 func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.SlackAttachment {
-	hasPatch := t.build.Requester != evergreen.RepotrackerVersionRequester
+	hasPatch := evergreen.IsPatchRequester(t.build.Requester)
 	attachments := []message.SlackAttachment{}
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),

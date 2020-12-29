@@ -102,7 +102,6 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if err := api.BuildFromService(t.version); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
-	hasPatch := t.version.Requester != evergreen.RepotrackerVersionRequester
 	data := commonTemplateData{
 		ID:                t.version.Id,
 		EventID:           t.event.ID,
@@ -110,7 +109,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		DisplayName:       t.version.Id,
 		Object:            event.ObjectVersion,
 		Project:           t.version.Identifier,
-		URL:               versionLink(t.uiConfig.Url, t.version.Id, hasPatch),
+		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester)),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
