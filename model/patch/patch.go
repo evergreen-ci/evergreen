@@ -689,23 +689,46 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 		return patchSet, errors.Wrap(err, "can't get github auth token")
 	}
 
-	commit, err := thirdparty.GetRawPatchCommit(ctx, githubToken, owner, repo, sha)
+	diff, err := thirdparty.GetCommitDiff(ctx, githubToken, owner, repo, sha)
 	if err != nil {
-		return patchSet, errors.Wrapf(err, "problem getting commit '%s/%s:%s'", owner, repo, sha)
+		return patchSet, errors.Wrapf(err, "problem getting commit diff for '%s/%s:%s'", owner, repo, sha)
+	}
+
+	commitInfo, err := thirdparty.GetCommitEvent(ctx, githubToken, owner, repo, sha)
+	if err != nil {
+		return patchSet, errors.Wrapf(err, "problem getting commit info for '%s/%s:%s'", owner, repo, sha)
+	}
+	if commitInfo == nil || commitInfo.Commit == nil || commitInfo.Commit.Author == nil {
+		return patchSet, errors.New("Github returned a malformed commit")
+	}
+	authorName := commitInfo.Commit.Author.GetName()
+	authorEmail := commitInfo.Commit.Author.GetEmail()
+	message := commitInfo.Commit.GetMessage()
+
+	mboxPatch, err := addMetadataToDiff(diff, message, time.Now(), GitMetadata{Username: authorName, Email: authorEmail})
+	if err != nil {
+		return patchSet, errors.Wrap(err, "can't convert diff to mbox format")
 	}
 
 	patchFileID := mgobson.NewObjectId()
-	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(commit)); err != nil {
+	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
 		return patchSet, errors.Wrap(err, "can't write patch to db")
 	}
 
-	summaries, commitMessages, err := thirdparty.GetPatchSummariesFromMboxPatch(commit)
-	if err != nil {
-		return patchSet, errors.Wrapf(err, "error getting summaries by commit")
+	summaries := []thirdparty.Summary{}
+	for _, file := range commitInfo.Files {
+		if file != nil {
+			summaries = append(summaries, thirdparty.Summary{
+				Name:        file.GetFilename(),
+				Additions:   file.GetAdditions(),
+				Deletions:   file.GetDeletions(),
+				Description: message,
+			})
+		}
 	}
 
 	patchSet.Summary = summaries
-	patchSet.CommitMessages = commitMessages
+	patchSet.CommitMessages = []string{message}
 	patchSet.PatchFileId = patchFileID.Hex()
 	return patchSet, nil
 }
