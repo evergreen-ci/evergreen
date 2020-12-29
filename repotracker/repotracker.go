@@ -451,7 +451,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	}
 	env := evergreen.GetEnvironment()
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(env); err != nil {
+	if err = uiConfig.Get(env); err != nil {
 		catcher.Add(err)
 		return catcher.Resolve()
 	}
