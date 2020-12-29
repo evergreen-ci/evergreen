@@ -78,6 +78,9 @@ type cliIntent struct {
 
 	// BackportOf specifies what to backport
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
+
+	// GitInfo contains information about the author's git environment
+	GitInfo GitMetadata `bson:"git_info"`
 }
 
 // BSON fields for the patches
@@ -166,6 +169,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		SyncAtEndOpts:  c.SyncAtEndOpts,
 		BackportOf:     c.BackportOf,
 		Patches:        []ModulePatch{},
+		GitInfo:        c.GitInfo,
 	}
 	if p.BackportOf.PatchID == "" { // the intent processor adds the patches if backporting by patch ID
 		p.Patches = append(p.Patches,
@@ -189,6 +193,7 @@ type CLIIntentParams struct {
 	Description    string
 	Finalize       bool
 	BackportOf     BackportInfo
+	GitInfo        GitMetadata
 	Parameters     []Parameter
 	Variants       []string
 	Tasks          []string
@@ -249,6 +254,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Module:         params.Module,
 		Alias:          params.Alias,
 		TriggerAliases: params.TriggerAliases,
+		GitInfo:        params.GitInfo,
 		BackportOf:     params.BackportOf,
 	}, nil
 }

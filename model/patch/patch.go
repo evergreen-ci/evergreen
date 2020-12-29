@@ -126,6 +126,12 @@ type BackportInfo struct {
 	SHA     string `bson:"sha,omitempty" json:"sha,omitempty"`
 }
 
+type GitMetadata struct {
+	Username   string `bson:"username" json:"username"`
+	Email      string `bson:"email" json:"email"`
+	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
 	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
@@ -152,6 +158,7 @@ type Patch struct {
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
+	GitInfo         GitMetadata            `bson:"git_info"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }
