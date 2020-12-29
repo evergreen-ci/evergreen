@@ -613,6 +613,30 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	}
 }
 
+func TestAddMetadataToDiff(t *testing.T) {
+	metadata := GitMetadata{
+		Username:   "octocat",
+		Email:      "octocat@github.com",
+		GitVersion: "2.19.1",
+	}
+
+	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
+	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+	assert.NoError(t, err)
+	assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
+Date: Tue, 10 Nov 2009 23:00:00 +0000
+Subject: EVG-12345 diff to mbox
+
+---
++ func diffToMbox(diffData *localDiff, subject string) (string, error) {
+--
+2.19.1
+`, mboxDiff)
+}
+
 func TestMergeVariantsTasks(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		vt1      []VariantTasks

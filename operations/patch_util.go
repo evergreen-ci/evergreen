@@ -711,39 +711,6 @@ func gitUncommittedChanges() (bool, error) {
 	return len(out) != 0, nil
 }
 
-func addMetadataToDiff(diffData *localDiff, subject string, metadata patch.GitMetadata) (string, error) {
-	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: {{.Metadata.Username}} <{{.Metadata.Email}}>
-Date: {{.Metadata.CurrentTime}}
-Subject: {{.Metadata.Subject}}
-
----
-{{.DiffStat}}
-
-{{.DiffContent}}
---
-{{.Metadata.GitVersion}}
-`))
-
-	out := bytes.Buffer{}
-	err := mboxTemplate.Execute(&out, struct {
-		Metadata    patch.GitMetadata
-		Subject     string
-		DiffStat    string
-		DiffContent string
-	}{
-		Metadata:    metadata,
-		Subject:     subject,
-		DiffStat:    diffData.log,
-		DiffContent: diffData.fullPatch,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "problem executing mbox template")
-	}
-
-	return out.String(), nil
-}
-
 func getGitConfigMetadata() (patch.GitMetadata, error) {
 	var err error
 	metadata := patch.GitMetadata{}

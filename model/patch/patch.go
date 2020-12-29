@@ -2,11 +2,13 @@ package patch
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -622,6 +624,10 @@ func (p *Patch) GetRequester() string {
 }
 
 func (p *Patch) CanEnqueueToCommitQueue() bool {
+	if p.HasGitInfo() {
+		return true
+	}
+
 	for _, modulePatch := range p.Patches {
 		if !modulePatch.IsMbox {
 			return false
@@ -629,6 +635,10 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 	}
 
 	return true
+}
+
+func (p *Patch) HasGitInfo() bool {
+	return p.GitInfo.Email != ""
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
@@ -698,6 +708,71 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 	patchSet.CommitMessages = commitMessages
 	patchSet.PatchFileId = patchFileID.Hex()
 	return patchSet, nil
+}
+
+func MakeMergePatchPatches(existingPatch *Patch) ([]ModulePatch, error) {
+	if err := existingPatch.FetchPatchFiles(true); err != nil {
+		return nil, errors.Wrap(err, "problem fetching patches")
+	}
+
+	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
+	for _, modulePatch := range existingPatch.Patches {
+		if modulePatch.IsMbox {
+			modulePatch.PatchSet.Patch = ""
+			newModulePatches = append(newModulePatches, modulePatch)
+		} else if existingPatch.HasGitInfo() {
+			mboxPatch, err := addMetadataToDiff(modulePatch.PatchSet.Patch, existingPatch.Description, time.Now(), existingPatch.GitInfo)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't convert diff to mbox format")
+			}
+			patchFileID := mgobson.NewObjectId()
+			if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
+				return nil, errors.Wrap(err, "can't write new patch to db")
+			}
+			newModulePatches = append(newModulePatches, ModulePatch{
+				ModuleName: modulePatch.ModuleName,
+				IsMbox:     true,
+				PatchSet: PatchSet{
+					PatchFileId:    patchFileID.Hex(),
+					CommitMessages: modulePatch.PatchSet.CommitMessages,
+					Summary:        modulePatch.PatchSet.Summary,
+				},
+			})
+		}
+	}
+
+	return newModulePatches, nil
+}
+
+func addMetadataToDiff(diff string, subject string, commitTime time.Time, metadata GitMetadata) (string, error) {
+	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+Date: {{.CurrentTime}}
+Subject: {{.Subject}}
+
+---
+{{.Diff}}
+--
+{{.Metadata.GitVersion}}
+`))
+
+	out := bytes.Buffer{}
+	err := mboxTemplate.Execute(&out, struct {
+		Metadata    GitMetadata
+		CurrentTime string
+		Subject     string
+		Diff        string
+	}{
+		Metadata:    metadata,
+		CurrentTime: commitTime.Format(time.RFC1123Z),
+		Subject:     subject,
+		Diff:        diff,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "problem executing mbox template")
+	}
+
+	return out.String(), nil
 }
 
 func IsMailboxDiff(patchDiff string) bool {

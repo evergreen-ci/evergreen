@@ -572,9 +572,8 @@ func (e *EnqueuePatch) Valid() bool {
 }
 
 func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error) {
-	// verify the patch and its modules are in mbox format
 	if !existingPatch.CanEnqueueToCommitQueue() {
-		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatch.Id.Hex())
+		return nil, errors.Errorf("can't enqueue patch '%s' without metadata", existingPatch.Id.Hex())
 	}
 
 	// verify the commit queue is on
@@ -599,9 +598,12 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		Githash:       existingPatch.Githash,
 		Status:        evergreen.PatchCreated,
 		Alias:         evergreen.CommitQueueAlias,
-		Patches:       existingPatch.Patches,
 		PatchedConfig: existingPatch.PatchedConfig,
 		CreateTime:    time.Now(),
+	}
+
+	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch); err != nil {
+		return nil, errors.Wrap(err, "can't make merge patches from existing patch")
 	}
 
 	// verify the commit queue has tasks/variants enabled that match the project
