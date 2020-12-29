@@ -248,6 +248,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	if buildDoc == nil {
 		return nil, errors.New("could not find build while building email payload")
 	}
+	hasPatch := buildDoc.Requester != evergreen.RepotrackerVersionRequester
 
 	projectRef, err := model.FindOneProjectRef(t.task.Project)
 	if err != nil {
@@ -302,11 +303,11 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 			Fields: []*message.SlackAttachmentField{
 				{
 					Title: "Build",
-					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId), t.task.BuildVariant),
+					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId, hasPatch), t.task.BuildVariant),
 				},
 				{
 					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version), t.task.Version),
+					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version, hasPatch), t.task.Version),
 				},
 				{
 					Title: "Duration",

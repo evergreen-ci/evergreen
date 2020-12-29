@@ -998,13 +998,13 @@ tasks:
 		Project:             p,
 	}
 	alias := model.ProjectAlias{
-		Alias:     evergreen.GithubAlias,
+		Alias:     evergreen.GithubPRAlias,
 		ProjectID: s.ref.Id,
 		Task:      "task1",
 		Variant:   ".*",
 	}
 	s.NoError(alias.Upsert())
-	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubAlias}, false, nil)
+	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 

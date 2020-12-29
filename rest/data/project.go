@@ -342,7 +342,7 @@ func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias str
 }
 
 func getRequesterFromAlias(alias string) string {
-	if alias == evergreen.GithubAlias {
+	if alias == evergreen.GithubPRAlias {
 		return evergreen.GithubPRRequester
 	}
 	if alias == evergreen.GitTagAlias {

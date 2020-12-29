@@ -102,23 +102,32 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if err := api.BuildFromService(t.version); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
-
+	hasPatch := t.version.Requester != evergreen.RepotrackerVersionRequester
 	data := commonTemplateData{
-		ID:              t.version.Id,
-		EventID:         t.event.ID,
-		SubscriptionID:  sub.ID,
-		DisplayName:     t.version.Id,
-		Object:          event.ObjectVersion,
-		Project:         t.version.Identifier,
-		URL:             versionLink(t.uiConfig.Url, t.version.Id),
-		PastTenseStatus: t.data.Status,
-		apiModel:        &api,
+		ID:                t.version.Id,
+		EventID:           t.event.ID,
+		SubscriptionID:    sub.ID,
+		DisplayName:       t.version.Id,
+		Object:            event.ObjectVersion,
+		Project:           t.version.Identifier,
+		URL:               versionLink(t.uiConfig.Url, t.version.Id, hasPatch),
+		PastTenseStatus:   t.data.Status,
+		apiModel:          &api,
+		githubState:       message.GithubStatePending,
+		githubContext:     "evergreen",
+		githubDescription: "tasks are running",
 	}
 	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
+		data.githubState = message.GithubStateSuccess
+		data.githubDescription = fmt.Sprintf("version finished in %s", t.version.FinishTime.Sub(t.version.StartTime).String())
+	} else if data.PastTenseStatus == evergreen.VersionFailed {
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = fmt.Sprintf("version finished in %s", t.version.FinishTime.Sub(t.version.StartTime).String())
 	}
+
 	data.slack = []message.SlackAttachment{
 		{
 			Title:     "Evergreen Version",

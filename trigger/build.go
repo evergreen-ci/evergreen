@@ -265,6 +265,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
+	hasPatch := t.build.Requester != evergreen.RepotrackerVersionRequester
 	data := commonTemplateData{
 		ID:              t.build.Id,
 		EventID:         t.event.ID,
@@ -272,11 +273,12 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		DisplayName:     t.build.DisplayName,
 		Object:          event.ObjectBuild,
 		Project:         t.build.Project,
-		URL:             buildLink(t.uiConfig.Url, t.build.Id),
+		URL:             buildLink(t.uiConfig.Url, t.build.Id, hasPatch),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
-	if t.build.Requester == evergreen.GithubPRRequester && t.build.Status == t.data.Status {
+	if (t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester) &&
+		t.build.Status == t.data.Status {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = t.taskStatusToDesc()
@@ -294,8 +296,8 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 }
 
 func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.SlackAttachment {
+	hasPatch := t.build.Requester != evergreen.RepotrackerVersionRequester
 	attachments := []message.SlackAttachment{}
-
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
@@ -303,7 +305,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Version",
-				Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.build.Version), t.build.Version),
+				Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.build.Version, hasPatch), t.build.Version),
 			},
 			{
 				Title: "Makespan",
