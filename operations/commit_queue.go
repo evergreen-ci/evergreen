@@ -27,6 +27,7 @@ const (
 	existingPatchFlag   = "existing-patch"
 	backportProjectFlag = "backport-project"
 	commitShaFlag       = "commit-sha"
+	commitMessageFlag   = "commit-message"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
@@ -217,10 +218,16 @@ func enqueuePatch() cli.Command {
 	return cli.Command{
 		Name:  "enqueue-patch",
 		Usage: "enqueue an existing patch on the commit queue",
-		Flags: mergeFlagSlices(addYesFlag(), addPatchIDFlag(cli.BoolFlag{
-			Name:  forceFlagName,
-			Usage: "force item to front of queue",
-		})),
+		Flags: mergeFlagSlices(addYesFlag(), addPatchIDFlag(
+			cli.BoolFlag{
+				Name:  forceFlagName,
+				Usage: "force item to front of queue",
+			},
+			cli.StringFlag{
+				Name:  commitMessageFlag,
+				Usage: "commit message for the new commit (default is the existing patch description)",
+			},
+		)),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			setPlainLogger,
@@ -228,6 +235,7 @@ func enqueuePatch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)
+			commitMessage := c.String(commitMessageFlag)
 			force := c.Bool(forceFlagName)
 			skipConfirm := c.Bool(yesFlagName)
 
@@ -268,8 +276,12 @@ func enqueuePatch() cli.Command {
 
 			showCQMessageForPatch(ctx, client, patchID)
 
+			if commitMessage == "" {
+				commitMessage = existingPatch.Description
+			}
+
 			// create the new merge patch
-			mergePatch, err := client.CreatePatchForMerge(ctx, patchID)
+			mergePatch, err := client.CreatePatchForMerge(ctx, patchID, commitMessage)
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}

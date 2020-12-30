@@ -557,7 +557,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
 	}
 
-	mergePatch, err := MakeMergePatchFromExisting(existingPatch)
+	mergePatch, err := MakeMergePatchFromExisting(existingPatch, "")
 	if err != nil {
 		return errors.Wrap(err, "problem making merge patch")
 	}
@@ -571,7 +571,7 @@ func (e *EnqueuePatch) Valid() bool {
 	return patch.IsValidId(e.PatchID)
 }
 
-func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error) {
+func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.CanEnqueueToCommitQueue() {
 		return nil, errors.Errorf("can't enqueue patch '%s' without metadata", existingPatch.Id.Hex())
 	}
@@ -602,7 +602,7 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 		CreateTime:    time.Now(),
 	}
 
-	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch); err != nil {
+	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
 		return nil, errors.Wrap(err, "can't make merge patches from existing patch")
 	}
 

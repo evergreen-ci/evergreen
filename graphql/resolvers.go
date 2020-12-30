@@ -1795,7 +1795,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID, commitMess
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
-	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID, commitMessage)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}

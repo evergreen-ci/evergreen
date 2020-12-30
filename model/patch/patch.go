@@ -733,7 +733,7 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 	return patchSet, nil
 }
 
-func MakeMergePatchPatches(existingPatch *Patch) ([]ModulePatch, error) {
+func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
 	if err := existingPatch.FetchPatchFiles(true); err != nil {
 		return nil, errors.Wrap(err, "problem fetching patches")
 	}
@@ -744,7 +744,7 @@ func MakeMergePatchPatches(existingPatch *Patch) ([]ModulePatch, error) {
 			modulePatch.PatchSet.Patch = ""
 			newModulePatches = append(newModulePatches, modulePatch)
 		} else if existingPatch.HasGitInfo() {
-			mboxPatch, err := addMetadataToDiff(modulePatch.PatchSet.Patch, existingPatch.Description, time.Now(), existingPatch.GitInfo)
+			mboxPatch, err := addMetadataToDiff(modulePatch.PatchSet.Patch, commitMessage, time.Now(), existingPatch.GitInfo)
 			if err != nil {
 				return nil, errors.Wrap(err, "can't convert diff to mbox format")
 			}

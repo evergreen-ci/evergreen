@@ -218,7 +218,7 @@ buildvariants:
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
 
-	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex())
+	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
 	s.NoError(err)
 	s.NotNil(newPatch)
 
