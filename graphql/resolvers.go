@@ -1785,7 +1785,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
-func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID, commitMessage string) (*restModel.APIPatch, error) {
 	user := MustHaveUser(ctx)
 	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
 	if err != nil {

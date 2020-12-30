@@ -301,7 +301,7 @@ type ComplexityRoot struct {
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
-		EnqueuePatch              func(childComplexity int, patchID string) int
+		EnqueuePatch              func(childComplexity int, patchID string, commitMessage string) int
 		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
@@ -763,7 +763,7 @@ type MutationResolver interface {
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
-	EnqueuePatch(ctx context.Context, patchID string) (*model.APIPatch, error)
+	EnqueuePatch(ctx context.Context, patchID string, commitMessage string) (*model.APIPatch, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -1995,7 +1995,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string)), true
+		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string), args["commitMessage"].(string)), true
 
 	case "Mutation.moveAnnotationIssue":
 		if e.complexity.Mutation.MoveAnnotationIssue == nil {
@@ -4495,7 +4495,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
-  enqueuePatch(patchId: String!): Patch!
+  enqueuePatch(patchId: String!, commitMessage: String!): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -5547,6 +5547,14 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 		}
 	}
 	args["patchId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["commitMessage"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["commitMessage"] = arg1
 	return args, nil
 }
 
@@ -11379,7 +11387,7 @@ func (ec *executionContext) _Mutation_enqueuePatch(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().EnqueuePatch(rctx, args["patchId"].(string))
+		return ec.resolvers.Mutation().EnqueuePatch(rctx, args["patchId"].(string), args["commitMessage"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
