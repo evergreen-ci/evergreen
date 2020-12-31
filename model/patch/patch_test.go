@@ -1,7 +1,6 @@
 package patch
 
 import (
-	"io/ioutil"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -657,13 +656,10 @@ func TestMakeMergePatchPatches(t *testing.T) {
 			assert.Len(t, newPatches, 1)
 			assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
 
-			file, err := db.GetGridFile(GridFSPrefix, newPatches[0].PatchSet.PatchFileId)
-			defer file.Close()
+			patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
 			require.NoError(t, err)
-			patchContents, err := ioutil.ReadAll(file)
-			require.NoError(t, err)
-			assert.Contains(t, string(patchContents), "From: octocat <octocat@github.com>")
-			assert.Contains(t, string(patchContents), patchDiff)
+			assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
+			assert.Contains(t, patchContents, patchDiff)
 		},
 	}
 

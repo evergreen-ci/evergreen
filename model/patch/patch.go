@@ -243,16 +243,10 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 			continue
 		}
 
-		file, err := db.GetGridFile(GridFSPrefix, patchPart.PatchSet.PatchFileId)
+		rawStr, err := FetchPatchContents(patchPart.PatchSet.PatchFileId)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "can't get patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
 		}
-		defer file.Close() //nolint: evg-lint
-		raw, err := ioutil.ReadAll(file)
-		if err != nil {
-			return err
-		}
-		rawStr := string(raw)
 		if useRaw || !IsMailboxDiff(rawStr) {
 			p.Patches[i].PatchSet.Patch = rawStr
 			continue
@@ -265,6 +259,20 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 		p.Patches[i].PatchSet.Patch = diffs
 	}
 	return nil
+}
+
+func FetchPatchContents(patchfileID string) (string, error) {
+	fileReader, err := db.GetGridFile(GridFSPrefix, patchfileID)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get grid file from the db")
+	}
+	defer fileReader.Close()
+	patchContents, err := ioutil.ReadAll(fileReader)
+	if err != nil {
+		return "", errors.Wrap(err, "problem reading patch contents")
+	}
+
+	return string(patchContents), nil
 }
 
 // UpdateVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
@@ -734,17 +742,16 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 }
 
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
-	if err := existingPatch.FetchPatchFiles(true); err != nil {
-		return nil, errors.Wrap(err, "problem fetching patches")
-	}
-
 	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
 	for _, modulePatch := range existingPatch.Patches {
 		if modulePatch.IsMbox {
-			modulePatch.PatchSet.Patch = ""
 			newModulePatches = append(newModulePatches, modulePatch)
 		} else if existingPatch.HasGitInfo() {
-			mboxPatch, err := addMetadataToDiff(modulePatch.PatchSet.Patch, commitMessage, time.Now(), existingPatch.GitInfo)
+			diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't fetch patch contents")
+			}
+			mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), existingPatch.GitInfo)
 			if err != nil {
 				return nil, errors.Wrap(err, "can't convert diff to mbox format")
 			}
