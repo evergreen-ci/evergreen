@@ -621,48 +621,55 @@ func TestMakeMergePatchPatches(t *testing.T) {
 	patchFileID := mgobson.NewObjectId()
 	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
 
-	// mbox patches are copied over as-is
-	existingPatch := &Patch{
-		Patches: []ModulePatch{
-			{
-				ModuleName: "0",
-				IsMbox:     true,
-				PatchSet:   PatchSet{PatchFileId: patchFileID.Hex()},
-			}},
-	}
+	tests := map[string]func(*testing.T){
+		"mbox patches are copied over as-is": func(t *testing.T) {
+			existingPatch := &Patch{
+				Patches: []ModulePatch{
+					{
+						ModuleName: "0",
+						IsMbox:     true,
+						PatchSet:   PatchSet{PatchFileId: patchFileID.Hex()},
+					}},
+			}
 
-	newPatches, err := MakeMergePatchPatches(existingPatch, "ignored")
-	assert.NoError(t, err)
-	assert.Len(t, newPatches, 1)
-	assert.Equal(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
-
-	// non-mbox patches get metadata added
-	existingPatch = &Patch{
-		Patches: []ModulePatch{
-			{
-				ModuleName: "0",
-				PatchSet: PatchSet{
-					PatchFileId: patchFileID.Hex(),
+			newPatches, err := MakeMergePatchPatches(existingPatch, "ignored")
+			assert.NoError(t, err)
+			assert.Len(t, newPatches, 1)
+			assert.Equal(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+		},
+		"non-mbox patches get metadata added": func(t *testing.T) {
+			existingPatch := &Patch{
+				Patches: []ModulePatch{
+					{
+						ModuleName: "0",
+						PatchSet: PatchSet{
+							PatchFileId: patchFileID.Hex(),
+						},
+					},
 				},
-			},
-		},
-		GitInfo: GitMetadata{
-			Email:    "octocat@github.com",
-			Username: "octocat",
+				GitInfo: GitMetadata{
+					Email:    "octocat@github.com",
+					Username: "octocat",
+				},
+			}
+			newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
+			assert.NoError(t, err)
+			assert.Len(t, newPatches, 1)
+			assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+
+			file, err := db.GetGridFile(GridFSPrefix, newPatches[0].PatchSet.PatchFileId)
+			defer file.Close()
+			require.NoError(t, err)
+			patchContents, err := ioutil.ReadAll(file)
+			require.NoError(t, err)
+			assert.Contains(t, string(patchContents), "From: octocat <octocat@github.com>")
+			assert.Contains(t, string(patchContents), patchDiff)
 		},
 	}
-	newPatches, err = MakeMergePatchPatches(existingPatch, "new message")
-	assert.NoError(t, err)
-	assert.Len(t, newPatches, 1)
-	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
 
-	file, err := db.GetGridFile(GridFSPrefix, newPatches[0].PatchSet.PatchFileId)
-	defer file.Close()
-	require.NoError(t, err)
-	patchContents, err := ioutil.ReadAll(file)
-	require.NoError(t, err)
-	assert.Contains(t, string(patchContents), "From: octocat <octocat@github.com>")
-	assert.Contains(t, string(patchContents), patchDiff)
+	for name, test := range tests {
+		t.Run(name, test)
+	}
 }
 
 func TestCanEnqueueToCommitQueue(t *testing.T) {
@@ -684,18 +691,18 @@ func TestCanEnqueueToCommitQueue(t *testing.T) {
 }
 
 func TestAddMetadataToDiff(t *testing.T) {
-	// without git version
+	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
+	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	metadata := GitMetadata{
 		Username: "octocat",
 		Email:    "octocat@github.com",
 	}
 
-	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
-	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-
-	mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-	assert.NoError(t, err)
-	assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+	tests := map[string]func(*testing.T){
+		"without git version": func(t *testing.T) {
+			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+			assert.NoError(t, err)
+			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
 From: octocat <octocat@github.com>
 Date: Tue, 10 Nov 2009 23:00:00 +0000
 Subject: EVG-12345 diff to mbox
@@ -703,16 +710,12 @@ Subject: EVG-12345 diff to mbox
 ---
 + func diffToMbox(diffData *localDiff, subject string) (string, error) {
 `, mboxDiff)
-
-	// with git version
-	metadata = GitMetadata{
-		Username:   "octocat",
-		Email:      "octocat@github.com",
-		GitVersion: "2.19.1",
-	}
-	mboxDiff, err = addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-	assert.NoError(t, err)
-	assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+		},
+		"with git version": func(t *testing.T) {
+			metadata.GitVersion = "2.19.1"
+			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+			assert.NoError(t, err)
+			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
 From: octocat <octocat@github.com>
 Date: Tue, 10 Nov 2009 23:00:00 +0000
 Subject: EVG-12345 diff to mbox
@@ -723,6 +726,12 @@ Subject: EVG-12345 diff to mbox
 2.19.1
 
 `, mboxDiff)
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, test)
+	}
 }
 
 func TestMergeVariantsTasks(t *testing.T) {
