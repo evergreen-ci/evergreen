@@ -684,10 +684,10 @@ func TestCanEnqueueToCommitQueue(t *testing.T) {
 }
 
 func TestAddMetadataToDiff(t *testing.T) {
+	// without git version
 	metadata := GitMetadata{
-		Username:   "octocat",
-		Email:      "octocat@github.com",
-		GitVersion: "2.19.1",
+		Username: "octocat",
+		Email:    "octocat@github.com",
 	}
 
 	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
@@ -702,8 +702,26 @@ Subject: EVG-12345 diff to mbox
 
 ---
 + func diffToMbox(diffData *localDiff, subject string) (string, error) {
+`, mboxDiff)
+
+	// with git version
+	metadata = GitMetadata{
+		Username:   "octocat",
+		Email:      "octocat@github.com",
+		GitVersion: "2.19.1",
+	}
+	mboxDiff, err = addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+	assert.NoError(t, err)
+	assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
+Date: Tue, 10 Nov 2009 23:00:00 +0000
+Subject: EVG-12345 diff to mbox
+
+---
++ func diffToMbox(diffData *localDiff, subject string) (string, error) {
 --
 2.19.1
+
 `, mboxDiff)
 }
 

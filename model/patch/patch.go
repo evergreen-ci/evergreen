@@ -775,9 +775,10 @@ Subject: {{.Subject}}
 
 ---
 {{.Diff}}
---
+{{if .Metadata.GitVersion }}--
 {{.Metadata.GitVersion}}
-`))
+
+{{end}}`))
 
 	out := bytes.Buffer{}
 	err := mboxTemplate.Execute(&out, struct {
