@@ -253,65 +253,74 @@ func TestMatching(t *testing.T) {
 		{Alias: "four", VariantTags: []string{"variantTag"}, TaskTags: []string{"tag4"}},
 		{Alias: "five", Variant: "bv4", TaskTags: []string{"!tag3", "tag5"}},
 	}
-	match, err := aliases.HasMatchingVariant("bv1", nil)
+	bv1Matches, err := aliases.AliasesMatchingVariant("bv1", nil)
 	assert.NoError(err)
-	assert.True(match)
-	match, err = aliases.HasMatchingVariant("bv5", nil)
+	assert.NotEmpty(bv1Matches)
+	bv2Matches, err := aliases.AliasesMatchingVariant("bv2", nil)
 	assert.NoError(err)
-	assert.False(match)
-	match, err = aliases.HasMatchingVariant("", []string{"variantTag"})
+	assert.NotEmpty(bv2Matches)
+	bv3Matches, err := aliases.AliasesMatchingVariant("bv3", nil)
 	assert.NoError(err)
-	assert.True(match)
+	assert.NotEmpty(bv3Matches)
+	bv4Matches, err := aliases.AliasesMatchingVariant("bv4", nil)
+	assert.NoError(err)
+	assert.NotEmpty(bv4Matches)
+	bv5Matches, err := aliases.AliasesMatchingVariant("bv5", nil)
+	assert.NoError(err)
+	assert.Empty(bv5Matches)
+	tagsMatches, err := aliases.AliasesMatchingVariant("", []string{"variantTag", "notATag"})
+	assert.NoError(err)
+	assert.NotEmpty(tagsMatches)
+	matches, err := aliases.AliasesMatchingVariant("", []string{"notATag"})
+	assert.NoError(err)
+	assert.Empty(matches)
 
-	match, err = aliases.HasMatchingVariant("variantTag", nil)
+	matches, err = aliases.AliasesMatchingVariant("variantTag", nil)
 	assert.NoError(err)
-	assert.False(match)
-	match, err = aliases.HasMatchingVariant("", []string{"notATag"})
-	assert.NoError(err)
-	assert.False(match)
+	assert.Empty(matches)
 
 	task := &ProjectTask{
 		Name: "t1",
 	}
-	match, err = aliases.HasMatchingTask("bv1", nil, task)
+	match, err := bv1Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = aliases.HasMatchingTask("bv1", nil, task)
+	match, err = bv1Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.False(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = aliases.HasMatchingTask("bv2", nil, task)
+	match, err = bv2Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Tags: []string{"tag3"},
 		Name: "t3",
 	}
-	match, err = aliases.HasMatchingTask("bv3", nil, task)
+	match, err = bv3Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{}
-	match, err = aliases.HasMatchingTask("bv3", nil, task)
+	match, err = bv3Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.False(match)
 
 	task = &ProjectTask{
 		Tags: []string{"tag4"},
 	}
-	match, err = aliases.HasMatchingTask("bv5", nil, task)
+	match, err = bv5Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.False(match)
 
-	match, err = aliases.HasMatchingTask("", []string{"variantTag", "notATag"}, task)
+	match, err = tagsMatches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.True(match)
 
-	match, err = aliases.HasMatchingTask("bv4", nil, task)
+	match, err = bv4Matches.HasMatchingTask(task)
 	assert.NoError(err)
 	assert.True(match)
 

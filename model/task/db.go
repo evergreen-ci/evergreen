@@ -73,6 +73,7 @@ var (
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
+	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
@@ -222,6 +223,13 @@ func ByIds(ids []string) db.Q {
 func ByBuildId(buildId string) db.Q {
 	return db.Query(bson.M{
 		BuildIdKey: buildId,
+	})
+}
+
+func ByBuildIdAndGithubChecks(buildId string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey:       buildId,
+		IsGithubCheckKey: true,
 	})
 }
 

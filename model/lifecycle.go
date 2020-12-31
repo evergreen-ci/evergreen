@@ -176,9 +176,9 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 	return err
 }
 
-// MarkVersionCompleted updates the status of a completed version to reflect its correct state by
+// markVersionCompleted updates the status of a completed version to reflect its correct state by
 // checking the status of its individual builds.
-func MarkVersionCompleted(versionId string, finishTime time.Time, updates *StatusChanges) error {
+func markVersionCompleted(versionId string, finishTime time.Time, updates *StatusChanges, checkGithubStatus bool) error {
 	status := evergreen.VersionSucceeded
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
@@ -190,15 +190,42 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	}
 
 	versionStatusFromTasks := evergreen.VersionSucceeded
+	githubCheckStatusFromTasks := ""
 	buildsWithAllActiveTasksComplete := 0
+	buildsWithGithubCheckTasksComplete := 0
 	activeBuilds := 0
 	finished := true
 
 	startPhaseAt := time.Now()
-	tasks, err := task.Find(task.ByVersion(versionId).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err := task.Find(task.ByVersion(versionId).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
 	if err != nil {
 		return errors.Wrapf(err, "problem finding tasks for version %s", versionId)
 	}
+
+	githubCheckTasks := []task.Task{}
+	if checkGithubStatus {
+		for _, t := range tasks {
+			if t.IsGithubCheck {
+				githubCheckTasks = append(githubCheckTasks, t)
+			}
+		}
+		for _, b := range builds {
+			githubCheckTasksComplete, githubCheckStatus, err := b.AllUnblockedTasksFinished(githubCheckTasks)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if githubCheckTasksComplete {
+				buildsWithGithubCheckTasksComplete += 1
+				if githubCheckStatus != evergreen.BuildSucceeded {
+					githubCheckStatusFromTasks = evergreen.VersionFailed
+				}
+			}
+		}
+	}
+	if buildsWithGithubCheckTasksComplete == len(builds) && githubCheckStatusFromTasks != evergreen.VersionFailed {
+		githubCheckStatusFromTasks = evergreen.VersionSucceeded
+	}
+
 	for _, b := range builds {
 		if b.Activated {
 			activeBuilds++
@@ -222,18 +249,22 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		}
 	}
 	grip.DebugWhen(time.Since(startPhaseAt) > time.Second, message.Fields{
-		"function":      "MarkVersionCompleted",
-		"operation":     "build loop",
-		"message":       "slow operation",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"num_builds":    len(builds),
+		"function":            "markVersionCompleted",
+		"operation":           "build loop",
+		"message":             "slow operation",
+		"duration_secs":       time.Since(startPhaseAt).Seconds(),
+		"version":             versionId,
+		"ticket":              "EVG-12549",
+		"num_builds":          len(builds),
+		"check_github_status": checkGithubStatus,
 	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
 		event.LogVersionStateChangeEvent(versionId, status)
+	}
+	if checkGithubStatus && activeBuilds > 0 && buildsWithGithubCheckTasksComplete == len(builds) {
+		event.LogVersionGithubCheckFinishedEvent(versionId, githubCheckStatusFromTasks)
 	}
 	if !finished {
 		return nil
@@ -649,8 +680,27 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "can't get create time for tasks in version '%s'", v.Id)
 	}
 
+	var pRef *ProjectRef
+	var githubCheckAliases ProjectAliases
+	if v.Requester == evergreen.RepotrackerVersionRequester {
+		pRef, err = FindOneProjectRef(project.Identifier)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "unable to find project ref")
+		}
+		if pRef == nil {
+			return nil, nil, errors.Errorf("project '%s' not found", project.Identifier)
+		}
+		if pRef.GithubChecksEnabled {
+			githubCheckAliases, err = FindAliasInProject(v.Identifier, evergreen.GithubChecksAlias)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error getting github check aliases when adding tasks to build",
+				"project": v.Identifier,
+				"version": v.Id,
+			}))
+		}
+	}
 	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, tasksWithBatchTime,
-		generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, createTime)
+		generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, createTime, githubCheckAliases)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -665,8 +715,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	}
 
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
-	var pRef *ProjectRef
-	if len(tasksWithBatchTime) > 0 {
+	if len(tasksWithBatchTime) > 0 && pRef == nil {
 		pRef, err = FindOneProjectRef(project.Identifier)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
@@ -710,21 +759,22 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
-	Project            Project                 // project to create the build for
-	Version            Version                 // the version the build belong to
-	TaskIDs            TaskIdConfig            // pre-generated IDs for the tasks to be created
-	BuildName          string                  // name of the buildvariant
-	ActivateBuild      bool                    // true if the build should be scheduled
-	TasksWithBatchTime []string                // if task is in this list, don't activate, and add activation status to variant
-	TaskNames          []string                // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames       []string                // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy        string                  // ID of the task that generated this build
-	SourceRev          string                  // githash of the revision that triggered this build
-	DefinitionID       string                  // definition ID of the trigger used to create this build
-	Aliases            ProjectAliases          // project aliases to use to filter tasks created
-	DistroAliases      distro.AliasLookupTable // map of distro aliases to names of distros
-	TaskCreateTime     time.Time               // create time of tasks in the build
-	SyncAtEndOpts      patch.SyncAtEndOptions
+	Project             Project                 // project to create the build for
+	Version             Version                 // the version the build belong to
+	TaskIDs             TaskIdConfig            // pre-generated IDs for the tasks to be created
+	BuildName           string                  // name of the buildvariant
+	ActivateBuild       bool                    // true if the build should be scheduled
+	TasksWithBatchTime  []string                // if task is in this list, don't activate, and add activation status to variant
+	TaskNames           []string                // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames        []string                // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy         string                  // ID of the task that generated this build
+	SourceRev           string                  // githash of the revision that triggered this build
+	DefinitionID        string                  // definition ID of the trigger used to create this build
+	Aliases             ProjectAliases          // project aliases to use to filter tasks created
+	DistroAliases       distro.AliasLookupTable // map of distro aliases to names of distros
+	TaskCreateTime      time.Time               // create time of tasks in the build
+	GithubChecksAliases ProjectAliases          // project aliases to use to filter tasks to count towards the github checks, if any
+	SyncAtEndOpts       patch.SyncAtEndOptions
 }
 
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
@@ -794,7 +844,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs,
 		args.TaskNames, args.DisplayNames, args.TasksWithBatchTime, args.GeneratedBy,
-		nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime)
+		nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime, args.GithubChecksAliases)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -855,7 +905,8 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 // If tasksToActivate is nil, then all tasks will be activated.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, tasksWithBatchTime []string, generatedBy string,
-	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time) (task.Tasks, error) {
+	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time,
+	githubChecksAliases ProjectAliases) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -913,7 +964,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
 		activateTask := b.Activated && !utility.StringSliceContains(tasksWithBatchTime, t.Name)
-		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime, activateTask)
+		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime, activateTask, githubChecksAliases)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed to create task %s", id)
 		}
@@ -1160,7 +1211,7 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time, activateTask bool) (*task.Task, error) {
+	b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time, activateTask bool, githubChecksAliases ProjectAliases) (*task.Task, error) {
 
 	buildVarTask.Distros = dat.Expand(buildVarTask.Distros)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
@@ -1200,6 +1251,18 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		activatedTime = time.Now()
 	}
 
+	isGithubCheck := false
+	if len(githubChecksAliases) > 0 {
+		var err error
+		isGithubCheck, err = githubChecksAliases.HasMatchingTask(project.FindProjectTask(buildVarTask.Name))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error checking if task matches aliases",
+			"version": v.Id,
+			"task":    buildVarTask.Name,
+			"variant": buildVarTask.Variant,
+		}))
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              utility.RandomString(),
@@ -1230,6 +1293,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
+		IsGithubCheck:       isGithubCheck,
 	}
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)

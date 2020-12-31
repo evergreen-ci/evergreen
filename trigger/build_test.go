@@ -105,6 +105,7 @@ func (s *buildSuite) SetupTest() {
 				event.BuildPercentChangeKey: "50",
 			},
 		},
+		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerGithubCheckOutcome, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {
@@ -134,7 +135,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildFailed
@@ -142,7 +143,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildCreated
@@ -186,6 +187,26 @@ func (s *buildSuite) TestFailure() {
 }
 
 func (s *buildSuite) TestOutcome() {
+	n, err := s.t.buildOutcome(&s.subs[1])
+	s.NoError(err)
+	s.Nil(n)
+
+	n, err = s.t.buildOutcome(&s.subs[0])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.data.Status = evergreen.BuildSucceeded
+	n, err = s.t.buildOutcome(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+
+	s.data.Status = evergreen.BuildFailed
+	n, err = s.t.buildOutcome(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *buildSuite) TestGithubCheckOutcome() {
 	n, err := s.t.buildOutcome(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
