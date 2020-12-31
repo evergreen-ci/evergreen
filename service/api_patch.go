@@ -121,6 +121,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Alias:          data.Alias,
 		TriggerAliases: data.TriggerAliases,
 		BackportOf:     data.BackportInfo,
+		GitInfo:        data.GitMetadata,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,

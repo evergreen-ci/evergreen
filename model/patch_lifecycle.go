@@ -592,7 +592,6 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string
 
 	patchDoc := &patch.Patch{
 		Id:            mgobson.NewObjectId(),
-		Description:   MakeCommitQueueDescription(existingPatch.Patches, projectRef, project),
 		Author:        existingPatch.Author,
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,
@@ -605,6 +604,7 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string
 	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
 		return nil, errors.Wrap(err, "can't make merge patches from existing patch")
 	}
+	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project)
 
 	// verify the commit queue has tasks/variants enabled that match the project
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)

@@ -757,7 +757,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 				IsMbox:     true,
 				PatchSet: PatchSet{
 					PatchFileId:    patchFileID.Hex(),
-					CommitMessages: modulePatch.PatchSet.CommitMessages,
+					CommitMessages: []string{commitMessage},
 					Summary:        modulePatch.PatchSet.Summary,
 				},
 			})
