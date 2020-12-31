@@ -1,8 +1,10 @@
 package patch
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -611,6 +613,74 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncAtEndOpts.VariantsTasks)
 		})
 	}
+}
+
+func TestMakeMergePatchPatches(t *testing.T) {
+	require.NoError(t, db.ClearGridCollections(GridFSPrefix))
+	patchDiff := "Lorem Ipsum"
+	patchFileID := mgobson.NewObjectId()
+	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
+
+	// mbox patches are copied over as-is
+	existingPatch := &Patch{
+		Patches: []ModulePatch{
+			{
+				ModuleName: "0",
+				IsMbox:     true,
+				PatchSet:   PatchSet{PatchFileId: patchFileID.Hex()},
+			}},
+	}
+
+	newPatches, err := MakeMergePatchPatches(existingPatch, "ignored")
+	assert.NoError(t, err)
+	assert.Len(t, newPatches, 1)
+	assert.Equal(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+
+	// non-mbox patches get metadata added
+	existingPatch = &Patch{
+		Patches: []ModulePatch{
+			{
+				ModuleName: "0",
+				PatchSet: PatchSet{
+					PatchFileId: patchFileID.Hex(),
+				},
+			},
+		},
+		GitInfo: GitMetadata{
+			Email:    "octocat@github.com",
+			Username: "octocat",
+		},
+	}
+	newPatches, err = MakeMergePatchPatches(existingPatch, "new message")
+	assert.NoError(t, err)
+	assert.Len(t, newPatches, 1)
+	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+
+	file, err := db.GetGridFile(GridFSPrefix, newPatches[0].PatchSet.PatchFileId)
+	defer file.Close()
+	require.NoError(t, err)
+	patchContents, err := ioutil.ReadAll(file)
+	require.NoError(t, err)
+	assert.Contains(t, string(patchContents), "From: octocat <octocat@github.com>")
+	assert.Contains(t, string(patchContents), patchDiff)
+}
+
+func TestCanEnqueueToCommitQueue(t *testing.T) {
+	p := Patch{
+		GitInfo: GitMetadata{Username: "octocat", Email: "octocat@github.com"},
+	}
+	assert.True(t, p.CanEnqueueToCommitQueue())
+
+	p = Patch{
+		Patches: []ModulePatch{
+			{IsMbox: true},
+			{IsMbox: true},
+		},
+	}
+	assert.True(t, p.CanEnqueueToCommitQueue())
+
+	p.Patches[0].IsMbox = false
+	assert.False(t, p.CanEnqueueToCommitQueue())
 }
 
 func TestAddMetadataToDiff(t *testing.T) {

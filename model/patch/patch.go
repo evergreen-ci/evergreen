@@ -638,7 +638,7 @@ func (p *Patch) CanEnqueueToCommitQueue() bool {
 }
 
 func (p *Patch) HasGitInfo() bool {
-	return p.GitInfo.Email != ""
+	return p.GitInfo.Email != "" && p.GitInfo.Username != ""
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
