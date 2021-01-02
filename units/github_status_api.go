@@ -81,12 +81,12 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 // NewGithubStatusUpdateJobForNewPatch creates a job to update github's API
 // for a newly created patch, reporting it as pending, with description
 // "preparing to run tasks"
-func NewGithubStatusUpdateJobForNewPatch(version string) amboy.Job {
+func NewGithubStatusUpdateJobForNewPatch(patchID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.FetchID = version
+	job.FetchID = patchID
 	job.UpdateType = githubUpdateTypeNewPatch
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, patchID, time.Now().String()))
 
 	return job
 }
@@ -177,20 +177,16 @@ func (j *githubStatusUpdateJob) preamble() error {
 }
 
 func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
-	var patchDoc *patch.Patch
-	status := message.GithubStatus{}
+	status := message.GithubStatus{
+		Owner: j.Owner,
+		Repo:  j.Repo,
+		Ref:   j.Ref,
+	}
 
 	if j.UpdateType == githubUpdateTypeProcessingError {
 		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
 		status.Description = j.Description
-
-		status.Owner = j.Owner
-		status.Repo = j.Repo
-		status.Ref = j.Ref
-
-		// Since there is no patch document, we return early.
-		return &status, nil
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
@@ -203,44 +199,32 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = evergreenContext
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
+
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
 		status.Context = commitqueue.GithubContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 
-		status.Owner = j.Owner
-		status.Repo = j.Repo
-		status.Ref = j.Ref
-
-		// Since there is no patch document, we return early.
-		return &status, nil
 	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
 		status.Context = commitqueue.GithubContext
 		status.Description = "removed from queue"
 		status.State = message.GithubStateSuccess
-
-		status.Owner = j.Owner
-		status.Repo = j.Repo
-		status.Ref = j.Ref
-
-		// Since there is no patch document, we return early.
-		return &status, nil
 	}
 
-	if patchDoc == nil {
-		var err error
-		patchDoc, err = patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
+	if j.UpdateType == githubUpdateTypeRequestAuth || j.UpdateType == githubUpdateTypeNewPatch {
+		patchDoc, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		if patchDoc == nil {
 			return nil, errors.New("can't find patch")
 		}
+
+		status.Owner = patchDoc.GithubPatchData.BaseOwner
+		status.Repo = patchDoc.GithubPatchData.BaseRepo
+		status.Ref = patchDoc.GithubPatchData.HeadHash
 	}
 
-	status.Owner = patchDoc.GithubPatchData.BaseOwner
-	status.Repo = patchDoc.GithubPatchData.BaseRepo
-	status.Ref = patchDoc.GithubPatchData.HeadHash
 	return &status, nil
 }
 

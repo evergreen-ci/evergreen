@@ -68,6 +68,9 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 			"subscription_id":     subscriptions[i].ID,
 			"notification_is_nil": n == nil,
 		}
+		if n != nil {
+			msg["notification_id"] = n.ID
+		}
 		catcher.Add(err)
 		grip.Error(message.WrapError(err, msg))
 		grip.InfoWhen(err == nil, msg)

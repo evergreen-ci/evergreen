@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +58,6 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts := []host.Host{}
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -69,11 +69,14 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-
-		hosts = append(hosts, *intentHost)
 		ids = append(ids, intentHost.Id)
-	}
 
+		grip.Debug(message.Fields{
+			"message": "host.create intent",
+			"host_id": intentHost.Id,
+			"task_id": h.taskID,
+		})
+	}
 	return gimlet.NewJSONResponse(ids)
 }
 
