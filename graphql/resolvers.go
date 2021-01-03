@@ -2357,6 +2357,24 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 	}
 	return position, nil
 }
+func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
+	}
+	if baseTask == nil {
+		return nil, nil
+	}
+	return &baseTask.Status, nil
+}
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)

@@ -528,6 +528,7 @@ type ComplexityRoot struct {
 		ActivatedTime       func(childComplexity int) int
 		Ami                 func(childComplexity int) int
 		Annotation          func(childComplexity int) int
+		BaseStatus          func(childComplexity int) int
 		BaseTaskMetadata    func(childComplexity int) int
 		Blocked             func(childComplexity int) int
 		BuildId             func(childComplexity int) int
@@ -849,6 +850,7 @@ type TaskResolver interface {
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
+	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -3297,6 +3299,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Annotation(childComplexity), true
 
+	case "Task.baseStatus":
+		if e.complexity.Task.BaseStatus == nil {
+			break
+		}
+
+		return e.complexity.Task.BaseStatus(childComplexity), true
+
 	case "Task.baseTaskMetadata":
 		if e.complexity.Task.BaseTaskMetadata == nil {
 			break
@@ -5043,6 +5052,7 @@ type Task {
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
+  baseStatus: String
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
@@ -17126,6 +17136,37 @@ func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field gr
 	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BaseStatus(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_buildId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26713,6 +26754,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_baseTaskMetadata(ctx, field, obj)
+				return res
+			})
+		case "baseStatus":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_baseStatus(ctx, field, obj)
 				return res
 			})
 		case "buildId":

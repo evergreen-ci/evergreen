@@ -611,6 +611,7 @@ type Task {
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
+  baseStatus: String
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
