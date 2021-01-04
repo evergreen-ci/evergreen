@@ -330,7 +330,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	}
 
 	for _, alias := range aliases {
-		if alias.Alias != evergreen.GithubAlias {
+		if !utility.StringSliceContains(evergreen.InternalAliases, alias.Alias) {
 			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
 				alias.Task, strings.Join(alias.TaskTags, ", "))
 		}

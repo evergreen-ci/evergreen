@@ -42,6 +42,9 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			})
 			return nil
 		}
+		if flags.RepoPollerDisabled {
+			return nil
+		}
 
 		projects, err := model.FindAllMergedTrackedProjectRefsWithRepoInfo()
 		if err != nil {

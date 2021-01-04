@@ -808,7 +808,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 		So(pref.Insert(), ShouldBeNil)
 
-		alias := ProjectAlias{ProjectID: pref.Id, TaskTags: []string{"pull-requests"}, Alias: evergreen.GithubAlias,
+		alias := ProjectAlias{ProjectID: pref.Id, TaskTags: []string{"pull-requests"}, Alias: evergreen.GithubPRAlias,
 			Variant: ".*"}
 		So(alias.Upsert(), ShouldBeNil)
 		mustHaveResults := true

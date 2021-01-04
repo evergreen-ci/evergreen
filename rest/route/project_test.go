@@ -145,12 +145,12 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 		Identifier: model.ToStringPtr(projectID),
 		Aliases: []model.APIProjectAlias{
 			{
-				Alias: model.ToStringPtr(evergreen.GithubAlias),
+				Alias: model.ToStringPtr(evergreen.GithubPRAlias),
 			},
 		},
 	}
 
-	exists, err := h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err := h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.True(exists)
 
@@ -158,11 +158,11 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
 		{
 			ID:    model.ToStringPtr("abcdef"),
-			Alias: model.ToStringPtr(evergreen.GithubAlias),
+			Alias: model.ToStringPtr(evergreen.GithubPRAlias),
 		},
 	}
 	pref.Aliases = nil
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.True(exists)
 
@@ -173,7 +173,7 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 			Delete: true,
 		},
 	}
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.False(exists)
 }

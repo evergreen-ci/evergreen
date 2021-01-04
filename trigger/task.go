@@ -248,6 +248,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	if buildDoc == nil {
 		return nil, errors.New("could not find build while building email payload")
 	}
+	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
 	projectRef, err := model.FindOneProjectRef(t.task.Project)
 	if err != nil {
@@ -302,11 +303,11 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 			Fields: []*message.SlackAttachmentField{
 				{
 					Title: "Build",
-					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId), t.task.BuildVariant),
+					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId, hasPatch), t.task.BuildVariant),
 				},
 				{
 					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version), t.task.Version),
+					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version, hasPatch), t.task.Version),
 				},
 				{
 					Title: "Duration",
@@ -429,7 +430,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if t.task.IsSystemUnresponsive() {
+	if t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
 		return nil, nil
 	}
 
@@ -452,7 +453,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInBuild, t.task)
@@ -470,7 +471,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
@@ -485,7 +486,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
@@ -519,7 +520,8 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 }
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
-	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) || t.IsSystemUnresponsive() {
+	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) ||
+		t.IsSystemUnresponsive() || t.Details.Type == evergreen.CommandTypeSetup {
 		return false, nil, nil
 	}
 
