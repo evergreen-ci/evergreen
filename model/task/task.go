@@ -141,7 +141,7 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// WaitSinceUnblocked is the total wait time since all dependencies finished.
+	// WaitSinceUnblocked is the wait time since all dependencies finished.
 	// populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceUnblocked time.Duration `bson:"wait_since_unblocked,omitempty" json:"wait_since_unblocked,omitempty"`
 
