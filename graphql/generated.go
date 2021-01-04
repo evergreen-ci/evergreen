@@ -157,10 +157,11 @@ type ComplexityRoot struct {
 	}
 
 	FileDiff struct {
-		Additions func(childComplexity int) int
-		Deletions func(childComplexity int) int
-		DiffLink  func(childComplexity int) int
-		FileName  func(childComplexity int) int
+		Additions   func(childComplexity int) int
+		Deletions   func(childComplexity int) int
+		Description func(childComplexity int) int
+		DiffLink    func(childComplexity int) int
+		FileName    func(childComplexity int) int
 	}
 
 	GithubUser struct {
@@ -1306,6 +1307,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FileDiff.Deletions(childComplexity), true
+
+	case "FileDiff.description":
+		if e.complexity.FileDiff.Description == nil {
+			break
+		}
+
+		return e.complexity.FileDiff.Description(childComplexity), true
 
 	case "FileDiff.diffLink":
 		if e.complexity.FileDiff.DiffLink == nil {
@@ -4857,6 +4865,7 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+  description: String!
 }
 
 type UserPatches {
@@ -8551,6 +8560,40 @@ func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphq
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _FileDiff_description(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "FileDiff",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GithubUser_uid(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubUser) (ret graphql.Marshaler) {
@@ -24405,6 +24448,11 @@ func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "diffLink":
 			out.Values[i] = ec._FileDiff_diffLink(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "description":
+			out.Values[i] = ec._FileDiff_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
