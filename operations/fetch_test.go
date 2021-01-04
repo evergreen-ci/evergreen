@@ -101,5 +101,6 @@ func TestTruncateName(t *testing.T) {
 	// Test no extension
 	fileName = strings.Repeat("a", 300)
 	newName = truncateFilename(fileName)
-	assert.Equal(t, fileName, newName)
+	assert.Len(t, newName, 250)
+	assert.Equal(t, strings.Repeat("a", 250), newName)
 }

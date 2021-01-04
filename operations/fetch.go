@@ -473,13 +473,13 @@ func truncateFilename(fileName string) string {
 		if separatorIdx == -1 {
 			separatorIdx = strings.LastIndex(fileName, ".")
 			if separatorIdx == -1 {
-				return fileName
+				return fileName[0:fileNameMaxLength]
 			}
 		}
 		name := fileName[0:separatorIdx]
 		extension := fileName[separatorIdx:]
 		toTruncate := len(fileName) - fileNameMaxLength
-		if len(name) < toTruncate {
+		if len(name) <= toTruncate {
 			return fileName
 		}
 		newEndIdx := len(name) - toTruncate
