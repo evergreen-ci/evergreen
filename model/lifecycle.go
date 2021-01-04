@@ -263,7 +263,7 @@ func markVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		updates.VersionNewStatus = versionStatusFromTasks
 		event.LogVersionStateChangeEvent(versionId, status)
 	}
-	if checkGithubStatus && activeBuilds > 0 && buildsWithGithubCheckTasksComplete == len(builds) {
+	if checkGithubStatus && activeBuilds > 0 && buildsWithGithubCheckTasksComplete >= activeBuilds {
 		event.LogVersionGithubCheckFinishedEvent(versionId, githubCheckStatusFromTasks)
 	}
 	if !finished {
