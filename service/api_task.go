@@ -856,7 +856,9 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, settin
 		return false
 	}
 
-	if err := h.StopAgentMonitor(ctx, env); err != nil {
+	stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer stopCancel()
+	if err := h.StopAgentMonitor(stopCtx, env); err != nil {
 		// Stopping the agent monitor should not stop reprovisioning as long as
 		// the host is not currently running a task.
 		grip.Error(message.WrapError(err, message.Fields{
