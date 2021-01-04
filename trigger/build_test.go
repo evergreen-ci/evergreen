@@ -135,7 +135,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 3)
+	s.Len(n, 2)
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildFailed
@@ -143,7 +143,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 3)
+	s.Len(n, 2)
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildCreated
@@ -152,6 +152,15 @@ func (s *buildSuite) TestAllTriggers() {
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Len(n, 0)
+
+	s.build.GithubCheckStatus = evergreen.BuildFailed
+	s.data.GithubCheckStatus = evergreen.BuildFailed
+	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+
+	n, err = NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 1)
+
 }
 
 func (s *buildSuite) TestSuccess() {
@@ -207,21 +216,21 @@ func (s *buildSuite) TestOutcome() {
 }
 
 func (s *buildSuite) TestGithubCheckOutcome() {
-	n, err := s.t.buildOutcome(&s.subs[1])
+	n, err := s.t.buildGithubCheckOutcome(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	n, err = s.t.buildOutcome(&s.subs[0])
+	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildOutcome(&s.subs[0])
+	s.data.GithubCheckStatus = evergreen.BuildSucceeded
+	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildOutcome(&s.subs[0])
+	s.data.GithubCheckStatus = evergreen.BuildFailed
+	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
