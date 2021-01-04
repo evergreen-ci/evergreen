@@ -416,6 +416,7 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+  description: String!
 }
 
 type UserPatches {
