@@ -74,11 +74,32 @@ func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
 }
 
 func TestTruncateName(t *testing.T) {
+	// Test with .tar in filename
 	fileName := strings.Repeat("a", 300) + ".tar.gz"
 	newName := truncateFilename(fileName)
 	assert.NotEqual(t, newName, fileName)
 	assert.Len(t, newName, 250)
 	assert.Equal(t, strings.Repeat("a", 243)+".tar.gz", newName)
 
-	assert.Equal(t, newName, truncateFilename(newName))
+	// Test with 3 dots in filename
+	fileName = strings.Repeat("a", 243) + "_v4.4.4.txt"
+	newName = truncateFilename(fileName)
+	assert.NotEqual(t, newName, fileName)
+	assert.Len(t, newName, 250)
+	assert.Equal(t, strings.Repeat("a", 243)+"_v4.txt", newName)
+
+	// Test filename at max length
+	fileName = strings.Repeat("a", 247) + ".js"
+	newName = truncateFilename(fileName)
+	assert.Equal(t, fileName, newName)
+
+	// Test "extension" significantly longer than name
+	fileName = "a." + strings.Repeat("b", 300)
+	newName = truncateFilename(fileName)
+	assert.Equal(t, fileName, newName)
+
+	// Test no extension
+	fileName = strings.Repeat("a", 300)
+	newName = truncateFilename(fileName)
+	assert.Equal(t, fileName, newName)
 }

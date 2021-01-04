@@ -467,14 +467,24 @@ func fileNameWithIndex(filename string, index int) string {
 // truncateFilename truncates the filename (minus any extensions) so the entire filename length is less than the max
 func truncateFilename(fileName string) string {
 	if len(fileName) > fileNameMaxLength {
-		parts := strings.Split(fileName, ".")
-		if len(parts) == 0 {
+		separatorIdx := strings.Index(fileName, ".tar")
+		// Check to see if there's a .tar extension somewhere in the file. Truncate the filename before ".tar".
+		// Otherwise, use "." as the separator. Truncate the filename before the final ".".
+		if separatorIdx == -1 {
+			separatorIdx = strings.LastIndex(fileName, ".")
+			if separatorIdx == -1 {
+				return fileName
+			}
+		}
+		name := fileName[0:separatorIdx]
+		extension := fileName[separatorIdx:]
+		toTruncate := len(fileName) - fileNameMaxLength
+		if len(name) < toTruncate {
 			return fileName
 		}
-		toTruncate := len(fileName) - fileNameMaxLength
-		newEndIdx := len(parts[0]) - toTruncate
-		parts[0] = parts[0][0:newEndIdx]
-		fileName = strings.Join(parts, ".")
+		newEndIdx := len(name) - toTruncate
+		name = name[0:newEndIdx]
+		fileName = name + extension
 	}
 	return fileName
 }
