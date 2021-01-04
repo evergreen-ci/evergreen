@@ -123,7 +123,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
-	numLongTasks := taskGroupInfo.CountOverThreshold
+	numLongTasks := taskGroupInfo.CountDurationOverThreshold
 	scheduledDuration := taskGroupInfo.ExpectedDuration - taskGroupInfo.DurationOverThreshold
 	numNewHosts := 0
 

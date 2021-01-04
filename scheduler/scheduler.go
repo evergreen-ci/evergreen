@@ -123,7 +123,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 // Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration time.Duration
-	var distroCountOverThreshold int
+	var distroCountDurationOverThreshold, distroCountWaitOverThreshold int
 	var isAliasQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
@@ -166,16 +166,27 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
-		}
-
-		if duration > maxDurationThreshold {
-			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+			startTime := task.ScheduledTime
+			if task.UnblockedTime.After(startTime) {
+				startTime = task.UnblockedTime
+			}
+			task.WaitSinceUnblocked = time.Now().Sub(startTime)
+			// duration is defined as expected runtime and does not include wait time
+			if duration > maxDurationThreshold {
 				if info != nil {
-					info.CountOverThreshold++
+					info.CountDurationOverThreshold++
 					info.DurationOverThreshold += duration
 				}
 				distroCountOverThreshold++
 			}
+			// actual wait time allows us to independently check that the threshold is working
+			if task.WaitSinceUnblocked > maxDurationThreshold {
+				if info != nil {
+					info.CountWaitOverThreshold++
+				}
+				distroCountWaitOverThreshold++
+			}
+
 		}
 
 		taskGroupInfosMap[name] = info
@@ -188,12 +199,13 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               len(tasks),
-		ExpectedDuration:     distroExpectedDuration,
-		MaxDurationThreshold: maxDurationThreshold,
-		CountOverThreshold:   distroCountOverThreshold,
-		TaskGroupInfos:       taskGroupInfos,
-		AliasQueue:           isAliasQueue,
+		Length:                     len(tasks),
+		ExpectedDuration:           distroExpectedDuration,
+		MaxDurationThreshold:       maxDurationThreshold,
+		CountDurationOverThreshold: distroCountDurationOverThreshold,
+		CountWaitOverThreshold:     distroCountWaitOverThreshold,
+		TaskGroupInfos:             taskGroupInfos,
+		AliasQueue:                 isAliasQueue,
 	}
 
 	return distroQueueInfo

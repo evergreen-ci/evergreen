@@ -64,6 +64,9 @@ type Task struct {
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
+	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
+	// unblocked - for tasks that have dependencies, the time all dependencies of the task were fulfilled,
+	//             i.e. the latest of the dependencies' finish times.
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
 	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
@@ -71,6 +74,7 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
+	UnblockedTime time.Time `bson:"unblocked_time,omitempty" json:"unblocked_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -137,6 +141,9 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
+	// WaitSinceUnblocked is the total wait time since all dependencies finished.
+	// populated in GetDistroQueueInfo, used for host allocation
+	WaitSinceUnblocked time.Duration `bson:"wait_since_unblocked,omitempty" json:"wait_since_unblocked,omitempty"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
@@ -430,6 +437,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
+	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -444,7 +452,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
+		}
 	}
+	t.UnblockedTime = latestTime
 
 	return true, nil
 }

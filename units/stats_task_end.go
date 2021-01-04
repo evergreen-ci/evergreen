@@ -135,12 +135,18 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"task":                 j.task.DisplayName,
 		"task_id":              j.task.Id,
 		"total_wait_secs":      j.task.FinishTime.Sub(j.task.ActivatedTime).Seconds(),
+		"start_time":           j.task.StartTime,
+		"scheduled_time":       j.task.ScheduledTime,
 		"variant":              j.task.BuildVariant,
 		"version":              j.task.Version,
 	}
 
 	if cost != 0 {
 		msg["cost"] = cost
+	}
+
+	if !j.task.UnblockedTime.IsZero() {
+		msg["unblocked_time"] = j.task.UnblockedTime
 	}
 
 	historicRuntime, err := j.task.GetHistoricRuntime()
