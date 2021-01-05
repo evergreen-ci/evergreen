@@ -14,7 +14,7 @@
       "display_name": "evergreen smoke test",
       "local_config": "",
       "deactivate_previous": true,
-      "tracked": true,
+      "hidden": false,
       "admins": [],
       "repotracker_error": null
     }

@@ -177,7 +177,7 @@
       "display_name": "evergreen-spruce",
       "local_config": "",
       "deactivate_previous": false,
-      "tracked": true,
+      "hidden": false,
       "repotracker_error": null,
       "commit_queue": {
         "enabled": true,
