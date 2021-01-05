@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -26,6 +25,7 @@ const (
 	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
 	HostStatusWriteConfirm         = "Successfully updated host status"
 	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
+	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
@@ -122,9 +122,16 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 func GetRestartJasperCallback(username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
 		modifyErr := h.SetNeedsJasperRestart(username)
-		if adb.ResultsNotFound(modifyErr) {
-			return 0, nil
+		if modifyErr != nil {
+			return http.StatusInternalServerError, modifyErr
 		}
+		return 0, nil
+	}
+}
+
+func GetReprovisionToNewCallback(username string) func(h *host.Host) (int, error) {
+	return func(h *host.Host) (int, error) {
+		modifyErr := h.SetNeedsReprovisionToNew(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}
