@@ -556,7 +556,7 @@ func FindAllMergedTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefHiddenKey: false,
+			ProjectRefHiddenKey: bson.M{"$ne": true},
 			ProjectRefOwnerKey:  bson.M{"$exists": true, "$ne": ""},
 			ProjectRefRepoKey:   bson.M{"$exists": true, "$ne": ""},
 			ProjectRefBranchKey: bson.M{"$exists": true, "$ne": ""},
