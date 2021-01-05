@@ -429,21 +429,36 @@ func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string,
 }
 func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
 	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.GetDisplayStatus(),
-			BuildVariant: task.BuildVariant,
-			Blocked:      task.Blocked(),
-			Aborted:      task.Aborted,
+	for _, t := range tasks {
+		result := TaskResult{
+			ID:           t.Id,
+			DisplayName:  t.DisplayName,
+			Version:      t.Version,
+			Status:       t.GetDisplayStatus(),
+			BuildVariant: t.BuildVariant,
+			Blocked:      t.Blocked(),
+			Aborted:      t.Aborted,
 		}
-		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			baseStatus := baseTaskStatuses[task.BuildVariant][task.DisplayName]
-			t.BaseStatus = &baseStatus
+		if baseTaskStatuses != nil && baseTaskStatuses[t.BuildVariant] != nil {
+			baseStatus := baseTaskStatuses[t.BuildVariant][t.DisplayName]
+			result.BaseStatus = &baseStatus
 		}
-		taskResults = append(taskResults, &t)
+		if len(t.ExecutionTasksFull) > 0 {
+			ets := []*restModel.APITask{}
+			for _, et := range t.ExecutionTasksFull {
+				at := restModel.APITask{}
+				if err := at.BuildFromService(&et); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "unable to convert APITask",
+					}))
+					continue
+				}
+				ets = append(ets, &at)
+			}
+			result.ExecutionTasksFull = ets
+		}
+
+		taskResults = append(taskResults, &result)
 	}
 	return taskResults
 }

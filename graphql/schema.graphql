@@ -511,6 +511,7 @@ type TaskResult {
   baseStatus: String
   buildVariant: String!
   blocked: Boolean!
+  executionTasksFull: [Task!]
 }
 
 type PatchDuration {
@@ -611,6 +612,7 @@ type Task {
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
+  baseStatus: String
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
@@ -627,6 +629,7 @@ type Task {
   estimatedStart: Duration
   execution: Int
   executionTasks: [String!]
+  executionTasksFull: [Task!]
   expectedDuration: Duration
   totalTestCount: Int!
   failedTestCount: Int!
