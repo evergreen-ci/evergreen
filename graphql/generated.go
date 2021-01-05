@@ -75,6 +75,7 @@ type ComplexityRoot struct {
 		SuspectedIssues func(childComplexity int) int
 		TaskExecution   func(childComplexity int) int
 		TaskId          func(childComplexity int) int
+		UserCanModify   func(childComplexity int) int
 	}
 
 	BaseTaskMetadata struct {
@@ -748,6 +749,7 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -988,6 +990,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.TaskId(childComplexity), true
+
+	case "Annotation.userCanModify":
+		if e.complexity.Annotation.UserCanModify == nil {
+			break
+		}
+
+		return e.complexity.Annotation.UserCanModify(childComplexity), true
 
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
@@ -5340,6 +5349,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  userCanModify: Boolean!
 }
 
 type Note {
@@ -7015,6 +7025,40 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
 	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Annotation_userCanModify(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Annotation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Annotation().UserCanModify(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -23888,6 +23932,20 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 					}
 				}()
 				res = ec._Annotation_suspectedIssues(ctx, field, obj)
+				return res
+			})
+		case "userCanModify":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_userCanModify(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:

@@ -916,6 +916,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  userCanModify: Boolean!
 }
 
 type Note {
