@@ -64,7 +64,6 @@ type ProjectRef struct {
 	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PatchTriggerAliases     []PatchTriggerDefinition  `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
 	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
-	Tags                    []string                  `bson:"tags" json:"tags,omitempty" yaml:"tags,omitempty"`
 	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
 	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
@@ -237,7 +236,6 @@ var (
 	projectRefTriggersKey                = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
-	projectRefTagsKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Tags")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
@@ -467,42 +465,6 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	projectRef.checkDefaultLogger()
 
 	return projectRef, err
-}
-
-func FindTaggedProjectRefs(includeDisabled bool, tags ...string) ([]ProjectRef, error) {
-	if len(tags) == 0 {
-		return nil, errors.New("must specify one or more tags")
-	}
-
-	q := bson.M{}
-	if !includeDisabled {
-		q[ProjectRefEnabledKey] = true
-	}
-
-	if len(tags) == 1 {
-		q[projectRefTagsKey] = tags[0]
-	} else {
-		q[projectRefTagsKey] = bson.M{"$in": tags}
-	}
-
-	projectRefs := []ProjectRef{}
-	err := db.FindAll(
-		ProjectRefCollection,
-		q,
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
 // FindAllMergedTrackedProjectRefs returns all project refs in the db
@@ -856,7 +818,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepoKey:                    projectRef.Repo,
 				ProjectRefBranchKey:                  projectRef.Branch,
 				ProjectRefDisplayNameKey:             projectRef.DisplayName,
-				projectRefTagsKey:                    projectRef.Tags,
 				ProjectRefDeactivatePreviousKey:      projectRef.DeactivatePrevious,
 				ProjectRefRemotePathKey:              projectRef.RemotePath,
 				ProjectRefHiddenKey:                  projectRef.Hidden,
@@ -1015,75 +976,6 @@ func (p *ProjectRef) ValidateIdentifier() error {
 		return errors.New("identifier cannot match another project's identifier")
 	}
 	return nil
-}
-
-func (p *ProjectRef) RemoveTag(tag string) (bool, error) {
-	newTags := []string{}
-	for _, t := range p.Tags {
-		if tag == t {
-			continue
-		}
-		newTags = append(newTags, t)
-	}
-	if len(newTags) == len(p.Tags) {
-		return false, nil
-	}
-
-	err := db.Update(
-		ProjectRefCollection,
-		bson.M{ProjectRefIdKey: p.Id},
-		bson.M{"$pull": bson.M{projectRefTagsKey: tag}},
-	)
-	if adb.ResultsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, errors.Wrap(err, "database error")
-	}
-
-	p.Tags = newTags
-
-	return true, nil
-}
-
-func (p *ProjectRef) AddTags(tags ...string) (bool, error) {
-	set := make(map[string]struct{}, len(p.Tags))
-	for _, t := range p.Tags {
-		set[t] = struct{}{}
-	}
-	toAdd := []string{}
-	catcher := grip.NewBasicCatcher()
-	for _, t := range tags {
-		if _, ok := set[t]; ok {
-			continue
-		}
-		catcher.ErrorfWhen(strings.Contains(t, ","),
-			"cannot specify tags with a comma (,) [%s]", t)
-		toAdd = append(toAdd, t)
-	}
-	if catcher.HasErrors() {
-		return false, catcher.Resolve()
-	}
-
-	if len(toAdd) == 0 {
-		return false, nil
-	}
-
-	err := db.Update(
-		ProjectRefCollection,
-		bson.M{ProjectRefIdKey: p.Id},
-		bson.M{"$addToSet": bson.M{projectRefTagsKey: bson.M{"$each": toAdd}}},
-	)
-	if adb.ResultsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, errors.Wrap(err, "database error")
-	}
-
-	p.Tags = append(p.Tags, toAdd...)
-
-	return true, nil
 }
 
 // RemoveAdminFromProjects removes a user from all Admin slices of every project

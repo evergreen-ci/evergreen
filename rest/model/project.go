@@ -30,7 +30,6 @@ type APIProject struct {
 	Hidden                bool                 `json:"hidden"`
 	DeactivatePrevious    bool                 `json:"deactivate_previous"`
 	Admins                []*string            `json:"admins"`
-	Tags                  []*string            `json:"tags"`
 	TracksPushEvents      bool                 `json:"tracks_push_events"`
 	PRTestingEnabled      bool                 `json:"pr_testing_enabled"`
 	GitTagVersionsEnabled bool                 `json:"git_tag_versions_enabled"`
@@ -77,11 +76,6 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 		admins = append(admins, ToStringPtr(a))
 	}
 	apiProject.Admins = admins
-	tags := []*string{}
-	for _, a := range v.Tags {
-		tags = append(tags, ToStringPtr(a))
-	}
-	apiProject.Tags = tags
 
 	return nil
 }
@@ -266,7 +260,6 @@ type APIProjectRef struct {
 	GitTagAuthorizedTeams       []*string            `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
 	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
 	NotifyOnBuildFailure        bool                 `json:"notify_on_failure"`
-	Tags                        []*string            `json:"tags"`
 
 	Revision            *string                `json:"revision"`
 	Triggers            []APITriggerDefinition `json:"triggers"`
@@ -334,7 +327,6 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Admins:                FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		GitTagAuthorizedTeams: FromStringPtrSlice(p.GitTagAuthorizedTeams),
-		Tags:                  FromStringPtrSlice(p.Tags),
 	}
 
 	// Copy triggers
@@ -416,7 +408,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Admins = ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
-	p.Tags = ToStringPtrSlice(projectRef.Tags)
 
 	// Copy triggers
 	triggers := []APITriggerDefinition{}
