@@ -66,6 +66,7 @@ type DistroInfo struct {
 	WorkDir              *string `json:"work_dir"`
 	IsVirtualWorkstation bool    `json:"is_virtual_workstation"`
 	User                 *string `json:"user"`
+	IsWindows            bool    `json:"is_windows"`
 }
 
 type TaskInfo struct {
@@ -156,6 +157,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 		WorkDir:              ToStringPtr(v.Distro.WorkDir),
 		IsVirtualWorkstation: v.Distro.IsVirtualWorkstation,
 		User:                 ToStringPtr(v.Distro.User),
+		IsWindows:            v.Distro.IsWindows(),
 	}
 	apiHost.Distro = di
 	return nil
