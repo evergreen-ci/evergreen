@@ -48,10 +48,7 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	repoModel := &model.APIProjectRef{}
 	if err = repoModel.BuildFromService(repo.ProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "problem converting repo document",
-			StatusCode: http.StatusInternalServerError,
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem converting repo document"))
 	}
 
 	repoVars, err := h.sc.FindProjectVarsById(repo.Id, true)

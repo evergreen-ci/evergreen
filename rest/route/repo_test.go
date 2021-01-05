@@ -67,7 +67,7 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 	assert.Equal(t, repoRef.Repo, model.FromStringPtr(repo.Repo))
 	assert.Equal(t, repoRef.Owner, model.FromStringPtr(repo.Owner))
 	assert.Equal(t, repoRef.Enabled, repo.Enabled)
-	assert.Equal(t, 1, len(repo.Aliases))
+	assert.Len(t, repo.Aliases, 1)
 	assert.Equal(t, alias, repo.Aliases[0])
 	assert.Equal(t, repoVars.Vars, repo.Variables.Vars)
 }
