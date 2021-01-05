@@ -21,12 +21,14 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 		dbModel.ProjectAliasCollection,
 	))
 
-	repoRef := &dbModel.RepoRef{dbModel.ProjectRef{
-		Id:      "repo_ref",
-		Repo:    "repo",
-		Owner:   "mongodb",
-		Enabled: true,
-	}}
+	repoRef := &dbModel.RepoRef{
+		ProjectRef: dbModel.ProjectRef{
+			Id:      "repo_ref",
+			Repo:    "repo",
+			Owner:   "mongodb",
+			Enabled: true,
+		},
+	}
 	require.NoError(t, repoRef.Insert())
 
 	repoVars := &dbModel.ProjectVars{
