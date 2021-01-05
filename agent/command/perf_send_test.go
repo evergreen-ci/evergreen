@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/poplar"
 	"github.com/stretchr/testify/assert"
 )
@@ -80,20 +79,4 @@ func TestPerfSendAddEvgData(t *testing.T) {
 	}
 	cmd.addEvgData(report, conf)
 	assert.Equal(t, expectedReport, report)
-}
-
-func TestPerfSendExpansions(t *testing.T) {
-	tc := internal.TaskConfig{
-		Expansions: &util.Expansions{"a": "b", "c": "d"},
-	}
-	cmd := perfSend{
-		File:   "${a}",
-		AWSKey: "key",
-		Prefix: "${z|a default}",
-	}
-	err := cmd.applyExpansions(&tc)
-	assert.NoError(t, err)
-	assert.Equal(t, "b", cmd.File)
-	assert.Equal(t, "key", cmd.AWSKey)
-	assert.Equal(t, "a default", cmd.Prefix)
 }

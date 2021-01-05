@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
 	"github.com/mitchellh/mapstructure"
@@ -55,7 +56,7 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 
 func (c *perfSend) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := c.applyExpansions(conf); err != nil {
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
 	}
 
@@ -94,37 +95,4 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) 
 	report.BucketConf.Name = c.Bucket
 	report.BucketConf.Prefix = c.Prefix
 	report.BucketConf.Region = c.Region
-}
-
-func (c *perfSend) applyExpansions(tc *internal.TaskConfig) error {
-	if tc == nil || tc.Expansions == nil {
-		return nil
-	}
-	var err error
-	c.AWSKey, err = tc.Expansions.ExpandString(c.AWSKey)
-	if err != nil {
-		return errors.Wrap(err, "error expanding aws_key")
-	}
-	c.AWSSecret, err = tc.Expansions.ExpandString(c.AWSSecret)
-	if err != nil {
-		return errors.Wrap(err, "error expanding aws_secret")
-	}
-	c.Region, err = tc.Expansions.ExpandString(c.Region)
-	if err != nil {
-		return errors.Wrap(err, "error expanding region")
-	}
-	c.Bucket, err = tc.Expansions.ExpandString(c.Bucket)
-	if err != nil {
-		return errors.Wrap(err, "error expanding bucket")
-	}
-	c.Prefix, err = tc.Expansions.ExpandString(c.Prefix)
-	if err != nil {
-		return errors.Wrap(err, "error expanding prefix")
-	}
-	c.File, err = tc.Expansions.ExpandString(c.File)
-	if err != nil {
-		return errors.Wrap(err, "error expanding file")
-	}
-
-	return nil
 }
