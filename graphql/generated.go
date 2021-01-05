@@ -70,12 +70,12 @@ type ComplexityRoot struct {
 	}
 
 	Annotation struct {
-		Issues               func(childComplexity int) int
-		Note                 func(childComplexity int) int
-		SuspectedIssues      func(childComplexity int) int
-		TaskExecution        func(childComplexity int) int
-		TaskId               func(childComplexity int) int
-		UserModifyPermission func(childComplexity int) int
+		Issues          func(childComplexity int) int
+		Note            func(childComplexity int) int
+		SuspectedIssues func(childComplexity int) int
+		TaskExecution   func(childComplexity int) int
+		TaskId          func(childComplexity int) int
+		UserCanModify   func(childComplexity int) int
 	}
 
 	BaseTaskMetadata struct {
@@ -748,7 +748,7 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
-	UserModifyPermission(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
+	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -990,12 +990,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Annotation.TaskId(childComplexity), true
 
-	case "Annotation.userModifyPermission":
-		if e.complexity.Annotation.UserModifyPermission == nil {
+	case "Annotation.userCanModify":
+		if e.complexity.Annotation.UserCanModify == nil {
 			break
 		}
 
-		return e.complexity.Annotation.UserModifyPermission(childComplexity), true
+		return e.complexity.Annotation.UserCanModify(childComplexity), true
 
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
@@ -5340,7 +5340,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userModifyPermission: Boolean!
+  userCanModify: Boolean!
 }
 
 type Note {
@@ -7018,7 +7018,7 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Annotation_userModifyPermission(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+func (ec *executionContext) _Annotation_userCanModify(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -7035,7 +7035,7 @@ func (ec *executionContext) _Annotation_userModifyPermission(ctx context.Context
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Annotation().UserModifyPermission(rctx, obj)
+		return ec.resolvers.Annotation().UserCanModify(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23891,7 +23891,7 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 				res = ec._Annotation_suspectedIssues(ctx, field, obj)
 				return res
 			})
-		case "userModifyPermission":
+		case "userCanModify":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -23899,7 +23899,7 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Annotation_userModifyPermission(ctx, field, obj)
+				res = ec._Annotation_userCanModify(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

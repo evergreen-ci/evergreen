@@ -915,7 +915,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userModifyPermission: Boolean!
+  userCanModify: Boolean!
 }
 
 type Note {

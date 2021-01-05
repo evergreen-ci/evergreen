@@ -2447,7 +2447,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	return apiAnnotation, nil
 }
 
-func (r *annotationResolver) UserModifyPermission(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {
