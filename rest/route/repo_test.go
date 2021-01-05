@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +16,12 @@ import (
 
 func TestGetRepoIDGetHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(
-		model.RepoRefCollection,
-		model.ProjectVarsCollection,
-		model.ProjectAliasCollection,
+		dbModel.RepoRefCollection,
+		dbModel.ProjectVarsCollection,
+		dbModel.ProjectAliasCollection,
 	))
 
-	repoRef := &model.RepoRef{model.ProjectRef{
+	repoRef := &dbModel.RepoRef{dbModel.ProjectRef{
 		Id:      "repo_ref",
 		Repo:    "repo",
 		Owner:   "mongodb",
@@ -29,14 +29,14 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 	}}
 	require.NoError(t, repoRef.Insert())
 
-	repoVars := &model.ProjectVars{
+	repoVars := &dbModel.ProjectVars{
 		Id:   repoRef.Id,
 		Vars: map[string]string{"a": "hello", "b": "world"},
 	}
 	_, err := repoVars.Upsert()
 	require.NoError(t, err)
 
-	repoAlias := &model.ProjectAlias{
+	repoAlias := &dbModel.ProjectAlias{
 		ProjectID: repoRef.Id,
 		Alias:     "test_alias",
 		Variant:   "test_variant",
@@ -56,14 +56,14 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 	assert.Equal(t, resp.Status(), http.StatusOK)
 	assert.NotNil(t, resp.Data())
 
-	repo := resp.Data().(*restModel.APIProjectRef)
-	alias := restModel.APIProjectAlias{}
+	repo := resp.Data().(*model.APIProjectRef)
+	alias := model.APIProjectAlias{}
 	err = alias.BuildFromService(repoAlias)
 	assert.NoError(t, err)
 
-	assert.Equal(t, repoRef.Id, restModel.FromStringPtr(repo.Id))
-	assert.Equal(t, repoRef.Repo, restModel.FromStringPtr(repo.Repo))
-	assert.Equal(t, repoRef.Owner, restModel.FromStringPtr(repo.Owner))
+	assert.Equal(t, repoRef.Id, model.FromStringPtr(repo.Id))
+	assert.Equal(t, repoRef.Repo, model.FromStringPtr(repo.Repo))
+	assert.Equal(t, repoRef.Owner, model.FromStringPtr(repo.Owner))
 	assert.Equal(t, repoRef.Enabled, repo.Enabled)
 	assert.Equal(t, 1, len(repo.Aliases))
 	assert.Equal(t, alias, repo.Aliases[0])
