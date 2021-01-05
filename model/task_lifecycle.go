@@ -805,7 +805,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 			failedTask = true
 		} else if githubCheckTasks[t.Id] {
-			successfulGithubCheckTasks += 1
+			successfulGithubCheckTasks++
 		}
 	}
 

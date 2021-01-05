@@ -112,7 +112,7 @@ type Task struct {
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
 
-	// Set to true if the task should be concerned for mainline github checks
+	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// the number of times this task has been restarted

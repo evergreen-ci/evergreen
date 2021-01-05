@@ -930,7 +930,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}))
 	}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
-		taskNames := pairsToCreate.TaskNames(buildvariant.Name) // if no aliases provided then this is empty
+		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases
 		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 		grip.Error(message.WrapError(err, message.Fields{

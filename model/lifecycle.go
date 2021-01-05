@@ -215,7 +215,7 @@ func markVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 				return errors.WithStack(err)
 			}
 			if githubCheckTasksComplete {
-				buildsWithGithubCheckTasksComplete += 1
+				buildsWithGithubCheckTasksComplete++
 				if githubCheckStatus != evergreen.BuildSucceeded {
 					githubCheckStatusFromTasks = evergreen.VersionFailed
 				}
@@ -958,6 +958,17 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	for _, task := range tasksInBuild {
 		execTable.AddId(b.BuildVariant, task.DisplayName, task.Id)
 	}
+	generatorIsGithubCheck := false
+	if generatedBy != "" {
+		generateTask, err := task.FindOneId(generatedBy)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding generated task '%s'", generatedBy)
+		}
+		if generateTask == nil {
+			return nil, errors.Errorf("generated task '%s' not found", generatedBy)
+		}
+		generatorIsGithubCheck = generateTask.IsGithubCheck
+	}
 
 	// create and insert all of the actual tasks
 	taskMap := make(map[string]*task.Task)
@@ -971,9 +982,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
-
 		newTask.DependsOn = makeDeps(t, newTask, execTable)
 		newTask.GeneratedBy = generatedBy
+		if generatorIsGithubCheck {
+			newTask.IsGithubCheck = true
+		}
 
 		if shouldSyncTask(syncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
 			newTask.CanSync = true
