@@ -1,6 +1,8 @@
 mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function ($scope, $window, $http, mciAdminRestService, notificationService) {
   $scope.validDefaultLoggers = $window.validDefaultLoggers;
   $scope.can_clear_tokens = $window.can_clear_tokens;
+  $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
+  $scope.validHostAllocatorRoundingRules = $window.validHostAllocatorRoundingRules;
 
   $scope.load = function () {
     $scope.Settings = {};

@@ -75,6 +75,7 @@ type ComplexityRoot struct {
 		SuspectedIssues func(childComplexity int) int
 		TaskExecution   func(childComplexity int) int
 		TaskId          func(childComplexity int) int
+		UserCanModify   func(childComplexity int) int
 	}
 
 	BaseTaskMetadata struct {
@@ -157,10 +158,11 @@ type ComplexityRoot struct {
 	}
 
 	FileDiff struct {
-		Additions func(childComplexity int) int
-		Deletions func(childComplexity int) int
-		DiffLink  func(childComplexity int) int
-		FileName  func(childComplexity int) int
+		Additions   func(childComplexity int) int
+		Deletions   func(childComplexity int) int
+		Description func(childComplexity int) int
+		DiffLink    func(childComplexity int) int
+		FileName    func(childComplexity int) int
 	}
 
 	GithubUser struct {
@@ -303,6 +305,7 @@ type ComplexityRoot struct {
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string) int
 		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
+		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey           func(childComplexity int, keyName string) int
@@ -746,6 +749,7 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
+	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -773,6 +777,7 @@ type MutationResolver interface {
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
 	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RestartJasper(ctx context.Context, hostIds []string) (int, error)
@@ -985,6 +990,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.TaskId(childComplexity), true
+
+	case "Annotation.userCanModify":
+		if e.complexity.Annotation.UserCanModify == nil {
+			break
+		}
+
+		return e.complexity.Annotation.UserCanModify(childComplexity), true
 
 	case "BaseTaskMetadata.baseTaskDuration":
 		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
@@ -1300,6 +1312,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FileDiff.Deletions(childComplexity), true
+
+	case "FileDiff.description":
+		if e.complexity.FileDiff.Description == nil {
+			break
+		}
+
+		return e.complexity.FileDiff.Description(childComplexity), true
 
 	case "FileDiff.diffLink":
 		if e.complexity.FileDiff.DiffLink == nil {
@@ -2006,6 +2025,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+
+	case "Mutation.removeAnnotationIssue":
+		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeAnnotationIssue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.removeFavoriteProject":
 		if e.complexity.Mutation.RemoveFavoriteProject == nil {
@@ -4506,6 +4537,12 @@ type Mutation {
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
+  removeAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
@@ -4812,6 +4849,7 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+  description: String!
 }
 
 type UserPatches {
@@ -5311,6 +5349,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  userCanModify: Boolean!
 }
 
 type Note {
@@ -5557,6 +5596,44 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 		}
 	}
 	args["isIssue"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APIIssueLink
+	if tmp, ok := rawArgs["apiIssue"]; ok {
+		arg2, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["apiIssue"] = arg2
+	var arg3 bool
+	if tmp, ok := rawArgs["isIssue"]; ok {
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isIssue"] = arg3
 	return args, nil
 }
 
@@ -6948,6 +7025,40 @@ func (ec *executionContext) _Annotation_suspectedIssues(ctx context.Context, fie
 	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
 	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Annotation_userCanModify(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Annotation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Annotation().UserCanModify(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -8465,6 +8576,40 @@ func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphq
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _FileDiff_description(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "FileDiff",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GithubUser_uid(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubUser) (ret graphql.Marshaler) {
@@ -11729,6 +11874,47 @@ func (ec *executionContext) _Mutation_addAnnotationIssue(ctx context.Context, fi
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().AddAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_removeAnnotationIssue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_removeAnnotationIssue_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23748,6 +23934,20 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 				res = ec._Annotation_suspectedIssues(ctx, field, obj)
 				return res
 			})
+		case "userCanModify":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Annotation_userCanModify(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24185,6 +24385,11 @@ func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "diffLink":
 			out.Values[i] = ec._FileDiff_diffLink(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "description":
+			out.Values[i] = ec._FileDiff_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -24974,6 +25179,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "addAnnotationIssue":
 			out.Values[i] = ec._Mutation_addAnnotationIssue(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removeAnnotationIssue":
+			out.Values[i] = ec._Mutation_removeAnnotationIssue(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

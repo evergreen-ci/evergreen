@@ -322,7 +322,7 @@ func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*mod
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
-	projectAliases, err := model.FindAliasInProject(p.Identifier, alias)
+	projectAliases, err := model.FindAliasInProjectOrRepo(p.Identifier, alias)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -342,7 +342,7 @@ func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias str
 }
 
 func getRequesterFromAlias(alias string) string {
-	if alias == evergreen.GithubAlias {
+	if alias == evergreen.GithubPRAlias {
 		return evergreen.GithubPRRequester
 	}
 	if alias == evergreen.GitTagAlias {

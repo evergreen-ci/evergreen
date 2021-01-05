@@ -138,7 +138,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
-		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(update.Error(), message.Fields{
 			"message":            "Failed to queue status update",
 			"job":                j.ID(),
 			"patch_id":           j.PatchID,

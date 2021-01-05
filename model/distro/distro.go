@@ -213,6 +213,7 @@ type HostAllocatorSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	RoundingRule           string        `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
 	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
@@ -264,8 +265,6 @@ const (
 
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
-
-	unconfiguredAmi = "ami-1234"
 )
 
 // validBootstrapMethods includes all recognized bootstrap methods.
@@ -570,11 +569,6 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	for _, s := range d.ProviderSettingsList {
 		if val, ok := s.Lookup("region").StringValueOK(); ok {
 			if val == region {
-				// TODO: remove once the build script has configured all AMIs.
-				ami, _ := s.Lookup("ami").StringValueOK()
-				if ami == unconfiguredAmi {
-					return nil, errors.Errorf("distro '%s' has unfinished settings for region '%s'", d.Id, region)
-				}
 				return s, nil
 			}
 		}
@@ -596,11 +590,6 @@ func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 		}
 		// admins don't allow this region
 		if !utility.StringSliceContains(allowedRegions, region) {
-			continue
-		}
-		// TODO: remove once the build script has configured all AMIs.
-		ami, _ := doc.Lookup("ami").StringValueOK()
-		if ami == unconfiguredAmi {
 			continue
 		}
 		regions = append(regions, region)
@@ -634,6 +623,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
+		RoundingRule:           has.RoundingRule,
 		FutureHostFraction:     has.FutureHostFraction,
 	}
 
@@ -648,6 +638,9 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
+		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
 	if resolved.FutureHostFraction == 0 {
 		resolved.FutureHostFraction = config.FutureHostFraction

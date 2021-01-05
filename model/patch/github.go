@@ -225,7 +225,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
 		Id:          mgobson.NewObjectId(),
-		Alias:       evergreen.GithubAlias,
+		Alias:       evergreen.GithubPRAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
@@ -246,5 +246,5 @@ func (g *githubIntent) NewPatch() *Patch {
 }
 
 func (g *githubIntent) GetAlias() string {
-	return evergreen.GithubAlias
+	return evergreen.GithubPRAlias
 }

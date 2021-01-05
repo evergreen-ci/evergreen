@@ -158,6 +158,75 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.Len(found, 2)
 }
 
+func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
+	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	repoRef := RepoRef{ProjectRef{
+		Id:    "repo_ref",
+		Owner: "mongodb",
+		Repo:  "test_repo",
+	}}
+	pRef1 := ProjectRef{
+		Id:              "p1",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
+	}
+	pRef2 := ProjectRef{
+		Id:              "p2",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
+	}
+	s.NoError(repoRef.Upsert())
+	s.NoError(pRef1.Upsert())
+	s.NoError(pRef2.Upsert())
+
+	for i := 0; i < 3; i++ {
+		alias := ProjectAlias{
+			ProjectID: repoRef.Id,
+			Alias:     "alias-1",
+			Variant:   "variants-11",
+			Task:      "variants-11",
+		}
+		if i%2 != 0 {
+			alias.Alias = "alias-2"
+		}
+		s.NoError(alias.Upsert())
+	}
+
+	for i := 0; i < 6; i++ {
+		alias := ProjectAlias{
+			ProjectID: pRef1.Id,
+			Alias:     "alias-3",
+			Variant:   "variants-11",
+			Task:      "variants-11",
+		}
+		if i%2 == 0 {
+			alias.Alias = "alias-4"
+		}
+		s.NoError(alias.Upsert())
+	}
+
+	// Test project with aliases
+	found, err := FindAliasInProjectOrRepo(pRef1.Id, "alias-3")
+	s.NoError(err)
+	s.Len(found, 3)
+
+	// Test project without aliases; parent repo has aliases
+	found, err = FindAliasInProjectOrRepo(pRef2.Id, "alias-1")
+	s.NoError(err)
+	s.Len(found, 2)
+
+	// Test non-existent project
+	found, err = FindAliasInProjectOrRepo("bad-project", "alias-1")
+	s.Error(err)
+	s.Len(found, 0)
+
+	// Test no aliases found
+	found, err = FindAliasInProjectOrRepo(pRef1.Id, "alias-5")
+	s.NoError(err)
+	s.Len(found, 0)
+}
+
 func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	for _, a := range s.aliases {
 		a.ProjectID = "old-project"

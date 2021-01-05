@@ -617,7 +617,7 @@ func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
 		patches := []*patch.Patch{
 			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Author: "user1", CreateTime: s.time, Description: "user 1 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchCreated},
 			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Author: "user2", CreateTime: s.time.Add(time.Second * 2), Description: "user 2 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
-			{Id: mgobson.ObjectIdHex(s.obj_ids[2]), Author: "user1", CreateTime: s.time.Add(time.Second * 4), Description: "user 1 patch 2 llama", Alias: evergreen.GithubAlias, Status: evergreen.PatchSucceeded},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[2]), Author: "user1", CreateTime: s.time.Add(time.Second * 4), Description: "user 1 patch 2 llama", Alias: evergreen.GithubPRAlias, Status: evergreen.PatchSucceeded},
 			{Id: mgobson.ObjectIdHex(s.obj_ids[3]), Author: "user1", CreateTime: s.time.Add(time.Second * 6), Description: "user 1 patch 3", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},
 			{Id: mgobson.ObjectIdHex(s.obj_ids[4]), Author: "user2", CreateTime: s.time.Add(time.Second * 8), Description: "user 2 patch 2", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
 			{Id: mgobson.ObjectIdHex(s.obj_ids[5]), Author: "user1", CreateTime: s.time.Add(time.Second * 10), Description: "user 1 patch 4 llama", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},

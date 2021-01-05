@@ -1215,11 +1215,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if buildErr != nil {
 			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
-		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
+		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
 			apiTest.Logs.HTMLDisplayURL = &formattedURL
 		}
-		if apiTest.Logs.RawDisplayURL != nil && IsURL(*apiTest.Logs.RawDisplayURL) == false {
+		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
@@ -1937,6 +1937,9 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
+	if err := util.CheckURL(issue.URL); err != nil {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
+	}
 	if isIssue {
 		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
@@ -1945,6 +1948,24 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	} else {
 		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add suspected issue: %s", err.Error()))
+		}
+		return true, nil
+	}
+}
+
+// RemoveAnnotationIssue adds to the annotation for that taskID/execution.
+// If isIssue is set, it adds to Issues, otherwise it adds to Suspected Issues.
+func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID string, execution int,
+	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+	issue := restModel.APIIssueLinkToService(apiIssue)
+	if isIssue {
+		if err := annotations.RemoveIssueFromAnnotation(taskID, execution, *issue); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete issue: %s", err.Error()))
+		}
+		return true, nil
+	} else {
+		if err := annotations.RemoveSuspectedIssueFromAnnotation(taskID, execution, *issue); err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete suspected issue: %s", err.Error()))
 		}
 		return true, nil
 	}
@@ -2427,6 +2448,22 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
 	return apiAnnotation, nil
+}
+
+func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	t, err := r.sc.FindTaskById(*obj.TaskId)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	permissions := gimlet.PermissionOpts{
+		Resource:      t.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	return authUser.HasPermission(permissions), nil
+
 }
 
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {

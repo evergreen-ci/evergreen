@@ -47,6 +47,7 @@ type ProjectRef struct {
 	RepotrackerDisabled bool   `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
 	DispatchingDisabled bool   `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
 	PRTestingEnabled    bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled bool   `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
@@ -223,6 +224,7 @@ var (
 	projectRefDefaultLoggerKey           = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "CedarTestResultsEnabled")
 	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
 	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
 	projectRefUseRepoSettingsKey         = bsonutil.MustHaveTag(ProjectRef{}, "UseRepoSettings")
 	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
@@ -868,6 +870,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefDefaultLoggerKey:           projectRef.DefaultLogger,
 				projectRefCedarTestResultsEnabledKey: projectRef.CedarTestResultsEnabled,
 				projectRefPRTestingEnabledKey:        projectRef.PRTestingEnabled,
+				projectRefGithubChecksEnabledKey:     projectRef.GithubChecksEnabled,
 				projectRefGitTagVersionsEnabledKey:   projectRef.GitTagVersionsEnabled,
 				projectRefUseRepoSettingsKey:         projectRef.UseRepoSettings,
 				projectRefCommitQueueKey:             projectRef.CommitQueue,
@@ -1399,7 +1402,7 @@ func (t *PatchTriggerDefinition) Validate(parentProject string) error {
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProject(t.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectOrRepo(t.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching aliases for project")
 			}
