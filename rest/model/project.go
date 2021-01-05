@@ -232,7 +232,6 @@ type APIProjectRef struct {
 	Owner                       *string              `json:"owner_name"`
 	Repo                        *string              `json:"repo_name"`
 	Branch                      *string              `json:"branch_name"`
-	RepoKind                    *string              `json:"repo_kind"`
 	Enabled                     bool                 `json:"enabled"`
 	Private                     bool                 `json:"private"`
 	BatchTime                   int                  `json:"batch_time"`
@@ -300,7 +299,6 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Owner:                 FromStringPtr(p.Owner),
 		Repo:                  FromStringPtr(p.Repo),
 		Branch:                FromStringPtr(p.Branch),
-		RepoKind:              FromStringPtr(p.RepoKind),
 		Enabled:               p.Enabled,
 		Private:               p.Private,
 		BatchTime:             p.BatchTime,
@@ -381,7 +379,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Owner = ToStringPtr(projectRef.Owner)
 	p.Repo = ToStringPtr(projectRef.Repo)
 	p.Branch = ToStringPtr(projectRef.Branch)
-	p.RepoKind = ToStringPtr(projectRef.RepoKind)
 	p.Enabled = projectRef.Enabled
 	p.Private = projectRef.Private
 	p.BatchTime = projectRef.BatchTime

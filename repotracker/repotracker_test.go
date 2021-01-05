@@ -734,7 +734,6 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		RepoKind:   "github",
 		Enabled:    true,
 	}
 	s.rev = &model.Revision{

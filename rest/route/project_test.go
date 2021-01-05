@@ -207,7 +207,6 @@ func (s *ProjectPutSuite) TestParse() {
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
 				"branch_name": "master",
-				"repo_kind": "github",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -237,7 +236,6 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
 				"branch_name": "master",
-				"repo_kind": "github",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -334,7 +332,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Repo, model.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, model.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, model.FromStringPtr(projectRef.Branch))
-	s.Equal(cachedProject.RepoKind, model.FromStringPtr(projectRef.RepoKind))
 	s.Equal(cachedProject.Enabled, projectRef.Enabled)
 	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
@@ -461,7 +458,6 @@ func getMockProjectsConnector() *data.MockConnector {
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
 					Branch:             "master",
-					RepoKind:           "github",
 					Enabled:            false,
 					Private:            true,
 					BatchTime:          0,
@@ -573,7 +569,6 @@ func TestDeleteProject(t *testing.T) {
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
 			Enabled:              true,
-			RepoKind:             "github",
 			Private:              true,
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			UseRepoSettings:      true,

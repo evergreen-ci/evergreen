@@ -1714,7 +1714,6 @@ func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
 		Repo:        "repo",
 		Branch:      "branch",
 		DisplayName: "test",
-		RepoKind:    "github",
 		BatchTime:   10,
 	}
 }

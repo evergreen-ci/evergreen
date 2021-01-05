@@ -40,7 +40,6 @@ type Project struct {
 	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
 	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
 	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
 	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`

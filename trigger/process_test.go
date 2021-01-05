@@ -304,19 +304,17 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		RemotePath: "self-tests.yml",
-		RepoKind:   "github",
 		Triggers: []model.TriggerDefinition{
 			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
 	assert.NoError(downstreamProjectRef.Insert())
 	uptreamProjectRef := model.ProjectRef{
-		Id:       "upstream",
-		Enabled:  true,
-		Owner:    "evergreen-ci",
-		Repo:     "sample",
-		Branch:   "master",
-		RepoKind: "github",
+		Id:      "upstream",
+		Enabled: true,
+		Owner:   "evergreen-ci",
+		Repo:    "sample",
+		Branch:  "master",
 	}
 	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{

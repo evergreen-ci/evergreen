@@ -24,7 +24,6 @@ var (
 	ParserProjectBatchTimeKey         = bsonutil.MustHaveTag(ParserProject{}, "BatchTime")
 	ParserProjectOwnerKey             = bsonutil.MustHaveTag(ParserProject{}, "Owner")
 	ParserProjectRepoKey              = bsonutil.MustHaveTag(ParserProject{}, "Repo")
-	ParserProjectRepoKindKey          = bsonutil.MustHaveTag(ParserProject{}, "RepoKind")
 	ParserProjectRemotePathKey        = bsonutil.MustHaveTag(ParserProject{}, "RemotePath")
 	ParserProjectBranchKey            = bsonutil.MustHaveTag(ParserProject{}, "Branch")
 	ParserProjectIdentifierKey        = bsonutil.MustHaveTag(ParserProject{}, "Identifier")
@@ -87,7 +86,6 @@ func setAllFieldsUpdate(pp *ParserProject) interface{} {
 			ParserProjectBatchTimeKey:         pp.BatchTime,
 			ParserProjectOwnerKey:             pp.Owner,
 			ParserProjectRepoKey:              pp.Repo,
-			ParserProjectRepoKindKey:          pp.RepoKind,
 			ParserProjectRemotePathKey:        pp.RemotePath,
 			ParserProjectBranchKey:            pp.Branch,
 			ParserProjectIdentifierKey:        pp.Identifier,

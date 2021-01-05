@@ -764,7 +764,6 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Owner:               ref.Owner,
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
-		RepoKind:            ref.RepoKind,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Revision:            metadata.Revision.Revision,
 		Status:              evergreen.VersionCreated,

@@ -23,7 +23,6 @@ func TestFindOneProjectRef(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "mci",
 		Branch:    "master",
-		RepoKind:  "github",
 		Enabled:   true,
 		BatchTime: 10,
 		Id:        "ident",
@@ -37,7 +36,6 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.Owner, "mongodb")
 	assert.Equal(projectRefFromDB.Repo, "mci")
 	assert.Equal(projectRefFromDB.Branch, "master")
-	assert.Equal(projectRefFromDB.RepoKind, "github")
 	assert.Equal(projectRefFromDB.Enabled, true)
 	assert.Equal(projectRefFromDB.BatchTime, 10)
 	assert.Equal(projectRefFromDB.Id, "ident")
@@ -51,7 +49,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Owner:            "mongodb",
 		RepoRefId:        "mongodb_mci",
 		UseRepoSettings:  true,
-		RepoKind:         "github",
 		Enabled:          true,
 		PatchingDisabled: false,
 		BatchTime:        10,
@@ -91,7 +88,6 @@ func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "mci",
 		Branch:    "master",
-		RepoKind:  "github",
 		Enabled:   true,
 		BatchTime: maxBatchTime + 1,
 		Id:        "ident",
@@ -241,7 +237,6 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "master",
-		RepoKind:         "github",
 		Enabled:          false,
 		BatchTime:        10,
 		Id:               "iden_",
@@ -284,7 +279,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "master",
-		RepoKind:         "github",
 		Enabled:          false,
 		BatchTime:        10,
 		Id:               "ident0",
@@ -337,11 +331,10 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},
@@ -368,11 +361,10 @@ func TestCanEnableCommitQueue(t *testing.T) {
 
 	require.NoError(db.Clear(ProjectRefCollection))
 	doc := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: true,
 		},
@@ -383,11 +375,10 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	assert.True(ok)
 
 	doc2 := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "not-mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "not-mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},
@@ -413,7 +404,6 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 		Owner:      "mongodb",
 		Repo:       "mci",
 		Branch:     "master",
-		RepoKind:   "github",
 		Identifier: "mci",
 		Id:         "1",
 		CommitQueue: CommitQueueParams{

@@ -93,7 +93,6 @@ type ProjectRef struct {
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
 	// The following fields are used by Evergreen and are not discoverable.
-	RepoKind string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden bool `bson:"hidden" json:"hidden"`
 
@@ -202,7 +201,6 @@ var (
 	ProjectRefOwnerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
 	ProjectRefRepoKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
 	ProjectRefBranchKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefRepoKindKey                = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
 	ProjectRefEnabledKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
 	ProjectRefPrivateKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Private")
 	ProjectRefRestrictedKey              = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
@@ -809,7 +807,6 @@ func (projectRef *ProjectRef) Upsert() error {
 			"$set": bson.M{
 				ProjectRefIdentifierKey:              projectRef.Identifier,
 				ProjectRefRepoRefIdKey:               projectRef.RepoRefId,
-				ProjectRefRepoKindKey:                projectRef.RepoKind,
 				ProjectRefEnabledKey:                 projectRef.Enabled,
 				ProjectRefPrivateKey:                 projectRef.Private,
 				ProjectRefRestrictedKey:              projectRef.Restricted,

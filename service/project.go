@@ -761,7 +761,6 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Id:         id,
 		Identifier: id,
 		Hidden:     false,
-		RepoKind:   "github",
 	}
 
 	err = newProject.Add(dbUser)

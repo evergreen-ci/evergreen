@@ -72,7 +72,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		PatchingDisabled: false,
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
-		RepoKind:         "github",
 		PRTestingEnabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,

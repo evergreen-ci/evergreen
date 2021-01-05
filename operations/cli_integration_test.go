@@ -81,7 +81,6 @@ func setupCLITestHarness() cliTestHarness {
 		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
-		RepoKind:   "github",
 		Branch:     "master",
 		RemotePath: "evergreen.yml",
 		Enabled:    true,
