@@ -487,6 +487,11 @@ func TestMarkAsReprovisioning(t *testing.T) {
 			assert.True(t, h.NeedsNewAgentMonitor)
 			assert.False(t, h.NeedsNewAgent)
 		},
+		"FailsWithHostInBadStatus": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert())
+			assert.Error(t, h.MarkAsReprovisioning())
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
