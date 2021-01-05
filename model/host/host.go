@@ -1044,6 +1044,11 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 // MarkAsReprovisioning puts the host in a state that means it is ready to be
 // reprovisioned immediately.
 func (h *Host) MarkAsReprovisioning() error {
+	allowedStatuses := []string{evergreen.HostProvisioning, evergreen.HostRunning}
+	if !utility.StringSliceContains(allowedStatuses, h.Status) {
+		return errors.Errorf("cannot reprovision a host when host status is '%s'", h.Status)
+	}
+
 	var needsAgent bool
 	var needsAgentMonitor bool
 	switch h.NeedsReprovision {
@@ -1058,7 +1063,7 @@ func (h *Host) MarkAsReprovisioning() error {
 	err := UpdateOne(bson.M{
 		IdKey:               h.Id,
 		NeedsReprovisionKey: h.NeedsReprovision,
-		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
+		StatusKey:           bson.M{"$in": allowedStatuses},
 	},
 		bson.M{
 			"$set": bson.M{
@@ -1067,7 +1072,9 @@ func (h *Host) MarkAsReprovisioning() error {
 				StatusKey:               evergreen.HostProvisioning,
 				NeedsNewAgentKey:        needsAgent,
 				NeedsNewAgentMonitorKey: needsAgentMonitor,
-			}})
+			},
+		},
+	)
 	if err != nil {
 		return errors.Wrap(err, "problem marking host as reprovisioning")
 	}
