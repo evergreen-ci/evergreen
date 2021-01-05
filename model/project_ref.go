@@ -510,7 +510,9 @@ func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
-		bson.M{ProjectRefHiddenKey: false},
+		bson.M{
+			ProjectRefHiddenKey: bson.M{"$ne": true},
+		},
 		db.NoProjection,
 		db.NoSort,
 		db.NoSkip,
