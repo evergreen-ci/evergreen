@@ -40,7 +40,6 @@ type Project struct {
 	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
 	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
 	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
 	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
@@ -853,7 +852,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Id)
 	expansions.Put("project_identifier", projectRef.Identifier)
-	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
