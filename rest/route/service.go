@@ -161,6 +161,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/tag/{tag}").Version(2).Get().Wrap(checkUser, checkProjectAdmin).RouteHandler(makeCheckProjectTag(sc))
 	app.AddRoute("/projects/{project_id}/tag/{tag}").Version(2).Post().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeAddProjectTag(sc))
 	app.AddRoute("/permissions").Version(2).Get().RouteHandler(&permissionsGetHandler{})
+	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(checkUser, viewProjectSettings).RouteHandler(makeGetRepoByID(sc))
 	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(checkUser).RouteHandler(makeCompareTasksRoute(sc))
