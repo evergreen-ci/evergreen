@@ -1211,8 +1211,20 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
 			for _, definition := range project.PeriodicBuilds {
+				grip.Debug(message.Fields{
+					"job":        periodicBuildJobName,
+					"message":    "evaluating project definitions",
+					"project":    project.Identifier,
+					"definition": definition.ID,
+				})
 				// schedule the job if we want it to start before the next time this cron runs
 				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
+					grip.Debug(message.Fields{
+						"job":        periodicBuildJobName,
+						"message":    "adding job for definition",
+						"project":    project.Identifier,
+						"definition": definition.ID,
+					})
 					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Id, definition.ID, definition.NextRunTime)))
 				}
 			}
