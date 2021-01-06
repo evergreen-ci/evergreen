@@ -118,7 +118,7 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 	}
 
 	unquarantinedAndNeedsReprovision := utility.StringSliceContains([]string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}, h.Distro.BootstrapSettings.Method) &&
-		h.Status == evergreen.HostQuarantined &&
+		currentStatus == evergreen.HostQuarantined &&
 		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
 	if unquarantinedAndNeedsReprovision {
 		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {

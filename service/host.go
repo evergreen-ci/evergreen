@@ -166,23 +166,15 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	switch opts.Action {
 	case "updateStatus":
-		currentStatus := h.Status
-		var modifyResult string
-		modifyResult, _, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
-
+		msg, statusCode, err := api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
 		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
+			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    msg,
+			}))
 			return
 		}
-
-		var msg flashMessage
-		switch modifyResult {
-		case fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id):
-			msg = NewSuccessFlash(fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id))
-		case fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status):
-			msg = NewSuccessFlash(fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status))
-		}
-		PushFlash(uis.CookieStore, r, w, msg)
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(msg))
 		gimlet.WriteJSON(w, api.HostStatusWriteConfirm)
 	case "restartJasper":
 		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
