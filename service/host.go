@@ -166,7 +166,11 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	switch opts.Action {
 	case "updateStatus":
-		msg, statusCode, err := api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
+		var (
+			msg        string
+			statusCode int
+		)
+		msg, statusCode, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
 				StatusCode: statusCode,

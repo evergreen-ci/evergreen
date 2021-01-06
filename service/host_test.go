@@ -32,11 +32,12 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	// Normal test, changing a host from running to quarantined
 	user1 := user.DBUser{Id: "user1"}
 	h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
+	require.NoError(h1.Insert())
 	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
 	result, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h1, opts1.Status, opts1.Notes, &user1)
-	assert.NoError(err)
-	assert.Equal(httpStatus, 0)
+	require.NoError(err)
+	assert.Equal(http.StatusOK, httpStatus)
 	assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 	assert.Equal(h1.Status, evergreen.HostQuarantined)
 	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", "", 1))
