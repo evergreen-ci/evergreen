@@ -335,10 +335,10 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostAllocatorRoundUp, resolved0.RoundingRule)
 
-	d0.HostAllocatorSettings.FeedbackRule = evergreen.HostAllocatorWaitFeedback
+	d0.HostAllocatorSettings.FeedbackRule = evergreen.HostAllocatorWaitsFeedback
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
-	assert.Equal(t, evergreen.HostAllocatorWaitFeedback, resolved0.RoundingRule)
+	assert.Equal(t, evergreen.HostAllocatorWaitsFeedback, resolved0.FeedbackRule)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {

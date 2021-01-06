@@ -150,7 +150,8 @@ var (
 	// taskQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
 	// taskQueueInfoMaxDurationKey        = bsonutil.MustHaveTag(DistroQueueInfo{}, "MaxDurationThreshold")
 	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
-	// taskQueueInfoCountOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountOverThreshold")
+	// taskQueueInfoCountDurationOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountDurationOverThreshold")
+	// taskQueueInfoCountWaitOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountWaitOverThreshold")
 	// taskQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
 	// taskQueueInfoAliasQueueKey         = bsonutil.MustHaveTag(DistroQueueInfo{}, "AliasQueue")
 
