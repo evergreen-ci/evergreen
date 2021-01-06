@@ -479,7 +479,7 @@ Evergreen Projects
             <div class="col-lg-6">
               <input type="checkbox" id="github-checks-checkbox" ng-model="settingsFormData.github_checks_enabled" />
               <label for="github-checks-checkbox">Enable Github Commit Checks</label>
-              <div class="muted small">When checked, the waterfall build will be added as a Github check for a commit (the check will pass/fail on only the tasks matching the tags/regexes definitions).</div>
+              <div class="muted small">Commits will send their status as a Github Check (the check will pass/fail based only on the tasks matching the tags/regexes definitions).</div>
             </div>
           </div>
           <div ng-show="settingsFormData.github_checks_enabled === true && githubChecksConflicts.length === 0">
