@@ -914,6 +914,7 @@ type JiraStatus {
 }
 
 type Annotation {
+  id: String!
   taskId: String!
   taskExecution: Int!
   note: Note
