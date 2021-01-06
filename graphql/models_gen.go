@@ -55,6 +55,7 @@ type EditSpawnHostInput struct {
 	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
 	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
 	Volume              *string     `json:"volume"`
+	ServicePassword     *string     `json:"servicePassword"`
 }
 
 type GroupedFiles struct {

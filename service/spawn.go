@@ -384,17 +384,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostPasswordUpdate:
 		pwd := restModel.FromStringPtr(updateParams.RDPPwd)
-		if !h.Distro.IsWindows() {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
-			return
-		}
-		if !host.ValidateRDPPassword(pwd) {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
-			return
-		}
-		if err = cloud.SetHostRDPPassword(ctx, uis.env, h, pwd); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		_, _, err = graphql.UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, u, pwd, r)
+		if err != nil {
+			gimlet.WriteJSONError(w, err)
 		}
 		gimlet.WriteJSON(w, "Successfully updated host password")
 		return

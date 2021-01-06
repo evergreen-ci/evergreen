@@ -147,6 +147,7 @@ type ComplexityRoot struct {
 	DistroInfo struct {
 		Id                   func(childComplexity int) int
 		IsVirtualWorkstation func(childComplexity int) int
+		IsWindows            func(childComplexity int) int
 		User                 func(childComplexity int) int
 		WorkDir              func(childComplexity int) int
 	}
@@ -1267,6 +1268,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DistroInfo.IsVirtualWorkstation(childComplexity), true
+
+	case "DistroInfo.isWindows":
+		if e.complexity.DistroInfo.IsWindows == nil {
+			break
+		}
+
+		return e.complexity.DistroInfo.IsWindows(childComplexity), true
 
 	case "DistroInfo.user":
 		if e.complexity.DistroInfo.User == nil {
@@ -4733,6 +4741,7 @@ input EditSpawnHostInput {
   addedInstanceTags: [InstanceTagInput!]
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
+  servicePassword: String
 }
 
 input SpawnVolumeInput {
@@ -4813,6 +4822,7 @@ type DistroInfo {
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
+  isWindows: Boolean
 }
 
 type Distro {
@@ -8366,6 +8376,37 @@ func (ec *executionContext) _DistroInfo_user(ctx context.Context, field graphql.
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DistroInfo_isWindows(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "DistroInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsWindows, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
@@ -23290,6 +23331,12 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
+		case "servicePassword":
+			var err error
+			it.ServicePassword, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -24430,6 +24477,8 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._DistroInfo_isVirtualWorkStation(ctx, field, obj)
 		case "user":
 			out.Values[i] = ec._DistroInfo_user(ctx, field, obj)
+		case "isWindows":
+			out.Values[i] = ec._DistroInfo_isWindows(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
