@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type TaskAnnotation struct {
@@ -71,7 +72,7 @@ func MoveIssueToSuspectedIssue(annotationId string, issue IssueLink, username st
 	return db.Update(
 		Collection,
 		bson.M{
-			IdKey: annotationId,
+			IdKey: mgobson.ObjectIdHex(annotationId),
 			bsonutil.GetDottedKeyName(IssuesKey, IssueLinkIssueKey): issue.IssueKey,
 		},
 		bson.M{
