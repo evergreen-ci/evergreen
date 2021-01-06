@@ -101,16 +101,6 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 		return "", http.StatusBadRequest, errors.New(DecommissionStaticHostError)
 	}
 
-	unquarantinedAndNeedsReprovision := utility.StringSliceContains([]string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}, h.Distro.BootstrapSettings.Method) &&
-		h.Status == evergreen.HostQuarantined &&
-		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
-	if unquarantinedAndNeedsReprovision {
-		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
-			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
-		}
-		return HostReprovisionConfirm, http.StatusOK, nil
-	}
-
 	if newStatus == evergreen.HostTerminated {
 		if !queue.Info().Started {
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
@@ -125,6 +115,16 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 	err := h.SetStatus(newStatus, u.Id, notes)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+	}
+
+	unquarantinedAndNeedsReprovision := utility.StringSliceContains([]string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}, h.Distro.BootstrapSettings.Method) &&
+		h.Status == evergreen.HostQuarantined &&
+		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
+	if unquarantinedAndNeedsReprovision {
+		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+		}
+		return HostReprovisionConfirm, http.StatusOK, nil
 	}
 
 	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), http.StatusOK, nil
