@@ -156,7 +156,11 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	if d.HostAllocatorSettings.RoundingRule == evergreen.HostAllocatorRoundUp {
 		roundDown = false
 	}
-	numQOSTasks = numLongTasks + numOverdueTasks
+	numQOSTasks := numLongTasks
+
+	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsFeedback {
+		numQOSTasks += numOverdueTasks
+	}
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numQOSTasks, roundDown)
 

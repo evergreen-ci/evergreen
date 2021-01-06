@@ -440,13 +440,14 @@ func ClearTaskQueue(distroId string) error {
 // clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
 func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 	new_distroQueueInfo := DistroQueueInfo{
-		Length:               0,
-		ExpectedDuration:     time.Duration(0),
-		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
-		PlanCreatedAt:        distroQueueInfo.PlanCreatedAt,
-		CountOverThreshold:   0,
-		TaskGroupInfos:       []TaskGroupInfo{},
-		AliasQueue:           distroQueueInfo.AliasQueue,
+		Length:                     0,
+		ExpectedDuration:           time.Duration(0),
+		MaxDurationThreshold:       distroQueueInfo.MaxDurationThreshold,
+		PlanCreatedAt:              distroQueueInfo.PlanCreatedAt,
+		CountDurationOverThreshold: 0,
+		CountWaitOverThreshold:     0,
+		TaskGroupInfos:             []TaskGroupInfo{},
+		AliasQueue:                 distroQueueInfo.AliasQueue,
 	}
 
 	return new_distroQueueInfo

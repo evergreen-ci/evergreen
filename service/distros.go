@@ -87,8 +87,9 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		ContainerPoolDistros            []string
 		ContainerPoolIds                []string
 		ValidHostAllocatorRoundingRules []string
+		ValidHostAllocatorFeedbackRules []string
 	}{createDistro, distroIds, uis.Settings.Keys, evergreen.ValidArchDisplayNames,
-		uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds, evergreen.ValidHostAllocatorRoundingRules},
+		uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds, evergreen.ValidHostAllocatorRoundingRules, evergreen.ValidHostAllocatorFeedbackRules},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

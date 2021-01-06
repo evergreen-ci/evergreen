@@ -145,8 +145,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["cost"] = cost
 	}
 
-	if !j.task.UnblockedTime.IsZero() {
-		msg["unblocked_time"] = j.task.UnblockedTime
+	if !j.task.DependenciesMetTime.IsZero() {
+		msg["dependencies_met_time"] = j.task.DependenciesMetTime
 	}
 
 	historicRuntime, err := j.task.GetHistoricRuntime()

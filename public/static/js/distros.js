@@ -6,6 +6,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   $scope.containerPoolIds = $window.containerPoolIds;
   $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validHostAllocatorRoundingRules = $window.validHostAllocatorRoundingRules;
+  $scope.validDefaultHostAllocatorFeedbackRules = $window.validDefaultHostAllocatorFeedbackRules;
+  $scope.validHostAllocatorFeedbackRules = $window.validHostAllocatorFeedbackRules;
 
   let newId = "new distro"
 

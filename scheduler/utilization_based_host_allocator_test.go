@@ -152,6 +152,7 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 			MinimumHosts:       0,
 			MaximumHosts:       50,
 			RoundingRule:       evergreen.HostAllocatorRoundDown,
+			FeedbackRule:       evergreen.HostAllocatorNoFeedback,
 			FutureHostFraction: .5,
 		},
 	}

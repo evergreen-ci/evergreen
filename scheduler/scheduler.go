@@ -167,20 +167,20 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
 			startTime := task.ScheduledTime
-			if task.UnblockedTime.After(startTime) {
-				startTime = task.UnblockedTime
+			if task.DependenciesMetTime.After(startTime) {
+				startTime = task.DependenciesMetTime
 			}
-			task.WaitSinceUnblocked = time.Now().Sub(startTime)
+			task.WaitSinceDependenciesMet = time.Now().Sub(startTime)
 			// duration is defined as expected runtime and does not include wait time
 			if duration > maxDurationThreshold {
 				if info != nil {
 					info.CountDurationOverThreshold++
 					info.DurationOverThreshold += duration
 				}
-				distroCountOverThreshold++
+				distroCountDurationOverThreshold++
 			}
 			// actual wait time allows us to independently check that the threshold is working
-			if task.WaitSinceUnblocked > maxDurationThreshold {
+			if task.WaitSinceDependenciesMet > maxDurationThreshold {
 				if info != nil {
 					info.CountWaitOverThreshold++
 				}

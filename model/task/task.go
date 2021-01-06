@@ -65,16 +65,16 @@ type Task struct {
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
-	// unblocked - for tasks that have dependencies, the time all dependencies of the task were fulfilled,
-	//             i.e. the latest of the dependencies' finish times.
-	CreateTime    time.Time `bson:"create_time" json:"create_time"`
-	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime     time.Time `bson:"start_time" json:"start_time"`
-	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
-	UnblockedTime time.Time `bson:"unblocked_time,omitempty" json:"unblocked_time,omitempty"`
+	// unblocked - for tasks that have dependencies, the time all dependencies are met
+	// 	db name is unblocked_time to take advantage of a since-reverted change
+	CreateTime          time.Time `bson:"create_time" json:"create_time"`
+	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime           time.Time `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime time.Time `bson:"unblocked_time,omitempty" json:"unblocked_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -141,9 +141,8 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// WaitSinceUnblocked is the wait time since all dependencies finished.
 	// populated in GetDistroQueueInfo, used for host allocation
-	WaitSinceUnblocked time.Duration `bson:"wait_since_unblocked,omitempty" json:"wait_since_unblocked,omitempty"`
+	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencieds_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
@@ -456,7 +455,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 			latestTime = depTask.FinishTime
 		}
 	}
-	t.UnblockedTime = latestTime
+	t.DependenciesMetTime = latestTime
 
 	return true, nil
 }
