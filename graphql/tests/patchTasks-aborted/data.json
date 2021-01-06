@@ -10,7 +10,8 @@
       ],
       "r": "github_pull_request",
       "_id": "1",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
     },
     {
       "status": "failed",
@@ -20,7 +21,8 @@
       "abort": true,
       "r": "github_pull_request",
       "_id": "2",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
     },
     {
       "status": "success",
@@ -63,8 +65,9 @@
       "display_name": "test-thirdparty-docker",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
-      "r": "github_pull_request",
+      "r": "gitter_request",
       "_id": "base-task-1",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
     },
     {
@@ -73,8 +76,9 @@
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "abort": true,
-      "r": "github_pull_request",
+      "r": "gitter_request",
       "_id": "base-task-2",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
     },
     {

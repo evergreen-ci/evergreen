@@ -415,21 +415,10 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
-	if baseTaskStatuses == nil {
-		return taskResults
-	}
-	tasksFilteredByBaseStatus := []*TaskResult{}
-	for _, taskResult := range taskResults {
-		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-			tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-		}
-	}
-	return tasksFilteredByBaseStatus
-}
-func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
+func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, t := range tasks {
+		baseStatus := t.BaseTask.Status
 		result := TaskResult{
 			ID:           t.Id,
 			DisplayName:  t.DisplayName,
@@ -438,10 +427,11 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			BuildVariant: t.BuildVariant,
 			Blocked:      t.Blocked(),
 			Aborted:      t.Aborted,
-		}
-		if baseTaskStatuses != nil && baseTaskStatuses[t.BuildVariant] != nil {
-			baseStatus := baseTaskStatuses[t.BuildVariant][t.DisplayName]
-			result.BaseStatus = &baseStatus
+			BaseStatus:   &baseStatus,
+			BaseTask: &BaseTaskResult{
+				ID:     t.BaseTask.Id,
+				Status: t.BaseTask.Status,
+			},
 		}
 		if len(t.ExecutionTasksFull) > 0 {
 			ets := []*restModel.APITask{}
