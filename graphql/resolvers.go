@@ -1160,7 +1160,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	baseTestStatusMap := make(map[string]string)
 	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, 0)
+		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, *execution)
 		for _, t := range baseTestResults {
 			baseTestStatusMap[t.TestFile] = t.Status
 		}
