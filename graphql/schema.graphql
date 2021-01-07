@@ -25,7 +25,7 @@ type Query {
   ): PatchTasks!
   taskTests(
     taskId: String!
-    execution: Int
+    execution: Int!
     sortCategory: TestSortCategory = TEST_NAME
     sortDirection: SortDirection = ASC
     page: Int = 0
