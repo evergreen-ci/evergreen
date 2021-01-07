@@ -522,6 +522,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
+	if editSpawnHostInput.ServicePassword != nil {
+		_, _, err = UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, usr, *editSpawnHostInput.ServicePassword, nil)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting spawn host password: %s", err))
+		}
+	}
 
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(h)

@@ -27,6 +27,7 @@ var (
 	BuildVariantKey        = bsonutil.MustHaveTag(Build{}, "BuildVariant")
 	BuildNumberKey         = bsonutil.MustHaveTag(Build{}, "BuildNumber")
 	StatusKey              = bsonutil.MustHaveTag(Build{}, "Status")
+	GithubCheckStatusKey   = bsonutil.MustHaveTag(Build{}, "GithubCheckStatus")
 	ActivatedKey           = bsonutil.MustHaveTag(Build{}, "Activated")
 	ActivatedByKey         = bsonutil.MustHaveTag(Build{}, "ActivatedBy")
 	ActivatedTimeKey       = bsonutil.MustHaveTag(Build{}, "ActivatedTime")

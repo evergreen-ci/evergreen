@@ -55,6 +55,9 @@ type Build struct {
 	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`
 	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan,omitempty"`
 
+	// The status of the subset of the build that's used for github checks
+	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
+
 	// build requester - this is used to help tell the
 	// reason this build was created. e.g. it could be
 	// because the repotracker requested it (via tracking the
@@ -83,7 +86,7 @@ func (b *Build) IsFinished() bool {
 // one of the statuses in IsFinishedTaskStatus or the task is considered blocked
 //
 // returns boolean to indicate if tasks are complete, string with either BuildFailed or
-// BuildSucceded. The string is only valid when the boolean is true
+// BuildSucceeded. The string is only valid when the boolean is true
 func (b *Build) AllUnblockedTasksFinished(tasks []task.Task) (bool, string, error) {
 	if !b.Activated {
 		return false, b.Status, nil
@@ -167,6 +170,17 @@ func (b *Build) UpdateStatus(status string) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{StatusKey: status}},
+	)
+}
+
+func (b *Build) UpdateGithubCheckStatus(status string) error {
+	if b.GithubCheckStatus == status {
+		return nil
+	}
+	b.GithubCheckStatus = status
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{GithubCheckStatusKey: status}},
 	)
 }
 

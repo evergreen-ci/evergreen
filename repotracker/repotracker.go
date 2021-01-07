@@ -429,13 +429,13 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Ref:   v.Revision,
 	})
 
-	versionSub := event.NewVersionOutcomeSubscription(v.Id, ghSub)
+	versionSub := event.NewVersionGithubCheckOutcomeSubscription(v.Id, ghSub)
 	if err := versionSub.Upsert(); err != nil {
-		catcher.Wrap(err, "failed to insert version subscription for Github check")
+		catcher.Wrap(err, "failed to insert version github check subscription")
 	}
-	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(v.Id, ghSub)
+	buildSub := event.NewGithubCheckBuildOutcomeSubscriptionByVersion(v.Id, ghSub)
 	if err := buildSub.Upsert(); err != nil {
-		catcher.Wrap(err, "failed to insert build subscription for Github check")
+		catcher.Wrap(err, "failed to insert build github check subscription")
 	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -878,9 +878,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if buildvariant.Disabled {
 			continue
 		}
-		var match bool
 		if len(aliases) > 0 {
-			match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
+			var aliasesMatchingVariant model.ProjectAliases
+			aliasesMatchingVariant, err = aliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "error checking project aliases",
@@ -889,12 +889,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}))
 				continue
 			}
-			if !match {
+			if len(aliasesMatchingVariant) == 0 {
 				continue
 			}
 			for _, t := range buildvariant.Tasks {
 				var match bool
-				match, err = aliases.HasMatchingTask(buildvariant.Name, buildvariant.Tags, projectInfo.Project.FindProjectTask(t.Name))
+				match, err = aliasesMatchingVariant.HasMatchingTask(projectInfo.Project.FindProjectTask(t.Name))
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error finding tasks with alias filter",
@@ -919,20 +919,38 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
 	debuggingData := map[string]string{}
+	var githubCheckAliases model.ProjectAliases
+	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.GithubChecksEnabled {
+		githubCheckAliases, err = model.FindAliasInProject(v.Identifier, evergreen.GithubChecksAlias)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting github check aliases",
+			"project": projectInfo.Project.Identifier,
+			"version": v.Id,
+		}))
+	}
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
+		var aliasesMatchingVariant model.ProjectAliases
+		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error getting aliases matching variant",
+			"project": projectInfo.Ref.Id,
+			"version": v.Id,
+			"variant": buildvariant.Name,
+		}))
 		args := model.BuildCreateArgs{
-			Project:        *projectInfo.Project,
-			Version:        *v,
-			TaskIDs:        taskIds,
-			TaskNames:      taskNames,
-			BuildName:      buildvariant.Name,
-			ActivateBuild:  false,
-			SourceRev:      sourceRev,
-			DefinitionID:   metadata.TriggerDefinitionID,
-			Aliases:        aliases,
-			DistroAliases:  distroAliases,
-			TaskCreateTime: v.CreateTime,
+			Project:             *projectInfo.Project,
+			Version:             *v,
+			TaskIDs:             taskIds,
+			TaskNames:           taskNames,
+			BuildName:           buildvariant.Name,
+			ActivateBuild:       false,
+			SourceRev:           sourceRev,
+			DefinitionID:        metadata.TriggerDefinitionID,
+			Aliases:             aliases,
+			DistroAliases:       distroAliases,
+			TaskCreateTime:      v.CreateTime,
+			GithubChecksAliases: aliasesMatchingVariant,
 		}
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {

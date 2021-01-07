@@ -277,6 +277,7 @@ input EditSpawnHostInput {
   addedInstanceTags: [InstanceTagInput!]
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
+  servicePassword: String
 }
 
 input SpawnVolumeInput {
@@ -357,6 +358,7 @@ type DistroInfo {
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
+  isWindows: Boolean
 }
 
 type Distro {

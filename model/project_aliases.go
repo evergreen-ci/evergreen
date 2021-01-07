@@ -226,36 +226,32 @@ func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error)
 	return res, nil
 }
 
-func (a ProjectAliases) HasMatchingVariant(variant string, variantTags []string) (bool, error) {
+func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []string) (ProjectAliases, error) {
+	res := []ProjectAlias{}
 	for _, alias := range a {
 		variantRegex, err := regexp.Compile(alias.Variant)
 		if err != nil {
-			return false, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
+			return nil, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
 		}
 		if isValidRegexOrTag(variant, alias.Variant, variantTags, alias.VariantTags, variantRegex) {
-			return true, nil
+			res = append(res, alias)
 		}
 	}
-	return false, nil
+	return res, nil
 }
 
-func (a ProjectAliases) HasMatchingTask(variant string, variantTags []string, t *ProjectTask) (bool, error) {
+// HasMatchingTask assumes that the aliases given already match the preferred variant.
+func (a ProjectAliases) HasMatchingTask(t *ProjectTask) (bool, error) {
 	if t == nil {
 		return false, errors.New("no task found")
 	}
 	for _, alias := range a {
-		variantRegex, err := regexp.Compile(alias.Variant)
+		taskRegex, err := regexp.Compile(alias.Task)
 		if err != nil {
-			return false, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
+			return false, errors.Wrapf(err, "unable to compile regex %s", taskRegex)
 		}
-		if isValidRegexOrTag(variant, alias.Variant, variantTags, alias.VariantTags, variantRegex) {
-			taskRegex, err := regexp.Compile(alias.Task)
-			if err != nil {
-				return false, errors.Wrapf(err, "unable to compile regex %s", taskRegex)
-			}
-			if isValidRegexOrTag(t.Name, alias.Task, t.Tags, alias.TaskTags, taskRegex) {
-				return true, nil
-			}
+		if isValidRegexOrTag(t.Name, alias.Task, t.Tags, alias.TaskTags, taskRegex) {
+			return true, nil
 		}
 	}
 	return false, nil

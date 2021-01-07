@@ -753,6 +753,20 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 
 }
 
+// UpdateHostPassword is a shared utility function to change the password on a windows host
+func UpdateHostPassword(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, pwd string, r *http.Request) (*host.Host, int, error) {
+	if !h.Distro.IsWindows() {
+		return nil, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts")
+	}
+	if !host.ValidateRDPPassword(pwd) {
+		return nil, http.StatusBadRequest, errors.New("Invalid password")
+	}
+	if err := cloud.SetHostRDPPassword(ctx, env, h, pwd); err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
+}
+
 func logError(ctx context.Context, err error, r *http.Request) {
 	var method = "POST"
 	var url, _ = url.Parse("/graphql/query")
