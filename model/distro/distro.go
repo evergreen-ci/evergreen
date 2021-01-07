@@ -217,7 +217,6 @@ type HostAllocatorSettings struct {
 	FeedbackRule           string        `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
 	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
-	WaitsFeedback          bool          `bson:"waits_feedback" json:"waits_feedback" mapstructure:"waits_feedback"`
 }
 
 type FinderSettings struct {
@@ -645,7 +644,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
 		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
-	if resolved.FeedbackRule == evergreen.HostAllocatorDefaultFeedback {
+	if resolved.FeedbackRule == evergreen.HostAllocatorUseDefaultFeedback {
 		resolved.FeedbackRule = config.HostAllocatorFeedbackRule
 	}
 	if resolved.FutureHostFraction == 0 {

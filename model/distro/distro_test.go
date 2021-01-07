@@ -295,7 +295,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 			MaximumHosts:           10,
 			AcceptableHostIdleTime: 0,
 			RoundingRule:           evergreen.HostAllocatorRoundDefault,
-			FeedbackRule:           evergreen.HostAllocatorDefaultFeedback,
+			FeedbackRule:           evergreen.HostAllocatorUseDefaultFeedback,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{

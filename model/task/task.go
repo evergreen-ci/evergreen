@@ -65,8 +65,7 @@ type Task struct {
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
-	// unblocked - for tasks that have dependencies, the time all dependencies are met
-	// 	db name is unblocked_time to take advantage of a since-reverted change
+	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
 	CreateTime          time.Time `bson:"create_time" json:"create_time"`
 	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
@@ -74,7 +73,7 @@ type Task struct {
 	StartTime           time.Time `bson:"start_time" json:"start_time"`
 	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
 	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime time.Time `bson:"unblocked_time,omitempty" json:"unblocked_time,omitempty"`
+	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -142,7 +141,7 @@ type Task struct {
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 	// populated in GetDistroQueueInfo, used for host allocation
-	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencieds_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
+	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
