@@ -430,12 +430,13 @@ type ComplexityRoot struct {
 	}
 
 	Project struct {
-		DisplayName func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Identifier  func(childComplexity int) int
-		Owner       func(childComplexity int) int
-		Patches     func(childComplexity int, patchesInput PatchesInput) int
-		Repo        func(childComplexity int) int
+		DisplayName         func(childComplexity int) int
+		Id                  func(childComplexity int) int
+		Identifier          func(childComplexity int) int
+		Owner               func(childComplexity int) int
+		Patches             func(childComplexity int, patchesInput PatchesInput) int
+		Repo                func(childComplexity int) int
+		SpawnHostScriptPath func(childComplexity int) int
 	}
 
 	ProjectBuildVariant struct {
@@ -2775,6 +2776,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Repo(childComplexity), true
+
+	case "Project.spawnHostScriptPath":
+		if e.complexity.Project.SpawnHostScriptPath == nil {
+			break
+		}
+
+		return e.complexity.Project.SpawnHostScriptPath(childComplexity), true
 
 	case "ProjectBuildVariant.displayName":
 		if e.complexity.ProjectBuildVariant.DisplayName == nil {
@@ -5158,6 +5166,7 @@ type Project {
   displayName: String!
   repo: String!
   owner: String!
+  spawnHostScriptPath: String!
   patches(patchesInput: PatchesInput!): Patches!
 }
 
@@ -14796,6 +14805,40 @@ func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.Co
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_spawnHostScriptPath(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostScriptPath, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26137,6 +26180,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "owner":
 			out.Values[i] = ec._Project_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "spawnHostScriptPath":
+			out.Values[i] = ec._Project_spawnHostScriptPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
