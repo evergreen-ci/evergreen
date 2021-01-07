@@ -678,13 +678,13 @@ type GroupedProjects {
 }
 
 type Project {
-  identifier: String!
-  id: String!
   displayName: String!
-  repo: String!
+  id: String!
+  identifier: String!
   owner: String!
-  spawnHostScriptPath: String!
   patches(patchesInput: PatchesInput!): Patches!
+  repo: String!
+  spawnHostScriptPath: String!
 }
 
 type File {
