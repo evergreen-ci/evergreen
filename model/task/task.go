@@ -140,7 +140,7 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// populated in GetDistroQueueInfo, used for host allocation
+	// WaitSinceDependenciesMet is populatd in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to

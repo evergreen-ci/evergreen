@@ -212,9 +212,9 @@ const (
 	HostAllocatorRoundUp      = "round-up"
 	HostAllocatorRoundDefault = ""
 
-	HostAllocatorWaitsFeedback      = "waits-feedback"
-	HostAllocatorNoFeedback         = "no-feedback"
-	HostAllocatorUseDefaultFeedback = ""
+	HostAllocatorWaitsOverThreshFeedback = "waits-over-thresh-feedback"
+	HostAllocatorNoFeedback              = "no-feedback"
+	HostAllocatorUseDefaultFeedback      = ""
 
 	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias  = "__commit_queue"
@@ -569,13 +569,13 @@ var (
 		HostAllocatorRoundUp,
 	}
 	ValidHostAllocatorFeedbackRules = []string{
-		HostAllocatorWaitsFeedback,
+		HostAllocatorWaitsOverThreshFeedback,
 		HostAllocatorNoFeedback,
 		HostAllocatorUseDefaultFeedback,
 	}
 
 	ValidDefaultHostAllocatorFeedbackRules = []string{
-		HostAllocatorWaitsFeedback,
+		HostAllocatorWaitsOverThreshFeedback,
 		HostAllocatorNoFeedback,
 	}
 

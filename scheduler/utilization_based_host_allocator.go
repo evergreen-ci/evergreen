@@ -158,7 +158,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 	numQOSTasks := numLongTasks
 
-	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsFeedback {
+	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsOverThreshFeedback {
 		numQOSTasks += numOverdueTasks
 	}
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
