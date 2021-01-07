@@ -163,14 +163,10 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 			}
 		}
 
-		if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
+		dependenciesMet := checkDependenciesMet(&task, depCache)
+		if !opts.IncludesDependencies || dependenciesMet {
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
-			startTime := task.ScheduledTime
-			if task.DependenciesMetTime.After(startTime) {
-				startTime = task.DependenciesMetTime
-			}
-			task.WaitSinceDependenciesMet = time.Now().Sub(startTime)
 			// duration is defined as expected runtime and does not include wait time
 			if duration > maxDurationThreshold {
 				if info != nil {
@@ -179,12 +175,20 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 				}
 				distroCountDurationOverThreshold++
 			}
-			// actual wait time allows us to independently check that the threshold is working
-			if task.WaitSinceDependenciesMet > maxDurationThreshold {
-				if info != nil {
-					info.CountWaitOverThreshold++
+			if dependenciesMet {
+				startTime := task.ScheduledTime
+				if task.DependenciesMetTime.After(startTime) {
+					startTime = task.DependenciesMetTime
 				}
-				distroCountWaitOverThreshold++
+				task.WaitSinceDependenciesMet = time.Now().Sub(startTime)
+
+				// actual wait time allows us to independently check that the threshold is working
+				if task.WaitSinceDependenciesMet > maxDurationThreshold {
+					if info != nil {
+						info.CountWaitOverThreshold++
+					}
+					distroCountWaitOverThreshold++
+				}
 			}
 
 		}
