@@ -284,7 +284,11 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 				Enabled: true,
 			}}
 			// creates scope and give user admin access to repo
-			return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref for '%s/%s'", p.Owner, p.Repo)
+			err = repoRef.Add(user)
+			if err != nil {
+				return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref for '%s/%s'", p.Owner, p.Repo)
+			}
+			return errors.Wrapf(p.Update(), "problem updating project ref '%s' while adding to repo scope", p.Id)
 		}
 		p.RepoRefId = repoRef.Id
 	}
