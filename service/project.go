@@ -128,12 +128,16 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	PRConflictingRefs := []string{}
 	CQConflictingRefs := []string{}
+	githubChecksConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
 		if ref.PRTestingEnabled && ref.Id != projRef.Id {
 			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}
 		if ref.CommitQueue.Enabled && ref.Id != projRef.Id {
 			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
+		}
+		if ref.GithubChecksEnabled && ref.Id != projRef.Id {
+			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
 		}
 	}
 
@@ -170,16 +174,18 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := struct {
-		ProjectRef            *model.ProjectRef
-		ProjectVars           *model.ProjectVars
-		ProjectAliases        []model.ProjectAlias        `json:"aliases,omitempty"`
-		PRConflictingRefs     []string                    `json:"pr_testing_conflicting_refs,omitempty"`
-		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
-		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
-		GithubValidOrgs       []string                    `json:"github_valid_orgs"`
-		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-		Permissions           gimlet.Permissions          `json:"permissions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
+		ProjectRef                  *model.ProjectRef
+		ProjectVars                 *model.ProjectVars
+		ProjectAliases              []model.ProjectAlias        `json:"aliases,omitempty"`
+		PRConflictingRefs           []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		CQConflictingRefs           []string                    `json:"commit_queue_conflicting_refs,omitempty"`
+		GithubChecksConflictingRefs []string                    `json:"github_checks_conflicting_refs,omitempty"`
+		GitHubWebhooksEnabled       bool                        `json:"github_webhooks_enabled"`
+		GithubValidOrgs             []string                    `json:"github_valid_orgs"`
+		Subscriptions               []restModel.APISubscription `json:"subscriptions"`
+		Permissions                 gimlet.Permissions          `json:"permissions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs,
+		CQConflictingRefs, githubChecksConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -402,6 +408,16 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
 				return
 			}
+		}
+		// verify there are github checks aliases defined
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubChecksAlias, projectRef.Id, responseRef.GithubChecksAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub check aliases are set"))
+			return
+		}
+		if !aliasesDefined {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable Github checks without definitions"))
+			return
 		}
 	}
 	// verify git tag alias parameters

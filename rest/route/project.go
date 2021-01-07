@@ -345,6 +345,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 
+		// verify enabling github checks is valid
+		if newProjectRef.GithubChecksEnabled {
+			var githubChecksAliasesDefined bool
+			githubChecksAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubChecksAlias)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
+			}
+			if !githubChecksAliasesDefined {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "cannot enable github checks without a version definition",
+				})
+			}
+		}
+
 		// verify enabling git tag versions is valid
 		if newProjectRef.GitTagVersionsEnabled {
 			var gitTagAliasesDefined bool

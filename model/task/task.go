@@ -106,12 +106,14 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on. This value is empty for display
-	// tasks
+	// The host the task was run on. This value is empty for display tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+
+	// Set to true if the task should be considered for mainline github checks
+	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// the number of times this task has been restarted
 	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
