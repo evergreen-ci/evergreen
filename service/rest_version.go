@@ -56,7 +56,6 @@ type restVersion struct {
 	Owner               string    `json:"owner_name"`
 	Repo                string    `json:"repo_name"`
 	Branch              string    `json:"branch_name"`
-	RepoKind            string    `json:"repo_kind"`
 	BatchTime           int       `json:"batch_time"`
 	Identifier          string    `json:"identifier"`
 	Remote              bool      `json:"remote"`
@@ -111,7 +110,6 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.Owner = srcVersion.Owner
 	destVersion.Repo = srcVersion.Repo
 	destVersion.Branch = srcVersion.Branch
-	destVersion.RepoKind = srcVersion.RepoKind
 	destVersion.Identifier = srcVersion.Identifier
 	destVersion.Remote = srcVersion.Remote
 	destVersion.RemotePath = srcVersion.RemotePath

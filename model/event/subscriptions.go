@@ -509,6 +509,12 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 	}
 }
 
+func NewVersionOutcomeSubscription(id string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypeVersion, TriggerOutcome, id, sub)
+	subscription.LastUpdated = time.Now()
+	return subscription
+}
+
 func NewExpiringPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
 	subscription.LastUpdated = time.Now()

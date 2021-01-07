@@ -1664,6 +1664,7 @@ type APIServiceFlags struct {
 	AlertsDisabled                bool `json:"alerts_disabled"`
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `json:"repotracker_disabled"`
+	RepoPollerDisabled            bool `json:"repo_poller_disabled"`
 	SchedulerDisabled             bool `json:"scheduler_disabled"`
 	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
@@ -1924,6 +1925,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
+		as.RepoPollerDisabled = v.RepoPollerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
@@ -1960,6 +1962,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		AlertsDisabled:                as.AlertsDisabled,
 		AgentStartDisabled:            as.AgentStartDisabled,
 		RepotrackerDisabled:           as.RepotrackerDisabled,
+		RepoPollerDisabled:            as.RepoPollerDisabled,
 		SchedulerDisabled:             as.SchedulerDisabled,
 		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
 		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,

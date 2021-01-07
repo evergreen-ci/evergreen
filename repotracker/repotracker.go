@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -318,6 +319,17 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
+		if ref.GithubChecksEnabled {
+			if err = addGithubCheckSubscriptions(v); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":  "error adding github check subscriptions",
+					"runner":   RunnerName,
+					"project":  ref.Id,
+					"revision": revision,
+				}))
+			}
+		}
+
 		_, err = CreateManifest(*v, project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -406,6 +418,76 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		return nil, nil, err
 	}
 	return project, intermediateProj, nil
+}
+
+// addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.
+func addGithubCheckSubscriptions(v *model.Version) error {
+	catcher := grip.NewBasicCatcher()
+	ghSub := event.NewGithubCheckAPISubscriber(event.GithubCheckSubscriber{
+		Owner: v.Owner,
+		Repo:  v.Repo,
+		Ref:   v.Revision,
+	})
+
+	versionSub := event.NewVersionOutcomeSubscription(v.Id, ghSub)
+	if err := versionSub.Upsert(); err != nil {
+		catcher.Wrap(err, "failed to insert version subscription for Github check")
+	}
+	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(v.Id, ghSub)
+	if err := buildSub.Upsert(); err != nil {
+		catcher.Wrap(err, "failed to insert build subscription for Github check")
+	}
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error retrieving admin settings"))
+		return catcher.Resolve()
+	}
+	if flags.GithubStatusAPIDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"runner":  RunnerName,
+			"message": "github status updates are disabled, not updating status",
+		})
+		return catcher.Resolve()
+	}
+	env := evergreen.GetEnvironment()
+	uiConfig := evergreen.UIConfig{}
+	if err = uiConfig.Get(env); err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+	urlBase := uiConfig.Url
+	if urlBase == "" {
+		catcher.New("url base doesn't exist")
+		return catcher.Resolve()
+	}
+	status := &message.GithubStatus{
+		Owner:       v.Owner,
+		Repo:        v.Repo,
+		Ref:         v.Revision,
+		URL:         fmt.Sprintf("%s/version/%s", urlBase, v.Id),
+		Context:     "evergreen",
+		State:       message.GithubStatePending,
+		Description: "version created",
+	}
+	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	if err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+
+	c := message.MakeGithubStatusMessageWithRepo(*status)
+	if !c.Loggable() {
+		catcher.Add(errors.Errorf("status message is invalid: %+v", status))
+		return catcher.Resolve()
+	}
+
+	if err = c.SetPriority(level.Notice); err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+
+	sender.Send(c)
+	return catcher.Resolve()
 }
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
@@ -682,7 +764,6 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		Owner:               ref.Owner,
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
-		RepoKind:            ref.RepoKind,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Revision:            metadata.Revision.Revision,
 		Status:              evergreen.VersionCreated,

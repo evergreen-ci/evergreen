@@ -59,7 +59,6 @@ type ParserProject struct {
 	Owner              string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
 	Repo               string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
 	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
 	Branch             string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
@@ -585,7 +584,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Owner:             pp.Owner,
 		Repo:              pp.Repo,
 		RemotePath:        pp.RemotePath,
-		RepoKind:          pp.RepoKind,
 		Branch:            pp.Branch,
 		Identifier:        pp.Identifier,
 		DisplayName:       pp.DisplayName,

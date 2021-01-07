@@ -76,7 +76,6 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:        project.DisplayName,
 		Owner:     project.Owner,
 		Repo:      project.Repo,
-		RepoKind:  project.RepoKind,
 		Branch:    project.Branch,
 		Enabled:   project.Enabled,
 		BatchTime: project.BatchTime,

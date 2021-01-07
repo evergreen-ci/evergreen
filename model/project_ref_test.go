@@ -23,7 +23,6 @@ func TestFindOneProjectRef(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "mci",
 		Branch:    "master",
-		RepoKind:  "github",
 		Enabled:   true,
 		BatchTime: 10,
 		Id:        "ident",
@@ -37,7 +36,6 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.Owner, "mongodb")
 	assert.Equal(projectRefFromDB.Repo, "mci")
 	assert.Equal(projectRefFromDB.Branch, "master")
-	assert.Equal(projectRefFromDB.RepoKind, "github")
 	assert.Equal(projectRefFromDB.Enabled, true)
 	assert.Equal(projectRefFromDB.BatchTime, 10)
 	assert.Equal(projectRefFromDB.Id, "ident")
@@ -51,7 +49,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Owner:            "mongodb",
 		RepoRefId:        "mongodb_mci",
 		UseRepoSettings:  true,
-		RepoKind:         "github",
 		Enabled:          true,
 		PatchingDisabled: false,
 		BatchTime:        10,
@@ -91,7 +88,6 @@ func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "mci",
 		Branch:    "master",
-		RepoKind:  "github",
 		Enabled:   true,
 		BatchTime: maxBatchTime + 1,
 		Id:        "ident",
@@ -241,7 +237,6 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "master",
-		RepoKind:         "github",
 		Enabled:          false,
 		BatchTime:        10,
 		Id:               "iden_",
@@ -284,7 +279,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "master",
-		RepoKind:         "github",
 		Enabled:          false,
 		BatchTime:        10,
 		Id:               "ident0",
@@ -337,11 +331,10 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},
@@ -368,11 +361,10 @@ func TestCanEnableCommitQueue(t *testing.T) {
 
 	require.NoError(db.Clear(ProjectRefCollection))
 	doc := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: true,
 		},
@@ -383,11 +375,10 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	assert.True(ok)
 
 	doc2 := &ProjectRef{
-		Owner:    "mongodb",
-		Repo:     "mci",
-		Branch:   "master",
-		RepoKind: "github",
-		Id:       "not-mci",
+		Owner:  "mongodb",
+		Repo:   "mci",
+		Branch: "master",
+		Id:     "not-mci",
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},
@@ -413,7 +404,6 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 		Owner:      "mongodb",
 		Repo:       "mci",
 		Branch:     "master",
-		RepoKind:   "github",
 		Identifier: "mci",
 		Id:         "1",
 		CommitQueue: CommitQueueParams{
@@ -474,87 +464,6 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 		}
 		assert.NotEmpty(testCase.ID)
 	}
-}
-
-func TestProjectRefTags(t *testing.T) {
-	require.NoError(t, db.Clear(ProjectRefCollection))
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
-
-	mci := &ProjectRef{
-		Id:      "mci",
-		Enabled: true,
-		Tags:    []string{"ci", "release"},
-	}
-	evg := &ProjectRef{
-		Id:      "evg",
-		Enabled: true,
-		Tags:    []string{"ci", "mainline"},
-	}
-	off := &ProjectRef{
-		Id:      "amboy",
-		Enabled: false,
-		Tags:    []string{"queue"},
-	}
-	require.NoError(t, mci.Insert())
-	require.NoError(t, off.Insert())
-	require.NoError(t, evg.Insert())
-
-	t.Run("Find", func(t *testing.T) {
-		prjs, err := FindTaggedProjectRefs(false, "ci")
-		require.NoError(t, err)
-		assert.Len(t, prjs, 2)
-
-		prjs, err = FindTaggedProjectRefs(false, "mainline")
-		require.NoError(t, err)
-		require.Len(t, prjs, 1)
-		assert.Equal(t, "evg", prjs[0].Id)
-		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
-	})
-	t.Run("NoResults", func(t *testing.T) {
-		prjs, err := FindTaggedProjectRefs(false, "NOT EXIST")
-		require.NoError(t, err)
-		assert.Len(t, prjs, 0)
-	})
-	t.Run("Disabled", func(t *testing.T) {
-		prjs, err := FindTaggedProjectRefs(false, "queue")
-		require.NoError(t, err)
-		assert.Len(t, prjs, 0)
-
-		prjs, err = FindTaggedProjectRefs(true, "queue")
-		require.NoError(t, err)
-		require.Len(t, prjs, 1)
-		assert.Equal(t, "amboy", prjs[0].Id)
-		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
-	})
-	t.Run("Add", func(t *testing.T) {
-		_, err := mci.AddTags("test", "testing")
-		require.NoError(t, err)
-
-		prjs, err := FindTaggedProjectRefs(false, "testing")
-		require.NoError(t, err)
-		require.Len(t, prjs, 1)
-		assert.Equal(t, "mci", prjs[0].Id)
-		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
-
-		prjs, err = FindTaggedProjectRefs(false, "test")
-		require.NoError(t, err)
-		require.Len(t, prjs, 1)
-		assert.Equal(t, "mci", prjs[0].Id)
-		assert.Equal(t, "buildlogger", prjs[0].DefaultLogger)
-	})
-	t.Run("Remove", func(t *testing.T) {
-		prjs, err := FindTaggedProjectRefs(false, "release")
-		require.NoError(t, err)
-		require.Len(t, prjs, 1)
-
-		removed, err := mci.RemoveTag("release")
-		require.NoError(t, err)
-		assert.True(t, removed)
-
-		prjs, err = FindTaggedProjectRefs(false, "release")
-		require.NoError(t, err)
-		require.Len(t, prjs, 0)
-	})
 }
 
 func TestFindDownstreamProjects(t *testing.T) {

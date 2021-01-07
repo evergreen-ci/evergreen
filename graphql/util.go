@@ -108,12 +108,6 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-// IsURL returns true if str is a url with scheme and domain name
-func IsURL(str string) bool {
-	u, err := url.ParseRequestURI(str)
-	return err == nil && u.Scheme != "" && u.Host != ""
-}
-
 func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error) {
 	version, err := d.FindVersionById(versionID)
 	if err != nil {
@@ -435,21 +429,36 @@ func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string,
 }
 func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
 	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.GetDisplayStatus(),
-			BuildVariant: task.BuildVariant,
-			Blocked:      task.Blocked(),
-			Aborted:      task.Aborted,
+	for _, t := range tasks {
+		result := TaskResult{
+			ID:           t.Id,
+			DisplayName:  t.DisplayName,
+			Version:      t.Version,
+			Status:       t.GetDisplayStatus(),
+			BuildVariant: t.BuildVariant,
+			Blocked:      t.Blocked(),
+			Aborted:      t.Aborted,
 		}
-		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			baseStatus := baseTaskStatuses[task.BuildVariant][task.DisplayName]
-			t.BaseStatus = &baseStatus
+		if baseTaskStatuses != nil && baseTaskStatuses[t.BuildVariant] != nil {
+			baseStatus := baseTaskStatuses[t.BuildVariant][t.DisplayName]
+			result.BaseStatus = &baseStatus
 		}
-		taskResults = append(taskResults, &t)
+		if len(t.ExecutionTasksFull) > 0 {
+			ets := []*restModel.APITask{}
+			for _, et := range t.ExecutionTasksFull {
+				at := restModel.APITask{}
+				if err := at.BuildFromService(&et); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "unable to convert APITask",
+					}))
+					continue
+				}
+				ets = append(ets, &at)
+			}
+			result.ExecutionTasksFull = ets
+		}
+
+		taskResults = append(taskResults, &result)
 	}
 	return taskResults
 }
@@ -742,6 +751,20 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 	}
 	return h, http.StatusOK, nil
 
+}
+
+// UpdateHostPassword is a shared utility function to change the password on a windows host
+func UpdateHostPassword(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, pwd string, r *http.Request) (*host.Host, int, error) {
+	if !h.Distro.IsWindows() {
+		return nil, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts")
+	}
+	if !host.ValidateRDPPassword(pwd) {
+		return nil, http.StatusBadRequest, errors.New("Invalid password")
+	}
+	if err := cloud.SetHostRDPPassword(ctx, env, h, pwd); err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
 }
 
 func logError(ctx context.Context, err error, r *http.Request) {

@@ -31,7 +31,6 @@ type DBConnector struct {
 	StatsConnector
 	TaskReliabilityConnector
 	DBCommitQueueConnector
-	DBProjectTagConnector
 	SchedulerConnector
 }
 
@@ -67,7 +66,6 @@ type MockConnector struct {
 	MockStatsConnector
 	MockTaskReliabilityConnector
 	MockCommitQueueConnector
-	MockProjectTagConnector
 	MockSchedulerConnector
 }
 

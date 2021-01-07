@@ -206,10 +206,8 @@ const (
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
 
-	HostAllocatorDuration    = "duration"
-	HostAllocatorDeficit     = "deficit"
-	HostAllocatorUtilization = "utilization"
-
+	HostAllocatorDeficit      = "deficit"
+	HostAllocatorUtilization  = "utilization"
 	HostAllocatorRoundDown    = "round-down"
 	HostAllocatorRoundUp      = "round-up"
 	HostAllocatorRoundDefault = ""
@@ -218,10 +216,11 @@ const (
 	HostAllocatorNoFeedback      = "no-feedback"
 	HostAllocatorDefaultFeedback = ""
 
-	// CommitQueueAlias and GithubAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
-	CommitQueueAlias = "__commit_queue"
-	GithubAlias      = "__github"
-	GitTagAlias      = "__git_tag"
+	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
+	CommitQueueAlias  = "__commit_queue"
+	GithubPRAlias     = "__github"
+	GithubChecksAlias = "__github_checks"
+	GitTagAlias       = "__git_tag"
 
 	MergeTaskVariant = "commit-queue-merge"
 	MergeTaskName    = "merge-patch"
@@ -244,6 +243,13 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 )
+
+var InternalAliases []string = []string{
+	CommitQueueAlias,
+	GithubPRAlias,
+	GithubChecksAlias,
+	GitTagAlias,
+}
 
 var TaskFailureStatuses []string = []string{
 	TaskTimedOut,

@@ -33,7 +33,6 @@ type Version struct {
 	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
-	RepoKind            string               `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 

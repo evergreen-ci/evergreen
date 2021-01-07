@@ -1061,8 +1061,12 @@ This will still allow the minimum number of hosts to start.
         </p>
         <div ng-show="isNonLegacyProvisioning()">
           <p class="distro-checkbox checkbox" style="margin-left: 5px" >
-            <input ng-show="isNonLegacyProvisioning()" ng-disabled="readOnly || !isNonLegacyProvisioning() || shouldDeco" type="checkbox" name="shouldRestartJasper" ng-model="shouldRestartJasper">
+            <input ng-show="isNonLegacyProvisioning() && !shouldReprovisionToNew" ng-disabled="readOnly || !isNonLegacyProvisioning() || shouldDeco || shouldReprovisionToNew" type="checkbox" name="shouldRestartJasper" ng-model="shouldRestartJasper">
             Restart Jasper service on running hosts of this distro for this update
+          </p>
+          <p class="distro-checkbox checkbox" style="margin-left: 5px" >
+            <input ng-show="isNonLegacyProvisioning() && !shouldRestartJasper" ng-disabled="readOnly || !isNonLegacyProvisioning() || shouldDeco || shouldRestartJasper" type="checkbox" name="shouldReprovisionToNew" ng-model="shouldReprovisionToNew">
+            Reprovision running hosts of this distro for this update
           </p>
         </div>
         <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()"

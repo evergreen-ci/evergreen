@@ -462,7 +462,6 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Id:         s.projectId,
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		RepoKind:   "github",
 		Enabled:    true,
 	}
 	err = ref.Insert()

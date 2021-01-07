@@ -145,12 +145,12 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 		Identifier: model.ToStringPtr(projectID),
 		Aliases: []model.APIProjectAlias{
 			{
-				Alias: model.ToStringPtr(evergreen.GithubAlias),
+				Alias: model.ToStringPtr(evergreen.GithubPRAlias),
 			},
 		},
 	}
 
-	exists, err := h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err := h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.True(exists)
 
@@ -158,11 +158,11 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
 		{
 			ID:    model.ToStringPtr("abcdef"),
-			Alias: model.ToStringPtr(evergreen.GithubAlias),
+			Alias: model.ToStringPtr(evergreen.GithubPRAlias),
 		},
 	}
 	pref.Aliases = nil
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.True(exists)
 
@@ -173,7 +173,7 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 			Delete: true,
 		},
 	}
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubAlias)
+	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.False(exists)
 }
@@ -207,7 +207,6 @@ func (s *ProjectPutSuite) TestParse() {
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
 				"branch_name": "master",
-				"repo_kind": "github",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -218,7 +217,7 @@ func (s *ProjectPutSuite) TestParse() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
-				"tracked": false,
+				"hidden": true,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
@@ -237,7 +236,6 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
 				"branch_name": "master",
-				"repo_kind": "github",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -248,7 +246,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
-				"tracked": false,
+				"hidden": true,
 				"patching_disabled": true,
 				"admins": ["Apu DeBeaumarchais"],
 				"notify_on_failure": true
@@ -334,7 +332,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Repo, model.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, model.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, model.FromStringPtr(projectRef.Branch))
-	s.Equal(cachedProject.RepoKind, model.FromStringPtr(projectRef.RepoKind))
 	s.Equal(cachedProject.Enabled, projectRef.Enabled)
 	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
@@ -345,7 +342,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
 	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
 	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
-	s.Equal(cachedProject.Tracked, projectRef.Tracked)
+	s.Equal(cachedProject.Hidden, projectRef.Hidden)
 	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
 	s.Equal(cachedProject.Admins, model.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
@@ -461,7 +458,6 @@ func getMockProjectsConnector() *data.MockConnector {
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
 					Branch:             "master",
-					RepoKind:           "github",
 					Enabled:            false,
 					Private:            true,
 					BatchTime:          0,
@@ -474,7 +470,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: false,
 					},
-					Tracked:               true,
+					Hidden:                false,
 					PatchingDisabled:      false,
 					Admins:                []string{"langdon.alger"},
 					NotifyOnBuildFailure:  false,
@@ -573,7 +569,6 @@ func TestDeleteProject(t *testing.T) {
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
 			Enabled:              true,
-			RepoKind:             "github",
 			Private:              true,
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			UseRepoSettings:      true,

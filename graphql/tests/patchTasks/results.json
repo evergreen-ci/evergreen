@@ -521,6 +521,46 @@
           }
         }
       }
+    },
+    {
+      "query_file": "execution-tasks.graphql",
+      "result": {
+        "data": {
+          "patchTasks": {
+            "tasks": [
+              {
+                "id": "2",
+                "executionTasksFull": null
+              },
+              {
+                "id": "1.5",
+                "executionTasksFull": [
+                  {
+                    "id": "et1",
+                    "status": "failed"
+                  }
+                ]
+              },
+              {
+                "id": "4.5",
+                "executionTasksFull": null
+              },
+              {
+                "id": "4",
+                "executionTasksFull": null
+              },
+              {
+                "id": "1",
+                "executionTasksFull": null
+              },
+              {
+                "id": "3",
+                "executionTasksFull": null
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

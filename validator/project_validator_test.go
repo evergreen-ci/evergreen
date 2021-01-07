@@ -700,6 +700,100 @@ func TestValidateTaskNames(t *testing.T) {
 	})
 }
 
+func TestValidateModules(t *testing.T) {
+	Convey("When validating a project's modules", t, func() {
+		Convey("An error should be returned when more than one module shares the same name or is empty", func() {
+			project := &model.Project{
+				Modules: model.ModuleList{
+					model.Module{
+						Name:   "module-0",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-0",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-1",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-2",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-1",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+				},
+			}
+			So(len(validateModules(project)), ShouldEqual, 3)
+		})
+
+		Convey("An error should be returned when the module does not have a branch", func() {
+			project := &model.Project{
+				Modules: model.ModuleList{
+					model.Module{
+						Name: "module-0",
+						Repo: "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-1",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name: "module-2",
+						Repo: "git@github.com:evergreen-ci/evergreen.git",
+					},
+				},
+			}
+			So(len(validateModules(project)), ShouldEqual, 2)
+		})
+
+		Convey("An error should be returned when the module's repo is empty or invalid", func() {
+			project := &model.Project{
+				Modules: model.ModuleList{
+					model.Module{
+						Name:   "module-0",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-1",
+						Branch: "master",
+					},
+					model.Module{
+						Name:   "module-2",
+						Branch: "master",
+						Repo:   "evergreen-ci/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-3",
+						Branch: "master",
+						Repo:   "git@github.com:/evergreen.git",
+					},
+					model.Module{
+						Name:   "module-4",
+						Branch: "master",
+						Repo:   "git@github.com:evergreen-ci/.git",
+					},
+				},
+			}
+			So(len(validateModules(project)), ShouldEqual, 4)
+		})
+	})
+}
+
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
 		Convey("if any variant has a duplicate entry, an error should be returned", func() {
@@ -1620,7 +1714,6 @@ func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
 		Repo:        "repo",
 		Branch:      "branch",
 		DisplayName: "test",
-		RepoKind:    "github",
 		BatchTime:   10,
 	}
 }

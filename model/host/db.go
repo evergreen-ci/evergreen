@@ -519,7 +519,7 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	return hosts, nil
 }
 
-// FindBySHouldConvertProvisioning finds all hosts that are ready and waiting to
+// FindByShouldConvertProvisioning finds all hosts that are ready and waiting to
 // convert their provisioning type.
 func FindByShouldConvertProvisioning() ([]Host, error) {
 	return Find(db.Query(bson.M{

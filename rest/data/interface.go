@@ -104,9 +104,6 @@ type Connector interface {
 	FindProjects(string, int, int) ([]model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
 	FindEnabledProjectRefsByOwnerAndRepo(string, string) ([]model.ProjectRef, error)
-	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
-	AddTagsToProject(string, ...string) error
-	RemoveTagFromProject(string, string) error
 	RemoveAdminFromProjects(string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
