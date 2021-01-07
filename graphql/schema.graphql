@@ -650,6 +650,7 @@ type Task {
   patchMetadata: PatchMetadata!
   patchNumber: Int
   priority: Int
+  project: Project
   projectId: String!
   reliesOn: [Dependency!]!
   requester: String!

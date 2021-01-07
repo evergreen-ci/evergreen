@@ -567,6 +567,7 @@ type ComplexityRoot struct {
 		PatchMetadata       func(childComplexity int) int
 		PatchNumber         func(childComplexity int) int
 		Priority            func(childComplexity int) int
+		Project             func(childComplexity int) int
 		ProjectId           func(childComplexity int) int
 		ReliesOn            func(childComplexity int) int
 		Requester           func(childComplexity int) int
@@ -852,9 +853,8 @@ type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
-
-	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
+	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -862,15 +862,18 @@ type TaskResolver interface {
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
-	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
 	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
 
+	IsPerfPluginEnabled(ctx context.Context, obj *model.APITask) (bool, error)
 	LatestExecution(ctx context.Context, obj *model.APITask) (int, error)
 
+	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
 	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
+
+	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
@@ -878,8 +881,7 @@ type TaskResolver interface {
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 
-	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
-	IsPerfPluginEnabled(ctx context.Context, obj *model.APITask) (bool, error)
+	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 }
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
@@ -3576,6 +3578,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Priority(childComplexity), true
 
+	case "Task.project":
+		if e.complexity.Task.Project == nil {
+			break
+		}
+
+		return e.complexity.Task.Project(childComplexity), true
+
 	case "Task.projectId":
 		if e.complexity.Task.ProjectId == nil {
 			break
@@ -4729,7 +4738,9 @@ input SpawnHostInput {
   volumeId: String
   taskId: String
   useProjectSetupScript: Boolean
+  useTaskConfig: Boolean
   spawnHostsStartedByTask: Boolean
+  taskSync: Boolean
 }
 
 input EditSpawnHostInput {
@@ -5076,11 +5087,11 @@ type Task {
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
-  annotation: Annotation
   ami: String
-  blocked: Boolean!
-  baseTaskMetadata: BaseTaskMetadata
+  annotation: Annotation
   baseStatus: String
+  baseTaskMetadata: BaseTaskMetadata
+  blocked: Boolean!
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
@@ -5099,7 +5110,6 @@ type Task {
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
-  totalTestCount: Int!
   failedTestCount: Int!
   finishTime: Time
   generatedBy: String
@@ -5108,11 +5118,14 @@ type Task {
   hostId: String
   id: String!
   ingestTime: Time
+  isPerfPluginEnabled: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
+  minQueuePosition: Int!
   patchMetadata: PatchMetadata!
   patchNumber: Int
   priority: Int
+  project: Project
   projectId: String!
   reliesOn: [Dependency!]!
   requester: String!
@@ -5125,9 +5138,8 @@ type Task {
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
+  totalTestCount: Int!
   version: String!
-  minQueuePosition: Int!
-  isPerfPluginEnabled: Boolean!
 }
 
 type Projects {
@@ -17137,6 +17149,37 @@ func (ec *executionContext) _Task_activatedTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ami, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_annotation(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -17168,7 +17211,7 @@ func (ec *executionContext) _Task_annotation(ctx context.Context, field graphql.
 	return ec.marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+func (ec *executionContext) _Task_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -17179,13 +17222,13 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ami, nil
+		return ec.resolvers.Task().BaseStatus(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17197,6 +17240,37 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BaseTaskMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*BaseTaskMetadata)
+	fc.Result = res
+	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_blocked(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -17231,68 +17305,6 @@ func (ec *executionContext) _Task_blocked(ctx context.Context, field graphql.Col
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().BaseTaskMetadata(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*BaseTaskMetadata)
-	fc.Result = res
-	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().BaseStatus(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_buildId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -17880,40 +17892,6 @@ func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field gr
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().TotalTestCount(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Task_failedTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18168,6 +18146,40 @@ func (ec *executionContext) _Task_ingestTime(ctx context.Context, field graphql.
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_isPerfPluginEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().IsPerfPluginEnabled(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_latestExecution(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18234,6 +18246,40 @@ func (ec *executionContext) _Task_logs(ctx context.Context, field graphql.Collec
 	res := resTmp.(model.LogLinks)
 	fc.Result = res
 	return ec.marshalNTaskLogLinks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐLogLinks(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_minQueuePosition(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().MinQueuePosition(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -18330,6 +18376,37 @@ func (ec *executionContext) _Task_priority(ctx context.Context, field graphql.Co
 	res := resTmp.(int64)
 	fc.Result = res
 	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_project(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Project(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -18716,6 +18793,40 @@ func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.C
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TotalTestCount(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_version(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18748,74 +18859,6 @@ func (ec *executionContext) _Task_version(ctx context.Context, field graphql.Col
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_minQueuePosition(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().MinQueuePosition(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_isPerfPluginEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Task",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().IsPerfPluginEnabled(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -23685,9 +23728,21 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "useTaskConfig":
+			var err error
+			it.UseTaskConfig, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "spawnHostsStartedByTask":
 			var err error
 			it.SpawnHostsStartedByTask, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskSync":
+			var err error
+			it.TaskSync, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26882,6 +26937,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_activatedBy(ctx, field, obj)
 		case "activatedTime":
 			out.Values[i] = ec._Task_activatedTime(ctx, field, obj)
+		case "ami":
+			out.Values[i] = ec._Task_ami(ctx, field, obj)
 		case "annotation":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -26891,24 +26948,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_annotation(ctx, field, obj)
-				return res
-			})
-		case "ami":
-			out.Values[i] = ec._Task_ami(ctx, field, obj)
-		case "blocked":
-			out.Values[i] = ec._Task_blocked(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "baseTaskMetadata":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_baseTaskMetadata(ctx, field, obj)
 				return res
 			})
 		case "baseStatus":
@@ -26922,6 +26961,22 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				res = ec._Task_baseStatus(ctx, field, obj)
 				return res
 			})
+		case "baseTaskMetadata":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_baseTaskMetadata(ctx, field, obj)
+				return res
+			})
+		case "blocked":
+			out.Values[i] = ec._Task_blocked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "buildId":
 			out.Values[i] = ec._Task_buildId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -27030,20 +27085,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_executionTasksFull(ctx, field, obj)
 		case "expectedDuration":
 			out.Values[i] = ec._Task_expectedDuration(ctx, field, obj)
-		case "totalTestCount":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_totalTestCount(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "failedTestCount":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -27084,6 +27125,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "ingestTime":
 			out.Values[i] = ec._Task_ingestTime(ctx, field, obj)
+		case "isPerfPluginEnabled":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_isPerfPluginEnabled(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "latestExecution":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -27103,6 +27158,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "minQueuePosition":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_minQueuePosition(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "patchMetadata":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -27130,6 +27199,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			})
 		case "priority":
 			out.Values[i] = ec._Task_priority(ctx, field, obj)
+		case "project":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_project(ctx, field, obj)
+				return res
+			})
 		case "projectId":
 			out.Values[i] = ec._Task_projectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -27193,39 +27273,25 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 		case "timeTaken":
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
+		case "totalTestCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_totalTestCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "version":
 			out.Values[i] = ec._Task_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "minQueuePosition":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_minQueuePosition(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
-		case "isPerfPluginEnabled":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_isPerfPluginEnabled(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31343,6 +31409,17 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._PatchTime(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
+	return ec._Project(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Project(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSearchReturnInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v thirdparty.SearchReturnInfo) graphql.Marshaler {

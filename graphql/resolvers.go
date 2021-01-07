@@ -137,6 +137,23 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	return publicKeys, nil
 }
 
+func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprint("Error finding merge project ref for project %s: %s", *obj.ProjectId))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(pRef)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
+	}
+
+	return &apiProjectRef, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if at.Aborted != true {
 		return nil, nil
