@@ -572,6 +572,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// if owner/repo has changed or we're toggling repo settings off, update scope
+	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
+		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
+		if err = projectRef.RemoveFromRepoScope(); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
+			return
+		}
+		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
+	}
+	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
+		if err = projectRef.AddToRepoScope(dbUser); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
 	err = projectRef.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -717,22 +733,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			err = projectRef.MakeUnrestricted(ctx)
 		}
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	// if owner/repo has changed or we're toggling repo settings off, update scope
-	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
-		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
-		if err = projectRef.RemoveFromRepoScope(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
-			return
-		}
-		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
-		if err = projectRef.AddToRepoScope(dbUser); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
