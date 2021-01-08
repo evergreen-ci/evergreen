@@ -123,7 +123,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
-	numLongTasks := taskGroupInfo.CountOverThreshold
+	numLongTasks := taskGroupInfo.CountDurationOverThreshold
+	numOverdueTasks := taskGroupInfo.CountWaitOverThreshold
 	scheduledDuration := taskGroupInfo.ExpectedDuration - taskGroupInfo.DurationOverThreshold
 	numNewHosts := 0
 
@@ -155,8 +156,13 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	if d.HostAllocatorSettings.RoundingRule == evergreen.HostAllocatorRoundUp {
 		roundDown = false
 	}
+	numQOSTasks := numLongTasks
+
+	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsOverThreshFeedback {
+		numQOSTasks += numOverdueTasks
+	}
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
-	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numLongTasks, roundDown)
+	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numQOSTasks, roundDown)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > taskGroupInfo.Count {

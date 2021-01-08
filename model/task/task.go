@@ -64,13 +64,16 @@ type Task struct {
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
-	CreateTime    time.Time `bson:"create_time" json:"create_time"`
-	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime     time.Time `bson:"start_time" json:"start_time"`
-	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
+	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
+	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
+	CreateTime          time.Time `bson:"create_time" json:"create_time"`
+	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime           time.Time `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -139,6 +142,8 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
+	// WaitSinceDependenciesMet is populatd in GetDistroQueueInfo, used for host allocation
+	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
@@ -433,6 +438,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
+	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -447,7 +453,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
+		}
 	}
+	t.DependenciesMetTime = latestTime
 
 	return true, nil
 }
