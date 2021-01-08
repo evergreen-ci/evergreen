@@ -32,19 +32,19 @@ func TestGroupByTaskGroup(t *testing.T) {
 	}
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 2,
-		MaxHosts:              1,
-		ExpectedDuration:      2 * time.Minute,
-		CountOverThreshold:    0,
-		DurationOverThreshold: 0,
+		Name:                       "",
+		Count:                      2,
+		MaxHosts:                   1,
+		ExpectedDuration:           2 * time.Minute,
+		CountDurationOverThreshold: 0,
+		DurationOverThreshold:      0,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:             2,
-		ExpectedDuration:   2 * time.Minute,
-		CountOverThreshold: 0,
-		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     2,
+		ExpectedDuration:           2 * time.Minute,
+		CountDurationOverThreshold: 0,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	taskGroupDatas := groupByTaskGroup(hosts, distroQueueInfo)
@@ -152,6 +152,7 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 			MinimumHosts:       0,
 			MaximumHosts:       50,
 			RoundingRule:       evergreen.HostAllocatorRoundDown,
+			FeedbackRule:       evergreen.HostAllocatorNoFeedback,
 			FutureHostFraction: .5,
 		},
 	}
@@ -252,10 +253,10 @@ func (s *UtilizationAllocatorSuite) TestStaticDistro() {
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               2,
-		ExpectedDuration:     (20 * time.Minute) + (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   1,
+		Length:                     2,
+		ExpectedDuration:           (20 * time.Minute) + (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 1,
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -301,10 +302,10 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 	s.NoError(t2.Insert())
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               3,
-		ExpectedDuration:     (30 * time.Second) + (3 * time.Minute) + (5 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   0,
+		Length:                     3,
+		ExpectedDuration:           (30 * time.Second) + (3 * time.Minute) + (5 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 0,
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -345,19 +346,19 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	s.NoError(t2.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 5,
-		ExpectedDuration:      5 * (30 * time.Minute),
-		CountOverThreshold:    5,
-		DurationOverThreshold: 5 * (30 * time.Minute),
+		Name:                       "",
+		Count:                      5,
+		ExpectedDuration:           5 * (30 * time.Minute),
+		CountDurationOverThreshold: 5,
+		DurationOverThreshold:      5 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               5,
-		ExpectedDuration:     5 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   5,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     5,
+		ExpectedDuration:           5 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 5,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -398,19 +399,19 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 	s.NoError(t2.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 5,
-		ExpectedDuration:      5 * (30 * time.Minute),
-		CountOverThreshold:    5,
-		DurationOverThreshold: 5 * (30 * time.Minute),
+		Name:                       "",
+		Count:                      5,
+		ExpectedDuration:           5 * (30 * time.Minute),
+		CountDurationOverThreshold: 5,
+		DurationOverThreshold:      5 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               5,
-		ExpectedDuration:     5 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   5,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     5,
+		ExpectedDuration:           5 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 5,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	minimumHostsThreshold := 10
@@ -478,17 +479,17 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 	s.NoError(t2.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 7,
-		ExpectedDuration:      (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
-		CountOverThreshold:    5,
-		DurationOverThreshold: 5 * (30 * time.Minute),
+		Name:                       "",
+		Count:                      7,
+		ExpectedDuration:           (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
+		CountDurationOverThreshold: 5,
+		DurationOverThreshold:      5 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		ExpectedDuration:     (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   5,
+		ExpectedDuration:           (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 5,
 		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
@@ -539,19 +540,19 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 	}
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 9,
-		ExpectedDuration:      9 * (30 * time.Minute),
-		CountOverThreshold:    9,
-		DurationOverThreshold: 9 * (30 * time.Minute),
+		Name:                       "",
+		Count:                      9,
+		ExpectedDuration:           9 * (30 * time.Minute),
+		CountDurationOverThreshold: 9,
+		DurationOverThreshold:      9 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               9,
-		ExpectedDuration:     9 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   9,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     9,
+		ExpectedDuration:           9 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 9,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -598,11 +599,11 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               2,
-		ExpectedDuration:     (30 * time.Second) + (5 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   0,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     2,
+		ExpectedDuration:           (30 * time.Second) + (5 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 0,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -717,19 +718,19 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 	s.NoError(t5.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 6,
-		ExpectedDuration:      6 * (30 * time.Minute),
-		CountOverThreshold:    6,
-		DurationOverThreshold: 6 * (30 * time.Minute),
+		Name:                       "",
+		Count:                      6,
+		ExpectedDuration:           6 * (30 * time.Minute),
+		CountDurationOverThreshold: 6,
+		DurationOverThreshold:      6 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               6,
-		ExpectedDuration:     6 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   6,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     6,
+		ExpectedDuration:           6 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 6,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -758,10 +759,10 @@ func (s *UtilizationAllocatorSuite) TestExcessHosts() {
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               1,
-		ExpectedDuration:     29 * time.Minute,
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   0,
+		Length:                     1,
+		ExpectedDuration:           29 * time.Minute,
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 0,
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -830,11 +831,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 	s.NoError(t4.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 8,
-		ExpectedDuration:      (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
-		CountOverThreshold:    3,
-		DurationOverThreshold: (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
+		Name:                       "",
+		Count:                      8,
+		ExpectedDuration:           (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		CountDurationOverThreshold: 3,
+		DurationOverThreshold:      (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
@@ -843,10 +844,10 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		// these should need 4 total hosts, but there is 1 idle host
 		// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
 		// so we only need 2 new hosts
-		ExpectedDuration:     (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   3,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		ExpectedDuration:           (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 3,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -927,9 +928,9 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		// 1 long task + 68 minutes of tasks should need 3 hosts
 		// 3.0 free hosts in the next 30 mins (factor = 1)
 		// so we need 0 hosts
-		ExpectedDuration:     (30 * time.Minute) + (20 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (1 * time.Minute) + (20 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   1,
+		ExpectedDuration:           (30 * time.Minute) + (20 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (1 * time.Minute) + (20 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 1,
 	}
 	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
 	s.distro.HostAllocatorSettings.FutureHostFraction = 1
@@ -1009,11 +1010,11 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 	}
 	s.NoError(t5.Insert())
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 8,
-		ExpectedDuration:      (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
-		CountOverThreshold:    3,
-		DurationOverThreshold: (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
+		Name:                       "",
+		Count:                      8,
+		ExpectedDuration:           (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		CountDurationOverThreshold: 3,
+		DurationOverThreshold:      (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
@@ -1022,10 +1023,10 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		// these should need 4 total hosts, but there is 1 idle host
 		// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
 		// so we only need 4 new hosts
-		ExpectedDuration:     (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   3,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		ExpectedDuration:           (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 3,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	defaultRound := s.distro.HostAllocatorSettings.RoundingRule
@@ -1131,9 +1132,9 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		// 2 long tasks + 9 minutes of tasks should need 3 hosts
 		// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
 		// so we need 0 hosts
-		ExpectedDuration:     (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHostWithContainers,
-		CountOverThreshold:   4,
+		ExpectedDuration:           (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHostWithContainers,
+		CountDurationOverThreshold: 4,
 	}
 
 	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
@@ -1241,11 +1242,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	s.NoError(t5.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 8,
-		ExpectedDuration:      (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
-		CountOverThreshold:    5,
-		DurationOverThreshold: (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (10 * time.Minute) + (7 * time.Minute),
+		Name:                       "",
+		Count:                      8,
+		ExpectedDuration:           (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
+		CountDurationOverThreshold: 5,
+		DurationOverThreshold:      (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (10 * time.Minute) + (7 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
@@ -1253,9 +1254,9 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		// 3 long tasks + 10 minutes of tasks should need 5 hosts
 		// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
 		// so we need 1 host
-		ExpectedDuration:     (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHostWithContainers,
-		CountOverThreshold:   5,
+		ExpectedDuration:           (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHostWithContainers,
+		CountDurationOverThreshold: 5,
 		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
@@ -1285,20 +1286,20 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	name := fmt.Sprintf("%s_%s_%s_%s", "tg1", "", "", "")
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  name,
-		Count:                 10,
-		MaxHosts:              2,
-		ExpectedDuration:      10 * (30 * time.Minute),
-		CountOverThreshold:    10,
-		DurationOverThreshold: 10 * (30 * time.Minute),
+		Name:                       name,
+		Count:                      10,
+		MaxHosts:                   2,
+		ExpectedDuration:           10 * (30 * time.Minute),
+		CountDurationOverThreshold: 10,
+		DurationOverThreshold:      10 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
 		Length: 10,
 		// a long queue of task group tasks with max hosts=2 should request 2
-		ExpectedDuration:     10 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   10,
+		ExpectedDuration:           10 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 10,
 		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
@@ -1376,30 +1377,30 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
 	taskGroupInfo1 := model.TaskGroupInfo{
-		Name:                  group1,
-		Count:                 1,
-		MaxHosts:              3,
-		ExpectedDuration:      15 * time.Minute,
-		CountOverThreshold:    0,
-		DurationOverThreshold: 0,
+		Name:                       group1,
+		Count:                      1,
+		MaxHosts:                   3,
+		ExpectedDuration:           15 * time.Minute,
+		CountDurationOverThreshold: 0,
+		DurationOverThreshold:      0,
 	}
 
 	group2 := fmt.Sprintf("%s_%s_%s_%s", "g2", "bv1", s.projectName, "v1")
 	taskGroupInfo2 := model.TaskGroupInfo{
-		Name:                  group2,
-		Count:                 4,
-		MaxHosts:              1,
-		ExpectedDuration:      4 * (30 * time.Minute),
-		CountOverThreshold:    4,
-		DurationOverThreshold: 4 * (30 * time.Minute),
+		Name:                       group2,
+		Count:                      4,
+		MaxHosts:                   1,
+		ExpectedDuration:           4 * (30 * time.Minute),
+		CountDurationOverThreshold: 4,
+		DurationOverThreshold:      4 * (30 * time.Minute),
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               taskGroupInfo1.Count + taskGroupInfo2.Count,
-		ExpectedDuration:     taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration,
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2},
+		Length:                     taskGroupInfo1.Count + taskGroupInfo2.Count,
+		ExpectedDuration:           taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration,
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: taskGroupInfo1.CountDurationOverThreshold + taskGroupInfo2.CountDurationOverThreshold,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2},
 	}
 
 	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
@@ -1528,40 +1529,40 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
 	taskGroupInfo1 := model.TaskGroupInfo{
-		Name:                  group1,
-		Count:                 2,
-		MaxHosts:              3,
-		ExpectedDuration:      2 * (30 * time.Minute),
-		CountOverThreshold:    2,
-		DurationOverThreshold: 2 * (30 * time.Minute),
+		Name:                       group1,
+		Count:                      2,
+		MaxHosts:                   3,
+		ExpectedDuration:           2 * (30 * time.Minute),
+		CountDurationOverThreshold: 2,
+		DurationOverThreshold:      2 * (30 * time.Minute),
 	}
 
 	group2 := fmt.Sprintf("%s_%s_%s_%s", "g2", "bv1", s.projectName, "v1")
 	taskGroupInfo2 := model.TaskGroupInfo{
-		Name:                  group2,
-		Count:                 2,
-		MaxHosts:              1,
-		ExpectedDuration:      2 * (30 * time.Minute),
-		CountOverThreshold:    2,
-		DurationOverThreshold: 2 * (30 * time.Minute),
+		Name:                       group2,
+		Count:                      2,
+		MaxHosts:                   1,
+		ExpectedDuration:           2 * (30 * time.Minute),
+		CountDurationOverThreshold: 2,
+		DurationOverThreshold:      2 * (30 * time.Minute),
 	}
 
 	group3 := ""
 	taskGroupInfo3 := model.TaskGroupInfo{
-		Name:                  group3,
-		Count:                 6,
-		MaxHosts:              0,
-		ExpectedDuration:      (15 * time.Minute) + (5 * time.Minute) + (20 * time.Minute) + (15 * time.Minute) + (15 * time.Minute) + (5 * time.Minute),
-		CountOverThreshold:    0,
-		DurationOverThreshold: 0,
+		Name:                       group3,
+		Count:                      6,
+		MaxHosts:                   0,
+		ExpectedDuration:           (15 * time.Minute) + (5 * time.Minute) + (20 * time.Minute) + (15 * time.Minute) + (15 * time.Minute) + (5 * time.Minute),
+		CountDurationOverThreshold: 0,
+		DurationOverThreshold:      0,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               taskGroupInfo1.Count + taskGroupInfo2.Count + taskGroupInfo3.Count,
-		ExpectedDuration:     taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration + taskGroupInfo3.ExpectedDuration,
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold + taskGroupInfo3.CountOverThreshold,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2, taskGroupInfo3},
+		Length:                     taskGroupInfo1.Count + taskGroupInfo2.Count + taskGroupInfo3.Count,
+		ExpectedDuration:           taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration + taskGroupInfo3.ExpectedDuration,
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: taskGroupInfo1.CountDurationOverThreshold + taskGroupInfo2.CountDurationOverThreshold + taskGroupInfo3.CountDurationOverThreshold,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2, taskGroupInfo3},
 	}
 
 	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
@@ -1592,20 +1593,20 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 
 	name := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  name,
-		Count:                 3,
-		MaxHosts:              3,
-		ExpectedDuration:      3 * (30 * time.Minute),
-		CountOverThreshold:    3,
-		DurationOverThreshold: 3,
+		Name:                       name,
+		Count:                      3,
+		MaxHosts:                   3,
+		ExpectedDuration:           3 * (30 * time.Minute),
+		CountDurationOverThreshold: 3,
+		DurationOverThreshold:      3,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:               taskGroupInfo.Count,
-		ExpectedDuration:     taskGroupInfo.ExpectedDuration,
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   taskGroupInfo.CountOverThreshold,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		Length:                     taskGroupInfo.Count,
+		ExpectedDuration:           taskGroupInfo.ExpectedDuration,
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: taskGroupInfo.CountDurationOverThreshold,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	defaultPct := s.distro.HostAllocatorSettings.FutureHostFraction
@@ -1693,11 +1694,11 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 	s.NoError(t4.Insert())
 
 	taskGroupInfo := model.TaskGroupInfo{
-		Name:                  "",
-		Count:                 5,
-		ExpectedDuration:      5 * (30 * time.Minute),
-		CountOverThreshold:    2,
-		DurationOverThreshold: 60 * time.Minute,
+		Name:                       "",
+		Count:                      5,
+		ExpectedDuration:           5 * (30 * time.Minute),
+		CountDurationOverThreshold: 2,
+		DurationOverThreshold:      60 * time.Minute,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
@@ -1705,10 +1706,10 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 		// 2 running tasks that will take forever + 2 tasks that each should finish now means
 		// we should have 1 expected free host after scaling by the 0.5 fraction
 		// if we have 5 more tasks coming in, we should request 4 hosts
-		ExpectedDuration:     5 * (30 * time.Minute),
-		MaxDurationThreshold: evergreen.MaxDurationPerDistroHost,
-		CountOverThreshold:   2,
-		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+		ExpectedDuration:           5 * (30 * time.Minute),
+		MaxDurationThreshold:       evergreen.MaxDurationPerDistroHost,
+		CountDurationOverThreshold: 2,
+		TaskGroupInfos:             []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{

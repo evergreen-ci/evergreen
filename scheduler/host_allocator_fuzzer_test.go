@@ -39,6 +39,7 @@ type HostAllocatorFuzzerSuite struct {
 	freeHosts          int
 	settings           fuzzerSettings
 	roundingRule       string
+	feedbackRule       string
 
 	suite.Suite
 }
@@ -63,6 +64,7 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	s.projectName = "testProject"
 	s.futureHostFraction = .5
 	s.roundingRule = evergreen.HostAllocatorRoundDown
+	s.feedbackRule = evergreen.HostAllocatorNoFeedback
 	s.ctx = context.Background()
 	s.settings = fuzzerSettings{
 		taskDurations: []time.Duration{
