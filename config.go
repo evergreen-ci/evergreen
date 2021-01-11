@@ -592,16 +592,9 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 }
 
 func GetServiceFlags() (*ServiceFlags, error) {
-	section := ConfigRegistry.GetSection("service_flags")
-	if section == nil {
-		return nil, errors.New("unable to retrieve config section")
-	}
-	if err := section.Get(GetEnvironment()); err != nil {
+	flags := &ServiceFlags{}
+	if err := flags.Get(GetEnvironment()); err != nil {
 		return nil, errors.Wrap(err, "error retrieving section from DB")
-	}
-	flags, ok := section.(*ServiceFlags)
-	if !ok {
-		return nil, errors.New("unable to convert config section to service flags")
 	}
 	return flags, nil
 }
