@@ -1526,6 +1526,16 @@ func (t *Task) SetResults(results []TestResult) error {
 		docs[idx] = result.convertToNewStyleTestResult(t)
 	}
 
+	grip.Debug(message.Fields{
+		"message":        "writing test results",
+		"task":           t.Id,
+		"project":        t.Project,
+		"requester":      t.Requester,
+		"version":        t.Version,
+		"display_name":   t.DisplayName,
+		"results_length": len(results),
+	})
+
 	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
 
