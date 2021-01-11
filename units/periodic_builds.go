@@ -51,11 +51,11 @@ func makePeriodicBuildsJob() *periodicBuildJob {
 	return j
 }
 
-func NewPeriodicBuildJob(projectID, definitionID string, ts time.Time) amboy.Job {
+func NewPeriodicBuildJob(projectID, definitionID string) amboy.Job {
 	j := makePeriodicBuildsJob()
 	j.ProjectID = projectID
 	j.DefinitionID = definitionID
-	j.SetID(fmt.Sprintf("%s-%s-%s-%s", periodicBuildJobName, projectID, definitionID, ts.Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s-%s-%s-%s", periodicBuildJobName, projectID, definitionID, utility.RoundPartOfHour(15)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{WaitUntil: ts})
 
 	return j
