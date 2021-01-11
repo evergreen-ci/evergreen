@@ -274,10 +274,14 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	log.TaskExecution = t.Execution
 
 	grip.Debug(message.Fields{
-		"message":    "received test log",
-		"task":       t.Id,
-		"execution":  t.Execution,
-		"log_length": len(log.Lines),
+		"message":      "received test log",
+		"task":         t.Id,
+		"project":      t.Project,
+		"requester":    t.Requester,
+		"version":      t.Version,
+		"display_name": t.DisplayName,
+		"execution":    t.Execution,
+		"log_length":   len(log.Lines),
 	})
 
 	if err := log.Insert(); err != nil {

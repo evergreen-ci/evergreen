@@ -1529,6 +1529,10 @@ func (t *Task) SetResults(results []TestResult) error {
 	grip.Debug(message.Fields{
 		"message":        "writing test results",
 		"task":           t.Id,
+		"project":        t.Project,
+		"requester":      t.Requester,
+		"version":        t.Version,
+		"display_name":   t.DisplayName,
 		"results_length": len(results),
 	})
 
