@@ -15,7 +15,9 @@
         "_id": "unrestrictedTaskAccess",
         "name": "unrestricted access",
         "type": "project",
-        "resources": ["curator"]
+        "resources": [
+          "curator"
+        ]
       }
     ],
     "builds": [
@@ -65,20 +67,31 @@
       {
         "_id": "mci",
         "processing": false,
-        "time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "queue": [
           {
             "issue": "nothing",
             "version": "something",
-            "enqueue_time": { "$date": "2018-01-12T00:01:36.796Z" },
-            "modules": [{ "module": "mod", "issue": "none" }]
+            "enqueue_time": {
+              "$date": "2018-01-12T00:01:36.796Z"
+            },
+            "modules": [
+              {
+                "module": "mod",
+                "issue": "none"
+              }
+            ]
           }
         ]
       }
     ],
     "patches": [
       {
-        "_id": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "_id": {
+          "$oid": "5e1f8ab8834b87d7b5d251a5"
+        },
         "desc": "mydesc",
         "branch": "mci",
         "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
@@ -86,11 +99,22 @@
         "author": "testuser",
         "version": "",
         "status": "created",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "build_variants": ["rhel62"],
-        "tasks": ["test-auth"],
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "build_variants": [
+          "rhel62"
+        ],
+        "tasks": [
+          "test-auth"
+        ],
         "variants_tasks": [
-          { "variant": "rhel62", "tasks": ["test-model-host"] }
+          {
+            "variant": "rhel62",
+            "tasks": [
+              "test-model-host"
+            ]
+          }
         ],
         "patches": [
           {
@@ -141,16 +165,28 @@
         "activated": false
       },
       {
-        "_id": { "$oid": "9a1f8ab8834b87d7b5d251a5" },
+        "_id": {
+          "$oid": "9a1f8ab8834b87d7b5d251a5"
+        },
         "desc": "patch-to-duration-time-resolver",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" }
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        }
       },
       {
-        "_id": { "$oid": "9e1f8ab8834b87d7b5d251a5" },
+        "_id": {
+          "$oid": "9e1f8ab8834b87d7b5d251a5"
+        },
         "desc": "patch-to-test-time-resolver",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-13T17:42:19Z" },
-        "finish_time": { "$date": "2020-02-14T18:03:19Z" }
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-13T17:42:19Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T18:03:19Z"
+        }
       }
     ],
     "artifact_files": [
@@ -166,7 +202,7 @@
             "fetch_ignore": false
           }
         ],
-        "execution": 5
+        "execution": 0
       },
       {
         "task": "exec2",
@@ -192,20 +228,34 @@
             "fetch_ignore": false
           }
         ],
-        "execution": 5
+        "execution": 0
       }
     ],
     "tasks": [
       {
         "_id": "task-with-fake-old-id",
         "old_task_id": "not a real thing",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "nothing that actually exists",
         "gitspec": "revise",
@@ -221,7 +271,7 @@
         "display_name": "display name",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "something",
         "status": "pass",
@@ -232,19 +282,35 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": ["fake-exec-task"],
+        "execution_tasks": [
+          "fake-exec-task"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
       {
         "_id": "task-without-legit-exec-tasks",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "id",
         "gitspec": "revise",
@@ -260,7 +326,7 @@
         "display_name": "display name",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "something",
         "status": "pass",
@@ -271,19 +337,35 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": ["fake-exec-task"],
+        "execution_tasks": [
+          "fake-exec-task"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
       {
         "_id": "wuzzup-activated",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "curator",
         "gitspec": "revise",
@@ -299,7 +381,7 @@
         "display_name": "display name",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "something",
         "status": "started",
@@ -310,19 +392,36 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": ["exec1", "exec2"],
+        "execution_tasks": [
+          "exec1",
+          "exec2"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
       {
         "_id": "exec1",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "logkeeper",
         "gitspec": "revise",
@@ -338,7 +437,7 @@
         "display_name": "exec 1 display!!",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "something",
         "status": "pass",
@@ -349,19 +448,35 @@
           "timed_out": false
         },
         "display_only": false,
-        "execution_tasks": ["exec1"],
+        "execution_tasks": [
+          "exec1"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
       {
         "_id": "exec2",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "logkeeper",
         "gitspec": "revise",
@@ -377,7 +492,7 @@
         "display_name": "exec 2 display!!",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "merge_test",
         "status": "started",
@@ -388,19 +503,35 @@
           "timed_out": false
         },
         "display_only": false,
-        "execution_tasks": ["exec1"],
+        "execution_tasks": [
+          "exec1"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
       {
         "_id": "wuzzup",
-        "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-        "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "injest_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "dispatch_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "scheduled_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "start_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "finish_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
+        "activated_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        },
         "version": "version",
         "branch": "mci",
         "gitspec": "revise",
@@ -416,7 +547,7 @@
         "display_name": "exec1 display name",
         "host_id": "host",
         "restarts": 5,
-        "execution": 5,
+        "execution": 0,
         "order": 5,
         "r": "merge_test",
         "status": "started",
@@ -427,7 +558,9 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": ["exec1"],
+        "execution_tasks": [
+          "exec1"
+        ],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -438,7 +571,9 @@
         "dispatchTime": "2020-02-12T19:10:02Z",
         "scheduledTime": "2020-02-12T19:10:01Z",
         "activatedTime": "2020-02-12T19:10:01Z",
-        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "version": {
+          "$oid": "5e1f8ab8834b87d7b5d251a5"
+        },
         "timeTaken": 218556,
         "startTime": "2020-02-12T19:10:02Z",
         "finishTime": "2020-02-12T19:13:41Z",
@@ -455,7 +590,9 @@
         "dispatchTime": "2020-02-12T18:27:02Z",
         "scheduledTime": "2020-02-12T18:27:02Z",
         "activatedTime": "2020-02-12T18:26:36Z",
-        "version": { "$oid": "5e1f8ab8834b87d7b5d251a5" },
+        "version": {
+          "$oid": "5e1f8ab8834b87d7b5d251a5"
+        },
         "timeTaken": 159811,
         "startTime": "2020-02-12T18:27:02Z",
         "finishTime": "2020-02-12T18:29:42Z",
@@ -467,48 +604,80 @@
       },
       {
         "id": "task-for-testing-duration-resolver-1",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-14T22:21:13Z" },
-        "finish_time": { "$date": "2020-02-14T22:23:59Z" },
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-14T22:21:13Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T22:23:59Z"
+        },
         "version": "9a1f8ab8834b87d7b5d251a5",
         "time_taken": 166715
       },
       {
         "id": "task-for-testing-duration-resolver-2",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-14T22:21:14Z" },
-        "finish_time": { "$date": "2020-02-14T22:22:26Z" },
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-14T22:21:14Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T22:22:26Z"
+        },
         "version": "9a1f8ab8834b87d7b5d251a5",
         "time_taken": 72328
       },
       {
         "id": "task-for-testing-duration-resolver-3",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-14T22:21:11Z" },
-        "finish_time": { "$date": "2020-02-14T22:24:50Z" },
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-14T22:21:11Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T22:24:50Z"
+        },
         "version": "9a1f8ab8834b87d7b5d251a5",
         "time_taken": 219230
       },
       {
         "id": "task-for-testing-duration-resolver-4",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-14T22:21:13Z" },
-        "finish_time": { "$date": "2020-02-14T22:22:19Z" },
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-14T22:21:13Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T22:22:19Z"
+        },
         "version": "9a1f8ab8834b87d7b5d251a5",
         "time_taken": 65589
       },
       {
         "id": "task-for-testing-duration-resolver-5",
-        "create_time": { "$date": "2020-02-12T16:58:19Z" },
-        "start_time": { "$date": "2020-02-14T22:21:15Z" },
-        "finish_time": { "$date": "2020-02-14T22:22:24Z" },
+        "create_time": {
+          "$date": "2020-02-12T16:58:19Z"
+        },
+        "start_time": {
+          "$date": "2020-02-14T22:21:15Z"
+        },
+        "finish_time": {
+          "$date": "2020-02-14T22:22:24Z"
+        },
         "version": "9a1f8ab8834b87d7b5d251a5",
         "time_taken": 69532
       }
     ],
     "testresults": [
       {
-        "_id": { "$oid": "19ef7a20a7798219e191d00e" },
+        "_id": {
+          "$oid": "19ef7a20a7798219e191d00e"
+        },
         "status": "a",
         "test_file": "b",
         "log_id": "59ef7a2097b1d3148d0004f1",
@@ -522,7 +691,9 @@
         "url_raw": "https://original-raw-url.com"
       },
       {
-        "_id": { "$oid": "29ef7a20a7798219e191d00e" },
+        "_id": {
+          "$oid": "29ef7a20a7798219e191d00e"
+        },
         "status": "c",
         "test_file": "apple",
         "log_id": "",
@@ -536,7 +707,9 @@
         "url_raw": ""
       },
       {
-        "_id": { "$oid": "39ef7a20a7798219e191d00e" },
+        "_id": {
+          "$oid": "39ef7a20a7798219e191d00e"
+        },
         "status": "b",
         "test_file": "d",
         "log_id": "59ef7a2097b1d3148d0004f1",
@@ -550,7 +723,9 @@
         "url_raw": ""
       },
       {
-        "_id": { "$oid": "49ef7a20a7798219e191d00e" },
+        "_id": {
+          "$oid": "49ef7a20a7798219e191d00e"
+        },
         "status": "dog",
         "test_file": "c",
         "log_id": "59ef7a2097b1d3148d0004f1",
@@ -588,7 +763,9 @@
           "invalid_revision": "",
           "merge_base_revision": ""
         },
-        "admins": ["john.liu"],
+        "admins": [
+          "john.liu"
+        ],
         "tracks_push_events": true,
         "pr_testing_enabled": false,
         "patching_disabled": false,
@@ -650,7 +827,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "572cf4126685d46c3c16a704" },
+        "_id": {
+          "$oid": "572cf4126685d46c3c16a704"
+        },
         "owner_name": "mongodb",
         "repo_name": "curator",
         "branch_name": "master",
@@ -664,7 +843,9 @@
         "local_config": "",
         "deactivate_previous": true,
         "hidden": false,
-        "admins": ["sam.kleinman"],
+        "admins": [
+          "sam.kleinman"
+        ],
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
@@ -681,7 +862,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "575ee9786685d46c3c31acc8" },
+        "_id": {
+          "$oid": "575ee9786685d46c3c31acc8"
+        },
         "owner_name": "hello it's me",
         "repo_name": "amboy",
         "branch_name": "master",
@@ -695,7 +878,9 @@
         "local_config": "",
         "deactivate_previous": false,
         "hidden": false,
-        "admins": ["sam.kleinman"],
+        "admins": [
+          "sam.kleinman"
+        ],
         "repotracker_error": {
           "exists": false,
           "invalid_revision": "",
@@ -716,7 +901,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "57d9c0c9575282e6b7fd4abe" },
+        "_id": {
+          "$oid": "57d9c0c9575282e6b7fd4abe"
+        },
         "owner_name": "mongodb",
         "repo_name": "greenbay",
         "branch_name": "master",
@@ -747,7 +934,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "58adb7affaeb60e9151fe750" },
+        "_id": {
+          "$oid": "58adb7affaeb60e9151fe750"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -778,7 +967,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "59a455a9f4fd67f4567a4f79" },
+        "_id": {
+          "$oid": "59a455a9f4fd67f4567a4f79"
+        },
         "owner_name": "bsamek",
         "repo_name": "mongo",
         "branch_name": "MCI-2614",
@@ -816,7 +1007,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5a05e2a5a2c574da3bfbadf2" },
+        "_id": {
+          "$oid": "5a05e2a5a2c574da3bfbadf2"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -847,7 +1040,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "5a05e2bba2c574da3bfbb261" },
+        "_id": {
+          "$oid": "5a05e2bba2c574da3bfbb261"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -878,7 +1073,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5b4787e710b1a2e1813a6272" },
+        "_id": {
+          "$oid": "5b4787e710b1a2e1813a6272"
+        },
         "owner_name": "evergreen-ci",
         "repo_name": "lobster",
         "branch_name": "master",
@@ -909,7 +1106,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5c018817f7cc44870a1074d2" },
+        "_id": {
+          "$oid": "5c018817f7cc44870a1074d2"
+        },
         "owner_name": "john-m-liu",
         "repo_name": "evergreen",
         "branch_name": "master",
@@ -926,7 +1125,10 @@
         "pr_testing_enabled": false,
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["john.liu", "william.banfield"],
+        "admins": [
+          "john.liu",
+          "william.banfield"
+        ],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -940,7 +1142,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "5c9ce3ecbedb55a6ed467d3c" },
+        "_id": {
+          "$oid": "5c9ce3ecbedb55a6ed467d3c"
+        },
         "owner_name": "evergreen-ci",
         "repo_name": "evergreen",
         "branch_name": "master",
@@ -963,7 +1167,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["john.liu"],
+        "admins": [
+          "john.liu"
+        ],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -971,7 +1177,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5ca4dad4bedb55a6ed6e1321" },
+        "_id": {
+          "$oid": "5ca4dad4bedb55a6ed6e1321"
+        },
         "owner_name": "annie.black",
         "repo_name": "buildhost-configuration",
         "branch_name": "master",
@@ -1002,7 +1210,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5ce2f66bb6913bed0ce14e2e" },
+        "_id": {
+          "$oid": "5ce2f66bb6913bed0ce14e2e"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1024,7 +1234,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["annie.black"],
+        "admins": [
+          "annie.black"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "triggers": [
@@ -1048,7 +1260,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "5ce303c3d3fd7b2021d75387" },
+        "_id": {
+          "$oid": "5ce303c3d3fd7b2021d75387"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1083,7 +1297,9 @@
         ]
       },
       {
-        "_id": { "$oid": "5ce3099617a2629f59c10d65" },
+        "_id": {
+          "$oid": "5ce3099617a2629f59c10d65"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1113,7 +1329,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5ce3ff102bef611fe7fc065f" },
+        "_id": {
+          "$oid": "5ce3ff102bef611fe7fc065f"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1143,7 +1361,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5cf19e13cef1a85b8f251690" },
+        "_id": {
+          "$oid": "5cf19e13cef1a85b8f251690"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1174,7 +1394,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "5d0934035202c9202ba5c649" },
+        "_id": {
+          "$oid": "5d0934035202c9202ba5c649"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1204,7 +1426,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5d09342ac14c0c478420171a" },
+        "_id": {
+          "$oid": "5d09342ac14c0c478420171a"
+        },
         "owner_name": "evergreen-ci",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1235,7 +1459,9 @@
         "periodic_builds": []
       },
       {
-        "_id": { "$oid": "5d093826e0ddf98b03800cf7" },
+        "_id": {
+          "$oid": "5d093826e0ddf98b03800cf7"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1265,7 +1491,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5d094305d5290ee78772ea9d" },
+        "_id": {
+          "$oid": "5d094305d5290ee78772ea9d"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1295,7 +1523,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5d923f1320882ec04d4fff67" },
+        "_id": {
+          "$oid": "5d923f1320882ec04d4fff67"
+        },
         "owner_name": "tzembo",
         "repo_name": "evergreen",
         "branch_name": "master",
@@ -1316,7 +1546,10 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["thomas.zembowicz", "annie.black"],
+        "admins": [
+          "thomas.zembowicz",
+          "annie.black"
+        ],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1325,7 +1558,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5da89aa2ce6ce31e950fc33c" },
+        "_id": {
+          "$oid": "5da89aa2ce6ce31e950fc33c"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1355,7 +1590,9 @@
         "triggers": null
       },
       {
-        "_id": { "$oid": "5da89aebc4be95afdb141e89" },
+        "_id": {
+          "$oid": "5da89aebc4be95afdb141e89"
+        },
         "owner_name": "something crazy",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1376,7 +1613,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["annie.black"],
+        "admins": [
+          "annie.black"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1385,7 +1624,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5da89b9180cf9439e231976d" },
+        "_id": {
+          "$oid": "5da89b9180cf9439e231976d"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1411,7 +1652,9 @@
         "repotracker_error": null
       },
       {
-        "_id": { "$oid": "5db6ee1b24be490956065d15" },
+        "_id": {
+          "$oid": "5db6ee1b24be490956065d15"
+        },
         "owner_name": "mongodb",
         "repo_name": "grip",
         "branch_name": "master",
@@ -1437,7 +1680,9 @@
         "repotracker_error": null
       },
       {
-        "_id": { "$oid": "5db6ef7924be490956065d16" },
+        "_id": {
+          "$oid": "5db6ef7924be490956065d16"
+        },
         "owner_name": "rongodb",
         "repo_name": "v20380713",
         "branch_name": "master",
@@ -1458,7 +1703,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman"],
+        "admins": [
+          "ron.neuman"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1467,7 +1714,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5db6f314d12573b6dda24d6a" },
+        "_id": {
+          "$oid": "5db6f314d12573b6dda24d6a"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "master",
@@ -1488,7 +1737,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman"],
+        "admins": [
+          "ron.neuman"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1497,7 +1748,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5db6f7160d5636ef04287494" },
+        "_id": {
+          "$oid": "5db6f7160d5636ef04287494"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "master",
@@ -1518,7 +1771,11 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
+        "admins": [
+          "ron.neuman",
+          "geoff.mishkin",
+          "cailin.nelson"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1528,7 +1785,9 @@
         "repotracker_disabled": false
       },
       {
-        "_id": { "$oid": "5db6fff2821fc02e8c38b8e2" },
+        "_id": {
+          "$oid": "5db6fff2821fc02e8c38b8e2"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "master",
@@ -1549,7 +1808,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman"],
+        "admins": [
+          "ron.neuman"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1558,7 +1819,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5db711206f1c4ada8c768977" },
+        "_id": {
+          "$oid": "5db711206f1c4ada8c768977"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "master",
@@ -1579,7 +1842,9 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman"],
+        "admins": [
+          "ron.neuman"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1588,7 +1853,9 @@
         "triggers": []
       },
       {
-        "_id": { "$oid": "5db757ecb2e2e54d509b99ed" },
+        "_id": {
+          "$oid": "5db757ecb2e2e54d509b99ed"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "master",
@@ -1609,12 +1876,16 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": ["ron.neuman"],
+        "admins": [
+          "ron.neuman"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null
       },
       {
-        "_id": { "$oid": "5dbc3f6641fc03a014d2fff4" },
+        "_id": {
+          "$oid": "5dbc3f6641fc03a014d2fff4"
+        },
         "owner_name": "rongodb",
         "repo_name": "ron_repo_1",
         "branch_name": "v13071978",
@@ -1636,7 +1907,11 @@
         "hidden": false,
         "patching_disabled": false,
         "repotracker_disabled": false,
-        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
+        "admins": [
+          "ron.neuman",
+          "geoff.mishkin",
+          "cailin.nelson"
+        ],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1662,12 +1937,21 @@
                 "author": "testuser",
                 "version": "",
                 "status": "created",
-                "tasks": ["test-auth"],
+                "tasks": [
+                  "test-auth"
+                ],
                 "activated": false,
                 "alias": "",
-                "variants": ["rhel62"],
+                "variants": [
+                  "rhel62"
+                ],
                 "variantsTasks": [
-                  { "name": "rhel62", "tasks": ["test-model-host"] }
+                  {
+                    "name": "rhel62",
+                    "tasks": [
+                      "test-model-host"
+                    ]
+                  }
                 ]
               }
             ],
@@ -1689,12 +1973,21 @@
             "author": "testuser",
             "version": "",
             "status": "created",
-            "tasks": ["test-auth"],
+            "tasks": [
+              "test-auth"
+            ],
             "activated": false,
             "alias": "",
-            "variants": ["rhel62"],
+            "variants": [
+              "rhel62"
+            ],
             "variantsTasks": [
-              { "name": "rhel62", "tasks": ["test-model-host"] }
+              {
+                "name": "rhel62",
+                "tasks": [
+                  "test-model-host"
+                ]
+              }
             ]
           }
         }
@@ -1706,7 +1999,9 @@
         "errors": [
           {
             "message": "400 (Bad Request): id 'i-dont-exist' is not a valid patch id",
-            "path": ["patch"],
+            "path": [
+              "patch"
+            ],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -1749,7 +2044,7 @@
             "displayName": "exec1 display name",
             "hostId": "host",
             "restarts": 5,
-            "execution": 5,
+            "execution": 0,
             "patchNumber": 5,
             "requester": "merge_test",
             "status": "started",
@@ -1760,7 +2055,9 @@
               "timedOut": false
             },
             "displayOnly": true,
-            "executionTasks": ["exec1"],
+            "executionTasks": [
+              "exec1"
+            ],
             "generateTask": false,
             "generatedBy": "something"
           }
@@ -1773,10 +2070,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "status": "a" },
-              { "status": "b" },
-              { "status": "c" },
-              { "status": "dog" }
+              {
+                "status": "a"
+              },
+              {
+                "status": "b"
+              },
+              {
+                "status": "c"
+              },
+              {
+                "status": "dog"
+              }
             ]
           }
         }
@@ -1788,10 +2093,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "status": "dog" },
-              { "status": "c" },
-              { "status": "b" },
-              { "status": "a" }
+              {
+                "status": "dog"
+              },
+              {
+                "status": "c"
+              },
+              {
+                "status": "b"
+              },
+              {
+                "status": "a"
+              }
             ]
           }
         }
@@ -1803,10 +2116,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "testFile": "apple" },
-              { "testFile": "b" },
-              { "testFile": "c" },
-              { "testFile": "d" }
+              {
+                "testFile": "apple"
+              },
+              {
+                "testFile": "b"
+              },
+              {
+                "testFile": "c"
+              },
+              {
+                "testFile": "d"
+              }
             ]
           }
         }
@@ -1818,10 +2139,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "testFile": "d" },
-              { "testFile": "c" },
-              { "testFile": "b" },
-              { "testFile": "apple" }
+              {
+                "testFile": "d"
+              },
+              {
+                "testFile": "c"
+              },
+              {
+                "testFile": "b"
+              },
+              {
+                "testFile": "apple"
+              }
             ]
           }
         }
@@ -1833,10 +2162,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "duration": 40 },
-              { "duration": 30 },
-              { "duration": 20 },
-              { "duration": 10 }
+              {
+                "duration": 40
+              },
+              {
+                "duration": 30
+              },
+              {
+                "duration": 20
+              },
+              {
+                "duration": 10
+              }
             ]
           }
         }
@@ -1848,10 +2185,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "duration": 10 },
-              { "duration": 20 },
-              { "duration": 30 },
-              { "duration": 40 }
+              {
+                "duration": 10
+              },
+              {
+                "duration": 20
+              },
+              {
+                "duration": 30
+              },
+              {
+                "duration": 40
+              }
             ]
           }
         }
@@ -1861,7 +2206,13 @@
       "query_file": "taskTestFilterStatus.graphql",
       "result": {
         "data": {
-          "taskTests": { "testResults": [{ "status": "dog" }] }
+          "taskTests": {
+            "testResults": [
+              {
+                "status": "dog"
+              }
+            ]
+          }
         }
       }
     },
@@ -1869,7 +2220,13 @@
       "query_file": "taskTestFilterTestFile.graphql",
       "result": {
         "data": {
-          "taskTests": { "testResults": [{ "testFile": "apple" }] }
+          "taskTests": {
+            "testResults": [
+              {
+                "testFile": "apple"
+              }
+            ]
+          }
         }
       }
     },
@@ -1877,7 +2234,9 @@
       "query_file": "taskTestFilterNoResults.graphql",
       "result": {
         "data": {
-          "taskTests": { "testResults": [] }
+          "taskTests": {
+            "testResults": []
+          }
         }
       }
     },
@@ -1885,7 +2244,9 @@
       "query_file": "taskTestFilterStatusSubstr1.graphql",
       "result": {
         "data": {
-          "taskTests": { "testResults": [] }
+          "taskTests": {
+            "testResults": []
+          }
         }
       }
     },
@@ -1893,7 +2254,9 @@
       "query_file": "taskTestFilterStatusSubstr2.graphql",
       "result": {
         "data": {
-          "taskTests": { "testResults": [] }
+          "taskTests": {
+            "testResults": []
+          }
         }
       }
     },
@@ -1902,7 +2265,14 @@
       "result": {
         "data": {
           "taskTests": {
-            "testResults": [{ "testFile": "c" }, { "testFile": "d" }]
+            "testResults": [
+              {
+                "testFile": "c"
+              },
+              {
+                "testFile": "d"
+              }
+            ]
           }
         }
       }
@@ -1913,10 +2283,18 @@
         "data": {
           "taskTests": {
             "testResults": [
-              { "testFile": "apple" },
-              { "testFile": "b" },
-              { "testFile": "c" },
-              { "testFile": "d" }
+              {
+                "testFile": "apple"
+              },
+              {
+                "testFile": "b"
+              },
+              {
+                "testFile": "c"
+              },
+              {
+                "testFile": "d"
+              }
             ]
           }
         }
@@ -1941,7 +2319,9 @@
         "errors": [
           {
             "message": "cannot add duplicate project 'buildhost-test'",
-            "path": ["addFavoriteProject"],
+            "path": [
+              "addFavoriteProject"
+            ],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -1956,7 +2336,9 @@
         "errors": [
           {
             "message": "could not find project 'i-dont-exist'",
-            "path": ["addFavoriteProject"],
+            "path": [
+              "addFavoriteProject"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2379,8 +2761,12 @@
         "errors": [
           {
             "message": "cannot find task with id NOT-A-REAL-TASKID",
-            "path": ["taskFiles"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "taskFiles"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -2392,8 +2778,12 @@
         "errors": [
           {
             "message": "cannot find task with id task-does-not-exist",
-            "path": ["taskFiles"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "taskFiles"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -2402,7 +2792,12 @@
     {
       "query_file": "task-files-query-empty.graphql",
       "result": {
-        "data": { "taskFiles": { "fileCount": 0, "groupedFiles": [] } }
+        "data": {
+          "taskFiles": {
+            "fileCount": 0,
+            "groupedFiles": []
+          }
+        }
       }
     },
     {
@@ -2422,7 +2817,10 @@
           "taskTests": {
             "testResults": [
               {
-                "logs": { "htmlDisplayURL": null, "rawDisplayURL": null },
+                "logs": {
+                  "htmlDisplayURL": null,
+                  "rawDisplayURL": null
+                },
                 "id": "29ef7a20a7798219e191d00e"
               }
             ]
@@ -2506,8 +2904,12 @@
         "errors": [
           {
             "message": "cannot find task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
-            "path": ["taskTests"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "taskTests"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -2529,7 +2931,12 @@
     {
       "query_file": "set_priority-success.graphql",
       "result": {
-        "data": { "setTaskPriority": { "id": "wuzzup", "priority": 33 } }
+        "data": {
+          "setTaskPriority": {
+            "id": "wuzzup",
+            "priority": 33
+          }
+        }
       }
     },
     {
@@ -2538,8 +2945,12 @@
         "errors": [
           {
             "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
-            "path": ["setTaskPriority"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "setTaskPriority"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -2551,8 +2962,12 @@
         "errors": [
           {
             "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
-            "path": ["setTaskPriority"],
-            "extensions": { "code": "FORBIDDEN" }
+            "path": [
+              "setTaskPriority"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
         ],
         "data": null
@@ -2562,20 +2977,33 @@
       "query_file": "set_priority-has-permission.graphql",
       "result": {
         "data": {
-          "setTaskPriority": { "priority": 101, "id": "wuzzup-activated" }
+          "setTaskPriority": {
+            "priority": 101,
+            "id": "wuzzup-activated"
+          }
         }
       }
     },
     {
       "query_file": "abort_task-success.graphql",
       "result": {
-        "data": { "abortTask": { "activated": false, "aborted": true } }
+        "data": {
+          "abortTask": {
+            "activated": false,
+            "aborted": true
+          }
+        }
       }
     },
     {
       "query_file": "abort_task-success-remove-commit-queue.graphql",
       "result": {
-        "data": { "abortTask": { "activated": false, "aborted": true } }
+        "data": {
+          "abortTask": {
+            "activated": false,
+            "aborted": true
+          }
+        }
       }
     },
     {
@@ -2584,8 +3012,12 @@
         "errors": [
           {
             "message": "Error aborting task exec2: no commit queue found for 'logkeeper'",
-            "path": ["abortTask"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
           }
         ],
         "data": null
@@ -2597,8 +3029,12 @@
         "errors": [
           {
             "message": "Error aborting task exec1: Task 'exec1' is currently 'pass' - cannot abort task in this status",
-            "path": ["abortTask"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
           }
         ],
         "data": null
@@ -2610,8 +3046,12 @@
         "errors": [
           {
             "message": "error finding task by id not-for-real-task-id: 404 (Not Found): task with id not-for-real-task-id not found",
-            "path": ["abortTask"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -2623,8 +3063,12 @@
         "errors": [
           {
             "message": "could not find project 'nothing that actually exists'",
-            "path": ["abortTask"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "abortTask"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null

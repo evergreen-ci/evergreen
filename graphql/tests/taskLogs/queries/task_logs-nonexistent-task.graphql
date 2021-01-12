@@ -1,5 +1,5 @@
 query {
-  taskLogs(taskId: "osiernar") {
+  taskLogs(taskId: "osiernar", execution: 0) {
     systemLogs {
       type
       severity
