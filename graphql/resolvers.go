@@ -1106,21 +1106,22 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			key := ""
 			switch singleSort.Key {
 			// the keys here should be the keys for the column headers of the tasks table
-			case "NAME":
+			case TaskSortCategoryName:
 				key = task.DisplayNameKey
-			case "STATUS":
+			case TaskSortCategoryStatus:
 				key = task.DisplayStatusKey
-			case "BASE_STATUS":
+			case TaskSortCategoryBaseStatus:
 				key = task.BaseTaskStatusKey
-			case "VARIANT":
+			case TaskSortCategoryVariant:
 				key = task.BuildVariantKey
 			default:
 				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
 			}
-			if singleSort.Direction == 0 {
-				return nil, InputValidationError.Send(ctx, "0 is not a valid sort direction")
+			order := 1
+			if singleSort.Direction == SortDirectionDesc {
+				order = -1
 			}
-			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: singleSort.Direction})
+			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statuses, baseStatuses, variantParam, taskNameParam, sortDirParam, pageParam, limitParam, []string{}, taskSorts)

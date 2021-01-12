@@ -301,8 +301,8 @@ input IssueLinkInput {
 }
 
 input SortOrder {
-  Key: String!
-  Direction: Int!
+  Key: TaskSortCategory!
+  Direction: SortDirection!
 }
 
 type TaskQueueItem {

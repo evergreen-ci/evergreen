@@ -4802,8 +4802,8 @@ input IssueLinkInput {
 }
 
 input SortOrder {
-  Key: String!
-  Direction: Int!
+  Key: TaskSortCategory!
+  Direction: SortDirection!
 }
 
 type TaskQueueItem {
@@ -23798,13 +23798,13 @@ func (ec *executionContext) unmarshalInputSortOrder(ctx context.Context, obj int
 		switch k {
 		case "Key":
 			var err error
-			it.Key, err = ec.unmarshalNString2string(ctx, v)
+			it.Key, err = ec.unmarshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "Direction":
 			var err error
-			it.Direction, err = ec.unmarshalNInt2int(ctx, v)
+			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29937,6 +29937,15 @@ func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreen�
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
+	var res SortDirection
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, sel ast.SelectionSet, v SortDirection) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNSortOrder2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) (SortOrder, error) {
 	return ec.unmarshalInputSortOrder(ctx, v)
 }
@@ -30405,6 +30414,15 @@ func (ec *executionContext) marshalNTaskResult2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._TaskResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, v interface{}) (TaskSortCategory, error) {
+	var res TaskSortCategory
+	return res, res.UnmarshalGQL(v)
+}
+
+func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskSortCategory(ctx context.Context, sel ast.SelectionSet, v TaskSortCategory) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNTaskTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx context.Context, sel ast.SelectionSet, v TaskTestResult) graphql.Marshaler {

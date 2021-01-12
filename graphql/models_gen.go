@@ -167,8 +167,8 @@ type RecentTaskLogs struct {
 }
 
 type SortOrder struct {
-	Key       string `json:"Key"`
-	Direction int    `json:"Direction"`
+	Key       TaskSortCategory `json:"Key"`
+	Direction SortDirection    `json:"Direction"`
 }
 
 type SpawnHostInput struct {
