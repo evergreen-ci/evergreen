@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -464,6 +465,19 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 		}
 		assert.NotEmpty(testCase.ID)
 	}
+}
+
+func TestGetPatchTriggerAlias(t *testing.T) {
+	projRef := ProjectRef{
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{{Alias: "a0"}},
+	}
+
+	alias, found := projRef.GetPatchTriggerAlias("a0")
+	assert.True(t, found)
+	assert.Equal(t, "a0", alias.Alias)
+
+	alias, found = projRef.GetPatchTriggerAlias("a1")
+	assert.False(t, found)
 }
 
 func TestFindDownstreamProjects(t *testing.T) {

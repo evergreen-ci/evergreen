@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -269,7 +270,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
 		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition        `json:"triggers"`
-		PatchTriggerAliases   []model.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
+		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
@@ -507,7 +508,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for i := range responseRef.PatchTriggerAliases {
-		catcher.Add(responseRef.PatchTriggerAliases[i].Validate(id))
+		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
+		catcher.Add(err)
 	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)

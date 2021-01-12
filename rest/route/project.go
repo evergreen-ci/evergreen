@@ -175,7 +175,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	proj, err := dbModel.FindLastKnownGoodProject(projRefId)
+	_, proj, err := dbModel.FindLatestVersionWithValidProject(projRefId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -1029,7 +1029,7 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding project '%s'", id))
 	}
-	p, err := dbModel.FindLastKnownGoodProject(id)
+	_, p, err := dbModel.FindLatestVersionWithValidProject(id)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error finding project config for project '%s'", id))
