@@ -161,16 +161,15 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}
 
-	// parameters cannot be set once the patch has been finalized
-	if parametersModel != nil && p.Version != "" {
-		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
-	}
-	var parameters []patch.Parameter
-	for _, param := range parametersModel {
-		parameters = append(parameters, param.ToService())
-	}
-	if err = p.SetParameters(parameters); err != nil {
-		return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+	// only modify parameters if the patch hasn't been finalized
+	if parametersModel != nil && p.Version == "" {
+		var parameters []patch.Parameter
+		for _, param := range parametersModel {
+			parameters = append(parameters, param.ToService())
+		}
+		if err = p.SetParameters(parameters); err != nil {
+			return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+		}
 	}
 
 	if p.IsCommitQueuePatch() {

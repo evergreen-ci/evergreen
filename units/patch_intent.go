@@ -254,6 +254,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if validationCatcher.HasErrors() {
+		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
