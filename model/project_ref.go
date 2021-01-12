@@ -406,24 +406,11 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 }
 
 func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
-	// if a setting is disabled overall, then disable the branch
-	if !repoRef.Enabled {
-		pRef.Enabled = repoRef.Enabled
-	}
-	if repoRef.PatchingDisabled {
-		pRef.PatchingDisabled = repoRef.PatchingDisabled
-	}
-	if repoRef.RepotrackerDisabled {
-		pRef.RepotrackerDisabled = repoRef.RepotrackerDisabled
-	}
-	if pRef.DispatchingDisabled {
-		pRef.DispatchingDisabled = repoRef.DispatchingDisabled
-	}
-
-	// For all other fields, if the setting is not defined in the project, default to the repo settings.
+	// if the setting is not defined in the project, default to the repo settings.
 	reflectedBranch := reflect.ValueOf(pRef)
 	reflectedRepo := reflect.ValueOf(repoRef)
 
+	isProjectDisabled := !pRef.Enabled
 	for i := 0; i < reflectedBranch.Elem().NumField(); i++ {
 		branchField := reflectedBranch.Elem().FieldByIndex([]int{i})
 
@@ -431,6 +418,11 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef 
 			reflectedField := reflectedRepo.Elem().FieldByIndex([]int{0, i})
 			reflectedBranch.Elem().Field(i).Set(reflectedField)
 		}
+	}
+
+	// if the branch was explicitly disabled, override any repo setting
+	if isProjectDisabled {
+		pRef.Enabled = false
 	}
 
 	return pRef

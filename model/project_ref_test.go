@@ -54,7 +54,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Id:                  "ident",
 		Admins:              []string{"john.smith", "john.doe"},
 		UseRepoSettings:     true,
-		Enabled:             true,
+		Enabled:             false,
 		PatchingDisabled:    false,
 		RepotrackerDisabled: true,
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
@@ -69,7 +69,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		SpawnHostScriptPath: "my-path",
 		Admins:              []string{"john.liu"},
 		TaskSync:            TaskSyncOptions{ConfigEnabled: true},
-		Enabled:             false,
+		Enabled:             true,
 		PatchingDisabled:    true,
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
