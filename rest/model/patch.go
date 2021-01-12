@@ -116,14 +116,15 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 
-	params := []APIParameter{}
-	for _, param := range v.Parameters {
-		params = append(params, APIParameter{
-			Key:   ToStringPtr(param.Key),
-			Value: ToStringPtr(param.Value),
-		})
+	if len(v.Parameters) > 0 {
+		apiPatch.Parameters = []APIParameter{}
+		for _, param := range v.Parameters {
+			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
+				Key:   ToStringPtr(param.Key),
+				Value: ToStringPtr(param.Value),
+			})
+		}
 	}
-	apiPatch.Parameters = params
 
 	if env := evergreen.GetEnvironment(); env != nil {
 		codeChanges := []APIModulePatch{}
