@@ -1,7 +1,7 @@
 {
   patchTasks(
     patchId: "5e4ff3abe3c3317e352062e4"
-    sorts: [{ Key: "BASE_STATUS", Direction: 1 }]
+    sorts: [{ Key: BASE_STATUS, Direction: ASC }]
   ) {
     tasks {
       id
