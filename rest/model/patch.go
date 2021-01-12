@@ -116,7 +116,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 
-	if len(v.Parameters) > 0 {
+	if v.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}
 		for _, param := range v.Parameters {
 			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
@@ -202,14 +202,16 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 		tasks[i] = FromStringPtr(t)
 	}
 	res.Tasks = tasks
-	params := []patch.Parameter{}
-	for _, param := range apiPatch.Parameters {
-		params = append(params, patch.Parameter{
-			Key:   FromStringPtr(param.Key),
-			Value: FromStringPtr(param.Value),
-		})
+	if apiPatch.Parameters != nil {
+		res.Parameters = []patch.Parameter{}
+		for _, param := range apiPatch.Parameters {
+			res.Parameters = append(res.Parameters, patch.Parameter{
+				Key:   FromStringPtr(param.Key),
+				Value: FromStringPtr(param.Value),
+			})
+		}
 	}
-	res.Parameters = params
+
 	i, err := apiPatch.GithubPatchData.ToService()
 	catcher.Add(err)
 	data, ok := i.(thirdparty.GithubPatch)
