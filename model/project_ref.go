@@ -35,10 +35,6 @@ import (
 // The ProjectRef struct contains general information, independent of any
 // revision control system, needed to track a given project
 type ProjectRef struct {
-	// These fields can be defined only at the branch level.
-	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
-	Branch    string `bson:"branch_name" json:"branch_name" yaml:"branch"`
-
 	// Id is the unmodifiable unique ID for the configuration, used internally.
 	Id                      string                         `bson:"_id" json:"id" yaml:"id"`
 	DisplayName             string                         `bson:"display_name" json:"display_name" yaml:"display_name"`
@@ -47,6 +43,7 @@ type ProjectRef struct {
 	Restricted              bool                           `bson:"restricted" json:"restricted" yaml:"restricted"`
 	Owner                   string                         `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                    string                         `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch                  string                         `bson:"branch_name" json:"branch_name" yaml:"branch"` // only definable at the branch level
 	RemotePath              string                         `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	PatchingDisabled        bool                           `bson:"patching_disabled" json:"patching_disabled"`
 	RepotrackerDisabled     bool                           `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
@@ -99,7 +96,8 @@ type ProjectRef struct {
 	Hidden bool `bson:"hidden" json:"hidden"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
-	UseRepoSettings bool `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
+	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
+	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 }
 
 type CommitQueueParams struct {
@@ -409,15 +407,15 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef 
 	// if the setting is not defined in the project, default to the repo settings.
 	// For booleans, we default to the repo setting if the boolean is false, except for enabled.
 	reflectedBranch := reflect.ValueOf(pRef)
-	reflectedRepo := reflect.ValueOf(repoRef)
+	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically reference the ProjectRef part of RepoRef
 
 	isProjectDisabled := !pRef.Enabled
 	for i := 0; i < reflectedBranch.Elem().NumField(); i++ {
-		branchField := reflectedBranch.Elem().FieldByIndex([]int{i})
 
+		branchField := reflectedBranch.Elem().Field(i)
 		if branchField.IsZero() {
-			reflectedField := reflectedRepo.Elem().FieldByIndex([]int{0, i})
-			reflectedBranch.Elem().Field(i).Set(reflectedField)
+			reflectedField := reflectedRepo.Field(i)
+			branchField.Set(reflectedField)
 		}
 	}
 
