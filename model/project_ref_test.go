@@ -45,25 +45,34 @@ func TestFindOneProjectRef(t *testing.T) {
 func TestFindMergedProjectRef(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection),
 		"Error clearing collection")
+
 	projectRef := &ProjectRef{
-		Owner:            "mongodb",
-		RepoRefId:        "mongodb_mci",
-		UseRepoSettings:  true,
-		Enabled:          true,
-		PatchingDisabled: false,
-		BatchTime:        10,
-		Id:               "ident",
-		Admins:           []string{"john.smith", "john.doe"},
+		Owner:               "mongodb",
+		RepoRefId:           "mongodb_mci",
+		BatchTime:           10,
+		Id:                  "ident",
+		Admins:              []string{"john.smith", "john.doe"},
+		UseRepoSettings:     true,
+		Enabled:             true,
+		PatchingDisabled:    false,
+		RepotrackerDisabled: true,
+		PatchTriggerAliases: []PatchTriggerDefinition{
+			{ChildProject: "a different branch"},
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	repoRef := &RepoRef{ProjectRef{
 		Id:                  "mongodb_mci",
 		Repo:                "mci",
 		Branch:              "master",
-		Enabled:             false,
-		PatchingDisabled:    true,
 		SpawnHostScriptPath: "my-path",
 		Admins:              []string{"john.liu"},
+		TaskSync:            TaskSyncOptions{ConfigEnabled: true},
+		Enabled:             false,
+		PatchingDisabled:    true,
+		PatchTriggerAliases: []PatchTriggerDefinition{
+			{Alias: "global patch trigger"},
+		},
 	}}
 	assert.NoError(t, repoRef.Insert())
 
@@ -71,14 +80,20 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
-	assert.Len(t, mergedProject.Admins, 2)
+	require.Len(t, mergedProject.Admins, 2)
 	assert.Contains(t, mergedProject.Admins, "john.smith")
 	assert.Contains(t, mergedProject.Admins, "john.doe")
 	assert.NotContains(t, mergedProject.Admins, "john.liu")
 	assert.False(t, mergedProject.Enabled)
 	assert.True(t, mergedProject.PatchingDisabled)
-	assert.False(t, mergedProject.RepotrackerDisabled)
+	assert.True(t, mergedProject.UseRepoSettings)
+	assert.True(t, mergedProject.RepotrackerDisabled)
+	assert.False(t, mergedProject.GithubChecksEnabled)
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
+	assert.True(t, mergedProject.TaskSync.ConfigEnabled)
+	require.Len(t, mergedProject.PatchTriggerAliases, 1)
+	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "a different branch", mergedProject.PatchTriggerAliases[0].ChildProject)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {

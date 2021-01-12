@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -33,30 +34,24 @@ import (
 // The ProjectRef struct contains general information, independent of any
 // revision control system, needed to track a given project
 type ProjectRef struct {
-	// The following fields can be defined from both the branch and repo level.
+	// These fields can be defined only at the branch level.
+	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+	Branch    string `bson:"branch_name" json:"branch_name" yaml:"branch"`
+
 	// Id is the unmodifiable unique ID for the configuration, used internally.
-	Id                  string `bson:"_id" json:"id" yaml:"id"`
-	DisplayName         string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled             bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private             bool   `bson:"private" json:"private" yaml:"private"`
-	Restricted          bool   `bson:"restricted" json:"restricted" yaml:"restricted"`
-	Owner               string `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                string `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	RemotePath          string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled    bool   `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled bool   `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled bool   `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	PRTestingEnabled    bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled bool   `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
-	// Admins contain a list of users who are able to access the projects page.
-	Admins []string `bson:"admins" json:"admins"`
-
-	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
-	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
-
-	// The following fields can be defined only at the branch level.
-	RepoRefId               string                    `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
-	Branch                  string                    `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	Id                      string                    `bson:"_id" json:"id" yaml:"id"`
+	DisplayName             string                    `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Enabled                 bool                      `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private                 bool                      `bson:"private" json:"private" yaml:"private"`
+	Restricted              bool                      `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Owner                   string                    `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                    string                    `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	RemotePath              string                    `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled        bool                      `bson:"patching_disabled" json:"patching_disabled"`
+	RepotrackerDisabled     bool                      `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled     bool                      `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	PRTestingEnabled        bool                      `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled     bool                      `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
 	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
@@ -66,6 +61,12 @@ type ProjectRef struct {
 	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
 	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+
+	// Admins contain a list of users who are able to access the projects page.
+	Admins []string `bson:"admins" json:"admins"`
+
+	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
+	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
@@ -409,8 +410,6 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 
 func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
 	// if a setting is disabled overall, then disable the branch
-	pRef.Owner = repoRef.Owner
-	pRef.Repo = repoRef.Repo
 	if !repoRef.Enabled {
 		pRef.Enabled = repoRef.Enabled
 	}
@@ -423,13 +422,20 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef 
 	if pRef.DispatchingDisabled {
 		pRef.DispatchingDisabled = repoRef.DispatchingDisabled
 	}
-	// if the following fields aren't configured, default to the repo configuration
-	if pRef.RemotePath == "" {
-		pRef.RemotePath = repoRef.RemotePath
+
+	// For all other fields, if the setting is not defined in the project, default to the repo settings.
+	reflectedBranch := reflect.ValueOf(pRef)
+	reflectedRepo := reflect.ValueOf(repoRef)
+
+	for i := 0; i < reflectedBranch.Elem().NumField(); i++ {
+		branchField := reflectedBranch.Elem().FieldByIndex([]int{i})
+
+		if branchField.IsZero() {
+			reflectedField := reflectedRepo.Elem().FieldByIndex([]int{0, i})
+			reflectedBranch.Elem().Field(i).Set(reflectedField)
+		}
 	}
-	if pRef.SpawnHostScriptPath == "" {
-		pRef.SpawnHostScriptPath = repoRef.SpawnHostScriptPath
-	}
+
 	return pRef
 }
 
