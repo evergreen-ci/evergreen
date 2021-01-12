@@ -42,8 +42,8 @@ const (
 	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
 	GitHubInternalError    = "GitHub returned an error"
 	InvalidConfig          = "config file was invalid"
-	OtherErrors            = "Evergreen error"
 	ProjectFailsValidation = "Project fails validation"
+	OtherErrors            = "Evergreen error"
 )
 
 func init() {
