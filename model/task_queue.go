@@ -23,22 +23,24 @@ const (
 )
 
 type TaskGroupInfo struct {
-	Name                  string        `bson:"name" json:"name"`
-	Count                 int           `bson:"count" json:"count"`
-	MaxHosts              int           `bson:"max_hosts" json:"max_hosts"`
-	ExpectedDuration      time.Duration `bson:"expected_duration" json:"expected_duration"`
-	CountOverThreshold    int           `bson:"count_over_threshold" json:"count_over_threshold"`
-	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
+	Name                       string        `bson:"name" json:"name"`
+	Count                      int           `bson:"count" json:"count"`
+	MaxHosts                   int           `bson:"max_hosts" json:"max_hosts"`
+	ExpectedDuration           time.Duration `bson:"expected_duration" json:"expected_duration"`
+	CountDurationOverThreshold int           `bson:"count_over_threshold" json:"count_over_threshold"`
+	CountWaitOverThreshold     int           `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	DurationOverThreshold      time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
 }
 
 type DistroQueueInfo struct {
-	Length               int             `bson:"length" json:"length"`
-	ExpectedDuration     time.Duration   `bson:"expected_duration" json:"expected_duration"`
-	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
-	PlanCreatedAt        time.Time       `bson:"created_at" json:"created_at"`
-	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
-	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
-	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
+	Length                     int             `bson:"length" json:"length"`
+	ExpectedDuration           time.Duration   `bson:"expected_duration" json:"expected_duration"`
+	MaxDurationThreshold       time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
+	PlanCreatedAt              time.Time       `bson:"created_at" json:"created_at"`
+	CountDurationOverThreshold int             `bson:"count_over_threshold" json:"count_over_threshold"`
+	CountWaitOverThreshold     int             `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	TaskGroupInfos             []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
+	AliasQueue                 bool            `bson:"alias_queue" json:"alias_queue"`
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
@@ -148,7 +150,8 @@ var (
 	// taskQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
 	// taskQueueInfoMaxDurationKey        = bsonutil.MustHaveTag(DistroQueueInfo{}, "MaxDurationThreshold")
 	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
-	// taskQueueInfoCountOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountOverThreshold")
+	// taskQueueInfoCountDurationOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountDurationOverThreshold")
+	// taskQueueInfoCountWaitOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountWaitOverThreshold")
 	// taskQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
 	// taskQueueInfoAliasQueueKey         = bsonutil.MustHaveTag(DistroQueueInfo{}, "AliasQueue")
 
@@ -438,13 +441,14 @@ func ClearTaskQueue(distroId string) error {
 // clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
 func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 	new_distroQueueInfo := DistroQueueInfo{
-		Length:               0,
-		ExpectedDuration:     time.Duration(0),
-		MaxDurationThreshold: distroQueueInfo.MaxDurationThreshold,
-		PlanCreatedAt:        distroQueueInfo.PlanCreatedAt,
-		CountOverThreshold:   0,
-		TaskGroupInfos:       []TaskGroupInfo{},
-		AliasQueue:           distroQueueInfo.AliasQueue,
+		Length:                     0,
+		ExpectedDuration:           time.Duration(0),
+		MaxDurationThreshold:       distroQueueInfo.MaxDurationThreshold,
+		PlanCreatedAt:              distroQueueInfo.PlanCreatedAt,
+		CountDurationOverThreshold: 0,
+		CountWaitOverThreshold:     0,
+		TaskGroupInfos:             []TaskGroupInfo{},
+		AliasQueue:                 distroQueueInfo.AliasQueue,
 	}
 
 	return new_distroQueueInfo

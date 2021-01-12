@@ -43,6 +43,7 @@ var (
 	AliasKey            = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey  = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey       = bsonutil.MustHaveTag(Patch{}, "MergePatch")
+	TriggersKey         = bsonutil.MustHaveTag(Patch{}, "Triggers")
 
 	// BSON fields for sync at end struct
 	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")
@@ -59,6 +60,11 @@ var (
 	// BSON fields for the patch set struct
 	PatchSetPatchKey   = bsonutil.MustHaveTag(PatchSet{}, "Patch")
 	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
+
+	// BSON fields for the patch trigger struct
+	TriggerInfoAliasesKey      = bsonutil.MustHaveTag(TriggerInfo{}, "Aliases")
+	TriggerInfoParentPatchKey  = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
+	TriggerInfoChildPatchesKey = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
 )
 
 // Query Validation

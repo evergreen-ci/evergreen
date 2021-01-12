@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -39,28 +40,28 @@ type ProjectRef struct {
 	Branch    string `bson:"branch_name" json:"branch_name" yaml:"branch"`
 
 	// Id is the unmodifiable unique ID for the configuration, used internally.
-	Id                      string                    `bson:"_id" json:"id" yaml:"id"`
-	DisplayName             string                    `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled                 bool                      `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private                 bool                      `bson:"private" json:"private" yaml:"private"`
-	Restricted              bool                      `bson:"restricted" json:"restricted" yaml:"restricted"`
-	Owner                   string                    `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                    string                    `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	RemotePath              string                    `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled        bool                      `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled     bool                      `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled     bool                      `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	PRTestingEnabled        bool                      `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled     bool                      `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
-	BatchTime               int                       `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious      bool                      `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
-	DefaultLogger           string                    `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure    bool                      `bson:"notify_on_failure" json:"notify_on_failure"`
-	Triggers                []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
-	PatchTriggerAliases     []PatchTriggerDefinition  `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
-	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
-	CedarTestResultsEnabled bool                      `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
-	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	Id                      string                         `bson:"_id" json:"id" yaml:"id"`
+	DisplayName             string                         `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Enabled                 bool                           `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private                 bool                           `bson:"private" json:"private" yaml:"private"`
+	Restricted              bool                           `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Owner                   string                         `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                    string                         `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	RemotePath              string                         `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled        bool                           `bson:"patching_disabled" json:"patching_disabled"`
+	RepotrackerDisabled     bool                           `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled     bool                           `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	PRTestingEnabled        bool                           `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled     bool                           `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
+	BatchTime               int                            `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious      bool                           `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DefaultLogger           string                         `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure    bool                           `bson:"notify_on_failure" json:"notify_on_failure"`
+	Triggers                []TriggerDefinition            `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PatchTriggerAliases     []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
+	PeriodicBuilds          []PeriodicBuildDefinition      `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
+	CedarTestResultsEnabled bool                           `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CommitQueue             CommitQueueParams              `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -149,20 +150,6 @@ type TriggerDefinition struct {
 	Command      string `bson:"command,omitempty" json:"command,omitempty"`
 	GenerateFile string `bson:"generate_file,omitempty" json:"generate_file,omitempty"`
 	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
-}
-
-type PatchTriggerDefinition struct {
-	Alias          string          `bson:"alias" json:"alias"`
-	ChildProject   string          `bson:"child_project" json:"child_project"`
-	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
-	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
-}
-
-type TaskSpecifier struct {
-	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
-	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -266,6 +253,16 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 		return errors.Wrap(err, "Error inserting distro")
 	}
 	return p.AddPermissions(creator)
+}
+
+func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerDefinition, bool) {
+	for _, alias := range p.PatchTriggerAliases {
+		if alias.Alias == aliasName {
+			return alias, true
+		}
+	}
+
+	return patch.PatchTriggerDefinition{}, false
 }
 
 func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
@@ -1254,60 +1251,62 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-func (t *PatchTriggerDefinition) Validate(parentProject string) error {
-	childProject, err := FindOneProjectRef(t.ChildProject)
+func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
+	if definition.ChildProject == parentProject {
+		return definition, errors.New("a project cannot trigger itself")
+	}
+
+	childProject, err := FindOneProjectRef(definition.ChildProject)
 	if err != nil {
-		return errors.Wrapf(err, "error finding upstream project %s", t.ChildProject)
+		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
 	}
 	if childProject == nil {
-		return errors.Errorf("project '%s' not found", t.ChildProject)
+		return definition, errors.Errorf("child project '%s' not found", definition.ChildProject)
 	}
-	if childProject.Id == parentProject {
-		return errors.New("a project cannot trigger itself")
-	}
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, t.Status) {
-		return errors.Errorf("invalid status: %s", t.Status)
+
+	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
+		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 
 	// ChildProject should be saved using its ID, in case the user used the project's Identifier
-	t.ChildProject = childProject.Id
+	definition.ChildProject = childProject.Id
 
-	for _, specifier := range t.TaskSpecifiers {
+	for _, specifier := range definition.TaskSpecifiers {
 		if (specifier.VariantRegex != "" || specifier.TaskRegex != "") && specifier.PatchAlias != "" {
-			return errors.New("can't specify both a regex set and a patch alias")
+			return definition, errors.New("can't specify both a regex set and a patch alias")
 		}
 
 		if specifier.PatchAlias == "" && (specifier.TaskRegex == "" || specifier.VariantRegex == "") {
-			return errors.New("must specify either a patch alias or a complete regex set")
+			return definition, errors.New("must specify either a patch alias or a complete regex set")
 		}
 
 		if specifier.VariantRegex != "" {
 			_, regexErr := regexp.Compile(specifier.VariantRegex)
 			if regexErr != nil {
-				return errors.Wrapf(regexErr, "invalid variant regex '%s'", specifier.VariantRegex)
+				return definition, errors.Wrapf(regexErr, "invalid variant regex '%s'", specifier.VariantRegex)
 			}
 		}
 
 		if specifier.TaskRegex != "" {
 			_, regexErr := regexp.Compile(specifier.TaskRegex)
 			if regexErr != nil {
-				return errors.Wrapf(regexErr, "invalid task regex '%s'", specifier.TaskRegex)
+				return definition, errors.Wrapf(regexErr, "invalid task regex '%s'", specifier.TaskRegex)
 			}
 		}
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProjectOrRepo(t.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectOrRepo(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
-				return errors.Wrap(err, "problem fetching aliases for project")
+				return definition, errors.Wrap(err, "problem fetching aliases for project")
 			}
 			if len(aliases) == 0 {
-				return errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, t.ChildProject)
+				return definition, errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, definition.ChildProject)
 			}
 		}
 	}
 
-	return nil
+	return definition, nil
 }
 
 func (d *PeriodicBuildDefinition) Validate() error {

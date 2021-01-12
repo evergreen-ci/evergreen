@@ -70,6 +70,7 @@ type ComplexityRoot struct {
 	}
 
 	Annotation struct {
+		Id              func(childComplexity int) int
 		Issues          func(childComplexity int) int
 		Note            func(childComplexity int) int
 		SuspectedIssues func(childComplexity int) int
@@ -960,6 +961,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AbortInfo.User(childComplexity), true
+
+	case "Annotation.id":
+		if e.complexity.Annotation.Id == nil {
+			break
+		}
+
+		return e.complexity.Annotation.Id(childComplexity), true
 
 	case "Annotation.issues":
 		if e.complexity.Annotation.Issues == nil {
@@ -5382,6 +5390,7 @@ type JiraStatus {
 }
 
 type Annotation {
+  id: String!
   taskId: String!
   taskExecution: Int!
   note: Note
@@ -6902,6 +6911,40 @@ func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graph
 	res := resTmp.(*bool)
 	fc.Result = res
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Annotation_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Annotation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_taskId(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -24068,6 +24111,11 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Annotation")
+		case "id":
+			out.Values[i] = ec._Annotation_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "taskId":
 			out.Values[i] = ec._Annotation_taskId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

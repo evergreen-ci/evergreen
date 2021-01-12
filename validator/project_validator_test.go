@@ -1686,7 +1686,7 @@ func TestCheckProjectSemantics(t *testing.T) {
 				Id: "project_test",
 			}
 
-			project, err := model.FindLastKnownGoodProject(projectRef.Id)
+			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
 		})
