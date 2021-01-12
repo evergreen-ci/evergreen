@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
@@ -514,9 +516,11 @@ func TestAddPermissions(t *testing.T) {
 	}
 	assert.NoError(u.Insert())
 	p := ProjectRef{
-		Id: "myProject",
+		Identifier: "myProject",
 	}
 	assert.NoError(p.Add(&u))
+	assert.NotEmpty(p.Id)
+	assert.True(mgobson.IsObjectIdHex(p.Id))
 
 	rm := evergreen.GetEnvironment().RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -532,7 +536,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotNil(role)
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
-	assert.Contains(dbUser.Roles(), "admin_project_myProject")
+	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
 
 func TestUpdateAdminRoles(t *testing.T) {

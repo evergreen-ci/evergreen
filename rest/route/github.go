@@ -503,7 +503,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		// use the standard project config with the git tag alias
 		info.Project, info.IntermediateProject, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Id)
+			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
 		}
 		metadata.Alias = evergreen.GitTagAlias
 	}

@@ -247,6 +247,7 @@ func (projectRef *ProjectRef) Insert() error {
 }
 
 func (p *ProjectRef) Add(creator *user.DBUser) error {
+	p.Id = mgobson.NewObjectId().Hex()
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
@@ -1203,12 +1204,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, "")
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"error fetching spawn host script for '%s' at path '%s'", pRef.Id, pRef.SpawnHostScriptPath)
+			"error fetching spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"unable to spawn host script for '%s' at path '%s'", pRef.Id, pRef.SpawnHostScriptPath)
+			"unable to spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
 
 	return string(fileContents), nil

@@ -776,7 +776,6 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newProject := model.ProjectRef{
-		Id:         id,
 		Identifier: id,
 		Hidden:     false,
 	}
