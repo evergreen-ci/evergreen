@@ -445,6 +445,43 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 
+func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
+	tasks := []Task{
+		{
+			Id:            "t1",
+			BuildId:       "b1",
+			IsGithubCheck: true,
+		},
+		{
+			Id:      "t2",
+			BuildId: "b1",
+		},
+		{
+			Id:            "t3",
+			BuildId:       "b2",
+			IsGithubCheck: true,
+		},
+		{
+			Id:            "t4",
+			BuildId:       "b2",
+			IsGithubCheck: true,
+		},
+	}
+
+	for _, task := range tasks {
+		assert.NoError(t, task.Insert())
+	}
+	dbTasks, err := FindAll(ByBuildIdAndGithubChecks("b1"))
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 1)
+	dbTasks, err = FindAll(ByBuildIdAndGithubChecks("b2"))
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 2)
+	dbTasks, err = FindAll(ByBuildIdAndGithubChecks("b3"))
+	assert.NoError(t, err)
+	assert.Len(t, dbTasks, 0)
+}
+
 func TestCountSimilarFailingTasks(t *testing.T) {
 	Convey("When calling CountSimilarFailingTasks...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)

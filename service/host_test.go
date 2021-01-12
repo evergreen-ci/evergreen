@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -27,40 +28,65 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx))
-	require.NoError(db.ClearCollections(event.AllLogCollection), "error clearing collections")
+	require.NoError(db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
-	user1 := user.DBUser{Id: "user1"}
-	h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
-	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
+	t.Run("SuccessfullyModifiesHostStatusWithNote", func(t *testing.T) {
+		user := user.DBUser{Id: "user"}
+		h := host.Host{Id: "h1", Status: evergreen.HostRunning}
+		require.NoError(h.Insert())
+		opts := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
-	result, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h1, opts1.Status, opts1.Notes, &user1)
-	assert.NoError(err)
-	assert.Equal(httpStatus, 0)
-	assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
-	assert.Equal(h1.Status, evergreen.HostQuarantined)
-	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", "", 1))
-	assert.NoError(err2)
-	assert.Len(events, 1)
-	hostevent, ok := events[0].Data.(*event.HostEventData)
-	require.True(ok, "%T", events[0].Data)
-	assert.Equal("because I can", hostevent.Logs)
+		result, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		require.NoError(err)
+		assert.Equal(http.StatusOK, httpStatus)
+		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
+		assert.Equal(h.Status, evergreen.HostQuarantined)
+		events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", "", 1))
+		assert.NoError(err)
+		assert.Len(events, 1)
+		hostevent, ok := events[0].Data.(*event.HostEventData)
+		require.True(ok, "%T", events[0].Data)
+		assert.Equal("because I can", hostevent.Logs)
+	})
+	t.Run("SuccessfullyUnquarantinesHostAndMarksAsReprovisioning", func(t *testing.T) {
+		user := user.DBUser{Id: "user"}
+		h := host.Host{
+			Id:     "h2",
+			Status: evergreen.HostQuarantined,
+			Distro: distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodSSH,
+					Communication: distro.BootstrapMethodSSH,
+				},
+			},
+		}
+		require.NoError(h.Insert())
 
-	user2 := user.DBUser{Id: "user2"}
-	h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-	opts2 := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
+		_, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h, evergreen.HostRunning, "", &user)
+		require.NoError(err)
+		assert.Equal(http.StatusOK, httpStatus)
+		assert.Equal(h.Status, evergreen.HostProvisioning)
+		assert.Equal(host.ReprovisionToNew, h.NeedsReprovision)
+	})
+	t.Run("FailsToDecommissionStaticHosts", func(t *testing.T) {
+		user := user.DBUser{Id: "user"}
+		h := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
+		opts := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
-	_, _, err = api.ModifyHostStatus(env.LocalQueue(), &h2, opts2.Status, opts2.Notes, &user2)
-	assert.Error(err)
-	assert.Contains(err.Error(), api.DecommissionStaticHostError)
+		_, _, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		assert.Error(err)
+		assert.Contains(err.Error(), api.DecommissionStaticHostError)
+	})
+	t.Run("FailsWithInvalidHostStatus", func(t *testing.T) {
+		user := user.DBUser{Id: "user"}
+		h := host.Host{Id: "h4", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
+		opts := uiParams{Action: "updateStatus", Status: "undefined"}
 
-	user3 := user.DBUser{Id: "user3"}
-	h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-	opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
-
-	_, _, err = api.ModifyHostStatus(env.LocalQueue(), &h3, opts3.Status, opts3.Notes, &user3)
-	assert.Error(err)
-	assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
+		_, _, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		assert.Error(err)
+		assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
+	})
 }
 
 func TestGetHostFromCache(t *testing.T) {

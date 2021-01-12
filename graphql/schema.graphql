@@ -275,6 +275,7 @@ input EditSpawnHostInput {
   addedInstanceTags: [InstanceTagInput!]
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
+  servicePassword: String
 }
 
 input SpawnVolumeInput {
@@ -355,6 +356,7 @@ type DistroInfo {
   workDir: String
   isVirtualWorkStation: Boolean
   user: String
+  isWindows: Boolean
 }
 
 type Distro {
@@ -416,6 +418,7 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   diffLink: String!
+  description: String!
 }
 
 type UserPatches {
@@ -510,6 +513,7 @@ type TaskResult {
   baseStatus: String
   buildVariant: String!
   blocked: Boolean!
+  executionTasksFull: [Task!]
 }
 
 type PatchDuration {
@@ -610,6 +614,7 @@ type Task {
   ami: String
   blocked: Boolean!
   baseTaskMetadata: BaseTaskMetadata
+  baseStatus: String
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
@@ -626,6 +631,7 @@ type Task {
   estimatedStart: Duration
   execution: Int
   executionTasks: [String!]
+  executionTasksFull: [Task!]
   expectedDuration: Duration
   totalTestCount: Int!
   failedTestCount: Int!
@@ -910,11 +916,13 @@ type JiraStatus {
 }
 
 type Annotation {
+  id: String!
   taskId: String!
   taskExecution: Int!
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  userCanModify: Boolean!
 }
 
 type Note {

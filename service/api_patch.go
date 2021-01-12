@@ -43,7 +43,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Description       string             `json:"desc"`
 		Project           string             `json:"project"`
 		BackportInfo      patch.BackportInfo `json:"backport_info"`
-		BackportOf        string             `json:"backport_of"`
 		PatchBytes        []byte             `json:"patch_bytes"`
 		Githash           string             `json:"githash"`
 		Parameters        []patch.Parameter  `json:"parameters"`
@@ -93,11 +92,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.Alias == evergreen.CommitQueueAlias && len(patchString) != 0 && !patch.IsMailboxDiff(patchString) {
-		as.LoggedError(w, r, http.StatusBadRequest, cliOutOfDateError)
-		return
-	}
-
-	if len(data.BackportOf) > 0 && len(data.BackportInfo.PatchID) == 0 {
 		as.LoggedError(w, r, http.StatusBadRequest, cliOutOfDateError)
 		return
 	}

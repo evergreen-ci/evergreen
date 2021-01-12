@@ -522,6 +522,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
+	if editSpawnHostInput.ServicePassword != nil {
+		_, _, err = UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, usr, *editSpawnHostInput.ServicePassword, nil)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting spawn host password: %s", err))
+		}
+	}
 
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(h)
@@ -1215,11 +1221,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if buildErr != nil {
 			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
-		if apiTest.Logs.HTMLDisplayURL != nil && IsURL(*apiTest.Logs.HTMLDisplayURL) == false {
+		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
 			apiTest.Logs.HTMLDisplayURL = &formattedURL
 		}
-		if apiTest.Logs.RawDisplayURL != nil && IsURL(*apiTest.Logs.RawDisplayURL) == false {
+		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
@@ -1937,6 +1943,9 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
+	if err := util.CheckURL(issue.URL); err != nil {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
+	}
 	if isIssue {
 		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
@@ -2357,6 +2366,24 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 	}
 	return position, nil
 }
+func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
+	}
+	if baseTask == nil {
+		return nil, nil
+	}
+	return &baseTask.Status, nil
+}
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
@@ -2445,6 +2472,22 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	}
 	apiAnnotation := restModel.APITaskAnnotationBuildFromService(*annotation)
 	return apiAnnotation, nil
+}
+
+func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	t, err := r.sc.FindTaskById(*obj.TaskId)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	permissions := gimlet.PermissionOpts{
+		Resource:      t.Project,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	return authUser.HasPermission(permissions), nil
+
 }
 
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {

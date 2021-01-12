@@ -761,6 +761,16 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.WithStack(err)
 	}
 
+	githubCheckTasks := map[string]bool{}
+	githubCheckStatus := ""
+	successfulGithubCheckTasks := 0
+	// also check the current status of github checks
+	for _, bt := range buildTasks {
+		if bt.IsGithubCheck {
+			githubCheckTasks[bt.Id] = bt.IsGithubCheck
+		}
+	}
+
 	failedTask := false
 	finishedTasks := 0
 	blockedTasks := 0
@@ -787,15 +797,28 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 		// update the build's status when a test task isn't successful
 		if evergreen.IsFailedTaskStatus(t.Status) {
-			err = b.UpdateStatus(evergreen.BuildFailed)
-			if err != nil {
-				err = errors.Wrap(err, "Error updating build status")
-				grip.Error(err)
-				return err
+			if err = b.UpdateStatus(evergreen.BuildFailed); err != nil {
+				return errors.Wrap(err, "Error updating build status")
 			}
-
+			if githubCheckTasks[t.Id] {
+				githubCheckStatus = evergreen.BuildFailed
+			}
 			failedTask = true
+		} else if githubCheckTasks[t.Id] {
+			successfulGithubCheckTasks++
 		}
+	}
+
+	// we only calculate github check status if the task that finished is a github check task
+	if successfulGithubCheckTasks > 0 && successfulGithubCheckTasks == len(githubCheckTasks) {
+		githubCheckStatus = evergreen.BuildSucceeded
+	}
+
+	if githubCheckStatus != "" && b.GithubCheckStatus == "" {
+		if err = b.UpdateGithubCheckStatus(githubCheckStatus); err != nil {
+			return errors.Wrap(err, "error updating github check status")
+		}
+		event.LogBuildGithubCheckFinishedEvent(t.BuildId, githubCheckStatus)
 	}
 
 	cachedTasks := buildTasks
@@ -846,7 +869,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	// These are deliberately out of the buildComplete block to ensure versions
 	// are iterated so version and patch notifications can be sent out
-	if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {
+	if err = markVersionCompleted(b.Version, finishTime, updates, t.IsGithubCheck); err != nil {
 		err = errors.Wrap(err, "Error marking version as finished")
 		grip.Error(err)
 		return err
@@ -854,7 +877,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if time.Since(startPhaseAt) > slowMS {
 		grip.Debug(message.Fields{
 			"function":      "UpdateBuildAndVersionStatusForTask",
-			"operation":     "b.MarkVersionCompleted()",
+			"operation":     "b.markVersionCompleted()",
 			"message":       "slow operation",
 			"duration_secs": time.Since(startPhaseAt).Seconds(),
 			"task":          t.Id,

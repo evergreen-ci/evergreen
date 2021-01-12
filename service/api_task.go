@@ -323,27 +323,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // prepareForReprovision readies host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, w http.ResponseWriter) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	if err := h.StopAgentMonitor(ctx, env); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "problem stopping agent monitor",
-			"host_id":       h.Id,
-			"operation":     "next_task",
-			"revision":      evergreen.BuildRevision,
-			"agent":         evergreen.AgentVersion,
-			"current_agent": h.AgentRevision,
-		}))
-		return err
-	}
-
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
-	if h.NeedsReprovision != host.ReprovisionJasperRestart {
-		event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method)
-	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 	switch h.NeedsReprovision {
@@ -362,7 +347,7 @@ func prepareForReprovision(ctx context.Context, env evergreen.Environment, setti
 		}
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
+			grip.Warning(message.WrapError(err, "problem enqueueing jobs to restart Jasper"))
 		}
 	}
 
@@ -678,6 +663,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var response apimodels.NextTaskResponse
+	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
+		return
+	}
+
 	var err error
 	if checkHostHealth(h) {
 		response.ShouldExit = true
@@ -716,9 +705,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var agentExit bool
 	details, agentExit := getDetails(response, h, w, r)
 	if agentExit {
-		return
-	}
-	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
 		return
 	}
 	response, agentExit = handleOldAgentRevision(response, details, h, w)
@@ -865,6 +851,24 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 func handleReprovisioning(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter) (responded bool) {
 	if h.NeedsReprovision == host.ReprovisionNone {
 		return false
+	}
+	if !utility.StringSliceContains([]string{evergreen.HostProvisioning, evergreen.HostRunning}, h.Status) {
+		return false
+	}
+
+	stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer stopCancel()
+	if err := h.StopAgentMonitor(stopCtx, env); err != nil {
+		// Stopping the agent monitor should not stop reprovisioning as long as
+		// the host is not currently running a task.
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "problem stopping agent monitor for reprovisioning",
+			"host_id":       h.Id,
+			"operation":     "next_task",
+			"revision":      evergreen.BuildRevision,
+			"agent":         evergreen.AgentVersion,
+			"current_agent": h.AgentRevision,
+		}))
 	}
 
 	if err := prepareForReprovision(ctx, env, settings, h, w); err != nil {

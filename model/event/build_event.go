@@ -14,11 +14,13 @@ func buildEventDataFactory() interface{} {
 const (
 	ResourceTypeBuild = "BUILD"
 
-	BuildStateChange = "STATE_CHANGE"
+	BuildStateChange         = "STATE_CHANGE"
+	BuildGithubCheckFinished = "GITHUB_CHECK_FINISHED"
 )
 
 type BuildEventData struct {
-	Status string `bson:"status" json:"status"`
+	Status            string `bson:"status,omitempty" json:"status,omitempty"`
+	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
 }
 
 func LogBuildStateChangeEvent(id, status string) {
@@ -36,6 +38,28 @@ func LogBuildStateChangeEvent(id, status string) {
 	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
+			"event_type":    BuildStateChange,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
+}
+
+func LogBuildGithubCheckFinishedEvent(id, status string) {
+	event := EventLogEntry{
+		Timestamp:  time.Now(),
+		ResourceId: id,
+		EventType:  BuildGithubCheckFinished,
+		Data: &BuildEventData{
+			GithubCheckStatus: status,
+		},
+		ResourceType: ResourceTypeBuild,
+	}
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": event.ResourceType,
+			"event_type":    BuildGithubCheckFinished,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		}))

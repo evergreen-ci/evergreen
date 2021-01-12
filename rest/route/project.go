@@ -329,7 +329,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			var ghAliasesDefined bool
-			ghAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubAlias)
+			ghAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubPRAlias)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
 			}
@@ -342,6 +342,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 			if err = h.sc.EnablePRTesting(newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.project))
+			}
+		}
+
+		// verify enabling github checks is valid
+		if newProjectRef.GithubChecksEnabled {
+			var githubChecksAliasesDefined bool
+			githubChecksAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubChecksAlias)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
+			}
+			if !githubChecksAliasesDefined {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "cannot enable github checks without a version definition",
+				})
 			}
 		}
 

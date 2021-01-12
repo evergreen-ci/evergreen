@@ -55,6 +55,7 @@ type EditSpawnHostInput struct {
 	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
 	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
 	Volume              *string     `json:"volume"`
+	ServicePassword     *string     `json:"servicePassword"`
 }
 
 type GroupedFiles struct {
@@ -197,14 +198,15 @@ type TaskQueueDistro struct {
 }
 
 type TaskResult struct {
-	ID           string  `json:"id"`
-	Aborted      bool    `json:"aborted"`
-	DisplayName  string  `json:"displayName"`
-	Version      string  `json:"version"`
-	Status       string  `json:"status"`
-	BaseStatus   *string `json:"baseStatus"`
-	BuildVariant string  `json:"buildVariant"`
-	Blocked      bool    `json:"blocked"`
+	ID                 string           `json:"id"`
+	Aborted            bool             `json:"aborted"`
+	DisplayName        string           `json:"displayName"`
+	Version            string           `json:"version"`
+	Status             string           `json:"status"`
+	BaseStatus         *string          `json:"baseStatus"`
+	BuildVariant       string           `json:"buildVariant"`
+	Blocked            bool             `json:"blocked"`
+	ExecutionTasksFull []*model.APITask `json:"executionTasksFull"`
 }
 
 type TaskTestResult struct {

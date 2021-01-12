@@ -4,8 +4,8 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   $scope.distroIds = $window.distroIds;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
-  $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validHostAllocatorRoundingRules = $window.validHostAllocatorRoundingRules;
+  $scope.validHostAllocatorFeedbackRules = $window.validHostAllocatorFeedbackRules;
 
   let newId = "new distro"
 
@@ -458,7 +458,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       mciDistroRestService.modifyDistro(
         $scope.activeDistro._id,
         $scope.activeDistro,
-        $scope.shouldDeco, $scope.shouldRestartJasper, {
+        $scope.shouldDeco, $scope.shouldRestartJasper, $scope.shouldReprovisionToNew, {
           success: function (resp) {
             $window.location.reload(true);
           },

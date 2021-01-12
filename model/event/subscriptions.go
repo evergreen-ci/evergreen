@@ -63,6 +63,7 @@ const (
 	ObjectPatch                     = "patch"
 
 	TriggerOutcome                   = "outcome"
+	TriggerGithubCheckOutcome        = "github-check-outcome"
 	TriggerFailure                   = "failure"
 	TriggerSuccess                   = "success"
 	TriggerRegression                = "regression"
@@ -509,6 +510,12 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 	}
 }
 
+func NewVersionGithubCheckOutcomeSubscription(id string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypeVersion, TriggerGithubCheckOutcome, id, sub)
+	subscription.LastUpdated = time.Now()
+	return subscription
+}
+
 func NewExpiringPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
 	subscription.LastUpdated = time.Now()
@@ -590,6 +597,21 @@ func NewExpiringBuildOutcomeSubscriptionByVersion(versionID string, sub Subscrib
 	return Subscription{
 		ResourceType: ResourceTypeBuild,
 		Trigger:      TriggerOutcome,
+		Selectors: []Selector{
+			{
+				Type: SelectorInVersion,
+				Data: versionID,
+			},
+		},
+		Subscriber:  sub,
+		LastUpdated: time.Now(),
+	}
+}
+
+func NewGithubCheckBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
+	return Subscription{
+		ResourceType: ResourceTypeBuild,
+		Trigger:      TriggerGithubCheckOutcome,
 		Selectors: []Selector{
 			{
 				Type: SelectorInVersion,

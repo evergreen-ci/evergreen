@@ -580,7 +580,7 @@
         "repo_kind": "github",
         "repo_name": "evergreen",
         "source_kind": "github",
-        "tracked": true,
+        "hidden": false,
         "local_config": "",
         "deactivate_previous": true,
         "repotracker_error": {
@@ -628,7 +628,7 @@
         "display_name": "Logkeeper",
         "local_config": "",
         "deactivate_previous": true,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": {
           "exists": false,
@@ -663,7 +663,7 @@
         "display_name": "Curator",
         "local_config": "",
         "deactivate_previous": true,
-        "tracked": true,
+        "hidden": false,
         "admins": ["sam.kleinman"],
         "repotracker_error": null,
         "commit_queue": {
@@ -694,7 +694,7 @@
         "display_name": "Not Amboy",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": ["sam.kleinman"],
         "repotracker_error": {
           "exists": false,
@@ -729,7 +729,7 @@
         "display_name": "Greenbay",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": null,
         "commit_queue": {
@@ -760,7 +760,7 @@
         "display_name": "Grip (Logging)",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": null,
         "tracks_push_events": true,
@@ -791,7 +791,7 @@
         "display_name": "System Performance (master)",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": null,
         "jira": {
@@ -829,7 +829,7 @@
         "display_name": "test display name update",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": null,
         "notify_on_failure": false,
@@ -860,7 +860,7 @@
         "display_name": "Grip (Logging)",
         "local_config": "",
         "deactivate_previous": false,
-        "tracked": true,
+        "hidden": false,
         "admins": [],
         "repotracker_error": null,
         "commit_queue": {
@@ -893,7 +893,7 @@
         "deactivate_previous": false,
         "tracks_push_events": true,
         "pr_testing_enabled": false,
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -924,7 +924,7 @@
         "deactivate_previous": true,
         "tracks_push_events": false,
         "pr_testing_enabled": false,
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["john.liu", "william.banfield"],
         "notify_on_failure": true,
@@ -961,7 +961,7 @@
           "merge_action": "github",
           "status_action": "github"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["john.liu"],
         "notify_on_failure": true,
@@ -992,7 +992,7 @@
           "merge_action": "github",
           "status_action": "github"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1022,7 +1022,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["annie.black"],
         "notify_on_failure": false,
@@ -1068,7 +1068,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1103,7 +1103,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1133,7 +1133,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1163,7 +1163,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1194,7 +1194,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1224,7 +1224,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1255,7 +1255,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1285,7 +1285,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1314,7 +1314,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["thomas.zembowicz", "annie.black"],
         "notify_on_failure": true,
@@ -1344,7 +1344,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1374,7 +1374,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["annie.black"],
         "notify_on_failure": false,
@@ -1404,7 +1404,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1430,7 +1430,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": [],
         "notify_on_failure": false,
@@ -1456,7 +1456,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman"],
         "notify_on_failure": false,
@@ -1486,7 +1486,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman"],
         "notify_on_failure": false,
@@ -1516,7 +1516,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
         "notify_on_failure": false,
@@ -1547,7 +1547,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman"],
         "notify_on_failure": false,
@@ -1577,7 +1577,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman"],
         "notify_on_failure": false,
@@ -1607,7 +1607,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "admins": ["ron.neuman"],
         "notify_on_failure": false,
@@ -1633,7 +1633,7 @@
           "merge_method": "squash",
           "patch_type": "PR"
         },
-        "tracked": true,
+        "hidden": false,
         "patching_disabled": false,
         "repotracker_disabled": false,
         "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],

@@ -9,6 +9,7 @@
         diffLink
         deletions
         additions
+        description
       }
     }
   }

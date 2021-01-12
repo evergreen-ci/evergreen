@@ -64,13 +64,16 @@ type Task struct {
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
-	CreateTime    time.Time `bson:"create_time" json:"create_time"`
-	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime     time.Time `bson:"start_time" json:"start_time"`
-	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
+	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
+	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
+	CreateTime          time.Time `bson:"create_time" json:"create_time"`
+	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime           time.Time `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
 	Version           string              `bson:"version" json:"version,omitempty"`
 	Project           string              `bson:"branch" json:"branch,omitempty"`
@@ -106,12 +109,14 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on. This value is empty for display
-	// tasks
+	// The host the task was run on. This value is empty for display tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+
+	// Set to true if the task should be considered for mainline github checks
+	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// the number of times this task has been restarted
 	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
@@ -137,6 +142,8 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
+	// WaitSinceDependenciesMet is populatd in GetDistroQueueInfo, used for host allocation
+	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
@@ -154,10 +161,11 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly        bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks     []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	ExecutionTasksFull []Task   `bson:"execution_tasks_full" json:"-"` // this is a local pointer from a display task to its execution tasks
+	ResetWhenFinished  bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	DisplayTask        *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
@@ -430,6 +438,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
+	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -444,7 +453,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
+		}
 	}
+	t.DependenciesMetTime = latestTime
 
 	return true, nil
 }
@@ -1512,6 +1525,16 @@ func (t *Task) SetResults(results []TestResult) error {
 	for idx, result := range results {
 		docs[idx] = result.convertToNewStyleTestResult(t)
 	}
+
+	grip.Debug(message.Fields{
+		"message":        "writing test results",
+		"task":           t.Id,
+		"project":        t.Project,
+		"requester":      t.Requester,
+		"version":        t.Version,
+		"display_name":   t.DisplayName,
+		"results_length": len(results),
+	})
 
 	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
@@ -2608,8 +2631,29 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
 
+	const tempParentKey = "_parent"
 	pipeline := []bson.M{
 		{"$match": match},
+		// do a self join to filter off execution tasks
+		{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   IdKey,
+			"foreignField": ExecutionTasksKey,
+			"as":           tempParentKey,
+		}},
+		{
+			"$match": bson.M{
+				tempParentKey: []interface{}{},
+			},
+		},
+		// expand execution tasks in display tasks
+		{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   ExecutionTasksKey,
+			"foreignField": IdKey,
+			"as":           ExecutionTasksFullKey,
+		}},
+		// add a field for the display status of each task
 		addDisplayStatus,
 	}
 	if len(statuses) > 0 {

@@ -107,7 +107,7 @@
       "display_name": "logkeeper",
       "local_config": "",
       "deactivate_previous": false,
-      "tracked": true,
+      "hidden": false,
       "admins": [],
       "repotracker_error": null
     }
