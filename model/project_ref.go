@@ -407,6 +407,7 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 
 func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
 	// if the setting is not defined in the project, default to the repo settings.
+	// For booleans, we default to the repo setting if the boolean is false, except for enabled.
 	reflectedBranch := reflect.ValueOf(pRef)
 	reflectedRepo := reflect.ValueOf(repoRef)
 
