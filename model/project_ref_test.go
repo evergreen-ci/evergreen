@@ -57,7 +57,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Enabled:             true,
 		PatchingDisabled:    false,
 		RepotrackerDisabled: true,
-		PatchTriggerAliases: []PatchTriggerDefinition{
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{ChildProject: "a different branch"},
 		},
 	}
@@ -71,7 +71,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		TaskSync:            TaskSyncOptions{ConfigEnabled: true},
 		Enabled:             false,
 		PatchingDisabled:    true,
-		PatchTriggerAliases: []PatchTriggerDefinition{
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
 		},
 	}}
