@@ -1347,7 +1347,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution i
 	}
 
 	if execution > t.Execution {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %s for task with id %s", execution, taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %d for task with id %s", execution, taskID))
 	}
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
