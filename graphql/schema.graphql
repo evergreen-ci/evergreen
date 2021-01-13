@@ -36,7 +36,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings

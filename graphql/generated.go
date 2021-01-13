@@ -485,7 +485,7 @@ type ComplexityRoot struct {
 		Task                    func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions       func(childComplexity int, taskID string) int
 		TaskFiles               func(childComplexity int, taskID string, execution *int) int
-		TaskLogs                func(childComplexity int, taskID string) int
+		TaskLogs                func(childComplexity int, taskID string, execution *int) int
 		TaskQueueDistros        func(childComplexity int) int
 		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
 		User                    func(childComplexity int, userID *string) int
@@ -833,7 +833,7 @@ type QueryResolver interface {
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
-	TaskLogs(ctx context.Context, taskID string) (*RecentTaskLogs, error)
+	TaskLogs(ctx context.Context, taskID string, execution *int) (*RecentTaskLogs, error)
 	PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
@@ -3104,7 +3104,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskLogs(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Query.TaskLogs(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Query.taskQueueDistros":
 		if e.complexity.Query.TaskQueueDistros == nil {
@@ -4537,7 +4537,7 @@ var sources = []*ast.Source{
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
@@ -6530,6 +6530,14 @@ func (ec *executionContext) field_Query_taskLogs_args(ctx context.Context, rawAr
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -15661,7 +15669,7 @@ func (ec *executionContext) _Query_taskLogs(ctx context.Context, field graphql.C
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskLogs(rctx, args["taskId"].(string))
+		return ec.resolvers.Query().TaskLogs(rctx, args["taskId"].(string), args["execution"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
