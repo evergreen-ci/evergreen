@@ -620,70 +620,36 @@ func TestMakeMergePatchPatches(t *testing.T) {
 	patchFileID := mgobson.NewObjectId()
 	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
 
-	tests := map[string]func(*testing.T){
-		"mbox patches are copied over as-is": func(t *testing.T) {
-			existingPatch := &Patch{
-				Patches: []ModulePatch{
-					{
-						ModuleName: "0",
-						IsMbox:     true,
-						PatchSet:   PatchSet{PatchFileId: patchFileID.Hex()},
-					}},
-			}
-
-			newPatches, err := MakeMergePatchPatches(existingPatch, "ignored")
-			assert.NoError(t, err)
-			assert.Len(t, newPatches, 1)
-			assert.Equal(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+	existingPatch := &Patch{
+		Patches: []ModulePatch{
+			{
+				ModuleName: "0",
+				PatchSet: PatchSet{
+					PatchFileId: patchFileID.Hex(),
+				},
+			},
 		},
-		"non-mbox patches get metadata added": func(t *testing.T) {
-			existingPatch := &Patch{
-				Patches: []ModulePatch{
-					{
-						ModuleName: "0",
-						PatchSet: PatchSet{
-							PatchFileId: patchFileID.Hex(),
-						},
-					},
-				},
-				GitInfo: GitMetadata{
-					Email:    "octocat@github.com",
-					Username: "octocat",
-				},
-			}
-			newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
-			assert.NoError(t, err)
-			assert.Len(t, newPatches, 1)
-			assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
-
-			patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
-			require.NoError(t, err)
-			assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
-			assert.Contains(t, patchContents, patchDiff)
+		GitInfo: GitMetadata{
+			Email:    "octocat@github.com",
+			Username: "octocat",
 		},
 	}
+	newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
+	assert.NoError(t, err)
+	assert.Len(t, newPatches, 1)
+	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
 
-	for name, test := range tests {
-		t.Run(name, test)
-	}
+	patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
+	require.NoError(t, err)
+	assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
+	assert.Contains(t, patchContents, patchDiff)
 }
 
 func TestCanEnqueueToCommitQueue(t *testing.T) {
-	p := Patch{
-		GitInfo: GitMetadata{Username: "octocat", Email: "octocat@github.com"},
-	}
-	assert.True(t, p.CanEnqueueToCommitQueue())
-
-	p = Patch{
-		Patches: []ModulePatch{
-			{IsMbox: true},
-			{IsMbox: true},
-		},
-	}
-	assert.True(t, p.CanEnqueueToCommitQueue())
-
-	p.Patches[0].IsMbox = false
+	p := Patch{}
 	assert.False(t, p.CanEnqueueToCommitQueue())
+	p.GitInfo = GitMetadata{Username: "octocat", Email: "octocat@github.com"}
+	assert.True(t, p.CanEnqueueToCommitQueue())
 }
 
 func TestAddMetadataToDiff(t *testing.T) {

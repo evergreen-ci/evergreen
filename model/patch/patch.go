@@ -129,8 +129,8 @@ type BackportInfo struct {
 }
 
 type GitMetadata struct {
-	Username   string `bson:"username" json:"username"`
-	Email      string `bson:"email" json:"email"`
+	Username   string `bson:"username,omitempty" json:"username,omitempty"`
+	Email      string `bson:"email,omitempty" json:"email,omitempty"`
 	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
 }
 
@@ -632,20 +632,6 @@ func (p *Patch) GetRequester() string {
 }
 
 func (p *Patch) CanEnqueueToCommitQueue() bool {
-	if p.HasGitInfo() {
-		return true
-	}
-
-	for _, modulePatch := range p.Patches {
-		if !modulePatch.IsMbox {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (p *Patch) HasGitInfo() bool {
 	return p.GitInfo.Email != "" && p.GitInfo.Username != ""
 }
 
@@ -744,31 +730,27 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
 	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
 	for _, modulePatch := range existingPatch.Patches {
-		if modulePatch.IsMbox {
-			newModulePatches = append(newModulePatches, modulePatch)
-		} else if existingPatch.HasGitInfo() {
-			diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
-			if err != nil {
-				return nil, errors.Wrap(err, "can't fetch patch contents")
-			}
-			mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), existingPatch.GitInfo)
-			if err != nil {
-				return nil, errors.Wrap(err, "can't convert diff to mbox format")
-			}
-			patchFileID := mgobson.NewObjectId()
-			if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
-				return nil, errors.Wrap(err, "can't write new patch to db")
-			}
-			newModulePatches = append(newModulePatches, ModulePatch{
-				ModuleName: modulePatch.ModuleName,
-				IsMbox:     true,
-				PatchSet: PatchSet{
-					PatchFileId:    patchFileID.Hex(),
-					CommitMessages: []string{commitMessage},
-					Summary:        modulePatch.PatchSet.Summary,
-				},
-			})
+		diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
+		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), existingPatch.GitInfo)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't convert diff to mbox format")
+		}
+		patchFileID := mgobson.NewObjectId()
+		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
+			return nil, errors.Wrap(err, "can't write new patch to db")
+		}
+		newModulePatches = append(newModulePatches, ModulePatch{
+			ModuleName: modulePatch.ModuleName,
+			IsMbox:     true,
+			PatchSet: PatchSet{
+				PatchFileId:    patchFileID.Hex(),
+				CommitMessages: []string{commitMessage},
+				Summary:        modulePatch.PatchSet.Summary,
+			},
+		})
 	}
 
 	return newModulePatches, nil
