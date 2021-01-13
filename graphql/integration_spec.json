@@ -2016,10 +2016,10 @@
         "data": {
           "task": {
             "logs": {
-              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=ALL",
-              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=T",
-              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=E",
-              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/5?type=S",
+              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=ALL",
+              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=T",
+              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=E",
+              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=S",
               "eventLogLink": "https://localhost:8443/event_log/task/wuzzup"
             },
             "id": "wuzzup",
