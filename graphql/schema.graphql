@@ -618,6 +618,7 @@ type Task {
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
+  canModifyAnnotation: Boolean!
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
@@ -922,7 +923,6 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userCanModify: Boolean!
 }
 
 type Note {
