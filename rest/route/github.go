@@ -568,6 +568,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		Issue:           restModel.ToStringPtr(strconv.Itoa(PRNum)),
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
+		Source:          restModel.ToStringPtr(commitqueue.SourcePullRequest),
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
