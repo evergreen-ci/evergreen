@@ -1148,8 +1148,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
-	dbTask, err := task.FindByIdExecution(taskID, &execution)
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
+	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
@@ -1160,7 +1160,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	baseTestStatusMap := make(map[string]string)
 	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, execution)
+		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, *execution)
 		for _, t := range baseTestResults {
 			baseTestStatusMap[t.TestFile] = t.Status
 		}
@@ -1294,7 +1294,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 	return &taskFiles, nil
 }
 
-func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution int) (*RecentTaskLogs, error) {
+func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*RecentTaskLogs, error) {
 	const logMessageCount = 100
 	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
@@ -1346,9 +1346,15 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution i
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
 
-	if execution > t.Execution {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %d for task with id %s", execution, taskID))
+	var taskExecution int
+	taskExecution = t.Execution
+	if execution != nil {
+		if *execution > t.Execution {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %d for task with id %s", execution, taskID))
+		}
+		taskExecution = *execution
 	}
+
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
 		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
@@ -1362,7 +1368,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution i
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        taskID,
-			Execution:     execution,
+			Execution:     taskExecution,
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
@@ -1389,19 +1395,19 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution i
 		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
 	} else {
 		// task logs
-		taskLogs, err = model.FindMostRecentLogMessages(taskID, execution, logMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
 		}
 		// system logs
-		systemLogs, err = model.FindMostRecentLogMessages(taskID, execution, logMessageCount, []string{},
+		systemLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
 		}
 		// agent logs
-		agentLogs, err = model.FindMostRecentLogMessages(taskID, execution, logMessageCount, []string{},
+		agentLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))

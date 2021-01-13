@@ -25,7 +25,7 @@ type Query {
   ): PatchTasks!
   taskTests(
     taskId: String!
-    execution: Int!
+    execution: Int
     sortCategory: TestSortCategory = TEST_NAME
     sortDirection: SortDirection = ASC
     page: Int = 0
@@ -35,7 +35,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!, execution: Int!): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
