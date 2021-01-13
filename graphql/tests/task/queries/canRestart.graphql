@@ -5,4 +5,10 @@
   no: task(taskId: "some_task") {
     canRestart
   }
+  executionTask: task(taskId: "execution_task"){
+    canRestart
+  }
+  displayTask: task(taskId: "display_task"){
+    canRestart
+  }
 }

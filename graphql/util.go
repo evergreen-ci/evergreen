@@ -574,6 +574,26 @@ func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	return &isBlocked, nil
 }
 
+func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	t, err := task.FindOneId(*at.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
+	}
+	displayTask, err := t.GetDisplayTask()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error while finding display tasks for %s", *at.Id))
+	}
+	if displayTask != nil {
+		b := true
+		return &b, nil
+	}
+	b := false
+	return &b, nil
+}
+
 func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	taskBlocked, err := isTaskBlocked(ctx, at)
 	if err != nil {
@@ -581,6 +601,13 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	}
 	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
 	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
+	if err != nil {
+		return nil, err
+	}
+	if *isExecTask {
+		canRestart = false
+	}
 	return &canRestart, nil
 }
 
