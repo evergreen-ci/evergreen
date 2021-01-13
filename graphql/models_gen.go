@@ -28,6 +28,11 @@ type BaseTaskMetadata struct {
 	BaseTaskLink     string             `json:"baseTaskLink"`
 }
 
+type BaseTaskResult struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+}
+
 type BuildBaron struct {
 	SearchReturnInfo     *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
 	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
@@ -161,6 +166,11 @@ type RecentTaskLogs struct {
 	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
+type SortOrder struct {
+	Key       TaskSortCategory `json:"Key"`
+	Direction SortDirection    `json:"Direction"`
+}
+
 type SpawnHostInput struct {
 	DistroID                string          `json:"distroId"`
 	Region                  string          `json:"region"`
@@ -204,6 +214,7 @@ type TaskResult struct {
 	Version            string           `json:"version"`
 	Status             string           `json:"status"`
 	BaseStatus         *string          `json:"baseStatus"`
+	BaseTask           *BaseTaskResult  `json:"baseTask"`
 	BuildVariant       string           `json:"buildVariant"`
 	Blocked            bool             `json:"blocked"`
 	ExecutionTasksFull []*model.APITask `json:"executionTasksFull"`

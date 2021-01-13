@@ -71,6 +71,7 @@ type APITask struct {
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
 	MustHaveResults    bool                `json:"must_have_test_results"`
+	BaseTask           APIBaseTaskInfo     `json:"base_task"`
 }
 
 type APIAbortInfo struct {
@@ -239,6 +240,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				PRClosed:   v.AbortInfo.PRClosed,
 			},
 		}
+		if v.BaseTask.Id != "" {
+			at.BaseTask = APIBaseTaskInfo{
+				Id:     ToStringPtr(v.BaseTask.Id),
+				Status: ToStringPtr(v.BaseTask.Status),
+			}
+		}
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
@@ -334,6 +341,10 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Enabled:  ad.SyncAtEndOpts.Enabled,
 			Statuses: ad.SyncAtEndOpts.Statuses,
 			Timeout:  ad.SyncAtEndOpts.Timeout,
+		},
+		BaseTask: task.BaseTaskInfo{
+			Id:     FromStringPtr(ad.BaseTask.Id),
+			Status: FromStringPtr(ad.BaseTask.Status),
 		},
 	}
 	catcher := grip.NewBasicCatcher()

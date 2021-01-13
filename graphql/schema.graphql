@@ -16,6 +16,7 @@ type Query {
     patchId: String!
     sortBy: TaskSortCategory = STATUS
     sortDir: SortDirection = ASC
+    sorts: [SortOrder!]
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
@@ -299,6 +300,11 @@ input IssueLinkInput {
   issueKey: String!
 }
 
+input SortOrder {
+  Key: TaskSortCategory!
+  Direction: SortDirection!
+}
+
 type TaskQueueItem {
   id: ID!
   displayName: String!
@@ -511,9 +517,15 @@ type TaskResult {
   version: String!
   status: String!
   baseStatus: String
+  baseTask: BaseTaskResult
   buildVariant: String!
   blocked: Boolean!
   executionTasksFull: [Task!]
+}
+
+type BaseTaskResult {
+  id: ID!
+  status: String!
 }
 
 type PatchDuration {

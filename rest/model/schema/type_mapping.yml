@@ -3,3 +3,5 @@ models:
     model: github.com/evergreen-ci/evergreen/model/user.DBUser
   DisplayTask:
     model: github.com/evergreen-ci/evergreen/model/patch.DisplayTask
+  BaseTaskInfo:
+    model: github.com/evergreen-ci/evergreen/model/task.BaseTaskInfo

@@ -137,8 +137,12 @@ type Task struct {
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
-	// DisplayStatus is not persisted to the db, but may be added via aggregation
+	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
+	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
+	// BaseTask is not persisted to the db. It is the data of the task on the base commit
+	// It may be added via aggregation
+	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -236,6 +240,13 @@ type DistroCost struct {
 	Provider         string                 `json:"provider"`
 	ProviderSettings map[string]interface{} `json:"provider_settings"`
 	NumTasks         int                    `bson:"num_tasks"`
+}
+
+// BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
+// The bson keys must match those of the actual task document
+type BaseTaskInfo struct {
+	Id     string `bson:"_id" json:"id"`
+	Status string `bson:"status" json:"status"`
 }
 
 func (d *Dependency) UnmarshalBSON(in []byte) error {
@@ -2608,19 +2619,14 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
 
-func getBsonFailureStatuses() bson.A {
-	failureStatusDocs := bson.A{}
-
-	for _, status := range evergreen.TaskFailureStatuses {
-		failureStatusDocs = append(failureStatusDocs, bson.M{"$eq": bson.A{"$" + DisplayStatusKey, status}})
-	}
-
-	return failureStatusDocs
+type TasksSortOrder struct {
+	Key   string
+	Order int
 }
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID, sortBy string, statuses []string, variant string, taskName string, sortDir, page, limit int, fieldsToProject []string) ([]Task, int, error) {
+func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variant string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	match := bson.M{
 		VersionKey: versionID,
 	}
@@ -2655,11 +2661,51 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		}},
 		// add a field for the display status of each task
 		addDisplayStatus,
+		// add data about the base task
+		{"$lookup": bson.M{
+			"from": Collection,
+			"let": bson.M{
+				RevisionKey:     "$" + RevisionKey,
+				BuildVariantKey: "$" + BuildVariantKey,
+				DisplayNameKey:  "$" + DisplayNameKey,
+			},
+			"as": BaseTaskKey,
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					RequesterKey: evergreen.RepotrackerVersionRequester,
+					"$expr": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+						},
+					},
+				}},
+				{"$project": bson.M{
+					IdKey:     1,
+					StatusKey: displayStatusExpression,
+				}},
+				{"$limit": 1},
+			},
+		}},
+		{
+			"$unwind": bson.M{
+				"path":                       "$" + BaseTaskKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
 	}
 	if len(statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
 				DisplayStatusKey: bson.M{"$in": statuses},
+			},
+		})
+	}
+	if len(baseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": baseStatuses},
 			},
 		})
 	}
@@ -2669,46 +2715,22 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 	}
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
+	sortFields := bson.D{}
 	if len(sortBy) > 0 {
-		if sortBy == DisplayStatusKey {
-			// setting field `first` onto tasks with a failed status allows us to sort all failed statuses to top of query and then sort alphabetically
-			pipeline = append(pipeline, bson.M{
-				"$addFields": bson.M{
-					"first": bson.M{
-						"$cond": bson.M{
-							"if": bson.M{
-								"$or": getBsonFailureStatuses(),
-							},
-							"then": "a",
-							"else": "b",
-						},
-					},
-				},
-			})
-			// ordered sort with `first` at beginning of sort to sort all failure statuses to the top
-			pipeline = append(pipeline, bson.M{
-				"$sort": bson.D{
-					bson.E{Key: "first", Value: sortDir},
-					bson.E{Key: DisplayStatusKey, Value: sortDir},
-					bson.E{Key: IdKey, Value: 1},
-				},
-			})
-		} else {
-			pipeline = append(pipeline, bson.M{
-				"$sort": bson.D{
-					bson.E{Key: sortBy, Value: sortDir},
-					bson.E{Key: IdKey, Value: 1},
-				},
-			})
+		for _, singleSort := range sortBy {
+			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
+				pipeline = append(pipeline, addCustomStatusSortField((singleSort.Key)))
+				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			} else {
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			}
 		}
-	} else {
-		pipeline = append(pipeline, bson.M{
-			"$sort": bson.D{
-				// sort by _id to ensure a consistent sort order
-				bson.E{Key: IdKey, Value: 1},
-			},
-		})
 	}
+	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+	pipeline = append(pipeline, bson.M{
+		"$sort": sortFields,
+	})
 
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{
@@ -2757,6 +2779,22 @@ func GetTasksByVersion(versionID, sortBy string, statuses []string, variant stri
 		count = tmp[0].Count
 	}
 	return tasks, count, nil
+}
+
+func addCustomStatusSortField(key string) bson.M {
+	return bson.M{
+		"$addFields": bson.M{
+			"__" + key: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$in": []interface{}{"$" + key, evergreen.TaskFailureStatuses},
+					},
+					"then": "a",
+					"else": "b",
+				},
+			},
+		},
+	}
 }
 
 func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
