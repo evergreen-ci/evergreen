@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -413,7 +414,7 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef 
 	for i := 0; i < reflectedBranch.Elem().NumField(); i++ {
 
 		branchField := reflectedBranch.Elem().Field(i)
-		if branchField.IsZero() {
+		if util.IsFieldUndefined(branchField) {
 			reflectedField := reflectedRepo.Field(i)
 			branchField.Set(reflectedField)
 		}

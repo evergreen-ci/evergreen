@@ -48,29 +48,31 @@ func TestFindMergedProjectRef(t *testing.T) {
 		"Error clearing collection")
 
 	projectRef := &ProjectRef{
-		Owner:               "mongodb",
-		RepoRefId:           "mongodb_mci",
-		BatchTime:           10,
-		Id:                  "ident",
-		Admins:              []string{"john.smith", "john.doe"},
-		UseRepoSettings:     true,
-		Enabled:             false,
-		PatchingDisabled:    false,
-		RepotrackerDisabled: true,
+		Owner:                 "mongodb",
+		RepoRefId:             "mongodb_mci",
+		BatchTime:             10,
+		Id:                    "ident",
+		Admins:                []string{"john.smith", "john.doe"},
+		UseRepoSettings:       true,
+		Enabled:               false,
+		PatchingDisabled:      false,
+		RepotrackerDisabled:   true,
+		GitTagAuthorizedTeams: []string{},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{ChildProject: "a different branch"},
 		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	repoRef := &RepoRef{ProjectRef{
-		Id:                  "mongodb_mci",
-		Repo:                "mci",
-		Branch:              "master",
-		SpawnHostScriptPath: "my-path",
-		Admins:              []string{"john.liu"},
-		TaskSync:            TaskSyncOptions{ConfigEnabled: true},
-		Enabled:             true,
-		PatchingDisabled:    true,
+		Id:                    "mongodb_mci",
+		Repo:                  "mci",
+		Branch:                "master",
+		SpawnHostScriptPath:   "my-path",
+		Admins:                []string{"john.liu"},
+		TaskSync:              TaskSyncOptions{ConfigEnabled: true},
+		Enabled:               true,
+		PatchingDisabled:      true,
+		GitTagAuthorizedTeams: []string{"my team"},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
 		},
@@ -92,6 +94,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.False(t, mergedProject.GithubChecksEnabled)
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
 	assert.True(t, mergedProject.TaskSync.ConfigEnabled)
+	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 1)
 	require.Len(t, mergedProject.PatchTriggerAliases, 1)
 	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
 	assert.Equal(t, "a different branch", mergedProject.PatchTriggerAliases[0].ChildProject)
