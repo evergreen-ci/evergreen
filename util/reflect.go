@@ -30,7 +30,7 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return v.Len() == 0
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			if !isFieldUndefined(v.Field(i)) {
+			if !IsFieldUndefined(v.Field(i)) {
 				return false
 			}
 		}
