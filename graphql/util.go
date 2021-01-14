@@ -575,23 +575,17 @@ func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
 }
 
 func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneId(*at.Id)
+	i, err := at.ToService()
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
 	}
-	displayTask, err := t.GetDisplayTask()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error while finding display tasks for %s", *at.Id))
-	}
-	if displayTask != nil {
-		b := true
-		return &b, nil
-	}
-	b := false
-	return &b, nil
+	isExecutionTask := t.IsPartOfDisplay()
+
+	return &isExecutionTask, nil
 }
 
 func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
