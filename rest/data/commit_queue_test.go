@@ -204,6 +204,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	existingPatch := &patch.Patch{
 		Author:  "octocat",
 		Project: s.projectRef.Id,
+		GitInfo: &patch.GitMetadata{},
 		PatchedConfig: `
 tasks:
   - name: t0
