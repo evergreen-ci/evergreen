@@ -896,12 +896,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				var match bool
 				name, tags, ok := projectInfo.Project.GetTaskNameAndTags(t)
 				if !ok {
-					grip.Debug(message.WrapError(err, message.Fields{
+					grip.Debug(message.Fields{
 						"message": "task doesn't exist in project",
 						"project": projectInfo.Project.Identifier,
 						"task":    t,
 						"version": v.Id,
-					}))
+					})
 				}
 				match, err = aliasesMatchingVariant.HasMatchingTask(name, tags)
 				if err != nil {
