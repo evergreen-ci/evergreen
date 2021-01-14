@@ -13,6 +13,7 @@ type SchedulerConfig struct {
 	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
 	HostAllocatorRoundingRule     string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule     string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
 	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
@@ -60,6 +61,7 @@ func (c *SchedulerConfig) Set() error {
 			"task_finder":                       c.TaskFinder,
 			"host_allocator":                    c.HostAllocator,
 			"host_allocator_rounding_rule":      c.HostAllocatorRoundingRule,
+			"host_allocator_feedback_rule":      c.HostAllocatorFeedbackRule,
 			"free_host_fraction":                c.FutureHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
@@ -106,6 +108,15 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if !utility.StringSliceContains(ValidDefaultHostAllocatorRoundingRules, c.HostAllocatorRoundingRule) {
 		return errors.Errorf("supported host allocator rounding rules are %s; %s is not supported",
 			ValidHostAllocatorRoundingRules, c.HostAllocatorRoundingRule)
+	}
+
+	if c.HostAllocatorFeedbackRule == "" {
+		c.HostAllocatorFeedbackRule = HostAllocatorNoFeedback
+	}
+
+	if !utility.StringSliceContains(ValidDefaultHostAllocatorFeedbackRules, c.HostAllocatorFeedbackRule) {
+		return errors.Errorf("supported host allocator feedback rules are %s; %s is not supported",
+			ValidHostAllocatorFeedbackRules, c.HostAllocatorFeedbackRule)
 	}
 
 	if c.FutureHostFraction < 0 || c.FutureHostFraction > 1 {

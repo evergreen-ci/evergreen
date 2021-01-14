@@ -166,23 +166,19 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	switch opts.Action {
 	case "updateStatus":
-		currentStatus := h.Status
-		var modifyResult string
-		modifyResult, _, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
-
+		var (
+			msg        string
+			statusCode int
+		)
+		msg, statusCode, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
 		if err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
+			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    msg,
+			}))
 			return
 		}
-
-		var msg flashMessage
-		switch modifyResult {
-		case fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id):
-			msg = NewSuccessFlash(fmt.Sprintf(api.HostTerminationQueueingSuccess, h.Id))
-		case fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status):
-			msg = NewSuccessFlash(fmt.Sprintf(api.HostStatusUpdateSuccess, currentStatus, h.Status))
-		}
-		PushFlash(uis.CookieStore, r, w, msg)
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(msg))
 		gimlet.WriteJSON(w, api.HostStatusWriteConfirm)
 	case "restartJasper":
 		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
@@ -191,6 +187,13 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostRestartJasperConfirm))
 		gimlet.WriteJSON(w, api.HostRestartJasperConfirm)
+	case "reprovisionToNew":
+		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostReprovisionConfirm))
+		gimlet.WriteJSON(w, api.HostReprovisionConfirm)
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 	}
@@ -233,6 +236,13 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
+	case "reprovisionToNew":
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(user.Username()))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error marking selected hosts as needing to reprovision: %s", err.Error()), httpStatus)
+			return
+		}
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing to reprovision", hostsUpdated)))
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return

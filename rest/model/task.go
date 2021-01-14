@@ -58,6 +58,7 @@ type APITask struct {
 	DisplayOnly        bool                `json:"display_only"`
 	ParentTaskId       string              `json:"parent_task_id"`
 	ExecutionTasks     []*string           `json:"execution_tasks,omitempty"`
+	ExecutionTasksFull []APITask           `json:"execution_tasks_full,omitempty"`
 	Mainline           bool                `json:"mainline"`
 	TaskGroup          string              `json:"task_group,omitempty"`
 	TaskGroupMaxHosts  int                 `json:"task_group_max_hosts,omitempty"`
@@ -70,6 +71,7 @@ type APITask struct {
 	SyncAtEndOpts      APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                *string             `json:"ami"`
 	MustHaveResults    bool                `json:"must_have_test_results"`
+	BaseTask           APIBaseTaskInfo     `json:"base_task"`
 }
 
 type APIAbortInfo struct {
@@ -238,6 +240,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				PRClosed:   v.AbortInfo.PRClosed,
 			},
 		}
+		if v.BaseTask.Id != "" {
+			at.BaseTask = APIBaseTaskInfo{
+				Id:     ToStringPtr(v.BaseTask.Id),
+				Status: ToStringPtr(v.BaseTask.Status),
+			}
+		}
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
@@ -262,6 +270,17 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				ets = append(ets, ToStringPtr(t))
 			}
 			at.ExecutionTasks = ets
+		}
+		if len(v.ExecutionTasksFull) > 0 {
+			ets := []APITask{}
+			for _, t := range v.ExecutionTasksFull {
+				at := APITask{}
+				if err := at.BuildFromService(t); err != nil {
+					return err
+				}
+				ets = append(ets, at)
+			}
+			at.ExecutionTasksFull = ets
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -323,6 +342,10 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Statuses: ad.SyncAtEndOpts.Statuses,
 			Timeout:  ad.SyncAtEndOpts.Timeout,
 		},
+		BaseTask: task.BaseTaskInfo{
+			Id:     FromStringPtr(ad.BaseTask.Id),
+			Status: FromStringPtr(ad.BaseTask.Status),
+		},
 	}
 	catcher := grip.NewBasicCatcher()
 	serviceDetails, err := ad.Details.ToService()
@@ -359,6 +382,17 @@ func (ad *APITask) ToService() (interface{}, error) {
 			ets = append(ets, FromStringPtr(t))
 		}
 		st.ExecutionTasks = ets
+	}
+	if len(ad.ExecutionTasksFull) > 0 {
+		ets := []task.Task{}
+		for _, at := range ad.ExecutionTasksFull {
+			taskData, err := at.ToService()
+			if err != nil {
+				return nil, err
+			}
+			ets = append(ets, *taskData.(*task.Task))
+		}
+		st.ExecutionTasksFull = ets
 	}
 
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))

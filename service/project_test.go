@@ -14,26 +14,26 @@ func TestVerifyAliasExists(t *testing.T) {
 	assert.NoError(t, db.Clear(model.ProjectAliasCollection))
 
 	// a new definition for the github alias is added
-	newDefinitions := []model.ProjectAlias{{Alias: evergreen.GithubAlias}}
-	exists, err := verifyAliasExists(evergreen.GithubAlias, "evergreen", newDefinitions, []string{})
+	newDefinitions := []model.ProjectAlias{{Alias: evergreen.GithubPRAlias}}
+	exists, err := verifyAliasExists(evergreen.GithubPRAlias, "evergreen", newDefinitions, []string{})
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
 	// a definition already exists
 	alias := &model.ProjectAlias{
-		Alias:     evergreen.GithubAlias,
+		Alias:     evergreen.GithubPRAlias,
 		ProjectID: "evergreen",
 	}
 	require.NoError(t, alias.Upsert())
-	aliases, err := model.FindAliasInProject("evergreen", evergreen.GithubAlias)
+	aliases, err := model.FindAliasInProject("evergreen", evergreen.GithubPRAlias)
 	require.NoError(t, err)
 	require.Len(t, aliases, 1)
-	exists, err = verifyAliasExists(evergreen.GithubAlias, "evergreen", []model.ProjectAlias{}, []string{})
+	exists, err = verifyAliasExists(evergreen.GithubPRAlias, "evergreen", []model.ProjectAlias{}, []string{})
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
 	// the only existing definition is being deleted
-	exists, err = verifyAliasExists(evergreen.GithubAlias, "evergreen", []model.ProjectAlias{}, []string{aliases[0].ID.Hex()})
+	exists, err = verifyAliasExists(evergreen.GithubPRAlias, "evergreen", []model.ProjectAlias{}, []string{aliases[0].ID.Hex()})
 	assert.NoError(t, err)
 	assert.False(t, exists)
 }

@@ -40,7 +40,6 @@ type Project struct {
 	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
 	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
 	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
 	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
@@ -853,7 +852,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Id)
 	expansions.Put("project_identifier", projectRef.Identifier)
-	expansions.Put("project_tags", strings.Join(projectRef.Tags, ","))
 
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
@@ -1071,10 +1069,10 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
-func FindLastKnownGoodProject(identifier string) (*Project, error) {
+func FindLatestVersionWithValidProject(identifier string) (*Version, *Project, error) {
 	const retryCount = 5
 	if identifier == "" {
-		return nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLastKnownGoodProject"))
+		return nil, nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLatestVersionWithValidProject"))
 	}
 	project := &Project{
 		Identifier: identifier,
@@ -1094,7 +1092,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
 		if err == nil {
-			return project, nil
+			return lastGoodVersion, project, nil
 		}
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "last known good version has malformed config",
@@ -1103,7 +1101,7 @@ func FindLastKnownGoodProject(identifier string) (*Project, error) {
 		}))
 	}
 
-	return nil, errors.Wrapf(err, "Error loading project from "+
+	return nil, nil, errors.Wrapf(err, "Error loading project from "+
 		"last good version for project, %s", lastGoodVersion.Identifier)
 }
 
@@ -1143,17 +1141,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		}
 	}
 	return nil
-}
-
-func (bv *BuildVariant) GetDisplayTaskName(execTask string) string {
-	for _, dt := range bv.DisplayTasks {
-		for _, et := range dt.ExecTasks {
-			if et == execTask {
-				return dt.Name
-			}
-		}
-	}
-	return ""
 }
 
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
@@ -1300,43 +1287,50 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 		}
 	}
 
-	var pairs []TVPair
+	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {
 			if p.FindTaskForVariant(t, v) != nil {
-				pairs = append(pairs, TVPair{Variant: v, TaskName: t})
+				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
+			} else if p.GetDisplayTask(v, t) != nil {
+				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
 			}
 		}
 	}
 
 	if alias != "" {
-		aliasPairs, displayTaskPairs, err := p.BuildProjectTVPairsWithAlias(alias)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
-		} else {
-			pairs = append(pairs, aliasPairs...)
-			for _, pair := range displayTaskPairs {
-				if !utility.StringSliceContains(bvs, pair.Variant) {
-					bvs = append(bvs, pair.Variant)
-				}
-				if !utility.StringSliceContains(tasks, pair.TaskName) {
-					tasks = append(tasks, pair.TaskName)
-				}
-			}
+		catcher := grip.NewBasicCatcher()
+		vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
+		catcher.Add(errors.Wrap(err, "can't get alias from project"))
+
+		var aliasPairs, displayTaskPairs []TVPair
+		if !catcher.HasErrors() {
+			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars)
+			catcher.Add(errors.Wrap(err, "failed to get task/variant pairs for alias"))
+		}
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message": "problem adding variants/tasks for alias",
+			"alias":   alias,
+			"project": p.Identifier,
+		}))
+
+		if !catcher.HasErrors() {
+			pairs.ExecTasks = append(pairs.ExecTasks, aliasPairs...)
+			pairs.DisplayTasks = append(pairs.DisplayTasks, displayTaskPairs...)
 		}
 	}
 
-	tvPairs := p.extractDisplayTasks(pairs, tasks, bvs)
+	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
-		tvPairs.ExecTasks, err = IncludeDependencies(p, tvPairs.ExecTasks, requester)
+		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
 		}))
 	}
 
-	vts = tvPairs.TVPairsToVariantTasks()
+	vts = pairs.TVPairsToVariantTasks()
 	bvs, tasks = patch.ResolveVariantTasks(vts)
 	return bvs, tasks, vts
 }
@@ -1401,45 +1395,70 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func (p *Project) extractDisplayTasks(pairs []TVPair, tasks []string, variants []string) TaskVariantPairs {
-	displayTasks := []TVPair{}
-	alreadyAdded := map[string]bool{}
+// extractDisplayTasks adds display tasks and all their execution tasks when
+// pairs.DisplayTasks includes the display task or when
+// one constituent execution task is included
+func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
+	displayTasksToExecTasks := make(map[TVPair][]TVPair)
+	execTaskToDisplayTask := make(map[TVPair]TVPair)
 	for _, bv := range p.BuildVariants {
-		if !utility.StringSliceContains(variants, bv.Name) {
-			continue
-		}
-		for _, taskName := range tasks {
-			dt := bv.GetDisplayTaskName(taskName)
-			if dt != "" && !alreadyAdded[dt] {
-				alreadyAdded[dt] = true
-				tasks = append(tasks, dt)
-			}
-		}
 		for _, dt := range bv.DisplayTasks {
-			if utility.StringSliceContains(tasks, dt.Name) {
-				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
-				for _, et := range dt.ExecTasks {
-					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
-				}
+			displayTV := TVPair{Variant: bv.Name, TaskName: dt.Name}
+			execTVPairs := make([]TVPair, 0, len(dt.ExecTasks))
+			for _, et := range dt.ExecTasks {
+				exexTV := TVPair{Variant: bv.Name, TaskName: et}
+				execTaskToDisplayTask[exexTV] = displayTV
+				execTVPairs = append(execTVPairs, exexTV)
 			}
+			displayTasksToExecTasks[displayTV] = execTVPairs
 		}
 	}
 
-	return TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
+	// slices -> sets
+	displayTaskSet := make(map[TVPair]bool)
+	for _, dt := range pairs.DisplayTasks {
+		displayTaskSet[dt] = true
+	}
+	executionTaskSet := make(map[TVPair]bool)
+	for _, et := range pairs.ExecTasks {
+		executionTaskSet[et] = true
+	}
+
+	// include a display task when one of its execution tasks was specified
+	for et := range executionTaskSet {
+		dt, ok := execTaskToDisplayTask[et]
+		if ok {
+			displayTaskSet[dt] = true
+		}
+	}
+
+	// include every execution task of the all the display tasks
+	for dt := range displayTaskSet {
+		for _, et := range displayTasksToExecTasks[dt] {
+			executionTaskSet[et] = true
+		}
+	}
+
+	// sets -> slices
+	displayTasks := make(TVPairSet, 0, len(displayTaskSet))
+	execTasks := make(TVPairSet, 0, len(executionTaskSet))
+	for dt := range displayTaskSet {
+		displayTasks = append(displayTasks, dt)
+	}
+	for et := range executionTaskSet {
+		execTasks = append(execTasks, et)
+	}
+
+	return TaskVariantPairs{ExecTasks: execTasks, DisplayTasks: displayTasks}
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
-func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair, error) {
-	vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
-	if err != nil || vars == nil {
-		return nil, nil, err
-	}
-
+func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, []TVPair, error) {
 	pairs := []TVPair{}
 	displayTaskPairs := []TVPair{}
 	for _, v := range vars {
 		var variantRegex *regexp.Regexp
-		variantRegex, err = regexp.Compile(v.Variant)
+		variantRegex, err := regexp.Compile(v.Variant)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
 		}
@@ -1478,7 +1497,39 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 		}
 	}
 
-	return pairs, displayTaskPairs, err
+	return pairs, displayTaskPairs, nil
+}
+
+func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
+	projectAliases := []ProjectAlias{}
+	for _, definition := range definitions {
+		for _, specifier := range definition.TaskSpecifiers {
+			if specifier.PatchAlias != "" {
+				aliases, err := FindAliasInProjectOrRepo(p.Identifier, specifier.PatchAlias)
+				if err != nil {
+					return nil, errors.Wrap(err, "can't get alias from project")
+				}
+				projectAliases = append(projectAliases, aliases...)
+			} else {
+				projectAliases = append(projectAliases, ProjectAlias{Variant: specifier.VariantRegex, Task: specifier.TaskRegex})
+			}
+		}
+	}
+
+	var err error
+	pairs := TaskVariantPairs{}
+	pairs.ExecTasks, pairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(projectAliases)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get pairs matching patch aliases")
+	}
+	pairs = p.extractDisplayTasks(pairs)
+	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error including dependencies",
+		"project": p.Identifier,
+	}))
+
+	return pairs.TVPairsToVariantTasks(), nil
 }
 
 // CommandsRunOnTV returns the list of matching commands that match the given

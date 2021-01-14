@@ -27,6 +27,7 @@ func init() {
 	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
 	registry.AddType(ResourceTypeUser, userEventDataFactory)
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
+	registry.AllowSubscription(ResourceTypeBuild, BuildGithubCheckFinished)
 
 	registry.AddType(ResourceTypeCommitQueue, commitQueueEventDataFactory)
 	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueStartTest)

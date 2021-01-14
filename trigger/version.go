@@ -18,6 +18,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeVersion, event.VersionStateChange, makeVersionTriggers)
+	registry.registerEventHandler(event.ResourceTypeVersion, event.VersionGithubCheckFinished, makeVersionTriggers)
 }
 
 type versionTriggers struct {
@@ -33,6 +34,7 @@ func makeVersionTriggers() eventHandler {
 	t := &versionTriggers{}
 	t.base.triggers = map[string]trigger{
 		event.TriggerOutcome:                t.versionOutcome,
+		event.TriggerGithubCheckOutcome:     t.versionGithubCheckOutcome,
 		event.TriggerFailure:                t.versionFailure,
 		event.TriggerSuccess:                t.versionSuccess,
 		event.TriggerRegression:             t.versionRegression,
@@ -102,23 +104,38 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if err := api.BuildFromService(t.version); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
-
 	data := commonTemplateData{
-		ID:              t.version.Id,
-		EventID:         t.event.ID,
-		SubscriptionID:  sub.ID,
-		DisplayName:     t.version.Id,
-		Object:          event.ObjectVersion,
-		Project:         t.version.Identifier,
-		URL:             versionLink(t.uiConfig.Url, t.version.Id),
-		PastTenseStatus: t.data.Status,
-		apiModel:        &api,
+		ID:                t.version.Id,
+		EventID:           t.event.ID,
+		SubscriptionID:    sub.ID,
+		DisplayName:       t.version.Id,
+		Object:            event.ObjectVersion,
+		Project:           t.version.Identifier,
+		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester)),
+		PastTenseStatus:   t.data.Status,
+		apiModel:          &api,
+		githubState:       message.GithubStatePending,
+		githubContext:     "evergreen",
+		githubDescription: "tasks are running",
+	}
+	if t.data.GithubCheckStatus != "" {
+		data.PastTenseStatus = t.data.GithubCheckStatus
+	}
+	finishTime := t.version.FinishTime
+	if utility.IsZeroTime(finishTime) {
+		finishTime = time.Now() // this might be true for github check statuses
 	}
 	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
+		data.githubState = message.GithubStateSuccess
+		data.githubDescription = fmt.Sprintf("version finished in %s", finishTime.Sub(t.version.StartTime).String())
+	} else if data.PastTenseStatus == evergreen.VersionFailed {
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = fmt.Sprintf("version finished in %s", finishTime.Sub(t.version.StartTime).String())
 	}
+
 	data.slack = []message.SlackAttachment{
 		{
 			Title:     "Evergreen Version",
@@ -150,6 +167,14 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 
 func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+
+	return t.generate(sub, "")
+}
+
+func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.GithubCheckStatus != evergreen.VersionSucceeded && t.data.GithubCheckStatus != evergreen.VersionFailed {
 		return nil, nil
 	}
 

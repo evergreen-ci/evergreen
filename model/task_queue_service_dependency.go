@@ -511,5 +511,14 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 		}
 	}
 
+	// also update the display task status in case it is out of date
+	if t.IsPartOfDisplay() {
+		parent, err := t.GetDisplayTask()
+		catcher.Add(err)
+		if parent != nil {
+			catcher.Add(UpdateDisplayTask(parent))
+		}
+	}
+
 	return catcher.Resolve()
 }

@@ -134,7 +134,7 @@
               {
                 "id": "3",
                 "status": "success",
-                "baseStatus": "test-timed-out",
+                "baseStatus": "failed",
                 "displayName": "lint",
                 "buildVariant": "windows"
               }
@@ -253,6 +253,84 @@
       }
     },
     {
+      "query_file": "sort-by-base.graphql",
+      "result": {
+        "data": {
+          "patchTasks": {
+            "tasks": [
+              {
+                "id": "2",
+                "status": "failed",
+                "baseStatus": "failed",
+                "displayName": "test-cloud",
+                "buildVariant": "ubuntu1604",
+                "baseTask": {
+                  "id": "base-task-2",
+                  "status": "failed"
+                }
+              },
+              {
+                "id": "3",
+                "status": "success",
+                "baseStatus": "failed",
+                "displayName": "lint",
+                "buildVariant": "windows",
+                "baseTask": {
+                  "id": "base-task-3",
+                  "status": "failed"
+                }
+              },
+              {
+                "id": "1",
+                "status": "success",
+                "baseStatus": "success",
+                "displayName": "test-thirdparty-docker",
+                "buildVariant": "ubuntu1604",
+                "baseTask": {
+                  "id": "base-task-1",
+                  "status": "success"
+                }
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "baseTask": {
+                  "id": "base-task-4",
+                  "status": "success"
+                }
+              },
+              {
+                "id": "4",
+                "status": "task-timed-out",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "baseTask": {
+                  "id": "base-task-4",
+                  "status": "success"
+                }
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "baseTask": {
+                  "id": "base-task-4",
+                  "status": "success"
+                }
+              }
+            ],
+            "count": 6
+          }
+        }
+      }
+    },
+    {
       "query_file": "sort-by-base-status.graphql",
       "result": {
         "data": {
@@ -260,6 +338,10 @@
             "tasks": [
               {
                 "id": "2",
+                "baseStatus": "failed"
+              },
+              {
+                "id": "3",
                 "baseStatus": "failed"
               },
               {
@@ -277,10 +359,6 @@
               {
                 "id": "4.5",
                 "baseStatus": "success"
-              },
-              {
-                "id": "3",
-                "baseStatus": "test-timed-out"
               }
             ],
             "count": 6
@@ -294,10 +372,6 @@
         "data": {
           "patchTasks": {
             "tasks": [
-              {
-                "id": "3",
-                "baseStatus": "test-timed-out"
-              },
               {
                 "id": "1",
                 "baseStatus": "success"
@@ -316,6 +390,10 @@
               },
               {
                 "id": "2",
+                "baseStatus": "failed"
+              },
+              {
+                "id": "3",
                 "baseStatus": "failed"
               }
             ],
@@ -340,7 +418,7 @@
               {
                 "id": "3",
                 "status": "success",
-                "baseStatus": "test-timed-out",
+                "baseStatus": "failed",
                 "displayName": "lint",
                 "buildVariant": "windows"
               },
@@ -408,10 +486,25 @@
                 "status": "failed",
                 "baseStatus": "failed",
                 "displayName": "test-cloud",
-                "buildVariant": "ubuntu1604"
+                "buildVariant": "ubuntu1604",
+                "baseTask": {
+                  "id": "base-task-2",
+                  "status": "failed"
+                }
+              },
+              {
+                "id": "3",
+                "status": "success",
+                "baseStatus": "failed",
+                "displayName": "lint",
+                "buildVariant": "windows",
+                "baseTask": {
+                  "id": "base-task-3",
+                  "status": "failed"
+                }
               }
             ],
-            "count": 1
+            "count": 2
           }
         }
       }
@@ -518,6 +611,46 @@
         "data": {
           "patchTasks": {
             "count": 6
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution-tasks.graphql",
+      "result": {
+        "data": {
+          "patchTasks": {
+            "tasks": [
+              {
+                "id": "2",
+                "executionTasksFull": null
+              },
+              {
+                "id": "1.5",
+                "executionTasksFull": [
+                  {
+                    "id": "et1",
+                    "status": "failed"
+                  }
+                ]
+              },
+              {
+                "id": "4.5",
+                "executionTasksFull": null
+              },
+              {
+                "id": "4",
+                "executionTasksFull": null
+              },
+              {
+                "id": "1",
+                "executionTasksFull": null
+              },
+              {
+                "id": "3",
+                "executionTasksFull": null
+              }
+            ]
           }
         }
       }

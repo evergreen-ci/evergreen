@@ -152,11 +152,11 @@ type Patch struct {
 	VariantsTasks   []VariantTasks         `bson:"variants_tasks"`
 	SyncAtEndOpts   SyncAtEndOptions       `bson:"sync_at_end_opts,omitempty"`
 	Patches         []ModulePatch          `bson:"patches"`
-	Parameters      []Parameter            `bson:"parameters"`
+	Parameters      []Parameter            `bson:"parameters,omitempty"`
 	Activated       bool                   `bson:"activated"`
 	PatchedConfig   string                 `bson:"patched_config"`
 	Alias           string                 `bson:"alias"`
-	TriggerAliases  []string               `bson:"trigger_aliases"`
+	Triggers        TriggerInfo            `bson:"triggers"`
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
@@ -182,6 +182,26 @@ type PatchSet struct {
 	PatchFileId    string               `bson:"patch_file_id,omitempty"`
 	CommitMessages []string             `bson:"commit_messages,omitempty"`
 	Summary        []thirdparty.Summary `bson:"summary"`
+}
+
+type TriggerInfo struct {
+	Aliases      []string `bson:"aliases,omitempty"`
+	ParentPatch  string   `bson:"parent_patch,omitempty"`
+	ChildPatches []string `bson:"child_patches,omitempty"`
+}
+
+type PatchTriggerDefinition struct {
+	Alias          string          `bson:"alias" json:"alias"`
+	ChildProject   string          `bson:"child_project" json:"child_project"`
+	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
+	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
+	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+}
+
+type TaskSpecifier struct {
+	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
+	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 }
 
 // SetDescription sets a patch's description in the database
@@ -619,6 +639,10 @@ func (p *Patch) IsCommitQueuePatch() bool {
 
 func (p *Patch) IsBackport() bool {
 	return len(p.BackportOf.PatchID) != 0 || len(p.BackportOf.SHA) != 0
+}
+
+func (p *Patch) IsChild() bool {
+	return p.Triggers.ParentPatch != ""
 }
 
 func (p *Patch) GetRequester() string {

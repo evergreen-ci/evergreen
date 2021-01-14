@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -89,15 +90,16 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		j.AddError(err)
-	}
-	if j.intent == nil {
-		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
-		j.AddError(err)
-		j.IntentType = j.intent.GetType()
+		return
 	}
 
-	if j.HasErrors() {
-		return
+	if j.intent == nil {
+		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		j.IntentType = j.intent.GetType()
 	}
 
 	patchDoc := j.intent.NewPatch()
@@ -137,7 +139,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
-		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(update.Error(), message.Fields{
 			"message":            "Failed to queue status update",
 			"job":                j.ID(),
 			"patch_id":           j.PatchID,
@@ -172,11 +174,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Add(err)
 
+	case patch.TriggerIntentType:
+		catcher.Add(j.buildTriggerPatchDoc(ctx, patchDoc))
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
-	}
-	if len(patchDoc.Patches) != 1 {
-		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len(patchDoc.Patches)))
 	}
 
 	if err = catcher.Resolve(); err != nil {
@@ -253,20 +254,24 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 	if validationCatcher.HasErrors() {
+		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
 	// TODO: add only user-defined parameters to patch/version
 	patchDoc.PatchedConfig = projectYaml
-	if patchDoc.Patches[0].ModuleName != "" {
-		// is there a module? validate it.
-		var module *model.Module
-		module, err = project.GetModuleByName(patchDoc.Patches[0].ModuleName)
-		if err != nil {
-			return errors.Wrapf(err, "could not find module '%s'", patchDoc.Patches[0].ModuleName)
-		}
-		if module == nil {
-			return errors.Errorf("no module named '%s'", patchDoc.Patches[0].ModuleName)
+
+	for _, modulePatch := range patchDoc.Patches {
+		if modulePatch.ModuleName != "" {
+			// validate the module exists
+			var module *model.Module
+			module, err = project.GetModuleByName(modulePatch.ModuleName)
+			if err != nil {
+				return errors.Wrapf(err, "could not find module '%s'", modulePatch.ModuleName)
+			}
+			if module == nil {
+				return errors.Errorf("no module named '%s'", modulePatch.ModuleName)
+			}
 		}
 	}
 
@@ -281,7 +286,15 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	if len(patchDoc.VariantsTasks) == 0 {
+		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	}
+
+	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
+		len(patchDoc.VariantsTasks) == 0 {
+		j.gitHubError = NoTasksOrVariants
+		return errors.New("patch has no build variants or tasks")
+	}
 
 	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
 		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(project.GetAllVariantTasks())
@@ -305,12 +318,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
-		len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
-		j.gitHubError = NoTasksOrVariants
-		return errors.New("patch has no build variants or tasks")
-	}
-
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
@@ -322,9 +329,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
+	if err = j.processTriggerAliases(ctx, patchDoc, pref); err != nil {
+		return errors.Wrap(err, "problem processing trigger aliases")
+	}
+
 	if err = patchDoc.Insert(); err != nil {
 		return err
 	}
+
 	if patchDoc.IsGithubPRPatch() {
 		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 			Owner:    patchDoc.GithubPatchData.BaseOwner,
@@ -346,6 +358,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if err = backportSubscription.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert backport subscription"))
 		}
+	}
+
+	if patchDoc.IsChild() && !j.intent.ShouldFinalizePatch() {
+		// TODO subscribe on parent patch outcome
 	}
 
 	if catcher.HasErrors() {
@@ -393,6 +409,61 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
+func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef) error {
+	if len(p.Triggers.Aliases) == 0 {
+		return nil
+	}
+
+	type aliasGroup struct {
+		project        string
+		status         string
+		parentAsModule string
+	}
+	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
+	for _, aliasName := range p.Triggers.Aliases {
+		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
+		if !found {
+			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
+		}
+
+		// group patches on project, status, parentAsModule
+		group := aliasGroup{
+			project:        alias.ChildProject,
+			status:         alias.Status,
+			parentAsModule: alias.ParentAsModule,
+		}
+		aliasGroups[group] = append(aliasGroups[group], alias)
+	}
+
+	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
+	for group, definitions := range aliasGroups {
+		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
+			ParentID:       p.Id.Hex(),
+			ParentStatus:   group.status,
+			ProjectID:      group.project,
+			ParentAsModule: group.parentAsModule,
+			Requester:      p.GetRequester(),
+			Author:         p.Author,
+			Definitions:    definitions,
+		})
+
+		if err := triggerIntent.Insert(); err != nil {
+			return errors.Wrap(err, "problem inserting trigger intent")
+		}
+
+		triggerIntents = append(triggerIntents, triggerIntent)
+		p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, triggerIntent.ID())
+	}
+
+	for _, intent := range triggerIntents {
+		if err := j.env.RemoteQueue().Put(ctx, NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)); err != nil {
+			return errors.Wrap(err, "problem enqueueing child patch processing")
+		}
+	}
+
+	return nil
+}
+
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
@@ -432,29 +503,42 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		patchDoc.Githash = *commit.SHA
 	}
 
-	patchContents, err := patch.FetchPatchContents(patchDoc.Patches[0].PatchSet.PatchFileId)
-	if err != nil {
-		return errors.Wrap(err, "can't fetch patch contents")
+	if len(patchDoc.Patches) > 0 {
+		if patchDoc.Patches[0], err = getModulePatch(patchDoc.Patches[0]); err != nil {
+			return errors.Wrap(err, "problem getting ModulePatch from GridFS")
+		}
 	}
+
+	return nil
+}
+
+// getModulePatch reads the patch from GridFS, processes it, and
+// stores the resulting summaries in the returned ModulePatch
+func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
+	patchContents, err := patch.FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+	if err != nil {
+		return modulePatch, errors.Wrap(err, "can't fetch patch contents")
+	}
+
 	var summaries []thirdparty.Summary
 	if patch.IsMailboxDiff(patchContents) {
 		var commitMessages []string
 		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContents)
 		if err != nil {
-			return errors.Wrapf(err, "error getting summaries by commit")
+			return modulePatch, errors.Wrapf(err, "error getting summaries by commit")
 		}
-		patchDoc.Patches[0].PatchSet.CommitMessages = commitMessages
+		modulePatch.PatchSet.CommitMessages = commitMessages
 	} else {
 		summaries, err = thirdparty.GetPatchSummaries(patchContents)
 		if err != nil {
-			return err
+			return modulePatch, errors.Wrap(err, "error getting patch summaries")
 		}
 	}
 
-	patchDoc.Patches[0].IsMbox = len(patchContents) == 0 || patch.IsMailboxDiff(patchContents)
-	patchDoc.Patches[0].ModuleName = ""
-	patchDoc.Patches[0].PatchSet.Summary = summaries
-	return nil
+	modulePatch.IsMbox = len(patchContents) == 0 || patch.IsMailboxDiff(patchContents)
+	modulePatch.ModuleName = ""
+	modulePatch.PatchSet.Summary = summaries
+	return modulePatch, nil
 }
 
 func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projectRef *model.ProjectRef, patchDoc *patch.Patch) error {
@@ -581,6 +665,67 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Author = j.user.Id
 
 	return isMember, nil
+}
+
+func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
+	defer func() {
+		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+			"message":     "could not mark patch intent as processed",
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+			"patch_id":    j.PatchID,
+			"source":      "patch intents",
+			"job":         j.ID(),
+		}))
+	}()
+
+	intent, ok := j.intent.(*patch.TriggerIntent)
+	if !ok {
+		return errors.Errorf("intent '%s' didn't not have expected type '%T'", j.IntentID, j.intent)
+	}
+
+	v, project, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
+	if err != nil {
+		return errors.Wrapf(err, "problem getting last known project for '%s'", patchDoc.Project)
+	}
+
+	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
+	if err != nil {
+		return errors.Wrap(err, "problem matching tasks to alias definitions")
+	}
+	if len(matchingTasks) == 0 {
+		return nil
+	}
+
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshal child project")
+	}
+
+	patchDoc.Githash = v.Revision
+	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.VariantsTasks = matchingTasks
+
+	if intent.ParentAsModule != "" {
+		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
+		if err != nil {
+			return errors.Wrap(err, "can't get parent patch")
+		}
+		if parentPatch == nil {
+			return errors.Errorf("parent patch '%s' does not exist", patchDoc.Triggers.ParentPatch)
+		}
+		for _, p := range parentPatch.Patches {
+			if p.ModuleName == "" {
+				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+					ModuleName: intent.ParentAsModule,
+					PatchSet:   p.PatchSet,
+				})
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {

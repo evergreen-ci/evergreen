@@ -38,7 +38,6 @@ var (
 	VersionOwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
 	VersionRepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
 	VersionProjectNameKey         = bsonutil.MustHaveTag(Version{}, "Branch")
-	VersionRepoKindKey            = bsonutil.MustHaveTag(Version{}, "RepoKind")
 	VersionErrorsKey              = bsonutil.MustHaveTag(Version{}, "Errors")
 	VersionWarningsKey            = bsonutil.MustHaveTag(Version{}, "Warnings")
 	VersionIdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")

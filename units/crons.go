@@ -42,6 +42,9 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			})
 			return nil
 		}
+		if flags.RepoPollerDisabled {
+			return nil
+		}
 
 		projects, err := model.FindAllMergedTrackedProjectRefsWithRepoInfo()
 		if err != nil {
@@ -1210,7 +1213,7 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 			for _, definition := range project.PeriodicBuilds {
 				// schedule the job if we want it to start before the next time this cron runs
 				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
-					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Id, definition.ID, definition.NextRunTime)))
+					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Id, definition.ID)))
 				}
 			}
 		}

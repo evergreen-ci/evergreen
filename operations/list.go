@@ -20,14 +20,13 @@ import (
 
 func List() cli.Command {
 	const (
-		projectsFlagName    = "projects"
-		variantsFlagName    = "variants"
-		tasksFlagName       = "tasks"
-		distrosFlagName     = "distros"
-		spawnableFlagName   = "spawnable"
-		parametersFlagName  = "parameters"
-		aliasesFlagName     = "aliases"
-		projectTagsFlagName = "taggedProjects"
+		projectsFlagName   = "projects"
+		variantsFlagName   = "variants"
+		tasksFlagName      = "tasks"
+		distrosFlagName    = "distros"
+		spawnableFlagName  = "spawnable"
+		parametersFlagName = "parameters"
+		aliasesFlagName    = "aliases"
 	)
 
 	return cli.Command{
@@ -61,10 +60,6 @@ func List() cli.Command {
 			cli.BoolFlag{
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
-			},
-			cli.StringFlag{
-				Name:  projectTagsFlagName,
-				Usage: "list all projects with this tag",
 			})...),
 		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
 		Action: func(c *cli.Context) error {
@@ -89,49 +84,10 @@ func List() cli.Command {
 				return listAliases(ctx, confPath, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
-			case c.IsSet(projectTagsFlagName):
-				return listTaggedProjects(ctx, confPath, c.String(projectTagsFlagName))
 			}
 			return errors.Errorf("this code should not be reachable")
 		},
 	}
-}
-
-func listTaggedProjects(ctx context.Context, confPath string, tag string) error {
-	conf, err := NewClientSettings(confPath)
-	if err != nil {
-		return errors.Wrap(err, "problem loading configuration")
-	}
-	client := conf.setupRestCommunicator(ctx)
-	defer client.Close()
-
-	ac, _, err := conf.getLegacyClients()
-	if err != nil {
-		return errors.Wrap(err, "problem accessing evergreen service")
-	}
-
-	projs, err := ac.ListProjects()
-	if err != nil {
-		return err
-	}
-
-	matching := []model.ProjectRef{}
-	for _, prj := range projs {
-		if prj.Enabled && utility.StringSliceContains(prj.Tags, tag) {
-			matching = append(matching, prj)
-		}
-	}
-
-	sort.Slice(matching, func(i, j int) bool { return matching[i].Id < matching[j].Id })
-
-	t := tabby.New()
-	t.AddHeader("Name", "Description", "Tags")
-	for _, prj := range matching {
-		t.AddLine(prj.Id, prj.DisplayName, strings.Join(prj.Tags, ", "))
-	}
-	fmt.Printf("%d matching projects:\n", len(matching))
-	t.Print()
-	return nil
 }
 
 func listProjects(ctx context.Context, confPath string) error {
@@ -330,7 +286,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	}
 
 	for _, alias := range aliases {
-		if alias.Alias != evergreen.GithubAlias {
+		if !utility.StringSliceContains(evergreen.InternalAliases, alias.Alias) {
 			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
 				alias.Task, strings.Join(alias.TaskTags, ", "))
 		}

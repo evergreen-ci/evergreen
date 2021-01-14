@@ -104,9 +104,6 @@ type Connector interface {
 	FindProjects(string, int, int) ([]model.ProjectRef, error)
 	GetProjectWithCommitQueueByOwnerRepoAndBranch(string, string, string) (*model.ProjectRef, error)
 	FindEnabledProjectRefsByOwnerAndRepo(string, string) ([]model.ProjectRef, error)
-	FindProjectsByTag(string) ([]restModel.APIProjectRef, error)
-	AddTagsToProject(string, ...string) error
-	RemoveTagFromProject(string, string) error
 	RemoveAdminFromProjects(string) error
 
 	// GetVersionsAndVariants returns recent versions for a project
@@ -128,7 +125,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
-	FindTasksByVersion(string, string, []string, string, string, int, int, int, []string) ([]task.Task, int, error)
+	FindTasksByVersion(string, string, []string, []string, string, string, int, int, int, []string, []task.TasksSortOrder) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 	//FindUserByGithubName is a method to find a user given their Github name, if configured.

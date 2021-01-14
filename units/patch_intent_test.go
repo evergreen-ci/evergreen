@@ -72,7 +72,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		PatchingDisabled: false,
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
-		RepoKind:         "github",
 		PRTestingEnabled: true,
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,
@@ -89,13 +88,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
-		Alias:     evergreen.GithubAlias,
+		Alias:     evergreen.GithubPRAlias,
 		Variant:   "ubuntu.*",
 		Task:      "dist.*",
 	}).Upsert())
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
-		Alias:     evergreen.GithubAlias,
+		Alias:     evergreen.GithubPRAlias,
 		Variant:   "race.*",
 		Task:      "dist.*",
 	}).Upsert())
@@ -551,6 +550,26 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 
 	s.True(foundPatch)
 	s.True(foundBuild)
+}
+
+func (s *PatchIntentUnitsSuite) TestGetModulePatch() {
+	s.Require().NoError(db.ClearGridCollections(patch.GridFSPrefix))
+	patchString := `diff --git a/test.txt b/test.txt
+index ca20f6c..224168e 100644
+--- a/test.txt
++++ b/test.txt
+@@ -15,1 +15,1 @@ func myFunc() {
+-  old line",
++  new line",
+
+`
+	s.Require().NoError(db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+
+	modulePatch := patch.ModulePatch{}
+	modulePatch.PatchSet.PatchFileId = "testPatch"
+	modulePatch, err := getModulePatch(modulePatch)
+	s.NotEmpty(modulePatch.PatchSet.Summary)
+	s.NoError(err)
 }
 
 func (s *PatchIntentUnitsSuite) TestCliBackport() {

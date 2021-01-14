@@ -386,7 +386,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	}
 
 	switch sub.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		if len(data.githubDescription) == 0 {
 			return nil, errors.Errorf("Github subscriber not supported for trigger: '%s'", sub.Trigger)
 		}
@@ -479,12 +479,20 @@ func taskLogLink(uiBase string, taskID string, execution int) string {
 	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, url.PathEscape(taskID), execution)
 }
 
-func buildLink(uiBase string, buildID string) string {
-	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(buildID))
+func buildLink(uiBase string, buildID string, hasPatch bool) string {
+	url := fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(buildID))
+	if hasPatch {
+		url += "?redirect_spruce_users=true"
+	}
+	return url
 }
 
-func versionLink(uiBase string, versionID string) string {
-	return fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", uiBase, url.PathEscape(versionID))
+func versionLink(uiBase string, versionID string, hasPatch bool) string {
+	url := fmt.Sprintf("%s/version/%s", uiBase, url.PathEscape(versionID))
+	if hasPatch {
+		url += "?redirect_spruce_users=true"
+	}
+	return url
 }
 
 func hostLink(uiBase string, hostID string) string {

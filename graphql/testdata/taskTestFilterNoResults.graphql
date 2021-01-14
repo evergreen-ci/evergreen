@@ -6,6 +6,7 @@
     page: 0
     limit: 0
     testName: "arstrasttras"
+    execution: 0
   ) {
     testResults {
       testFile

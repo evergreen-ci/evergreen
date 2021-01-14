@@ -81,7 +81,6 @@ func setupCLITestHarness() cliTestHarness {
 		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
-		RepoKind:   "github",
 		Branch:     "master",
 		RemotePath: "evergreen.yml",
 		Enabled:    true,
@@ -518,13 +517,12 @@ func TestCLIFunctions(t *testing.T) {
 					So(err, ShouldBeNil)
 					patches, err := ac.GetPatches(0)
 					So(err, ShouldBeNil)
-					So(patches[0].Patches[0].ModuleName, ShouldEqual, "")
-					So(patches[0].Patches[1].ModuleName, ShouldEqual, "render-module")
+					So(patches[0].Patches[0].ModuleName, ShouldEqual, "render-module")
 					Convey("Removing the module from the patch should work as designed even with empty patch", func() {
 						So(ac.DeletePatchModule(newPatch.Id.Hex(), "render-module"), ShouldBeNil)
 						patches, err := ac.GetPatches(0)
 						So(err, ShouldBeNil)
-						So(len(patches[0].Patches), ShouldEqual, 1)
+						So(len(patches[0].Patches), ShouldEqual, 0)
 						Convey("Finalizing the patch should start with no version field and then be populated", func() {
 							So(patches[0].Version, ShouldEqual, "")
 							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)

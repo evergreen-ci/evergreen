@@ -6,6 +6,10 @@
       baseStatus
       displayName
       buildVariant
+      baseTask {
+        id
+        status
+      }
     }
     count
   }

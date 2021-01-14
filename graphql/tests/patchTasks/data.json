@@ -183,6 +183,7 @@
       "_id": "1",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
@@ -195,15 +196,18 @@
       "_id": "2",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
+      "branch": "myProject",
       "status": "failed"
     },
     {
       "_id": "3",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
@@ -213,15 +217,22 @@
       "_id": "4",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
-      "status": "task-timed-out"
+      "status": "failed",
+      "details": {
+        "status": "failed",
+        "timed_out": true,
+        "type": "test"
+      }
     },
     {
       "_id": "4.5",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
@@ -235,9 +246,12 @@
       "_id": "1.5",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
+      "display_only": true,
+      "execution_tasks": ["et1"],
       "status": "failed",
       "details": {
         "status": "failed",
@@ -245,21 +259,34 @@
       }
     },
     {
+      "_id": "et1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "bv",
+      "display_name": "this is an execution task",
+      "r": "github_pull_request",
+      "status": "failed"
+    },
+    {
       "_id": "base-task-1",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
-      "r": "github_pull_request",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "myProject",
+      "r": "gitter_request",
       "status": "success"
     },
     {
       "_id": "base-task-2",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
-      "r": "github_pull_request",
+      "branch": "myProject",
+      "r": "gitter_request",
       "status": "failed"
     },
     {
@@ -268,11 +295,13 @@
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
-      "r": "github_pull_request",
-      "status": "test-timed-out",
+      "status": "failed",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "myProject",
+      "r": "gitter_request",
       "details": {
         "status": "failed",
-        "type": "system"
+        "type": "test"
       }
     },
     {
@@ -281,7 +310,9 @@
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
-      "r": "github_pull_request",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "branch": "myProject",
+      "r": "gitter_request",
       "status": "success"
     }
   ]

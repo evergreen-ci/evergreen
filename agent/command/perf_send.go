@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/poplar"
 	"github.com/evergreen-ci/poplar/rpc"
 	"github.com/mitchellh/mapstructure"
@@ -29,7 +30,7 @@ type perfSend struct {
 
 	// Prefix specifies the global prefix to use within the s3 bucket for
 	// any artifacts without a prefix specified.
-	Prefix string `mapstructure:"region" plugin:"expand"`
+	Prefix string `mapstructure:"prefix" plugin:"expand"`
 
 	// File is the file containing either the json or yaml representation
 	// of the performance report tests.
@@ -55,6 +56,9 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 
 func (c *perfSend) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		return err
+	}
 
 	// Read the file and add the evergreen info.
 	filename := filepath.Join(conf.WorkDir, c.File)

@@ -45,10 +45,11 @@ type VariantTask struct {
 }
 
 type FileDiff struct {
-	FileName  *string `json:"file_name"`
-	Additions int     `json:"additions"`
-	Deletions int     `json:"deletions"`
-	DiffLink  *string `json:"diff_link"`
+	FileName    *string `json:"file_name"`
+	Additions   int     `json:"additions"`
+	Deletions   int     `json:"deletions"`
+	DiffLink    *string `json:"diff_link"`
+	Description string  `json:"description"`
 }
 
 type APIModulePatch struct {
@@ -115,14 +116,15 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Alias = ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 
-	params := []APIParameter{}
-	for _, param := range v.Parameters {
-		params = append(params, APIParameter{
-			Key:   ToStringPtr(param.Key),
-			Value: ToStringPtr(param.Value),
-		})
+	if v.Parameters != nil {
+		apiPatch.Parameters = []APIParameter{}
+		for _, param := range v.Parameters {
+			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
+				Key:   ToStringPtr(param.Key),
+				Value: ToStringPtr(param.Value),
+			})
+		}
 	}
-	apiPatch.Parameters = params
 
 	if env := evergreen.GetEnvironment(); env != nil {
 		codeChanges := []APIModulePatch{}
@@ -140,10 +142,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 				diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
 				fileName := file.Name
 				fileDiff := FileDiff{
-					FileName:  &fileName,
-					Additions: file.Additions,
-					Deletions: file.Deletions,
-					DiffLink:  &diffLink,
+					FileName:    &fileName,
+					Additions:   file.Additions,
+					Deletions:   file.Deletions,
+					DiffLink:    &diffLink,
+					Description: file.Description,
 				}
 				fileDiffs = append(fileDiffs, fileDiff)
 			}
@@ -199,14 +202,16 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 		tasks[i] = FromStringPtr(t)
 	}
 	res.Tasks = tasks
-	params := []patch.Parameter{}
-	for _, param := range apiPatch.Parameters {
-		params = append(params, patch.Parameter{
-			Key:   FromStringPtr(param.Key),
-			Value: FromStringPtr(param.Value),
-		})
+	if apiPatch.Parameters != nil {
+		res.Parameters = []patch.Parameter{}
+		for _, param := range apiPatch.Parameters {
+			res.Parameters = append(res.Parameters, patch.Parameter{
+				Key:   FromStringPtr(param.Key),
+				Value: FromStringPtr(param.Value),
+			})
+		}
 	}
-	res.Parameters = params
+
 	i, err := apiPatch.GithubPatchData.ToService()
 	catcher.Add(err)
 	data, ok := i.(thirdparty.GithubPatch)

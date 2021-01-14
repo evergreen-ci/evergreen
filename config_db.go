@@ -69,6 +69,7 @@ var (
 	alertsKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
 	agentStartKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
 	repotrackerKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
+	repoPollerKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "RepoPollerDisabled")
 	schedulerKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 	githubPRTestingDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
 	cliUpdatesDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")

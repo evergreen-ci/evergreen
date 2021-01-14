@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -128,12 +129,16 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	PRConflictingRefs := []string{}
 	CQConflictingRefs := []string{}
+	githubChecksConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
 		if ref.PRTestingEnabled && ref.Id != projRef.Id {
 			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}
 		if ref.CommitQueue.Enabled && ref.Id != projRef.Id {
 			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
+		}
+		if ref.GithubChecksEnabled && ref.Id != projRef.Id {
+			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
 		}
 	}
 
@@ -170,16 +175,18 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := struct {
-		ProjectRef            *model.ProjectRef
-		ProjectVars           *model.ProjectVars
-		ProjectAliases        []model.ProjectAlias        `json:"aliases,omitempty"`
-		PRConflictingRefs     []string                    `json:"pr_testing_conflicting_refs,omitempty"`
-		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
-		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
-		GithubValidOrgs       []string                    `json:"github_valid_orgs"`
-		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-		Permissions           gimlet.Permissions          `json:"permissions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
+		ProjectRef                  *model.ProjectRef
+		ProjectVars                 *model.ProjectVars
+		ProjectAliases              []model.ProjectAlias        `json:"aliases,omitempty"`
+		PRConflictingRefs           []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		CQConflictingRefs           []string                    `json:"commit_queue_conflicting_refs,omitempty"`
+		GithubChecksConflictingRefs []string                    `json:"github_checks_conflicting_refs,omitempty"`
+		GitHubWebhooksEnabled       bool                        `json:"github_webhooks_enabled"`
+		GithubValidOrgs             []string                    `json:"github_valid_orgs"`
+		Subscriptions               []restModel.APISubscription `json:"subscriptions"`
+		Permissions                 gimlet.Permissions          `json:"permissions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs,
+		CQConflictingRefs, githubChecksConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -226,7 +233,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeactivatePrevious      bool                           `json:"deactivate_previous"`
 		Branch                  string                         `json:"branch_name"`
 		ProjVarsMap             map[string]string              `json:"project_vars"`
-		GitHubAliases           []model.ProjectAlias           `json:"github_aliases"`
+		GitHubPRAliases         []model.ProjectAlias           `json:"github_aliases"`
+		GithubChecksAliases     []model.ProjectAlias           `json:"github_checks_aliases"`
 		CommitQueueAliases      []model.ProjectAlias           `json:"commit_queue_aliases"`
 		PatchAliases            []model.ProjectAlias           `json:"patch_aliases"`
 		GitTagAliases           []model.ProjectAlias           `json:"git_tag_aliases"`
@@ -244,6 +252,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users"`
 		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams"`
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
+		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
 		UseRepoSettings         bool                           `json:"use_repo_settings"`
 		Hidden                  bool                           `json:"hidden"`
@@ -261,7 +270,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
 		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition        `json:"triggers"`
-		PatchTriggerAliases   []model.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
+		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
@@ -288,7 +297,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubPRAliases, "GitHub PR Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GithubChecksAliases, "Github Checks Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitTagAliases, "Git Tag Aliases")...)
@@ -355,17 +365,21 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var aliasesDefined bool
-	if responseRef.PRTestingEnabled {
-		if hook == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
-			return
-		}
-		var conflictingRefs []model.ProjectRef
+	var conflictingRefs []model.ProjectRef
+	if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
 		conflictingRefs, err = model.FindMergedProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+	}
+
+	if responseRef.PRTestingEnabled {
+		if hook == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
+			return
+		}
+
 		for _, ref := range conflictingRefs {
 			if ref.PRTestingEnabled && ref.Id != id {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Id))
@@ -374,13 +388,36 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// verify there are PR aliases defined
-		aliasesDefined, err = verifyAliasExists(evergreen.GithubAlias, projectRef.Id, responseRef.GitHubAliases, responseRef.DeleteAliases)
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubPRAlias, projectRef.Id, responseRef.GitHubPRAliases, responseRef.DeleteAliases)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 			return
 		}
 		if !aliasesDefined {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
+			return
+		}
+	}
+
+	if responseRef.GithubChecksEnabled {
+		if hook == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Github checks in this repo, must enable GitHub webhooks first"))
+			return
+		}
+		for _, ref := range conflictingRefs {
+			if ref.GithubChecksEnabled && ref.Id != id {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
+				return
+			}
+		}
+		// verify there are github checks aliases defined
+		aliasesDefined, err = verifyAliasExists(evergreen.GithubChecksAlias, projectRef.Id, responseRef.GithubChecksAliases, responseRef.DeleteAliases)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub check aliases are set"))
+			return
+		}
+		if !aliasesDefined {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable Github checks without definitions"))
 			return
 		}
 	}
@@ -471,7 +508,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for i := range responseRef.PatchTriggerAliases {
-		catcher.Add(responseRef.PatchTriggerAliases[i].Validate(id))
+		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
+		catcher.Add(err)
 	}
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
@@ -502,6 +540,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Hidden = responseRef.Hidden
 	projectRef.Id = id
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
+	projectRef.GithubChecksEnabled = responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
@@ -532,6 +571,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
+		}
+	}
+
+	// if owner/repo has changed or we're toggling repo settings off, update scope
+	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
+		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
+		if err = projectRef.RemoveFromRepoScope(); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
+			return
+		}
+		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
+	}
+	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
+		if err = projectRef.AddToRepoScope(dbUser); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 	}
 
@@ -634,7 +689,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	origProjectAliases, _ := model.FindAliasesForProject(id)
 	var projectAliases []model.ProjectAlias
-	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
+	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
+	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
 	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
 	projectAliases = append(projectAliases, responseRef.PatchAliases...)
 	projectAliases = append(projectAliases, responseRef.GitTagAliases...)
@@ -684,22 +740,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// if owner/repo has changed or we're toggling repo settings off, update scope
-	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
-		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
-		if err = projectRef.RemoveFromRepoScope(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
-			return
-		}
-		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
-		if err = projectRef.AddToRepoScope(dbUser); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
 	toAdd, toRemove := utility.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
 	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -738,8 +778,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	newProject := model.ProjectRef{
 		Id:         id,
 		Identifier: id,
-		Tracked:    true,
-		RepoKind:   "github",
+		Hidden:     false,
 	}
 
 	err = newProject.Add(dbUser)

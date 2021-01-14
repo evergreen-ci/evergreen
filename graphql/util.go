@@ -108,12 +108,6 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-// IsURL returns true if str is a url with scheme and domain name
-func IsURL(str string) bool {
-	u, err := url.ParseRequestURI(str)
-	return err == nil && u.Scheme != "" && u.Host != ""
-}
-
 func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error) {
 	version, err := d.FindVersionById(versionID)
 	if err != nil {
@@ -167,16 +161,15 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}
 
-	// parameters cannot be set once the patch has been finalized
-	if parametersModel != nil && p.Version != "" {
-		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
-	}
-	var parameters []patch.Parameter
-	for _, param := range parametersModel {
-		parameters = append(parameters, param.ToService())
-	}
-	if err = p.SetParameters(parameters); err != nil {
-		return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+	// only modify parameters if the patch hasn't been finalized
+	if parametersModel != nil && p.Version == "" {
+		var parameters []patch.Parameter
+		for _, param := range parametersModel {
+			parameters = append(parameters, param.ToService())
+		}
+		if err = p.SetParameters(parameters); err != nil {
+			return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+		}
 	}
 
 	if p.IsCommitQueuePatch() {
@@ -421,35 +414,40 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
-	if baseTaskStatuses == nil {
-		return taskResults
-	}
-	tasksFilteredByBaseStatus := []*TaskResult{}
-	for _, taskResult := range taskResults {
-		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-			tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-		}
-	}
-	return tasksFilteredByBaseStatus
-}
-func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
+func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 	var taskResults []*TaskResult
-	for _, task := range tasks {
-		t := TaskResult{
-			ID:           task.Id,
-			DisplayName:  task.DisplayName,
-			Version:      task.Version,
-			Status:       task.GetDisplayStatus(),
-			BuildVariant: task.BuildVariant,
-			Blocked:      task.Blocked(),
-			Aborted:      task.Aborted,
+	for _, t := range tasks {
+		baseStatus := t.BaseTask.Status
+		result := TaskResult{
+			ID:           t.Id,
+			DisplayName:  t.DisplayName,
+			Version:      t.Version,
+			Status:       t.GetDisplayStatus(),
+			BuildVariant: t.BuildVariant,
+			Blocked:      t.Blocked(),
+			Aborted:      t.Aborted,
+			BaseStatus:   &baseStatus,
+			BaseTask: &BaseTaskResult{
+				ID:     t.BaseTask.Id,
+				Status: t.BaseTask.Status,
+			},
 		}
-		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			baseStatus := baseTaskStatuses[task.BuildVariant][task.DisplayName]
-			t.BaseStatus = &baseStatus
+		if len(t.ExecutionTasksFull) > 0 {
+			ets := []*restModel.APITask{}
+			for _, et := range t.ExecutionTasksFull {
+				at := restModel.APITask{}
+				if err := at.BuildFromService(&et); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "unable to convert APITask",
+					}))
+					continue
+				}
+				ets = append(ets, &at)
+			}
+			result.ExecutionTasksFull = ets
 		}
-		taskResults = append(taskResults, &t)
+
+		taskResults = append(taskResults, &result)
 	}
 	return taskResults
 }
@@ -576,6 +574,20 @@ func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	return &isBlocked, nil
 }
 
+func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+	isExecutionTask := t.IsPartOfDisplay()
+
+	return &isExecutionTask, nil
+}
+
 func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	taskBlocked, err := isTaskBlocked(ctx, at)
 	if err != nil {
@@ -583,6 +595,13 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	}
 	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
 	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
+	if err != nil {
+		return nil, err
+	}
+	if *isExecTask {
+		canRestart = false
+	}
 	return &canRestart, nil
 }
 
@@ -742,6 +761,20 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 	}
 	return h, http.StatusOK, nil
 
+}
+
+// UpdateHostPassword is a shared utility function to change the password on a windows host
+func UpdateHostPassword(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, pwd string, r *http.Request) (*host.Host, int, error) {
+	if !h.Distro.IsWindows() {
+		return nil, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts")
+	}
+	if !host.ValidateRDPPassword(pwd) {
+		return nil, http.StatusBadRequest, errors.New("Invalid password")
+	}
+	if err := cloud.SetHostRDPPassword(ctx, env, h, pwd); err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	return h, http.StatusOK, nil
 }
 
 func logError(ctx context.Context, err error, r *http.Request) {

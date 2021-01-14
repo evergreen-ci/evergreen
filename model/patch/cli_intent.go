@@ -21,7 +21,7 @@ type cliIntent struct {
 	DocumentID string `bson:"_id"`
 
 	// PatchFileID is the object id of the patch file created in gridfs
-	PatchFileID mgobson.ObjectId `bson:"patch_file_id"`
+	PatchFileID mgobson.ObjectId `bson:"patch_file_id,omitempty"`
 
 	// PatchContent is the patch as supplied by the client. It is saved
 	// separately from the patch intent
@@ -104,13 +104,16 @@ var (
 )
 
 func (c *cliIntent) Insert() error {
-	patchFileID := mgobson.NewObjectId()
-	if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
-		return err
+	if len(c.PatchContent) > 0 {
+		patchFileID := mgobson.NewObjectId()
+		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
+			return err
+		}
+
+		c.PatchContent = ""
+		c.PatchFileID = patchFileID
 	}
 
-	c.PatchContent = ""
-	c.PatchFileID = patchFileID
 	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
 	if err := db.Insert(IntentCollection, c); err != nil {
@@ -156,22 +159,22 @@ func (g *cliIntent) RequesterIdentity() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:    c.Description,
-		Author:         c.User,
-		Project:        c.ProjectID,
-		Githash:        c.BaseHash,
-		Status:         evergreen.PatchCreated,
-		BuildVariants:  c.BuildVariants,
-		Parameters:     c.Parameters,
-		Alias:          c.Alias,
-		TriggerAliases: c.TriggerAliases,
-		Tasks:          c.Tasks,
-		SyncAtEndOpts:  c.SyncAtEndOpts,
-		BackportOf:     c.BackportOf,
-		Patches:        []ModulePatch{},
-		GitInfo:        c.GitInfo,
+		Description:   c.Description,
+		Author:        c.User,
+		Project:       c.ProjectID,
+		Githash:       c.BaseHash,
+		Status:        evergreen.PatchCreated,
+		BuildVariants: c.BuildVariants,
+		Parameters:    c.Parameters,
+		Alias:         c.Alias,
+		Triggers:      TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:         c.Tasks,
+		SyncAtEndOpts: c.SyncAtEndOpts,
+		BackportOf:    c.BackportOf,
+		Patches:       []ModulePatch{},
+		GitInfo:       c.GitInfo,
 	}
-	if p.BackportOf.PatchID == "" { // the intent processor adds the patches if backporting by patch ID
+	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
 			ModulePatch{
 				ModuleName: c.Module,

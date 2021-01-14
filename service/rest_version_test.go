@@ -272,7 +272,6 @@ func TestGetVersionInfo(t *testing.T) {
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
-			RepoKind:            "github",
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
@@ -356,7 +355,6 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
-			RepoKind:            "github",
 			Identifier:          projectName,
 			Remote:              false,
 			RemotePath:          "",
@@ -447,7 +445,6 @@ func TestActivateVersion(t *testing.T) {
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
-			RepoKind:            "github",
 			Identifier:          projectName,
 			Remote:              false,
 			RemotePath:          "",
@@ -802,7 +799,6 @@ func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) 
 		So(jsonBody["owner_name"], ShouldEqual, v.Owner)
 		So(jsonBody["repo_name"], ShouldEqual, v.Repo)
 		So(jsonBody["branch_name"], ShouldEqual, v.Branch)
-		So(jsonBody["repo_kind"], ShouldEqual, v.RepoKind)
 		So(jsonBody["identifier"], ShouldEqual, v.Identifier)
 		So(jsonBody["remote"], ShouldEqual, v.Remote)
 		So(jsonBody["remote_path"], ShouldEqual, v.RemotePath)

@@ -45,15 +45,20 @@ Evergreen - Host {{.Host.Id}}
 
           <ul class="dropdown-menu" role="menu">
             <li><a tabindex="-1" href="#" ng-hide="readOnly" ng-click="openAdminModal('statusChange')">Update Status</a></li>
-            <li ng-class="{'admin-disabled': !canRestartJasper()}">
-              <a tabindex="-1" href="#" ng-hide="readOnly || (host.distro.bootstrap_settings.method === 'legacy-ssh')"
-                ng-click="canRestartJasper() && openAdminModal('restartJasper')">Restart Jasper</a>
+            <li ng-class="{'admin-disabled': !canReprovision()}">
+              <a tabindex="-1" href="#" ng-hide="readOnly || !canReprovision()"
+                ng-click="canReprovision() && openAdminModal('restartJasper')">Restart Jasper</a>
+            </li>
+            <li ng-class="{'admin-disabled': !canReprovision()}">
+              <a tabindex="-1" href="#" ng-hide="readOnly || !canReprovision()"
+                ng-click="canReprovision() && openAdminModal('reprovisionToNew')">Reprovision</a>
             </li>
           </ul>
         </div>
         <admin-modal>
           <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
           <admin-restart-jasper ng-if="adminOption === 'restartJasper'"></admin-restart-jasper>
+          <admin-reprovision-to-new ng-if="adminOption === 'reprovisionToNew'"></admin-reprovision-to-new>
         </admin-modal>
       </div>
     {{end}}

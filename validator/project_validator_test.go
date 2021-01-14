@@ -1686,7 +1686,7 @@ func TestCheckProjectSemantics(t *testing.T) {
 				Id: "project_test",
 			}
 
-			project, err := model.FindLastKnownGoodProject(projectRef.Id)
+			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
 			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
 		})
@@ -1714,7 +1714,6 @@ func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
 		Repo:        "repo",
 		Branch:      "branch",
 		DisplayName: "test",
-		RepoKind:    "github",
 		BatchTime:   10,
 	}
 }

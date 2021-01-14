@@ -260,7 +260,7 @@ func dispatchNotifications(ctx context.Context, notifications []notification.Not
 
 func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
 	switch n.Subscriber.Type {
-	case event.GithubPullRequestSubscriberType:
+	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		return !flags.GithubStatusAPIDisabled
 
 	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType:

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/units"
@@ -12,7 +13,6 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -26,6 +26,7 @@ const (
 	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
 	HostStatusWriteConfirm         = "Successfully updated host status"
 	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
+	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
@@ -60,7 +61,7 @@ func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Hos
 		return nil, nil, http.StatusInternalServerError, errors.New("unable to get user permissions")
 	}
 
-	return hosts, permissions, 0, nil
+	return hosts, permissions, http.StatusOK, nil
 }
 
 // ModifyHostsWithPermissions performs an update on each of the given hosts
@@ -68,7 +69,7 @@ func GetHostsAndUserPermissions(user *user.DBUser, hostIds []string) ([]host.Hos
 func ModifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permissions, modifyHost func(h *host.Host) (int, error)) (updated int, httpStatus int, err error) {
 	catcher := grip.NewBasicCatcher()
 
-	httpStatus = 0
+	httpStatus = http.StatusOK
 
 	for _, h := range hosts {
 		if perm[h.Distro.Id][evergreen.PermissionHosts] < evergreen.HostsEdit.Value {
@@ -108,7 +109,7 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 		if err := queue.Put(ctx, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
-		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), 0, nil
+		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), http.StatusOK, nil
 	}
 
 	err := h.SetStatus(newStatus, u.Id, notes)
@@ -116,19 +117,36 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 		return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 	}
 
-	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), 0, nil
+	unquarantinedAndNeedsReprovision := utility.StringSliceContains([]string{distro.BootstrapMethodSSH, distro.BootstrapMethodUserData}, h.Distro.BootstrapSettings.Method) &&
+		currentStatus == evergreen.HostQuarantined &&
+		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
+	if unquarantinedAndNeedsReprovision {
+		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+		}
+		return HostReprovisionConfirm, http.StatusOK, nil
+	}
+
+	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), http.StatusOK, nil
 }
 
 func GetRestartJasperCallback(username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
 		modifyErr := h.SetNeedsJasperRestart(username)
-		if adb.ResultsNotFound(modifyErr) {
-			return 0, nil
-		}
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}
-		return 0, nil
+		return http.StatusOK, nil
+	}
+}
+
+func GetReprovisionToNewCallback(username string) func(h *host.Host) (int, error) {
+	return func(h *host.Host) (int, error) {
+		modifyErr := h.SetNeedsReprovisionToNew(username)
+		if modifyErr != nil {
+			return http.StatusInternalServerError, modifyErr
+		}
+		return http.StatusOK, nil
 	}
 }
 
