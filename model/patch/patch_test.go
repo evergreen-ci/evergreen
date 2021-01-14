@@ -629,7 +629,7 @@ func TestMakeMergePatchPatches(t *testing.T) {
 				},
 			},
 		},
-		GitInfo: GitMetadata{
+		GitInfo: &GitMetadata{
 			Email:    "octocat@github.com",
 			Username: "octocat",
 		},
@@ -648,7 +648,7 @@ func TestMakeMergePatchPatches(t *testing.T) {
 func TestCanEnqueueToCommitQueue(t *testing.T) {
 	p := Patch{}
 	assert.False(t, p.CanEnqueueToCommitQueue())
-	p.GitInfo = GitMetadata{Username: "octocat", Email: "octocat@github.com"}
+	p.GitInfo = &GitMetadata{Username: "octocat", Email: "octocat@github.com"}
 	assert.True(t, p.CanEnqueueToCommitQueue())
 }
 

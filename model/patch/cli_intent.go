@@ -80,7 +80,7 @@ type cliIntent struct {
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
 
 	// GitInfo contains information about the author's git environment
-	GitInfo GitMetadata `bson:"git_info"`
+	GitInfo *GitMetadata `bson:"git_info"`
 }
 
 // BSON fields for the patches
@@ -193,7 +193,7 @@ type CLIIntentParams struct {
 	Description    string
 	Finalize       bool
 	BackportOf     BackportInfo
-	GitInfo        GitMetadata
+	GitInfo        *GitMetadata
 	Parameters     []Parameter
 	Variants       []string
 	Tasks          []string

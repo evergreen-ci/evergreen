@@ -129,8 +129,8 @@ type BackportInfo struct {
 }
 
 type GitMetadata struct {
-	Username   string `bson:"username,omitempty" json:"username,omitempty"`
-	Email      string `bson:"email,omitempty" json:"email,omitempty"`
+	Username   string `bson:"username" json:"username"`
+	Email      string `bson:"email" json:"email"`
 	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
 }
 
@@ -160,7 +160,7 @@ type Patch struct {
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
-	GitInfo         GitMetadata            `bson:"git_info"`
+	GitInfo         *GitMetadata           `bson:"git_info"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }
@@ -632,7 +632,7 @@ func (p *Patch) GetRequester() string {
 }
 
 func (p *Patch) CanEnqueueToCommitQueue() bool {
-	return p.GitInfo.Email != "" && p.GitInfo.Username != ""
+	return p.GitInfo != nil
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
@@ -728,13 +728,17 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 }
 
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
+	if existingPatch.GitInfo == nil {
+		return nil, errors.New("can't make merge patches with nil GitInfo")
+	}
+
 	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
 	for _, modulePatch := range existingPatch.Patches {
 		diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
-		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), existingPatch.GitInfo)
+		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't convert diff to mbox format")
 		}
