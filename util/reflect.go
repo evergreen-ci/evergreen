@@ -38,8 +38,10 @@ func IsFieldUndefined(v reflect.Value) bool {
 	default:
 		// this should never happen
 		grip.Error(message.Fields{
-			"message": "field has no valid type",
-			"value":   v,
+			"message":    "field has no valid type",
+			"value_type": v.Type(),
+			"value_kind": v.Kind(),
+			"value":      v.String(),
 		})
 		return false
 	}
