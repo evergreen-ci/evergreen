@@ -923,7 +923,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userCanModify: Boolean!
+  userCanModify: Boolean
 }
 
 type Note {
