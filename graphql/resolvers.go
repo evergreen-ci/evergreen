@@ -2489,11 +2489,24 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	return apiAnnotation, nil
 }
 
-func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      *obj.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: evergreen.AnnotationsModify.Value,
+	}
+	return authUser.HasPermission(permissions), nil
+
+}
+
+// to be removed
+func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (*bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+		return util.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
 	}
 	permissions := gimlet.PermissionOpts{
 		Resource:      t.Project,
@@ -2501,7 +2514,8 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 		Permission:    evergreen.PermissionAnnotations,
 		RequiredLevel: evergreen.AnnotationsModify.Value,
 	}
-	return authUser.HasPermission(permissions), nil
+	res := authUser.HasPermission(permissions)
+	return &res, nil
 
 }
 

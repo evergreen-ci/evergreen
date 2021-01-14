@@ -543,6 +543,7 @@ type ComplexityRoot struct {
 		BuildId             func(childComplexity int) int
 		BuildVariant        func(childComplexity int) int
 		CanAbort            func(childComplexity int) int
+		CanModifyAnnotation func(childComplexity int) int
 		CanRestart          func(childComplexity int) int
 		CanSchedule         func(childComplexity int) int
 		CanSetPriority      func(childComplexity int) int
@@ -760,7 +761,7 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
-	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
+	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (*bool, error)
 }
 type HostResolver interface {
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -864,6 +865,7 @@ type TaskResolver interface {
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
+	CanModifyAnnotation(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
@@ -3394,6 +3396,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanAbort(childComplexity), true
 
+	case "Task.canModifyAnnotation":
+		if e.complexity.Task.CanModifyAnnotation == nil {
+			break
+		}
+
+		return e.complexity.Task.CanModifyAnnotation(childComplexity), true
+
 	case "Task.canRestart":
 		if e.complexity.Task.CanRestart == nil {
 			break
@@ -5131,6 +5140,7 @@ type Task {
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
+  canModifyAnnotation: Boolean!
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
@@ -5435,7 +5445,7 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userCanModify: Boolean!
+  userCanModify: Boolean
 }
 
 type Note {
@@ -7187,14 +7197,11 @@ func (ec *executionContext) _Annotation_userCanModify(ctx context.Context, field
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -17563,6 +17570,40 @@ func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.Co
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_canModifyAnnotation(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanModifyAnnotation(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_canRestart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24337,9 +24378,6 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 					}
 				}()
 				res = ec._Annotation_userCanModify(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		default:
@@ -27199,6 +27237,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_canAbort(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "canModifyAnnotation":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canModifyAnnotation(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
