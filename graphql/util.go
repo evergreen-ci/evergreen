@@ -574,6 +574,20 @@ func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	return &isBlocked, nil
 }
 
+func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+	isExecutionTask := t.IsPartOfDisplay()
+
+	return &isExecutionTask, nil
+}
+
 func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	taskBlocked, err := isTaskBlocked(ctx, at)
 	if err != nil {
@@ -581,6 +595,13 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	}
 	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
 	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
+	if err != nil {
+		return nil, err
+	}
+	if *isExecTask {
+		canRestart = false
+	}
 	return &canRestart, nil
 }
 
