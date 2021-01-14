@@ -1267,13 +1267,16 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	isGithubCheck := false
 	if len(githubChecksAliases) > 0 {
 		var err error
-		isGithubCheck, err = githubChecksAliases.HasMatchingTask(project.FindProjectTask(buildVarTask.Name))
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error checking if task matches aliases",
-			"version": v.Id,
-			"task":    buildVarTask.Name,
-			"variant": buildVarTask.Variant,
-		}))
+		name, tags, ok := project.GetTaskNameAndTags(buildVarTask)
+		if ok {
+			isGithubCheck, err = githubChecksAliases.HasMatchingTask(name, tags)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error checking if task matches aliases",
+				"version": v.Id,
+				"task":    buildVarTask.Name,
+				"variant": buildVarTask.Variant,
+			}))
+		}
 	}
 
 	t := &task.Task{

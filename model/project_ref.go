@@ -724,6 +724,7 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
+			ProjectRefEnabledKey: true,
 			projectRefPeriodicBuildsKey: bson.M{
 				"$gt": bson.M{
 					"$size": 0,
