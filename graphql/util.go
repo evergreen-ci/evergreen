@@ -161,16 +161,15 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Errorf("error loading patch: %s", err), http.StatusInternalServerError, "", ""
 	}
 
-	// parameters cannot be set once the patch has been finalized
-	if parametersModel != nil && p.Version != "" {
-		return errors.Errorf("parameters cannot be set once the patch has been finalized: %s", err), http.StatusBadRequest, "", ""
-	}
-	var parameters []patch.Parameter
-	for _, param := range parametersModel {
-		parameters = append(parameters, param.ToService())
-	}
-	if err = p.SetParameters(parameters); err != nil {
-		return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+	// only modify parameters if the patch hasn't been finalized
+	if parametersModel != nil && p.Version == "" {
+		var parameters []patch.Parameter
+		for _, param := range parametersModel {
+			parameters = append(parameters, param.ToService())
+		}
+		if err = p.SetParameters(parameters); err != nil {
+			return errors.Errorf("error setting patch parameters: %s", err), http.StatusInternalServerError, "", ""
+		}
 	}
 
 	if p.IsCommitQueuePatch() {
@@ -415,21 +414,10 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func FilterTasksByBaseStatuses(taskResults []*TaskResult, baseStatuses []string, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
-	if baseTaskStatuses == nil {
-		return taskResults
-	}
-	tasksFilteredByBaseStatus := []*TaskResult{}
-	for _, taskResult := range taskResults {
-		if utility.StringSliceContains(baseStatuses, baseTaskStatuses[taskResult.BuildVariant][taskResult.DisplayName]) {
-			tasksFilteredByBaseStatus = append(tasksFilteredByBaseStatus, taskResult)
-		}
-	}
-	return tasksFilteredByBaseStatus
-}
-func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatuses) []*TaskResult {
+func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, t := range tasks {
+		baseStatus := t.BaseTask.Status
 		result := TaskResult{
 			ID:           t.Id,
 			DisplayName:  t.DisplayName,
@@ -438,10 +426,11 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task, baseTaskStatuses BaseTaskStatus
 			BuildVariant: t.BuildVariant,
 			Blocked:      t.Blocked(),
 			Aborted:      t.Aborted,
-		}
-		if baseTaskStatuses != nil && baseTaskStatuses[t.BuildVariant] != nil {
-			baseStatus := baseTaskStatuses[t.BuildVariant][t.DisplayName]
-			result.BaseStatus = &baseStatus
+			BaseStatus:   &baseStatus,
+			BaseTask: &BaseTaskResult{
+				ID:     t.BaseTask.Id,
+				Status: t.BaseTask.Status,
+			},
 		}
 		if len(t.ExecutionTasksFull) > 0 {
 			ets := []*restModel.APITask{}
@@ -585,6 +574,20 @@ func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	return &isBlocked, nil
 }
 
+func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+	isExecutionTask := t.IsPartOfDisplay()
+
+	return &isExecutionTask, nil
+}
+
 func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	taskBlocked, err := isTaskBlocked(ctx, at)
 	if err != nil {
@@ -592,6 +595,13 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	}
 	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
 	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
+	if err != nil {
+		return nil, err
+	}
+	if *isExecTask {
+		canRestart = false
+	}
 	return &canRestart, nil
 }
 

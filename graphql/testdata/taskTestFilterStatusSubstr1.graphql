@@ -6,6 +6,7 @@
     page: 0
     limit: 0
     testName: "do"
+    execution: 0
   ) {
     testResults {
       status

@@ -73,6 +73,8 @@ models:
         resolver: true
       project:
         resolver: true
+      canModifyAnnotation:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

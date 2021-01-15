@@ -46,7 +46,7 @@ func makeSpawnhostExpirationCheckJob() *spawnhostExpirationCheckJob {
 
 func NewSpawnhostExpirationCheckJob(ts string, h *host.Host) amboy.Job {
 	j := makeSpawnhostExpirationCheckJob()
-	j.SetID(fmt.Sprintf("%s.%s", spawnhostExpirationCheckName, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", spawnhostExpirationCheckName, h.Id, ts))
 	j.HostID = h.Id
 	return j
 }

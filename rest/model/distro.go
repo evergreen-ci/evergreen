@@ -76,6 +76,7 @@ type APIHostAllocatorSettings struct {
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
 	RoundingRule           *string     `json:"rounding_rule"`
+	FeedbackRule           *string     `json:"feedback_rule"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 }
 
@@ -100,6 +101,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	s.MaximumHosts = settings.MaximumHosts
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.RoundingRule = ToStringPtr(settings.RoundingRule)
+	s.FeedbackRule = ToStringPtr(settings.FeedbackRule)
 
 	return nil
 }
@@ -115,6 +117,7 @@ func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
 	settings.MaximumHosts = s.MaximumHosts
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.RoundingRule = FromStringPtr(s.RoundingRule)
+	settings.FeedbackRule = FromStringPtr(s.FeedbackRule)
 
 	return interface{}(settings), nil
 }

@@ -556,6 +556,26 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 	s.True(foundBuild)
 }
 
+func (s *PatchIntentUnitsSuite) TestGetModulePatch() {
+	s.Require().NoError(db.ClearGridCollections(patch.GridFSPrefix))
+	patchString := `diff --git a/test.txt b/test.txt
+index ca20f6c..224168e 100644
+--- a/test.txt
++++ b/test.txt
+@@ -15,1 +15,1 @@ func myFunc() {
+-  old line",
++  new line",
+
+`
+	s.Require().NoError(db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+
+	modulePatch := patch.ModulePatch{}
+	modulePatch.PatchSet.PatchFileId = "testPatch"
+	modulePatch, err := getModulePatch(modulePatch)
+	s.NotEmpty(modulePatch.PatchSet.Summary)
+	s.NoError(err)
+}
+
 func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	sourcePatch := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
