@@ -668,7 +668,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		if projectVars == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Errorf("no project variables for project '%s'"))
+				errors.Errorf("no project variables for project '%s'", responseRef.Identifier))
 			return
 		}
 		projectVars.Id = id
