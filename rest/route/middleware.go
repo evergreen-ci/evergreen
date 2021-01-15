@@ -592,6 +592,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)
 	}
+	projectID = projectRef.Id
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())

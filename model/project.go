@@ -1069,26 +1069,26 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
-func FindLatestVersionWithValidProject(identifier string) (*Version, *Project, error) {
+func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, error) {
 	const retryCount = 5
-	if identifier == "" {
-		return nil, nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLatestVersionWithValidProject"))
+	if projectId == "" {
+		return nil, nil, errors.WithStack(errors.New("cannot pass empty projectId to FindLatestVersionWithValidProject"))
 	}
 	project := &Project{
-		Identifier: identifier,
+		Identifier: projectId,
 	}
 
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
 	for i := 0; i < retryCount; i++ {
-		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(identifier, revisionOrderNum)
+		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
 			// database error, don't log critical
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = LoadProjectForVersion(lastGoodVersion, identifier, true)
+			project, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
 		if err == nil {
@@ -1097,7 +1097,7 @@ func FindLatestVersionWithValidProject(identifier string) (*Version, *Project, e
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "last known good version has malformed config",
 			"version": lastGoodVersion.Id,
-			"project": identifier,
+			"project": projectId,
 		}))
 	}
 
