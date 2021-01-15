@@ -1167,9 +1167,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var taskExecution int
 	taskExecution = dbTask.Execution
 	if execution != nil {
-		if *execution > dbTask.Execution {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %d for task with id %s", execution, taskID))
-		}
 		taskExecution = *execution
 	}
 
@@ -1364,9 +1361,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	var taskExecution int
 	taskExecution = t.Execution
 	if execution != nil {
-		if *execution > t.Execution {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find execution %d for task with id %s", execution, taskID))
-		}
 		taskExecution = *execution
 	}
 
