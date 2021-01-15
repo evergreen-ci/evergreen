@@ -1166,9 +1166,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	var taskExecution int
 	taskExecution = dbTask.Execution
-	if execution != nil {
-		taskExecution = *execution
-	}
 
 	baseTestStatusMap := make(map[string]string)
 	if baseTask != nil {
@@ -1345,7 +1342,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	}
 
 	// need to task to get project id
-	t, err := r.sc.FindTaskById(taskID)
+	t, err := task.FindByIdExecution(taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
@@ -1360,9 +1357,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 
 	var taskExecution int
 	taskExecution = t.Execution
-	if execution != nil {
-		taskExecution = *execution
-	}
 
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
