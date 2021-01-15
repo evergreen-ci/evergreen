@@ -757,6 +757,7 @@ type CommitQueueItem {
   version: String
   enqueueTime: Time
   patch: Patch
+  source: String
   modules: [Module!]
 }
 

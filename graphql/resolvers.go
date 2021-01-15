@@ -1503,7 +1503,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		commitQueue.Message = &project.CommitQueue.Message
 	}
 
-	if project.CommitQueue.PatchType == commitqueue.PRPatchType {
+	if project.CommitQueue.PatchType == commitqueue.SourcePullRequest {
 		if len(commitQueue.Queue) > 0 {
 			versionID := restModel.FromStringPtr(commitQueue.Queue[0].Version)
 			if versionID != "" {
@@ -1821,7 +1821,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
 
-	_, err = r.sc.EnqueueItem(restModel.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id}, false)
+	_, err = r.sc.EnqueueItem(restModel.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: restModel.ToStringPtr(commitqueue.SourceDiff)}, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
