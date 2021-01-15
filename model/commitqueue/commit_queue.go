@@ -17,6 +17,7 @@ const (
 	triggerComment    = "evergreen merge"
 	SourcePullRequest = "PR"
 	SourceCommandLine = "CLI"
+	SourceDiff        = "diff"
 )
 
 type Module struct {

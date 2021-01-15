@@ -562,7 +562,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceCommandLine})
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
 
 	return errors.Wrap(err, "can't enqueue item")
 }
@@ -777,7 +777,7 @@ func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]stri
 			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
 			continue
 		}
-		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceCommandLine}); err != nil {
+		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
