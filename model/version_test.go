@@ -139,7 +139,7 @@ func TestVersionExistsForCommitQueueIssue(t *testing.T) {
 					{Issue: "patch-2345"},
 				},
 			},
-			patchType: commitqueue.CLIPatchType,
+			patchType: commitqueue.SourceCommandLine,
 		},
 		"PRQueue": {
 			cq: &commitqueue.CommitQueue{
@@ -148,7 +148,7 @@ func TestVersionExistsForCommitQueueIssue(t *testing.T) {
 					{Issue: "2345"},
 				},
 			},
-			patchType: commitqueue.PRPatchType,
+			patchType: commitqueue.SourcePullRequest,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

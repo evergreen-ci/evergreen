@@ -614,7 +614,6 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
-	dbProjectRef.Id = h.projectName
 	dbProjectRef.Identifier = h.projectName
 
 	responder := gimlet.NewJSONResponse(struct{}{})

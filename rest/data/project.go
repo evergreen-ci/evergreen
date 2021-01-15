@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	mgobson "gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -392,7 +394,7 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 
 func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		if p.Id == projectId {
+		if p.Id == projectId || p.Identifier == projectId {
 			return &p, nil
 		}
 	}
@@ -403,6 +405,7 @@ func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.Projec
 }
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	projectRef.Id = mgobson.NewObjectId().Hex()
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{

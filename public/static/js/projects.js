@@ -286,8 +286,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         function (resp) {
           var data_put = resp.data;
           item = Object.assign({}, $scope.settingsFormData);
+          item.identifier = $scope.newProject.identifier;
           item.pr_testing_enabled = false;
           item.commit_queue.enabled = false;
+          item.git_tag_versions_enabled = false;
+          item.github_checks_enabled = false;
           item.enabled = false;
           item.subscriptions = _.filter($scope.subscriptions, function (d) {
             return !d.changed;
@@ -365,6 +368,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         });
 
         $scope.settingsFormData = {
+          id: $scope.projectRef.id,
           identifier: $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
           private_vars: $scope.privateVars,
@@ -542,19 +546,18 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.addGitTagTeam();
     }
 
-    $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).then(
+    $http.post('/project/' + $scope.settingsFormData.id, $scope.settingsFormData).then(
       function (resp) {
         var data = resp.data;
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
         $scope.settingsFormData.force_repotracker_run = false;
-        $scope.loadProject($scope.settingsFormData.identifier)
+        $scope.loadProject($scope.settingsFormData.id)
         $scope.isDirty = false;
       },
       function (resp) {
-        $scope.saveMessage = "Couldn't save project: " + resp.data.error;
-        console.log(resp.status);
+        $scope.saveMessage = "Couldn't save project: " + resp.data;
       });
   };
 
