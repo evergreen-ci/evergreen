@@ -1,8 +1,12 @@
 package graphql
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -25,8 +29,13 @@ const (
 	jiraIssueType = "Build Failure"
 )
 
+type FailingTaskData struct {
+	TaskId    string `bson:"task_id"`
+	Execution int    `bson:"execution"`
+}
+
 // bbFileTicket creates a JIRA ticket for a task with the given test failures.
-func BbFileTicket(context context.Context, taskId string) (bool, error) {
+func BbFileTicket(context context.Context, taskId string, execution int) (bool, error) {
 	taskNotFound := false
 	// Find information about the task
 	t, err := task.FindOne(task.ById(taskId))
@@ -42,6 +51,17 @@ func BbFileTicket(context context.Context, taskId string) (bool, error) {
 	settings := env.Settings()
 	queue := env.RemoteQueue()
 	buildBaronProjects := BbGetConfig(settings)
+
+	//if there is a custom web-hook, use that
+	annotationSettings := buildBaronProjects[t.Project].TaskAnnotationSettings
+	webHook := annotationSettings.FileTicketWebHook
+	if webHook.Endpoint != "" {
+		//todo: add execution
+		resp, err := fileTicketCustomHook(context, taskId, execution, webHook)
+		return resp.StatusCode == http.StatusOK, err
+	}
+
+	//if there is no custom web-hook, use the build baron
 	n, err := makeNotification(settings, buildBaronProjects[t.Project].TicketCreateProject, t)
 	if err != nil {
 		return taskNotFound, err
@@ -54,6 +74,42 @@ func BbFileTicket(context context.Context, taskId string) (bool, error) {
 	}
 
 	return taskNotFound, nil
+}
+
+// fileTicketCustomHook uses a custom hook to create a ticket for a task with the given test failures.
+func fileTicketCustomHook(context context.Context, taskId string, execution int, webHook evergreen.WebHook) (*http.Response, error) {
+
+	failingTaskData := FailingTaskData{
+		TaskId:    taskId,
+		Execution: execution,
+	}
+
+	req, err := http.NewRequest("POST", webHook.Endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(context)
+
+	jsonBytes, err := json.Marshal(failingTaskData)
+	if err != nil {
+		return nil, err
+	}
+	req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+
+	if len(webHook.Secret) > 0 {
+		req.Header.Add(evergreen.APIKeyHeader, webHook.Secret)
+	}
+
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, errors.New("empty response from server")
+	}
+	return resp, nil
 }
 
 func makeNotification(settings *evergreen.Settings, project string, t *task.Task) (*notification.Notification, error) {
