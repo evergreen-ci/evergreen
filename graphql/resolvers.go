@@ -2397,10 +2397,39 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 	return &baseTask.Status, nil
 }
 
-func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
+func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	if len(t.ExecutionTasks) == 0 {
+		return nil, nil
+	}
+	executionTasks := []*restModel.APITask{}
+	for _, execTask := range t.ExecutionTasks {
+		execT, err := task.FindByIdExecution(execTask, &t.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTask, err.Error()))
+		}
+		apiTask := &restModel.APITask{}
+		err = apiTask.BuildFromService(execT)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
+		}
+		executionTasks = append(executionTasks, apiTask)
+	}
+
+	return executionTasks, nil
+}
+
+func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
 
-	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskId, execString)
+	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskID, execString)
 	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
 		return &BuildBaron{
 			SearchReturnInfo:     searchReturnInfo,
@@ -2416,22 +2445,22 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	}, nil
 }
 
-func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskId string) (bool, error) {
-	taskNotFound, err := BbFileTicket(ctx, taskId)
+func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string) (bool, error) {
+	taskNotFound, err := BbFileTicket(ctx, taskID)
 	successful := true
 
 	if err != nil {
 		return !successful, InternalServerError.Send(ctx, err.Error())
 	}
 	if taskNotFound {
-		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskId))
+		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskID))
 	}
 
 	return successful, nil
 }
 
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := BbGetCreatedTicketsPointers(taskId)
+func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
+	createdTickets, err := BbGetCreatedTicketsPointers(taskID)
 	if err != nil {
 		return nil, err
 	}
