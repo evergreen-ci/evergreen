@@ -4,9 +4,14 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 )
 
+type APIBaseTaskInfo struct {
+	Id     *string `json:"id"`
+	Status *string `json:"status"`
+}
 type APIDisplayTask struct {
 	Name           *string  `json:"name"`
 	ExecutionTasks []string `json:"execution_tasks"`
@@ -17,6 +22,24 @@ type APIDBUser struct {
 	OnlyApi      bool     `json:"only_api"`
 	Roles        []string `json:"roles"`
 	EmailAddress *string  `json:"email_address"`
+}
+
+// APIBaseTaskInfoBuildFromService takes the task.BaseTaskInfo DB struct and
+// returns the REST struct *APIBaseTaskInfo with the corresponding fields populated
+func APIBaseTaskInfoBuildFromService(t task.BaseTaskInfo) *APIBaseTaskInfo {
+	m := APIBaseTaskInfo{}
+	m.Id = StringStringPtr(t.Id)
+	m.Status = StringStringPtr(t.Status)
+	return &m
+}
+
+// APIBaseTaskInfoToService takes the APIBaseTaskInfo REST struct and returns the DB struct
+// *task.BaseTaskInfo with the corresponding fields populated
+func APIBaseTaskInfoToService(m APIBaseTaskInfo) *task.BaseTaskInfo {
+	out := &task.BaseTaskInfo{}
+	out.Id = StringPtrString(m.Id)
+	out.Status = StringPtrString(m.Status)
+	return out
 }
 
 // APIDisplayTaskBuildFromService takes the patch.DisplayTask DB struct and

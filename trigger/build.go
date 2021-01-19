@@ -19,6 +19,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildStateChange, makeBuildTriggers)
+	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildGithubCheckFinished, makeBuildTriggers)
 }
 
 func (t *buildTriggers) taskStatusToDesc() string {
@@ -101,6 +102,7 @@ func makeBuildTriggers() eventHandler {
 	t := &buildTriggers{}
 	t.base.triggers = map[string]trigger{
 		event.TriggerOutcome:                t.buildOutcome,
+		event.TriggerGithubCheckOutcome:     t.buildGithubCheckOutcome,
 		event.TriggerFailure:                t.buildFailure,
 		event.TriggerSuccess:                t.buildSuccess,
 		event.TriggerExceedsDuration:        t.buildExceedsDuration,
@@ -123,10 +125,19 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.New("couldn't find build")
 	}
 
-	tasks, err := task.FindAll(task.ByBuildId(t.build.Id))
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch tasks")
+	var tasks []task.Task
+	if e.EventType == event.BuildGithubCheckFinished {
+		tasks, err = task.FindAll(task.ByBuildIdAndGithubChecks(t.build.Id).WithFields(task.StatusKey, task.DependsOnKey))
+		if err != nil {
+			return errors.Wrapf(err, "failed to fetch tasks for github check")
+		}
+	} else {
+		tasks, err = task.FindAll(task.ByBuildId(t.build.Id).WithFields(task.StatusKey, task.DependsOnKey))
+		if err != nil {
+			return errors.Wrap(err, "failed to fetch tasks")
+		}
 	}
+
 	taskMap := task.TaskSliceToMap(tasks)
 	for _, taskCache := range t.build.Tasks {
 		dbTask, ok := taskMap[taskCache.Id]
@@ -184,6 +195,13 @@ func (t *buildTriggers) Selectors() []event.Selector {
 		})
 	}
 	return selectors
+}
+
+func (t *buildTriggers) buildGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.GithubCheckStatus != evergreen.BuildSucceeded && t.data.GithubCheckStatus != evergreen.BuildFailed {
+		return nil, nil
+	}
+	return t.generate(sub, "")
 }
 
 func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Notification, error) {
@@ -276,13 +294,18 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
-	if (t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester) &&
-		t.build.Status == t.data.Status {
+
+	if t.data.GithubCheckStatus != "" {
+		data.PastTenseStatus = t.data.GithubCheckStatus
+	}
+	if t.build.Requester == evergreen.GithubPRRequester || t.build.Requester == evergreen.RepotrackerVersionRequester {
 		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
-		data.githubState = message.GithubStateFailure
 		data.githubDescription = t.taskStatusToDesc()
 	}
-	if t.data.Status == evergreen.BuildSucceeded {
+	if data.PastTenseStatus == evergreen.BuildFailed {
+		data.githubState = message.GithubStateFailure
+	}
+	if data.PastTenseStatus == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
 		data.PastTenseStatus = "succeeded"
 	}

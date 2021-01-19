@@ -1,7 +1,7 @@
 mutation {
-    moveAnnotationIssue(
-        annotationId: "my-annotation",
-        apiIssue: {url: "https://link.com", issueKey:"EVG-2121"}
-        isIssue: false
-    )
+  moveAnnotationIssue(
+    annotationId: "5e4aa5abe3c3317e35201abc"
+    apiIssue: { url: "https://link.com", issueKey: "EVG-2121" }
+    isIssue: false
+  )
 }

@@ -74,6 +74,7 @@ var (
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
+	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
@@ -83,6 +84,7 @@ var (
 	LogsKey                  = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey      = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey         = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	BaseTaskKey              = bsonutil.MustHaveTag(Task{}, "BaseTask")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -111,6 +113,8 @@ var (
 	DependencyUnattainableKey = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
 )
 
+var BaseTaskStatusKey = bsonutil.GetDottedKeyName(BaseTaskKey, StatusKey)
+
 // Queries
 
 // All returns all tasks.
@@ -133,55 +137,57 @@ var (
 
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
-			DisplayStatusKey: bson.M{
-				"$switch": bson.M{
-					"branches": []bson.M{
-						{"case": bson.M{
-							"$eq": []interface{}{"$" + AbortedKey, true},
-						},
-							"then": evergreen.TaskAborted,
-						},
-						{"case": bson.M{
-							"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
-						},
-							"then": evergreen.TaskSucceeded,
-						},
-						{"case": bson.M{
-							"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup},
-						},
-							"then": evergreen.TaskSetupFailed,
-						},
-						{"case": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-								{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
-								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
-							},
-						},
-							"then": evergreen.TaskSystemUnresponse,
-						},
-						{"case": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-								{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
-							},
-						},
-							"then": evergreen.TaskSystemTimedOut,
-						},
-						{"case": bson.M{
-							"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem},
-						},
-							"then": evergreen.TaskSystemFailed,
-						},
-						{"case": bson.M{
-							"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
-						},
-							"then": evergreen.TaskTimedOut,
-						},
+			DisplayStatusKey: displayStatusExpression,
+		},
+	}
+
+	displayStatusExpression = bson.M{
+		"$switch": bson.M{
+			"branches": []bson.M{
+				{"case": bson.M{
+					"$eq": []interface{}{"$" + AbortedKey, true},
+				},
+					"then": evergreen.TaskAborted,
+				},
+				{"case": bson.M{
+					"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
+				},
+					"then": evergreen.TaskSucceeded,
+				},
+				{"case": bson.M{
+					"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup},
+				},
+					"then": evergreen.TaskSetupFailed,
+				},
+				{"case": bson.M{
+					"$and": []bson.M{
+						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+						{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
 					},
-					"default": "$" + StatusKey,
+				},
+					"then": evergreen.TaskSystemUnresponse,
+				},
+				{"case": bson.M{
+					"$and": []bson.M{
+						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+						{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+					},
+				},
+					"then": evergreen.TaskSystemTimedOut,
+				},
+				{"case": bson.M{
+					"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem},
+				},
+					"then": evergreen.TaskSystemFailed,
+				},
+				{"case": bson.M{
+					"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
+				},
+					"then": evergreen.TaskTimedOut,
 				},
 			},
+			"default": "$" + StatusKey,
 		},
 	}
 )
@@ -223,6 +229,13 @@ func ByIds(ids []string) db.Q {
 func ByBuildId(buildId string) db.Q {
 	return db.Query(bson.M{
 		BuildIdKey: buildId,
+	})
+}
+
+func ByBuildIdAndGithubChecks(buildId string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey:       buildId,
+		IsGithubCheckKey: true,
 	})
 }
 

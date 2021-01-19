@@ -34,9 +34,10 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			project, err := FindLastKnownGoodProject(projRef.Id)
+			version, project, err := FindLatestVersionWithValidProject(projRef.Id)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
+			So(version, ShouldBeNil)
 		})
 
 		Convey("if the project file exists and is valid, the project spec within"+
@@ -58,7 +59,7 @@ func TestFindProject(t *testing.T) {
 				Branch: "fakebranch",
 			}
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
-			_, err := FindLastKnownGoodProject(p.Id)
+			_, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
@@ -86,10 +87,11 @@ func TestFindProject(t *testing.T) {
 			}
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
-			p, err := FindLastKnownGoodProject("project_test")
+			v, p, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
 			So(p, ShouldNotBeNil)
 			So(p.Owner, ShouldEqual, "fakeowner")
+			So(v.Id, ShouldEqual, "good_version")
 		})
 
 	})
@@ -674,7 +676,7 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
+	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]})
 	s.NoError(err)
 	s.Len(pairs, 11)
 	pairStrs := make([]string, len(pairs))
@@ -696,7 +698,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -705,7 +707,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[2].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -714,7 +716,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[3].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -723,7 +725,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex selects the union of both
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]})
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -732,20 +734,20 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Empty(displayTaskPairs)
 
 	// test for display tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]})
 	s.NoError(err)
 	s.Empty(pairs)
 	s.Require().Len(displayTaskPairs, 1)
 	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test for alias including a task belong to a disabled variant
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]})
 	s.NoError(err)
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
 	s.Empty(displayTaskPairs)
 
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[8].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]})
 	s.NoError(err)
 	s.Require().Len(pairs, 2)
 	s.Equal("bv_2/a_task_1", pairs[0].String())
@@ -945,20 +947,24 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
 	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
-	s.Len(patchDoc.BuildVariants, 1)
+	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
-	s.Len(patchDoc.Tasks, 1)
+	s.Len(patchDoc.Tasks, 3)
 	s.Contains(patchDoc.Tasks, "very_task")
-	s.Len(patchDoc.VariantsTasks, 1)
+	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+	s.Len(patchDoc.VariantsTasks, 2)
 	for _, vt := range patchDoc.VariantsTasks {
 		if vt.Variant == "bv_1" {
-			s.Len(vt.Tasks, 1)
+			s.Len(vt.Tasks, 2)
 			s.Contains(vt.Tasks, "very_task")
-			s.Empty(vt.DisplayTasks, 1)
-		} else {
-			s.T().Fail()
+			s.Contains(patchDoc.Tasks, "9001_task")
+			s.Len(vt.DisplayTasks, 1)
+		} else if vt.Variant == "bv_2" {
+			s.Len(vt.Tasks, 1)
+			s.Contains(vt.Tasks, "a_task_2")
+			s.Empty(vt.DisplayTasks)
 		}
-		s.Empty(vt.DisplayTasks)
 	}
 }
 
@@ -1546,6 +1552,97 @@ func checkEqualVTs(t *testing.T, expected []patch.VariantTasks, actual []patch.V
 			break
 		}
 		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
+	}
+}
+
+func TestExtractDisplayTasks(t *testing.T) {
+	p := Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv0",
+				DisplayTasks: []patch.DisplayTask{
+					{Name: "dt0", ExecTasks: []string{"dt0_et0", "dt0_et1"}},
+					{Name: "dt1", ExecTasks: []string{"dt1_et0", "dt1_et1"}},
+				},
+			}},
+	}
+
+	incomingPairs := TaskVariantPairs{
+		DisplayTasks: TVPairSet{{Variant: "bv0", TaskName: "dt0"}},
+		ExecTasks:    TVPairSet{{Variant: "bv0", TaskName: "dt1_et0"}},
+	}
+
+	resultingPairs := p.extractDisplayTasks(incomingPairs)
+
+	expectedDisplayTasks := []string{"dt0", "dt1"}
+	expectedExecTasks := []string{"dt0_et0", "dt0_et1", "dt1_et0", "dt1_et1"}
+	assert.Len(t, resultingPairs.DisplayTasks, len(expectedDisplayTasks))
+	assert.Len(t, resultingPairs.ExecTasks, len(expectedExecTasks))
+	for _, tvPair := range resultingPairs.DisplayTasks {
+		assert.Contains(t, expectedDisplayTasks, tvPair.TaskName)
+	}
+	for _, tvPair := range resultingPairs.ExecTasks {
+		assert.Contains(t, expectedExecTasks, tvPair.TaskName)
+	}
+}
+
+func TestVariantTasksForSelectors(t *testing.T) {
+	require.NoError(t, db.Clear(ProjectAliasCollection))
+	projectID := "mci"
+	alias := "alias"
+	patchAlias := ProjectAlias{
+		ProjectID: projectID,
+		Alias:     alias,
+		Variant:   "bv0",
+		Task:      "t0",
+	}
+	require.NoError(t, patchAlias.Upsert())
+
+	project := Project{
+		Identifier: projectID,
+		BuildVariants: []BuildVariant{
+			{
+				Name:         "bv0",
+				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
+				Tasks:        []BuildVariantTaskUnit{{Name: "t0"}, {Name: "t1"}},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: "t0"},
+			{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}},
+		},
+	}
+
+	for testName, test := range map[string]func(*testing.T){
+		"patch alias selector": func(t *testing.T) {
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: alias}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 1)
+			assert.Equal(t, vts[0].Tasks[0], "t0")
+		},
+		"selector with dependency": func(t *testing.T) {
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 2)
+			assert.Contains(t, vts[0].Tasks, "t0")
+			assert.Contains(t, vts[0].Tasks, "t1")
+		},
+		"selector with display task": func(t *testing.T) {
+			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
+			vts, err := project.VariantTasksForSelectors(definitions, "")
+			assert.NoError(t, err)
+			require.Len(t, vts, 1)
+			require.Len(t, vts[0].Tasks, 1)
+			assert.Contains(t, vts[0].Tasks, "t0")
+			require.Len(t, vts[0].DisplayTasks, 1)
+			assert.Equal(t, vts[0].DisplayTasks[0].Name, "dt0")
+		},
+	} {
+		t.Run(testName, test)
 	}
 }
 

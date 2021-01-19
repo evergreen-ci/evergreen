@@ -175,7 +175,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	proj, err := dbModel.FindLastKnownGoodProject(projRefId)
+	_, proj, err := dbModel.FindLatestVersionWithValidProject(projRefId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -342,6 +342,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 			if err = h.sc.EnablePRTesting(newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.project))
+			}
+		}
+
+		// verify enabling github checks is valid
+		if newProjectRef.GithubChecksEnabled {
+			var githubChecksAliasesDefined bool
+			githubChecksAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubChecksAlias)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
+			}
+			if !githubChecksAliasesDefined {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "cannot enable github checks without a version definition",
+				})
 			}
 		}
 
@@ -599,7 +614,6 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
-	dbProjectRef.Id = h.projectName
 	dbProjectRef.Identifier = h.projectName
 
 	responder := gimlet.NewJSONResponse(struct{}{})
@@ -1014,7 +1028,7 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding project '%s'", id))
 	}
-	p, err := dbModel.FindLastKnownGoodProject(id)
+	_, p, err := dbModel.FindLatestVersionWithValidProject(id)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error finding project config for project '%s'", id))

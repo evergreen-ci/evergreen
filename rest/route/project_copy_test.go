@@ -31,14 +31,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []model.ProjectRef{
 			{
-				Id:         "projectA",
+				Id:         "12345",
 				Identifier: "projectA",
 				Branch:     "abcd",
 				Enabled:    true,
 				Admins:     []string{"my-user"},
 			},
 			{
-				Id:         "projectB",
+				Id:         "23456",
 				Identifier: "projectB",
 				Branch:     "bcde",
 				Enabled:    true,
@@ -47,7 +47,7 @@ func (s *ProjectCopySuite) SetupSuite() {
 		},
 		CachedVars: []*model.ProjectVars{
 			{
-				Id:          "projectA",
+				Id:          "12345",
 				Vars:        map[string]string{"a": "1", "b": "2"},
 				PrivateVars: map[string]bool{"b": true},
 			},
@@ -94,7 +94,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
-	s.Equal("projectC", restmodel.FromStringPtr(newProject.Id))
+	s.NotEqual("projectC", restmodel.FromStringPtr(newProject.Id))
 	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
@@ -107,6 +107,10 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	res, err = s.route.sc.FindProjectById("projectA")
 	s.NoError(err)
 	s.NotNil(res)
+	vars, err := s.route.sc.FindProjectVarsById(restmodel.FromStringPtr(newProject.Id), false)
+	s.NoError(err)
+	s.Require().NotNil(vars)
+	s.Len(vars.Vars, 2)
 }
 
 type copyVariablesSuite struct {

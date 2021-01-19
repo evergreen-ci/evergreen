@@ -263,7 +263,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	p, err := h.sc.FindProjectById("nutsandgum")
 	s.NoError(err)
 	s.Require().NotNil(p)
-	s.Equal("nutsandgum", p.Id)
+	s.NotEqual("nutsandgum", p.Id)
 	s.Equal("nutsandgum", p.Identifier)
 }
 

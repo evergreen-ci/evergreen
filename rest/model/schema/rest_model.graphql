@@ -12,3 +12,8 @@ type DisplayTask {
   Name: String
   ExecutionTasks: [String!]! @aliases(db: ExecTasks)
 }
+
+type BaseTaskInfo {
+  Id: String
+  Status: String
+}

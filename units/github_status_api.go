@@ -35,14 +35,15 @@ const (
 
 const (
 	// GitHub intent processing errors
-	ProjectDisabled       = "project was disabled"
-	PatchingDisabled      = "patching was disabled"
-	PatchTaskSyncDisabled = "task sync was disabled for patches"
-	NoTasksOrVariants     = "no tasks/variants were configured"
-	NoSyncTasksOrVariants = "no tasks/variants were configured for sync"
-	GitHubInternalError   = "GitHub returned an error"
-	InvalidConfig         = "config file was invalid"
-	OtherErrors           = "Evergreen error"
+	ProjectDisabled        = "project was disabled"
+	PatchingDisabled       = "patching was disabled"
+	PatchTaskSyncDisabled  = "task sync was disabled for patches"
+	NoTasksOrVariants      = "no tasks/variants were configured"
+	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
+	GitHubInternalError    = "GitHub returned an error"
+	InvalidConfig          = "config file was invalid"
+	ProjectFailsValidation = "Project fails validation"
+	OtherErrors            = "Evergreen error"
 )
 
 func init() {

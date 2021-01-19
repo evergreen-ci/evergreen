@@ -286,8 +286,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         function (resp) {
           var data_put = resp.data;
           item = Object.assign({}, $scope.settingsFormData);
+          item.identifier = $scope.newProject.identifier;
           item.pr_testing_enabled = false;
           item.commit_queue.enabled = false;
+          item.git_tag_versions_enabled = false;
+          item.github_checks_enabled = false;
           item.enabled = false;
           item.subscriptions = _.filter($scope.subscriptions, function (d) {
             return !d.changed;
@@ -342,6 +345,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.restrictedVars = data.ProjectVars.restricted_vars || {};
         $scope.github_webhooks_enabled = data.github_webhooks_enabled;
+        $scope.githubChecksConflicts = data.github_checks_conflicting_refs || [];
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
         $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
@@ -364,6 +368,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         });
 
         $scope.settingsFormData = {
+          id: $scope.projectRef.id,
           identifier: $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
           private_vars: $scope.privateVars,
@@ -407,11 +412,16 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           periodic_builds: data.ProjectRef.periodic_builds,
         };
 
-        // Divide aliases into three categories (patch, github, and commit queue aliases)
+        // Divide aliases into categories
         $scope.settingsFormData.github_aliases = $scope.aliases.filter(
           function (d) {
             return d.alias === '__github';
           }
+        )
+        $scope.settingsFormData.github_checks_aliases = $scope.aliases.filter(
+            function (d) {
+              return d.alias === '__github_checks';
+            }
         )
         $scope.settingsFormData.commit_queue_aliases = $scope.aliases.filter(
           function (d) {
@@ -425,7 +435,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         )
         $scope.settingsFormData.patch_aliases = $scope.aliases.filter(
           function (d) {
-            return d.alias !== '__github' && d.alias !== '__commit_queue' && d.alias !== '__git_tag';
+            return d.alias !== '__github' && d.alias !== '__github_checks' && d.alias !== '__commit_queue' && d.alias !== '__git_tag';
           }
         )
 
@@ -508,6 +518,10 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.addGithubAlias();
     }
 
+    if ($scope.github_checks_alias) {
+      $scope.addGithubChecksAlias();
+    }
+
     if ($scope.commit_queue_alias) {
       $scope.addCommitQueueAlias();
     }
@@ -532,19 +546,18 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.addGitTagTeam();
     }
 
-    $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).then(
+    $http.post('/project/' + $scope.settingsFormData.id, $scope.settingsFormData).then(
       function (resp) {
         var data = resp.data;
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
         $scope.settingsFormData.force_repotracker_run = false;
-        $scope.loadProject($scope.settingsFormData.identifier)
+        $scope.loadProject($scope.settingsFormData.id)
         $scope.isDirty = false;
       },
       function (resp) {
-        $scope.saveMessage = "Couldn't save project: " + resp.data.error;
-        console.log(resp.status);
+        $scope.saveMessage = "Couldn't save project: " + resp.data;
       });
   };
 
@@ -576,6 +589,18 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     delete $scope.github_alias;
     $scope.invalidGitHubPatchDefinitionMessage = "";
   };
+
+  $scope.addGithubChecksAlias = function () {
+    if (!$scope.validPatchDefinition($scope.github_checks_alias)) {
+      $scope.invalidGithubPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
+      return
+    }
+    var item = Object.assign({}, $scope.github_checks_alias);
+    item.alias = "__github_checks";
+    $scope.settingsFormData.github_checks_aliases = $scope.settingsFormData.github_checks_aliases.concat([item]);
+    delete $scope.github_checks_alias;
+    $scope.invalidGitHubPatchDefinitionMessage = "";
+  }
 
   $scope.addCommitQueueAlias = function () {
     if (!$scope.validPatchDefinition($scope.commit_queue_alias)) {
@@ -636,6 +661,14 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.github_aliases[i]["_id"]])
     }
     $scope.settingsFormData.github_aliases.splice(i, 1);
+    $scope.isDirty = true;
+  };
+
+  $scope.removeGithubChecksAlias = function (i) {
+    if ($scope.settingsFormData.github_checks_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.github_checks_aliases[i]["_id"]])
+    }
+    $scope.settingsFormData.github_checks_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 

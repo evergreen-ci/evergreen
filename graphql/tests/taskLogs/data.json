@@ -7,7 +7,7 @@
   ],
   "project_ref": [
     {
-      "_id":  "curator",
+      "_id": "curator",
       "owner_name": "mongodb",
       "default_logger": "NOT BUILDLOGGER",
       "repo_name": "curator",
@@ -22,7 +22,9 @@
       "local_config": "",
       "deactivate_previous": true,
       "hidden": false,
-      "admins": ["sam.kleinman"],
+      "admins": [
+        "sam.kleinman"
+      ],
       "repotracker_error": null,
       "commit_queue": {
         "enabled": false,
@@ -42,13 +44,27 @@
   "tasks": [
     {
       "_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
-      "create_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "injest_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "dispatch_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "scheduled_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "start_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "finish_time": { "$date": "2018-01-11T00:01:36.796Z" },
-      "activated_time": { "$date": "2018-01-11T00:01:36.796Z" },
+      "create_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "injest_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "dispatch_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "scheduled_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "start_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "finish_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
+      "activated_time": {
+        "$date": "2018-01-11T00:01:36.796Z"
+      },
       "version": "version",
       "branch": "curator",
       "gitspec": "revise",
@@ -64,7 +80,7 @@
       "display_name": "display name",
       "host_id": "host",
       "restarts": 5,
-      "execution": 5,
+      "execution": 0,
       "order": 5,
       "r": "something",
       "status": "started",
@@ -75,7 +91,10 @@
         "timed_out": false
       },
       "display_only": true,
-      "execution_tasks": ["exec1", "exec2"],
+      "execution_tasks": [
+        "exec1",
+        "exec2"
+      ],
       "generate_task": false,
       "generated_by": "something"
     }
@@ -84,8 +103,12 @@
     {
       "_id": "5e5e7bb857e85a21ceb53cb0",
       "r_type": "TASK",
-      "processed_at": { "$date": "2020-03-03T15:46:29.961Z" },
-      "ts": { "$date": "2020-03-03T15:46:00.709Z" },
+      "processed_at": {
+        "$date": "2020-03-03T15:46:29.961Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:46:00.709Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_FINISHED",
       "data": {
@@ -96,25 +119,35 @@
     {
       "_id": "5e5e7b972fbabe2b8b27810b",
       "r_type": "TASK",
-      "processed_at": { "$date": "2015-10-21T23:29:01Z" },
-      "ts": { "$date": "2020-03-03T15:45:27.830Z" },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:27.830Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_STARTED",
       "data": {
-        "execution": 50,
+        "execution": 0,
         "h_id": "hostid",
         "jira": "an_issue",
         "pri": 55,
         "s": "success",
-        "ts": { "$date": "2020-03-03T15:45:27.830Z" },
+        "ts": {
+          "$date": "2020-03-03T15:45:27.830Z"
+        },
         "u_id": "super user"
       }
     },
     {
       "_id": "5e5e7b97e3c33148df4ea4e5",
       "r_type": "TASK",
-      "processed_at": { "$date": "2015-10-21T23:29:01Z" },
-      "ts": { "$date": "2020-03-03T15:45:27.543Z" },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:27.543Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_DISPATCHED",
       "data": {
@@ -125,37 +158,55 @@
     {
       "_id": "5e5e7b8c32f41743884c055c",
       "r_type": "TASK",
-      "processed_at": { "$date": "2015-10-21T23:29:01Z" },
-      "ts": { "$date": "2020-02-03T15:45:16.535Z" },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-02-03T15:45:16.535Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_SCHEDULED",
       "data": {
         "execution": 0,
-        "ts": { "$date": "2020-03-03T15:45:16.460Z" }
+        "ts": {
+          "$date": "2020-03-03T15:45:16.460Z"
+        }
       }
     },
     {
       "_id": "5e5e7b8c32f41747884c055c",
       "r_type": "TASK",
-      "processed_at": { "$date": "2015-10-21T23:29:01Z" },
-      "ts": { "$date": "2020-03-03T15:45:16.535Z" },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:16.535Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_SCHEDULED",
       "data": {
         "execution": 0,
-        "ts": { "$date": "2020-10-03T15:45:16.460Z" }
+        "ts": {
+          "$date": "2020-10-03T15:45:16.460Z"
+        }
       }
     },
     {
       "_id": "5e5e7b8c31f41743884c055c",
       "r_type": "TASK",
-      "processed_at": { "$date": "2015-10-21T23:29:01Z" },
-      "ts": { "$date": "2020-03-03T15:45:17.535Z" },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:17.535Z"
+      },
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_SCHEDULED",
       "data": {
-        "execution": 55,
-        "ts": { "$date": "2020-03-03T15:45:16.460Z" }
+        "execution": 0,
+        "ts": {
+          "$date": "2020-03-03T15:45:16.460Z"
+        }
       }
     }
   ],
@@ -163,36 +214,46 @@
     {
       "_id": "5debf0021e2d171b386bd19c",
       "t_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
-      "e": 5,
-      "ts": { "$date": "2019-12-07T18:31:29.814Z" },
+      "e": 0,
+      "ts": {
+        "$date": "2019-12-07T18:31:29.814Z"
+      },
       "c": 4,
       "m": [
         {
           "t": "S",
           "s": "I",
           "m": "    [javac]     protected void finalize() {",
-          "ts": { "$date": "2019-12-07T18:31:19.393Z" },
+          "ts": {
+            "$date": "2019-12-07T18:31:19.393Z"
+          },
           "v": 1
         },
         {
           "t": "E",
           "s": "I",
           "m": "    [javac]                    ^",
-          "ts": { "$date": "2019-12-07T18:31:19.393Z" },
+          "ts": {
+            "$date": "2019-12-07T18:31:19.393Z"
+          },
           "v": 1
         },
         {
           "t": "T",
           "s": "I",
           "m": "    [javac] 9 warnings",
-          "ts": { "$date": "2019-12-07T18:31:19.637Z" },
+          "ts": {
+            "$date": "2019-12-07T18:31:19.637Z"
+          },
           "v": 1
         },
         {
           "t": "T",
           "s": "I",
           "m": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
-          "ts": { "$date": "2019-12-07T18:31:19.637Z" },
+          "ts": {
+            "$date": "2019-12-07T18:31:19.637Z"
+          },
           "v": 1
         }
       ]

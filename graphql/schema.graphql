@@ -16,6 +16,7 @@ type Query {
     patchId: String!
     sortBy: TaskSortCategory = STATUS
     sortDir: SortDirection = ASC
+    sorts: [SortOrder!]
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
@@ -35,7 +36,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
   patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
@@ -299,6 +300,11 @@ input IssueLinkInput {
   issueKey: String!
 }
 
+input SortOrder {
+  Key: TaskSortCategory!
+  Direction: SortDirection!
+}
+
 type TaskQueueItem {
   id: ID!
   displayName: String!
@@ -511,9 +517,15 @@ type TaskResult {
   version: String!
   status: String!
   baseStatus: String
+  baseTask: BaseTaskResult
   buildVariant: String!
   blocked: Boolean!
   executionTasksFull: [Task!]
+}
+
+type BaseTaskResult {
+  id: ID!
+  status: String!
 }
 
 type PatchDuration {
@@ -618,6 +630,7 @@ type Task {
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
+  canModifyAnnotation: Boolean!
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
@@ -916,12 +929,13 @@ type JiraStatus {
 }
 
 type Annotation {
+  id: String!
   taskId: String!
   taskExecution: Int!
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
-  userCanModify: Boolean!
+  userCanModify: Boolean
 }
 
 type Note {

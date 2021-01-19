@@ -1,17 +1,20 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
@@ -45,25 +48,36 @@ func TestFindOneProjectRef(t *testing.T) {
 func TestFindMergedProjectRef(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection),
 		"Error clearing collection")
+
 	projectRef := &ProjectRef{
-		Owner:            "mongodb",
-		RepoRefId:        "mongodb_mci",
-		UseRepoSettings:  true,
-		Enabled:          true,
-		PatchingDisabled: false,
-		BatchTime:        10,
-		Id:               "ident",
-		Admins:           []string{"john.smith", "john.doe"},
+		Owner:                 "mongodb",
+		RepoRefId:             "mongodb_mci",
+		BatchTime:             10,
+		Id:                    "ident",
+		Admins:                []string{"john.smith", "john.doe"},
+		UseRepoSettings:       true,
+		Enabled:               false,
+		PatchingDisabled:      false,
+		RepotrackerDisabled:   true,
+		GitTagAuthorizedTeams: []string{},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{ChildProject: "a different branch"},
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	repoRef := &RepoRef{ProjectRef{
-		Id:                  "mongodb_mci",
-		Repo:                "mci",
-		Branch:              "master",
-		Enabled:             false,
-		PatchingDisabled:    true,
-		SpawnHostScriptPath: "my-path",
-		Admins:              []string{"john.liu"},
+		Id:                    "mongodb_mci",
+		Repo:                  "mci",
+		Branch:                "master",
+		SpawnHostScriptPath:   "my-path",
+		Admins:                []string{"john.liu"},
+		TaskSync:              TaskSyncOptions{ConfigEnabled: true},
+		Enabled:               true,
+		PatchingDisabled:      true,
+		GitTagAuthorizedTeams: []string{"my team"},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{Alias: "global patch trigger"},
+		},
 	}}
 	assert.NoError(t, repoRef.Insert())
 
@@ -71,14 +85,21 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
-	assert.Len(t, mergedProject.Admins, 2)
+	require.Len(t, mergedProject.Admins, 2)
 	assert.Contains(t, mergedProject.Admins, "john.smith")
 	assert.Contains(t, mergedProject.Admins, "john.doe")
 	assert.NotContains(t, mergedProject.Admins, "john.liu")
 	assert.False(t, mergedProject.Enabled)
 	assert.True(t, mergedProject.PatchingDisabled)
-	assert.False(t, mergedProject.RepotrackerDisabled)
+	assert.True(t, mergedProject.UseRepoSettings)
+	assert.True(t, mergedProject.RepotrackerDisabled)
+	assert.False(t, mergedProject.GithubChecksEnabled)
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
+	assert.True(t, mergedProject.TaskSync.ConfigEnabled)
+	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 1)
+	require.Len(t, mergedProject.PatchTriggerAliases, 1)
+	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "a different branch", mergedProject.PatchTriggerAliases[0].ChildProject)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -466,6 +487,19 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	}
 }
 
+func TestGetPatchTriggerAlias(t *testing.T) {
+	projRef := ProjectRef{
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{{Alias: "a0"}},
+	}
+
+	alias, found := projRef.GetPatchTriggerAlias("a0")
+	assert.True(t, found)
+	assert.Equal(t, "a0", alias.Alias)
+
+	alias, found = projRef.GetPatchTriggerAlias("a1")
+	assert.False(t, found)
+}
+
 func TestFindDownstreamProjects(t *testing.T) {
 	require.NoError(t, db.Clear(ProjectRefCollection))
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
@@ -500,9 +534,11 @@ func TestAddPermissions(t *testing.T) {
 	}
 	assert.NoError(u.Insert())
 	p := ProjectRef{
-		Id: "myProject",
+		Identifier: "myProject",
 	}
 	assert.NoError(p.Add(&u))
+	assert.NotEmpty(p.Id)
+	assert.True(mgobson.IsObjectIdHex(p.Id))
 
 	rm := evergreen.GetEnvironment().RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -518,7 +554,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotNil(role)
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
-	assert.Contains(dbUser.Roles(), "admin_project_myProject")
+	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
 
 func TestUpdateAdminRoles(t *testing.T) {

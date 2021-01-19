@@ -5,6 +5,7 @@
     sortDirection: ASC
     page: 1
     limit: 2
+    execution: 0
   ) {
     testResults {
       testFile
