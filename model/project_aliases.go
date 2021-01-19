@@ -241,16 +241,13 @@ func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []str
 }
 
 // HasMatchingTask assumes that the aliases given already match the preferred variant.
-func (a ProjectAliases) HasMatchingTask(t *ProjectTask) (bool, error) {
-	if t == nil {
-		return false, errors.New("no task found")
-	}
+func (a ProjectAliases) HasMatchingTask(taskName string, taskTags []string) (bool, error) {
 	for _, alias := range a {
 		taskRegex, err := regexp.Compile(alias.Task)
 		if err != nil {
 			return false, errors.Wrapf(err, "unable to compile regex %s", taskRegex)
 		}
-		if isValidRegexOrTag(t.Name, alias.Task, t.Tags, alias.TaskTags, taskRegex) {
+		if isValidRegexOrTag(taskName, alias.Task, taskTags, alias.TaskTags, taskRegex) {
 			return true, nil
 		}
 	}
