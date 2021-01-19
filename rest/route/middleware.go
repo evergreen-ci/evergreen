@@ -402,11 +402,11 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
-	item, ok := vars["item"]
+	itemId, ok := vars["item"]
 	if !ok {
-		item, ok = vars["patch_id"]
+		itemId, ok = vars["patch_id"]
 	}
-	if !ok || item == "" {
+	if !ok || itemId == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "No item provided",
@@ -414,8 +414,30 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if projRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
-		patch, err := m.sc.FindPatchById(item)
+	cq, err := commitqueue.FindOneId(projRef.Id)
+	if err != nil || cq == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "No commit queue for project found",
+		}))
+		return
+	}
+	var entry *commitqueue.CommitQueueItem
+	for _, item := range cq.Queue {
+		if item.Issue == itemId {
+			entry = &item
+		}
+	}
+	if entry == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "Item not found in queue",
+		}))
+		return
+	}
+
+	if entry.Source == commitqueue.SourceCommandLine {
+		patch, err := m.sc.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
@@ -427,10 +449,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
-	}
-
-	if projRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
-		itemInt, err := strconv.Atoi(item)
+	} else if entry.Source == commitqueue.SourcePullRequest {
+		itemInt, err := strconv.Atoi(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -459,6 +479,12 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
+	} else {
+		grip.Error(message.Fields{
+			"message": "commit queue entry has unknown source",
+			"entry":   entry,
+			"project": projRef.Identifier,
+		})
 	}
 
 	next(rw, r)

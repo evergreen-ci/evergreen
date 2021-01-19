@@ -95,8 +95,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 func (s *CommitQueueSuite) TestDeleteItem() {
 	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
 		{
-			Id:          "mci",
-			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.SourcePullRequest},
+			Id: "mci",
 		},
 	}
 
@@ -118,7 +117,6 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	// Valid delete
 	route.item = "1"
 	response := route.Run(ctx)
-	s.Equal(1, env.LocalQueue().Stats(ctx).Total)
 	s.Equal(204, response.Status())
 
 	// Already deleted

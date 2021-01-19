@@ -123,7 +123,7 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 	assert.Equal(v2.Id, mostRecent.Id)
 }
 
-func TestVersionExistsForCommitQueueIssue(t *testing.T) {
+func TestGetVersionForCommitQueueItem(t *testing.T) {
 	assert.NoError(t, db.Clear(VersionCollection))
 	v1 := Version{Id: "version-1234"}
 	assert.NoError(t, v1.Insert())
@@ -135,7 +135,7 @@ func TestVersionExistsForCommitQueueIssue(t *testing.T) {
 		"CLIQueue": {
 			cq: &commitqueue.CommitQueue{
 				Queue: []commitqueue.CommitQueueItem{
-					{Issue: "version-1234"},
+					{Issue: "version-1234", Version: "version-1234"},
 					{Issue: "patch-2345"},
 				},
 			},
@@ -152,13 +152,13 @@ func TestVersionExistsForCommitQueueIssue(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			exists, err := VersionExistsForCommitQueueItem(testCase.cq, testCase.cq.Queue[0].Issue, testCase.patchType)
+			version, err := GetVersionForCommitQueueItem(testCase.cq, testCase.cq.Queue[0].Issue)
 			assert.NoError(t, err)
-			assert.True(t, exists)
+			assert.NotNil(t, version)
 
-			exists, err = VersionExistsForCommitQueueItem(testCase.cq, testCase.cq.Queue[1].Issue, testCase.patchType)
+			version, err = GetVersionForCommitQueueItem(testCase.cq, testCase.cq.Queue[1].Issue)
 			assert.NoError(t, err)
-			assert.False(t, exists)
+			assert.Nil(t, version)
 		})
 	}
 }

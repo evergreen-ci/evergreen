@@ -177,12 +177,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
-		// if it's a SourceCommandLine, check if the patch is done, and if it is, dequeue.
+		// check if the patch is done, and if it is, dequeue.
 		// It's okay if this gets to it before the notification does, since that will
 		// check if the item is still on the queue before removing it.
-		if projectRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
-			j.TryUnstick(cq)
-		}
+		j.TryUnstick(cq)
 		return
 	}
 	if err = cq.SetProcessing(true); err != nil {
@@ -211,10 +209,17 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// create a version with the item and subscribe to its completion
-	if projectRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
+	if nextItem.Source == commitqueue.SourcePullRequest {
 		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
-	} else if projectRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
+	} else if nextItem.Source == commitqueue.SourceCommandLine {
 		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
+	} else {
+		grip.Error(message.Fields{
+			"message": "commit queue entry has unknown source",
+			"entry":   nextItem,
+			"project": projectRef.Identifier,
+			"job_id":  j.ID(),
+		})
 	}
 
 	grip.Info(message.Fields{

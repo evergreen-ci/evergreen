@@ -41,8 +41,7 @@ func (s *CommitQueueSuite) SetupTest() {
 		Enabled:          true,
 		PatchingDisabled: false,
 		CommitQueue: model.CommitQueueParams{
-			Enabled:   true,
-			PatchType: commitqueue.SourceCommandLine,
+			Enabled: true,
 		},
 	}
 	s.Require().NoError(s.projectRef.Insert())
@@ -100,12 +99,12 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.NoError(s.queue.SetProcessing(true))
 
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
-	s.NoError(err)
-	s.False(found)
+	s.Error(err)
+	s.Nil(found)
 
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
-	s.True(found)
+	s.NotNil(found)
 	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)
@@ -296,11 +295,11 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
 	s.NoError(err)
-	s.False(found)
+	s.Nil(found)
 
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
-	s.True(found)
+	s.NotNil(found)
 	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToStringPtr("2"), cq.Queue[0].Issue)

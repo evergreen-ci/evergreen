@@ -24,7 +24,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -809,53 +808,25 @@ func TestRetryCommitQueueItems(t *testing.T) {
 	}
 
 	for name, test := range map[string]func(*testing.T){
-		"PRCommitQueueItems": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourcePullRequest
-			assert.NoError(t, projectRef.Insert())
-
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
-			assert.NoError(t, err)
-			assert.Len(t, restarted, 1)
-			assert.Len(t, notRestarted, 0)
-
-			cq, err := commitqueue.FindOneId(projectRef.Id)
-			assert.NoError(t, err)
-			assert.NotNil(t, cq)
-
-			assert.Equal(t, 0, cq.FindItem("123"))
-			assert.Len(t, cq.Queue[0].Modules, 1)
-			assert.Equal(t, "name", cq.Queue[0].Modules[0].Module)
-			assert.Equal(t, "456", cq.Queue[0].Modules[0].Issue)
-
-		},
-		"CLICommitQueueItems": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourceCommandLine
+		"StartedInRange": func(*testing.T) {
 			assert.NoError(t, projectRef.Insert())
 
 			u := user.DBUser{Id: "me", PatchNumber: 12}
 			assert.NoError(t, u.Insert())
 
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
+			// this should just restart the patch with patch #=1
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, opts)
 			assert.NoError(t, err)
 			assert.Len(t, restarted, 1)
 			assert.Len(t, notRestarted, 0)
-
-			all, err := patch.Count(db.Query(bson.M{}))
-			assert.NoError(t, err)
-			assert.Equal(t, 5, all)
 
 			cq, err := commitqueue.FindOneId(projectRef.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, cq)
 			require.Len(t, cq.Queue, 1)
-
-			newPatch, err := patch.FindOne(db.Query(bson.M{patch.NumberKey: u.PatchNumber + 1}))
-			assert.NoError(t, err)
-			require.NotNil(t, newPatch)
-			assert.Equal(t, 0, cq.FindItem(newPatch.Id.Hex()))
+			assert.Equal(t, "123", cq.Queue[0].Issue)
 		},
 		"UnstartedPatch": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourcePullRequest
 			assert.NoError(t, projectRef.Insert())
 
 			// not started but terminated within time range
@@ -872,7 +843,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				},
 			}
 			assert.NoError(t, p.Insert())
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, opts)
 			assert.NoError(t, err)
 			assert.Len(t, restarted, 2)
 			assert.Len(t, notRestarted, 0)

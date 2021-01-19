@@ -111,14 +111,15 @@ func (q *CommitQueue) Next() (CommitQueueItem, bool) {
 	return q.Queue[0], true
 }
 
-func (q *CommitQueue) Remove(issue string) (bool, error) {
+func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
-		return false, nil
+		return nil, nil
 	}
+	item := q.Queue[itemIndex]
 
 	if err := remove(q.ProjectID, issue); err != nil {
-		return false, errors.Wrap(err, "can't remove item")
+		return nil, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
@@ -126,10 +127,10 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 	// clearing the front of the queue
 	if itemIndex == 0 {
 		if err := q.SetProcessing(false); err != nil {
-			return false, errors.Wrap(err, "can't set processing to false")
+			return nil, errors.Wrap(err, "can't set processing to false")
 		}
 	}
-	return true, nil
+	return &item, nil
 }
 
 func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
@@ -170,57 +171,57 @@ func ClearAllCommitQueues() (int, error) {
 	return clearedCount, nil
 }
 
-func RemoveCommitQueueItemForVersion(projectId, patchType, version string, user string) (bool, error) {
+func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*CommitQueueItem, error) {
 	cq, err := FindOneId(projectId)
 	if err != nil {
-		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
+		return nil, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
 	}
 	if cq == nil {
-		return false, errors.Errorf("no commit queue found for '%s'", projectId)
+		return nil, errors.Errorf("no commit queue found for '%s'", projectId)
 	}
 
-	issue := version
-	if patchType == SourcePullRequest {
-		head, valid := cq.Next()
-		// version is populated for PR items at the top of the queue only,
-		// so if the version for the item at the top of the queue doesn't match
-		// then the version is not here
-		if !valid || head.Version != version {
-			return false, nil
+	foundVersion := false
+	issue := ""
+	for _, item := range cq.Queue {
+		if item.Version == version {
+			foundVersion = true
+			issue = item.Issue
 		}
-		issue = head.Issue
+	}
+	if !foundVersion {
+		return nil, nil
 	}
 
-	return cq.RemoveItemAndPreventMerge(issue, patchType, true, user)
+	return cq.RemoveItemAndPreventMerge(issue, true, user)
 }
 
-func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versionExists bool, user string) (bool, error) {
+func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists bool, user string) (*CommitQueueItem, error) {
 
 	head, valid := cq.Next()
 	if !valid {
-		return false, nil
+		return nil, nil
 	}
 	removed, err := cq.Remove(issue)
 	if err != nil {
 		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", issue, cq.ProjectID)
 	}
 
-	if !removed || head.Issue != issue {
-		return removed, nil
+	if removed == nil || head.Issue != issue {
+		return nil, nil
 	}
 
-	return removed, errors.Wrapf(preventMergeForItem(patchType, versionExists, head, user),
+	return removed, errors.Wrapf(preventMergeForItem(versionExists, head, user),
 		"can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
 }
 
-func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem, user string) error {
-	if patchType == SourcePullRequest && item.Version != "" {
+func preventMergeForItem(versionExists bool, item CommitQueueItem, user string) error {
+	if item.Source == SourcePullRequest && item.Version != "" {
 		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
 		}
 	}
 
-	if patchType == SourceCommandLine && versionExists {
+	if item.Source == SourceCommandLine && versionExists {
 		if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
 		}
