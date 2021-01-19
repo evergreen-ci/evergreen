@@ -894,13 +894,22 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			for _, t := range buildvariant.Tasks {
 				var match bool
-				match, err = aliasesMatchingVariant.HasMatchingTask(projectInfo.Project.FindProjectTask(t.Name))
+				name, tags, ok := projectInfo.Project.GetTaskNameAndTags(t)
+				if !ok {
+					grip.Debug(message.Fields{
+						"message": "task doesn't exist in project",
+						"project": projectInfo.Project.Identifier,
+						"task":    t,
+						"version": v.Id,
+					})
+				}
+				match, err = aliasesMatchingVariant.HasMatchingTask(name, tags)
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
-						"message": "error finding tasks with alias filter",
-						"task":    t.Name,
-						"project": projectInfo.Project.Identifier,
-						"aliases": aliases,
+						"message":                  "error finding tasks with alias filter",
+						"task":                     t.Name,
+						"project":                  projectInfo.Project.Identifier,
+						"aliases_matching_variant": aliasesMatchingVariant,
 					}))
 					continue
 				}
