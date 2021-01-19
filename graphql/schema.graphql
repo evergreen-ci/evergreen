@@ -636,6 +636,7 @@ type Task {
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
+  canSync: Boolean!
   canUnschedule: Boolean!
   createTime: Time
   details: TaskEndDetail

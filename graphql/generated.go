@@ -549,6 +549,7 @@ type ComplexityRoot struct {
 		CanRestart          func(childComplexity int) int
 		CanSchedule         func(childComplexity int) int
 		CanSetPriority      func(childComplexity int) int
+		CanSync             func(childComplexity int) int
 		CanUnschedule       func(childComplexity int) int
 		CreateTime          func(childComplexity int) int
 		Details             func(childComplexity int) int
@@ -871,6 +872,7 @@ type TaskResolver interface {
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
+
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -3442,6 +3444,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanSetPriority(childComplexity), true
 
+	case "Task.canSync":
+		if e.complexity.Task.CanSync == nil {
+			break
+		}
+
+		return e.complexity.Task.CanSync(childComplexity), true
+
 	case "Task.canUnschedule":
 		if e.complexity.Task.CanUnschedule == nil {
 			break
@@ -5171,6 +5180,7 @@ type Task {
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
+  canSync: Boolean!
   canUnschedule: Boolean!
   createTime: Time
   details: TaskEndDetail
@@ -17801,6 +17811,40 @@ func (ec *executionContext) _Task_canSetPriority(ctx context.Context, field grap
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_canSync(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CanSync, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_canUnschedule(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27443,6 +27487,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		case "canSync":
+			out.Values[i] = ec._Task_canSync(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "canUnschedule":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
