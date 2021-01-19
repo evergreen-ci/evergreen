@@ -177,10 +177,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project_id":         cq.ProjectID,
 			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
 		})
-		// if it's a SourceCommandLine, check if the patch is done, and if it is, dequeue.
+		// if it's a CLIPatchType, check if the patch is done, and if it is, dequeue.
 		// It's okay if this gets to it before the notification does, since that will
 		// check if the item is still on the queue before removing it.
-		if projectRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
+		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 			j.TryUnstick(cq)
 		}
 		return
@@ -211,9 +211,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// create a version with the item and subscribe to its completion
-	if nextItem.Source == commitqueue.SourcePullRequest {
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
-	} else if nextItem.Source == commitqueue.SourceCommandLine {
+	}
+	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
 	}
 

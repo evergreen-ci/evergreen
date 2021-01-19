@@ -562,7 +562,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex()})
 
 	return errors.Wrap(err, "can't enqueue item")
 }
@@ -659,11 +659,11 @@ func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptio
 		}
 		return toBeRequeued, nil, nil
 	}
-	if patchType == commitqueue.SourcePullRequest {
+	if patchType == commitqueue.PRPatchType {
 		restarted, notRestarted := restartPRItems(patches, cq)
 		return restarted, notRestarted, nil
 	}
-	if patchType == commitqueue.SourceCommandLine {
+	if patchType == commitqueue.CLIPatchType {
 		restarted, notRestarted := restartCLIItems(patches, cq)
 		return restarted, notRestarted, nil
 	}
@@ -688,13 +688,12 @@ func restartPRItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]strin
 		item := commitqueue.CommitQueueItem{
 			Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
 			Modules: modules,
-			Source:  commitqueue.SourcePullRequest,
 		}
 		if _, err := cq.Enqueue(item); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourcePullRequest,
+				"commit_queue_type": commitqueue.PRPatchType,
 				"item":              item.Issue,
 				"message":           "error enqueuing item",
 				"operation":         "restart failed commit queue versions",
@@ -716,7 +715,7 @@ func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]stri
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourceCommandLine,
+				"commit_queue_type": commitqueue.CLIPatchType,
 				"user":              p.Author,
 				"message":           "error finding user patch",
 				"operation":         "restart failed commit queue versions",
@@ -728,7 +727,7 @@ func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]stri
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourceCommandLine,
+				"commit_queue_type": commitqueue.CLIPatchType,
 				"user":              p.Author,
 				"message":           "user for patch not found",
 				"operation":         "restart failed commit queue versions",
@@ -741,7 +740,7 @@ func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]stri
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourceCommandLine,
+				"commit_queue_type": commitqueue.CLIPatchType,
 				"user":              p.Author,
 				"message":           "error computing patch number",
 				"operation":         "restart failed commit queue versions",
@@ -770,18 +769,18 @@ func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]stri
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourceCommandLine,
+				"commit_queue_type": commitqueue.CLIPatchType,
 				"message":           "error inserting new patch",
 				"operation":         "restart failed commit queue versions",
 			}))
 			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
 			continue
 		}
-		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
+		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex()}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":             p.Id,
 				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.SourceCommandLine,
+				"commit_queue_type": commitqueue.CLIPatchType,
 				"message":           "error enqueueing item",
 				"operation":         "restart failed commit queue versions",
 			}))

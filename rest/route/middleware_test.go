@@ -239,7 +239,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		Repo:    "evergreen",
 		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
-			PatchType: commitqueue.SourcePullRequest,
+			PatchType: commitqueue.PRPatchType,
 			Enabled:   true,
 		},
 	}
@@ -283,7 +283,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Repo:    "evergreen",
 		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
-			PatchType: commitqueue.SourceCommandLine,
+			PatchType: commitqueue.CLIPatchType,
 			Enabled:   true,
 		},
 	}
