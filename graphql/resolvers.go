@@ -414,7 +414,6 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		KeyName:              spawnHostInput.PublicKey.Key,
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
 		NoExpiration:         spawnHostInput.NoExpiration,
-		TaskSync:             util.IsPtrSetToTrue(spawnHostInput.TaskSync),
 	}
 	if spawnHostInput.SetUpScript != nil {
 		options.SetupScript = *spawnHostInput.SetUpScript
@@ -440,7 +439,12 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
-
+	if util.IsPtrSetToTrue(spawnHostInput.TaskSync) {
+		if spawnHostInput.TaskID == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
+		}
+		options.TaskSync = *spawnHostInput.UseProjectSetupScript
+	}
 	hc := &data.DBConnector{}
 
 	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
