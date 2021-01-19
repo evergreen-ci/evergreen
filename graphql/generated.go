@@ -5160,7 +5160,7 @@ type Task {
   displayOnly: Boolean
   distroId: String!
   estimatedStart: Duration
-  execution: Int
+  execution: Int!
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
@@ -18027,11 +18027,14 @@ func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_executionTasks(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -27376,6 +27379,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "executionTasks":
 			out.Values[i] = ec._Task_executionTasks(ctx, field, obj)
 		case "executionTasksFull":
