@@ -354,6 +354,22 @@
       }
     },
     {
+      "query_file": "execution-tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "display_task",
+            "executionTasksFull": [
+              {
+                "id": "execution_task",
+                "status": "success"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "generate.graphql",
       "result": {
         "data": {
