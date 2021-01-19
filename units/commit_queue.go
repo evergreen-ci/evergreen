@@ -211,9 +211,9 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// create a version with the item and subscribe to its completion
-	if nextItem.Source == commitqueue.SourcePullRequest {
+	if projectRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
 		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
-	} else if nextItem.Source == commitqueue.SourceCommandLine {
+	} else if projectRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
 		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
 	}
 
