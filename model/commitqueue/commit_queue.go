@@ -14,10 +14,9 @@ import (
 )
 
 const (
-	triggerComment    = "evergreen merge"
-	SourcePullRequest = "PR"
-	SourceCommandLine = "CLI"
-	SourceDiff        = "diff"
+	triggerComment = "evergreen merge"
+	PRPatchType    = "PR"
+	CLIPatchType   = "CLI"
 )
 
 type Module struct {
@@ -34,7 +33,6 @@ type CommitQueueItem struct {
 	EnqueueTime     time.Time `bson:"enqueue_time"`
 	Modules         []Module  `bson:"modules"`
 	MessageOverride string    `bson:"message_override"`
-	Source          string    `bson:"source"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }
@@ -180,7 +178,7 @@ func RemoveCommitQueueItemForVersion(projectId, patchType, version string, user 
 	}
 
 	issue := version
-	if patchType == SourcePullRequest {
+	if patchType == PRPatchType {
 		head, valid := cq.Next()
 		// version is populated for PR items at the top of the queue only,
 		// so if the version for the item at the top of the queue doesn't match
@@ -214,13 +212,13 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue, patchType string, versio
 }
 
 func preventMergeForItem(patchType string, versionExists bool, item CommitQueueItem, user string) error {
-	if patchType == SourcePullRequest && item.Version != "" {
+	if patchType == PRPatchType && item.Version != "" {
 		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
 		}
 	}
 
-	if patchType == SourceCommandLine && versionExists {
+	if patchType == CLIPatchType && versionExists {
 		if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
 		}

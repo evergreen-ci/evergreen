@@ -54,8 +54,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 	pos, err := s.sc.EnqueueItem(
 		"mci",
 		model.APICommitQueueItem{
-			Issue:  model.ToStringPtr("1"),
-			Source: model.ToStringPtr(commitqueue.SourceCommandLine),
+			Issue: model.ToStringPtr("1"),
 			Modules: []model.APIModule{
 				model.APIModule{
 					Module: model.ToStringPtr("test_module"),
@@ -66,7 +65,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 	s.NoError(err)
 	s.Equal(0, pos)
 
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -76,8 +75,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 		ProjectID: model.ToStringPtr("mci"),
 		Queue: []model.APICommitQueueItem{
 			model.APICommitQueueItem{
-				Source: model.ToStringPtr(commitqueue.SourceCommandLine),
-				Issue:  model.ToStringPtr("1"),
+				Issue: model.ToStringPtr("1"),
 				Modules: []model.APIModule{
 					model.APIModule{
 						Module: model.ToStringPtr("test_module"),
@@ -85,7 +83,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 					},
 				},
 			},
-			model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine),
+			model.APICommitQueueItem{
 				Issue: model.ToStringPtr("2"),
 			},
 		},
@@ -96,7 +94,7 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
 		{
 			Id:          "mci",
-			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.SourcePullRequest},
+			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.PRPatchType},
 		},
 	}
 
@@ -106,10 +104,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	s.Require().NoError(env.Configure(ctx))
 
 	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("1")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("2")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -134,16 +132,16 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("12")}, false)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("23")}, false)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToStringPtr("23")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("34")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: model.ToStringPtr(commitqueue.SourceCommandLine), Issue: model.ToStringPtr("45")}, false)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToStringPtr("45")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 

@@ -97,7 +97,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 
 	pRef := &model.ProjectRef{
 		Id:          "mci",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.SourceCommandLine},
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -128,7 +128,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.SourceCommandLine))
+	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
 	s.Contains(stringOut, "Description : do things")
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
@@ -156,7 +156,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	s.NoError(p1.Insert())
 	pRef := &model.ProjectRef{
 		Id:          "mci",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.SourceCommandLine},
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -183,7 +183,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.SourceCommandLine))
+	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, fmt.Sprintf("Error getting patch for issue '%s'", fakeIssue))
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
@@ -212,7 +212,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 		Id:          "mci",
 		Owner:       "evergreen-ci",
 		Repo:        "evergreen",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.SourcePullRequest},
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -231,7 +231,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "Repo: evergreen")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.SourcePullRequest))
+	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.PRPatchType))
 	s.Contains(stringOut, "Owner: evergreen-ci")
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, "PR # : 123")
@@ -271,7 +271,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 		Id:          "mci",
 		Owner:       "me",
 		Repo:        "evergreen",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.SourcePullRequest},
+		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
 	}
 	s.Require().NoError(pRef.Insert())
 

@@ -123,7 +123,7 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 func VersionExistsForCommitQueueItem(cq *commitqueue.CommitQueue, issue, patchType string) (bool, error) {
 	versionID := issue
-	if patchType == commitqueue.SourcePullRequest {
+	if patchType == commitqueue.PRPatchType {
 		head, valid := cq.Next()
 		// versions are created for PR items at the top of the queue only
 		if !valid || head.Issue != issue {

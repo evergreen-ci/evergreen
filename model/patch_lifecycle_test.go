@@ -810,7 +810,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 
 	for name, test := range map[string]func(*testing.T){
 		"PRCommitQueueItems": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourcePullRequest
+			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
 			assert.NoError(t, projectRef.Insert())
 
 			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, projectRef.CommitQueue.PatchType, opts)
@@ -829,7 +829,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 
 		},
 		"CLICommitQueueItems": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourceCommandLine
+			projectRef.CommitQueue.PatchType = commitqueue.CLIPatchType
 			assert.NoError(t, projectRef.Insert())
 
 			u := user.DBUser{Id: "me", PatchNumber: 12}
@@ -855,7 +855,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			assert.Equal(t, 0, cq.FindItem(newPatch.Id.Hex()))
 		},
 		"UnstartedPatch": func(*testing.T) {
-			projectRef.CommitQueue.PatchType = commitqueue.SourcePullRequest
+			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
 			assert.NoError(t, projectRef.Insert())
 
 			// not started but terminated within time range
