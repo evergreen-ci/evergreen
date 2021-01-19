@@ -284,9 +284,15 @@ func (e *envState) initSettings(path string) error {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
+
+	credential := options.Credential{
+		Username: settings.user,
+		Password: settings.pwd,
+	}
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM()).
+		SetAuth(credential)
 
 	var err error
 	e.client, err = mongo.NewClient(opts)

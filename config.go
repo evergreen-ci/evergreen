@@ -706,6 +706,8 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
+	User                 string       `yaml:"user"`
+	Pwd                  string       `yaml:"pwd"`
 }
 
 // supported banner themes in Evergreen
