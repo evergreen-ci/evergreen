@@ -208,6 +208,15 @@
       "branch": "spruce"
     }
   ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "commit_queue": {
+        "patch_type": "PR"
+      }
+    }
+  ],
   "tasks": [
     {
       "_id": "taskity_task",
@@ -219,12 +228,7 @@
       "details": {
         "oom_killer": {
           "detected": true,
-          "pids": [
-            1234,
-            5678,
-            9101,
-            1235
-          ]
+          "pids": [1234, 5678, 9101, 1235]
         }
       },
       "depends_on": [
@@ -292,9 +296,7 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2",
-      "execution_tasks": [
-        "execution_task"
-      ]
+      "execution_tasks": ["execution_task"]
     },
     {
       "_id": "some_task_2",
@@ -510,9 +512,7 @@
             "ami": "ami-049df09df40fc2c1c",
             "docker_registry_pw": "",
             "region": "us-east-1",
-            "security_group_ids": [
-              "sg-601a6c13"
-            ],
+            "security_group_ids": ["sg-601a6c13"],
             "curator_dir": "/usr/local/bin",
             "mount_points": [
               {
@@ -1080,10 +1080,7 @@
   "distro": [
     {
       "_id": "archlinux-small",
-      "aliases": [
-        "archlinux",
-        "archlinux-test"
-      ],
+      "aliases": ["archlinux", "archlinux-test"],
       "arch": "linux_amd64",
       "work_dir": "/data/mci",
       "provider": "ec2-fleet",
@@ -1098,9 +1095,7 @@
           "ami": "ami-049df09df40fc2c1c",
           "docker_registry_pw": "",
           "region": "us-east-1",
-          "security_group_ids": [
-            "sg-601a6c13"
-          ],
+          "security_group_ids": ["sg-601a6c13"],
           "curator_dir": "/usr/local/bin",
           "mount_points": [
             {
