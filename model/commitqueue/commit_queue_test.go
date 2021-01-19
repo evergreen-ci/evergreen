@@ -269,7 +269,7 @@ func TestPreventMergeForItemPR(t *testing.T) {
 		Version: patchID,
 	}
 
-	assert.NoError(t, preventMergeForItem(PRPatchType, false, item, "user"))
+	assert.NoError(t, preventMergeForItem(SourcePullRequest, false, item, "user"))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
@@ -292,7 +292,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, mergeTask.Insert())
 
 	// Without a corresponding version
-	assert.NoError(t, preventMergeForItem(CLIPatchType, false, item, "user"))
+	assert.NoError(t, preventMergeForItem(SourceCommandLine, false, item, "user"))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, subscriptions)
@@ -302,7 +302,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	assert.Equal(t, int64(0), mergeTask.Priority)
 
 	// With a corresponding version
-	assert.NoError(t, preventMergeForItem(CLIPatchType, true, item, "user"))
+	assert.NoError(t, preventMergeForItem(SourceCommandLine, true, item, "user"))
 	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
