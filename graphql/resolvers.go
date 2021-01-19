@@ -414,6 +414,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		KeyName:              spawnHostInput.PublicKey.Key,
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
 		NoExpiration:         spawnHostInput.NoExpiration,
+		TaskSync:             util.IsPtrSetToTrue(spawnHostInput.TaskSync),
 	}
 	if spawnHostInput.SetUpScript != nil {
 		options.SetupScript = *spawnHostInput.SetUpScript
