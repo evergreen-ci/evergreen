@@ -414,7 +414,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if projRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+	if projRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
 		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
@@ -429,7 +429,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}
 	}
 
-	if projRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+	if projRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
 		itemInt, err := strconv.Atoi(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
