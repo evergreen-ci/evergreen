@@ -416,8 +416,9 @@ func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *u
 }
 
 func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
-	for _, p := range pc.CachedProjects {
+	for i, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
+			pc.CachedProjects[i] = *projectRef
 			return nil
 		}
 	}

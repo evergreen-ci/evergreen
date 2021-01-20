@@ -42,7 +42,7 @@ var (
 func (r *RepoRef) Add(creator *user.DBUser) error {
 	err := db.Insert(RepoRefCollection, r)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting distro")
+		return errors.Wrap(err, "Error inserting repo ref")
 	}
 	return r.AddPermissions(creator)
 }
@@ -131,7 +131,7 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 	}
 
 	newAdminRole := gimlet.Role{
-		ID:          GetRepoRole(r.Id),
+		ID:          GetRepoAdminRole(r.Id),
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
 	}
@@ -186,7 +186,7 @@ func GetRepoScope(repoId string) string {
 	return fmt.Sprintf("repo_%s", repoId)
 }
 
-func GetRepoRole(repoId string) string {
+func GetRepoAdminRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 

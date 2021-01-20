@@ -277,7 +277,7 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 		}
 		if repoRef == nil {
 			p.RepoRefId = mgobson.NewObjectId().Hex()
-			repoRef := RepoRef{ProjectRef{
+			repoRef = &RepoRef{ProjectRef{
 				Id:      p.RepoRefId,
 				Admins:  []string{user.Username()},
 				Owner:   p.Owner,
@@ -288,12 +288,11 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 			if err = repoRef.Add(user); err != nil {
 				return errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 			}
-
 		}
 		p.RepoRefId = repoRef.Id
 	} else {
 		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
-		repoRole := GetRepoRole(p.RepoRefId)
+		repoRole := GetRepoAdminRole(p.RepoRefId)
 		if !utility.StringSliceContains(user.Roles(), repoRole) {
 			if err := user.AddRole(repoRole); err != nil {
 				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
@@ -1067,6 +1066,9 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	allBranchAdmins := []string{}
 	if p.RepoRefId != "" {
 		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
+		if err != nil {
+			return errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
+		}
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
 
