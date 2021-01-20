@@ -1470,7 +1470,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
 	pRef := &ProjectRef{Id: cq.ProjectID}
-	pRef.CommitQueue.PatchType = commitqueue.CLIPatchType
+	pRef.CommitQueue.PatchType = commitqueue.SourceCommandLine
 
 	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")

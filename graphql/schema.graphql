@@ -642,7 +642,7 @@ type Task {
   displayOnly: Boolean
   distroId: String!
   estimatedStart: Duration
-  execution: Int
+  execution: Int!
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
@@ -757,6 +757,7 @@ type CommitQueueItem {
   version: String
   enqueueTime: Time
   patch: Patch
+  source: String
   modules: [Module!]
 }
 
