@@ -476,7 +476,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 				"$set": bson.M{DependenciesMetTimeKey: latestTime},
 			})
 		if err != nil {
-			return true, errors.Wrap(err, "task.DependenciesMet() failed to update task")
+			return true, errors.Wrapf(err, "task.DependenciesMet() failed to update task %s", t.Id)
 		}
 
 	}
@@ -724,13 +724,12 @@ func (t *Task) MarkAsUndispatched() error {
 				StatusKey: evergreen.TaskUndispatched,
 			},
 			"$unset": bson.M{
-				DispatchTimeKey:  utility.ZeroTime,
-				LastHeartbeatKey: utility.ZeroTime,
-				DistroIdKey:      "",
-				HostIdKey:        "",
-				AbortedKey:       "",
-				AbortInfoKey:     "",
-				DetailsKey:       "",
+				DispatchTimeKey: utility.ZeroTime, LastHeartbeatKey: utility.ZeroTime,
+				DistroIdKey:  "",
+				HostIdKey:    "",
+				AbortedKey:   "",
+				AbortInfoKey: "",
+				DetailsKey:   "",
 			},
 		},
 	)
