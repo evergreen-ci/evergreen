@@ -433,7 +433,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	// passing an empty string taskId is okay as long as a
 	// taskId is not required by other spawnHostInput parameters
 	var t *task.Task
-	if spawnHostInput.TaskID != nil || *spawnHostInput.TaskID != "" {
+	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
 		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
