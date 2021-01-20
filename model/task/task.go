@@ -468,7 +468,18 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 			latestTime = depTask.FinishTime
 		}
 	}
-	t.DependenciesMetTime = latestTime
+	if t.DependenciesMetTime.IsZero() {
+		t.DependenciesMetTime = latestTime
+		err = UpdateOne(
+			bson.M{IdKey: t.Id},
+			bson.M{
+				"$set": bson.M{DependenciesMetTimeKey: latestTime},
+			})
+		if err != nil {
+			return true, errors.Wrap(err, "task.DependenciesMet() failed to update task")
+		}
+
+	}
 
 	return true, nil
 }
