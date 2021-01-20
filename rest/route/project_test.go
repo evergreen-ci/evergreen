@@ -606,7 +606,7 @@ func TestDeleteProject(t *testing.T) {
 
 	ctx := context.Background()
 	pdh := projectDeleteHandler{
-		sc: &data.DBConnector{},
+		sc: &data.MockConnector{},
 	}
 
 	// Test cases:

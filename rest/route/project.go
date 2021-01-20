@@ -723,6 +723,9 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
 	}
+	if err = h.sc.UpdateAdminRoles(project, nil, project.Admins); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
+	}
 
 	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
 	if err != nil {
