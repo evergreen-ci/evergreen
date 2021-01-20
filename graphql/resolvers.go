@@ -140,7 +140,7 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	pRef, err := r.sc.FindProjectById(*obj.ProjectId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding merge project ref for project %s: %s", *obj.ProjectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
@@ -395,8 +395,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
-		err := savePublicKey(ctx, *spawnHostInput.PublicKey)
-		if err != nil {
+		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
 		}
 	}
@@ -459,9 +458,8 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
 		}
-		err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
+		if createErr := hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); createErr != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, createErr))
 		}
 	}
 
@@ -473,8 +471,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
 	}
 	apiHost := restModel.APIHost{}
-	err = apiHost.BuildFromService(spawnHost)
-	if err != nil {
+	if err := apiHost.BuildFromService(spawnHost); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 	}
 	return &apiHost, nil
