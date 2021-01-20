@@ -429,34 +429,34 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	if spawnHostInput.Expiration != nil {
 		options.Expiration = spawnHostInput.Expiration
 	}
-	if spawnHostInput.TaskID != nil {
+
+	// passing an empty string taskId is okay as long as a
+	// taskId is not required by other spawnHostInput parameters
+	var t *task.Task
+	if spawnHostInput.TaskID != nil || *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
+		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+		}
 	}
+
 	if util.IsPtrSetToTrue(spawnHostInput.UseProjectSetupScript) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
 	if util.IsPtrSetToTrue(spawnHostInput.TaskSync) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
 		}
-		options.TaskSync = *spawnHostInput.UseProjectSetupScript
+		options.TaskSync = *spawnHostInput.TaskSync
 	}
 	hc := &data.DBConnector{}
 
 	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
-		if spawnHostInput.TaskID == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
-		}
-		var t *task.Task
-		t, err = task.FindOneId(*spawnHostInput.TaskID)
-		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding Task with id: %s : %s", *spawnHostInput.TaskID, err))
-		}
 		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
 		if createErr := hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); createErr != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, createErr))
