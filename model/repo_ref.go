@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -129,20 +130,43 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
 	}
 
-	newRole := gimlet.Role{
+	newAdminRole := gimlet.Role{
 		ID:          GetRepoRole(r.Id),
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
 	}
-	if creator != nil {
-		newRole.Owners = []string{creator.Id}
+	// Create view role for project branch admins
+	newViewRole := gimlet.Role{
+		ID:          GetViewRepoRole(r.Id),
+		Scope:       newScope.ID,
+		Permissions: viewSettingsPermissions,
 	}
-	if err := rm.UpdateRole(newRole); err != nil {
+
+	if err := rm.UpdateRole(newViewRole); err != nil {
+		return errors.Wrapf(err, "error adding view role for repo project '%s'", r.Id)
+	}
+	if err := rm.UpdateRole(newAdminRole); err != nil {
 		return errors.Wrapf(err, "error adding admin role for repo project '%s'", r.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newRole.ID); err != nil {
-			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		if err := creator.AddRole(newAdminRole.ID); err != nil {
+			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newAdminRole.ID, creator.Id)
+		}
+	}
+	return nil
+}
+
+// addViewRepoPermissionsToBranchAdmins gives admins of a project branch permission to view repo ref settings
+func addViewRepoPermissionsToBranchAdmins(repoRefID string, admins []string) error {
+	catcher := grip.NewBasicCatcher()
+	viewRole := GetViewRepoRole(repoRefID)
+	for _, admin := range admins {
+		newViewer, err := user.FindOneById(admin)
+		// ignore errors finding user, since project lists may be outdated
+		if err == nil && newViewer != nil {
+			if err = newViewer.AddRole(viewRole); err != nil {
+				catcher.Wrapf(err, "error adding role '%s' to user '%s'", viewRole, admin)
+			}
 		}
 	}
 	return nil
@@ -164,4 +188,8 @@ func GetRepoScope(repoId string) string {
 
 func GetRepoRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
+}
+
+func GetViewRepoRole(repoId string) string {
+	return fmt.Sprintf("view_repo_%s", repoId)
 }

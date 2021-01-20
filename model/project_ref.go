@@ -242,6 +242,10 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionLogs:            evergreen.LogsView.Value,
 }
 
+var viewSettingsPermissions = gimlet.Permissions{
+	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+}
+
 func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
 }
@@ -281,22 +285,30 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 				Enabled: true,
 			}}
 			// creates scope and give user admin access to repo
-			return errors.Wrapf(repoRef.Add(user), "problem adding new repo ref for '%s/%s'", p.Owner, p.Repo)
+			if err = repoRef.Add(user); err != nil {
+				return errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
+			}
+
 		}
 		p.RepoRefId = repoRef.Id
+	} else {
+		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
+		repoRole := GetRepoRole(p.RepoRefId)
+		if !utility.StringSliceContains(user.Roles(), repoRole) {
+			if err := user.AddRole(repoRole); err != nil {
+				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
+			}
+			if err := addAdminToRepo(p.RepoRefId, user.Username()); err != nil {
+				return errors.Wrapf(err, "error adding user as repo admin")
+			}
+		}
+		if err := rm.AddResourceToScope(GetRepoScope(p.RepoRefId), p.Id); err != nil {
+			return errors.Wrapf(err, "error adding resource to repo '%s' scope", p.RepoRefId)
+		}
 	}
 
-	// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
-	repoRole := GetRepoRole(p.RepoRefId)
-	if !utility.StringSliceContains(user.Roles(), repoRole) {
-		if err := user.AddRole(repoRole); err != nil {
-			return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
-		}
-		if err := addAdminToRepo(p.RepoRefId, user.Username()); err != nil {
-			return errors.Wrapf(err, "error adding user as repo admin")
-		}
-	}
-	return errors.Wrapf(rm.AddResourceToScope(GetRepoScope(p.RepoRefId), p.Id), "error adding resource to repo '%s' scope", p.RepoRefId)
+	return errors.Wrapf(addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins),
+		"error giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
 }
 
 func (p *ProjectRef) RemoveFromRepoScope() error {
@@ -343,6 +355,11 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	if creator != nil {
 		if err := creator.AddRole(newRole.ID); err != nil {
 			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		}
+	}
+	if p.UseRepoSettings {
+		if err := p.AddToRepoScope(creator); err != nil {
+			return errors.Wrapf(err, "error adding project to repo '%s'", p.RepoRefId)
 		}
 	}
 	return nil
@@ -577,6 +594,26 @@ func FindMergedProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]Pro
 	}
 
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
+func FindBranchAdminsForRepo(repoId string) ([]string, error) {
+	projectRefs := []ProjectRef{}
+	err := db.FindAllQ(
+		ProjectRefCollection,
+		db.Query(bson.M{
+			ProjectRefRepoRefIdKey:       repoId,
+			projectRefUseRepoSettingsKey: true,
+		}).WithFields(ProjectRefAdminsKey),
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	allBranchAdmins := []string{}
+	for _, pRef := range projectRefs {
+		allBranchAdmins = append(allBranchAdmins, pRef.Admins...)
+	}
+	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
@@ -1026,6 +1063,13 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	if role == nil {
 		return errors.Errorf("no admin role for %s found", p.Id)
 	}
+	viewRole := ""
+	allBranchAdmins := []string{}
+	if p.RepoRefId != "" {
+		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
+		viewRole = GetViewRepoRole(p.RepoRefId)
+	}
+
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
@@ -1034,10 +1078,12 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		if adminUser == nil {
 			return errors.Errorf("no user '%s' found", addedUser)
 		}
-		if !utility.StringSliceContains(adminUser.Roles(), role.ID) {
-			err = adminUser.AddRole(role.ID)
-			if err != nil {
-				return errors.Wrapf(err, "error adding role to user %s", addedUser)
+		if err = adminUser.AddRole(role.ID); err != nil {
+			return errors.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+		}
+		if viewRole != "" {
+			if err = adminUser.AddRole(viewRole); err != nil {
+				return errors.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
 			}
 		}
 	}
@@ -1049,9 +1095,14 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		if adminUser == nil {
 			continue
 		}
-		err = adminUser.RemoveRole(role.ID)
-		if err != nil {
-			return errors.Wrapf(err, "error removing role from user %s", removedUser)
+
+		if err = adminUser.RemoveRole(role.ID); err != nil {
+			return errors.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+		}
+		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
+			if err = adminUser.RemoveRole(viewRole); err != nil {
+				return errors.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+			}
 		}
 	}
 	return nil
