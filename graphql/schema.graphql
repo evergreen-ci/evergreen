@@ -645,7 +645,7 @@ type Task {
   displayOnly: Boolean
   distroId: String!
   estimatedStart: Duration
-  execution: Int
+  execution: Int!
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
