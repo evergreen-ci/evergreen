@@ -906,6 +906,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
+	expansions.Put("email", v.AuthorEmail)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
 	if evergreen.IsGitTagRequester(v.Requester) {
