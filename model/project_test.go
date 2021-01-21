@@ -336,7 +336,7 @@ buildvariants:
 	assert.NoError(err)
 	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 19)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
