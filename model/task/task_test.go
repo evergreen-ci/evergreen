@@ -75,6 +75,7 @@ func TestDependenciesMet(t *testing.T) {
 		for _, depTask := range depTasks {
 			So(depTask.Insert(), ShouldBeNil)
 		}
+		So(taskDoc.Insert(), ShouldBeNil)
 
 		Convey("sanity check the local version of the function in the nil case", func() {
 			taskDoc.DependsOn = []Dependency{}
