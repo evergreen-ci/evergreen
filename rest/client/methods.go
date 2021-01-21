@@ -1540,13 +1540,14 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostI
 	return &opts, nil
 }
 
-func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string) ([]string, map[string]map[string]string, error) {
+func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   "/scheduler/compare_tasks",
 	}
 	body := restmodel.CompareTasksRequest{
-		Tasks: tasks,
+		Tasks:     tasks,
+		UseLegacy: useLegacy,
 	}
 	r, err := c.createRequest(info, body)
 	if err != nil {

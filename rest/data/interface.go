@@ -350,5 +350,6 @@ type Connector interface {
 	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
 	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
 
-	CompareTasks([]string) ([]string, map[string]map[string]string, error)
+	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
+	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
 }
