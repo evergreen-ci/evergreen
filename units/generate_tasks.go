@@ -63,7 +63,12 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
-		return errors.New("task is not running, not generating tasks")
+		grip.Debug(message.Fields{
+			"message": "task is not running, not generating tasks",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return nil
 	}
 
 	v, err := model.VersionFindOneId(t.Version)
