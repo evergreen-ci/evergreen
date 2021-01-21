@@ -45,10 +45,10 @@ func (s *SchedulerConnector) CompareTasks(taskIds []string, useLegacy bool) ([]s
 	} else { // this is temporary: logic should be added in EVG-13795
 		d, err := distro.FindByID(distroId)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to find d")
+			return nil, nil, errors.Wrap(err, "unable to find distro")
 		}
 		if d == nil {
-			return nil, nil, errors.Errorf("distro doesn't exist")
+			return nil, nil, errors.New("distro doesn't exist")
 		}
 		taskPlan := scheduler.PrepareTasksForPlanning(d, tasks)
 		tasks = taskPlan.Export()
