@@ -434,14 +434,14 @@ func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version st
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	numHosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
+	hosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
 	if err != nil {
 		return 0, errors.Wrap(err, "error querying database for hosts")
 	}
 	minTaskGroupOrder := 0
 	//  can look at only one host because we sorted
-	if len(numHosts) > 0 {
-		minTaskGroupOrder = numHosts[0].RunningTaskGroupOrder
+	if len(hosts) > 0 {
+		minTaskGroupOrder = hosts[0].RunningTaskGroupOrder
 	}
 	return minTaskGroupOrder, nil
 }

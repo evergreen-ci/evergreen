@@ -11,7 +11,7 @@ import (
 )
 
 type compareTasksRoute struct {
-	taskIds []string
+	request model.CompareTasksRequest
 	sc      data.Connector
 }
 
@@ -36,12 +36,12 @@ func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
-	p.taskIds = request.Tasks
+	p.request = request
 	return nil
 }
 
 func (p *compareTasksRoute) Run(ctx context.Context) gimlet.Responder {
-	order, logic, err := p.sc.CompareTasks(p.taskIds)
+	order, logic, err := p.sc.CompareTasks(p.request.Tasks, p.request.UseLegacy)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
