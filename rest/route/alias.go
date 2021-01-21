@@ -37,7 +37,7 @@ func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding project '%s'", a.name))
 	}
-	aliasModels, err := a.sc.FindProjectAliases(id)
+	aliasModels, err := a.sc.FindProjectAliases(id, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

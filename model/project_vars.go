@@ -88,38 +88,12 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
 	}
-	if repoVars == nil {
-		return projectVars, nil
-	}
 	if projectVars == nil {
 		repoVars.Id = project.Id
 		return repoVars, nil
 	}
 
-	if projectVars.Vars == nil {
-		projectVars.Vars = map[string]string{}
-	}
-	if projectVars.PrivateVars == nil {
-		projectVars.PrivateVars = map[string]bool{}
-	}
-	if projectVars.RestrictedVars == nil {
-		projectVars.RestrictedVars = map[string]bool{}
-	}
-
-	// Merge repo vars and project vars
-	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
-	for key, val := range repoVars.Vars {
-		if _, ok := projectVars.Vars[key]; !ok {
-			projectVars.Vars[key] = val
-			if v, ok := repoVars.PrivateVars[key]; ok {
-				projectVars.PrivateVars[key] = v
-			}
-			if v, ok := repoVars.RestrictedVars[key]; ok {
-				projectVars.RestrictedVars[key] = v
-			}
-		}
-	}
-
+	projectVars.MergeWithRepoVars(repoVars)
 	return projectVars, nil
 }
 
@@ -269,4 +243,32 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		}
 	}
 	return res
+}
+
+// MergeWithRepoVars merges the project and repo variables
+func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
+	if projectVars.Vars == nil {
+		projectVars.Vars = map[string]string{}
+	}
+	if projectVars.PrivateVars == nil {
+		projectVars.PrivateVars = map[string]bool{}
+	}
+	if projectVars.RestrictedVars == nil {
+		projectVars.RestrictedVars = map[string]bool{}
+	}
+	if repoVars == nil {
+		return
+	}
+	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
+	for key, val := range repoVars.Vars {
+		if _, ok := projectVars.Vars[key]; !ok {
+			projectVars.Vars[key] = val
+			if v, ok := repoVars.PrivateVars[key]; ok {
+				projectVars.PrivateVars[key] = v
+			}
+			if v, ok := repoVars.RestrictedVars[key]; ok {
+				projectVars.RestrictedVars[key] = v
+			}
+		}
+	}
 }
