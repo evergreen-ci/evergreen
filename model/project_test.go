@@ -309,6 +309,7 @@ buildvariants:
 		Id:                  "v1",
 		Branch:              "master",
 		Author:              "somebody",
+		AuthorEmail:         "somebody@somewhere.com",
 		RevisionOrderNumber: 42,
 		Config:              config,
 		Requester:           evergreen.GitTagRequester,
@@ -347,6 +348,7 @@ buildvariants:
 	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
+	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
 	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
 	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
