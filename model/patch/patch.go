@@ -655,8 +655,8 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
-func (p *Patch) CanEnqueueToCommitQueue() bool {
-	return p.GitInfo != nil
+func (p *Patch) HasValidGitInfo() bool {
+	return p.GitInfo != nil && p.GitInfo.Email != "" && p.GitInfo.Username != ""
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
@@ -752,8 +752,8 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 }
 
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
-	if existingPatch.GitInfo == nil {
-		return nil, errors.New("can't make merge patches with nil GitInfo")
+	if !existingPatch.HasValidGitInfo() {
+		return nil, errors.New("can't make merge patches without GitInfo")
 	}
 
 	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))

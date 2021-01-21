@@ -562,7 +562,7 @@ func (e *EnqueuePatch) Valid() bool {
 }
 
 func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
-	if !existingPatch.CanEnqueueToCommitQueue() {
+	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("can't enqueue patch '%s' without metadata", existingPatch.Id.Hex())
 	}
 

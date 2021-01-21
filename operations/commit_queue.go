@@ -258,7 +258,7 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "can't get patch '%s'", patchID)
 			}
-			if !existingPatch.CanEnqueueToCommitQueue() {
+			if !existingPatch.HasValidGitInfo() {
 				return errors.Errorf("patch '%s' is not eligible to be enqueued", patchID)
 			}
 
