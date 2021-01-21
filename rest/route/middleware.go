@@ -587,7 +587,8 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	}
 
 	if repoID != "" {
-		repoRef, err := model.FindOneRepoRef(repoID)
+		var repoRef *model.RepoRef
+		repoRef, err = model.FindOneRepoRef(repoID)
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.WithStack(err)
 		}
