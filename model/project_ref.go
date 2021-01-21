@@ -242,10 +242,6 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionLogs:            evergreen.LogsView.Value,
 }
 
-var viewSettingsPermissions = gimlet.Permissions{
-	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
-}
-
 func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
 }
@@ -276,9 +272,8 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 			return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
 		}
 		if repoRef == nil {
-			p.RepoRefId = mgobson.NewObjectId().Hex()
 			repoRef = &RepoRef{ProjectRef{
-				Id:      p.RepoRefId,
+				Id:      mgobson.NewObjectId().Hex(),
 				Admins:  []string{user.Username()},
 				Owner:   p.Owner,
 				Repo:    p.Repo,
@@ -287,6 +282,11 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 			// creates scope and give user admin access to repo
 			if err = repoRef.Add(user); err != nil {
 				return errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
+			}
+			newProjectVars := ProjectVars{Id: repoRef.Id}
+
+			if err = newProjectVars.Insert(); err != nil {
+				return errors.Wrap(err, "error inserting blank project variables for repo")
 			}
 		}
 		p.RepoRefId = repoRef.Id

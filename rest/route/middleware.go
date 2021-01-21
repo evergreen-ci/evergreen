@@ -537,6 +537,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	}
 
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+	repoID := util.CoalesceStrings(append(query["repo_id"], query["repoId"]...), vars["repo_id"], vars["repoId"])
 	destProjectID := util.CoalesceString(query["dest_project"]...)
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
@@ -585,7 +586,18 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		}
 	}
 
-	projectRef, err := model.FindOneProjectRef(projectID)
+	if repoID != "" {
+		repoRef, err := model.FindOneRepoRef(repoID)
+		if err != nil {
+			return nil, http.StatusInternalServerError, errors.WithStack(err)
+		}
+		if repoRef == nil {
+			return nil, http.StatusNotFound, errors.Errorf("error finding the repo '%s'", repoID)
+		}
+		return []string{repoID}, http.StatusOK, nil
+	}
+
+	projectRef, err := model.FindMergedProjectRef(projectID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.WithStack(err)
 	}
@@ -595,17 +607,15 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
-	if user == nil {
-		if projectRef.Private {
-			projectID = ""
-		}
+	if user == nil && projectRef.Private {
+		projectID = ""
 	}
 
 	// no project found - return a 404
 	if projectID == "" {
 		return nil, http.StatusNotFound, errors.New("no project found")
 	}
-	res := []string{projectID}
+	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)
 	}
