@@ -82,6 +82,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.AllDependenciesSatisfied(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("if the task has no dependencies its dependencies should"+
@@ -90,6 +91,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("task with overridden dependencies should be met", func() {
@@ -98,6 +100,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("if only some of the tasks dependencies are finished"+
@@ -115,6 +118,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(map[string]Task{})
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				taskDoc.DependenciesMetTime = utility.ZeroTime
 			})
 
 		Convey("if all of the tasks dependencies are finished properly, it"+
@@ -124,6 +128,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("tasks not in the dependency cache should be pulled into the"+
@@ -134,6 +139,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 			for _, depTaskId := range depTaskIds[:4] {
 				So(dependencyCache[depTaskId.TaskId].Id, ShouldEqual, depTaskId.TaskId)
 			}
@@ -148,6 +154,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 			// alter the dependency cache so that it should seem as if the
 			// dependencies are not met
@@ -158,6 +165,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err = taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeFalse)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 		})
 
@@ -168,6 +176,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.AllDependenciesSatisfied(dependencyCache)
 			So(err, ShouldNotBeNil)
 			So(met, ShouldBeFalse)
+			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("extraneous tasks in the dependency cache should be ignored",
@@ -203,6 +212,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
@@ -214,6 +224,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err = taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
+				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
