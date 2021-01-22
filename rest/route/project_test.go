@@ -135,7 +135,7 @@ func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil")
+	p, err := s.sc.FindProjectById("dimoxinil", true)
 	s.NoError(err)
 	s.True(p.UseRepoSettings)
 	s.NotEmpty(p.RepoRefId)
