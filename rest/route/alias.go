@@ -33,11 +33,14 @@ func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
-	id, err := model.FindIdForProject(a.name)
+	pRef, err := model.FindOneProjectRef(a.name)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding project '%s'", a.name))
 	}
-	aliasModels, err := a.sc.FindProjectAliases(id, true)
+	if pRef == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.name))
+	}
+	aliasModels, err := a.sc.FindProjectAliases(pRef.Id, pRef.RepoRefId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
