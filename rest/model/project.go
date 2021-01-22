@@ -244,6 +244,8 @@ type APIProjectRef struct {
 	TracksPushEvents            bool                 `json:"tracks_push_events"`
 	PRTestingEnabled            bool                 `json:"pr_testing_enabled"`
 	GitTagVersionsEnabled       bool                 `json:"git_tag_versions_enabled"`
+	UseRepoSettings             bool                 `json:"use_repo_settings"`
+	RepoRefId                   *string              `json:"repo_ref_id"`
 	DefaultLogger               *string              `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
@@ -312,6 +314,8 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DefaultLogger:         FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:      p.PRTestingEnabled,
 		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
+		UseRepoSettings:       p.UseRepoSettings,
+		RepoRefId:             FromStringPtr(p.RepoRefId),
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
 		WorkstationConfig:     workstationConfig,
@@ -392,6 +396,8 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
+	p.UseRepoSettings = projectRef.UseRepoSettings
+	p.RepoRefId = ToStringPtr(projectRef.RepoRefId)
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
 	p.WorkstationConfig = workstationConfig
