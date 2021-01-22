@@ -139,7 +139,7 @@ func TestGetVersionForCommitQueueItem(t *testing.T) {
 					{Issue: "patch-2345"},
 				},
 			},
-			patchType: commitqueue.SourceCommandLine,
+			patchType: commitqueue.SourceDiff,
 		},
 		"PRQueue": {
 			cq: &commitqueue.CommitQueue{

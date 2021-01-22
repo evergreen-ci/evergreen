@@ -127,7 +127,7 @@
       "identifier": "p1",
       "commit_queue": {
         "enabled": true,
-        "patch_type": "CLI"
+        "patch_type": "diff"
       }
     }
   ],

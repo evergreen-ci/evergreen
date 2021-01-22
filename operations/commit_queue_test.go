@@ -33,8 +33,6 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
-	env := testutil.NewEnvironment(context.Background(), t)
-	testConfig := env.Settings()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))
@@ -108,13 +106,13 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex(), Source: commitqueue.SourceCommandLine})
+	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(0, pos)
-	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex(), Source: commitqueue.SourceCommandLine})
+	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(1, pos)
-	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p3.Id.Hex(), Source: commitqueue.SourceCommandLine})
+	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p3.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(2, pos)
 
@@ -166,8 +164,8 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			{Issue: fakeIssue, Source: commitqueue.SourceCommandLine},
-			{Issue: p1.Id.Hex(), Source: commitqueue.SourceCommandLine},
+			{Issue: fakeIssue, Source: commitqueue.SourceDiff},
+			{Issue: p1.Id.Hex(), Source: commitqueue.SourceDiff},
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
@@ -306,15 +304,15 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 		Queue: []commitqueue.CommitQueueItem{
 			{
 				Issue:  validId,
-				Source: commitqueue.SourceCommandLine,
+				Source: commitqueue.SourceDiff,
 			},
 			{
 				Issue:  bson.NewObjectId().Hex(),
-				Source: commitqueue.SourceCommandLine,
+				Source: commitqueue.SourceDiff,
 			},
 			{
 				Issue:  bson.NewObjectId().Hex(),
-				Source: commitqueue.SourceCommandLine,
+				Source: commitqueue.SourceDiff,
 			},
 		},
 	}

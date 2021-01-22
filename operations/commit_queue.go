@@ -415,7 +415,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 		grip.Infof("%d:", i)
 		if restModel.FromStringPtr(item.Source) == commitqueue.SourcePullRequest {
 			listPRCommitQueueItem(item, projectRef, uiServerHost)
-		} else if restModel.FromStringPtr(item.Source) == commitqueue.SourceCommandLine {
+		} else if restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
 			listCLICommitQueueItem(item, ac, uiServerHost)
 		}
 		listModules(item)

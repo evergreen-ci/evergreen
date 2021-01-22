@@ -436,7 +436,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if entry.Source == commitqueue.SourceCommandLine {
+	if entry.Source == commitqueue.SourceDiff {
 		patch, err := m.sc.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))

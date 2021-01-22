@@ -16,7 +16,6 @@ import (
 const (
 	triggerComment    = "evergreen merge"
 	SourcePullRequest = "PR"
-	SourceCommandLine = "CLI"
 	SourceDiff        = "diff"
 )
 
@@ -221,7 +220,7 @@ func preventMergeForItem(versionExists bool, item CommitQueueItem, user string) 
 		}
 	}
 
-	if item.Source == SourceCommandLine && versionExists {
+	if item.Source == SourceDiff && versionExists {
 		if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
 			return errors.Wrap(err, "can't clear subscriptions")
 		}

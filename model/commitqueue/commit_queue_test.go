@@ -285,7 +285,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 
 	item := CommitQueueItem{
 		Issue:  patchID,
-		Source: SourceCommandLine,
+		Source: SourceDiff,
 	}
 
 	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}

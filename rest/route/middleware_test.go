@@ -273,7 +273,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	cq := commitqueue.CommitQueue{
 		ProjectID: opCtx.ProjectRef.Id,
 		Queue: []commitqueue.CommitQueueItem{
-			{Issue: patchId.Hex(), Source: commitqueue.SourceCommandLine},
+			{Issue: patchId.Hex(), Source: commitqueue.SourceDiff},
 		},
 	}
 	assert.NoError(commitqueue.InsertQueue(&cq))

@@ -191,7 +191,7 @@
       "identifier": "mongodb-mongo-master",
       "commit_queue": {
         "enabled": true,
-        "patch_type": "CLI",
+        "patch_type": "diff",
         "message": "this is a message"
       }
     },
@@ -200,7 +200,7 @@
       "identifier": "cli-queue",
       "commit_queue": {
         "enabled": true,
-        "patch_type": "CLI"
+        "patch_type": "diff"
       }
     },
     {

@@ -1455,7 +1455,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	}
 
 	q := []commitqueue.CommitQueueItem{
-		{Issue: patchID, Source: commitqueue.SourceCommandLine},
+		{Issue: patchID, Source: commitqueue.SourceDiff},
 		{Issue: "42"},
 	}
 	cq := &commitqueue.CommitQueue{
