@@ -235,7 +235,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run updates a project by name.
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	oldProject, err := h.sc.FindProjectById(h.project)
+	oldProject, err := h.sc.FindProjectById(h.project, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -531,7 +531,7 @@ func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias
 	}
 
 	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id))
+	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id), "") // TODO: switch to model.FromStringPtr(pRef.RepoRefId)
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
@@ -582,7 +582,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.sc.FindProjectById(h.projectName)
+	p, err := h.sc.FindProjectById(h.projectName, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectName))
 	}
@@ -754,6 +754,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectIDGetHandler struct {
 	projectName string
+	includeRepo bool
 	sc          data.Connector
 }
 
@@ -771,11 +772,12 @@ func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
+	h.includeRepo = r.URL.Query().Get("includeRepo") == "true"
 	return nil
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := h.sc.FindProjectById(h.projectName)
+	project, err := h.sc.FindProjectById(h.projectName, h.includeRepo)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -784,7 +786,6 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projectModel := &model.APIProjectRef{}
-
 	if err = projectModel.BuildFromService(project); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "problem converting project document",
@@ -792,12 +793,17 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	variables, err := h.sc.FindProjectVarsById(project.Id, true)
+	// we pass the repoId through so we don't have to re-look up the project
+	repoId := ""
+	if h.includeRepo {
+		repoId = project.RepoRefId
+	}
+	variables, err := h.sc.FindProjectVarsById(project.Id, repoId, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id); err != nil {
+	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id, repoId); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {

@@ -97,7 +97,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	vars, err := s.sc.FindProjectVarsById("dimoxinil", false)
+	vars, err := s.sc.FindProjectVarsById("dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -273,7 +273,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
 
-	p, err := h.sc.FindProjectById("nutsandgum")
+	p, err := h.sc.FindProjectById("nutsandgum", false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.NotEqual("nutsandgum", p.Id)
