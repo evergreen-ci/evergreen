@@ -515,7 +515,7 @@ func (pc *MockProjectConnector) FindProjectVarsById(id, repoId string, redact bo
 	}
 	res.MergeWithRepoVars(repoVars)
 	if redact {
-		res.RedactPrivateVars()
+		res = res.RedactPrivateVars()
 	}
 	if err := varsModel.BuildFromService(res); err != nil {
 		return nil, errors.Wrapf(err, "error building project variables from service")
