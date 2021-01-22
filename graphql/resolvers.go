@@ -146,8 +146,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(pRef)
-	if err != nil {
+	if err = apiProjectRef.BuildFromService(pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
 	}
 
