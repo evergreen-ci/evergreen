@@ -625,7 +625,6 @@ buildvariants:
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
       - name: test-cloud
-      - name: ".deptest"
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
