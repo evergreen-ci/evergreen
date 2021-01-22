@@ -122,17 +122,30 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 }
 
 func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection))
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
 	ctx := context.Background()
-	jsonBody := []byte(`{"use_repo_settings": true}`)
+	jsonBody := []byte(`{"use_repo_settings": true, "admins": ["me"]}`)
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
+	s.NoError(h.user.Insert())
 	h.project = "dimoxinil"
 	h.body = jsonBody
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err := s.sc.FindProjectById("dimoxinil")
+	s.NoError(err)
+	s.True(p.UseRepoSettings)
+	s.NotEmpty(p.RepoRefId)
+	s.Contains(p.Admins, "me")
+
+	u, err := user.FindOneById("me")
+	s.NoError(err)
+	s.NotNil(u)
+	s.Contains(u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
+	s.Contains(u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
 }
 
 func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
@@ -606,7 +619,7 @@ func TestDeleteProject(t *testing.T) {
 
 	ctx := context.Background()
 	pdh := projectDeleteHandler{
-		sc: &data.DBConnector{},
+		sc: &data.MockConnector{},
 	}
 
 	// Test cases:

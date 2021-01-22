@@ -274,6 +274,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
+	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
 	if err = newProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -288,12 +289,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    err.Error(),
 			})
 		}
-	}
-	if newProjectRef.RepoRefId != oldProject.RepoRefId {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "can't change repo ref ID manually",
-		})
 	}
 
 	before, err := h.sc.GetProjectSettingsEvent(newProjectRef)
@@ -726,6 +721,9 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
+	}
+	if err = h.sc.UpdateAdminRoles(project, nil, project.Admins); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
 	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
