@@ -2055,7 +2055,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		}
 		break
 	case "project":
-		p, projectErr := r.sc.FindProjectById(id)
+		p, projectErr := r.sc.FindProjectById(id, false)
 		if projectErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
 		}

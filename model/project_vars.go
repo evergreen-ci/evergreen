@@ -88,6 +88,9 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
 	}
+	if repoVars == nil {
+		return projectVars, nil
+	}
 	if projectVars == nil {
 		repoVars.Id = project.Id
 		return repoVars, nil
