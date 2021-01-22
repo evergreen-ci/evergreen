@@ -544,6 +544,25 @@ tasks:
           target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
+  - name: dep-test
+    tags: ["deptest"]
+    commands:
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |
+          echo test dep
+  - name: dep-test-two
+    tags: ["deptest"]
+    depends_on:
+      - name: dep-test
+    commands:
+    - command: shell.exec
+      type: system
+      params:
+        shell: bash
+        script: |
+          echo test has dep
   - name: upload-clis
     patchable: false
     depends_on:
@@ -606,6 +625,7 @@ buildvariants:
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
       - name: test-cloud
+      - name: ".deptest"
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)

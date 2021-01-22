@@ -449,7 +449,6 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
-	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -464,21 +463,18 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
-		if depTask.FinishTime.After(latestTime) {
-			latestTime = depTask.FinishTime
-		}
 	}
 	if t.DependenciesMetTime.IsZero() {
-		t.DependenciesMetTime = latestTime
+		// this is not exact, but depTask.FinishTime is not always set in time to use that
+		t.DependenciesMetTime = time.Now()
 		err = UpdateOne(
 			bson.M{IdKey: t.Id},
 			bson.M{
-				"$set": bson.M{DependenciesMetTimeKey: latestTime},
+				"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
 			})
 		if err != nil {
-			return true, errors.Wrapf(err, "task.DependenciesMet() failed to update task %s", t.Id)
+			return true, errors.Wrapf(err, "task.DependenciesMet() failed to update task '%s'", t.Id)
 		}
-
 	}
 
 	return true, nil
@@ -724,12 +720,13 @@ func (t *Task) MarkAsUndispatched() error {
 				StatusKey: evergreen.TaskUndispatched,
 			},
 			"$unset": bson.M{
-				DispatchTimeKey: utility.ZeroTime, LastHeartbeatKey: utility.ZeroTime,
-				DistroIdKey:  "",
-				HostIdKey:    "",
-				AbortedKey:   "",
-				AbortInfoKey: "",
-				DetailsKey:   "",
+				DispatchTimeKey:  utility.ZeroTime,
+				LastHeartbeatKey: utility.ZeroTime,
+				DistroIdKey:      "",
+				HostIdKey:        "",
+				AbortedKey:       "",
+				AbortInfoKey:     "",
+				DetailsKey:       "",
 			},
 		},
 	)
