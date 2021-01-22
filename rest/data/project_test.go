@@ -397,11 +397,13 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Equal("new", res.Vars["c"])
 
 	res, err = s.ctx.FindProjectVarsById("", repoProjectId, true)
+	s.NoError(err)
 	s.Equal("", res.Vars["a"])
 	s.Equal("new", res.Vars["c"])
 	s.True(res.PrivateVars["a"])
 
 	res, err = s.ctx.FindProjectVarsById("", repoProjectId, false)
+	s.NoError(err)
 	s.Equal("a_from_repo", res.Vars["a"])
 	s.Equal("", res.Vars["b"])
 	s.Equal("new", res.Vars["c"])
