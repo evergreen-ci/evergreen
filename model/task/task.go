@@ -444,7 +444,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return true, nil
 	}
 
-	if !t.DependenciesMetTime.IsZero() {
+	if !t.DependenciesMetTime.IsZero() && t.DependenciesMetTime != utility.ZeroTime {
 		return true, nil
 	}
 	_, err := t.populateDependencyTaskCache(depCaches)
