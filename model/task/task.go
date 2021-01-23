@@ -440,7 +440,7 @@ func (t *Task) AddDependency(d Dependency) error {
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
-	if len(t.DependsOn) == 0 || t.OverrideDependencies {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies || !utility.IsZeroTime(t.DependenciesMetTime) {
 		return true, nil
 	}
 
@@ -449,7 +449,6 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
-	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -464,11 +463,17 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
-		if depTask.FinishTime.After(latestTime) {
-			latestTime = depTask.FinishTime
-		}
 	}
-	t.DependenciesMetTime = latestTime
+	// this is not exact, but depTask.FinishTime is not always set in time to use that
+	t.DependenciesMetTime = time.Now()
+	err = UpdateOne(
+		bson.M{IdKey: t.Id},
+		bson.M{
+			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
+		})
+	if err != nil {
+		return true, errors.Wrapf(err, "task.DependenciesMet() failed to update task '%s'", t.Id)
+	}
 
 	return true, nil
 }
@@ -1326,16 +1331,18 @@ func (t *Task) Reset() error {
 	t.StartTime = utility.ZeroTime
 	t.ScheduledTime = utility.ZeroTime
 	t.FinishTime = utility.ZeroTime
+	t.DependenciesMetTime = utility.ZeroTime
 	t.ResetWhenFinished = false
 	reset := bson.M{
 		"$set": bson.M{
-			ActivatedKey:     true,
-			SecretKey:        t.Secret,
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  utility.ZeroTime,
-			StartTimeKey:     utility.ZeroTime,
-			ScheduledTimeKey: utility.ZeroTime,
-			FinishTimeKey:    utility.ZeroTime,
+			ActivatedKey:           true,
+			SecretKey:              t.Secret,
+			StatusKey:              evergreen.TaskUndispatched,
+			DispatchTimeKey:        utility.ZeroTime,
+			StartTimeKey:           utility.ZeroTime,
+			ScheduledTimeKey:       utility.ZeroTime,
+			FinishTimeKey:          utility.ZeroTime,
+			DependenciesMetTimeKey: utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:           "",
@@ -1361,13 +1368,14 @@ func ResetTasks(taskIds []string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:     true,
-				SecretKey:        utility.RandomString(),
-				StatusKey:        evergreen.TaskUndispatched,
-				DispatchTimeKey:  utility.ZeroTime,
-				StartTimeKey:     utility.ZeroTime,
-				ScheduledTimeKey: utility.ZeroTime,
-				FinishTimeKey:    utility.ZeroTime,
+				ActivatedKey:           true,
+				SecretKey:              utility.RandomString(),
+				StatusKey:              evergreen.TaskUndispatched,
+				DispatchTimeKey:        utility.ZeroTime,
+				StartTimeKey:           utility.ZeroTime,
+				ScheduledTimeKey:       utility.ZeroTime,
+				FinishTimeKey:          utility.ZeroTime,
+				DependenciesMetTimeKey: utility.ZeroTime,
 			},
 			"$unset": bson.M{
 				DetailsKey:         "",
