@@ -762,8 +762,7 @@
         "commit_queue_merge_method": "",
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "diff"
+          "merge_method": "squash"
         },
         "periodic_builds": [],
         "repotracker_disabled": false
@@ -795,8 +794,7 @@
         "patching_disabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -824,8 +822,7 @@
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -866,8 +863,7 @@
         "tracks_push_events": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -894,8 +890,7 @@
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -931,8 +926,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -971,8 +965,7 @@
         "tracks_push_events": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -1005,8 +998,7 @@
         "triggers": [],
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -1033,8 +1025,7 @@
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -1070,8 +1061,7 @@
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "disabled_stats_cache": false,
         "files_ignored_from_cache": null,
@@ -1106,8 +1096,7 @@
         "triggers": [],
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "periodic_builds": []
       },
@@ -1197,8 +1186,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1245,8 +1233,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1282,8 +1269,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1314,8 +1300,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1346,8 +1331,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1379,8 +1363,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1411,8 +1394,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1444,8 +1426,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1476,8 +1457,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1507,8 +1487,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1539,8 +1518,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1571,8 +1549,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1603,8 +1580,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1631,8 +1607,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1659,8 +1634,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1691,8 +1665,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1723,8 +1696,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1756,8 +1728,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1788,8 +1759,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1820,8 +1790,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,
@@ -1848,8 +1817,7 @@
         "pr_testing_enabled": false,
         "commit_queue": {
           "enabled": false,
-          "merge_method": "squash",
-          "patch_type": "PR"
+          "merge_method": "squash"
         },
         "hidden": false,
         "patching_disabled": false,

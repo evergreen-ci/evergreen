@@ -182,8 +182,7 @@
       "hidden": false,
       "repotracker_error": null,
       "commit_queue": {
-        "enabled": true,
-        "patch_type": "PR"
+        "enabled": true
       }
     },
     {
@@ -191,7 +190,6 @@
       "identifier": "mongodb-mongo-master",
       "commit_queue": {
         "enabled": true,
-        "patch_type": "diff",
         "message": "this is a message"
       }
     },
@@ -199,24 +197,21 @@
       "_id": "cli-queue",
       "identifier": "cli-queue",
       "commit_queue": {
-        "enabled": true,
-        "patch_type": "diff"
+        "enabled": true
       }
     },
     {
       "_id": "pr-queue",
       "identifier": "pr-queue",
       "commit_queue": {
-        "enabled": true,
-        "patch_type": "PR"
+        "enabled": true
       }
     },
     {
       "_id": "no_queue",
       "identifier": "no_queue",
       "commit_queue": {
-        "enabled": false,
-        "patch_type": "PR"
+        "enabled": false
       }
     }
   ]
