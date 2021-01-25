@@ -531,7 +531,7 @@ func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias
 	}
 
 	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id), "") // TODO: switch to model.FromStringPtr(pRef.RepoRefId)
+	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id), model.FromStringPtr(pRef.RepoRefId))
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
