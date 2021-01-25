@@ -352,10 +352,11 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci",
-		Branch: "master",
-		Id:     "mci",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Branch:  "master",
+		Id:      "mci",
+		Enabled: true,
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},

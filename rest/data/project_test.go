@@ -79,6 +79,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectA",
 				Private:     false,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
@@ -87,6 +88,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectB",
 				Private:     true,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
@@ -95,6 +97,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectC",
 				Private:     true,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "mongodb",
 				Repo:        "mongo",
