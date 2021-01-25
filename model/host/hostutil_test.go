@@ -324,7 +324,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 		},
 		"ForceReinstallJasperCommandWithEnvVars": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.BootstrapSettings.Env = []distro.EnvVar{
@@ -336,7 +336,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey0=envValue0'"))
 			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey1=envValue1'"))
 		},
@@ -351,7 +351,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL))
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()))
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
@@ -368,7 +368,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
@@ -385,7 +385,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
-			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.Distro.User))
+			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			for _, ps := range h.Distro.BootstrapSettings.PreconditionScripts {
 				assert.Contains(t, cmd, fmt.Sprintf("--precondition=%s", ps.Path))
 			}
@@ -406,10 +406,10 @@ func TestJasperCommands(t *testing.T) {
 						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar/bat.txt",
 					},
-					User:  "user",
 					Setup: "#!/bin/bash\necho hello world",
 				},
 				StartedBy: evergreen.User,
+				User:      "user",
 			}
 			settings := &evergreen.Settings{
 				HostInit: evergreen.HostInitConfig{

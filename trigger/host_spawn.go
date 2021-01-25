@@ -151,7 +151,7 @@ func hostURL(base, hostID string) string {
 }
 
 func sshCommand(h *host.Host) string {
-	return fmt.Sprintf("ssh %s@%s", h.Distro.User, h.Host)
+	return fmt.Sprintf("ssh %s@%s", h.User, h.Host)
 }
 
 type spawnHostStateChangeTriggers struct {

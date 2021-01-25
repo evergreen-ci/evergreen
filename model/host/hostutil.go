@@ -127,6 +127,17 @@ const (
 	defaultSSHTimeout = 2 * time.Minute
 )
 
+/*
+kim: TODO:
+- Remove assumption that Host is either hostname OR URI authority - it's just
+the hostname now.
+- Add SSHPort field to host document, which can be set to an alternative port
+but is default 22.
+- In scheduler/wrapper, propagate the host-specific SSH port to the host document SSH port.
+- Add host's specific port to sshCommand in trigger package if it's non-22.
+- Fix sshCommand to use host User and not distro User.
+- Remove GetSSHInfo() because h.Host is only the hostname now.
+*/
 // GetSSHInfo returns the information necessary to SSH into this host.
 func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	hostInfo, err := util.ParseSSHInfo(h.Host)
@@ -282,8 +293,8 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		if h.ServicePassword != "" {
 			params = append(params, fmt.Sprintf("--password='%s'", h.ServicePassword))
 		}
-	} else if h.Distro.User != "" {
-		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
+	} else if h.User != "" {
+		params = append(params, fmt.Sprintf("--user=%s", h.User))
 	}
 
 	if settings.Splunk.Populated() && h.StartedBy == evergreen.User {
@@ -499,7 +510,7 @@ func (h *Host) MakeJasperDirsCommand() string {
 // changeOwnerCommand returns the command to modify the given file on the host
 // to be owned by the distro owner.
 func (h *Host) changeOwnerCommand(path string) string {
-	cmd := fmt.Sprintf("chown -R %s %s", h.Distro.User, path)
+	cmd := fmt.Sprintf("chown -R %s %s", h.User, path)
 	if h.Distro.IsWindows() {
 		return cmd
 	}
