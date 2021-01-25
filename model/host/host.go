@@ -1463,6 +1463,7 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		StartTimeKey:         h.StartTime,
 		HasContainersKey:     h.HasContainers,
 		ContainerImagesKey:   h.ContainerImages,
+		SSHPortKey:           h.SSHPort,
 	}
 	update := bson.M{
 		"$setOnInsert": bson.M{
