@@ -371,7 +371,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 			"operation": "cleaning up after script copy",
 			"file":      file.Name(),
 			"distro":    h.Distro.Id,
-			"host_id":   h.Host,
+			"host_id":   h.Id,
 			"name":      name,
 		}
 		grip.Error(message.WrapError(file.Close(), errCtx))
@@ -380,7 +380,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 			"operation":     "copy script",
 			"file":          file.Name(),
 			"distro":        h.Distro.Id,
-			"host_id":       h.Host,
+			"host_id":       h.Id,
 			"name":          name,
 			"duration_secs": time.Since(startAt).Seconds(),
 		})
