@@ -41,14 +41,26 @@ func TestCurlCommand(t *testing.T) {
 			ClientBinariesDir: "clients",
 		}
 		t.Run("Windows", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchWindowsAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchLinuxAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
@@ -62,14 +74,26 @@ func TestCurlCommand(t *testing.T) {
 			HostInit:          evergreen.HostInitConfig{S3BaseURL: "https://foo.com"},
 		}
 		t.Run("Windows", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchWindowsAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe') && chmod +x evergreen.exe", evergreen.BuildRevision)
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchLinuxAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' || curl -LO 'www.example.com/clients/linux_amd64/evergreen') && chmod +x evergreen", evergreen.BuildRevision)
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
@@ -85,14 +109,26 @@ func TestCurlCommandWithRetry(t *testing.T) {
 			ClientBinariesDir: "clients",
 		}
 		t.Run("Windows", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchWindowsAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchLinuxAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
@@ -106,14 +142,26 @@ func TestCurlCommandWithRetry(t *testing.T) {
 			ClientBinariesDir: "clients",
 		}
 		t.Run("Windows", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchWindowsAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchWindowsAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Linux", func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: evergreen.ArchLinuxAmd64, User: "user"}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch: evergreen.ArchLinuxAmd64,
+					User: "user",
+				},
+				User: "user",
+			}
 			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
@@ -621,9 +669,9 @@ func TestJasperCommandsWindows(t *testing.T) {
 						ServiceUser:           "service-user",
 					},
 					Setup: "#!/bin/bash\necho hello",
-					User:  "user",
 				},
 				StartedBy: evergreen.User,
+				User:      "user",
 			}
 			settings := &evergreen.Settings{
 				HostJasper: evergreen.HostJasperConfig{
@@ -1049,16 +1097,17 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		Distro: distro.Distro{
 			Arch:    evergreen.ArchLinuxAmd64,
 			WorkDir: "/dir",
-			User:    "user",
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:                distro.BootstrapMethodUserData,
 				Communication:         distro.CommunicationMethodRPC,
 				JasperCredentialsPath: "/jasper_credentials_path",
 			},
+			User: user.Id,
 		},
 		ProvisionOptions: &ProvisionOptions{
 			OwnerId: user.Id,
 		},
+		User: user.Id,
 	}
 	require.NoError(t, h.Insert())
 
@@ -1268,8 +1317,8 @@ func TestChangeJasperDirsOwnerCommand(t *testing.T) {
 					JasperCredentialsPath: "/jasper_credentials_path/file",
 					ClientDir:             "/jasper_client_dir",
 				},
-				User: "user",
 			},
+			User: "user",
 		}
 		assert.Equal(t, "sudo chown -R user /jasper_binary_dir && sudo chown -R user /jasper_credentials_path && sudo chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
 	})
@@ -1283,8 +1332,8 @@ func TestChangeJasperDirsOwnerCommand(t *testing.T) {
 					JasperCredentialsPath: "/jasper_credentials_path/file",
 					ClientDir:             "/jasper_client_dir",
 				},
-				User: "user",
 			},
+			User: "user",
 		}
 		assert.Equal(t, "chown -R user /jasper_binary_dir && chown -R user /jasper_credentials_path && chown -R user /jasper_client_dir", h.ChangeJasperDirsOwnerCommand())
 	})
@@ -1364,6 +1413,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 					User: "user",
 				},
 				Secret: "host_secret",
+				User:   "user",
 			}
 			require.NoError(t, h.Insert())
 

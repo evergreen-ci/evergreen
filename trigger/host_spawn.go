@@ -2,6 +2,8 @@ package trigger
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -151,7 +153,12 @@ func hostURL(base, hostID string) string {
 }
 
 func sshCommand(h *host.Host) string {
-	return fmt.Sprintf("ssh %s@%s", h.User, h.Host)
+	cmd := []string{"ssh"}
+	if port := h.GetSSHPort(); port != host.DefaultSSHPort {
+		cmd = append(cmd, "-p", strconv.Itoa(port))
+	}
+	cmd = append(cmd, fmt.Sprintf("%s@%s", h.User, h.Host))
+	return strings.Join(cmd, " ")
 }
 
 type spawnHostStateChangeTriggers struct {

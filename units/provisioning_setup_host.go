@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -348,10 +349,10 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
 
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
+	// hostInfo, err := h.GetSSHInfo()
+	// if err != nil {
+	//     return "", errors.WithStack(err)
+	// }
 
 	// create a temp file for the script
 	file, err := ioutil.TempFile("", filepath.Base(name))
@@ -395,7 +396,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	}
 
 	scpCmdOut := util.NewMBCappedWriter()
-	scpArgs := buildScpCommand(file.Name(), name, hostInfo, sshOptions)
+	scpArgs := buildScpCommand(file.Name(), name, h, sshOptions)
 
 	scpCmd := env.JasperManager().CreateCommand(ctx).Add(scpArgs).
 		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
@@ -410,8 +411,11 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	return scpCmdOut.String(), errors.Wrap(err, "error copying script to remote machine")
 }
 
-func buildScpCommand(src, dst string, info *util.StaticHostInfo, opts []string) []string {
-	return append(append([]string{"scp", "-vvv", "-P", info.Port}, opts...), src, fmt.Sprintf("%s@%s:%s", info.User, info.Hostname, dst))
+func buildScpCommand(src, dst string, h *host.Host, opts []string) []string {
+	target := fmt.Sprintf("%s@%s:%s", h.User, h.Host, dst)
+	scpCmd := []string{"scp", "-vvv", "-P", strconv.Itoa(h.GetSSHPort())}
+	scpCmd = append(scpCmd, opts...)
+	return append(scpCmd, src, target)
 }
 
 // Build the setup script that will need to be run on the specified host.

@@ -67,6 +67,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
 		NoExpiration:          options.NoExpiration,
+		SSHPort:               DefaultSSHPort,
 	}
 
 	if options.ExpirationDuration != nil {

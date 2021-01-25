@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -136,19 +137,32 @@ but is default 22.
 - In scheduler/wrapper, propagate the host-specific SSH port to the host document SSH port.
 - Add host's specific port to sshCommand in trigger package if it's non-22.
 - Fix sshCommand to use host User and not distro User.
-- Remove GetSSHInfo() because h.Host is only the hostname now.
+- Remove GetSSHInfo()/ParseSSHInfo() because h.Host is only the hostname now.
+- Remove StaticHostInfo and just use Host, Port, and User fields
 */
 // GetSSHInfo returns the information necessary to SSH into this host.
-func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
-	hostInfo, err := util.ParseSSHInfo(h.Host)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing ssh info %s", h.Host)
-	}
-	if hostInfo.User == "" {
-		hostInfo.User = h.User
-	}
+// func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
+//     hostInfo, err := util.ParseSSHInfo(h.Host)
+//     if err != nil {
+//         return nil, errors.Wrapf(err, "error parsing ssh info %s", h.Host)
+//     }
+//     if hostInfo.User == "" {
+//         hostInfo.User = h.User
+//     }
+//
+//     return hostInfo, nil
+// }
 
-	return hostInfo, nil
+// DefaultSSHPort is the default port to connect to hosts using SSH.
+const DefaultSSHPort = 22
+
+// GetSSHPort returns the host's SSH port. If no port has been specified, it
+// returns the standard SSH port.
+func (h *Host) GetSSHPort() int {
+	if h.SSHPort == 0 {
+		return DefaultSSHPort
+	}
+	return h.SSHPort
 }
 
 // GetSSHOptions returns the options to SSH into this host.
@@ -231,10 +245,10 @@ func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, 
 
 func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
+	// hostInfo, err := h.GetSSHInfo()
+	// if err != nil {
+	//     return "", errors.WithStack(err)
+	// }
 	sshOpts, err := h.GetSSHOptions(env.Settings())
 	if err != nil {
 		return "", errors.Wrap(err, "could not get host's SSH options")
@@ -253,8 +267,9 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 
 	errOut := util.NewMBCappedWriter()
 	// Run SSH with "-T" because we are not using an interactive terminal.
-	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendRemoteArgs("-p", hostInfo.Port, "-T").ExtendRemoteArgs(sshOpts...).
+	// err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(h.Host).User(h.User).
+		ExtendRemoteArgs("-p", strconv.Itoa(h.GetSSHPort()), "-T").ExtendRemoteArgs(sshOpts...).
 		SetOutputWriter(output).SetErrorWriter(errOut)).Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
@@ -811,18 +826,20 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 
 	settings := env.Settings()
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
-		hostInfo, err := h.GetSSHInfo()
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get host's SSH info")
-		}
+		// hostInfo, err := h.GetSSHInfo()
+		// if err != nil {
+		//     return nil, errors.Wrap(err, "could not get host's SSH info")
+		// }
 		sshOpts, err := h.GetSSHOptions(settings)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get host's SSH options")
 		}
 
 		var remoteOpts options.Remote
-		remoteOpts.Host = hostInfo.Hostname
-		remoteOpts.User = hostInfo.User
+		// remoteOpts.Host = hostInfo.Hostname
+		// remoteOpts.User = hostInfo.User
+		remoteOpts.Host = h.Host
+		remoteOpts.User = h.User
 		remoteOpts.Args = sshOpts
 		clientOpts := jcli.ClientOptions{
 			BinaryPath:          h.JasperBinaryFilePath(settings.HostJasper),
