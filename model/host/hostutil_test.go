@@ -176,16 +176,18 @@ func TestGetSSHOptions(t *testing.T) {
 
 	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
 		exists := map[string]bool{}
+		require.True(t, len(expected)%2 == 0, `expected options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
+		require.True(t, len(actual)%2 == 0, `actual options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
 		for i := 0; i < len(actual); i += 2 {
 			exists[actual[i]+actual[i+1]] = true
 		}
 		for i := 0; i < len(expected); i += 2 {
-			assert.True(t, exists[expected[i]+expected[i+1]])
+			assert.True(t, exists[expected[i]+expected[i+1]], "missing (\"%s\",\"%s\")", expected[i], expected[i+1])
 		}
 	}
 	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"ReturnsExpectedArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
@@ -202,7 +204,22 @@ func TestGetSSHOptions(t *testing.T) {
 			key := evergreen.SSHKeyPair{Name: filepath.Base(keyFile.Name())}
 			settings.SSHKeyPairs = []evergreen.SSHKeyPair{key}
 
-			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"SetsDistroPortIfHostSpecificPortIsUnspecified": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=123")
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
+			opts, err := h.GetSSHOptions(settings)
+			require.NoError(t, err)
+			checkContainsOptionsAndValues(t, expected, opts)
+		},
+		"PrioritizesHostSpecificPortOverDistroPort": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=456")
+			h.SSHPort = 123
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
@@ -211,7 +228,7 @@ func TestGetSSHOptions(t *testing.T) {
 			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent"}
 			settings.SSHKeyPairs = []evergreen.SSHKeyPair{nonexistentKey}
 
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null"}
+			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)

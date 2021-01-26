@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -128,31 +127,6 @@ const (
 	defaultSSHTimeout = 2 * time.Minute
 )
 
-/*
-kim: TODO:
-- Remove assumption that Host is either hostname OR URI authority - it's just
-the hostname now.
-- Add SSHPort field to host document, which can be set to an alternative port
-but is default 22.
-- In scheduler/wrapper, propagate the host-specific SSH port to the host document SSH port.
-- Add host's specific port to sshCommand in trigger package if it's non-22.
-- Fix sshCommand to use host User and not distro User.
-- Remove GetSSHInfo()/ParseSSHInfo() because h.Host is only the hostname now.
-- Remove StaticHostInfo and just use Host, Port, and User fields
-*/
-// GetSSHInfo returns the information necessary to SSH into this host.
-// func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
-//     hostInfo, err := util.ParseSSHInfo(h.Host)
-//     if err != nil {
-//         return nil, errors.Wrapf(err, "error parsing ssh info %s", h.Host)
-//     }
-//     if hostInfo.User == "" {
-//         hostInfo.User = h.User
-//     }
-//
-//     return hostInfo, nil
-// }
-
 // DefaultSSHPort is the default port to connect to hosts using SSH.
 const DefaultSSHPort = 22
 
@@ -165,7 +139,8 @@ func (h *Host) GetSSHPort() int {
 	return h.SSHPort
 }
 
-// GetSSHOptions returns the options to SSH into this host.
+// GetSSHOptions returns the options to SSH into this host from an application
+// server.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	var keyPaths []string
 	for _, pair := range settings.SSHKeyPairs {
@@ -173,7 +148,7 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 			keyPaths = append(keyPaths, pair.PrivatePath(settings))
 		} else {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not find local SSH key file (this should only be a temporary problem)",
+				"message": "could not find local SSH key file (this should only be a temporary problem until SSH keys are written to the static host)",
 				"key":     pair.Name,
 			}))
 		}
@@ -185,15 +160,22 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 		return nil, errors.New("no SSH identity files available")
 	}
 
-	opts := []string{}
+	var opts []string
 	for _, path := range keyPaths {
 		opts = append(opts, "-i", path)
 	}
 
-	hasKnownHostsFile := false
+	var hasKnownHostsFile bool
+	var distroPortOption string
 
+	// Apply distro-level SSH options first.
 	for _, opt := range h.Distro.SSHOptions {
-		opt = strings.Trim(opt, " \t")
+		opt = strings.TrimSpace(opt)
+		// Do not set the port yet since a host-specific port might be set.
+		if strings.HasPrefix(opt, "Port") {
+			distroPortOption = opt
+			continue
+		}
 		opts = append(opts, "-o", opt)
 		if strings.HasPrefix(opt, "UserKnownHostsFile") {
 			hasKnownHostsFile = true
@@ -203,6 +185,19 @@ func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
 	if !hasKnownHostsFile {
 		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
 	}
+
+	// If a port has been specified for this host in particular, prefer to use
+	// that. Otherwise, fall back to using the distro SSH port if it's been set.
+	if h.SSHPort != 0 {
+		opts = append(opts, "-o", fmt.Sprintf("Port=%d", h.SSHPort))
+	} else if distroPortOption != "" {
+		opts = append(opts, "-o", distroPortOption)
+	}
+
+	// Run SSH without pseudo-terminal allocation because we will never connect
+	// with an interactive terminal.
+	opts = append(opts, "-o", "RequestTTY=no")
+
 	return opts, nil
 }
 
@@ -245,10 +240,6 @@ func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, 
 
 func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
-	// hostInfo, err := h.GetSSHInfo()
-	// if err != nil {
-	//     return "", errors.WithStack(err)
-	// }
 	sshOpts, err := h.GetSSHOptions(env.Settings())
 	if err != nil {
 		return "", errors.Wrap(err, "could not get host's SSH options")
@@ -266,11 +257,11 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 	}
 
 	errOut := util.NewMBCappedWriter()
-	// Run SSH with "-T" because we are not using an interactive terminal.
-	// err = addCommands(env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-	err = addCommands(env.JasperManager().CreateCommand(ctx).Host(h.Host).User(h.User).
-		ExtendRemoteArgs("-p", strconv.Itoa(h.GetSSHPort()), "-T").ExtendRemoteArgs(sshOpts...).
-		SetOutputWriter(output).SetErrorWriter(errOut)).Run(ctx)
+	err = addCommands(env.JasperManager().CreateCommand(ctx).
+		Host(h.Host).User(h.User).
+		ExtendRemoteArgs(sshOpts...).
+		SetOutputWriter(output).SetErrorWriter(errOut)).
+		Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"host_id": h.Id,
@@ -826,18 +817,12 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 
 	settings := env.Settings()
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
-		// hostInfo, err := h.GetSSHInfo()
-		// if err != nil {
-		//     return nil, errors.Wrap(err, "could not get host's SSH info")
-		// }
 		sshOpts, err := h.GetSSHOptions(settings)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get host's SSH options")
 		}
 
 		var remoteOpts options.Remote
-		// remoteOpts.Host = hostInfo.Hostname
-		// remoteOpts.User = hostInfo.User
 		remoteOpts.Host = h.Host
 		remoteOpts.User = h.User
 		remoteOpts.Args = sshOpts

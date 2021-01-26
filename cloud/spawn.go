@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -283,19 +282,15 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h *host.Host, password string) (*jasper.Command, error) {
-	// hostInfo, err := h.GetSSHInfo()
-	// if err != nil {
-	//     return nil, errors.WithStack(err)
-	// }
-
-	sshOptions, err := h.GetSSHOptions(env.Settings())
+	sshOpts, err := h.GetSSHOptions(env.Settings())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	// return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(h.User).
-	return env.JasperManager().CreateCommand(ctx).Host(h.Host).User(h.User).
-		ExtendRemoteArgs("-p", strconv.Itoa(h.GetSSHPort())).ExtendRemoteArgs(sshOptions...).PrivKey(h.Distro.SSHKey).
+	return env.JasperManager().CreateCommand(ctx).
+		Host(h.Host).User(h.User).
+		ExtendRemoteArgs(sshOpts...).
+		PrivKey(h.Distro.SSHKey).
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 
