@@ -383,10 +383,11 @@ func TestCanEnableCommitQueue(t *testing.T) {
 
 	require.NoError(db.Clear(ProjectRefCollection))
 	doc := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci",
-		Branch: "master",
-		Id:     "mci",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Branch:  "master",
+		Id:      "mci",
+		Enabled: true,
 		CommitQueue: CommitQueueParams{
 			Enabled: true,
 		},
@@ -397,10 +398,11 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	assert.True(ok)
 
 	doc2 := &ProjectRef{
-		Owner:  "mongodb",
-		Repo:   "mci",
-		Branch: "master",
-		Id:     "not-mci",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Branch:  "master",
+		Id:      "not-mci",
+		Enabled: true,
 		CommitQueue: CommitQueueParams{
 			Enabled: false,
 		},
