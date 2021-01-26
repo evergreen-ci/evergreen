@@ -49,11 +49,12 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, ts string) amboy.Job {
+func NewGenerateTasksJob(t task.Task) amboy.Job {
 	j := makeGenerateTaskJob()
-	j.TaskID = id
+	j.TaskID = t.Id
+	j.SetScopes([]string{fmt.Sprintf("%s-%s", generateTasksJobName, t.Version)})
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s-%s", generateTasksJobName, t.Id))
 	return j
 }
 
