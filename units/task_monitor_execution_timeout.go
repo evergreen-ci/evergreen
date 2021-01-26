@@ -210,12 +210,8 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
 		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking execution task ended")
-	} else if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "can't mark display task for reset")
-		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task in task group ended")
 	}
+
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }
 
