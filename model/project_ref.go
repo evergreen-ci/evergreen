@@ -686,9 +686,10 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey:  owner,
-			ProjectRefRepoKey:   repo,
-			ProjectRefBranchKey: branch,
+			ProjectRefEnabledKey: true,
+			ProjectRefOwnerKey:   owner,
+			ProjectRefRepoKey:    repo,
+			ProjectRefBranchKey:  branch,
 			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, projectRefCommitQueueEnabledKey): true,
 		},
 		db.NoProjection,
