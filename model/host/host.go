@@ -1463,19 +1463,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		StartTimeKey:         h.StartTime,
 		HasContainersKey:     h.HasContainers,
 		ContainerImagesKey:   h.ContainerImages,
-		SSHPortKey:           h.SSHPort,
+	}
+	unsetFields := bson.M{}
+	if h.NeedsReprovision != ReprovisionNone {
+		setFields[NeedsReprovisionKey] = h.NeedsReprovision
+	} else {
+		unsetFields[NeedsReprovisionKey] = true
+	}
+	if h.SSHPort != 0 {
+		setFields[SSHPortKey] = h.SSHPort
+	} else {
+		unsetFields[SSHPortKey] = true
 	}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			CreateTimeKey: h.CreationTime,
 		},
+		"$set":   setFields,
+		"$unset": unsetFields,
 	}
-	if h.NeedsReprovision != ReprovisionNone {
-		setFields[NeedsReprovisionKey] = h.NeedsReprovision
-	} else {
-		update["$unset"] = bson.M{NeedsReprovisionKey: ReprovisionNone}
-	}
-	update["$set"] = setFields
 
 	return UpsertOne(bson.M{IdKey: h.Id}, update)
 }

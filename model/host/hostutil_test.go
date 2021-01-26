@@ -218,7 +218,8 @@ func TestGetSSHOptions(t *testing.T) {
 		},
 		"PrioritizesHostSpecificPortOverDistroPort": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=456")
-			h.SSHPort = 123
+			sshPort := 123
+			h.SSHPort = &sshPort
 			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)

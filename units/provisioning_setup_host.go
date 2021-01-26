@@ -383,8 +383,6 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 		return "", errors.Wrap(err, "error writing local script")
 	}
 
-	// kim: TODO: test legacy/new SSH on static MacOS host, as well as on
-	// Windows.
 	sshOpts, err := h.GetSSHOptions(settings)
 	if err != nil {
 		return "", errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
