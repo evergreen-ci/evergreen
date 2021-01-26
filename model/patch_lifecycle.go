@@ -663,18 +663,19 @@ func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []s
 	patchesFailed := []string{}
 	for _, p := range patches {
 		// use the PR number to determine if this is a PR or diff patch. Currently there
-		// is not a reliable field that is set for CLI patches
+		// is not a reliable field that is set for diff patches
 		var err error
 		if p.GithubPatchData.PRNumber > 0 {
 			err = restartPRItem(p, cq)
 		} else {
-			err = restartCLIItem(p, cq)
+			err = restartDiffItem(p, cq)
 		}
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"patch":        p.Id,
 				"commit_queue": cq.ProjectID,
 				"message":      "error restarting commit queue item",
+				"pr_number":    p.GithubPatchData.PRNumber,
 			}))
 			patchesFailed = append(patchesFailed, p.Id.Hex())
 		} else {
@@ -709,7 +710,7 @@ func restartPRItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	return nil
 }
 
-func restartCLIItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
+func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	u, err := user.FindOne(user.ById(p.Author))
 	if err != nil {
 		return errors.Wrapf(err, "error finding user %s", p.Author)

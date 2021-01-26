@@ -118,8 +118,7 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue, user string) 
 		return nil, errors.Errorf("item %s not found in queue", issue)
 	}
 	apiRemovedItem := restModel.APICommitQueueItem{}
-	err = apiRemovedItem.BuildFromService(*removed)
-	if err != nil {
+	if err = apiRemovedItem.BuildFromService(*removed); err != nil {
 		return nil, err
 	}
 	return &apiRemovedItem, nil

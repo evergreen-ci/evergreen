@@ -179,15 +179,13 @@ func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*C
 		return nil, errors.Errorf("no commit queue found for '%s'", projectId)
 	}
 
-	foundVersion := false
 	issue := ""
 	for _, item := range cq.Queue {
 		if item.Version == version {
-			foundVersion = true
 			issue = item.Issue
 		}
 	}
-	if !foundVersion {
+	if issue == "" {
 		return nil, nil
 	}
 

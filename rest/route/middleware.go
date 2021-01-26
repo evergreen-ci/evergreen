@@ -422,19 +422,15 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}))
 		return
 	}
-	var entry *commitqueue.CommitQueueItem
-	for _, item := range cq.Queue {
-		if item.Issue == itemId {
-			entry = &item
-		}
-	}
-	if entry == nil {
+	spot := cq.FindItem(itemId)
+	if spot == -1 {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Item not found in queue",
 		}))
 		return
 	}
+	entry := cq.Queue[spot]
 
 	if entry.Source == commitqueue.SourceDiff {
 		patch, err := m.sc.FindPatchById(itemId)

@@ -1502,8 +1502,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	commitQueue.Owner = &project.Owner
 	commitQueue.Repo = &project.Repo
 
-	for i := range commitQueue.Queue {
-		item := commitQueue.Queue[i]
+	for i, item := range commitQueue.Queue {
 		patchId := ""
 		if restModel.FromStringPtr(item.Version) != "" {
 			patchId = restModel.FromStringPtr(item.Version)

@@ -74,12 +74,12 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	}
 
 	// unstuck the queue if the patch is done.
-	if !patch.IsValidId(nextItem.Issue) {
+	if nextItem.Source == commitqueue.SourceDiff && !patch.IsValidId(nextItem.Issue) {
 		j.dequeue(cq, nextItem)
 		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
-	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Issue).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Version).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return

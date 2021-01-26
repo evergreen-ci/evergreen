@@ -122,17 +122,12 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 }
 
 func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
-	versionID := ""
-	for _, item := range cq.Queue {
-		if item.Issue == issue {
-			versionID = item.Version
-		}
-	}
-	if versionID == "" {
+	spot := cq.FindItem(issue)
+	if spot == -1 {
 		return nil, nil
 	}
 
-	return VersionFindOneId(versionID)
+	return VersionFindOneId(cq.Queue[spot].Version)
 }
 
 // VersionBuildStatus stores metadata relating to each build
