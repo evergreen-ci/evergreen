@@ -185,11 +185,12 @@ func TestSetCloudHostStatus(t *testing.T) {
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
+			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
+
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
-			assert.Zero(t, dbHost.RunningTask)
 		},
 		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			tsk := task.Task{
@@ -201,6 +202,8 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+
+			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
