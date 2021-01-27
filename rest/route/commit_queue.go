@@ -106,7 +106,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	// Send GitHub status
-	if *removed.Source == commitqueue.SourcePullRequest {
+	if restModel.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))

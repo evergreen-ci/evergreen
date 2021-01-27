@@ -67,7 +67,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	return job
 }
 
-func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
+func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
 	nextItem, valid := cq.Next()
 	if !valid {
 		return
@@ -87,6 +87,14 @@ func (j *commitQueueJob) TryUnstick(cq *commitqueue.CommitQueue) {
 	if patchDoc == nil {
 		j.dequeue(cq, nextItem)
 		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
+		if nextItem.Source == commitqueue.SourcePullRequest {
+			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
+		}
 		return
 	}
 
@@ -312,18 +320,18 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		return
 	}
-	nextItem.Version = patchDoc.Id.Hex()
-	if err = cq.UpdateVersion(nextItem); err != nil {
-		j.logError(err, "problem saving version", nextItem)
-		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
-		return
-	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+		return
+	}
+	nextItem.Version = v.Id
+	if err = cq.UpdateVersion(nextItem); err != nil {
+		j.logError(err, "problem saving version", nextItem)
+		j.dequeue(cq, nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
 		return
 	}
 
@@ -384,6 +392,11 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
+		j.dequeue(cq, nextItem)
+		return
+	}
+	if err = cq.UpdateVersion(nextItem); err != nil {
+		j.logError(err, "problem saving version", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
