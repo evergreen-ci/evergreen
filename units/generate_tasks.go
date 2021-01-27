@@ -25,7 +25,7 @@ import (
 
 const (
 	generateTasksJobName        = "generate-tasks"
-	generateTasksJobMaxAttempts = 5
+	generateTasksJobMaxAttempts = 3
 )
 
 func init() {
@@ -270,7 +270,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		if err == nil && pErr == nil {
 			return
 		}
-		grip.Error(message.Fields{
+		msg := message.Fields{
 			"message":   "generate.tasks error, may retry",
 			"operation": generateTasksJobName,
 			"task":      j.TaskID,
@@ -280,7 +280,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			"version":   t.Version,
 			"error":     err,
 			"panic":     pErr,
-		})
+		}
+		if pErr != nil {
+			grip.Alert(msg)
+		} else {
+			grip.Error(msg)
+		}
 		if j.Attempt < generateTasksJobMaxAttempts-1 {
 			j.AddError(evergreen.GetEnvironment().RemoteQueue().Put(ctx, NewGenerateTasksJob(*t, j.Attempt+1)))
 		}
