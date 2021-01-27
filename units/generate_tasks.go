@@ -18,12 +18,14 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
-	generateTasksJobName = "generate-tasks"
+	generateTasksJobName        = "generate-tasks"
+	generateTasksJobMaxAttempts = 3
 )
 
 func init() {
@@ -31,8 +33,10 @@ func init() {
 }
 
 type generateTasksJob struct {
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
+	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
+	Attempt   int    `bson:"attempt" json:"attempt" yaml:"attempt"`
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -49,11 +53,12 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, ts string) amboy.Job {
+func NewGenerateTasksJob(t task.Task, attempt int) amboy.Job {
 	j := makeGenerateTaskJob()
-	j.TaskID = id
+	j.TaskID = t.Id
+	j.SetScopes([]string{fmt.Sprintf("%s-%s", generateTasksJobName, t.Version)})
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s-%s-execution%d-attempt%d", generateTasksJobName, t.Id, t.Execution, attempt))
 	return j
 }
 
@@ -246,9 +251,11 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	var err error
+	var t *task.Task
 	start := time.Now()
 
-	t, err := task.FindOneId(j.TaskID)
+	t, err = task.FindOneId(j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
 		return
@@ -257,6 +264,33 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
 		return
 	}
+
+	defer func() {
+		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in %s job", generateTasksJobName))
+		if err == nil && pErr == nil {
+			return
+		}
+		msg := message.Fields{
+			"message":       "generate.tasks error, may retry",
+			"operation":     generateTasksJobName,
+			"task":          j.TaskID,
+			"execution":     j.Execution,
+			"attempt":       j.Attempt,
+			"attempts_left": generateTasksJobMaxAttempts - 1 - j.Attempt,
+			"job":           j.ID(),
+			"version":       t.Version,
+			"error":         err,
+			"panic":         pErr,
+		}
+		if pErr != nil {
+			grip.Alert(msg)
+		} else {
+			grip.Error(msg)
+		}
+		if j.Attempt < generateTasksJobMaxAttempts-1 {
+			j.AddError(evergreen.GetEnvironment().RemoteQueue().Put(ctx, NewGenerateTasksJob(*t, j.Attempt+1)))
+		}
+	}()
 
 	err = j.generate(ctx, t)
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
