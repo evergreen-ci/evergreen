@@ -180,7 +180,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
-		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
 		return
 	}
 
