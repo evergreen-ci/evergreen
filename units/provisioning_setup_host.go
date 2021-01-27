@@ -344,22 +344,11 @@ func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func copyScript(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, name, script string) (string, error) {
-	// parse the hostname into the user, host and port
+func copyScript(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, dstPath, script string) (string, error) {
 	startAt := time.Now()
 
-	hostInfo, err := h.GetSSHInfo()
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	user := h.Distro.User
-	if hostInfo.User != "" {
-		user = hostInfo.User
-	}
-
 	// create a temp file for the script
-	file, err := ioutil.TempFile("", filepath.Base(name))
+	file, err := ioutil.TempFile("", filepath.Base(dstPath))
 	if err != nil {
 		return "", errors.Wrap(err, "error creating temporary script file")
 	}
@@ -368,21 +357,21 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	}
 	defer func() {
 		errCtx := message.Fields{
-			"operation": "cleaning up after script copy",
-			"file":      file.Name(),
-			"distro":    h.Distro.Id,
-			"host_id":   h.Host,
-			"name":      name,
+			"operation":          "cleaning up after script copy",
+			"local_source":       file.Name(),
+			"distro":             h.Distro.Id,
+			"host_id":            h.Id,
+			"remote_destination": dstPath,
 		}
 		grip.Error(message.WrapError(file.Close(), errCtx))
 		grip.Error(message.WrapError(os.Remove(file.Name()), errCtx))
 		grip.Debug(message.Fields{
-			"operation":     "copy script",
-			"file":          file.Name(),
-			"distro":        h.Distro.Id,
-			"host_id":       h.Host,
-			"name":          name,
-			"duration_secs": time.Since(startAt).Seconds(),
+			"operation":          "copy script",
+			"local_source":       file.Name(),
+			"distro":             h.Distro.Id,
+			"host_id":            h.Id,
+			"remote_destination": dstPath,
+			"duration_secs":      time.Since(startAt).Seconds(),
 		})
 	}()
 
@@ -394,13 +383,13 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 		return "", errors.Wrap(err, "error writing local script")
 	}
 
-	sshOptions, err := h.GetSSHOptions(settings)
+	sshOpts, err := h.GetSSHOptions(settings)
 	if err != nil {
 		return "", errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 
 	scpCmdOut := util.NewMBCappedWriter()
-	scpArgs := buildScpCommand(file.Name(), name, hostInfo, user, sshOptions)
+	scpArgs := buildScpCommand(file.Name(), dstPath, h, sshOpts...)
 
 	scpCmd := env.JasperManager().CreateCommand(ctx).Add(scpArgs).
 		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
@@ -415,8 +404,10 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	return scpCmdOut.String(), errors.Wrap(err, "error copying script to remote machine")
 }
 
-func buildScpCommand(src, dst string, info *util.StaticHostInfo, user string, opts []string) []string {
-	return append(append([]string{"scp", "-vvv", "-P", info.Port}, opts...), src, fmt.Sprintf("%s@%s:%s", user, info.Hostname, dst))
+func buildScpCommand(src, dst string, h *host.Host, opts ...string) []string {
+	target := fmt.Sprintf("%s@%s:%s", h.User, h.Host, dst)
+	scpCmd := append([]string{"scp", "-vvv"}, opts...)
+	return append(scpCmd, src, target)
 }
 
 // Build the setup script that will need to be run on the specified host.
