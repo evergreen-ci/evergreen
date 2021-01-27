@@ -271,15 +271,16 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			return
 		}
 		msg := message.Fields{
-			"message":   "generate.tasks error, may retry",
-			"operation": generateTasksJobName,
-			"task":      j.TaskID,
-			"execution": j.Execution,
-			"attempt":   j.Attempt,
-			"job":       j.ID(),
-			"version":   t.Version,
-			"error":     err,
-			"panic":     pErr,
+			"message":       "generate.tasks error, may retry",
+			"operation":     generateTasksJobName,
+			"task":          j.TaskID,
+			"execution":     j.Execution,
+			"attempt":       j.Attempt,
+			"attempts_left": generateTasksJobMaxAttempts - 1 - j.Attempt,
+			"job":           j.ID(),
+			"version":       t.Version,
+			"error":         err,
+			"panic":         pErr,
 		}
 		if pErr != nil {
 			grip.Alert(msg)
