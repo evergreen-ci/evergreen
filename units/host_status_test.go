@@ -135,18 +135,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager){
-		"RunningStatusPreparesForNextStepInHostLifecycle": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
-			require.NoError(t, h.Insert())
-			// This errors because we have no way of configuring the mock
-			// instance in the mock cloud manager to set the DNS name.
-			assert.Error(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusRunning))
-			_, err := mgr.GetDNSName(ctx, h)
-			assert.NoError(t, err)
-			// Mock manager:
-			// Calls OnUp
-			// Sets DNS name
-
-		},
 		"FailedStatusTerminatesCloudInstance": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
 			require.NoError(t, h.Insert())
 			require.NoError(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusFailed))
@@ -173,7 +161,6 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 			assert.Zero(t, dbHost.RunningTask)
 		},
-		// "": func(ctx  context.Context, t *testing.T, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
