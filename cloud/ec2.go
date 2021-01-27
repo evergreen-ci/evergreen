@@ -401,10 +401,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	})
 	h.Id = *instance.InstanceId
 
-	// kim: NOTE: the fact that we can get the instance ID immediately means
-	// only spot hosts need to deal with the unknown instance ID and wait until
-	// later to create the tags.
-
 	return nil
 }
 
@@ -629,10 +625,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 }
 
 // getResources returns a slice of the AWS resources for the given host
-// kim: NOTE: this gets the IDs for resources that need tagging for the reaper:
-// - Instance ID (the host ID for on-demand, gets the instance ID
-//   Host.ExternalIdentifier once if it's a spot host and isn't yet loaded)
-// - Volume IDs attached to the instance
 func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
 	instanceID := h.Id
 	if isHostSpot(h) {
@@ -663,8 +655,6 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 }
 
 // addTags adds or updates the specified tags in the client and db
-// kim: TODO: figure out what exactly this is doing, which is only called by
-// ModifyHost
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag) error {
 	resources, err := m.getResources(ctx, h)
 	if err != nil {

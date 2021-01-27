@@ -191,8 +191,8 @@ func hostToEC2Tags(hostTags []host.Tag) []*ec2.Tag {
 	var tags []*ec2.Tag
 	for _, tag := range hostTags {
 		key := tag.Key
-		value := tag.Value
-		tags = append(tags, &ec2.Tag{Key: &key, Value: &value})
+		val := tag.Value
+		tags = append(tags, &ec2.Tag{Key: &key, Value: &val})
 	}
 	return tags
 }

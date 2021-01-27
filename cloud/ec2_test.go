@@ -28,12 +28,6 @@ var (
 	base64OfSomeUserData = base64.StdEncoding.EncodeToString([]byte(someUserData))
 )
 
-/*
-kim: TODO: test
-- Tags set for on-demand instances
-- OnUp is a no-op for on demand hosts.
-*/
-
 type EC2Suite struct {
 	suite.Suite
 	onDemandOpts              *EC2ManagerOptions
@@ -870,7 +864,7 @@ func (s *EC2Suite) TestOnUpTagsForSpotInstance() {
 
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
-	dns, err := s.spotManager.GetDNSName(s.ctx, s.h)
+	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 
