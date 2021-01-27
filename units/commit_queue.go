@@ -176,6 +176,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if !valid {
 		return
 	}
+	conf := j.env.Settings()
+	githubToken, err := conf.GetGithubOauthToken()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "can't get github token"))
+		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
+		return
+	}
 
 	if cq.Processing {
 		grip.Info(message.Fields{
@@ -188,7 +195,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		// check if the patch is done, and if it is, dequeue.
 		// It's okay if this gets to it before the notification does, since that will
 		// check if the item is still on the queue before removing it.
-		j.TryUnstick(cq)
+		j.TryUnstick(ctx, cq, projectRef, githubToken)
 		return
 	}
 	if err = cq.SetProcessing(true); err != nil {
@@ -207,14 +214,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"queue_length": len(cq.Queue),
 		"message":      "started testing commit queue item",
 	})
-
-	conf := j.env.Settings()
-	githubToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		j.AddError(errors.Wrap(err, "can't get github token"))
-		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
-		return
-	}
 
 	// create a version with the item and subscribe to its completion
 	if nextItem.Source == commitqueue.SourcePullRequest {

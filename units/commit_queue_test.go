@@ -119,7 +119,7 @@ func (s *commitQueueSuite) TestTryUnstick() {
 			},
 		},
 	}
-	job.TryUnstick(cq)
+	job.TryUnstick(context.Background(), cq, s.projectRef, "")
 	s.Len(cq.Queue, 0)
 }
 
