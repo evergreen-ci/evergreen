@@ -30,8 +30,7 @@
       "_id": "p1",
       "identifier": "p1",
       "commit_queue": {
-        "enabled": true,
-        "patch_type": "CLI"
+        "enabled": true
       }
     }
   ],

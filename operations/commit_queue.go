@@ -406,23 +406,16 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 		return err
 	}
 	grip.Infof("Project: %s\n", projectID)
-	grip.Infof("Type of queue: %s\n", projectRef.CommitQueue.PatchType)
 	if projectRef.CommitQueue.Message != "" {
 		grip.Infof("Message: %s\n", projectRef.CommitQueue.Message)
-	}
-
-	if projectRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
-		grip.Infof("Owner: %s\n", projectRef.Owner)
-		grip.Infof("Repo: %s\n", projectRef.Repo)
 	}
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
-		if projectRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
+		if restModel.FromStringPtr(item.Source) == commitqueue.SourcePullRequest {
 			listPRCommitQueueItem(item, projectRef, uiServerHost)
-		}
-		if projectRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
+		} else if restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
 			listCLICommitQueueItem(item, ac, uiServerHost)
 		}
 		listModules(item)
@@ -540,8 +533,8 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		}
 		return errors.Wrap(err, "can't get project ref")
 	}
-	if !ref.CommitQueue.Enabled || ref.CommitQueue.PatchType != commitqueue.SourceCommandLine {
-		return errors.New("CLI commit queue not enabled for project")
+	if !ref.CommitQueue.Enabled {
+		return errors.New("commit queue not enabled for project")
 	}
 
 	commitCount, err := gitCommitCount(ref.Branch, p.ref, p.commits)
