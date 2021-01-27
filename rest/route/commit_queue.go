@@ -13,7 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -249,4 +251,54 @@ func (p *cqMessageForPatch) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewTextResponse(message)
+}
+
+type commitQueueConcludeMerge struct {
+	Project string `json:"project"`
+	Status  string `json:"status"`
+
+	patchId string
+	sc      data.Connector
+}
+
+func makeCommitQueueConcludeMerge(sc data.Connector) gimlet.RouteHandler {
+	return &commitQueueConcludeMerge{
+		sc: sc,
+	}
+}
+
+func (p *commitQueueConcludeMerge) Factory() gimlet.RouteHandler {
+	return &commitQueueConcludeMerge{
+		sc: p.sc,
+	}
+}
+
+func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+	if p.patchId == "" {
+		return errors.New("patch ID must be specified")
+	}
+
+	if err := utility.ReadJSON(body, p); err != nil {
+		return errors.Wrap(err, "unable to parse request body")
+	}
+	if p.Project == "" {
+		return errors.New("project must be specified")
+	}
+	if p.Status == "" {
+		return errors.New("status must be specified")
+	}
+
+	return nil
+}
+
+func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
+	err := p.sc.ConcludeMerge(p.patchId, p.Project, p.Status)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }

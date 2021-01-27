@@ -12,6 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -344,4 +346,24 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 	clearedCount, err := s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
+}
+
+func TestConcludeMerge(t *testing.T) {
+	require.NoError(t, db.Clear(commitqueue.Collection))
+	projectID := "evergreen"
+	itemID := "abcdef"
+	queue := &commitqueue.CommitQueue{
+		ProjectID:  projectID,
+		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID, Version: itemID}},
+		Processing: true,
+	}
+	require.NoError(t, commitqueue.InsertQueue(queue))
+	dc := &DBCommitQueueConnector{}
+
+	assert.NoError(t, dc.ConcludeMerge(itemID, projectID, "foo"))
+
+	queue, err := commitqueue.FindOneId(projectID)
+	require.NoError(t, err)
+	assert.Len(t, queue.Queue, 0)
+	assert.False(t, queue.Processing)
 }

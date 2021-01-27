@@ -721,7 +721,7 @@ func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
 }
 
-func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
+func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}
@@ -757,6 +757,7 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch,
 			BaseRepo:       pr.Base.Repo.GetName(),
 			BaseBranch:     pr.Base.GetRef(),
 			HeadHash:       pr.Head.GetSHA(),
+			CommitTitle:    commitTitle,
 		},
 	}
 

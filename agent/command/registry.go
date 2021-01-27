@@ -34,6 +34,7 @@ func init() {
 		"generate.tasks":                generateTaskFactory,
 		"git.apply_patch":               gitApplyPatchFactory,
 		"git.get_project":               gitFetchProjectFactory,
+		"git.merge_pr":                  gitMergePrFactory,
 		"git.push":                      gitPushFactory,
 		"gotest.parse_files":            goTestFactory,
 		"gotest.parse_json":             goTest2JSONFactory,
