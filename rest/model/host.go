@@ -67,7 +67,7 @@ type DistroInfo struct {
 	IsVirtualWorkstation bool    `json:"is_virtual_workstation"`
 	User                 *string `json:"user"`
 	IsWindows            bool    `json:"is_windows"`
-	BootstrapMethod      *string `json:"method"`
+	BootstrapMethod      *string `json:"bootstrap_method"`
 }
 
 type TaskInfo struct {
