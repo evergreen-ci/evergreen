@@ -27,6 +27,7 @@ type ProjectConnectorGetSuite struct {
 
 const (
 	projectId      = "mci2"
+	repoProjectId  = "repo_mci"
 	username       = "me"
 	projEventCount = 10
 )
@@ -78,6 +79,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectA",
 				Private:     false,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
@@ -86,6 +88,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectB",
 				Private:     true,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
@@ -94,6 +97,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{
 				Id:          "projectC",
 				Private:     true,
+				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: true},
 				Owner:       "mongodb",
 				Repo:        "mongo",
@@ -119,7 +123,12 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"b": true},
 		}
 		s.NoError(vars.Insert())
-
+		vars = &model.ProjectVars{
+			Id:          repoProjectId,
+			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
+			PrivateVars: map[string]bool{"a": true},
+		}
+		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
 		after.GitHubHooksEnabled = false
@@ -238,6 +247,11 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					Id:          projectId,
 					Vars:        map[string]string{"a": "1", "b": "3"},
 					PrivateVars: map[string]bool{"b": true},
+				},
+				{
+					Id:          repoProjectId,
+					Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
+					PrivateVars: map[string]bool{"a": true},
 				},
 			},
 		}}
@@ -360,7 +374,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	// redact private variables
-	res, err := s.ctx.FindProjectVarsById(projectId, true)
+	res, err := s.ctx.FindProjectVarsById(projectId, "", true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -368,11 +382,38 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.True(res.PrivateVars["b"])
 
 	// not redacted
-	res, err = s.ctx.FindProjectVarsById(projectId, false)
+	res, err = s.ctx.FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
 	s.Equal("3", res.Vars["b"])
+	s.Equal("", res.Vars["c"])
+
+	// test with repo
+	res, err = s.ctx.FindProjectVarsById(projectId, repoProjectId, true)
+	s.NoError(err)
+	s.Require().NotNil(res)
+	s.Equal("1", res.Vars["a"])
+	s.Equal("", res.Vars["b"])
+	s.True(res.PrivateVars["b"])
+	s.False(res.PrivateVars["a"])
+	s.Equal("new", res.Vars["c"])
+
+	res, err = s.ctx.FindProjectVarsById("", repoProjectId, true)
+	s.NoError(err)
+	s.Equal("", res.Vars["a"])
+	s.Equal("new", res.Vars["c"])
+	s.True(res.PrivateVars["a"])
+
+	res, err = s.ctx.FindProjectVarsById("", repoProjectId, false)
+	s.NoError(err)
+	s.Equal("a_from_repo", res.Vars["a"])
+	s.Equal("", res.Vars["b"])
+	s.Equal("new", res.Vars["c"])
+	s.True(res.PrivateVars["a"])
+
+	_, err = s.ctx.FindProjectVarsById("non-existent", "also-non-existent", false)
+	s.Error(err)
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
@@ -400,10 +441,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
-	origProj, err := s.ctx.FindProjectVarsById(projectId, false)
+	origProj, err := s.ctx.FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 
-	newProj, err := s.ctx.FindProjectVarsById("project-copy", false)
+	newProj, err := s.ctx.FindProjectVarsById("project-copy", "", false)
 	s.NoError(err)
 
 	s.Equal(origProj.PrivateVars, newProj.PrivateVars)

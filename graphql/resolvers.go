@@ -899,7 +899,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 }
 
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
-	project, err := r.sc.FindProjectById(id)
+	project, err := r.sc.FindProjectById(id, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
 	}
@@ -1350,7 +1350,10 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	// need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project)
+	p, err := r.sc.FindProjectById(t.Project, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
+	}
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
@@ -1492,7 +1495,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 	}
-	project, err := r.sc.FindProjectById(id)
+	project, err := r.sc.FindProjectById(id, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
 	}
@@ -1868,13 +1871,6 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	p, err := r.sc.FindProjectById(t.Project)
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id: %s: %s", t.Project, err.Error()))
-	}
 	user := gimlet.GetUser(ctx).DisplayName()
 	err = model.AbortTask(taskID, user)
 	if err != nil {
@@ -2045,7 +2041,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		}
 		break
 	case "project":
-		p, projectErr := r.sc.FindProjectById(id)
+		p, projectErr := r.sc.FindProjectById(id, false)
 		if projectErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
 		}
@@ -2383,10 +2379,39 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 	return &baseTask.Status, nil
 }
 
-func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int) (*BuildBaron, error) {
+func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	if len(t.ExecutionTasks) == 0 {
+		return nil, nil
+	}
+	executionTasks := []*restModel.APITask{}
+	for _, execTask := range t.ExecutionTasks {
+		execT, err := task.FindByIdExecution(execTask, &t.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTask, err.Error()))
+		}
+		apiTask := &restModel.APITask{}
+		err = apiTask.BuildFromService(execT)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
+		}
+		executionTasks = append(executionTasks, apiTask)
+	}
+
+	return executionTasks, nil
+}
+
+func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
 
-	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskId, execString)
+	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskID, execString)
 	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
 		return &BuildBaron{
 			SearchReturnInfo:     searchReturnInfo,
@@ -2402,22 +2427,22 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskId string, exec int)
 	}, nil
 }
 
-func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskId string) (bool, error) {
-	taskNotFound, err := BbFileTicket(ctx, taskId)
+func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string) (bool, error) {
+	taskNotFound, err := BbFileTicket(ctx, taskID)
 	successful := true
 
 	if err != nil {
 		return !successful, InternalServerError.Send(ctx, err.Error())
 	}
 	if taskNotFound {
-		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskId))
+		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskID))
 	}
 
 	return successful, nil
 }
 
-func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := BbGetCreatedTicketsPointers(taskId)
+func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
+	createdTickets, err := BbGetCreatedTicketsPointers(taskID)
 	if err != nil {
 		return nil, err
 	}

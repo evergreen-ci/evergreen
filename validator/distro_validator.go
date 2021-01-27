@@ -177,6 +177,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 			continue
 		}
 		if err := settings.Validate(); err != nil {
+
 			errs = append(errs, ValidationError{
 				Message: errors.Wrapf(err, "error validating settings for region '%s'", region).Error(),
 				Level:   Error,

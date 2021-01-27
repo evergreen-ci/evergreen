@@ -872,6 +872,8 @@ type TaskResolver interface {
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
+	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
+
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
@@ -5160,7 +5162,7 @@ type Task {
   displayOnly: Boolean
   distroId: String!
   estimatedStart: Duration
-  execution: Int
+  execution: Int!
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
@@ -18027,11 +18029,14 @@ func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_executionTasks(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -18076,13 +18081,13 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ExecutionTasksFull, nil
+		return ec.resolvers.Task().ExecutionTasksFull(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18091,9 +18096,9 @@ func (ec *executionContext) _Task_executionTasksFull(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]model.APITask)
+	res := resTmp.([]*model.APITask)
 	fc.Result = res
-	return ec.marshalOTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
+	return ec.marshalOTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_expectedDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -27376,10 +27381,22 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "executionTasks":
 			out.Values[i] = ec._Task_executionTasks(ctx, field, obj)
 		case "executionTasksFull":
-			out.Values[i] = ec._Task_executionTasksFull(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_executionTasksFull(ctx, field, obj)
+				return res
+			})
 		case "expectedDuration":
 			out.Values[i] = ec._Task_expectedDuration(ctx, field, obj)
 		case "totalTestCount":
@@ -31907,46 +31924,6 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
 	return ec._Task(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITask) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
 }
 
 func (ec *executionContext) marshalOTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APITask) graphql.Marshaler {

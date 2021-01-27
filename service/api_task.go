@@ -501,6 +501,16 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
+			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+				"message":              "not updating running task group task, because current group needs to be torn down",
+				"task_distro_id":       nextTask.DistroId,
+				"task_id":              nextTask.Id,
+				"task_group":           nextTask.TaskGroup,
+				"task_build_variant":   nextTask.BuildVariant,
+				"task_version":         nextTask.Version,
+				"task_project":         nextTask.Project,
+				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+			})
 			return nil, true, nil
 		}
 
@@ -548,6 +558,21 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
+				}
+				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum > nextTask.TaskGroupOrder {
+					grip.Debug(message.Fields{
+						"message":              "task group race but we're still dispatching",
+						"dispatch_race":        fmt.Sprintf("current task is order %d, another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum),
+						"task_distro_id":       nextTask.DistroId,
+						"task_id":              nextTask.Id,
+						"host_id":              currentHost.Id,
+						"task_group":           nextTask.TaskGroup,
+						"task_build_variant":   nextTask.BuildVariant,
+						"task_version":         nextTask.Version,
+						"task_project":         nextTask.Project,
+						"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+						"task_group_order":     nextTask.TaskGroupOrder,
+					})
 				}
 			}
 			// for multiple-host task groups and single-host task groups without order cached
