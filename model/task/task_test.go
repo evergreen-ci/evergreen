@@ -1853,6 +1853,28 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 	}
 }
 
+func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 0},
+		{Id: "t1", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 1},
+		{Id: "t2", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 2},
+		{Id: "t3", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 3},
+		{Id: "t4", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 4},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[2], tasks[3]}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, taskDependsOn, 2)
+	expectedIDs := []string{"t0", "t1"}
+	for _, task := range taskDependsOn {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
 func TestGetRecursiveDependenciesDown(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{

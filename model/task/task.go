@@ -1429,8 +1429,8 @@ func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
-// that are not in the original task slice. depCache should originally be nil
-// We assume there are no dependency cycles.
+// that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
+// depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
 	if depCache == nil {
 		depCache = make(map[string]Task)
@@ -1444,6 +1444,22 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		for _, dep := range t.DependsOn {
 			if _, ok := depCache[dep.TaskId]; !ok {
 				tasksToFind = append(tasksToFind, dep.TaskId)
+			}
+		}
+		if t.IsPartOfSingleHostTaskGroup() {
+			tasksInGroup, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+			}
+			if len(tasksInGroup) == 0 {
+				return nil, errors.Errorf("no tasks in task group '%s'", t.TaskGroup)
+			}
+			for _, taskInGroup := range tasksInGroup {
+				if taskInGroup.TaskGroupOrder < t.TaskGroupOrder {
+					if _, ok := depCache[taskInGroup.Id]; !ok {
+						tasksToFind = append(tasksToFind, taskInGroup.Id)
+					}
+				}
 			}
 		}
 	}
