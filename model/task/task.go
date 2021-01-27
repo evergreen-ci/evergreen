@@ -1451,9 +1451,6 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 			if err != nil {
 				return nil, errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
 			}
-			if len(tasksInGroup) == 0 {
-				return nil, errors.Errorf("no tasks in task group '%s'", t.TaskGroup)
-			}
 			for _, taskInGroup := range tasksInGroup {
 				if taskInGroup.TaskGroupOrder < t.TaskGroupOrder {
 					if _, ok := depCache[taskInGroup.Id]; !ok {
