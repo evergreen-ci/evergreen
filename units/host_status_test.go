@@ -134,24 +134,68 @@ func TestSetCloudHostStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager){
-		"FailedStatusTerminatesCloudInstance": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager){
+		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
+			provider := cloud.GetMockProvider()
+			mockInstance := cloud.MockInstance{
+				IsUp:    true,
+				Status:  cloud.StatusRunning,
+				DNSName: "dns_name",
+			}
+			provider.Set(h.Id, mockInstance)
+
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
-			require.NoError(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusFailed))
+
+			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
+			assert.True(t, provider.Get(h.Id).OnUpRan)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, mockInstance.DNSName, dbHost.Host)
+			assert.False(t, dbHost.Provisioned)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
+		"RunningStatusMarksUserDataProvisionedHostAsProvisioned": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
+			provider := cloud.GetMockProvider()
+			mockInstance := cloud.MockInstance{
+				IsUp:    true,
+				Status:  cloud.StatusRunning,
+				DNSName: "dns_name",
+			}
+			provider.Set(h.Id, mockInstance)
+
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
+			assert.True(t, provider.Get(h.Id).OnUpRan)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, mockInstance.DNSName, dbHost.Host)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
+			assert.True(t, dbHost.Provisioned)
+		},
+		"FailedStatusTerminatesCloudInstance": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
+			require.NoError(t, h.Insert())
+			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
 
 			dbHost, err := host.FindOneId(h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
+		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			tsk := task.Task{
 				Id: "some_task",
 			}
 			require.NoError(t, tsk.Insert())
 			h.RunningTask = tsk.Id
 			require.NoError(t, h.Insert())
-			require.NoError(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusStopped))
+			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 
@@ -186,14 +230,18 @@ func TestSetCloudHostStatus(t *testing.T) {
 			j, ok := NewCloudHostReadyJob(env, h.Id).(*cloudHostReadyJob)
 			require.True(t, ok)
 
-			mgr, err := cloud.GetManager(tctx, env, cloud.ManagerOpts{
+			provider := cloud.GetMockProvider()
+			provider.Reset()
+			defer provider.Reset()
+
+			mockMgr, err := cloud.GetManager(tctx, env, cloud.ManagerOpts{
 				Provider: evergreen.ProviderNameMock,
 			})
 			require.NoError(t, err)
-			_, err = mgr.SpawnHost(tctx, h)
+			_, err = mockMgr.SpawnHost(tctx, h)
 			require.NoError(t, err)
 
-			testCase(tctx, t, env, h, j, mgr)
+			testCase(tctx, t, env, h, j, mockMgr)
 		})
 	}
 }
