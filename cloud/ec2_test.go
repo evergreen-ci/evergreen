@@ -28,6 +28,12 @@ var (
 	base64OfSomeUserData = base64.StdEncoding.EncodeToString([]byte(someUserData))
 )
 
+/*
+kim: TODO: test
+- Tags set for on-demand instances
+- OnUp is a no-op for on demand hosts.
+*/
+
 type EC2Suite struct {
 	suite.Suite
 	onDemandOpts              *EC2ManagerOptions
@@ -827,18 +833,31 @@ func (s *EC2Suite) TestIsUp() {
 	s.NoError(err)
 }
 
-func (s *EC2Suite) TestOnUp() {
+func (s *EC2Suite) TestOnUpNoopsForOnDemandInstance() {
+	s.Require().NoError(s.h.Insert())
+	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
+	manager, ok := s.spotManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+	s.Nil(mock.DescribeVolumesInput)
+	s.Zero(mock.CreateTagsInput)
+}
+
+func (s *EC2Suite) TestOnUpTagsForSpotInstance() {
+	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	s.h.ExternalIdentifier = "instance_id"
 	s.NoError(s.h.Insert())
 
-	s.NoError(s.onDemandManager.OnUp(s.ctx, s.h))
-	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().NoError(s.spotManager.OnUp(s.ctx, s.h))
+	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 	s.Nil(mock.DescribeVolumesInput)
 
 	s.Len(mock.CreateTagsInput.Resources, 2)
-	s.Equal(s.h.Id, *mock.CreateTagsInput.Resources[0])
+	s.Equal(s.h.ExternalIdentifier, *mock.CreateTagsInput.Resources[0])
 	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
 
 	foundHost, err := host.FindOneId(s.h.Id)
@@ -851,7 +870,7 @@ func (s *EC2Suite) TestOnUp() {
 
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
-	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)
+	dns, err := s.spotManager.GetDNSName(s.ctx, s.h)
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 
