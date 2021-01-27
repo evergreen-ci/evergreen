@@ -646,7 +646,7 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "problem getting tasks that need generators run")
 		}
 		for _, t := range tasks {
-			catcher.Add(env.RemoteQueue().Put(ctx, NewGenerateTasksJob(t)))
+			catcher.Add(env.RemoteQueue().Put(ctx, NewGenerateTasksJob(t, 0)))
 		}
 		return catcher.Resolve()
 	}
