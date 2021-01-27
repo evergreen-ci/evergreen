@@ -96,8 +96,10 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	j.AddError(err)
 }
 
-// handleExternallyTerminatedHost will check if a host from a dynamic provider has been terminated
-// and clean up the host if it has. Returns true if the host has been externally terminated
+// handleExternallyTerminatedHost will check if a host from a dynamic provider
+// has been terminated or stopped by a source external to Evergreen itself. If
+// so, clean up the host. Returns true if the host has been externally terminated
+// or stopped.
 func handleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
 	if h.Provider == evergreen.ProviderNameStatic {
 		return false, nil
@@ -156,6 +158,15 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		}))
 
 		return true, catcher.Resolve()
+	case cloud.StatusStopped:
+		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, "host was found in stopped state"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not enqueue job to terminate host that was found in stopped state",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"op_id":   id,
+		}))
+		return true, err
 	default:
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",
