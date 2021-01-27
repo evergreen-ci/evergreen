@@ -3,8 +3,10 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/mongodb/amboy"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -12,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -125,4 +128,85 @@ func TestTerminateUnknownHosts(t *testing.T) {
 	j := NewCloudHostReadyJob(env, "id").(*cloudHostReadyJob)
 	awsErr := "error getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
 	assert.NoError(t, j.terminateUnknownHosts(ctx, awsErr))
+}
+
+func TestSetCloudHostStatus(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager){
+		"RunningStatusPreparesForNextStepInHostLifecycle": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
+			require.NoError(t, h.Insert())
+			// This errors because we have no way of configuring the mock
+			// instance in the mock cloud manager to set the DNS name.
+			assert.Error(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusRunning))
+			_, err := mgr.GetDNSName(ctx, h)
+			assert.NoError(t, err)
+			// Mock manager:
+			// Calls OnUp
+			// Sets DNS name
+
+		},
+		"FailedStatusTerminatesCloudInstance": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
+			require.NoError(t, h.Insert())
+			require.NoError(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusFailed))
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+		},
+		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {
+			tsk := task.Task{
+				Id: "some_task",
+			}
+			require.NoError(t, tsk.Insert())
+			h.RunningTask = tsk.Id
+			require.NoError(t, h.Insert())
+			require.NoError(t, j.setCloudHostStatus(ctx, mgr, *h, cloud.StatusStopped))
+
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+			assert.Zero(t, dbHost.RunningTask)
+		},
+		// "": func(ctx  context.Context, t *testing.T, h *host.Host, j *cloudHostReadyJob, mgr cloud.Manager) {},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+			}()
+
+			env := &mock.Environment{}
+			ctx := context.Background()
+			require.NoError(t, env.Configure(ctx))
+
+			h := &host.Host{
+				Id:       "id",
+				Provider: evergreen.ProviderNameMock,
+				Distro: distro.Distro{
+					Provider: evergreen.ProviderNameMock,
+				},
+				Status: evergreen.HostStarting,
+			}
+
+			j, ok := NewCloudHostReadyJob(env, h.Id).(*cloudHostReadyJob)
+			require.True(t, ok)
+
+			mgr, err := cloud.GetManager(tctx, env, cloud.ManagerOpts{
+				Provider: evergreen.ProviderNameMock,
+			})
+			require.NoError(t, err)
+			_, err = mgr.SpawnHost(tctx, h)
+			require.NoError(t, err)
+
+			testCase(tctx, t, env, h, j, mgr)
+		})
+	}
 }

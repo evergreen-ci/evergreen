@@ -112,12 +112,8 @@ clientsLoop:
 				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
 				continue clientsLoop
 			}
-			hostIDs := []string{}
-			for _, h := range hosts {
-				hostIDs = append(hostIDs, h.Id)
-			}
 			for i := range hosts {
-				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
+				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error setting instance status"))
 			}
 			continue clientsLoop
 		}
@@ -127,7 +123,7 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
+			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error setting instance status"))
 		}
 	}
 }
@@ -168,6 +164,17 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 			"hostStatus": hostStatus.String(),
 		})
 		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
+	case cloud.StatusStopped:
+		grip.Warning(message.Fields{
+			"message":    "host was found in stopped state, which should not occur",
+			"hypothesis": "stopped by the AWS reaper",
+			"host_id":    h.Id,
+		})
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
+		return catcher.Resolve()
 	case cloud.StatusRunning:
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
