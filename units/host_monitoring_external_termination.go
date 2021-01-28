@@ -129,8 +129,8 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		}
 		return false, nil
 	case cloud.StatusStopped, cloud.StatusTerminated:
-		// Non-agent hosts that are stopped (e.g. spawn hosts) should not be
-		// treated as externally terminated.
+		// Avoid accidentally terminating non-agent hosts that are stopped (e.g.
+		// spawn hosts).
 		if cloudStatus == cloud.StatusStopped && (h.UserHost || h.StartedBy != evergreen.User) {
 			return false, errors.New("non-agent host is stopped and should not be terminated")
 		}
