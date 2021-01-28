@@ -152,6 +152,7 @@ type ComplexityRoot struct {
 	}
 
 	DistroInfo struct {
+		BootstrapMethod      func(childComplexity int) int
 		Id                   func(childComplexity int) int
 		IsVirtualWorkstation func(childComplexity int) int
 		IsWindows            func(childComplexity int) int
@@ -1299,6 +1300,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.WorkDir(childComplexity), true
+
+	case "DistroInfo.bootstrapMethod":
+		if e.complexity.DistroInfo.BootstrapMethod == nil {
+			break
+		}
+
+		return e.complexity.DistroInfo.BootstrapMethod(childComplexity), true
 
 	case "DistroInfo.id":
 		if e.complexity.DistroInfo.Id == nil {
@@ -4911,6 +4919,7 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
   isWindows: Boolean
+  bootstrapMethod: String
 }
 
 type Distro {
@@ -8653,6 +8662,37 @@ func (ec *executionContext) _DistroInfo_isWindows(ctx context.Context, field gra
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DistroInfo_bootstrapMethod(ctx context.Context, field graphql.CollectedField, obj *model.DistroInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "DistroInfo",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootstrapMethod, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _File_name(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
@@ -24964,6 +25004,8 @@ func (ec *executionContext) _DistroInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._DistroInfo_user(ctx, field, obj)
 		case "isWindows":
 			out.Values[i] = ec._DistroInfo_isWindows(ctx, field, obj)
+		case "bootstrapMethod":
+			out.Values[i] = ec._DistroInfo_bootstrapMethod(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

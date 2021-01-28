@@ -75,14 +75,12 @@ func TestDependenciesMet(t *testing.T) {
 		for _, depTask := range depTasks {
 			So(depTask.Insert(), ShouldBeNil)
 		}
-		So(taskDoc.Insert(), ShouldBeNil)
 
 		Convey("sanity check the local version of the function in the nil case", func() {
 			taskDoc.DependsOn = []Dependency{}
 			met, err := taskDoc.AllDependenciesSatisfied(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("if the task has no dependencies its dependencies should"+
@@ -91,7 +89,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("task with overridden dependencies should be met", func() {
@@ -100,7 +97,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("if only some of the tasks dependencies are finished"+
@@ -118,7 +114,6 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(map[string]Task{})
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
-				taskDoc.DependenciesMetTime = utility.ZeroTime
 			})
 
 		Convey("if all of the tasks dependencies are finished properly, it"+
@@ -128,7 +123,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("tasks not in the dependency cache should be pulled into the"+
@@ -139,7 +133,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 			for _, depTaskId := range depTaskIds[:4] {
 				So(dependencyCache[depTaskId.TaskId].Id, ShouldEqual, depTaskId.TaskId)
 			}
@@ -154,7 +147,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 			// alter the dependency cache so that it should seem as if the
 			// dependencies are not met
@@ -165,7 +157,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err = taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeFalse)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 		})
 
@@ -176,7 +167,6 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.AllDependenciesSatisfied(dependencyCache)
 			So(err, ShouldNotBeNil)
 			So(met, ShouldBeFalse)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("extraneous tasks in the dependency cache should be ignored",
@@ -212,7 +202,6 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
-				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
@@ -224,7 +213,6 @@ func TestDependenciesMet(t *testing.T) {
 				met, err = taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
-				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
@@ -1860,6 +1848,28 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, taskDependsOn, 3)
 	expectedIDs := []string{"t2", "t1", "t0"}
+	for _, task := range taskDependsOn {
+		assert.Contains(t, expectedIDs, task.Id)
+	}
+}
+
+func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	tasks := []Task{
+		{Id: "t0", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 0},
+		{Id: "t1", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 1},
+		{Id: "t2", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 2},
+		{Id: "t3", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 3},
+		{Id: "t4", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 4},
+	}
+
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[2], tasks[3]}, nil)
+	assert.NoError(t, err)
+	assert.Len(t, taskDependsOn, 2)
+	expectedIDs := []string{"t0", "t1"}
 	for _, task := range taskDependsOn {
 		assert.Contains(t, expectedIDs, task.Id)
 	}

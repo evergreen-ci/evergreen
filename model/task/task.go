@@ -440,7 +440,7 @@ func (t *Task) AddDependency(d Dependency) error {
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
-	if len(t.DependsOn) == 0 || t.OverrideDependencies || !utility.IsZeroTime(t.DependenciesMetTime) {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
 
@@ -449,6 +449,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 
+	latestTime := t.ScheduledTime
 	for _, dependency := range t.DependsOn {
 		depTask, ok := depCaches[dependency.TaskId]
 		// ignore non-existent dependencies
@@ -463,17 +464,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
 		}
+		if depTask.FinishTime.After(latestTime) {
+			latestTime = depTask.FinishTime
+		}
 	}
-	// this is not exact, but depTask.FinishTime is not always set in time to use that
-	t.DependenciesMetTime = time.Now()
-	err = UpdateOne(
-		bson.M{IdKey: t.Id},
-		bson.M{
-			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
-		})
-	if err != nil {
-		return true, errors.Wrapf(err, "task.DependenciesMet() failed to update task '%s'", t.Id)
-	}
+	t.DependenciesMetTime = latestTime
 
 	return true, nil
 }
@@ -1331,18 +1326,16 @@ func (t *Task) Reset() error {
 	t.StartTime = utility.ZeroTime
 	t.ScheduledTime = utility.ZeroTime
 	t.FinishTime = utility.ZeroTime
-	t.DependenciesMetTime = utility.ZeroTime
 	t.ResetWhenFinished = false
 	reset := bson.M{
 		"$set": bson.M{
-			ActivatedKey:           true,
-			SecretKey:              t.Secret,
-			StatusKey:              evergreen.TaskUndispatched,
-			DispatchTimeKey:        utility.ZeroTime,
-			StartTimeKey:           utility.ZeroTime,
-			ScheduledTimeKey:       utility.ZeroTime,
-			FinishTimeKey:          utility.ZeroTime,
-			DependenciesMetTimeKey: utility.ZeroTime,
+			ActivatedKey:     true,
+			SecretKey:        t.Secret,
+			StatusKey:        evergreen.TaskUndispatched,
+			DispatchTimeKey:  utility.ZeroTime,
+			StartTimeKey:     utility.ZeroTime,
+			ScheduledTimeKey: utility.ZeroTime,
+			FinishTimeKey:    utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:           "",
@@ -1368,14 +1361,13 @@ func ResetTasks(taskIds []string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:           true,
-				SecretKey:              utility.RandomString(),
-				StatusKey:              evergreen.TaskUndispatched,
-				DispatchTimeKey:        utility.ZeroTime,
-				StartTimeKey:           utility.ZeroTime,
-				ScheduledTimeKey:       utility.ZeroTime,
-				FinishTimeKey:          utility.ZeroTime,
-				DependenciesMetTimeKey: utility.ZeroTime,
+				ActivatedKey:     true,
+				SecretKey:        utility.RandomString(),
+				StatusKey:        evergreen.TaskUndispatched,
+				DispatchTimeKey:  utility.ZeroTime,
+				StartTimeKey:     utility.ZeroTime,
+				ScheduledTimeKey: utility.ZeroTime,
+				FinishTimeKey:    utility.ZeroTime,
 			},
 			"$unset": bson.M{
 				DetailsKey:         "",
@@ -1437,8 +1429,8 @@ func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
-// that are not in the original task slice. depCache should originally be nil
-// We assume there are no dependency cycles.
+// that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
+// depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
 	if depCache == nil {
 		depCache = make(map[string]Task)
@@ -1452,6 +1444,19 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		for _, dep := range t.DependsOn {
 			if _, ok := depCache[dep.TaskId]; !ok {
 				tasksToFind = append(tasksToFind, dep.TaskId)
+			}
+		}
+		if t.IsPartOfSingleHostTaskGroup() {
+			tasksInGroup, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+			}
+			for _, taskInGroup := range tasksInGroup {
+				if taskInGroup.TaskGroupOrder < t.TaskGroupOrder {
+					if _, ok := depCache[taskInGroup.Id]; !ok {
+						tasksToFind = append(tasksToFind, taskInGroup.Id)
+					}
+				}
 			}
 		}
 	}

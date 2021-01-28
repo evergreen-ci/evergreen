@@ -104,7 +104,6 @@ type ProjectRef struct {
 type CommitQueueParams struct {
 	Enabled     bool   `bson:"enabled" json:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method"`
-	PatchType   string `bson:"patch_type" json:"patch_type"`
 	Message     string `bson:"message,omitempty" json:"message,omitempty"`
 }
 
@@ -686,9 +685,10 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey:  owner,
-			ProjectRefRepoKey:   repo,
-			ProjectRefBranchKey: branch,
+			ProjectRefEnabledKey: true,
+			ProjectRefOwnerKey:   owner,
+			ProjectRefRepoKey:    repo,
+			ProjectRefBranchKey:  branch,
 			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, projectRefCommitQueueEnabledKey): true,
 		},
 		db.NoProjection,

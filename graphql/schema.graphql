@@ -365,6 +365,7 @@ type DistroInfo {
   isVirtualWorkStation: Boolean
   user: String
   isWindows: Boolean
+  bootstrapMethod: String
 }
 
 type Distro {
