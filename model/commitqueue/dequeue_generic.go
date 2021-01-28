@@ -31,7 +31,7 @@ func (d *DequeueItem) Send() error {
 	if err != nil {
 		return errors.Wrap(err, "can't remove item")
 	}
-	if found == nil {
+	if !found {
 		return errors.Errorf("item '%s' not found on queue '%s'", d.Item, d.ProjectID)
 	}
 

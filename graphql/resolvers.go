@@ -1502,22 +1502,36 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
 	}
-	commitQueue.Owner = &project.Owner
-	commitQueue.Repo = &project.Repo
 
-	for i, item := range commitQueue.Queue {
-		patchId := ""
-		if restModel.FromStringPtr(item.Version) != "" {
-			patchId = restModel.FromStringPtr(item.Version)
-		} else if restModel.FromStringPtr(item.Issue) != "" && restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
-			patchId = restModel.FromStringPtr(item.Issue)
-		}
-		if patchId != "" {
-			p, err := r.sc.FindPatchById(patchId)
-			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+	if project.CommitQueue.PatchType == commitqueue.SourcePullRequest {
+		if len(commitQueue.Queue) > 0 {
+			versionID := restModel.FromStringPtr(commitQueue.Queue[0].Version)
+			if versionID != "" {
+				p, err := r.sc.FindPatchById(versionID)
+				if err != nil {
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+				}
+				commitQueue.Queue[0].Patch = p
 			}
-			commitQueue.Queue[i].Patch = p
+		}
+		commitQueue.Owner = restModel.ToStringPtr(project.Owner)
+		commitQueue.Repo = restModel.ToStringPtr(project.Repo)
+	} else {
+		patchIds := []string{}
+		for _, item := range commitQueue.Queue {
+			issue := *item.Issue
+			patchIds = append(patchIds, issue)
+		}
+		patches, err := r.sc.FindPatchesByIds(patchIds)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patches: %s", err.Error()))
+		}
+		for i := range commitQueue.Queue {
+			for j := range patches {
+				if *commitQueue.Queue[i].Issue == *patches[j].Id {
+					commitQueue.Queue[i].Patch = &patches[j]
+				}
+			}
 		}
 	}
 
@@ -1977,7 +1991,7 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))
 	}
-	if result == nil {
+	if result != true {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("couldn't remove item %s from commit queue %s", issue, commitQueueID))
 	}
 

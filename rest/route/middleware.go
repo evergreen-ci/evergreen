@@ -402,11 +402,11 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
-	itemId, ok := vars["item"]
+	item, ok := vars["item"]
 	if !ok {
-		itemId, ok = vars["patch_id"]
+		item, ok = vars["patch_id"]
 	}
-	if !ok || itemId == "" {
+	if !ok || item == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "No item provided",
@@ -414,26 +414,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	cq, err := commitqueue.FindOneId(projRef.Id)
-	if err != nil || cq == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "No commit queue for project found",
-		}))
-		return
-	}
-	spot := cq.FindItem(itemId)
-	if spot == -1 {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "Item not found in queue",
-		}))
-		return
-	}
-	entry := cq.Queue[spot]
-
-	if entry.Source == commitqueue.SourceDiff {
-		patch, err := m.sc.FindPatchById(itemId)
+	if projRef.CommitQueue.PatchType == commitqueue.SourceCommandLine {
+		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
@@ -445,8 +427,10 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
-	} else if entry.Source == commitqueue.SourcePullRequest {
-		itemInt, err := strconv.Atoi(itemId)
+	}
+
+	if projRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
+		itemInt, err := strconv.Atoi(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -475,12 +459,6 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
-	} else {
-		grip.Error(message.Fields{
-			"message": "commit queue entry has unknown source",
-			"entry":   entry,
-			"project": projRef.Identifier,
-		})
 	}
 
 	next(rw, r)

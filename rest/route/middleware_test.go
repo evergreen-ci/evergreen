@@ -21,7 +21,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -144,7 +143,6 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -158,14 +156,6 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 			Enabled: true,
 		},
 	}
-	assert.NoError(opCtx.ProjectRef.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: "1234", Source: commitqueue.SourcePullRequest},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -192,9 +182,53 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 }
 
+func TestCommitQueueItemOwnerMiddlewareProjectAdmin(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private: true,
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "master",
+		Admins:  []string{"admin"},
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
+	}
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID: 1234,
+			},
+		},
+	})
+
+	r, err := http.NewRequest(http.MethodDelete, "/", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Id: "admin",
+	})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	r = gimlet.SetURLVars(r, map[string]string{
+		"project_id": "mci",
+		"item":       "1234",
+	})
+
+	mockDataConnector := &data.MockConnector{}
+	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	rw := httptest.NewRecorder()
+
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
 func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -205,17 +239,10 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		Repo:    "evergreen",
 		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			PatchType: commitqueue.SourcePullRequest,
+			Enabled:   true,
 		},
 	}
-	assert.NoError(opCtx.ProjectRef.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: "1234", Source: commitqueue.SourcePullRequest},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
 
 	r, err := http.NewRequest(http.MethodDelete, "/", nil)
 	assert.NoError(err)
@@ -245,7 +272,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(patch.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -256,28 +283,19 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Repo:    "evergreen",
 		Branch:  "master",
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			PatchType: commitqueue.SourceCommandLine,
+			Enabled:   true,
 		},
 	}
-	assert.NoError(opCtx.ProjectRef.Insert())
 
 	r, err := http.NewRequest(http.MethodDelete, "/", nil)
 	assert.NoError(err)
 	assert.NotNil(r)
 
-	patchId := bson.NewObjectId()
 	p := &patch.Patch{
-		Id:     patchId,
-		Author: "octocat"}
-	assert.NoError(p.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: patchId.Hex(), Source: commitqueue.SourceDiff},
-		},
+		Author: "octocat",
 	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
-
+	assert.NoError(p.Insert())
 	p, err = patch.FindOne(patch.ByUserAndCommitQueue("octocat", false))
 	assert.NoError(err)
 	assert.NotNil(p)

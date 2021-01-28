@@ -22,11 +22,14 @@
       "local_config": "",
       "deactivate_previous": true,
       "hidden": false,
-      "admins": ["sam.kleinman"],
+      "admins": [
+        "sam.kleinman"
+      ],
       "repotracker_error": null,
       "commit_queue": {
         "enabled": false,
-        "merge_method": "squash"
+        "merge_method": "squash",
+        "patch_type": "PR"
       },
       "disabled_stats_cache": false,
       "files_ignored_from_cache": null,
@@ -88,7 +91,10 @@
         "timed_out": false
       },
       "display_only": true,
-      "execution_tasks": ["exec1", "exec2"],
+      "execution_tasks": [
+        "exec1",
+        "exec2"
+      ],
       "generate_task": false,
       "generated_by": "something"
     }

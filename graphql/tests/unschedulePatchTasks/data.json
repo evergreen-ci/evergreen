@@ -126,7 +126,8 @@
       "_id": "p1",
       "identifier": "p1",
       "commit_queue": {
-        "enabled": true
+        "enabled": true,
+        "patch_type": "CLI"
       }
     }
   ],
