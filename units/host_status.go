@@ -159,9 +159,10 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	switch hostStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped:
 		grip.WarningWhen(hostStatus == cloud.StatusStopped, message.Fields{
-			"message":    "host was found in stopped state, which should not occur",
-			"hypothesis": "stopped by the AWS reaper",
-			"host_id":    h.Id,
+			"message":      "host was found in stopped state, which should not occur",
+			"hypothesis":   "stopped by the AWS reaper",
+			"host_id":      h.Id,
+			"cloud_status": hostStatus.String(),
 		})
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
@@ -179,12 +180,12 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	}
 
 	grip.Info(message.Fields{
-		"message": "host not ready for setup",
-		"host_id": h.Id,
-		"DNS":     h.Host,
-		"distro":  h.Distro.Id,
-		"runner":  "hostinit",
-		"status":  hostStatus,
+		"message":      "host not ready for setup",
+		"host_id":      h.Id,
+		"DNS":          h.Host,
+		"distro":       h.Distro.Id,
+		"runner":       "hostinit",
+		"cloud_status": hostStatus,
 	})
 	return nil
 }
