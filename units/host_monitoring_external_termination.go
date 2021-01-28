@@ -131,10 +131,11 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, "host was found in stopped state"))
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not enqueue job to terminate externally-stopped host",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-			"op_id":   id,
+			"message":      "could not enqueue job to terminate externally-modified host",
+			"cloud_status": cloudStatus,
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"op_id":        id,
 		}))
 		return true, err
 	default:
