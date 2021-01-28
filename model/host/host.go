@@ -1479,8 +1479,10 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		"$setOnInsert": bson.M{
 			CreateTimeKey: h.CreationTime,
 		},
-		"$set":   setFields,
-		"$unset": unsetFields,
+		"$set": setFields,
+	}
+	if len(unsetFields) != 0 {
+		update["$unset"] = unsetFields
 	}
 
 	return UpsertOne(bson.M{IdKey: h.Id}, update)
