@@ -74,12 +74,26 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	}
 
 	// unstuck the queue if the patch is done.
-	if nextItem.Source == commitqueue.SourceDiff && !patch.IsValidId(nextItem.Issue) {
+	version := ""
+	if nextItem.Source == commitqueue.SourceDiff {
+		version = nextItem.Issue
+	} else if nextItem.Source == commitqueue.SourcePullRequest {
+		version = nextItem.Version
+	} else {
+		grip.Error(message.Fields{
+			"message": "stuck commit queue entry has unknown source",
+			"entry":   nextItem,
+			"project": projectRef.Identifier,
+			"job_id":  j.ID(),
+		})
+	}
+	if version == "" || !patch.IsValidId(nextItem.Issue) {
 		j.dequeue(cq, nextItem)
 		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
-	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Version).WithFields(patch.FinishTimeKey, patch.StatusKey))
+
+	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Issue).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return
@@ -105,7 +119,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 		if patchDoc.Status == evergreen.PatchFailed {
 			status = evergreen.MergeTestFailed
 		}
-		event.LogCommitQueueConcludeTest(nextItem.Issue, status)
+		event.LogCommitQueueConcludeTest(version, status)
 		grip.Info(message.Fields{
 			"source":                "commit queue",
 			"patch status":          status,
