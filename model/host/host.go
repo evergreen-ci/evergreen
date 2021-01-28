@@ -572,7 +572,7 @@ func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: evergreen.HostProvisioning,
+			StatusKey: h.Status,
 		},
 		bson.M{
 			"$set": bson.M{
