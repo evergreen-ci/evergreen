@@ -129,6 +129,12 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		}
 		return false, nil
 	case cloud.StatusStopped, cloud.StatusTerminated:
+		// Non-agent hosts that are stopped (e.g. spawn hosts) should not be
+		// treated as externally terminated.
+		if cloudStatus == cloud.StatusStopped && (h.UserHost || h.StartedBy != evergreen.User) {
+			return false, errors.New("non-agent host is stopped and should not be terminated")
+		}
+
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
