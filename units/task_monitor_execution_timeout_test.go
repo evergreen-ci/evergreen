@@ -3,25 +3,29 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/amboy"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCleanupTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 
 	Convey("When cleaning up a task", t, func() {
 		// reset the db
@@ -160,6 +164,7 @@ func TestCleanupTask(t *testing.T) {
 					Id:          "h1",
 					RunningTask: "t1",
 					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
+					Provider:    evergreen.ProviderNameMock,
 					Status:      evergreen.HostRunning,
 				}
 				So(h.Insert(), ShouldBeNil)
@@ -196,6 +201,8 @@ func TestCleanupTask(t *testing.T) {
 					})
 
 					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
+
+					So(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), ShouldBeTrue)
 
 					var err error
 					h, err = host.FindOneId("h1")

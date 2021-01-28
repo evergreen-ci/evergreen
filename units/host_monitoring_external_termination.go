@@ -54,6 +54,8 @@ func NewHostMonitorExternalStateJob(env evergreen.Environment, h *host.Host, id 
 	job.host = h
 	job.HostID = h.Id
 
+	job.env = env
+
 	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorExternalStateCheckName, job.HostID, id))
 
 	return job
@@ -129,7 +131,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 	case cloud.StatusStopped, cloud.StatusTerminated:
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
-		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, "host was found in stopped state"))
+		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "could not enqueue job to terminate externally-modified host",
 			"cloud_status": cloudStatus,
