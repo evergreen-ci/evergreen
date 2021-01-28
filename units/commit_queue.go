@@ -87,13 +87,13 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			"job_id":  j.ID(),
 		})
 	}
-	if version == "" || !patch.IsValidId(nextItem.Issue) {
+	if version == "" || !patch.IsValidId(version) {
 		j.dequeue(cq, nextItem)
 		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
 		return
 	}
 
-	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Issue).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	patchDoc, err := patch.FindOne(patch.ByStringId(version).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
 		return
