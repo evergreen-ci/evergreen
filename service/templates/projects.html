@@ -692,13 +692,8 @@ Evergreen Projects
           <div ng-show="settingsFormData.commit_queue.enabled">
             <div>
               <div>
-                <label for="PatchTypeSelect"> Patch Type: </label>
-                <select id="PatchTypeSelect" ng-model="settingsFormData.commit_queue.patch_type" ng-options="option for option in validPatchTypes"></select>
-                <div class="muted small">Patch Type is PR for merging GitHub PRs or CLI for merging patches submitted through Evergreen's CLI.</div>
-              </div>
-              <div>
                 <label for="mergeMethodSelect"> Merge Method: </label>
-                <select id="mergeMethodSelect" ng-disabled="settingsFormData.commit_queue.patch_type!=='PR'" ng-model="settingsFormData.commit_queue.merge_method" ng-options="option for option in validMergeMethods"></select>
+                <select id="mergeMethodSelect" ng-model="settingsFormData.commit_queue.merge_method" ng-options="option for option in validMergeMethods"></select>
               </div>
             </div>
             <div class="form-group">
