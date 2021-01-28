@@ -20,13 +20,14 @@ import (
 
 func List() cli.Command {
 	const (
-		projectsFlagName   = "projects"
-		variantsFlagName   = "variants"
-		tasksFlagName      = "tasks"
-		distrosFlagName    = "distros"
-		spawnableFlagName  = "spawnable"
-		parametersFlagName = "parameters"
-		aliasesFlagName    = "aliases"
+		projectsFlagName       = "projects"
+		variantsFlagName       = "variants"
+		tasksFlagName          = "tasks"
+		distrosFlagName        = "distros"
+		spawnableFlagName      = "spawnable"
+		parametersFlagName     = "parameters"
+		patchAliasesFlagName   = "patch-aliases"
+		triggerAliasesFlagName = "trigger-aliases"
 	)
 
 	return cli.Command{
@@ -54,14 +55,18 @@ func List() cli.Command {
 				Usage: "list all parameters for a project",
 			},
 			cli.BoolFlag{
-				Name:  aliasesFlagName,
+				Name:  patchAliasesFlagName,
 				Usage: "list all patch aliases for a project",
+			},
+			cli.BoolFlag{
+				Name:  triggerAliasesFlagName,
+				Usage: "list all trigger aliases for a project",
 			},
 			cli.BoolFlag{
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
 			})...),
-		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
+		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)
@@ -80,8 +85,10 @@ func List() cli.Command {
 				return listTasks(ctx, confPath, project, filename)
 			case c.Bool(parametersFlagName):
 				return listParameters(ctx, confPath, project, filename)
-			case c.Bool(aliasesFlagName):
-				return listAliases(ctx, confPath, project, filename)
+			case c.Bool(patchAliasesFlagName):
+				return listPatchAliases(ctx, confPath, project, filename)
+			case c.Bool(triggerAliasesFlagName):
+				return listTriggerAliases(ctx, confPath, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
 			}
@@ -257,7 +264,42 @@ func listParameters(ctx context.Context, confPath, project, filename string) err
 	return nil
 }
 
-func listAliases(ctx context.Context, confPath, project, filename string) error {
+func listTriggerAliases(ctx context.Context, confPath, project, filename string) error {
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	comm := conf.setupRestCommunicator(ctx)
+	defer comm.Close()
+
+	var aliases []string
+
+	if project != "" {
+		aliases, err = comm.ListPatchTriggerAliases(ctx, project)
+		if err != nil {
+			return err
+		}
+	} else if filename != "" {
+		project, err := loadLocalConfig(filename)
+		if err != nil {
+			return err
+		}
+		aliases, err = comm.ListPatchTriggerAliases(ctx, project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "error returned from API")
+		}
+	} else {
+		return errors.New("no project specified")
+	}
+
+	for _, alias := range aliases {
+		fmt.Printf("%s\n", alias)
+	}
+
+	return nil
+}
+
+func listPatchAliases(ctx context.Context, confPath, project, filename string) error {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
