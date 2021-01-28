@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -127,38 +126,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
 		}
 		return false, nil
-	case cloud.StatusTerminated:
-		grip.Info(message.Fields{
-			"op_id":   id,
-			"message": "host terminated externally",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		})
-
-		event.LogHostTerminatedExternally(h.Id, h.Status)
-
-		// the instance was terminated from outside our control
-		catcher := grip.NewBasicCatcher()
-		err = h.SetTerminated(evergreen.HostExternalUserName, "terminated externally")
-		catcher.Add(err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"op_id":   id,
-			"message": "error setting host status to terminated in db",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		}))
-
-		err = model.ClearAndResetStrandedTask(h)
-		catcher.Add(errors.Wrap(err, "can't clear stranded tasks"))
-		grip.Error(message.WrapError(err, message.Fields{
-			"op_id":   id,
-			"message": "can't clear stranded tasks",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		}))
-
-		return true, catcher.Resolve()
-	case cloud.StatusStopped:
+	case cloud.StatusStopped, cloud.StatusTerminated:
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, "host was found in stopped state"))
