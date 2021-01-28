@@ -122,7 +122,6 @@
       "queue": [
         {
           "issue": "5e94c2dfe3c3312519b59480",
-          "source": "diff",
           "enqueue_time": { "$date": "2020-04-13T19:52:00.182Z" },
           "modules": null
         }
@@ -137,7 +136,6 @@
           "issue": "1234",
           "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" },
           "modules": null,
-          "source": "PR",
           "version": "5e6bb9e23066155a993e0f1a"
         }
       ],
@@ -182,7 +180,8 @@
       "hidden": false,
       "repotracker_error": null,
       "commit_queue": {
-        "enabled": true
+        "enabled": true,
+        "patch_type": "PR"
       }
     },
     {
@@ -190,6 +189,7 @@
       "identifier": "mongodb-mongo-master",
       "commit_queue": {
         "enabled": true,
+        "patch_type": "CLI",
         "message": "this is a message"
       }
     },
@@ -197,21 +197,24 @@
       "_id": "cli-queue",
       "identifier": "cli-queue",
       "commit_queue": {
-        "enabled": true
+        "enabled": true,
+        "patch_type": "CLI"
       }
     },
     {
       "_id": "pr-queue",
       "identifier": "pr-queue",
       "commit_queue": {
-        "enabled": true
+        "enabled": true,
+        "patch_type": "PR"
       }
     },
     {
       "_id": "no_queue",
       "identifier": "no_queue",
       "commit_queue": {
-        "enabled": false
+        "enabled": false,
+        "patch_type": "PR"
       }
     }
   ]

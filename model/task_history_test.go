@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1110,6 +1112,125 @@ func TestGetTestHistory(t *testing.T) {
 	assert.Len(testResults, 1)
 	assert.Equal(successfulResult.TestFile, testResults[0].TestFile)
 	assert.Equal(successfulTask.Id, testResults[0].TaskId)
+}
+
+func TestCompareQueryRunTimes(t *testing.T) {
+	assert := assert.New(t)
+	rand.Seed(time.Now().UnixNano())
+	numTasks := 1000  // # of tasks to insert into the db
+	maxNumTests := 50 // max # of tests per task to insert (randomized per task)
+	taskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
+	testStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus, evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus}
+	systemTypes := []string{evergreen.CommandTypeTest, evergreen.CommandTypeSystem, evergreen.CommandTypeSetup}
+	require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing collections")
+	project := "proj"
+	now := time.Now()
+
+	testVersion := Version{
+		Id:                  "testVersion",
+		Revision:            "fgh",
+		RevisionOrderNumber: 1,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion.Insert())
+	testVersion2 := Version{
+		Id:                  "anotherVersion",
+		Revision:            "def",
+		RevisionOrderNumber: 2,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion2.Insert())
+	testVersion3 := Version{
+		Id:                  "testV",
+		Revision:            "abcd",
+		RevisionOrderNumber: 4,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion3.Insert())
+
+	// insert tasks and tests
+	for i := 0; i < numTasks; i++ {
+		t := task.Task{
+			Id:                  fmt.Sprintf("task_%d", i),
+			DisplayName:         fmt.Sprintf("task_%d", i),
+			BuildVariant:        "osx",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: rand.Intn(100),
+			Execution:           0,
+			Status:              taskStatuses[rand.Intn(1)],
+			Details: apimodels.TaskEndDetail{
+				Type:     systemTypes[rand.Intn(1)],
+				TimedOut: (rand.Intn(1) == 1),
+			},
+		}
+
+		assert.NoError(t.Insert())
+		numTests := rand.Intn(maxNumTests)
+		tests := []testresult.TestResult{}
+		for j := 0; j < numTests; j++ {
+			tests = append(tests, testresult.TestResult{
+				TaskID:    t.Id,
+				Execution: t.Execution,
+				TestFile:  fmt.Sprintf("test_%d", j),
+				Status:    testStatuses[rand.Intn(3)],
+			})
+		}
+		assert.NoError(testresult.InsertMany(tests))
+	}
+
+	// test querying on task names
+	tasksToFind := []string{}
+	for i := 0; i < numTasks; i++ {
+		tasksToFind = append(tasksToFind, fmt.Sprintf("task_%d", i))
+	}
+	params := &TestHistoryParameters{
+		TaskNames: tasksToFind,
+		Project:   project,
+		Sort:      1,
+		Limit:     5000,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	startTime := time.Now()
+	resultsV1, err := GetTestHistory(params)
+	elapsedV1 := time.Since(startTime)
+	assert.NoError(err)
+	startTime = time.Now()
+	resultsV2, err := GetTestHistoryV2(params)
+	elapsedV2 := time.Since(startTime)
+	require.NoError(t, err)
+	assert.Equal(len(resultsV1), len(resultsV2))
+	grip.Infof("elapsed time for aggregation test history query on task names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on task names: %s", elapsedV2.String())
+
+	// test querying on test names
+	testsToFind := []string{}
+	for i := 0; i < maxNumTests; i++ {
+		testsToFind = append(tasksToFind, fmt.Sprintf("test_%d", i))
+	}
+	params = &TestHistoryParameters{
+		TestNames: testsToFind,
+		Project:   project,
+		Sort:      1,
+		Limit:     5000,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	startTime = time.Now()
+	resultsV1, err = GetTestHistory(params)
+	elapsedV1 = time.Since(startTime)
+	assert.NoError(err)
+	startTime = time.Now()
+	resultsV2, err = GetTestHistoryV2(params)
+	elapsedV2 = time.Since(startTime)
+	assert.NoError(err)
+	assert.Equal(len(resultsV1), len(resultsV2))
+	grip.Infof("elapsed time for aggregation test history query on test names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on test names: %s", elapsedV2.String())
+
+	require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing collections")
 }
 
 func TestTaskHistoryPickaxe(t *testing.T) {

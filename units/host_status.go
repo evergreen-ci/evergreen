@@ -112,12 +112,8 @@ clientsLoop:
 				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
 				continue clientsLoop
 			}
-			hostIDs := []string{}
-			for _, h := range hosts {
-				hostIDs = append(hostIDs, h.Id)
-			}
 			for i := range hosts {
-				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
+				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error setting instance status"))
 			}
 			continue clientsLoop
 		}
@@ -127,7 +123,7 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
+			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error setting instance status"))
 		}
 	}
 }
@@ -160,14 +156,17 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 // setCloudHostStatus sets the host's status to HostProvisioning if host is running.
 func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
 	switch hostStatus {
-	case cloud.StatusFailed, cloud.StatusTerminated:
-		grip.Debug(message.Fields{
-			"ticket":     "EVG-6100",
-			"message":    "host status",
-			"host_id":    h,
-			"hostStatus": hostStatus.String(),
+	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped:
+		grip.WarningWhen(hostStatus == cloud.StatusStopped, message.Fields{
+			"message":    "host was found in stopped state, which should not occur",
+			"hypothesis": "stopped by the AWS reaper",
+			"host_id":    h.Id,
 		})
-		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
+		return catcher.Resolve()
 	case cloud.StatusRunning:
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")

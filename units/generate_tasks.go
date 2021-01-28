@@ -267,7 +267,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	defer func() {
 		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in %s job", generateTasksJobName))
-		if err == nil && pErr == nil {
+		if pErr == nil && (err == nil || err.Error() == "") {
 			return
 		}
 		msg := message.Fields{
@@ -288,7 +288,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			grip.Error(msg)
 		}
 		if j.Attempt < generateTasksJobMaxAttempts-1 {
-			j.AddError(evergreen.GetEnvironment().RemoteQueue().Put(ctx, NewGenerateTasksJob(*t, j.Attempt+1)))
+			j.AddError(amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), NewGenerateTasksJob(*t, j.Attempt+1)))
 		}
 	}()
 
