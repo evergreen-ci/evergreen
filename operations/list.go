@@ -91,11 +91,11 @@ func List() cli.Command {
 			case c.Bool(parametersFlagName):
 				return listParameters(ctx, confPath, project, filename)
 			case c.Bool(deprecatedAliasesFlagName):
-				return deprecatedListAliases(ctx, confPath, project, filename, patchAliasesFlagName)
+				return deprecatedListAliases(ctx, confPath, project, patchAliasesFlagName)
 			case c.Bool(patchAliasesFlagName):
-				return listPatchAliases(ctx, confPath, project, filename)
+				return listPatchAliases(ctx, confPath, project)
 			case c.Bool(triggerAliasesFlagName):
-				return listTriggerAliases(ctx, confPath, project, filename)
+				return listTriggerAliases(ctx, confPath, project)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
 			}
@@ -271,7 +271,7 @@ func listParameters(ctx context.Context, confPath, project, filename string) err
 	return nil
 }
 
-func listTriggerAliases(ctx context.Context, confPath, project, filename string) error {
+func listTriggerAliases(ctx context.Context, confPath, project string) error {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
@@ -296,13 +296,13 @@ func listTriggerAliases(ctx context.Context, confPath, project, filename string)
 
 	return nil
 }
-func deprecatedListAliases(ctx context.Context, confPath, project, filename, patchAliasesFlagName string) error {
-	err := listPatchAliases(ctx, confPath, project, filename)
+func deprecatedListAliases(ctx context.Context, confPath, project, patchAliasesFlagName string) error {
+	err := listPatchAliases(ctx, confPath, project)
 
 	fmt.Printf("\n --aliases is deprecated and will be removed soon. Please use --%s instead. \n", patchAliasesFlagName)
 	return err
 }
-func listPatchAliases(ctx context.Context, confPath, project, filename string) error {
+func listPatchAliases(ctx context.Context, confPath, project string) error {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
