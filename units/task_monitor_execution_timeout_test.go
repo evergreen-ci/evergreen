@@ -165,6 +165,7 @@ func TestCleanupTask(t *testing.T) {
 					RunningTask: "t1",
 					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 					Provider:    evergreen.ProviderNameMock,
+					StartedBy:   evergreen.User,
 					Status:      evergreen.HostRunning,
 				}
 				So(h.Insert(), ShouldBeNil)

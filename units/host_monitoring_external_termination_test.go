@@ -101,6 +101,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 					Id:          "h1",
 					Status:      evergreen.HostRunning,
 					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
+					StartedBy:   evergreen.User,
 					Provider:    evergreen.ProviderNameMock,
 					RunningTask: tsk.Id,
 				}
@@ -124,6 +125,119 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 				assert.Zero(t, dbHost.RunningTask)
 			})
+		})
+	}
+	testCloudStatusTerminatesHostAndClearsTask := func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, status cloud.CloudStatus) {
+		tsk := &task.Task{
+			Id:      "t1",
+			BuildId: "b1",
+			HostId:  h.Id,
+		}
+		require.NoError(t, tsk.Insert())
+		h.RunningTask = tsk.Id
+		require.NoError(t, h.Insert())
+
+		mockInstance := cloud.MockInstance{
+			Status: status,
+		}
+		cloud.GetMockProvider().Set(h.Id, mockInstance)
+
+		terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+		require.NoError(t, err)
+		assert.True(t, terminated)
+
+		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+
+		dbHost, err := host.FindOneId(h.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbHost)
+
+		assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+		assert.Zero(t, dbHost.RunningTask)
+	}
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
+		"TerminatedInstanceStatusTerminatesHostAndClearTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			testCloudStatusTerminatesHostAndClearsTask(ctx, t, env, h, cloud.StatusTerminated)
+		},
+		"StoppedInstanceStatusTerminatesHostAndClearsTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			testCloudStatusTerminatesHostAndClearsTask(ctx, t, env, h, cloud.StatusStopped)
+		},
+		"StoppedInstanceStatusErrorsWithSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			h.UserHost = true
+			h.StartedBy = "user"
+			require.NoError(t, h.Insert())
+
+			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+			assert.Error(t, err)
+			assert.False(t, terminated)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"RunningInstanceNoops": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			require.NoError(t, h.Insert())
+
+			mockInstance := cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			}
+			cloud.GetMockProvider().Set(h.Id, mockInstance)
+
+			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+			assert.NoError(t, err)
+			assert.False(t, terminated)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"UnexpectedInstanceStatusErrors": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			require.NoError(t, h.Insert())
+
+			mockInstance := cloud.MockInstance{
+				Status: cloud.StatusUnknown,
+			}
+			cloud.GetMockProvider().Set(h.Id, mockInstance)
+
+			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+			assert.Error(t, err)
+			assert.False(t, terminated)
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx))
+
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+			}()
+
+			mockCloud := cloud.GetMockProvider()
+			mockCloud.Reset()
+			defer func() {
+				mockCloud.Reset()
+			}()
+
+			h := &host.Host{
+				Id:        "h1",
+				Status:    evergreen.HostRunning,
+				Distro:    distro.Distro{Provider: evergreen.ProviderNameMock},
+				StartedBy: evergreen.User,
+				Provider:  evergreen.ProviderNameMock,
+			}
+
+			testCase(tctx, t, env, h)
 		})
 	}
 }
