@@ -1288,14 +1288,6 @@ func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 
 // OnUp is called when the host is up.
 func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
-	grip.Debug(message.Fields{
-		"message":       "host is up",
-		"host_id":       h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-		"is_spot":       isHostSpot(h),
-	})
-
 	if isHostOnDemand(h) {
 		// On-demand hosts and its volumes are already tagged in the request for
 		// the instance.
