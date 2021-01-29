@@ -20,14 +20,15 @@ import (
 
 func List() cli.Command {
 	const (
-		projectsFlagName       = "projects"
-		variantsFlagName       = "variants"
-		tasksFlagName          = "tasks"
-		distrosFlagName        = "distros"
-		spawnableFlagName      = "spawnable"
-		parametersFlagName     = "parameters"
-		patchAliasesFlagName   = "patch-aliases"
-		triggerAliasesFlagName = "trigger-aliases"
+		projectsFlagName          = "projects"
+		variantsFlagName          = "variants"
+		tasksFlagName             = "tasks"
+		distrosFlagName           = "distros"
+		spawnableFlagName         = "spawnable"
+		parametersFlagName        = "parameters"
+		patchAliasesFlagName      = "patch-aliases"
+		triggerAliasesFlagName    = "trigger-aliases"
+		deprecatedAliasesFlagName = "aliases"
 	)
 
 	return cli.Command{
@@ -63,10 +64,14 @@ func List() cli.Command {
 				Usage: "list all trigger aliases for a project",
 			},
 			cli.BoolFlag{
+				Name:  deprecatedAliasesFlagName,
+				Usage: "deprecated, replaced by --" + patchAliasesFlagName,
+			},
+			cli.BoolFlag{
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
 			})...),
-		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
+		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, deprecatedAliasesFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)
@@ -85,6 +90,8 @@ func List() cli.Command {
 				return listTasks(ctx, confPath, project, filename)
 			case c.Bool(parametersFlagName):
 				return listParameters(ctx, confPath, project, filename)
+			case c.Bool(deprecatedAliasesFlagName):
+				return deprecatedListAliases(ctx, confPath, project, filename, patchAliasesFlagName)
 			case c.Bool(patchAliasesFlagName):
 				return listPatchAliases(ctx, confPath, project, filename)
 			case c.Bool(triggerAliasesFlagName):
@@ -298,7 +305,12 @@ func listTriggerAliases(ctx context.Context, confPath, project, filename string)
 
 	return nil
 }
+func deprecatedListAliases(ctx context.Context, confPath, project, filename, patchAliasesFlagName string) error {
+	err := listPatchAliases(ctx, confPath, project, filename)
 
+	fmt.Printf("\n --aliases is deprecated and will be removed soon. Please use --%s instead. \n", patchAliasesFlagName)
+	return err
+}
 func listPatchAliases(ctx context.Context, confPath, project, filename string) error {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
