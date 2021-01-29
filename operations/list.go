@@ -286,15 +286,6 @@ func listTriggerAliases(ctx context.Context, confPath, project, filename string)
 		if err != nil {
 			return err
 		}
-	} else if filename != "" {
-		project, err := loadLocalConfig(filename)
-		if err != nil {
-			return err
-		}
-		aliases, err = comm.ListPatchTriggerAliases(ctx, project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "error returned from API")
-		}
 	} else {
 		return errors.New("no project specified")
 	}
@@ -325,15 +316,6 @@ func listPatchAliases(ctx context.Context, confPath, project, filename string) e
 		aliases, err = comm.ListAliases(ctx, project)
 		if err != nil {
 			return err
-		}
-	} else if filename != "" {
-		project, err := loadLocalConfig(filename)
-		if err != nil {
-			return err
-		}
-		aliases, err = comm.ListAliases(ctx, project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "error returned from API")
 		}
 	} else {
 		return errors.New("no project specified")
