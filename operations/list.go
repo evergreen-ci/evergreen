@@ -65,7 +65,7 @@ func List() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  deprecatedAliasesFlagName,
-				Usage: "deprecated, replaced by --" + patchAliasesFlagName,
+				Usage: fmt.Sprintf("deprecated, replaced by --%s", patchAliasesFlagName),
 			},
 			cli.BoolFlag{
 				Name:  spawnableFlagName,
