@@ -377,7 +377,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 		for _, tasks := range tasksByBuild {
 			for i, t := range tasks {
 				if t.Status == evergreen.TaskFailed || t.Status == evergreen.TaskStarted {
-					if i < 1000 { // Prevent cases where the waterfall will not load due to a large number of failed tasks.
+					if i < 200 { // Prevent cases where the waterfall will not load due to a large number of failed tasks.
+						// This value is 1000 / number of commits on the waterfall.
 						if err = t.MergeNewTestResults(); err != nil {
 							return versionVariantData{}, errors.Wrap(err, "error merging test results")
 						}
