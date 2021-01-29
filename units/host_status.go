@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -158,14 +159,18 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	switch hostStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped:
 		grip.WarningWhen(hostStatus == cloud.StatusStopped, message.Fields{
-			"message":    "host was found in stopped state, which should not occur",
-			"hypothesis": "stopped by the AWS reaper",
-			"host_id":    h.Id,
+			"message":      "host was found in stopped state, which should not occur",
+			"hypothesis":   "stopped by the AWS reaper",
+			"host_id":      h.Id,
+			"cloud_status": hostStatus.String(),
 		})
+
+		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
+
 		return catcher.Resolve()
 	case cloud.StatusRunning:
 		if err := j.initialSetup(ctx, m, &h); err != nil {
@@ -175,12 +180,12 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	}
 
 	grip.Info(message.Fields{
-		"message": "host not ready for setup",
-		"host_id": h.Id,
-		"DNS":     h.Host,
-		"distro":  h.Distro.Id,
-		"runner":  "hostinit",
-		"status":  hostStatus,
+		"message":      "host not ready for setup",
+		"host_id":      h.Id,
+		"DNS":          h.Host,
+		"distro":       h.Distro.Id,
+		"runner":       "hostinit",
+		"cloud_status": hostStatus,
 	})
 	return nil
 }
