@@ -279,15 +279,13 @@ func listTriggerAliases(ctx context.Context, confPath, project string) error {
 	comm := conf.setupRestCommunicator(ctx)
 	defer comm.Close()
 
-	var aliases []string
-
-	if project != "" {
-		aliases, err = comm.ListPatchTriggerAliases(ctx, project)
-		if err != nil {
-			return err
-		}
-	} else {
+	if project == "" {
 		return errors.New("no project specified")
+	}
+
+	aliases, err := comm.ListPatchTriggerAliases(ctx, project)
+	if err != nil {
+		return err
 	}
 
 	for _, alias := range aliases {
@@ -310,15 +308,13 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 	comm := conf.setupRestCommunicator(ctx)
 	defer comm.Close()
 
-	var aliases []model.ProjectAlias
-
-	if project != "" {
-		aliases, err = comm.ListAliases(ctx, project)
-		if err != nil {
-			return err
-		}
-	} else {
+	if project == "" {
 		return errors.New("no project specified")
+	}
+
+	aliases, err := comm.ListAliases(ctx, project)
+	if err != nil {
+		return err
 	}
 
 	for _, alias := range aliases {
