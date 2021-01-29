@@ -378,6 +378,17 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
+		if j.IntentType == patch.TriggerIntentType {
+			var parentPatch *patch.Patch
+			parentPatch, err = patch.FindOneId(patchDoc.Triggers.ParentPatch)
+			if err != nil {
+				catcher.Add(errors.Wrap(err, "can't get parent patch"))
+			} else if parentPatch == nil {
+				catcher.Add(errors.Wrap(err, fmt.Sprintf("parent patch '%s' does not exist", patchDoc.Triggers.ParentPatch)))
+			} else if downstreamParams := parentPatch.Parameters; downstreamParams != nil {
+				patchDoc.Parameters = downstreamParams
+			}
+		}
 		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
