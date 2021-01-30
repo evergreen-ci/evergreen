@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
@@ -871,7 +872,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "test_repo0",
 		Branch:    "master",
-		Enabled:   true,
+		Enabled:   util.TruePtr(),
 		BatchTime: 10,
 		Id:        "test0",
 		Admins:    []string{"user1", "user0"},
@@ -880,7 +881,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "test_repo1",
 		Branch:    "master",
-		Enabled:   true,
+		Enabled:   util.TruePtr(),
 		BatchTime: 10,
 		Id:        "test1",
 		Admins:    []string{"user1", "user2"},

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -307,9 +308,9 @@ func TestRestartVersionsRoute(t *testing.T) {
 	projectRef := &model.ProjectRef{
 		Id: "my-project",
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			Enabled: util.TruePtr(),
 		},
-		Enabled: true,
+		Enabled: util.TruePtr(),
 		Owner:   "me",
 		Repo:    "my-repo",
 		Branch:  "my-branch",

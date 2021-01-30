@@ -65,7 +65,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled || ref.DispatchingDisabled {
+		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":               RunnerName,
 				"message":              "project disabled",
@@ -91,7 +91,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if t.IsPatchRequest() && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
@@ -181,7 +181,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled || ref.DispatchingDisabled {
+		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":               RunnerName,
 				"message":              "project disabled",
@@ -207,7 +207,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if t.IsPatchRequest() && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
@@ -304,7 +304,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.Enabled || ref.DispatchingDisabled {
+		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":               RunnerName,
 				"message":              "project disabled",
@@ -329,7 +329,7 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if t.IsPatchRequest() && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",

@@ -154,7 +154,7 @@ func TestS3PullExecute(t *testing.T) {
 				ProjectRef: &model.ProjectRef{
 					Id: "project_identifier",
 					TaskSync: model.TaskSyncOptions{
-						ConfigEnabled: true,
+						ConfigEnabled: util.TruePtr(),
 					},
 				},
 				TaskSync: evergreen.S3Credentials{

@@ -690,7 +690,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		if pRef == nil {
 			return nil, nil, errors.Errorf("project '%s' not found", project.Identifier)
 		}
-		if pRef.GithubChecksEnabled {
+		if pRef.IsGithubChecksEnabled() {
 			githubCheckAliases, err = FindAliasInProject(v.Identifier, evergreen.GithubChecksAlias)
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error getting github check aliases when adding tasks to build",

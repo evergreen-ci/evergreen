@@ -308,14 +308,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(oldProject.GitTagAuthorizedTeams, newProjectRef.GitTagAuthorizedTeams...))
 	newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	if newProjectRef.Enabled {
+	if newProjectRef.IsEnabled() {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, newProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.project))
 		}
 		// verify enabling PR testing valid
-		if newProjectRef.PRTestingEnabled {
+		if newProjectRef.IsPRTestingEnabled() {
 			if !hasHook {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
@@ -341,7 +341,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		// verify enabling github checks is valid
-		if newProjectRef.GithubChecksEnabled {
+		if newProjectRef.IsGithubChecksEnabled() {
 			var githubChecksAliasesDefined bool
 			githubChecksAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubChecksAlias)
 			if err != nil {
@@ -356,7 +356,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		// verify enabling git tag versions is valid
-		if newProjectRef.GitTagVersionsEnabled {
+		if newProjectRef.IsGitTagVersionsEnabled() {
 			var gitTagAliasesDefined bool
 			gitTagAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GitTagAlias)
 			if err != nil {
@@ -389,7 +389,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
 			})
 		}
-		if commitQueueParams.Enabled {
+		if commitQueueParams.IsEnabled() {
 			if !hasHook {
 				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
@@ -438,8 +438,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			MergeBaseRevision: "",
 		}
 	}
+	// TODO: check this logic
 	if oldProject.Restricted != newProjectRef.Restricted {
-		if newProjectRef.Restricted {
+		if newProjectRef.IsRestricted() {
 			err = newProjectRef.MakeRestricted(ctx)
 		} else {
 			err = oldProject.MakeUnrestricted(ctx)
@@ -715,7 +716,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		Repo:            project.Repo,
 		Branch:          project.Branch,
 		RepoRefId:       project.RepoRefId,
-		Enabled:         false,
+		Enabled:         util.FalsePtr(),
 		UseRepoSettings: true,
 		Hidden:          true,
 	}

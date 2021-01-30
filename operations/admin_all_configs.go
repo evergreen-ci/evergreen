@@ -51,7 +51,7 @@ func fetchAllProjectConfigs() cli.Command {
 
 			catcher := grip.NewSimpleCatcher()
 			for _, p := range projects {
-				if p.Enabled || includeDisabled {
+				if p.IsEnabled() || includeDisabled {
 					catcher.Add(fetchAndWriteConfig(rc, p.Id))
 				}
 			}

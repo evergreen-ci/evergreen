@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -170,7 +171,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		assert.True(found)
 	})
 	t.Run("SendToCedar", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = true
+		conf.ProjectRef.CedarTestResultsEnabled = util.TruePtr()
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		assert.NoError(err)
 		cedarSrv := setupCedarServer(ctx, t, comm)

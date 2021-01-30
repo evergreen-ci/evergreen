@@ -15,76 +15,6 @@ type UIProjectFields struct {
 	Owner       string `json:"owner_name"`
 }
 
-type APIProject struct {
-	Id                    *string              `json:"id"`
-	BatchTime             int                  `json:"batch_time"`
-	Branch                *string              `json:"branch_name"`
-	DisplayName           *string              `json:"display_name"`
-	Enabled               bool                 `json:"enabled"`
-	RepotrackerDisabled   bool                 `json:"repotracker_disabled"`
-	Identifier            *string              `json:"identifier"`
-	Name                  *string              `json:"name"`
-	Owner                 *string              `json:"owner_name"`
-	Private               bool                 `json:"private"`
-	RemotePath            *string              `json:"remote_path"`
-	Repo                  *string              `json:"repo_name"`
-	Hidden                bool                 `json:"hidden"`
-	DeactivatePrevious    bool                 `json:"deactivate_previous"`
-	Admins                []*string            `json:"admins"`
-	TracksPushEvents      bool                 `json:"tracks_push_events"`
-	PRTestingEnabled      bool                 `json:"pr_testing_enabled"`
-	GitTagVersionsEnabled bool                 `json:"git_tag_versions_enabled"`
-	CommitQueue           APICommitQueueParams `json:"commit_queue"`
-}
-
-func (apiProject *APIProject) BuildFromService(p interface{}) error {
-	var v model.ProjectRef
-
-	switch p.(type) {
-	case model.ProjectRef:
-		v = p.(model.ProjectRef)
-	case *model.ProjectRef:
-		v = *p.(*model.ProjectRef)
-	default:
-		return errors.New("incorrect type when fetching converting project type")
-	}
-
-	cq := APICommitQueueParams{}
-	if err := cq.BuildFromService(v.CommitQueue); err != nil {
-		return errors.Wrap(err, "can't convert commit queue params")
-	}
-
-	apiProject.BatchTime = v.BatchTime
-	apiProject.Branch = ToStringPtr(v.Branch)
-	apiProject.DisplayName = ToStringPtr(v.DisplayName)
-	apiProject.Enabled = v.Enabled
-	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
-	apiProject.Id = ToStringPtr(v.Id)
-	apiProject.Identifier = ToStringPtr(v.Identifier)
-	apiProject.Owner = ToStringPtr(v.Owner)
-	apiProject.Private = v.Private
-	apiProject.RemotePath = ToStringPtr(v.RemotePath)
-	apiProject.Repo = ToStringPtr(v.Repo)
-	apiProject.Hidden = v.Hidden
-	apiProject.TracksPushEvents = v.TracksPushEvents
-	apiProject.PRTestingEnabled = v.PRTestingEnabled
-	apiProject.GitTagVersionsEnabled = v.GitTagVersionsEnabled
-	apiProject.CommitQueue = cq
-	apiProject.DeactivatePrevious = v.DeactivatePrevious
-
-	admins := []*string{}
-	for _, a := range v.Admins {
-		admins = append(admins, ToStringPtr(a))
-	}
-	apiProject.Admins = admins
-
-	return nil
-}
-
-func (apiProject *APIProject) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
-}
-
 type APITriggerDefinition struct {
 	Project           *string `json:"project"`
 	Level             *string `json:"level"` //build or task
@@ -100,7 +30,7 @@ type APITriggerDefinition struct {
 }
 
 type APICommitQueueParams struct {
-	Enabled     bool    `json:"enabled"`
+	Enabled     *bool   `json:"enabled"`
 	MergeMethod *string `json:"merge_method"`
 	Message     *string `json:"message"`
 }
@@ -133,8 +63,8 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 }
 
 type APITaskSyncOptions struct {
-	ConfigEnabled bool `json:"config_enabled"`
-	PatchEnabled  bool `json:"patch_enabled"`
+	ConfigEnabled *bool `json:"config_enabled"`
+	PatchEnabled  *bool `json:"patch_enabled"`
 }
 
 func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
@@ -230,27 +160,27 @@ type APIProjectRef struct {
 	Owner                       *string              `json:"owner_name"`
 	Repo                        *string              `json:"repo_name"`
 	Branch                      *string              `json:"branch_name"`
-	Enabled                     bool                 `json:"enabled"`
-	Private                     bool                 `json:"private"`
+	Enabled                     *bool                `json:"enabled"`
+	Private                     *bool                `json:"private"`
 	BatchTime                   int                  `json:"batch_time"`
 	RemotePath                  *string              `json:"remote_path"`
 	SpawnHostScriptPath         *string              `json:"spawn_host_script_path"`
 	Identifier                  *string              `json:"identifier"`
 	DisplayName                 *string              `json:"display_name"`
-	DeactivatePrevious          bool                 `json:"deactivate_previous"`
+	DeactivatePrevious          *bool                `json:"deactivate_previous"`
 	TracksPushEvents            bool                 `json:"tracks_push_events"`
-	PRTestingEnabled            bool                 `json:"pr_testing_enabled"`
-	GitTagVersionsEnabled       bool                 `json:"git_tag_versions_enabled"`
+	PRTestingEnabled            *bool                `json:"pr_testing_enabled"`
+	GitTagVersionsEnabled       *bool                `json:"git_tag_versions_enabled"`
 	UseRepoSettings             bool                 `json:"use_repo_settings"`
 	RepoRefId                   *string              `json:"repo_ref_id"`
 	DefaultLogger               *string              `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
 	Hidden                      bool                 `json:"hidden"`
-	PatchingDisabled            bool                 `json:"patching_disabled"`
-	RepotrackerDisabled         bool                 `json:"repotracker_disabled"`
-	DispatchingDisabled         bool                 `json:"dispatching_disabled"`
-	DisabledStatsCache          bool                 `json:"disabled_stats_cache"`
+	PatchingDisabled            *bool                `json:"patching_disabled"`
+	RepotrackerDisabled         *bool                `json:"repotracker_disabled"`
+	DispatchingDisabled         *bool                `json:"dispatching_disabled"`
+	DisabledStatsCache          *bool                `json:"disabled_stats_cache"`
 	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache,omitempty"`
 	Admins                      []*string            `json:"admins"`
 	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
@@ -258,7 +188,7 @@ type APIProjectRef struct {
 	DeleteGitTagAuthorizedUsers []*string            `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
 	GitTagAuthorizedTeams       []*string            `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
 	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
-	NotifyOnBuildFailure        bool                 `json:"notify_on_failure"`
+	NotifyOnBuildFailure        *bool                `json:"notify_on_failure"`
 
 	Revision            *string                `json:"revision"`
 	Triggers            []APITriggerDefinition `json:"triggers"`

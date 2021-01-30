@@ -9,6 +9,7 @@ import (
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 			Id:      "repo_ref",
 			Repo:    "repo",
 			Owner:   "mongodb",
-			Enabled: true,
+			Enabled: util.TruePtr(),
 		},
 	}
 	require.NoError(t, repoRef.Insert())

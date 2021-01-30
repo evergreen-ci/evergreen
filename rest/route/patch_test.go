@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -659,7 +660,7 @@ buildvariants:
 		Repo:       "sample",
 		Branch:     "master",
 		RemotePath: "evergreen.yml",
-		Enabled:    true,
+		Enabled:    util.TruePtr(),
 		BatchTime:  180,
 	}
 	require.NoError(t, projectRef.Insert())

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -34,14 +36,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 				Id:         "12345",
 				Identifier: "projectA",
 				Branch:     "abcd",
-				Enabled:    true,
+				Enabled:    util.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 			{
 				Id:         "23456",
 				Identifier: "projectB",
 				Branch:     "bcde",
-				Enabled:    true,
+				Enabled:    util.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 		},
@@ -97,7 +99,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.NotEqual("projectC", restmodel.FromStringPtr(newProject.Id))
 	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
-	s.False(newProject.Enabled)
+	s.False(*newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", restmodel.FromStringPtr(newProject.Admins[0]))
 
@@ -131,13 +133,13 @@ func (s *copyVariablesSuite) SetupSuite() {
 			{
 				Id:      "projectA",
 				Branch:  "abcd",
-				Enabled: true,
+				Enabled: util.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 			{
 				Id:      "projectB",
 				Branch:  "bcde",
-				Enabled: true,
+				Enabled: util.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 		},

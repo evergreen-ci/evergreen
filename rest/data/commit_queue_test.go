@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -38,10 +40,10 @@ func (s *CommitQueueSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "master",
-		Enabled:          true,
-		PatchingDisabled: false,
+		Enabled:          util.TruePtr(),
+		PatchingDisabled: util.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			Enabled: util.TruePtr(),
 		},
 	}
 	s.Require().NoError(s.projectRef.Insert())

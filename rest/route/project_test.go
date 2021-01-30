@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -471,23 +473,23 @@ func getMockProjectsConnector() *data.MockConnector {
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
 					Branch:             "master",
-					Enabled:            false,
-					Private:            true,
+					Enabled:            util.FalsePtr(),
+					Private:            util.TruePtr(),
 					BatchTime:          0,
 					RemotePath:         "evergreen.yml",
 					Id:                 "dimoxinil",
 					DisplayName:        "Dimoxinil",
-					DeactivatePrevious: false,
+					DeactivatePrevious: util.FalsePtr(),
 					TracksPushEvents:   false,
-					PRTestingEnabled:   false,
+					PRTestingEnabled:   util.FalsePtr(),
 					CommitQueue: serviceModel.CommitQueueParams{
-						Enabled: false,
+						Enabled: util.FalsePtr(),
 					},
 					Hidden:                false,
-					PatchingDisabled:      false,
+					PatchingDisabled:      util.FalsePtr(),
 					Admins:                []string{"langdon.alger"},
-					NotifyOnBuildFailure:  false,
-					DisabledStatsCache:    true,
+					NotifyOnBuildFailure:  util.FalsePtr(),
+					DisabledStatsCache:    util.TruePtr(),
 					FilesIgnoredFromCache: []string{"ignored"},
 				},
 			},
@@ -567,7 +569,7 @@ func TestDeleteProject(t *testing.T) {
 			Id:      "repo_ref",
 			Owner:   "mongodb",
 			Repo:    "test_repo",
-			Enabled: true,
+			Enabled: util.TruePtr(),
 		},
 	}
 	assert.NoError(t, repo.Insert())
@@ -581,15 +583,15 @@ func TestDeleteProject(t *testing.T) {
 			Owner:                "mongodb",
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
-			Enabled:              true,
-			Private:              true,
+			Enabled:              util.TruePtr(),
+			Private:              util.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			UseRepoSettings:      true,
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     true,
-			PRTestingEnabled:     true,
+			PRTestingEnabled:     util.TruePtr(),
 			Admins:               []string{"admin0", "admin1"},
-			NotifyOnBuildFailure: true,
+			NotifyOnBuildFailure: util.TruePtr(),
 		}
 
 		projects = append(projects, project)
@@ -638,7 +640,7 @@ func TestDeleteProject(t *testing.T) {
 			Repo:            repo.Repo,
 			Branch:          projects[i].Branch,
 			RepoRefId:       repo.Id,
-			Enabled:         false,
+			Enabled:         util.FalsePtr(),
 			UseRepoSettings: true,
 			Hidden:          true,
 		}

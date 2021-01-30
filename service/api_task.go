@@ -224,7 +224,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark task as finished
 	updates := model.StatusChanges{}
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.ShouldDeactivatePrevious(), &updates)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -485,7 +485,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
-		if !projectRef.Enabled || projectRef.DispatchingDisabled {
+		if !projectRef.IsEnabled() || projectRef.IsDispatchingDisabled() {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/cheynewallace/tabby"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -109,7 +111,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 	matching := []model.ProjectRef{}
 	for _, proj := range projs {
-		if proj.Enabled {
+		if util.IsPtrSetToTrue(proj.Enabled) {
 			matching = append(matching, proj)
 		}
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -19,8 +20,8 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 	return model.ProjectSettingsEvent{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
-			Enabled: true,
-			Private: true,
+			Enabled: util.TruePtr(),
+			Private: util.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},

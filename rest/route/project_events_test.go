@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,8 +31,8 @@ func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
 			Owner:      restModel.ToStringPtr("admin"),
-			Enabled:    true,
-			Private:    true,
+			Enabled:    util.TruePtr(),
+			Private:    util.TruePtr(),
 			Identifier: restModel.ToStringPtr(projectId),
 			Admins:     []*string{},
 		},
@@ -64,7 +65,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	beforeSettings := getMockProjectSettings(s.projectId)
 
 	afterSettings := getMockProjectSettings(s.projectId)
-	afterSettings.ProjectRef.Enabled = false
+	afterSettings.ProjectRef.Enabled = util.FalsePtr()
 
 	s.event = restModel.APIProjectEvent{
 		Timestamp: restModel.ToTimePtr(time.Now()),

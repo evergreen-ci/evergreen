@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -57,7 +59,7 @@ func (s *commitQueueSuite) SetupSuite() {
 		Owner: "baxterthehacker",
 		Repo:  "public-repo",
 		CommitQueue: model.CommitQueueParams{
-			Enabled:     true,
+			Enabled:     util.TruePtr(),
 			MergeMethod: "squash",
 		},
 	}

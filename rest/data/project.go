@@ -124,7 +124,7 @@ func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) erro
 		return errors.Wrap(err, "error finding project refs")
 	}
 	for _, ref := range conflictingRefs {
-		if ref.PRTestingEnabled && ref.Id != projectRef.Id {
+		if ref.IsPRTestingEnabled() && ref.Id != projectRef.Id {
 			return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
 		}
 	}
@@ -591,7 +591,7 @@ func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, 
 
 func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		if p.Owner == owner && p.Repo == repo && p.Branch == branch && p.CommitQueue.Enabled == true {
+		if p.Owner == owner && p.Repo == repo && p.Branch == branch && p.CommitQueue.IsEnabled() {
 			return &p, nil
 		}
 	}
@@ -601,7 +601,7 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 func (pc *MockProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
 	refs := []model.ProjectRef{}
 	for _, p := range pc.CachedProjects {
-		if p.Owner == owner && p.Repo == repo && p.Enabled == true {
+		if p.Owner == owner && p.Repo == repo && p.IsEnabled() {
 			refs = append(refs, p)
 		}
 	}

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -30,7 +32,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
 	proj := model.ProjectRef{
 		Id:                   "proj",
-		NotifyOnBuildFailure: true,
+		NotifyOnBuildFailure: util.TruePtr(),
 		Admins:               []string{"admin"},
 	}
 	assert.NoError(proj.Insert())

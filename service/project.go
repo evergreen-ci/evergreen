@@ -134,13 +134,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	CQConflictingRefs := []string{}
 	githubChecksConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
-		if ref.PRTestingEnabled && ref.Id != projRef.Id {
+		if ref.IsPRTestingEnabled() && ref.Id != projRef.Id {
 			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}
-		if ref.CommitQueue.Enabled && ref.Id != projRef.Id {
+		if ref.CommitQueue.IsEnabled() && ref.Id != projRef.Id {
 			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
 		}
-		if ref.GithubChecksEnabled && ref.Id != projRef.Id {
+		if ref.IsGithubChecksEnabled() && ref.Id != projRef.Id {
 			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
 		}
 	}
@@ -382,7 +382,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, ref := range conflictingRefs {
-			if ref.PRTestingEnabled && ref.Id != id {
+			if ref.IsPRTestingEnabled() && ref.Id != id {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Id))
 				return
 			}
@@ -406,7 +406,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, ref := range conflictingRefs {
-			if ref.GithubChecksEnabled && ref.Id != id {
+			if ref.IsGithubChecksEnabled() && ref.Id != id {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
 				return
 			}
@@ -447,14 +447,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if commitQueueParams.Enabled {
+	if commitQueueParams.IsEnabled() {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Id != id {
+		if projRef != nil && projRef.CommitQueue.IsEnabled() && projRef.Id != id {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Id))
 			return
 		}
@@ -526,32 +526,32 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
-	projectRef.Enabled = responseRef.Enabled
+	projectRef.Enabled = &responseRef.Enabled
 	projectRef.DefaultLogger = responseRef.DefaultLogger
-	projectRef.CedarTestResultsEnabled = responseRef.CedarTestResultsEnabled
-	projectRef.Private = responseRef.Private
-	projectRef.Restricted = responseRef.Restricted
+	projectRef.CedarTestResultsEnabled = &responseRef.CedarTestResultsEnabled
+	projectRef.Private = &responseRef.Private
+	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
-	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
+	projectRef.DeactivatePrevious = &responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
-	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
+	projectRef.GitTagVersionsEnabled = &responseRef.GitTagVersionsEnabled
 	projectRef.Hidden = responseRef.Hidden
 	projectRef.Identifier = responseRef.Identifier
-	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.GithubChecksEnabled = responseRef.GithubChecksEnabled
+	projectRef.PRTestingEnabled = &responseRef.PRTestingEnabled
+	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
-	projectRef.PatchingDisabled = responseRef.PatchingDisabled
-	projectRef.DispatchingDisabled = responseRef.DispatchingDisabled
-	projectRef.RepotrackerDisabled = responseRef.RepotrackerDisabled
-	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
+	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
+	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
+	projectRef.RepotrackerDisabled = &responseRef.RepotrackerDisabled
+	projectRef.NotifyOnBuildFailure = &responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.PatchTriggerAliases = responseRef.PatchTriggerAliases
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
-	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
+	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.TracksPushEvents = hook != nil
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
@@ -719,7 +719,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if origProjectRef.Restricted != projectRef.Restricted {
-		if projectRef.Restricted {
+		if projectRef.IsRestricted() {
 			err = projectRef.MakeRestricted(ctx)
 		} else {
 			err = projectRef.MakeUnrestricted(ctx)

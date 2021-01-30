@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -31,7 +33,7 @@ func TestProjectRoutes(t *testing.T) {
 		publicId := "pub"
 		public := &model.ProjectRef{
 			Id:      publicId,
-			Enabled: true,
+			Enabled: util.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{},
 		}
@@ -82,8 +84,8 @@ func TestProjectRoutes(t *testing.T) {
 		privateId := "priv"
 		private := &model.ProjectRef{
 			Id:      privateId,
-			Enabled: true,
-			Private: true,
+			Enabled: util.TruePtr(),
+			Private: util.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}

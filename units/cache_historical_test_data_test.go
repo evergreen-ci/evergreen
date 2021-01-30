@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
@@ -462,7 +464,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Id:         s.projectId,
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		Enabled:    true,
+		Enabled:    util.TruePtr(),
 	}
 	err = ref.Insert()
 	s.NoError(err)

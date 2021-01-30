@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -321,7 +323,7 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 		Id:     "mci",
 		Admins: []string{"testuser"},
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			Enabled: util.TruePtr(),
 		},
 	}
 	s.NoError(projectRef.Insert())

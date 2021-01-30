@@ -457,7 +457,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	if err != nil {
 		return nil, errors.New("error getting github token")
 	}
-	if !pRef.GitTagVersionsEnabled {
+	if !pRef.IsGitTagVersionsEnabled() {
 		return nil, nil
 	}
 

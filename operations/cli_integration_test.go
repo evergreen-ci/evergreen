@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -83,7 +85,7 @@ func setupCLITestHarness() cliTestHarness {
 		Repo:       "sample",
 		Branch:     "master",
 		RemotePath: "evergreen.yml",
-		Enabled:    true,
+		Enabled:    util.TruePtr(),
 		BatchTime:  180,
 	}
 	So(projectRef.Insert(), ShouldBeNil)
