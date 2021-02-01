@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -169,10 +170,10 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		projectId := "mci2"
 		beforeSettings := restModel.APIProjectSettings{
 			ProjectRef: restModel.APIProjectRef{
-				Owner:      restModel.ToStringPtr("admin"),
+				Owner:      utility.ToStringPtr("admin"),
 				Enabled:    true,
 				Private:    true,
-				Identifier: restModel.ToStringPtr(projectId),
+				Identifier: utility.ToStringPtr(projectId),
 				Admins:     []*string{},
 			},
 			GitHubWebhooksEnabled: true,
@@ -181,17 +182,17 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				PrivateVars: map[string]bool{},
 			},
 			Aliases: []restModel.APIProjectAlias{{
-				Alias:   restModel.ToStringPtr("alias1"),
-				Variant: restModel.ToStringPtr("ubuntu"),
-				Task:    restModel.ToStringPtr("subcommand"),
+				Alias:   utility.ToStringPtr("alias1"),
+				Variant: utility.ToStringPtr("ubuntu"),
+				Task:    utility.ToStringPtr("subcommand"),
 			},
 			},
 			Subscriptions: []restModel.APISubscription{{
-				ID:           restModel.ToStringPtr("subscription1"),
-				ResourceType: restModel.ToStringPtr("project"),
-				Owner:        restModel.ToStringPtr("admin"),
+				ID:           utility.ToStringPtr("subscription1"),
+				ResourceType: utility.ToStringPtr("project"),
+				Owner:        utility.ToStringPtr("admin"),
 				Subscriber: restModel.APISubscriber{
-					Type:   restModel.ToStringPtr(event.GithubPullRequestSubscriberType),
+					Type:   utility.ToStringPtr(event.GithubPullRequestSubscriberType),
 					Target: restModel.APIGithubPRSubscriber{},
 				},
 			},
@@ -205,7 +206,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		for i := 0; i < projEventCount; i++ {
 			projectEvents = append(projectEvents, restModel.APIProjectEvent{
 				Timestamp: restModel.ToTimePtr(time.Now().Add(time.Second * time.Duration(-i))),
-				User:      restModel.ToStringPtr("me"),
+				User:      utility.ToStringPtr("me"),
 				Before:    beforeSettings,
 				After:     afterSettings,
 			})

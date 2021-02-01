@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -118,7 +118,7 @@ func keysList() cli.Command {
 			} else {
 				grip.Info("Public keys stored in Evergreen:")
 				for _, key := range keys {
-					grip.Infof("Name: '%s', Key: '%s'\n", model.FromStringPtr(key.Name), model.FromStringPtr(key.Key))
+					grip.Infof("Name: '%s', Key: '%s'\n", utility.FromStringPtr(key.Name), utility.FromStringPtr(key.Key))
 				}
 			}
 

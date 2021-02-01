@@ -453,7 +453,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 	hc := &data.DBConnector{}
 
-	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
+	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
@@ -1249,11 +1249,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if buildErr != nil {
 			return nil, InternalServerError.Send(ctx, buildErr.Error())
 		}
-		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+		if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
 			apiTest.Logs.HTMLDisplayURL = &formattedURL
 		}
-		if err = util.CheckURL(restModel.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+		if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
 			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 			apiTest.Logs.RawDisplayURL = &formattedURL
 		}
@@ -1526,10 +1526,10 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 
 	for i, item := range commitQueue.Queue {
 		patchId := ""
-		if restModel.FromStringPtr(item.Version) != "" {
-			patchId = restModel.FromStringPtr(item.Version)
-		} else if restModel.FromStringPtr(item.Issue) != "" && restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
-			patchId = restModel.FromStringPtr(item.Issue)
+		if utility.FromStringPtr(item.Version) != "" {
+			patchId = utility.FromStringPtr(item.Version)
+		} else if utility.FromStringPtr(item.Issue) != "" && utility.FromStringPtr(item.Source) == commitqueue.SourceDiff {
+			patchId = utility.FromStringPtr(item.Issue)
 		}
 		if patchId != "" {
 			p, err := r.sc.FindPatchById(patchId)
@@ -1826,7 +1826,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
 
-	_, err = r.sc.EnqueueItem(restModel.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: restModel.ToStringPtr(commitqueue.SourceDiff)}, false)
+	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
@@ -1840,7 +1840,7 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 	if err != nil {
 		return false, err
 	}
-	if restModel.FromStringPtr(existingPatch.Author) == u.Username() {
+	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
 		return true, nil
 	}
 
@@ -1859,7 +1859,7 @@ func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID str
 	}
 
 	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      restModel.FromStringPtr(existingPatch.ProjectId),
+		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,

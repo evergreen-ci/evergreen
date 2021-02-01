@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -59,7 +60,7 @@ func (s *APIStatList) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case []task.Stat:
 		for _, stat := range v {
-			*s = append(*s, APIStat{Name: ToStringPtr(stat.Name), Count: stat.Count})
+			*s = append(*s, APIStat{Name: utility.ToStringPtr(stat.Name), Count: stat.Count})
 		}
 	default:
 		return errors.Errorf("incorrect type when converting API stat list (%T)", v)
@@ -111,8 +112,8 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	case []host.StatsByDistro:
 		for _, entry := range v {
 			d := apiHostStatsForDistro{
-				Distro:   ToStringPtr(entry.Distro),
-				Status:   ToStringPtr(entry.Status),
+				Distro:   utility.ToStringPtr(entry.Distro),
+				Status:   utility.ToStringPtr(entry.Status),
 				NumHosts: entry.Count,
 				NumTasks: entry.NumTasks,
 				MaxHosts: entry.MaxHosts,

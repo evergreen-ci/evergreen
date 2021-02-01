@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -25,15 +26,15 @@ func (s *APITaskQueueItem) BuildFromService(h interface{}) error {
 		return errors.New("interface is not of type TaskQueueItem")
 	}
 
-	s.Id = ToStringPtr(tqi.Id)
-	s.DisplayName = ToStringPtr(tqi.DisplayName)
-	s.BuildVariant = ToStringPtr(tqi.BuildVariant)
+	s.Id = utility.ToStringPtr(tqi.Id)
+	s.DisplayName = utility.ToStringPtr(tqi.DisplayName)
+	s.BuildVariant = utility.ToStringPtr(tqi.BuildVariant)
 	s.RevisionOrderNumber = tqi.RevisionOrderNumber
-	s.Requester = ToStringPtr(tqi.Requester)
-	s.Revision = ToStringPtr(tqi.Revision)
-	s.Project = ToStringPtr(tqi.Project)
-	s.Version = ToStringPtr(tqi.Version)
-	s.Build = ToStringPtr(tqi.BuildVariant)
+	s.Requester = utility.ToStringPtr(tqi.Requester)
+	s.Revision = utility.ToStringPtr(tqi.Revision)
+	s.Project = utility.ToStringPtr(tqi.Project)
+	s.Version = utility.ToStringPtr(tqi.Version)
+	s.Build = utility.ToStringPtr(tqi.BuildVariant)
 	s.ExpectedDuration = NewAPIDuration(tqi.ExpectedDuration)
 	s.Priority = tqi.Priority
 

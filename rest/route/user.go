@@ -58,7 +58,7 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.settings.SpruceFeedback != nil {
 		h.settings.SpruceFeedback.SubmittedAt = model.ToTimePtr(time.Now())
-		h.settings.SpruceFeedback.User = model.ToStringPtr(u.Username())
+		h.settings.SpruceFeedback.User = utility.ToStringPtr(u.Username())
 		if err = h.sc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

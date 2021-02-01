@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -155,10 +156,10 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	projectID := "evergreen"
 	// a new definition for the github alias is added
 	pref := &model.APIProjectRef{
-		Identifier: model.ToStringPtr(projectID),
+		Identifier: utility.ToStringPtr(projectID),
 		Aliases: []model.APIProjectAlias{
 			{
-				Alias: model.ToStringPtr(evergreen.GithubPRAlias),
+				Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
 			},
 		},
 	}
@@ -170,8 +171,8 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	// a definition already exists
 	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
 		{
-			ID:    model.ToStringPtr("abcdef"),
-			Alias: model.ToStringPtr(evergreen.GithubPRAlias),
+			ID:    utility.ToStringPtr("abcdef"),
+			Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
 		},
 	}
 	pref.Aliases = nil
@@ -182,7 +183,7 @@ func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	// the only existing github alias is being deleted
 	pref.Aliases = []model.APIProjectAlias{
 		{
-			ID:     model.ToStringPtr("abcdef"),
+			ID:     utility.ToStringPtr("abcdef"),
 			Delete: true,
 		},
 	}
@@ -342,25 +343,25 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
 	cachedProject := s.sc.MockProjectConnector.CachedProjects[0]
-	s.Equal(cachedProject.Repo, model.FromStringPtr(projectRef.Repo))
-	s.Equal(cachedProject.Owner, model.FromStringPtr(projectRef.Owner))
-	s.Equal(cachedProject.Branch, model.FromStringPtr(projectRef.Branch))
+	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
+	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
+	s.Equal(cachedProject.Branch, utility.FromStringPtr(projectRef.Branch))
 	s.Equal(cachedProject.Enabled, projectRef.Enabled)
 	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
-	s.Equal(cachedProject.RemotePath, model.FromStringPtr(projectRef.RemotePath))
-	s.Equal(cachedProject.Id, model.FromStringPtr(projectRef.Id))
-	s.Equal(cachedProject.DisplayName, model.FromStringPtr(projectRef.DisplayName))
+	s.Equal(cachedProject.RemotePath, utility.FromStringPtr(projectRef.RemotePath))
+	s.Equal(cachedProject.Id, utility.FromStringPtr(projectRef.Id))
+	s.Equal(cachedProject.DisplayName, utility.FromStringPtr(projectRef.DisplayName))
 	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
 	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
 	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
 	s.Equal(cachedProject.Hidden, projectRef.Hidden)
 	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
-	s.Equal(cachedProject.Admins, model.FromStringPtrSlice(projectRef.Admins))
+	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
-	s.Equal(cachedProject.FilesIgnoredFromCache, model.FromStringPtrSlice(projectRef.FilesIgnoredFromCache))
+	s.Equal(cachedProject.FilesIgnoredFromCache, utility.FromStringPtrSlice(projectRef.FilesIgnoredFromCache))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -419,7 +420,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
+	s.Equal(utility.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -437,8 +438,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])
-	s.Equal(model.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Id, payload[1])
+	s.Equal(utility.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])
+	s.Equal(utility.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Id, payload[1])
 
 	s.Nil(resp.Pages())
 }

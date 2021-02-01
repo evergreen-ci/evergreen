@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -63,7 +64,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["task2"])
 	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("task1"), t.Id)
+	s.Equal(utility.ToStringPtr("task1"), t.Id)
 
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -72,7 +73,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["task2"])
 	t, ok = (res.Data()).(*model.APITask)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("task1"), t.Id)
+	s.Equal(utility.ToStringPtr("task1"), t.Id)
 }
 
 func (s *TaskAbortSuite) TestAbortFail() {

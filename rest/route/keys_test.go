@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -57,13 +58,13 @@ func (s *UserConnectorSuite) SetupTest() {
 	s.get = makeFetchKeys(s.sc)
 }
 
-func (s *UserConnectorSuite) TestGetSshKeysWithNoUserPanics() {
+func (s *UserConnectorSuite) TestGetSSHKeysWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_ = s.get.Run(context.TODO())
 	})
 }
 
-func (s *UserConnectorSuite) TestGetSshKeys() {
+func (s *UserConnectorSuite) TestGetSSHKeys() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
@@ -75,11 +76,11 @@ func (s *UserConnectorSuite) TestGetSshKeys() {
 	for i, result := range payload {
 		s.IsType(new(model.APIPubKey), result)
 		key := result.(*model.APIPubKey)
-		s.Equal(key.Name, model.ToStringPtr(fmt.Sprintf("user0_pubkey%d", i)))
+		s.Equal(key.Name, utility.ToStringPtr(fmt.Sprintf("user0_pubkey%d", i)))
 	}
 }
 
-func (s *UserConnectorSuite) TestGetSshKeysWithEmptyPubKeys() {
+func (s *UserConnectorSuite) TestGetSSHKeysWithEmptyPubKeys() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
@@ -87,7 +88,7 @@ func (s *UserConnectorSuite) TestGetSshKeysWithEmptyPubKeys() {
 	s.Equal(http.StatusOK, resp.Status())
 }
 
-func (s *UserConnectorSuite) TestAddSshKeyWithNoUserPanics() {
+func (s *UserConnectorSuite) TestAddSSHKeyWithNoUserPanics() {
 	s.post.(*keysPostHandler).keyName = "Test"
 	s.post.(*keysPostHandler).keyValue = "ssh-rsa 12345"
 
@@ -96,7 +97,7 @@ func (s *UserConnectorSuite) TestAddSshKeyWithNoUserPanics() {
 	})
 }
 
-func (s *UserConnectorSuite) TestAddSshKey() {
+func (s *UserConnectorSuite) TestAddSSHKey() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
@@ -110,10 +111,10 @@ func (s *UserConnectorSuite) TestAddSshKey() {
 	s.Equal("ssh-dss 12345", s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Key)
 }
 
-func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
+func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	s.TestAddSshKey()
+	s.TestAddSSHKey()
 
 	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
 
@@ -186,7 +187,7 @@ func (s *UserConnectorDeleteSuite) SetupTest() {
 	s.rm = makeDeleteKeys(s.sc)
 }
 
-func (s *UserConnectorDeleteSuite) TestDeleteSshKeys() {
+func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
@@ -201,7 +202,7 @@ func (s *UserConnectorDeleteSuite) TestDeleteSshKeys() {
 	s.Empty(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys)
 }
 
-func (s *UserConnectorDeleteSuite) TestDeleteSshKeysWithEmptyPubKeys() {
+func (s *UserConnectorDeleteSuite) TestDeleteSSHKeysWithEmptyPubKeys() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
@@ -210,7 +211,7 @@ func (s *UserConnectorDeleteSuite) TestDeleteSshKeysWithEmptyPubKeys() {
 	s.NotEqual(http.StatusOK, resp.Status())
 }
 
-func (s *UserConnectorDeleteSuite) TestDeleteSshKeysWithNoUserFails() {
+func (s *UserConnectorDeleteSuite) TestDeleteSSHKeysWithNoUserFails() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_ = s.rm.Run(context.TODO())
 	})

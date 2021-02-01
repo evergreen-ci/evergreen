@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -24,11 +25,11 @@ type APITestStats struct {
 func (apiTestStats *APITestStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TestStats:
-		apiTestStats.TestFile = ToStringPtr(v.TestFile)
-		apiTestStats.TaskName = ToStringPtr(v.TaskName)
-		apiTestStats.BuildVariant = ToStringPtr(v.BuildVariant)
-		apiTestStats.Distro = ToStringPtr(v.Distro)
-		apiTestStats.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
+		apiTestStats.TestFile = utility.ToStringPtr(v.TestFile)
+		apiTestStats.TaskName = utility.ToStringPtr(v.TaskName)
+		apiTestStats.BuildVariant = utility.ToStringPtr(v.BuildVariant)
+		apiTestStats.Distro = utility.ToStringPtr(v.Distro)
+		apiTestStats.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTestStats.NumPass = v.NumPass
 		apiTestStats.NumFail = v.NumFail
@@ -47,11 +48,11 @@ func (apiTestStats *APITestStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTestStats *APITestStats) StartAtKey() string {
 	return StartAtKey{
-		date:         FromStringPtr(apiTestStats.Date),
-		buildVariant: FromStringPtr(apiTestStats.BuildVariant),
-		taskName:     FromStringPtr(apiTestStats.TaskName),
-		testFile:     FromStringPtr(apiTestStats.TestFile),
-		distro:       FromStringPtr(apiTestStats.Distro),
+		date:         utility.FromStringPtr(apiTestStats.Date),
+		buildVariant: utility.FromStringPtr(apiTestStats.BuildVariant),
+		taskName:     utility.FromStringPtr(apiTestStats.TaskName),
+		testFile:     utility.FromStringPtr(apiTestStats.TestFile),
+		distro:       utility.FromStringPtr(apiTestStats.Distro),
 	}.String()
 }
 
@@ -76,10 +77,10 @@ type APITaskStats struct {
 func (apiTaskStats *APITaskStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TaskStats:
-		apiTaskStats.TaskName = ToStringPtr(v.TaskName)
-		apiTaskStats.BuildVariant = ToStringPtr(v.BuildVariant)
-		apiTaskStats.Distro = ToStringPtr(v.Distro)
-		apiTaskStats.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
+		apiTaskStats.TaskName = utility.ToStringPtr(v.TaskName)
+		apiTaskStats.BuildVariant = utility.ToStringPtr(v.BuildVariant)
+		apiTaskStats.Distro = utility.ToStringPtr(v.Distro)
+		apiTaskStats.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTaskStats.NumSuccess = v.NumSuccess
 		apiTaskStats.NumFailed = v.NumFailed
@@ -103,10 +104,10 @@ func (apiTaskStats *APITaskStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTaskStats *APITaskStats) StartAtKey() string {
 	return StartAtKey{
-		date:         FromStringPtr(apiTaskStats.Date),
-		buildVariant: FromStringPtr(apiTaskStats.BuildVariant),
-		taskName:     FromStringPtr(apiTaskStats.TaskName),
-		distro:       FromStringPtr(apiTaskStats.Distro),
+		date:         utility.FromStringPtr(apiTaskStats.Date),
+		buildVariant: utility.FromStringPtr(apiTaskStats.BuildVariant),
+		taskName:     utility.FromStringPtr(apiTaskStats.TaskName),
+		distro:       utility.FromStringPtr(apiTaskStats.Distro),
 	}.String()
 }
 

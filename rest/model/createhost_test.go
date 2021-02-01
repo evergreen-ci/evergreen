@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,9 +18,9 @@ func TestCreateHostBuildFromService(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(FromStringPtr(c.DNSName), h.Host)
-	assert.Equal(FromStringPtr(c.InstanceID), h.ExternalIdentifier)
-	assert.Equal(FromStringPtr(c.IP), h.IP)
+	assert.Equal(utility.FromStringPtr(c.DNSName), h.Host)
+	assert.Equal(utility.FromStringPtr(c.InstanceID), h.ExternalIdentifier)
+	assert.Equal(utility.FromStringPtr(c.IP), h.IP)
 }
 
 func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
@@ -40,10 +41,10 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(FromStringPtr(c.HostID), h.Id)
-	assert.Equal(FromStringPtr(c.Image), h.DockerOptions.Image)
-	assert.Equal(FromStringPtr(c.Command), h.DockerOptions.Command)
-	assert.Equal(FromStringPtr(c.ParentID), h.ParentID)
+	assert.Equal(utility.FromStringPtr(c.HostID), h.Id)
+	assert.Equal(utility.FromStringPtr(c.Image), h.DockerOptions.Image)
+	assert.Equal(utility.FromStringPtr(c.Command), h.DockerOptions.Command)
+	assert.Equal(utility.FromStringPtr(c.ParentID), h.ParentID)
 	assert.Equal(c.PortBindings, h.PortBindings)
 
 	assert.NotNil(c.DNSName) // will be set to parent's DNS name for host.list

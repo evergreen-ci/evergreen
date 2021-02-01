@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -72,11 +73,11 @@ func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
 		jiraLink = "https://" + jiraHost + "/browse/" + v.JiraIssue
 	}
 	el.Execution = v.Execution
-	el.HostId = ToStringPtr(v.HostId)
-	el.UserId = ToStringPtr(v.UserId)
-	el.JiraIssue = ToStringPtr(v.JiraIssue)
-	el.JiraLink = ToStringPtr(jiraLink)
-	el.Status = ToStringPtr(v.Status)
+	el.HostId = utility.ToStringPtr(v.HostId)
+	el.UserId = utility.ToStringPtr(v.UserId)
+	el.JiraIssue = utility.ToStringPtr(v.JiraIssue)
+	el.JiraLink = utility.ToStringPtr(jiraLink)
+	el.Status = utility.ToStringPtr(v.Status)
 	el.Timestamp = ToTimePtr(v.Timestamp)
 	el.Priority = v.Priority
 }
@@ -95,12 +96,12 @@ func (el *TaskAPIEventLogEntry) BuildFromService(t interface{}) error {
 		}
 		taskEventData := TaskEventData{}
 		taskEventData.BuildFromService(d)
-		el.ID = ToStringPtr(v.ID)
-		el.ResourceType = ToStringPtr(v.ResourceType)
+		el.ID = utility.ToStringPtr(v.ID)
+		el.ResourceType = utility.ToStringPtr(v.ResourceType)
 		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
 		el.Timestamp = ToTimePtr(v.Timestamp)
-		el.ResourceId = ToStringPtr(v.ResourceId)
-		el.EventType = ToStringPtr(v.EventType)
+		el.ResourceId = utility.ToStringPtr(v.ResourceId)
+		el.EventType = utility.ToStringPtr(v.EventType)
 		el.Data = &taskEventData
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
@@ -117,20 +118,20 @@ func (el *TaskAPIEventLogEntry) ToService() (interface{}, error) {
 
 func (el *HostAPIEventData) BuildFromService(v *event.HostEventData) {
 
-	el.AgentRevision = ToStringPtr(v.AgentRevision)
-	el.AgentBuild = ToStringPtr(v.AgentBuild)
-	el.JasperRevision = ToStringPtr(v.JasperRevision)
-	el.OldStatus = ToStringPtr(v.OldStatus)
-	el.NewStatus = ToStringPtr(v.NewStatus)
-	el.Logs = ToStringPtr(v.Logs)
-	el.Hostname = ToStringPtr(v.Hostname)
-	el.ProvisioningMethod = ToStringPtr(v.ProvisioningMethod)
-	el.TaskId = ToStringPtr(v.TaskId)
-	el.TaskPid = ToStringPtr(v.TaskPid)
-	el.TaskStatus = ToStringPtr(v.TaskStatus)
-	el.Execution = ToStringPtr(v.Execution)
-	el.MonitorOp = ToStringPtr(v.MonitorOp)
-	el.User = ToStringPtr(v.User)
+	el.AgentRevision = utility.ToStringPtr(v.AgentRevision)
+	el.AgentBuild = utility.ToStringPtr(v.AgentBuild)
+	el.JasperRevision = utility.ToStringPtr(v.JasperRevision)
+	el.OldStatus = utility.ToStringPtr(v.OldStatus)
+	el.NewStatus = utility.ToStringPtr(v.NewStatus)
+	el.Logs = utility.ToStringPtr(v.Logs)
+	el.Hostname = utility.ToStringPtr(v.Hostname)
+	el.ProvisioningMethod = utility.ToStringPtr(v.ProvisioningMethod)
+	el.TaskId = utility.ToStringPtr(v.TaskId)
+	el.TaskPid = utility.ToStringPtr(v.TaskPid)
+	el.TaskStatus = utility.ToStringPtr(v.TaskStatus)
+	el.Execution = utility.ToStringPtr(v.Execution)
+	el.MonitorOp = utility.ToStringPtr(v.MonitorOp)
+	el.User = utility.ToStringPtr(v.User)
 	el.Successful = v.Successful
 	el.Duration = NewAPIDuration(v.Duration)
 }
@@ -149,12 +150,12 @@ func (el *HostAPIEventLogEntry) BuildFromService(t interface{}) error {
 		}
 		hostAPIEventData := HostAPIEventData{}
 		hostAPIEventData.BuildFromService(d)
-		el.ID = ToStringPtr(v.ID)
-		el.ResourceType = ToStringPtr(v.ResourceType)
+		el.ID = utility.ToStringPtr(v.ID)
+		el.ResourceType = utility.ToStringPtr(v.ResourceType)
 		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
 		el.Timestamp = ToTimePtr(v.Timestamp)
-		el.ResourceId = ToStringPtr(v.ResourceId)
-		el.EventType = ToStringPtr(v.EventType)
+		el.ResourceId = utility.ToStringPtr(v.ResourceId)
+		el.EventType = utility.ToStringPtr(v.EventType)
 		el.Data = &hostAPIEventData
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))

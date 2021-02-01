@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,24 +61,24 @@ func TestVersionBuildFromService(t *testing.T) {
 	err := apiVersion.BuildFromService(v)
 	assert.Nil(err)
 	// Each field should be as expected
-	assert.Equal(apiVersion.Id, ToStringPtr(versionId))
+	assert.Equal(apiVersion.Id, utility.ToStringPtr(versionId))
 	assert.Equal(*apiVersion.CreateTime, time)
 	assert.Equal(*apiVersion.StartTime, time)
 	assert.Equal(*apiVersion.FinishTime, time)
-	assert.Equal(apiVersion.Revision, ToStringPtr(revision))
-	assert.Equal(apiVersion.Author, ToStringPtr(author))
-	assert.Equal(apiVersion.AuthorEmail, ToStringPtr(authorEmail))
-	assert.Equal(apiVersion.Message, ToStringPtr(msg))
-	assert.Equal(apiVersion.Status, ToStringPtr(status))
-	assert.Equal(apiVersion.Repo, ToStringPtr(repo))
-	assert.Equal(apiVersion.Branch, ToStringPtr(branch))
-	assert.Equal(apiVersion.Errors, ToStringPtrSlice(errors))
+	assert.Equal(apiVersion.Revision, utility.ToStringPtr(revision))
+	assert.Equal(apiVersion.Author, utility.ToStringPtr(author))
+	assert.Equal(apiVersion.AuthorEmail, utility.ToStringPtr(authorEmail))
+	assert.Equal(apiVersion.Message, utility.ToStringPtr(msg))
+	assert.Equal(apiVersion.Status, utility.ToStringPtr(status))
+	assert.Equal(apiVersion.Repo, utility.ToStringPtr(repo))
+	assert.Equal(apiVersion.Branch, utility.ToStringPtr(branch))
+	assert.Equal(apiVersion.Errors, utility.ToStringPtrSlice(errors))
 
 	bvs := apiVersion.BuildVariants
-	assert.Equal(bvs[0].BuildVariant, ToStringPtr(bv1))
-	assert.Equal(bvs[0].BuildId, ToStringPtr(bi1))
-	assert.Equal(bvs[1].BuildVariant, ToStringPtr(bv2))
-	assert.Equal(bvs[1].BuildId, ToStringPtr(bi2))
+	assert.Equal(bvs[0].BuildVariant, utility.ToStringPtr(bv1))
+	assert.Equal(bvs[0].BuildId, utility.ToStringPtr(bi1))
+	assert.Equal(bvs[1].BuildVariant, utility.ToStringPtr(bv2))
+	assert.Equal(bvs[1].BuildId, utility.ToStringPtr(bi2))
 }
 
 func TestVersionToService(t *testing.T) {
