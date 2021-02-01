@@ -144,46 +144,53 @@ var (
 	displayStatusExpression = bson.M{
 		"$switch": bson.M{
 			"branches": []bson.M{
-				{"case": bson.M{
-					"$eq": []interface{}{"$" + AbortedKey, true},
-				},
+				{
+					"case": bson.M{
+						"$eq": []interface{}{"$" + AbortedKey, true},
+					},
 					"then": evergreen.TaskAborted,
 				},
-				{"case": bson.M{
-					"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
-				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskSucceeded},
+					},
 					"then": evergreen.TaskSucceeded,
 				},
-				{"case": bson.M{
-					"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup},
-				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup},
+					},
 					"then": evergreen.TaskSetupFailed,
 				},
-				{"case": bson.M{
-					"$and": []bson.M{
-						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-						{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
-						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
+						},
 					},
-				},
 					"then": evergreen.TaskSystemUnresponse,
 				},
-				{"case": bson.M{
-					"$and": []bson.M{
-						{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-						{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+						},
 					},
-				},
 					"then": evergreen.TaskSystemTimedOut,
 				},
-				{"case": bson.M{
-					"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem},
-				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem},
+					},
 					"then": evergreen.TaskSystemFailed,
 				},
-				{"case": bson.M{
-					"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
-				},
+				{
+					"case": bson.M{
+						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
+					},
 					"then": evergreen.TaskTimedOut,
 				},
 			},
