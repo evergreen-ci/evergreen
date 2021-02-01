@@ -568,7 +568,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				}
 				if numHosts > nextTask.TaskGroupMaxHosts {
 					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
-				} else if nextTask.TaskGroupOrder != 0 && nextTask.TaskGroupMaxHosts == 1 {
+				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
 					// if the previous task in the group has yet to run and should run, then wait for it
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
