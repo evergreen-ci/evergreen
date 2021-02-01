@@ -8,14 +8,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/util"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -485,7 +484,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: util.FalsePtr(),
 					},
-					Hidden:                false,
+					Hidden:                util.FalsePtr(),
 					PatchingDisabled:      util.FalsePtr(),
 					Admins:                []string{"langdon.alger"},
 					NotifyOnBuildFailure:  util.FalsePtr(),
@@ -642,7 +641,7 @@ func TestDeleteProject(t *testing.T) {
 			RepoRefId:       repo.Id,
 			Enabled:         util.FalsePtr(),
 			UseRepoSettings: true,
-			Hidden:          true,
+			Hidden:          util.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 

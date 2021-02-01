@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mongodb/grip"
-
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 )
 
 // APITest contains the data to be returned whenever a test is used in the

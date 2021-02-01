@@ -75,7 +75,7 @@ func resetProjectRefs() {
 		Enabled:     util.TruePtr(),
 		Private:     util.FalsePtr(),
 		BatchTime:   60,
-		Hidden:      false,
+		Hidden:      util.FalsePtr(),
 	}
 	evgProjectRef = &model.ProjectRef{
 		Repo:       "evergreen",
@@ -213,7 +213,7 @@ func TestGetRemoteConfig(t *testing.T) {
 				Enabled:     util.TruePtr(),
 				Private:     util.FalsePtr(),
 				BatchTime:   60,
-				Hidden:      false,
+				Hidden:      util.FalsePtr(),
 			}
 			token, err := testConfig.GetGithubOauthToken()
 			So(err, ShouldBeNil)

@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	amboyCLI "github.com/mongodb/amboy/cli"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"

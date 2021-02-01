@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
-
 	"github.com/stretchr/testify/assert"
 )
 

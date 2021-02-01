@@ -9,12 +9,11 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/evergreen-ci/evergreen/util"
-
 	"github.com/cheynewallace/tabby"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"

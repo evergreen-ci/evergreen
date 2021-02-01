@@ -5,9 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 

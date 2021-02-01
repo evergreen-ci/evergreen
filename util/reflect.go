@@ -8,24 +8,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
-	// Iterate through each field of the struct.
-	for i := 0; i < structToSet.NumField(); i++ {
-		branchField := structToSet.Field(i)
-		// If the field isn't set, use the default field.
-		if isFieldUndefined(branchField) {
-			reflectedField := structToDefaultFrom.Field(i)
-			branchField.Set(reflectedField)
-
-			// If the fieldd is a struct and isn't undefined, check each subfield recursively.
-		} else if branchField.Kind() == reflect.Struct {
-			RecursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
-		}
-	}
-}
-
-// isFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
-func isFieldUndefined(v reflect.Value) bool {
+// IsFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
+func IsFieldUndefined(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Bool:
 		return !v.Bool()
@@ -46,7 +30,7 @@ func isFieldUndefined(v reflect.Value) bool {
 		return v.Len() == 0
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			if !isFieldUndefined(v.Field(i)) {
+			if !IsFieldUndefined(v.Field(i)) {
 				return false
 			}
 		}
