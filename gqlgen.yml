@@ -71,6 +71,8 @@ models:
         resolver: true
       isPerfPluginEnabled:
         resolver: true
+      project:
+        resolver: true
       canModifyAnnotation:
         resolver: true
       executionTasksFull:

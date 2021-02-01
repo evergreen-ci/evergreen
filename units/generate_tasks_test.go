@@ -200,7 +200,7 @@ func TestGenerateTasks(t *testing.T) {
 	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(sampleTask, 0)
+	j := NewGenerateTasksJob("sample_task", "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
@@ -356,7 +356,7 @@ buildvariants:
 	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(sampleTask, 0)
+	j := NewGenerateTasksJob("generator", "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 

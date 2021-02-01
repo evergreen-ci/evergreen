@@ -181,7 +181,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == t.Id {
 		// Check if the host was externally terminated. When the running task is
-		// cleared on the host, an agent or agent moniitor deploy might run,
+		// cleared on the host, an agent or agent monitor deploy might run,
 		// which updates the LCT and prevents detection of external termination
 		// until the deploy job runs out of retries.
 		var terminated bool

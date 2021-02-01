@@ -137,6 +137,22 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	return publicKeys, nil
 }
 
+func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
+	}
+
+	return &apiProjectRef, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if at.Aborted != true {
 		return nil, nil
@@ -378,8 +394,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
-		err := savePublicKey(ctx, *spawnHostInput.PublicKey)
-		if err != nil {
+		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
 		}
 	}
@@ -414,30 +429,35 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		options.Expiration = spawnHostInput.Expiration
 	}
 
+	// passing an empty string taskId is okay as long as a
+	// taskId is not required by other spawnHostInput parameters
+	var t *task.Task
+	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
+		options.TaskID = *spawnHostInput.TaskID
+		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+		}
+	}
+
 	if util.IsPtrSetToTrue(spawnHostInput.UseProjectSetupScript) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
-		options.TaskID = *spawnHostInput.TaskID
 	}
-
+	if util.IsPtrSetToTrue(spawnHostInput.TaskSync) {
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
+		}
+		options.TaskSync = *spawnHostInput.TaskSync
+	}
 	hc := &data.DBConnector{}
 
 	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		var t *task.Task
-		t, err = task.FindOneId(*spawnHostInput.TaskID)
-		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding Task with id: %s : %s", *spawnHostInput.TaskID, err))
-		}
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
-		}
-		err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key)
-		if err != nil {
+		if err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
 		}
 	}
@@ -450,8 +470,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
 	}
 	apiHost := restModel.APIHost{}
-	err = apiHost.BuildFromService(spawnHost)
-	if err != nil {
+	if err := apiHost.BuildFromService(spawnHost); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 	}
 	return &apiHost, nil
@@ -899,7 +918,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 }
 
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
-	project, err := r.sc.FindProjectById(id, false)
+	project, err := r.sc.FindProjectById(id, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
 	}
