@@ -22,7 +22,8 @@ type StaticSettings struct {
 }
 
 type StaticHost struct {
-	Name string `mapstructure:"name" json:"name" bson:"name"`
+	Name    string `bson:"name" json:"name" mapstructure:"name"`
+	SSHPort int    `bson:"ssh_port,omitempty" json:"ssh_port,omitempty" mapstructure:"ssh_port,omitempty"`
 }
 
 var (

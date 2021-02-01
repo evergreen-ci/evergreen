@@ -154,6 +154,9 @@ type Host struct {
 	// to this host.
 	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 
+	// SSHPort is the port to use when connecting to the host with SSH.
+	SSHPort int `bson:"ssh_port,omitempty" json:"ssh_port,omitempty"`
+
 	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
 	HomeVolumeSize int    `bson:"home_volume_size" json:"home_volume_size"`
@@ -569,7 +572,7 @@ func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: evergreen.HostProvisioning,
+			StatusKey: h.Status,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1461,17 +1464,26 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		HasContainersKey:     h.HasContainers,
 		ContainerImagesKey:   h.ContainerImages,
 	}
+	unsetFields := bson.M{}
+	if h.NeedsReprovision != ReprovisionNone {
+		setFields[NeedsReprovisionKey] = h.NeedsReprovision
+	} else {
+		unsetFields[NeedsReprovisionKey] = true
+	}
+	if h.SSHPort != 0 {
+		setFields[SSHPortKey] = h.SSHPort
+	} else {
+		unsetFields[SSHPortKey] = true
+	}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			CreateTimeKey: h.CreationTime,
 		},
+		"$set": setFields,
 	}
-	if h.NeedsReprovision != ReprovisionNone {
-		setFields[NeedsReprovisionKey] = h.NeedsReprovision
-	} else {
-		update["$unset"] = bson.M{NeedsReprovisionKey: ReprovisionNone}
+	if len(unsetFields) != 0 {
+		update["$unset"] = unsetFields
 	}
-	update["$set"] = setFields
 
 	return UpsertOne(bson.M{IdKey: h.Id}, update)
 }

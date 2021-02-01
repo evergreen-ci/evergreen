@@ -12,7 +12,7 @@ import (
 
 func TestGetPoolSize(t *testing.T) {
 	settings := StaticSettings{
-		Hosts: []StaticHost{{"host1"}, {"host2"}, {"host3"}},
+		Hosts: []StaticHost{{Name: "host1"}, {Name: "host2"}, {Name: "host3"}},
 	}
 	bytes, err := bson.Marshal(settings)
 	assert.NoError(t, err)

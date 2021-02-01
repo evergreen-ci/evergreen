@@ -3056,23 +3056,6 @@
         ],
         "data": null
       }
-    },
-    {
-      "query_file": "abort_task-project-not-found.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "could not find project 'nothing that actually exists'",
-            "path": [
-              "abortTask"
-            ],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
-            }
-          }
-        ],
-        "data": null
-      }
     }
   ]
 }

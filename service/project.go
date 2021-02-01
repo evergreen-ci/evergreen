@@ -256,7 +256,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
-		UseRepoSettings         bool                           `json:"use_repo_settings"`
 		Hidden                  bool                           `json:"hidden"`
 		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
@@ -539,7 +538,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
-	projectRef.UseRepoSettings = responseRef.UseRepoSettings
 	projectRef.Hidden = responseRef.Hidden
 	projectRef.Identifier = responseRef.Identifier
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
@@ -574,22 +572,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
-		}
-	}
-
-	// if owner/repo has changed or we're toggling repo settings off, update scope
-	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
-		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
-		if err = projectRef.RemoveFromRepoScope(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
-			return
-		}
-		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
-		if err = projectRef.AddToRepoScope(dbUser); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
 		}
 	}
 

@@ -146,11 +146,19 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 		}
 
 	case instanceStateChangeType:
-		if notification.Detail.State == ec2.InstanceStateNameTerminated {
+		switch notification.Detail.State {
+		case ec2.InstanceStateNameTerminated:
 			if err := aws.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
+				}
+			}
+		case ec2.InstanceStateNameStopped:
+			if err := aws.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "problem processing stopped instance").Error(),
 				}
 			}
 		}
@@ -219,8 +227,42 @@ func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID stri
 		return nil
 	}
 
-	// return success on duplicate job errors so AWS won't keep retrying
-	_ = aws.queue.Put(ctx, units.NewHostMonitorExternalStateJob(aws.env, h, aws.payload.MessageId))
+	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, units.NewHostMonitorExternalStateJob(aws.env, h, aws.payload.MessageId)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// handleInstanceStopped handles an agent host when AWS reports that it is
+// stopped. Agent hosts that are stopped externally are treated the same as an
+// externally-terminated host.
+func (aws *awsSns) handleInstanceStopped(ctx context.Context, instanceID string) error {
+	h, err := aws.sc.FindHostById(instanceID)
+	if err != nil {
+		return err
+	}
+	if h == nil {
+		return nil
+	}
+
+	// Ignore non-agent hosts (e.g. spawn hosts, host.create hosts).
+	if h.UserHost || h.StartedBy != evergreen.User {
+		return nil
+	}
+
+	if utility.StringSliceContains([]string{evergreen.HostStopped, evergreen.HostStopping, evergreen.HostTerminated}, h.Status) {
+		grip.WarningWhen(utility.StringSliceContains([]string{evergreen.HostStopped, evergreen.HostStopping}, h.Status), message.Fields{
+			"message":     "cannot handle unexpected host state: a host running tasks should never be stopped by Evergreen",
+			"host_id":     h.Id,
+			"host_status": h.Status,
+		})
+		return nil
+	}
+
+	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, units.NewHostMonitorExternalStateJob(aws.env, h, aws.payload.MessageId)); err != nil {
+		return err
+	}
 
 	return nil
 }

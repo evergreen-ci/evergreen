@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/mongodb/amboy/queue"
@@ -20,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAwsSnsRun(t *testing.T) {
+func TestAWSSNSRoute(t *testing.T) {
 	aws := awsSns{messageType: "unknown"}
 	responder := aws.Run(context.Background())
 	assert.Equal(t, http.StatusBadRequest, responder.Status())
@@ -40,7 +41,7 @@ func TestAwsSnsRun(t *testing.T) {
 	assert.Equal(t, "got AWS SNS subscription confirmation. Visit subscribe_url to confirm", m.Message.Raw().(message.Fields)["message"])
 }
 
-func TestHandleNotification(t *testing.T) {
+func TestHandleAWSSNSNotification(t *testing.T) {
 	ctx := context.Background()
 
 	aws := awsSns{}
@@ -60,27 +61,49 @@ func TestHandleNotification(t *testing.T) {
 	assert.True(t, strings.HasPrefix(aws.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
 }
 
-func TestHandlers(t *testing.T) {
+func TestAWSSNSNotificationHandlers(t *testing.T) {
 	ctx := context.Background()
-	hostID := "h0"
+	agentHost := host.Host{
+		Id:        "agent_host",
+		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		StartedBy: evergreen.User,
+	}
+	spawnHost := host.Host{
+		Id:        "spawn_host",
+		StartedBy: "user",
+		UserHost:  true,
+	}
 	messageID := "m0"
 	aws := awsSns{}
 	aws.payload.MessageId = messageID
 	aws.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{
-		CachedHosts: []host.Host{{Id: hostID, StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}}},
+		CachedHosts: []host.Host{
+			agentHost,
+			spawnHost,
+		},
+	},
 	}
 
 	for name, test := range map[string]func(*testing.T){
-		"InstanceInterruptionWarning": func(t *testing.T) {
+		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
 			aws.payload = sns.Payload{MessageId: messageID}
-			assert.NoError(t, aws.handleInstanceInterruptionWarning(ctx, hostID))
+			require.NoError(t, aws.handleInstanceInterruptionWarning(ctx, agentHost.Id))
 			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
-			assert.True(t, strings.HasPrefix(aws.queue.Next(ctx).ID(), fmt.Sprintf("host-termination-job.%s", hostID)))
+			assert.True(t, strings.HasPrefix(aws.queue.Next(ctx).ID(), fmt.Sprintf("host-termination-job.%s", agentHost.Id)))
 		},
-		"InstanceTerminated": func(t *testing.T) {
-			assert.NoError(t, aws.handleInstanceTerminated(ctx, hostID))
+		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
+			require.NoError(t, aws.handleInstanceTerminated(ctx, agentHost.Id))
 			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
-			assert.Equal(t, fmt.Sprintf("host-monitoring-external-state-check.%s.%s", hostID, messageID), aws.queue.Next(ctx).ID())
+			assert.Equal(t, fmt.Sprintf("host-monitoring-external-state-check.%s.%s", agentHost.Id, messageID), aws.queue.Next(ctx).ID())
+		},
+		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
+			require.NoError(t, aws.handleInstanceStopped(ctx, agentHost.Id))
+			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
+			assert.Equal(t, fmt.Sprintf("host-monitoring-external-state-check.%s.%s", agentHost.Id, messageID), aws.queue.Next(ctx).ID())
+		},
+		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
+			require.NoError(t, aws.handleInstanceStopped(ctx, spawnHost.Id))
+			assert.Zero(t, aws.queue.Stats(ctx).Total)
 		},
 	} {
 		aws.queue = queue.NewLocalLimitedSize(1, 1)

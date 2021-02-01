@@ -187,26 +187,45 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	return intentHost.InstanceTags
 }
 
-func makeTagTemplate(hostTags []host.Tag) []*ec2.LaunchTemplateTagSpecificationRequest {
-	awsTags := []*ec2.Tag{}
+func hostToEC2Tags(hostTags []host.Tag) []*ec2.Tag {
+	var tags []*ec2.Tag
 	for _, tag := range hostTags {
 		key := tag.Key
 		val := tag.Value
-		awsTags = append(awsTags, &ec2.Tag{Key: &key, Value: &val})
+		tags = append(tags, &ec2.Tag{Key: &key, Value: &val})
 	}
+	return tags
+}
+
+func makeTagTemplate(hostTags []host.Tag) []*ec2.LaunchTemplateTagSpecificationRequest {
+	tags := hostToEC2Tags(hostTags)
 	tagTemplates := []*ec2.LaunchTemplateTagSpecificationRequest{
 		{
 			ResourceType: aws.String(ec2.ResourceTypeInstance),
-			Tags:         awsTags,
+			Tags:         tags,
 		},
 		// every host has at least a root volume that needs to be tagged
 		{
 			ResourceType: aws.String(ec2.ResourceTypeVolume),
-			Tags:         awsTags,
+			Tags:         tags,
 		},
 	}
 
 	return tagTemplates
+}
+
+func makeTagSpecifications(hostTags []host.Tag) []*ec2.TagSpecification {
+	tags := hostToEC2Tags(hostTags)
+	return []*ec2.TagSpecification{
+		{
+			ResourceType: aws.String(ec2.ResourceTypeInstance),
+			Tags:         tags,
+		},
+		{
+			ResourceType: aws.String(ec2.ResourceTypeVolume),
+			Tags:         tags,
+		},
+	}
 }
 
 func timeTilNextEC2Payment(h *host.Host) time.Duration {

@@ -125,5 +125,6 @@ type Communicator interface {
 	// GetHostProvisioningOptions gets the options to provision a host.
 	GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error)
 
-	CompareTasks(context.Context, []string) ([]string, map[string]map[string]string, error)
+	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
+	CompareTasks(context.Context, []string, bool) ([]string, map[string]map[string]string, error)
 }

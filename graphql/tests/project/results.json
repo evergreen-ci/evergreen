@@ -68,7 +68,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error finding project by id not a real project: 404 (Not Found): project with id 'not a real project' not found",
+            "message": "Error finding project by id not a real project: project ref 'not a real project' does not exist",
             "path": ["project"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"

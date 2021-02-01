@@ -289,6 +289,9 @@ func AbortTask(taskId, caller string) error {
 	if err != nil {
 		return err
 	}
+	if t == nil {
+		return errors.Errorf("task '%s' doesn't exist", taskId)
+	}
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
 			_ = AbortTask(et, caller) // discard errors because some execution tasks may not be abortable
