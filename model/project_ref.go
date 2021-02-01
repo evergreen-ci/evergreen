@@ -280,6 +280,10 @@ func (p *ProjectRef) IsStatsCacheDisabled() bool {
 	return util.IsPtrSetToTrue(p.DisabledStatsCache)
 }
 
+func (p *ProjectRef) IsHidden() bool {
+	return util.IsPtrSetToTrue(p.Hidden)
+}
+
 func (p *CommitQueueParams) IsEnabled() bool {
 	return util.IsPtrSetToTrue(p.Enabled)
 }

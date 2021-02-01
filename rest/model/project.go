@@ -179,7 +179,7 @@ type APIProjectRef struct {
 	DefaultLogger               *string              `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
-	Hidden                      bool                 `json:"hidden"`
+	Hidden                      *bool                `json:"hidden"`
 	PatchingDisabled            *bool                `json:"patching_disabled"`
 	RepotrackerDisabled         *bool                `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                `json:"dispatching_disabled"`

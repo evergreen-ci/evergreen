@@ -701,7 +701,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' does not exist", h.projectName))
 	}
 
-	if project.Hidden {
+	if project.IsHidden() {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
 	}
 
@@ -718,7 +718,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		RepoRefId:       project.RepoRefId,
 		Enabled:         util.FalsePtr(),
 		UseRepoSettings: true,
-		Hidden:          true,
+		Hidden:          util.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
