@@ -471,10 +471,9 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		bson.M{
 			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
 		})
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{"message": "task.DependenciesMet() failed to update task",
-			"task_id": t.Id}))
-	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "task.DependenciesMet() failed to update task",
+		"task_id": t.Id}))
 
 	return true, nil
 }
