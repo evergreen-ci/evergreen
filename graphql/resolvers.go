@@ -439,13 +439,13 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		}
 	}
 
-	if util.IsPtrSetToTrue(spawnHostInput.UseProjectSetupScript) {
+	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
-	if util.IsPtrSetToTrue(spawnHostInput.TaskSync) {
+	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
 		}
@@ -2533,7 +2533,7 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 	authUser := gimlet.GetUser(ctx)
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {
-		return util.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
 	}
 	permissions := gimlet.PermissionOpts{
 		Resource:      t.Project,

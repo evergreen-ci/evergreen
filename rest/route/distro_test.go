@@ -21,8 +21,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -172,7 +172,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				PlannerSettings: distro.PlannerSettings{
 					Version:       evergreen.PlannerVersionTunable,
 					TargetTime:    80000000000,
-					GroupVersions: util.TruePtr(),
+					GroupVersions: utility.TruePtr(),
 					PatchFactor:   7,
 				},
 				BootstrapSettings: distro.BootstrapSettings{
