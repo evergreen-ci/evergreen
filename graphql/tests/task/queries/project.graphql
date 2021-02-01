@@ -1,0 +1,7 @@
+{
+  task(taskId: "some_task", execution: 0) {
+    project {
+      id
+    }
+  }
+}
