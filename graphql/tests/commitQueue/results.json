@@ -7,8 +7,8 @@
           "commitQueue": {
             "projectId": "mongodb-mongo-master",
             "message": "this is a message",
-            "owner": "",
-            "repo": "",
+            "owner": null,
+            "repo": null,
             "queue": [
               {
                 "issue": "5e94c2dfe3c3312519b59480",

@@ -88,6 +88,7 @@ var (
 	ContainerPoolSettingsKey           = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	InstanceTagsKey                    = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	SSHKeyNamesKey                     = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
+	SSHPortKey                         = bsonutil.MustHaveTag(Host{}, "SSHPort")
 	HomeVolumeIDKey                    = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
 	PortBindingsKey                    = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey            = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")

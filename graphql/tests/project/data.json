@@ -2,7 +2,10 @@
   "project_ref": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen"
+      "identifier": "evergreen",
+      "commit_queue": {
+        "patch_type": "PR"
+      }
     }
   ],
   "patches": [

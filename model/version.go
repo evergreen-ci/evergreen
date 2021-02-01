@@ -121,13 +121,22 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 	return timeTaken, makespan, nil
 }
 
-func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
-	spot := cq.FindItem(issue)
-	if spot == -1 {
-		return nil, nil
+func VersionExistsForCommitQueueItem(cq *commitqueue.CommitQueue, issue, patchType string) (bool, error) {
+	versionID := issue
+	if patchType == commitqueue.SourcePullRequest {
+		head, valid := cq.Next()
+		// versions are created for PR items at the top of the queue only
+		if !valid || head.Issue != issue {
+			return false, nil
+		}
+		versionID = head.Version
 	}
 
-	return VersionFindOneId(cq.Queue[spot].Version)
+	v, err := VersionFindOneId(versionID)
+	if err != nil {
+		return false, errors.Wrapf(err, "error finding version '%s'", versionID)
+	}
+	return v != nil, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build

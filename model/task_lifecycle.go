@@ -96,7 +96,8 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if projRef == nil {
 				return errors.New("no project found")
 			}
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, t.Version, caller)
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project,
+				projRef.CommitQueue.PatchType, t.Version, caller)
 			if err != nil {
 				return err
 			}
@@ -658,11 +659,11 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
 	}
 
-	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
+	removed, err := cq.RemoveItemAndPreventMerge(issue, projectRef.CommitQueue.PatchType, true, caller)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Id)
 	}
-	if removed == nil {
+	if !removed {
 		return nil
 	}
 	if p.IsPRMergePatch() {

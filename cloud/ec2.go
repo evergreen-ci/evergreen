@@ -275,6 +275,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        &ec2Settings.InstanceType,
 		BlockDeviceMappings: blockDevices,
+		TagSpecifications:   makeTagSpecifications(makeTags(h)),
 	}
 
 	if ec2Settings.IsVpc {
@@ -659,13 +660,9 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag)
 	if err != nil {
 		return errors.Wrap(err, "error getting host resources")
 	}
-	createTagSlice := make([]*ec2.Tag, len(tags))
-	for i := range tags {
-		createTagSlice[i] = &ec2.Tag{Key: &tags[i].Key, Value: &tags[i].Value}
-	}
 	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
-		Tags:      createTagSlice,
+		Tags:      hostToEC2Tags(tags),
 	})
 	if err != nil {
 		return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
@@ -1291,13 +1288,11 @@ func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 
 // OnUp is called when the host is up.
 func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
-	grip.Debug(message.Fields{
-		"message":       "host is up",
-		"host_id":       h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-		"is_spot":       isHostSpot(h),
-	})
+	if isHostOnDemand(h) {
+		// On-demand hosts and its volumes are already tagged in the request for
+		// the instance.
+		return nil
+	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return errors.Wrap(err, "error creating client")

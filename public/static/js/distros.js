@@ -202,10 +202,19 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   $scope.updateSettingsList = function() {
     // don't save if there aren't any populated fields
     for (let [key, val] of Object.entries($scope.activeDistro.settings)) {
-        if (key !== "region" && val !== "" && val !== undefined) {
-          $scope.activeDistro.provider_settings[$scope.currentIdx] = $scope.activeDistro.settings;
-          return;
+      // If using a static host list, unset any invalid SSH ports (i.e. null, undefined) because the back-end will treat
+      // a conversion from nil to an integer as invalid.
+      if ($scope.activeDistro.settings.hosts) {
+        for (var i = 0; i < $scope.activeDistro.settings.hosts.length; i++) {
+          if (!$scope.activeDistro.settings.hosts[i].ssh_port) {
+            delete($scope.activeDistro.settings.hosts[i].ssh_port);
+          }
         }
+      }
+      if (key !== "region" && val !== "" && val !== undefined) {
+        $scope.activeDistro.provider_settings[$scope.currentIdx] = $scope.activeDistro.settings;
+        return;
+      }
     }
     // if the settings object is cleared, then we should remove from the list for now
     $scope.activeDistro.provider_settings.splice($scope.currentIdx);

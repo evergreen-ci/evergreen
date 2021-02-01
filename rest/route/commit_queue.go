@@ -94,11 +94,11 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
 	}
 
-	removed, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
+	found, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
-	if removed == nil {
+	if !found {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no matching item for project ID '%s', item '%s'", cq.project, cq.item),
@@ -106,7 +106,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	// Send GitHub status
-	if restModel.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
+	if projectRef.CommitQueue.PatchType == commitqueue.SourcePullRequest {
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))

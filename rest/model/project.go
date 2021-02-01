@@ -32,6 +32,7 @@ type APITriggerDefinition struct {
 type APICommitQueueParams struct {
 	Enabled     *bool   `json:"enabled"`
 	MergeMethod *string `json:"merge_method"`
+	PatchType   *string `json:"patch_type"`
 	Message     *string `json:"message"`
 }
 
@@ -48,6 +49,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 
 	cqParams.Enabled = params.Enabled
 	cqParams.MergeMethod = ToStringPtr(params.MergeMethod)
+	cqParams.PatchType = ToStringPtr(params.PatchType)
 	cqParams.Message = ToStringPtr(params.Message)
 
 	return nil
@@ -57,6 +59,7 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = cqParams.Enabled
 	serviceParams.MergeMethod = FromStringPtr(cqParams.MergeMethod)
+	serviceParams.PatchType = FromStringPtr(cqParams.PatchType)
 	serviceParams.Message = FromStringPtr(cqParams.Message)
 
 	return serviceParams, nil

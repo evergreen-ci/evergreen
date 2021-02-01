@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -31,8 +32,11 @@ type cloudHostReadyJob struct {
 	env      evergreen.Environment
 }
 
-// NewCloudHostReadyJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
-// APIs have not yet returned all running. It marks the hosts running in the database.
+// NewCloudHostReadyJob checks the cloud instance status for all hosts created
+// by cloud providers when the instance is not yet ready to be used (e.g. the
+// instance is still booting up). Once the cloud instance status is resolved,
+// the job can either transition the host into the next step in the host
+// lifecycle or be appropriately handled if it is in an unrecoverable state.
 func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeCloudHostReadyJob()
 	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyJobName, id))
@@ -59,9 +63,6 @@ func makeCloudHostReadyJob() *cloudHostReadyJob {
 }
 
 func (j *cloudHostReadyJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
 	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
@@ -99,7 +100,14 @@ clientsLoop:
 			return
 		}
 		if batch, ok := m.(cloud.BatchManager); ok {
+			startAt := time.Now()
 			statuses, err := batch.GetInstanceStatuses(ctx, hosts)
+			grip.Debug(message.Fields{
+				"message":       "finished getting instance statuses",
+				"num_hosts":     len(hosts),
+				"provider":      clientOpts.Provider,
+				"duration_secs": time.Since(startAt).Seconds(),
+			})
 			if err != nil {
 				if strings.Contains(err.Error(), "InvalidInstanceID.NotFound") {
 					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
@@ -112,22 +120,25 @@ clientsLoop:
 				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
 				continue clientsLoop
 			}
-			hostIDs := []string{}
-			for _, h := range hosts {
-				hostIDs = append(hostIDs, h.Id)
-			}
 			for i := range hosts {
-				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
+				j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error setting instance status"))
 			}
 			continue clientsLoop
 		}
 		for _, h := range hosts {
-			hostStatus, err := m.GetInstanceStatus(ctx, &h)
+			startAt := time.Now()
+			cloudStatus, err := m.GetInstanceStatus(ctx, &h)
+			grip.Debug(message.Fields{
+				"message":       "finished getting instance status",
+				"host_id":       h.Id,
+				"provider":      clientOpts.Provider,
+				"duration_secs": time.Since(startAt).Seconds(),
+			})
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, hostStatus), "error settings instance statuses"))
+			j.AddError(errors.Wrap(j.setCloudHostStatus(ctx, m, h, cloudStatus), "error setting instance status"))
 		}
 	}
 }
@@ -157,31 +168,38 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	return catcher.Resolve()
 }
 
-// setCloudHostStatus sets the host's status to HostProvisioning if host is running.
-func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
-	switch hostStatus {
-	case cloud.StatusFailed, cloud.StatusTerminated:
-		grip.Debug(message.Fields{
-			"ticket":     "EVG-6100",
-			"message":    "host status",
-			"host_id":    h,
-			"hostStatus": hostStatus.String(),
-		})
-		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User, "cloud provider reported host failed to start"), "error terminating instance")
+// setCloudHostStatus checks the status of the host's cloud instance to
+// determine the next step in the host lifecycle. Hosts that are running
+// in the cloud can successfully transition to the next step in the lifecycle.
+// Hosts found in an unrecoverable state are terminated.
+func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, cloudStatus cloud.CloudStatus) error {
+	switch cloudStatus {
+	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped:
+		j.logHostStatusMessage(&h, cloudStatus)
+
+		event.LogHostTerminatedExternally(h.Id, h.Status)
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
+
+		return catcher.Resolve()
 	case cloud.StatusRunning:
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
 		}
-		return j.setNextState(h)
+		err := j.setNextState(h)
+		j.logHostStatusMessage(&h, cloudStatus)
+		return err
 	}
 
 	grip.Info(message.Fields{
-		"message": "host not ready for setup",
-		"host_id": h.Id,
-		"DNS":     h.Host,
-		"distro":  h.Distro.Id,
-		"runner":  "hostinit",
-		"status":  hostStatus,
+		"message":      "host not ready for setup",
+		"host_id":      h.Id,
+		"distro":       h.Distro.Id,
+		"runner":       "hostinit",
+		"cloud_status": cloudStatus.String(),
+		"job":          j.ID(),
 	})
 	return nil
 }
@@ -189,10 +207,13 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 func (j *cloudHostReadyJob) setNextState(h host.Host) error {
 	switch h.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodUserData:
-		// We're done provisioning user data hosts. The user data script will do the rest.
+		// From the app server's perspective, it is done provisioning a user
+		// data host once the instance is running. The user data script will
+		// handle the rest of host provisioning.
 		return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned not running", h.Id)
 	case distro.BootstrapMethodNone:
-		// hosts created by tasks are not provisioned so we can skip the provisioning state.
+		// A host created by a task goes through no further provisioning, so we
+		// can just set it as running.
 		return errors.Wrapf(h.MarkAsProvisioned(), "error marking host %s as running", h.Id)
 	default:
 		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
@@ -211,7 +232,6 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 		return nil
 	}
 
-	// get the DNS name for the host
 	hostDNS, err := cloudMgr.GetDNSName(ctx, h)
 	if err != nil {
 		return errors.Wrapf(err, "error checking DNS name for host %s", h.Id)
@@ -232,4 +252,53 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 	}
 
 	return nil
+}
+
+// logHostStatusMessage logs the appropriate message once the status of a host's
+// cloud instance is known and the host can transition to the next step in
+// provisioning.
+func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud.CloudStatus) {
+	switch cloudStatus {
+	case cloud.StatusStopped:
+		grip.Warning(message.Fields{
+			"message":      "host was found in stopped state before it could transition to ready, which should not occur",
+			"hypothesis":   "stopped by the AWS reaper",
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"cloud_status": cloudStatus.String(),
+			"job":          j.ID(),
+		})
+	case cloud.StatusTerminated:
+		grip.Warning(message.Fields{
+			"message":      "host's instance was terminated before it could transition to ready",
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"cloud_status": cloudStatus.String(),
+			"job":          j.ID(),
+		})
+	case cloud.StatusFailed:
+		grip.Warning(message.Fields{
+			"message":      "host's instance failed to start",
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"cloud_status": cloudStatus.String(),
+			"job":          j.ID(),
+		})
+	case cloud.StatusRunning:
+		grip.Info(message.Fields{
+			"message":      "host's instance was successfully found up and running",
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"cloud_status": cloudStatus.String(),
+			"job":          j.ID(),
+		})
+	default:
+		grip.Error(message.Fields{
+			"message":      "host's instance is in a state that the system does not know how to handle",
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"cloud_status": cloudStatus.String(),
+			"job":          j.ID(),
+		})
+	}
 }
