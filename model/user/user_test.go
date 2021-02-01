@@ -489,6 +489,7 @@ func (s *UserTestSuite) TestRoles() {
 	dbUser, err = FindOneById(u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
+	s.NoError(u.RemoveRole("definitely non-existent role"))
 }
 
 func (s *UserTestSuite) TestFavoriteProjects() {

@@ -102,9 +102,13 @@
       "result": {
         "errors": [
           {
-            "message": "error finding task by id osiernar: 404 (Not Found): task with id osiernar not found",
-            "path": ["taskLogs"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "message": "cannot find task with id osiernar",
+            "path": [
+              "taskLogs"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null

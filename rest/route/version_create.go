@@ -52,7 +52,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo := &model.ProjectInfo{}
 	var err error
-	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID)
+	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID, true)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}

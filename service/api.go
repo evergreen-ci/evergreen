@@ -330,7 +330,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res.RestrictedVars = projectVars.GetRestrictedVars()
 	res.PrivateVars = projectVars.PrivateVars
 
-	v, err := model.VersionFindOne(model.VersionById(t.Version).WithFields(model.VersionParametersKey))
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

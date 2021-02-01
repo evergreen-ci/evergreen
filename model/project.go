@@ -906,6 +906,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
+	expansions.Put("author_email", v.AuthorEmail)
+
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
 	if evergreen.IsGitTagRequester(v.Requester) {
@@ -1150,6 +1152,24 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 		}
 	}
 	return nil
+}
+
+// GetTaskNameAndTags checks the project for a task or task group matching the
+// build variant task unit, and returns the name and tags
+func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
+	if bvt.IsGroup {
+		ptg := p.FindTaskGroup(bvt.Name)
+		if ptg == nil {
+			return "", nil, false
+		}
+		return ptg.Name, ptg.Tags, true
+	}
+
+	pt := p.FindProjectTask(bvt.Name)
+	if pt == nil {
+		return "", nil, false
+	}
+	return pt.Name, pt.Tags, true
 }
 
 func (p *Project) FindProjectTask(name string) *ProjectTask {

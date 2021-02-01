@@ -1429,8 +1429,8 @@ func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
-// that are not in the original task slice. depCache should originally be nil
-// We assume there are no dependency cycles.
+// that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
+// depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
 	if depCache == nil {
 		depCache = make(map[string]Task)
@@ -1444,6 +1444,19 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		for _, dep := range t.DependsOn {
 			if _, ok := depCache[dep.TaskId]; !ok {
 				tasksToFind = append(tasksToFind, dep.TaskId)
+			}
+		}
+		if t.IsPartOfSingleHostTaskGroup() {
+			tasksInGroup, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+			}
+			for _, taskInGroup := range tasksInGroup {
+				if taskInGroup.TaskGroupOrder < t.TaskGroupOrder {
+					if _, ok := depCache[taskInGroup.Id]; !ok {
+						tasksToFind = append(tasksToFind, taskInGroup.Id)
+					}
+				}
 			}
 		}
 	}
@@ -2719,7 +2732,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 	if len(sortBy) > 0 {
 		for _, singleSort := range sortBy {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				pipeline = append(pipeline, addCustomStatusSortField((singleSort.Key)))
+				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
@@ -2781,16 +2794,47 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 	return tasks, count, nil
 }
 
-func addCustomStatusSortField(key string) bson.M {
+// addStatusColorSort adds a stage which takes a task display status and returns an integer
+// for the rank at which it should be sorted. the return value groups all statuses with the
+// same color together. this should be kept consistent with the badge status colors in spruce
+func addStatusColorSort(key string) bson.M {
 	return bson.M{
 		"$addFields": bson.M{
 			"__" + key: bson.M{
-				"$cond": bson.M{
-					"if": bson.M{
-						"$in": []interface{}{"$" + key, evergreen.TaskFailureStatuses},
+				"$switch": bson.M{
+					"branches": []bson.M{
+						{
+							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
+							},
+							"then": 1, // red
+						},
+						{
+							"case": bson.M{
+								"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
+							},
+							"then": 2, // lavender
+						},
+						{
+							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
+							},
+							"then": 3, // purple
+						},
+						{
+							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+							},
+							"then": 4, // yellow
+						},
+						{
+							"case": bson.M{
+								"$eq": []string{"$" + key, evergreen.TaskSucceeded},
+							},
+							"then": 10, // green
+						},
 					},
-					"then": "a",
-					"else": "b",
+					"default": 6, // all shades of grey
 				},
 			},
 		},

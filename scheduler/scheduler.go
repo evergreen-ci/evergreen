@@ -56,7 +56,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Legacy Scheduler Implementation
+// UseLegacy Scheduler Implementation
 
 func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	runnableTasks, versions, err := FilterTasksWithVersionCache(tasks)

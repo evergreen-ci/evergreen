@@ -191,7 +191,7 @@ func (s *GithubMergePR) dequeueFromCommitQueue() error {
 	if err != nil {
 		return errors.Wrapf(err, "can't dequeue '%s' from commit queue", s.Item)
 	}
-	if !found {
+	if found == nil {
 		return errors.Errorf("item '%s' did not exist on the queue", s.Item)
 	}
 

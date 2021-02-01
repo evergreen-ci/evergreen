@@ -1,6 +1,0 @@
-mutation {
-  abortTask(taskId: "task-with-fake-old-id") {
-    aborted
-    activated
-  }
-}

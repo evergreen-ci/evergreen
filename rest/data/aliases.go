@@ -12,10 +12,22 @@ import (
 type DBAliasConnector struct{}
 
 // FindProjectAliases queries the database to find all aliases.
-func (d *DBAliasConnector) FindProjectAliases(projectId string) ([]restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProject(projectId)
-	if err != nil {
-		return nil, err
+// If the repoId is given, we default to repo aliases if there are no project aliases.
+func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
+	var err error
+	var aliases model.ProjectAliases
+	if projectId != "" {
+		aliases, err = model.FindAliasesForProject(projectId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(aliases) == 0 && repoId != "" {
+		aliases, err = model.FindAliasesForProject(repoId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
+		}
 	}
 	if aliases == nil {
 		return nil, nil
@@ -101,7 +113,7 @@ type MockAliasConnector struct {
 }
 
 // FindAllAliases is a mock implementation for testing.
-func (d *MockAliasConnector) FindProjectAliases(projectId string) ([]restModel.APIProjectAlias, error) {
+func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
 	return d.Aliases, nil
 }
 

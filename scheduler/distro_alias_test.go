@@ -59,7 +59,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
-		t.Run("Legacy", func(t *testing.T) {
+		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
 			distroOne.PlannerSettings.Version = evergreen.PlannerVersionLegacy
@@ -106,7 +106,7 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, 0, ct)
 
 		})
-		t.Run("Legacy", func(t *testing.T) {
+		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
 			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy

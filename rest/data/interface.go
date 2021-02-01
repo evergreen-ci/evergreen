@@ -73,8 +73,9 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
-	// Find project variables matching given projectId. If bool is set, also return private variables.
-	FindProjectVarsById(string, bool) (*restModel.APIProjectVars, error)
+	// Find project variables matching given projectId (merged with variables matching the repoId, if given).
+	// If bool is set, also return private variables.
+	FindProjectVarsById(string, string, bool) (*restModel.APIProjectVars, error)
 	// UpdateProjectVars updates the project using the variables given
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
@@ -82,8 +83,8 @@ type Connector interface {
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
-	// Find the project matching the given ProjectId.
-	FindProjectById(string) (*model.ProjectRef, error)
+	// Find the project matching the given ProjectId. Includes repo settings if set.
+	FindProjectById(string, bool) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
@@ -281,8 +282,8 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
-	// FindProjectAliases queries the database to find all aliases.
-	FindProjectAliases(string) ([]restModel.APIProjectAlias, error)
+	// FindProjectAliases queries the database to find all aliases. Includes repo aliases if repoId is provided.
+	FindProjectAliases(string, string) ([]restModel.APIProjectAlias, error)
 	// CopyProjectAliases copies aliases from the first project for the second project.
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project
@@ -334,7 +335,7 @@ type Connector interface {
 	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
 	FindCommitQueueForProject(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
-	CommitQueueRemoveItem(string, string, string) (bool, error)
+	CommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	CreatePatchForMerge(context.Context, string) (*restModel.APIPatch, error)
@@ -350,5 +351,6 @@ type Connector interface {
 	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
 	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
 
-	CompareTasks([]string) ([]string, map[string]map[string]string, error)
+	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
+	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
 }

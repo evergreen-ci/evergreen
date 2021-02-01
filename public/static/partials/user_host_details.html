@@ -53,7 +53,12 @@
             </div>
             <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0 && (curHostData.distro.bootstrap_settings.method != 'user-data' || curHostData.status == 'running')">
               <strong>Login Command:</strong>
-              <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
+              <div ng-show="curHostData.ssh_port && curHostData.ssh_port !== 22">
+                <pre readonly>ssh -p [[curHostData.ssh_port]] [[curHostData.user]]@[[curHostData.host]]</pre>
+              </div>
+              <div ng-show="!curHostData.ssh_port || curHostData.ssh_port === 22">
+                <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
+              </div>
             </div>
           </md-card-content>
         </md-card>
