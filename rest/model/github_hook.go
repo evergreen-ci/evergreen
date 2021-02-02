@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -29,8 +30,8 @@ func (a *APIGithubHook) BuildFromService(h interface{}) error {
 	}
 
 	a.HookID = v.HookID
-	a.Owner = ToStringPtr(v.Owner)
-	a.Repo = ToStringPtr(v.Repo)
+	a.Owner = utility.ToStringPtr(v.Owner)
+	a.Repo = utility.ToStringPtr(v.Repo)
 	return nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
@@ -22,8 +23,8 @@ type APIPubKey struct {
 func (apiPubKey *APIPubKey) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.PubKey:
-		apiPubKey.Name = ToStringPtr(v.Name)
-		apiPubKey.Key = ToStringPtr(v.Key)
+		apiPubKey.Name = utility.ToStringPtr(v.Name)
+		apiPubKey.Key = utility.ToStringPtr(v.Key)
 	default:
 		return errors.Errorf("incorrect type when fetching converting pubkey type")
 	}
@@ -53,9 +54,9 @@ type APIUseSpruceOptions struct {
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.UserSettings:
-		s.Timezone = ToStringPtr(v.Timezone)
-		s.Region = ToStringPtr(v.Region)
-		s.SlackUsername = ToStringPtr(v.SlackUsername)
+		s.Timezone = utility.ToStringPtr(v.Timezone)
+		s.Region = utility.ToStringPtr(v.Region)
+		s.SlackUsername = utility.ToStringPtr(v.SlackUsername)
 		s.UseSpruceOptions = &APIUseSpruceOptions{
 			HasUsedSpruceBefore: v.UseSpruceOptions.HasUsedSpruceBefore,
 			SpruceV1:            v.UseSpruceOptions.SpruceV1,
@@ -99,9 +100,9 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 		useSpruceOptions.SpruceV1 = s.UseSpruceOptions.SpruceV1
 	}
 	return user.UserSettings{
-		Timezone:         FromStringPtr(s.Timezone),
-		Region:           FromStringPtr(s.Region),
-		SlackUsername:    FromStringPtr(s.SlackUsername),
+		Timezone:         utility.FromStringPtr(s.Timezone),
+		Region:           utility.FromStringPtr(s.Region),
+		SlackUsername:    utility.FromStringPtr(s.SlackUsername),
 		GithubUser:       githubUser,
 		Notifications:    preferences,
 		UseSpruceOptions: useSpruceOptions,
@@ -120,7 +121,7 @@ func (g *APIGithubUser) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.GithubUser:
 		g.UID = v.UID
-		g.LastKnownAs = ToStringPtr(v.LastKnownAs)
+		g.LastKnownAs = utility.ToStringPtr(v.LastKnownAs)
 	default:
 		return errors.Errorf("incorrect type for APIGithubUser")
 	}
@@ -133,7 +134,7 @@ func (g *APIGithubUser) ToService() (interface{}, error) {
 	}
 	return user.GithubUser{
 		UID:         g.UID,
-		LastKnownAs: FromStringPtr(g.LastKnownAs),
+		LastKnownAs: utility.FromStringPtr(g.LastKnownAs),
 	}, nil
 }
 
@@ -158,29 +159,29 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	}
 	switch v := h.(type) {
 	case user.NotificationPreferences:
-		n.BuildBreak = ToStringPtr(string(v.BuildBreak))
-		n.PatchFinish = ToStringPtr(string(v.PatchFinish))
-		n.PatchFirstFailure = ToStringPtr(string(v.PatchFirstFailure))
-		n.SpawnHostOutcome = ToStringPtr(string(v.SpawnHostOutcome))
-		n.SpawnHostExpiration = ToStringPtr(string(v.SpawnHostExpiration))
-		n.CommitQueue = ToStringPtr(string(v.CommitQueue))
+		n.BuildBreak = utility.ToStringPtr(string(v.BuildBreak))
+		n.PatchFinish = utility.ToStringPtr(string(v.PatchFinish))
+		n.PatchFirstFailure = utility.ToStringPtr(string(v.PatchFirstFailure))
+		n.SpawnHostOutcome = utility.ToStringPtr(string(v.SpawnHostOutcome))
+		n.SpawnHostExpiration = utility.ToStringPtr(string(v.SpawnHostExpiration))
+		n.CommitQueue = utility.ToStringPtr(string(v.CommitQueue))
 		if v.BuildBreakID != "" {
-			n.BuildBreakID = ToStringPtr(v.BuildBreakID)
+			n.BuildBreakID = utility.ToStringPtr(v.BuildBreakID)
 		}
 		if v.PatchFinishID != "" {
-			n.PatchFinishID = ToStringPtr(v.PatchFinishID)
+			n.PatchFinishID = utility.ToStringPtr(v.PatchFinishID)
 		}
 		if v.PatchFirstFailureID != "" {
-			n.PatchFirstFailureID = ToStringPtr(v.PatchFirstFailureID)
+			n.PatchFirstFailureID = utility.ToStringPtr(v.PatchFirstFailureID)
 		}
 		if v.SpawnHostOutcomeID != "" {
-			n.SpawnHostOutcomeID = ToStringPtr(v.SpawnHostOutcomeID)
+			n.SpawnHostOutcomeID = utility.ToStringPtr(v.SpawnHostOutcomeID)
 		}
 		if v.SpawnHostExpirationID != "" {
-			n.SpawnHostExpirationID = ToStringPtr(v.SpawnHostExpirationID)
+			n.SpawnHostExpirationID = utility.ToStringPtr(v.SpawnHostExpirationID)
 		}
 		if v.CommitQueueID != "" {
-			n.CommitQueueID = ToStringPtr(v.CommitQueueID)
+			n.CommitQueueID = utility.ToStringPtr(v.CommitQueueID)
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -192,12 +193,12 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if n == nil {
 		return user.NotificationPreferences{}, nil
 	}
-	buildbreak := FromStringPtr(n.BuildBreak)
-	patchFinish := FromStringPtr(n.PatchFinish)
-	patchFirstFailure := FromStringPtr(n.PatchFirstFailure)
-	spawnHostExpiration := FromStringPtr(n.SpawnHostExpiration)
-	spawnHostOutcome := FromStringPtr(n.SpawnHostOutcome)
-	commitQueue := FromStringPtr(n.CommitQueue)
+	buildbreak := utility.FromStringPtr(n.BuildBreak)
+	patchFinish := utility.FromStringPtr(n.PatchFinish)
+	patchFirstFailure := utility.FromStringPtr(n.PatchFirstFailure)
+	spawnHostExpiration := utility.FromStringPtr(n.SpawnHostExpiration)
+	spawnHostOutcome := utility.FromStringPtr(n.SpawnHostOutcome)
+	commitQueue := utility.FromStringPtr(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
@@ -224,12 +225,12 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 		CommitQueue:         user.UserSubscriptionPreference(commitQueue),
 	}
-	preferences.BuildBreakID = FromStringPtr(n.BuildBreakID)
-	preferences.PatchFinishID = FromStringPtr(n.PatchFinishID)
-	preferences.PatchFirstFailureID = FromStringPtr(n.PatchFirstFailureID)
-	preferences.SpawnHostOutcomeID = FromStringPtr(n.SpawnHostOutcomeID)
-	preferences.SpawnHostExpirationID = FromStringPtr(n.SpawnHostExpirationID)
-	preferences.CommitQueueID = FromStringPtr(n.CommitQueueID)
+	preferences.BuildBreakID = utility.FromStringPtr(n.BuildBreakID)
+	preferences.PatchFinishID = utility.FromStringPtr(n.PatchFinishID)
+	preferences.PatchFirstFailureID = utility.FromStringPtr(n.PatchFirstFailureID)
+	preferences.SpawnHostOutcomeID = utility.FromStringPtr(n.SpawnHostOutcomeID)
+	preferences.SpawnHostExpirationID = utility.FromStringPtr(n.SpawnHostExpirationID)
+	preferences.CommitQueueID = utility.FromStringPtr(n.CommitQueueID)
 	return preferences, nil
 }
 
@@ -270,8 +271,8 @@ func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "error converting time")
 	}
 	result := model.FeedbackSubmission{
-		Type:        FromStringPtr(a.Type),
-		User:        FromStringPtr(a.User),
+		Type:        utility.FromStringPtr(a.Type),
+		User:        utility.FromStringPtr(a.User),
 		SubmittedAt: submittedAt,
 	}
 	for _, question := range a.Questions {
@@ -294,9 +295,9 @@ func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
 
 func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 	return model.QuestionAnswer{
-		ID:     FromStringPtr(a.ID),
-		Prompt: FromStringPtr(a.Prompt),
-		Answer: FromStringPtr(a.Answer),
+		ID:     utility.FromStringPtr(a.ID),
+		Prompt: utility.FromStringPtr(a.Prompt),
+		Answer: utility.FromStringPtr(a.Answer),
 	}, nil
 }
 

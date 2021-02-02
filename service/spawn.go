@@ -330,7 +330,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := restModel.FromStringPtr(updateParams.HostID)
+	hostId := utility.FromStringPtr(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -383,7 +383,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostPasswordUpdate:
-		pwd := restModel.FromStringPtr(updateParams.RDPPwd)
+		pwd := utility.FromStringPtr(updateParams.RDPPwd)
 		_, _, err = graphql.UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, u, pwd, r)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
@@ -392,7 +392,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostInstanceTypeUpdate:
-		instanceType := restModel.FromStringPtr(updateParams.InstanceType)
+		instanceType := utility.FromStringPtr(updateParams.InstanceType)
 		if err = cloud.ModifySpawnHost(ctx, uis.env, h, host.HostModifyOptions{
 			InstanceType: instanceType,
 		}); err != nil {
@@ -468,8 +468,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		deleteTags := restModel.FromStringPtrSlice(updateParams.DeleteTags)
-		addTagPairs := restModel.FromStringPtrSlice(updateParams.AddTags)
+		deleteTags := utility.FromStringPtrSlice(updateParams.DeleteTags)
+		addTagPairs := utility.FromStringPtrSlice(updateParams.AddTags)
 		var addTags []host.Tag
 		addTags, err = host.MakeHostTags(addTagPairs)
 		if err != nil {
@@ -491,7 +491,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
 	case HostRename:
-		if err = h.SetDisplayName(restModel.FromStringPtr(updateParams.NewName)); err != nil {
+		if err = h.SetDisplayName(utility.FromStringPtr(updateParams.NewName)); err != nil {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash("Error updating display name"))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem renaming spawn host"))
 			return

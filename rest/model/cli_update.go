@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -47,14 +48,14 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 		catcher.Add(a.S3ClientBinaries[i].BuildFromService(c.S3ClientBinaries[i]))
 	}
 
-	a.LatestRevision = ToStringPtr(c.LatestRevision)
+	a.LatestRevision = utility.ToStringPtr(c.LatestRevision)
 
 	return catcher.Resolve()
 }
 
 func (a *APIClientConfig) ToService() (interface{}, error) {
 	c := evergreen.ClientConfig{}
-	c.LatestRevision = FromStringPtr(a.LatestRevision)
+	c.LatestRevision = utility.FromStringPtr(a.LatestRevision)
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
 
 	catcher := grip.NewBasicCatcher()
@@ -102,18 +103,18 @@ func (a *APIClientBinary) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting client binary")
 	}
-	a.Arch = ToStringPtr(b.Arch)
-	a.OS = ToStringPtr(b.OS)
-	a.URL = ToStringPtr(b.URL)
-	a.DisplayName = ToStringPtr(b.DisplayName)
+	a.Arch = utility.ToStringPtr(b.Arch)
+	a.OS = utility.ToStringPtr(b.OS)
+	a.URL = utility.ToStringPtr(b.URL)
+	a.DisplayName = utility.ToStringPtr(b.DisplayName)
 	return nil
 }
 
 func (a *APIClientBinary) ToService() (interface{}, error) {
 	b := evergreen.ClientBinary{}
-	b.Arch = FromStringPtr(a.Arch)
-	b.OS = FromStringPtr(a.OS)
-	b.URL = FromStringPtr(a.URL)
-	b.DisplayName = FromStringPtr(a.DisplayName)
+	b.Arch = utility.FromStringPtr(a.Arch)
+	b.OS = utility.FromStringPtr(a.OS)
+	b.URL = utility.FromStringPtr(a.URL)
+	b.DisplayName = utility.FromStringPtr(a.DisplayName)
 	return b, nil
 }

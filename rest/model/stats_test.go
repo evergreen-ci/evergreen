@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,17 +42,17 @@ func TestAPITestStatsStartAtKey(t *testing.T) {
 	assert := assert.New(t)
 
 	apiDoc := APITestStats{
-		TestFile:     ToStringPtr("test1"),
-		TaskName:     ToStringPtr("task1"),
-		BuildVariant: ToStringPtr("variant1"),
-		Distro:       ToStringPtr("distro1"),
-		Date:         ToStringPtr("2018-07-15"),
+		TestFile:     utility.ToStringPtr("test1"),
+		TaskName:     utility.ToStringPtr("task1"),
+		BuildVariant: utility.ToStringPtr("variant1"),
+		Distro:       utility.ToStringPtr("distro1"),
+		Date:         utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15|variant1|task1|test1|distro1", apiDoc.StartAtKey())
 
 	apiDoc = APITestStats{
-		TestFile: ToStringPtr("test1"),
-		Date:     ToStringPtr("2018-07-15"),
+		TestFile: utility.ToStringPtr("test1"),
+		Date:     utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15|||test1|", apiDoc.StartAtKey())
 }
@@ -97,16 +98,16 @@ func TestAPITaskStatsStartAtKey(t *testing.T) {
 	assert := assert.New(t)
 
 	apiDoc := APITaskStats{
-		TaskName:     ToStringPtr("task1"),
-		BuildVariant: ToStringPtr("variant1"),
-		Distro:       ToStringPtr("distro1"),
-		Date:         ToStringPtr("2018-07-15"),
+		TaskName:     utility.ToStringPtr("task1"),
+		BuildVariant: utility.ToStringPtr("variant1"),
+		Distro:       utility.ToStringPtr("distro1"),
+		Date:         utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15|variant1|task1||distro1", apiDoc.StartAtKey())
 
 	apiDoc = APITaskStats{
-		TaskName: ToStringPtr("task1"),
-		Date:     ToStringPtr("2018-07-15"),
+		TaskName: utility.ToStringPtr("task1"),
+		Date:     utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15||task1||", apiDoc.StartAtKey())
 }

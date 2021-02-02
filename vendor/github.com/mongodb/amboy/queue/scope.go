@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ScopeManager provides a service to queue implementation to support
+// ScopeManager provides a service to queue implementations to support
 // additional locking semantics for queues that cannot push that into
 // their backing storage.
 type ScopeManager interface {
@@ -35,10 +35,11 @@ func (s *scopeManagerImpl) Acquire(id string, scopes []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	var scopesToAcquire []string
 	for _, sc := range scopes {
 		holder, ok := s.scopes[sc]
 		if !ok {
-			s.scopes[sc] = id
+			scopesToAcquire = append(scopesToAcquire, sc)
 			continue
 		}
 
@@ -46,6 +47,10 @@ func (s *scopeManagerImpl) Acquire(id string, scopes []string) error {
 			continue
 		}
 		return errors.Errorf("could not acquire lock scope '%s' held by '%s' not '%s'", sc, holder, id)
+	}
+
+	for _, sc := range scopesToAcquire {
+		s.scopes[sc] = id
 	}
 
 	return nil
@@ -59,16 +64,21 @@ func (s *scopeManagerImpl) Release(id string, scopes []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	var scopesToRelease []string
 	for _, sc := range scopes {
 		holder, ok := s.scopes[sc]
 		if !ok {
 			continue
 		}
 		if holder == id {
-			delete(s.scopes, sc)
+			scopesToRelease = append(scopesToRelease, sc)
 			continue
 		}
 		return errors.Errorf("could not release lock scope '%s', held by '%s' not '%s'", sc, holder, id)
+	}
+
+	for _, sc := range scopesToRelease {
+		delete(s.scopes, sc)
 	}
 
 	return nil

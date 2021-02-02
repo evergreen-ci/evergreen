@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -51,7 +52,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("version1"), h.VersionId)
+	s.Equal(utility.ToStringPtr("version1"), h.VersionId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 }
 
@@ -66,7 +67,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 
 	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("version2"), h.VersionId)
+	s.Equal(utility.ToStringPtr("version2"), h.VersionId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 }
 
@@ -171,10 +172,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("distro1"), h.DistroId)
+	s.Equal(utility.ToStringPtr("distro1"), h.DistroId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
-	s.Equal(model.ToStringPtr("ec2-ondemand"), h.Provider)
-	s.Equal(model.ToStringPtr("type"), h.InstanceType)
+	s.Equal(utility.ToStringPtr("ec2-ondemand"), h.Provider)
+	s.Equal(utility.ToStringPtr("type"), h.InstanceType)
 }
 
 // TestFindCostByDistroIdMany tests the handler where information is aggregated on
@@ -195,9 +196,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
+	s.Equal(utility.ToStringPtr("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
-	s.Equal(model.ToStringPtr("gce"), h.Provider)
+	s.Equal(utility.ToStringPtr("gce"), h.Provider)
 	s.Nil(h.InstanceType)
 }
 
@@ -216,9 +217,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 
 	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("distro2"), h.DistroId)
+	s.Equal(utility.ToStringPtr("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(0), h.SumTimeTaken)
-	s.Equal(model.ToStringPtr(""), h.Provider)
+	s.Equal(utility.ToStringPtr(""), h.Provider)
 	s.Nil(h.InstanceType)
 }
 

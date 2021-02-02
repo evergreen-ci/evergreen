@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -55,16 +56,16 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	}
 
 	apiProject.BatchTime = v.BatchTime
-	apiProject.Branch = ToStringPtr(v.Branch)
-	apiProject.DisplayName = ToStringPtr(v.DisplayName)
+	apiProject.Branch = utility.ToStringPtr(v.Branch)
+	apiProject.DisplayName = utility.ToStringPtr(v.DisplayName)
 	apiProject.Enabled = v.Enabled
 	apiProject.RepotrackerDisabled = v.RepotrackerDisabled
-	apiProject.Id = ToStringPtr(v.Id)
-	apiProject.Identifier = ToStringPtr(v.Identifier)
-	apiProject.Owner = ToStringPtr(v.Owner)
+	apiProject.Id = utility.ToStringPtr(v.Id)
+	apiProject.Identifier = utility.ToStringPtr(v.Identifier)
+	apiProject.Owner = utility.ToStringPtr(v.Owner)
 	apiProject.Private = v.Private
-	apiProject.RemotePath = ToStringPtr(v.RemotePath)
-	apiProject.Repo = ToStringPtr(v.Repo)
+	apiProject.RemotePath = utility.ToStringPtr(v.RemotePath)
+	apiProject.Repo = utility.ToStringPtr(v.Repo)
 	apiProject.Hidden = v.Hidden
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
@@ -74,7 +75,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 
 	admins := []*string{}
 	for _, a := range v.Admins {
-		admins = append(admins, ToStringPtr(a))
+		admins = append(admins, utility.ToStringPtr(a))
 	}
 	apiProject.Admins = admins
 
@@ -117,8 +118,8 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 	}
 
 	cqParams.Enabled = params.Enabled
-	cqParams.MergeMethod = ToStringPtr(params.MergeMethod)
-	cqParams.Message = ToStringPtr(params.Message)
+	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
+	cqParams.Message = utility.ToStringPtr(params.Message)
 
 	return nil
 }
@@ -126,8 +127,8 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = cqParams.Enabled
-	serviceParams.MergeMethod = FromStringPtr(cqParams.MergeMethod)
-	serviceParams.Message = FromStringPtr(cqParams.Message)
+	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
+	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
 	return serviceParams, nil
 }
@@ -170,8 +171,8 @@ func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res.GitClone = c.GitClone
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
-		cmd.Command = FromStringPtr(apiCmd.Command)
-		cmd.Directory = FromStringPtr(apiCmd.Directory)
+		cmd.Command = utility.FromStringPtr(apiCmd.Command)
+		cmd.Directory = utility.FromStringPtr(apiCmd.Directory)
 		res.SetupCommands = append(res.SetupCommands, cmd)
 	}
 	return res, nil
@@ -189,8 +190,8 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 	c.GitClone = config.GitClone
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
-		apiCmd.Command = ToStringPtr(cmd.Command)
-		apiCmd.Directory = ToStringPtr(cmd.Directory)
+		apiCmd.Command = utility.ToStringPtr(cmd.Command)
+		apiCmd.Directory = utility.ToStringPtr(cmd.Directory)
 		c.SetupCommands = append(c.SetupCommands, apiCmd)
 	}
 	return nil
@@ -204,9 +205,9 @@ type APIParameterInfo struct {
 
 func (c *APIParameterInfo) ToService() (interface{}, error) {
 	res := model.ParameterInfo{}
-	res.Key = FromStringPtr(c.Key)
-	res.Value = FromStringPtr(c.Value)
-	res.Description = FromStringPtr(c.Description)
+	res.Key = utility.FromStringPtr(c.Key)
+	res.Value = utility.FromStringPtr(c.Value)
+	res.Description = utility.FromStringPtr(c.Description)
 	return res, nil
 }
 
@@ -219,9 +220,9 @@ func (c *APIParameterInfo) BuildFromService(h interface{}) error {
 		info = *h.(*model.ParameterInfo)
 	}
 
-	c.Key = ToStringPtr(info.Key)
-	c.Value = ToStringPtr(info.Value)
-	c.Description = ToStringPtr(info.Description)
+	c.Key = utility.ToStringPtr(info.Key)
+	c.Value = utility.ToStringPtr(info.Value)
+	c.Description = utility.ToStringPtr(info.Description)
 	return nil
 }
 
@@ -296,23 +297,23 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	}
 
 	projectRef := model.ProjectRef{
-		Owner:                 FromStringPtr(p.Owner),
-		Repo:                  FromStringPtr(p.Repo),
-		Branch:                FromStringPtr(p.Branch),
+		Owner:                 utility.FromStringPtr(p.Owner),
+		Repo:                  utility.FromStringPtr(p.Repo),
+		Branch:                utility.FromStringPtr(p.Branch),
 		Enabled:               p.Enabled,
 		Private:               p.Private,
 		BatchTime:             p.BatchTime,
-		RemotePath:            FromStringPtr(p.RemotePath),
-		Id:                    FromStringPtr(p.Id),
-		Identifier:            FromStringPtr(p.Identifier),
-		DisplayName:           FromStringPtr(p.DisplayName),
+		RemotePath:            utility.FromStringPtr(p.RemotePath),
+		Id:                    utility.FromStringPtr(p.Id),
+		Identifier:            utility.FromStringPtr(p.Identifier),
+		DisplayName:           utility.FromStringPtr(p.DisplayName),
 		DeactivatePrevious:    p.DeactivatePrevious,
 		TracksPushEvents:      p.TracksPushEvents,
-		DefaultLogger:         FromStringPtr(p.DefaultLogger),
+		DefaultLogger:         utility.FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:      p.PRTestingEnabled,
 		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
 		UseRepoSettings:       p.UseRepoSettings,
-		RepoRefId:             FromStringPtr(p.RepoRefId),
+		RepoRefId:             utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
 		WorkstationConfig:     workstationConfig,
@@ -321,28 +322,28 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		RepotrackerDisabled:   p.RepotrackerDisabled,
 		DispatchingDisabled:   p.DispatchingDisabled,
 		DisabledStatsCache:    p.DisabledStatsCache,
-		FilesIgnoredFromCache: FromStringPtrSlice(p.FilesIgnoredFromCache),
+		FilesIgnoredFromCache: utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
 		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
-		SpawnHostScriptPath:   FromStringPtr(p.SpawnHostScriptPath),
-		Admins:                FromStringPtrSlice(p.Admins),
-		GitTagAuthorizedUsers: FromStringPtrSlice(p.GitTagAuthorizedUsers),
-		GitTagAuthorizedTeams: FromStringPtrSlice(p.GitTagAuthorizedTeams),
+		SpawnHostScriptPath:   utility.FromStringPtr(p.SpawnHostScriptPath),
+		Admins:                utility.FromStringPtrSlice(p.Admins),
+		GitTagAuthorizedUsers: utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
+		GitTagAuthorizedTeams: utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
 	}
 
 	// Copy triggers
 	triggers := []model.TriggerDefinition{}
 	for _, t := range p.Triggers {
 		triggers = append(triggers, model.TriggerDefinition{
-			Project:           FromStringPtr(t.Project),
-			Level:             FromStringPtr(t.Level),
-			DefinitionID:      FromStringPtr(t.DefinitionID),
-			BuildVariantRegex: FromStringPtr(t.BuildVariantRegex),
-			TaskRegex:         FromStringPtr(t.TaskRegex),
-			Status:            FromStringPtr(t.Status),
-			ConfigFile:        FromStringPtr(t.ConfigFile),
-			GenerateFile:      FromStringPtr(t.GenerateFile),
-			Command:           FromStringPtr(t.Command),
-			Alias:             FromStringPtr(t.Alias),
+			Project:           utility.FromStringPtr(t.Project),
+			Level:             utility.FromStringPtr(t.Level),
+			DefinitionID:      utility.FromStringPtr(t.DefinitionID),
+			BuildVariantRegex: utility.FromStringPtr(t.BuildVariantRegex),
+			TaskRegex:         utility.FromStringPtr(t.TaskRegex),
+			Status:            utility.FromStringPtr(t.Status),
+			ConfigFile:        utility.FromStringPtr(t.ConfigFile),
+			GenerateFile:      utility.FromStringPtr(t.GenerateFile),
+			Command:           utility.FromStringPtr(t.Command),
+			Alias:             utility.FromStringPtr(t.Alias),
 			DateCutoff:        t.DateCutoff,
 		})
 	}
@@ -378,23 +379,23 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.Wrap(err, "cannot convert workstation config")
 	}
 
-	p.Owner = ToStringPtr(projectRef.Owner)
-	p.Repo = ToStringPtr(projectRef.Repo)
-	p.Branch = ToStringPtr(projectRef.Branch)
+	p.Owner = utility.ToStringPtr(projectRef.Owner)
+	p.Repo = utility.ToStringPtr(projectRef.Repo)
+	p.Branch = utility.ToStringPtr(projectRef.Branch)
 	p.Enabled = projectRef.Enabled
 	p.Private = projectRef.Private
 	p.BatchTime = projectRef.BatchTime
-	p.RemotePath = ToStringPtr(projectRef.RemotePath)
-	p.Id = ToStringPtr(projectRef.Id)
-	p.Identifier = ToStringPtr(projectRef.Identifier)
-	p.DisplayName = ToStringPtr(projectRef.DisplayName)
+	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
+	p.Id = utility.ToStringPtr(projectRef.Id)
+	p.Identifier = utility.ToStringPtr(projectRef.Identifier)
+	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents
-	p.DefaultLogger = ToStringPtr(projectRef.DefaultLogger)
+	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
 	p.UseRepoSettings = projectRef.UseRepoSettings
-	p.RepoRefId = ToStringPtr(projectRef.RepoRefId)
+	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
 	p.WorkstationConfig = workstationConfig
@@ -403,27 +404,27 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
 	p.DispatchingDisabled = projectRef.DispatchingDisabled
 	p.DisabledStatsCache = projectRef.DisabledStatsCache
-	p.FilesIgnoredFromCache = ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
+	p.FilesIgnoredFromCache = utility.ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
-	p.SpawnHostScriptPath = ToStringPtr(projectRef.SpawnHostScriptPath)
-	p.Admins = ToStringPtrSlice(projectRef.Admins)
-	p.GitTagAuthorizedUsers = ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
-	p.GitTagAuthorizedTeams = ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
+	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
+	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
+	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
+	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 
 	// Copy triggers
 	triggers := []APITriggerDefinition{}
 	for _, t := range projectRef.Triggers {
 		triggers = append(triggers, APITriggerDefinition{
-			Project:           ToStringPtr(t.Project),
-			Level:             ToStringPtr(t.Level),
-			DefinitionID:      ToStringPtr(t.DefinitionID),
-			BuildVariantRegex: ToStringPtr(t.BuildVariantRegex),
-			TaskRegex:         ToStringPtr(t.TaskRegex),
-			Status:            ToStringPtr(t.Status),
-			ConfigFile:        ToStringPtr(t.ConfigFile),
-			GenerateFile:      ToStringPtr(t.GenerateFile),
-			Command:           ToStringPtr(t.Command),
-			Alias:             ToStringPtr(t.Alias),
+			Project:           utility.ToStringPtr(t.Project),
+			Level:             utility.ToStringPtr(t.Level),
+			DefinitionID:      utility.ToStringPtr(t.DefinitionID),
+			BuildVariantRegex: utility.ToStringPtr(t.BuildVariantRegex),
+			TaskRegex:         utility.ToStringPtr(t.TaskRegex),
+			Status:            utility.ToStringPtr(t.Status),
+			ConfigFile:        utility.ToStringPtr(t.ConfigFile),
+			GenerateFile:      utility.ToStringPtr(t.GenerateFile),
+			Command:           utility.ToStringPtr(t.Command),
+			Alias:             utility.ToStringPtr(t.Alias),
 			DateCutoff:        t.DateCutoff,
 		})
 	}

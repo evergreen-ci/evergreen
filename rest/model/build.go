@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -53,24 +54,24 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
-	apiBuild.Id = ToStringPtr(v.Id)
+	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
 	apiBuild.StartTime = ToTimePtr(v.StartTime)
 	apiBuild.FinishTime = ToTimePtr(v.FinishTime)
-	apiBuild.Version = ToStringPtr(v.Version)
-	apiBuild.Revision = ToStringPtr(v.Revision)
-	apiBuild.BuildVariant = ToStringPtr(v.BuildVariant)
-	apiBuild.Status = ToStringPtr(v.Status)
+	apiBuild.Version = utility.ToStringPtr(v.Version)
+	apiBuild.Revision = utility.ToStringPtr(v.Revision)
+	apiBuild.BuildVariant = utility.ToStringPtr(v.BuildVariant)
+	apiBuild.Status = utility.ToStringPtr(v.Status)
 	apiBuild.Activated = v.Activated
-	apiBuild.ActivatedBy = ToStringPtr(v.ActivatedBy)
+	apiBuild.ActivatedBy = utility.ToStringPtr(v.ActivatedBy)
 	apiBuild.ActivatedTime = ToTimePtr(v.ActivatedTime)
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
-	apiBuild.ProjectId = ToStringPtr(v.Project)
+	apiBuild.ProjectId = utility.ToStringPtr(v.Project)
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
 	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
-	apiBuild.DisplayName = ToStringPtr(v.DisplayName)
+	apiBuild.DisplayName = utility.ToStringPtr(v.DisplayName)
 	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
 	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
 	var origin string
@@ -90,7 +91,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	case evergreen.GitTagRequester:
 		origin = gitTagOrigin
 	}
-	apiBuild.Origin = ToStringPtr(origin)
+	apiBuild.Origin = utility.ToStringPtr(origin)
 	return nil
 }
 

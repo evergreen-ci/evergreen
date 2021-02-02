@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -98,11 +99,11 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 
 func getTaskInfo(t *task.Task) TaskInfo {
 	return TaskInfo{
-		Id:           ToStringPtr(t.Id),
-		Name:         ToStringPtr(t.DisplayName),
+		Id:           utility.ToStringPtr(t.Id),
+		Name:         utility.ToStringPtr(t.DisplayName),
 		DispatchTime: ToTimePtr(t.DispatchTime),
-		VersionId:    ToStringPtr(t.Version),
-		BuildId:      ToStringPtr(t.BuildId),
+		VersionId:    utility.ToStringPtr(t.Version),
+		BuildId:      utility.ToStringPtr(t.BuildId),
 		StartTime:    ToTimePtr(t.StartTime),
 	}
 }
@@ -118,21 +119,21 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	default:
 		return errors.New("incorrect type when fetching converting host type")
 	}
-	apiHost.Id = ToStringPtr(v.Id)
-	apiHost.HostURL = ToStringPtr(v.Host)
-	apiHost.Tag = ToStringPtr(v.Tag)
+	apiHost.Id = utility.ToStringPtr(v.Id)
+	apiHost.HostURL = utility.ToStringPtr(v.Host)
+	apiHost.Tag = utility.ToStringPtr(v.Tag)
 	apiHost.Provisioned = v.Provisioned
-	apiHost.StartedBy = ToStringPtr(v.StartedBy)
-	apiHost.Provider = ToStringPtr(v.Provider)
-	apiHost.User = ToStringPtr(v.User)
-	apiHost.Status = ToStringPtr(v.Status)
+	apiHost.StartedBy = utility.ToStringPtr(v.StartedBy)
+	apiHost.Provider = utility.ToStringPtr(v.Provider)
+	apiHost.User = utility.ToStringPtr(v.User)
+	apiHost.Status = utility.ToStringPtr(v.Status)
 	apiHost.UserHost = v.UserHost
 	apiHost.NoExpiration = v.NoExpiration
 	apiHost.InstanceTags = v.InstanceTags
-	apiHost.InstanceType = ToStringPtr(v.InstanceType)
-	apiHost.AvailabilityZone = ToStringPtr(v.Zone)
-	apiHost.DisplayName = ToStringPtr(v.DisplayName)
-	apiHost.HomeVolumeID = ToStringPtr(v.HomeVolumeID)
+	apiHost.InstanceType = utility.ToStringPtr(v.InstanceType)
+	apiHost.AvailabilityZone = utility.ToStringPtr(v.Zone)
+	apiHost.DisplayName = utility.ToStringPtr(v.DisplayName)
+	apiHost.HomeVolumeID = utility.ToStringPtr(v.HomeVolumeID)
 	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
 	apiHost.CreationTime = ToTimePtr(v.CreationTime)
 	apiHost.LastCommunicationTime = v.LastCommunicationTime
@@ -152,14 +153,14 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 		}))
 	}
 	di := DistroInfo{
-		Id:                   ToStringPtr(v.Distro.Id),
-		Provider:             ToStringPtr(v.Distro.Provider),
-		ImageId:              ToStringPtr(imageId),
-		WorkDir:              ToStringPtr(v.Distro.WorkDir),
+		Id:                   utility.ToStringPtr(v.Distro.Id),
+		Provider:             utility.ToStringPtr(v.Distro.Provider),
+		ImageId:              utility.ToStringPtr(imageId),
+		WorkDir:              utility.ToStringPtr(v.Distro.WorkDir),
 		IsVirtualWorkstation: v.Distro.IsVirtualWorkstation,
-		User:                 ToStringPtr(v.Distro.User),
+		User:                 utility.ToStringPtr(v.Distro.User),
 		IsWindows:            v.Distro.IsWindows(),
-		BootstrapMethod:      ToStringPtr(v.Distro.BootstrapSettings.Method),
+		BootstrapMethod:      utility.ToStringPtr(v.Distro.BootstrapSettings.Method),
 	}
 	apiHost.Distro = di
 	return nil
@@ -168,18 +169,18 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
-		Id:                    FromStringPtr(apiHost.Id),
-		Tag:                   FromStringPtr(apiHost.Tag),
+		Id:                    utility.FromStringPtr(apiHost.Id),
+		Tag:                   utility.FromStringPtr(apiHost.Tag),
 		Provisioned:           apiHost.Provisioned,
 		NoExpiration:          apiHost.NoExpiration,
-		StartedBy:             FromStringPtr(apiHost.StartedBy),
-		Provider:              FromStringPtr(apiHost.Provider),
-		InstanceType:          FromStringPtr(apiHost.InstanceType),
-		User:                  FromStringPtr(apiHost.User),
-		Status:                FromStringPtr(apiHost.Status),
-		Zone:                  FromStringPtr(apiHost.AvailabilityZone),
-		DisplayName:           FromStringPtr(apiHost.DisplayName),
-		HomeVolumeID:          FromStringPtr(apiHost.HomeVolumeID),
+		StartedBy:             utility.FromStringPtr(apiHost.StartedBy),
+		Provider:              utility.FromStringPtr(apiHost.Provider),
+		InstanceType:          utility.FromStringPtr(apiHost.InstanceType),
+		User:                  utility.FromStringPtr(apiHost.User),
+		Status:                utility.FromStringPtr(apiHost.Status),
+		Zone:                  utility.FromStringPtr(apiHost.AvailabilityZone),
+		DisplayName:           utility.FromStringPtr(apiHost.DisplayName),
+		HomeVolumeID:          utility.FromStringPtr(apiHost.HomeVolumeID),
 		LastCommunicationTime: apiHost.LastCommunicationTime,
 	}
 	return interface{}(h), nil
@@ -234,13 +235,13 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	default:
 		return errors.New("incorrect type when converting volume type")
 	}
-	apiVolume.ID = ToStringPtr(v.ID)
-	apiVolume.DisplayName = ToStringPtr(v.DisplayName)
-	apiVolume.CreatedBy = ToStringPtr(v.CreatedBy)
-	apiVolume.Type = ToStringPtr(v.Type)
-	apiVolume.AvailabilityZone = ToStringPtr(v.AvailabilityZone)
+	apiVolume.ID = utility.ToStringPtr(v.ID)
+	apiVolume.DisplayName = utility.ToStringPtr(v.DisplayName)
+	apiVolume.CreatedBy = utility.ToStringPtr(v.CreatedBy)
+	apiVolume.Type = utility.ToStringPtr(v.Type)
+	apiVolume.AvailabilityZone = utility.ToStringPtr(v.AvailabilityZone)
 	apiVolume.Size = v.Size
-	apiVolume.HostID = ToStringPtr(v.Host)
+	apiVolume.HostID = utility.ToStringPtr(v.Host)
 	apiVolume.Expiration = ToTimePtr(v.Expiration)
 	apiVolume.NoExpiration = v.NoExpiration
 	apiVolume.HomeVolume = v.HomeVolume
@@ -255,11 +256,11 @@ func (apiVolume *APIVolume) ToService() (interface{}, error) {
 	}
 
 	return host.Volume{
-		ID:               FromStringPtr(apiVolume.ID),
-		DisplayName:      FromStringPtr(apiVolume.DisplayName),
-		CreatedBy:        FromStringPtr(apiVolume.CreatedBy),
-		Type:             FromStringPtr(apiVolume.Type),
-		AvailabilityZone: FromStringPtr(apiVolume.AvailabilityZone),
+		ID:               utility.FromStringPtr(apiVolume.ID),
+		DisplayName:      utility.FromStringPtr(apiVolume.DisplayName),
+		CreatedBy:        utility.FromStringPtr(apiVolume.CreatedBy),
+		Type:             utility.FromStringPtr(apiVolume.Type),
+		AvailabilityZone: utility.FromStringPtr(apiVolume.AvailabilityZone),
 		Expiration:       expiration,
 		Size:             apiVolume.Size,
 		NoExpiration:     apiVolume.NoExpiration,

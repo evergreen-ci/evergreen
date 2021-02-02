@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -103,7 +104,7 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 
 func (s *payloadSuite) TestEvergreenWebhook() {
 	model := restModel.APIPatch{}
-	model.Author = restModel.ToStringPtr("somebody")
+	model.Author = utility.ToStringPtr("somebody")
 
 	m, err := webhookPayload(&model, s.t.Headers)
 	s.NoError(err)

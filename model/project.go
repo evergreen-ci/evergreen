@@ -198,19 +198,19 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
-	return util.IsPtrSetToFalse(bvt.Patchable)
+	return !utility.FromBoolTPtr(bvt.Patchable)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
-	return util.IsPtrSetToTrue(bvt.PatchOnly)
+	return utility.FromBoolPtr(bvt.PatchOnly)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
-	return util.IsPtrSetToFalse(bvt.AllowForGitTag)
+	return !utility.FromBoolTPtr(bvt.AllowForGitTag)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
-	return util.IsPtrSetToTrue(bvt.GitTagOnly)
+	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
 type BuildVariant struct {
@@ -1300,7 +1300,7 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			if util.IsPtrSetToFalse(t.Patchable) || util.IsPtrSetToTrue(t.GitTagOnly) {
+			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
 				continue
 			}
 			tasks = append(tasks, t.Name)
