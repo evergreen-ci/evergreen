@@ -484,13 +484,13 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		return mergeBranchAndRepoSettings(pRef, repoRef), nil
+		return mergeBranchAndRepoSettings(pRef, repoRef)
 	}
 	return pRef, nil
 }
 
 // If the setting is not defined in the project, default to the repo settings.
-func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
+func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef, error) {
 	var err error
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
@@ -499,7 +499,7 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef 
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
 	recursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
-	return pRef
+	return pRef, err
 }
 
 func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
