@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -281,7 +282,7 @@ func enqueuePatch() cli.Command {
 			grip.Info(patchDisp)
 
 			// enqueue the patch
-			position, err := client.EnqueueItem(ctx, restModel.FromStringPtr(mergePatch.Id), force)
+			position, err := client.EnqueueItem(ctx, utility.FromStringPtr(mergePatch.Id), force)
 			if err != nil {
 				return errors.Wrap(err, "problem enqueueing new patch")
 			}
@@ -382,7 +383,7 @@ func backport() cli.Command {
 				return errors.Errorf("no repotracker versions exist in project '%s'", patchParams.Project)
 			}
 			var backportPatch *patch.Patch
-			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: restModel.FromStringPtr(latestVersions[0].Revision)})
+			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: utility.FromStringPtr(latestVersions[0].Revision)})
 			if err != nil {
 				return errors.Wrap(err, "can't upload backport patch")
 			}
@@ -413,9 +414,9 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
-		if restModel.FromStringPtr(item.Source) == commitqueue.SourcePullRequest {
+		if utility.FromStringPtr(item.Source) == commitqueue.SourcePullRequest {
 			listPRCommitQueueItem(item, projectRef, uiServerHost)
-		} else if restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
+		} else if utility.FromStringPtr(item.Source) == commitqueue.SourceDiff {
 			listCLICommitQueueItem(item, ac, uiServerHost)
 		}
 		listModules(item)
@@ -425,7 +426,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 }
 
 func listPRCommitQueueItem(item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
-	issue := restModel.FromStringPtr(item.Issue)
+	issue := utility.FromStringPtr(item.Issue)
 	prDisplay := `
            PR # : %s
             URL : %s
@@ -434,15 +435,15 @@ func listPRCommitQueueItem(item restModel.APICommitQueueItem, projectRef *model.
 	grip.Infof(prDisplay, issue, url)
 
 	prDisplayVersion := "          Build : %s/version/%s"
-	if restModel.FromStringPtr(item.Version) != "" {
-		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromStringPtr(item.Version))
+	if utility.FromStringPtr(item.Version) != "" {
+		grip.Infof(prDisplayVersion, uiServerHost, utility.FromStringPtr(item.Version))
 	}
 
 	grip.Info("\n")
 }
 
 func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
-	issue := restModel.FromStringPtr(item.Issue)
+	issue := utility.FromStringPtr(item.Issue)
 	p, err := ac.GetPatch(issue)
 	if err != nil {
 		grip.Errorf("Error getting patch for issue '%s': %s", issue, err.Error())
@@ -465,7 +466,7 @@ func listModules(item restModel.APICommitQueueItem) {
 		grip.Infof("\tModules :")
 
 		for j, module := range item.Modules {
-			grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromStringPtr(module.Module), restModel.FromStringPtr(module.Issue))
+			grip.Infof("\t\t%d: %s (%s)\n", j+1, utility.FromStringPtr(module.Module), utility.FromStringPtr(module.Issue))
 		}
 		grip.Info("\n")
 	}

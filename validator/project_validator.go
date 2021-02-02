@@ -1044,7 +1044,7 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 					bvtu.Name),
 			})
 		}
-		if bvtu.SkipOnNonGitTagBuild() && util.IsPtrSetToTrue(bvtu.Patchable) {
+		if bvtu.SkipOnNonGitTagBuild() && utility.FromBoolPtr(bvtu.Patchable) {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' cannot be patchable if it only runs for git tag builds",

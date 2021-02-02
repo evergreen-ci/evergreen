@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +19,7 @@ type APIVersionCost struct {
 func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.VersionCost:
-		apiVersionCost.VersionId = ToStringPtr(v.VersionId)
+		apiVersionCost.VersionId = utility.ToStringPtr(v.VersionId)
 		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiVersionCost.EstimatedCost = v.SumEstimatedCost
 	default:
@@ -47,9 +48,9 @@ type APIDistroCost struct {
 func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.DistroCost:
-		apiDistroCost.DistroId = ToStringPtr(v.DistroId)
+		apiDistroCost.DistroId = utility.ToStringPtr(v.DistroId)
 		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
-		apiDistroCost.Provider = ToStringPtr(v.Provider)
+		apiDistroCost.Provider = utility.ToStringPtr(v.Provider)
 		apiDistroCost.EstimatedCost = v.SumEstimatedCost
 		apiDistroCost.NumTasks = v.NumTasks
 
@@ -63,7 +64,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 			if instanceTypeStr == "" {
 				return errors.Errorf("ec2 missing instance type in provider settings")
 			}
-			apiDistroCost.InstanceType = ToStringPtr(instanceTypeStr)
+			apiDistroCost.InstanceType = utility.ToStringPtr(instanceTypeStr)
 		}
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro cost type")

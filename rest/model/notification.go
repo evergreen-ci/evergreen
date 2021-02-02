@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -20,8 +21,8 @@ func (c *APIJiraComment) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	c.IssueID = ToStringPtr(comment.IssueID)
-	c.Body = ToStringPtr(comment.Body)
+	c.IssueID = utility.ToStringPtr(comment.IssueID)
+	c.Body = utility.ToStringPtr(comment.Body)
 
 	return nil
 }
@@ -29,8 +30,8 @@ func (c *APIJiraComment) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.JIRAComment using the data from APIJiraComment.
 func (c *APIJiraComment) ToService() (interface{}, error) {
 	comment := message.JIRAComment{}
-	comment.IssueID = FromStringPtr(c.IssueID)
-	comment.Body = FromStringPtr(c.Body)
+	comment.IssueID = utility.FromStringPtr(c.IssueID)
+	comment.Body = utility.FromStringPtr(c.Body)
 
 	return &comment, nil
 }
@@ -60,13 +61,13 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	i.IssueKey = ToStringPtr(issue.IssueKey)
-	i.Project = ToStringPtr(issue.Project)
-	i.Summary = ToStringPtr(issue.Summary)
-	i.Description = ToStringPtr(issue.Description)
-	i.Reporter = ToStringPtr(issue.Reporter)
-	i.Assignee = ToStringPtr(issue.Assignee)
-	i.Type = ToStringPtr(issue.Type)
+	i.IssueKey = utility.ToStringPtr(issue.IssueKey)
+	i.Project = utility.ToStringPtr(issue.Project)
+	i.Summary = utility.ToStringPtr(issue.Summary)
+	i.Description = utility.ToStringPtr(issue.Description)
+	i.Reporter = utility.ToStringPtr(issue.Reporter)
+	i.Assignee = utility.ToStringPtr(issue.Assignee)
+	i.Type = utility.ToStringPtr(issue.Type)
 	if issue.Components != nil {
 		i.Components = issue.Components
 	}
@@ -81,13 +82,13 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.JiraIssue using the data from APIJiraIssue.
 func (i *APIJiraIssue) ToService() (interface{}, error) {
 	issue := message.JiraIssue{}
-	issue.IssueKey = FromStringPtr(i.IssueKey)
-	issue.Project = FromStringPtr(i.Project)
-	issue.Summary = FromStringPtr(i.Summary)
-	issue.Description = FromStringPtr(i.Description)
-	issue.Reporter = FromStringPtr(i.Reporter)
-	issue.Assignee = FromStringPtr(i.Assignee)
-	issue.Type = FromStringPtr(i.Type)
+	issue.IssueKey = utility.FromStringPtr(i.IssueKey)
+	issue.Project = utility.FromStringPtr(i.Project)
+	issue.Summary = utility.FromStringPtr(i.Summary)
+	issue.Description = utility.FromStringPtr(i.Description)
+	issue.Reporter = utility.FromStringPtr(i.Reporter)
+	issue.Assignee = utility.FromStringPtr(i.Assignee)
+	issue.Type = utility.FromStringPtr(i.Type)
 	issue.Components = i.Components
 	issue.Labels = i.Labels
 	issue.Fields = i.Fields
@@ -113,8 +114,8 @@ func (n *APISlack) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	n.Target = ToStringPtr(slack.Target)
-	n.Msg = ToStringPtr(slack.Msg)
+	n.Target = utility.ToStringPtr(slack.Target)
+	n.Msg = utility.ToStringPtr(slack.Msg)
 	if slack.Attachments != nil {
 		n.Attachments = []APISlackAttachment{}
 		for _, a := range slack.Attachments {
@@ -159,14 +160,14 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	a.Color = ToStringPtr(attachment.Color)
-	a.Fallback = ToStringPtr(attachment.Fallback)
-	a.AuthorName = ToStringPtr(attachment.AuthorName)
-	a.AuthorIcon = ToStringPtr(attachment.AuthorIcon)
-	a.Title = ToStringPtr(attachment.Title)
-	a.TitleLink = ToStringPtr(attachment.TitleLink)
-	a.Text = ToStringPtr(attachment.Text)
-	a.Footer = ToStringPtr(attachment.Footer)
+	a.Color = utility.ToStringPtr(attachment.Color)
+	a.Fallback = utility.ToStringPtr(attachment.Fallback)
+	a.AuthorName = utility.ToStringPtr(attachment.AuthorName)
+	a.AuthorIcon = utility.ToStringPtr(attachment.AuthorIcon)
+	a.Title = utility.ToStringPtr(attachment.Title)
+	a.TitleLink = utility.ToStringPtr(attachment.TitleLink)
+	a.Text = utility.ToStringPtr(attachment.Text)
+	a.Footer = utility.ToStringPtr(attachment.Footer)
 	if attachment.Fields != nil {
 		a.Fields = []APISlackAttachmentField{}
 		for _, f := range attachment.Fields {
@@ -187,14 +188,14 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.SlackAttachment using the data from APISlackAttachment.
 func (a *APISlackAttachment) ToService() (interface{}, error) {
 	attachment := message.SlackAttachment{}
-	attachment.Color = FromStringPtr(a.Color)
-	attachment.Fallback = FromStringPtr(a.Fallback)
-	attachment.AuthorName = FromStringPtr(a.AuthorName)
-	attachment.AuthorIcon = FromStringPtr(a.AuthorIcon)
-	attachment.Title = FromStringPtr(a.Title)
-	attachment.TitleLink = FromStringPtr(a.TitleLink)
-	attachment.Text = FromStringPtr(a.Text)
-	attachment.Footer = FromStringPtr(a.Footer)
+	attachment.Color = utility.FromStringPtr(a.Color)
+	attachment.Fallback = utility.FromStringPtr(a.Fallback)
+	attachment.AuthorName = utility.FromStringPtr(a.AuthorName)
+	attachment.AuthorIcon = utility.FromStringPtr(a.AuthorIcon)
+	attachment.Title = utility.FromStringPtr(a.Title)
+	attachment.TitleLink = utility.FromStringPtr(a.TitleLink)
+	attachment.Text = utility.FromStringPtr(a.Text)
+	attachment.Footer = utility.FromStringPtr(a.Footer)
 	for _, f := range a.Fields {
 		i, err := f.ToService()
 		if err != nil {
@@ -225,8 +226,8 @@ func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	f.Title = ToStringPtr(field.Title)
-	f.Value = ToStringPtr(field.Value)
+	f.Title = utility.ToStringPtr(field.Title)
+	f.Value = utility.ToStringPtr(field.Value)
 	f.Short = field.Short
 
 	return nil
@@ -235,8 +236,8 @@ func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.SlackAttachmentField using the data from APISlackAttachmentField.
 func (f *APISlackAttachmentField) ToService() (interface{}, error) {
 	field := message.SlackAttachmentField{}
-	field.Title = FromStringPtr(f.Title)
-	field.Value = FromStringPtr(f.Value)
+	field.Title = utility.FromStringPtr(f.Title)
+	field.Value = utility.FromStringPtr(f.Value)
 	field.Short = f.Short
 
 	return &field, nil
@@ -263,12 +264,12 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported type", h)
 	}
 
-	n.From = ToStringPtr(email.From)
+	n.From = utility.ToStringPtr(email.From)
 	if email.Recipients != nil {
 		n.Recipients = email.Recipients
 	}
-	n.Subject = ToStringPtr(email.Subject)
-	n.Body = ToStringPtr(email.Body)
+	n.Subject = utility.ToStringPtr(email.Subject)
+	n.Body = utility.ToStringPtr(email.Body)
 	n.PlainTextContents = email.PlainTextContents
 	n.Headers = email.Headers
 
@@ -278,10 +279,10 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 // ToService returns a service layer message.Email using the data from APIEmail.
 func (n *APIEmail) ToService() (interface{}, error) {
 	email := message.Email{}
-	email.From = FromStringPtr(n.From)
+	email.From = utility.FromStringPtr(n.From)
 	email.Recipients = n.Recipients
-	email.Subject = FromStringPtr(n.Subject)
-	email.Body = FromStringPtr(n.Body)
+	email.Subject = utility.FromStringPtr(n.Subject)
+	email.Body = utility.FromStringPtr(n.Body)
 	email.PlainTextContents = n.PlainTextContents
 	email.Headers = n.Headers
 

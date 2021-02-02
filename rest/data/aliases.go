@@ -3,6 +3,7 @@ package data
 import (
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -64,7 +65,7 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	catcher := grip.NewBasicCatcher()
 	for _, aliasModel := range aliases {
 		if aliasModel.Delete {
-			aliasesToDelete = append(aliasesToDelete, restModel.FromStringPtr(aliasModel.ID))
+			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(aliasModel.ID))
 		} else {
 			v, err := aliasModel.ToService()
 			catcher.Add(errors.Wrap(err, "problem converting to project variable model"))
@@ -125,8 +126,8 @@ func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []re
 	return nil
 }
 func (d *MockAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
-	if len(d.Aliases) == 1 && restModel.FromStringPtr(d.Aliases[0].RemotePath) != "" {
-		return true, restModel.FromStringPtr(d.Aliases[0].RemotePath), nil
+	if len(d.Aliases) == 1 && utility.FromStringPtr(d.Aliases[0].RemotePath) != "" {
+		return true, utility.FromStringPtr(d.Aliases[0].RemotePath), nil
 	}
 	return len(d.Aliases) > 0, "", nil
 }

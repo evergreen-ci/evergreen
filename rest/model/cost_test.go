@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -41,10 +42,10 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess1() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToStringPtr(s.distroId))
+	s.Equal(apiDC.DistroId, utility.ToStringPtr(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToStringPtr(evergreen.ProviderNameEc2OnDemand))
-	s.Equal(apiDC.InstanceType, ToStringPtr("value"))
+	s.Equal(apiDC.Provider, utility.ToStringPtr(evergreen.ProviderNameEc2OnDemand))
+	s.Equal(apiDC.InstanceType, utility.ToStringPtr("value"))
 }
 
 func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess2() {
@@ -57,10 +58,10 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess2() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToStringPtr(s.distroId))
+	s.Equal(apiDC.DistroId, utility.ToStringPtr(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToStringPtr(evergreen.ProviderNameEc2Spot))
-	s.Equal(apiDC.InstanceType, ToStringPtr("value"))
+	s.Equal(apiDC.Provider, utility.ToStringPtr(evergreen.ProviderNameEc2Spot))
+	s.Equal(apiDC.InstanceType, utility.ToStringPtr("value"))
 }
 
 func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess3() {
@@ -73,9 +74,9 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess3() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToStringPtr(s.distroId))
+	s.Equal(apiDC.DistroId, utility.ToStringPtr(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToStringPtr(evergreen.ProviderNameGce))
+	s.Equal(apiDC.Provider, utility.ToStringPtr(evergreen.ProviderNameGce))
 	s.Nil(apiDC.InstanceType)
 }
 

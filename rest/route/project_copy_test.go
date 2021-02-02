@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -94,12 +95,12 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
-	s.NotEqual("projectC", restmodel.FromStringPtr(newProject.Id))
-	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
-	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
+	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
+	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
+	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", restmodel.FromStringPtr(newProject.Admins[0]))
+	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
 	res, err := s.route.sc.FindProjectById("projectC", false)
 	s.NoError(err)
@@ -107,7 +108,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	res, err = s.route.sc.FindProjectById("projectA", false)
 	s.NoError(err)
 	s.NotNil(res)
-	vars, err := s.route.sc.FindProjectVarsById(restmodel.FromStringPtr(newProject.Id), "", false)
+	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
 	s.NoError(err)
 	s.Require().NotNil(vars)
 	s.Len(vars.Vars, 2)

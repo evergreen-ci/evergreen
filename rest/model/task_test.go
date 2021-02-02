@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -25,33 +26,33 @@ func TestTaskBuildFromService(t *testing.T) {
 		modelPairs := []taskCompare{
 			{
 				at: APITask{
-					Id:            ToStringPtr("testId"),
+					Id:            utility.ToStringPtr("testId"),
 					CreateTime:    &cTime,
 					DispatchTime:  &dTime,
 					ScheduledTime: &scTime,
 					StartTime:     &sTime,
 					FinishTime:    &fTime,
 					IngestTime:    &timeNow,
-					Version:       ToStringPtr("testVersion"),
-					Revision:      ToStringPtr("testRevision"),
-					ProjectId:     ToStringPtr("testProject"),
+					Version:       utility.ToStringPtr("testVersion"),
+					Revision:      utility.ToStringPtr("testRevision"),
+					ProjectId:     utility.ToStringPtr("testProject"),
 					Priority:      100,
 					Execution:     2,
 					Activated:     true,
-					ActivatedBy:   ToStringPtr("testActivator"),
-					BuildId:       ToStringPtr("testBuildId"),
-					DistroId:      ToStringPtr("testDistroId"),
-					BuildVariant:  ToStringPtr("testBuildVariant"),
+					ActivatedBy:   utility.ToStringPtr("testActivator"),
+					BuildId:       utility.ToStringPtr("testBuildId"),
+					DistroId:      utility.ToStringPtr("testDistroId"),
+					BuildVariant:  utility.ToStringPtr("testBuildVariant"),
 					DependsOn: []APIDependency{
 						APIDependency{TaskId: "testDepends1", Status: "*"},
 						APIDependency{TaskId: "testDepends2", Status: "*"},
 					},
-					DisplayName: ToStringPtr("testDisplayName"),
+					DisplayName: utility.ToStringPtr("testDisplayName"),
 					Logs: LogLinks{
-						AllLogLink:    ToStringPtr("url/task_log_raw/testId/2?type=ALL"),
-						TaskLogLink:   ToStringPtr("url/task_log_raw/testId/2?type=T"),
-						SystemLogLink: ToStringPtr("url/task_log_raw/testId/2?type=S"),
-						AgentLogLink:  ToStringPtr("url/task_log_raw/testId/2?type=E"),
+						AllLogLink:    utility.ToStringPtr("url/task_log_raw/testId/2?type=ALL"),
+						TaskLogLink:   utility.ToStringPtr("url/task_log_raw/testId/2?type=T"),
+						SystemLogLink: utility.ToStringPtr("url/task_log_raw/testId/2?type=S"),
+						AgentLogLink:  utility.ToStringPtr("url/task_log_raw/testId/2?type=E"),
 					},
 				},
 				st: task.Task{
@@ -87,11 +88,11 @@ func TestTaskBuildFromService(t *testing.T) {
 			{
 				at: APITask{
 					Logs: LogLinks{
-						AllLogLink:    ToStringPtr("url/task_log_raw//0?type=ALL"),
-						TaskLogLink:   ToStringPtr("url/task_log_raw//0?type=T"),
-						SystemLogLink: ToStringPtr("url/task_log_raw//0?type=S"),
-						AgentLogLink:  ToStringPtr("url/task_log_raw//0?type=E"),
-						EventLogLink:  ToStringPtr("url/event_log/task/"),
+						AllLogLink:    utility.ToStringPtr("url/task_log_raw//0?type=ALL"),
+						TaskLogLink:   utility.ToStringPtr("url/task_log_raw//0?type=T"),
+						SystemLogLink: utility.ToStringPtr("url/task_log_raw//0?type=S"),
+						AgentLogLink:  utility.ToStringPtr("url/task_log_raw//0?type=E"),
+						EventLogLink:  utility.ToStringPtr("url/event_log/task/"),
 					},
 					CreateTime:    &time.Time{},
 					DispatchTime:  &time.Time{},
@@ -147,7 +148,7 @@ func TestTaskBuildFromService(t *testing.T) {
 
 				err = apiTask.BuildFromService("url")
 				So(err, ShouldBeNil)
-				So(FromStringPtr(apiTask.Id), ShouldEqual, FromStringPtr(tc.at.Id))
+				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
 			}
 		})

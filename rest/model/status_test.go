@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,9 +18,9 @@ func TestAPIRecentTaskStatsListBuildFromService(t *testing.T) {
 
 	apiList := APIRecentTaskStatsList{}
 	assert.NoError(apiList.BuildFromService(service))
-	assert.Equal(ToStringPtr("d1"), apiList["total"][0].Name)
+	assert.Equal(utility.ToStringPtr("d1"), apiList["total"][0].Name)
 	assert.Equal(5, apiList["total"][0].Count)
-	assert.Equal(ToStringPtr("d1"), apiList[evergreen.TaskInactive][0].Name)
+	assert.Equal(utility.ToStringPtr("d1"), apiList[evergreen.TaskInactive][0].Name)
 	assert.Equal(3, apiList[evergreen.TaskInactive][0].Count)
 	assert.Empty(apiList[evergreen.TaskSucceeded])
 }

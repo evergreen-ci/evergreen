@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -58,8 +59,8 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 
 	b, ok := (resp.Data()).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("build1"), b.Id)
-	s.Equal(model.ToStringPtr("branch"), b.ProjectId)
+	s.Equal(utility.ToStringPtr("build1"), b.Id)
+	s.Equal(utility.ToStringPtr("branch"), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdFail() {
@@ -110,7 +111,7 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.True(b.Activated)
-	s.Equal(model.ToStringPtr("user1"), b.ActivatedBy)
+	s.Equal(utility.ToStringPtr("user1"), b.ActivatedBy)
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivationFail() {
@@ -215,7 +216,7 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("build1"), b.Id)
+	s.Equal(utility.ToStringPtr("build1"), b.Id)
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
@@ -223,7 +224,7 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("build1"), b.Id)
+	s.Equal(utility.ToStringPtr("build1"), b.Id)
 }
 
 func (s *BuildAbortSuite) TestAbortFail() {
@@ -278,7 +279,7 @@ func (s *BuildRestartSuite) TestRestart() {
 	s.NotNil(res)
 	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("build1"), b.Id)
+	s.Equal(utility.ToStringPtr("build1"), b.Id)
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
@@ -286,7 +287,7 @@ func (s *BuildRestartSuite) TestRestart() {
 
 	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToStringPtr("build1"), b.Id)
+	s.Equal(utility.ToStringPtr("build1"), b.Id)
 }
 
 func (s *BuildRestartSuite) TestRestartFail() {

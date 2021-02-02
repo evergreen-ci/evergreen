@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -234,7 +235,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		CloudStatusBatchSize: 1,
 		ProvisioningThrottle: 200,
 		MaxTotalDynamicHosts: 1000,
-		S3BaseURL:            restModel.ToStringPtr("new_s3_base_url"),
+		S3BaseURL:            utility.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:     &newBanner,
@@ -254,7 +255,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
 	s.EqualValues(newHostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(newHostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
-	s.EqualValues(restModel.FromStringPtr(newHostInit.S3BaseURL), settingsFromConnector.HostInit.S3BaseURL)
+	s.EqualValues(utility.FromStringPtr(newHostInit.S3BaseURL), settingsFromConnector.HostInit.S3BaseURL)
 	// old values should still be there
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)

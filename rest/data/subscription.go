@@ -8,6 +8,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -182,7 +183,7 @@ func (mc *MockSubscriptionConnector) DeleteSubscriptions(owner string, ids []str
 
 	n := 0
 	for _, sub := range mc.MockSubscriptions {
-		if idMap[restModel.FromStringPtr(sub.ID)] {
+		if idMap[utility.FromStringPtr(sub.ID)] {
 			mc.MockSubscriptions[n] = sub
 			n++
 		}

@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -35,9 +36,9 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	}
 
 	if settings.Version == "" {
-		s.Version = ToStringPtr(evergreen.PlannerVersionLegacy)
+		s.Version = utility.ToStringPtr(evergreen.PlannerVersionLegacy)
 	} else {
-		s.Version = ToStringPtr(settings.Version)
+		s.Version = utility.ToStringPtr(settings.Version)
 	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = settings.GroupVersions
@@ -52,7 +53,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.PlannerSettings using the data from APIPlannerSettings
 func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings := distro.PlannerSettings{}
-	settings.Version = FromStringPtr(s.Version)
+	settings.Version = utility.FromStringPtr(s.Version)
 	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
@@ -93,15 +94,15 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	}
 
 	if settings.Version == "" {
-		s.Version = ToStringPtr(evergreen.HostAllocatorUtilization)
+		s.Version = utility.ToStringPtr(evergreen.HostAllocatorUtilization)
 	} else {
-		s.Version = ToStringPtr(settings.Version)
+		s.Version = utility.ToStringPtr(settings.Version)
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
-	s.RoundingRule = ToStringPtr(settings.RoundingRule)
-	s.FeedbackRule = ToStringPtr(settings.FeedbackRule)
+	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
+	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
 
 	return nil
 }
@@ -109,15 +110,15 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.HostAllocatorSettings using the data from APIHostAllocatorSettings
 func (s *APIHostAllocatorSettings) ToService() (interface{}, error) {
 	settings := distro.HostAllocatorSettings{}
-	settings.Version = FromStringPtr(s.Version)
+	settings.Version = utility.FromStringPtr(s.Version)
 	if settings.Version == "" {
 		settings.Version = evergreen.HostAllocatorUtilization
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
-	settings.RoundingRule = FromStringPtr(s.RoundingRule)
-	settings.FeedbackRule = FromStringPtr(s.FeedbackRule)
+	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
+	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)
 
 	return interface{}(settings), nil
 }
@@ -143,9 +144,9 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 	}
 
 	if settings.Version == "" {
-		s.Version = ToStringPtr(evergreen.FinderVersionLegacy)
+		s.Version = utility.ToStringPtr(evergreen.FinderVersionLegacy)
 	} else {
-		s.Version = ToStringPtr(settings.Version)
+		s.Version = utility.ToStringPtr(settings.Version)
 	}
 
 	return nil
@@ -154,7 +155,7 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.FinderSettings using the data from APIFinderSettings
 func (s *APIFinderSettings) ToService() (interface{}, error) {
 	settings := distro.FinderSettings{}
-	settings.Version = FromStringPtr(s.Version)
+	settings.Version = utility.FromStringPtr(s.Version)
 	if settings.Version == "" {
 		settings.Version = evergreen.FinderVersionLegacy
 	}
@@ -183,9 +184,9 @@ func (s *APIDispatcherSettings) BuildFromService(h interface{}) error {
 	}
 
 	if settings.Version == "" {
-		s.Version = ToStringPtr(evergreen.DispatcherVersionRevised)
+		s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevised)
 	} else {
-		s.Version = ToStringPtr(settings.Version)
+		s.Version = utility.ToStringPtr(settings.Version)
 	}
 
 	return nil
@@ -194,7 +195,7 @@ func (s *APIDispatcherSettings) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.DispatcherSettings using the data from APIDispatcherSettings
 func (s *APIDispatcherSettings) ToService() (interface{}, error) {
 	settings := distro.DispatcherSettings{}
-	settings.Version = FromStringPtr(s.Version)
+	settings.Version = utility.FromStringPtr(s.Version)
 	if settings.Version == "" {
 		settings.Version = evergreen.DispatcherVersionRevised
 	}
@@ -229,8 +230,8 @@ type APIEnvVar struct {
 func (e *APIEnvVar) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case distro.EnvVar:
-		e.Key = ToStringPtr(v.Key)
-		e.Value = ToStringPtr(v.Value)
+		e.Key = utility.ToStringPtr(v.Key)
+		e.Value = utility.ToStringPtr(v.Value)
 	default:
 		return errors.Errorf("%T is not a supported environment variable type", h)
 	}
@@ -240,8 +241,8 @@ func (e *APIEnvVar) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.EnvVar using the data from an APIEnvVar
 func (e *APIEnvVar) ToService() (interface{}, error) {
 	d := distro.EnvVar{}
-	d.Key = FromStringPtr(e.Key)
-	d.Value = FromStringPtr(e.Value)
+	d.Key = utility.FromStringPtr(e.Key)
+	d.Value = utility.FromStringPtr(e.Value)
 
 	return interface{}(d), nil
 }
@@ -265,8 +266,8 @@ type APIPreconditionScript struct {
 func (s *APIPreconditionScript) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case distro.PreconditionScript:
-		s.Path = ToStringPtr(v.Path)
-		s.Script = ToStringPtr(v.Script)
+		s.Path = utility.ToStringPtr(v.Path)
+		s.Script = utility.ToStringPtr(v.Script)
 		return nil
 	default:
 		return errors.Errorf("%T is not a supported precondition script type", h)
@@ -277,8 +278,8 @@ func (s *APIPreconditionScript) BuildFromService(h interface{}) error {
 // from the APIPreconditionScript.
 func (s *APIPreconditionScript) ToService() (interface{}, error) {
 	return distro.PreconditionScript{
-		Path:   FromStringPtr(s.Path),
-		Script: FromStringPtr(s.Script),
+		Path:   utility.FromStringPtr(s.Path),
+		Script: utility.FromStringPtr(s.Script),
 	}, nil
 }
 
@@ -295,20 +296,20 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 
-	s.Method = ToStringPtr(settings.Method)
-	if FromStringPtr(s.Method) == "" {
-		s.Method = ToStringPtr(distro.BootstrapMethodLegacySSH)
+	s.Method = utility.ToStringPtr(settings.Method)
+	if utility.FromStringPtr(s.Method) == "" {
+		s.Method = utility.ToStringPtr(distro.BootstrapMethodLegacySSH)
 	}
-	s.Communication = ToStringPtr(settings.Communication)
-	if FromStringPtr(s.Communication) == "" {
-		s.Communication = ToStringPtr(distro.CommunicationMethodLegacySSH)
+	s.Communication = utility.ToStringPtr(settings.Communication)
+	if utility.FromStringPtr(s.Communication) == "" {
+		s.Communication = utility.ToStringPtr(distro.CommunicationMethodLegacySSH)
 	}
-	s.ClientDir = ToStringPtr(settings.ClientDir)
-	s.JasperBinaryDir = ToStringPtr(settings.JasperBinaryDir)
-	s.JasperCredentialsPath = ToStringPtr(settings.JasperCredentialsPath)
-	s.ServiceUser = ToStringPtr(settings.ServiceUser)
-	s.ShellPath = ToStringPtr(settings.ShellPath)
-	s.RootDir = ToStringPtr(settings.RootDir)
+	s.ClientDir = utility.ToStringPtr(settings.ClientDir)
+	s.JasperBinaryDir = utility.ToStringPtr(settings.JasperBinaryDir)
+	s.JasperCredentialsPath = utility.ToStringPtr(settings.JasperCredentialsPath)
+	s.ServiceUser = utility.ToStringPtr(settings.ServiceUser)
+	s.ShellPath = utility.ToStringPtr(settings.ShellPath)
+	s.RootDir = utility.ToStringPtr(settings.RootDir)
 	for _, envVar := range settings.Env {
 		apiEnvVar := APIEnvVar{}
 		if err := apiEnvVar.BuildFromService(envVar); err != nil {
@@ -335,20 +336,20 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 // from APIBootstrapSettings.
 func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	settings := distro.BootstrapSettings{}
-	settings.Method = FromStringPtr(s.Method)
+	settings.Method = utility.FromStringPtr(s.Method)
 	if settings.Method == "" {
 		settings.Method = distro.BootstrapMethodLegacySSH
 	}
-	settings.Communication = FromStringPtr(s.Communication)
+	settings.Communication = utility.FromStringPtr(s.Communication)
 	if settings.Communication == "" {
 		settings.Communication = distro.CommunicationMethodLegacySSH
 	}
-	settings.ClientDir = FromStringPtr(s.ClientDir)
-	settings.JasperBinaryDir = FromStringPtr(s.JasperBinaryDir)
-	settings.JasperCredentialsPath = FromStringPtr(s.JasperCredentialsPath)
-	settings.ServiceUser = FromStringPtr(s.ServiceUser)
-	settings.ShellPath = FromStringPtr(s.ShellPath)
-	settings.RootDir = FromStringPtr(s.RootDir)
+	settings.ClientDir = utility.FromStringPtr(s.ClientDir)
+	settings.JasperBinaryDir = utility.FromStringPtr(s.JasperBinaryDir)
+	settings.JasperCredentialsPath = utility.FromStringPtr(s.JasperCredentialsPath)
+	settings.ServiceUser = utility.FromStringPtr(s.ServiceUser)
+	settings.ShellPath = utility.FromStringPtr(s.ShellPath)
+	settings.RootDir = utility.FromStringPtr(s.RootDir)
 	for _, apiEnvVar := range s.Env {
 		i, err := apiEnvVar.ToService()
 		if err != nil {
@@ -389,14 +390,14 @@ func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
 	}
 
-	s.FormatCommand = ToStringPtr(settings.FormatCommand)
+	s.FormatCommand = utility.ToStringPtr(settings.FormatCommand)
 
 	return nil
 }
 
 func (s *APIHomeVolumeSettings) ToService() (interface{}, error) {
 	return distro.HomeVolumeSettings{
-		FormatCommand: FromStringPtr(s.FormatCommand),
+		FormatCommand: utility.FromStringPtr(s.FormatCommand),
 	}, nil
 }
 
@@ -411,16 +412,16 @@ func (s *APIIcecreamSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("Unexpected type '%T' for IcecreamSettings", h)
 	}
 
-	s.SchedulerHost = ToStringPtr(settings.SchedulerHost)
-	s.ConfigPath = ToStringPtr(settings.ConfigPath)
+	s.SchedulerHost = utility.ToStringPtr(settings.SchedulerHost)
+	s.ConfigPath = utility.ToStringPtr(settings.ConfigPath)
 
 	return nil
 }
 
 func (s *APIIcecreamSettings) ToService() (interface{}, error) {
 	return distro.IcecreamSettings{
-		SchedulerHost: FromStringPtr(s.SchedulerHost),
-		ConfigPath:    FromStringPtr(s.ConfigPath),
+		SchedulerHost: utility.FromStringPtr(s.SchedulerHost),
+		ConfigPath:    utility.FromStringPtr(s.ConfigPath),
 	}, nil
 }
 
@@ -473,16 +474,16 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not a supported expansion type", h)
 	}
 
-	apiDistro.Name = ToStringPtr(d.Id)
+	apiDistro.Name = utility.ToStringPtr(d.Id)
 	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
-	apiDistro.Provider = ToStringPtr(d.Provider)
+	apiDistro.Provider = utility.ToStringPtr(d.Provider)
 	apiDistro.ProviderSettingsList = d.ProviderSettingsList
-	apiDistro.Arch = ToStringPtr(d.Arch)
-	apiDistro.WorkDir = ToStringPtr(d.WorkDir)
+	apiDistro.Arch = utility.ToStringPtr(d.Arch)
+	apiDistro.WorkDir = utility.ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
-	apiDistro.Setup = ToStringPtr(d.Setup)
-	apiDistro.User = ToStringPtr(d.User)
+	apiDistro.Setup = utility.ToStringPtr(d.Setup)
+	apiDistro.User = utility.ToStringPtr(d.User)
 	bootstrapSettings := APIBootstrapSettings{}
 	if err := bootstrapSettings.BuildFromService(d.BootstrapSettings); err != nil {
 		return errors.Wrap(err, "error converting from distro.BootstrapSettings to model.APIBootstrapSettings")
@@ -491,12 +492,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	if d.CloneMethod == "" {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
-	apiDistro.CloneMethod = ToStringPtr(d.CloneMethod)
-	apiDistro.SSHKey = ToStringPtr(d.SSHKey)
+	apiDistro.CloneMethod = utility.ToStringPtr(d.CloneMethod)
+	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
 	apiDistro.SSHOptions = d.SSHOptions
-	apiDistro.AuthorizedKeysFile = ToStringPtr(d.AuthorizedKeysFile)
+	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
-	apiDistro.ContainerPool = ToStringPtr(d.ContainerPool)
+	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -533,8 +534,8 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.DispatcherSettings = dispatchSettings
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.UseLegacyAgent = d.UseLegacyAgent
-	apiDistro.Note = ToStringPtr(d.Note)
-	apiDistro.ValidProjects = ToStringPtrSlice(d.ValidProjects)
+	apiDistro.Note = utility.ToStringPtr(d.Note)
+	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	homeVolumeSettings := APIHomeVolumeSettings{}
 	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
 		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.APIHomeVolumeSettings")
@@ -554,15 +555,15 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro using the data from APIDistro
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
-	d.Id = FromStringPtr(apiDistro.Name)
+	d.Id = utility.FromStringPtr(apiDistro.Name)
 	d.Aliases = apiDistro.Aliases
-	d.Arch = FromStringPtr(apiDistro.Arch)
-	d.WorkDir = FromStringPtr(apiDistro.WorkDir)
-	d.Provider = FromStringPtr(apiDistro.Provider)
+	d.Arch = utility.FromStringPtr(apiDistro.Arch)
+	d.WorkDir = utility.FromStringPtr(apiDistro.WorkDir)
+	d.Provider = utility.FromStringPtr(apiDistro.Provider)
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	d.SetupAsSudo = apiDistro.SetupAsSudo
-	d.Setup = FromStringPtr(apiDistro.Setup)
-	d.User = FromStringPtr(apiDistro.User)
+	d.Setup = utility.FromStringPtr(apiDistro.Setup)
+	d.User = utility.FromStringPtr(apiDistro.User)
 	i, err := apiDistro.BootstrapSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "error converting from model.APIBootstrapSettings to distro.BootstrapSettings")
@@ -572,13 +573,13 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		return nil, errors.Errorf("unexpected type %T for distro.BootstrapSettings", i)
 	}
 	d.BootstrapSettings = bootstrapSettings
-	d.CloneMethod = FromStringPtr(apiDistro.CloneMethod)
+	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
 	if d.CloneMethod == "" {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
-	d.SSHKey = FromStringPtr(apiDistro.SSHKey)
+	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
-	d.AuthorizedKeysFile = FromStringPtr(apiDistro.AuthorizedKeysFile)
+	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
@@ -594,7 +595,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		d.Expansions = append(d.Expansions, expansion)
 	}
 	d.Disabled = apiDistro.Disabled
-	d.ContainerPool = FromStringPtr(apiDistro.ContainerPool)
+	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
 	// FinderSettings
 	i, err = apiDistro.FinderSettings.ToService()
 	if err != nil {
@@ -637,8 +638,8 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.DispatcherSettings = dispatchSettings
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.UseLegacyAgent = apiDistro.UseLegacyAgent
-	d.Note = FromStringPtr(apiDistro.Note)
-	d.ValidProjects = FromStringPtrSlice(apiDistro.ValidProjects)
+	d.Note = utility.FromStringPtr(apiDistro.Note)
+	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 	i, err = apiDistro.HomeVolumeSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIHomeVolumeSettings to distro.HomeVolumeSettings")
@@ -674,8 +675,8 @@ type APIExpansion struct {
 func (e *APIExpansion) BuildFromService(h interface{}) error {
 	switch val := h.(type) {
 	case distro.Expansion:
-		e.Key = ToStringPtr(val.Key)
-		e.Value = ToStringPtr(val.Value)
+		e.Key = utility.ToStringPtr(val.Key)
+		e.Value = utility.ToStringPtr(val.Value)
 	default:
 		return errors.Errorf("%T is not a supported expansion type", h)
 	}
@@ -685,8 +686,8 @@ func (e *APIExpansion) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro.Expansion using the data from an APIExpansion
 func (e *APIExpansion) ToService() (interface{}, error) {
 	d := distro.Expansion{}
-	d.Key = FromStringPtr(e.Key)
-	d.Value = FromStringPtr(e.Value)
+	d.Key = utility.FromStringPtr(e.Key)
+	d.Value = utility.FromStringPtr(e.Value)
 
 	return interface{}(d), nil
 }

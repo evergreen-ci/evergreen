@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -102,9 +103,9 @@ func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
 	if !ok {
 		return errors.Errorf("Incorrect type %T when unmarshalling TaskEndDetail", t)
 	}
-	at.Status = ToStringPtr(v.Status)
-	at.Type = ToStringPtr(v.Type)
-	at.Description = ToStringPtr(v.Description)
+	at.Status = utility.ToStringPtr(v.Status)
+	at.Type = utility.ToStringPtr(v.Type)
+	at.Description = utility.ToStringPtr(v.Description)
 	at.TimedOut = v.TimedOut
 
 	apiOomTracker := APIOomTrackerInfo{}
@@ -118,9 +119,9 @@ func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
 
 func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
 	detail := apimodels.TaskEndDetail{
-		Status:      FromStringPtr(ad.Status),
-		Type:        FromStringPtr(ad.Type),
-		Description: FromStringPtr(ad.Description),
+		Status:      utility.FromStringPtr(ad.Status),
+		Type:        utility.FromStringPtr(ad.Type),
+		Description: utility.FromStringPtr(ad.Description),
 		TimedOut:    ad.TimedOut,
 	}
 	oomTrackerIface, err := ad.OOMTracker.ToService()
@@ -190,8 +191,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			id = v.OldTaskId
 		}
 		(*at) = APITask{
-			Id:                ToStringPtr(id),
-			ProjectId:         ToStringPtr(v.Project),
+			Id:                utility.ToStringPtr(id),
+			ProjectId:         utility.ToStringPtr(v.Project),
 			CreateTime:        ToTimePtr(v.CreateTime),
 			DispatchTime:      ToTimePtr(v.DispatchTime),
 			ScheduledTime:     ToTimePtr(v.ScheduledTime),
@@ -199,21 +200,21 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			FinishTime:        ToTimePtr(v.FinishTime),
 			IngestTime:        ToTimePtr(v.IngestTime),
 			ActivatedTime:     ToTimePtr(v.ActivatedTime),
-			Version:           ToStringPtr(v.Version),
-			Revision:          ToStringPtr(v.Revision),
+			Version:           utility.ToStringPtr(v.Version),
+			Revision:          utility.ToStringPtr(v.Revision),
 			Priority:          v.Priority,
 			Activated:         v.Activated,
-			ActivatedBy:       ToStringPtr(v.ActivatedBy),
-			BuildId:           ToStringPtr(v.BuildId),
-			DistroId:          ToStringPtr(v.DistroId),
-			BuildVariant:      ToStringPtr(v.BuildVariant),
-			DisplayName:       ToStringPtr(v.DisplayName),
-			HostId:            ToStringPtr(v.HostId),
+			ActivatedBy:       utility.ToStringPtr(v.ActivatedBy),
+			BuildId:           utility.ToStringPtr(v.BuildId),
+			DistroId:          utility.ToStringPtr(v.DistroId),
+			BuildVariant:      utility.ToStringPtr(v.BuildVariant),
+			DisplayName:       utility.ToStringPtr(v.DisplayName),
+			HostId:            utility.ToStringPtr(v.HostId),
 			Restarts:          v.Restarts,
 			Execution:         v.Execution,
 			Order:             v.RevisionOrderNumber,
-			Status:            ToStringPtr(v.Status),
-			DisplayStatus:     ToStringPtr(v.GetDisplayStatus()),
+			Status:            utility.ToStringPtr(v.Status),
+			DisplayStatus:     utility.ToStringPtr(v.GetDisplayStatus()),
 			TimeTaken:         NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:     v.Cost,
@@ -224,7 +225,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroup:         v.TaskGroup,
 			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 			Blocked:           v.Blocked(),
-			Requester:         ToStringPtr(v.Requester),
+			Requester:         utility.ToStringPtr(v.Requester),
 			Aborted:           v.Aborted,
 			CanSync:           v.CanSync,
 			MustHaveResults:   v.MustHaveResults,
@@ -242,8 +243,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 		if v.BaseTask.Id != "" {
 			at.BaseTask = APIBaseTaskInfo{
-				Id:     ToStringPtr(v.BaseTask.Id),
-				Status: ToStringPtr(v.BaseTask.Status),
+				Id:     utility.ToStringPtr(v.BaseTask.Id),
+				Status: utility.ToStringPtr(v.BaseTask.Status),
 			}
 		}
 
@@ -259,7 +260,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			if h != nil && len(h.Distro.ProviderSettingsList) == 1 {
 				ami, ok := h.Distro.ProviderSettingsList[0].Lookup("ami").StringValueOK()
 				if ok {
-					at.Ami = ToStringPtr(ami)
+					at.Ami = utility.ToStringPtr(ami)
 				}
 			}
 		}
@@ -267,7 +268,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}
 			for _, t := range v.ExecutionTasks {
-				ets = append(ets, ToStringPtr(t))
+				ets = append(ets, utility.ToStringPtr(t))
 			}
 			at.ExecutionTasks = ets
 		}
@@ -294,11 +295,11 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 	case string:
 		ll := LogLinks{
-			AllLogLink:    ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, FromStringPtr(at.Id), at.Execution, "S")),
-			EventLogLink:  ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, FromStringPtr(at.Id))),
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "T")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "E")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "S")),
+			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, utility.FromStringPtr(at.Id))),
 		}
 		at.Logs = ll
 	default:
@@ -311,30 +312,30 @@ func (at *APITask) BuildFromService(t interface{}) error {
 // ToService returns a service layer task using the data from the APITask.
 func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
-		Id:                  FromStringPtr(ad.Id),
-		Project:             FromStringPtr(ad.ProjectId),
-		Version:             FromStringPtr(ad.Version),
-		Revision:            FromStringPtr(ad.Revision),
+		Id:                  utility.FromStringPtr(ad.Id),
+		Project:             utility.FromStringPtr(ad.ProjectId),
+		Version:             utility.FromStringPtr(ad.Version),
+		Revision:            utility.FromStringPtr(ad.Revision),
 		Priority:            ad.Priority,
 		Activated:           ad.Activated,
-		ActivatedBy:         FromStringPtr(ad.ActivatedBy),
-		BuildId:             FromStringPtr(ad.BuildId),
-		DistroId:            FromStringPtr(ad.DistroId),
-		BuildVariant:        FromStringPtr(ad.BuildVariant),
-		DisplayName:         FromStringPtr(ad.DisplayName),
-		HostId:              FromStringPtr(ad.HostId),
+		ActivatedBy:         utility.FromStringPtr(ad.ActivatedBy),
+		BuildId:             utility.FromStringPtr(ad.BuildId),
+		DistroId:            utility.FromStringPtr(ad.DistroId),
+		BuildVariant:        utility.FromStringPtr(ad.BuildVariant),
+		DisplayName:         utility.FromStringPtr(ad.DisplayName),
+		HostId:              utility.FromStringPtr(ad.HostId),
 		Restarts:            ad.Restarts,
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
-		Status:              FromStringPtr(ad.Status),
-		DisplayStatus:       FromStringPtr(ad.DisplayStatus),
+		Status:              utility.FromStringPtr(ad.Status),
+		DisplayStatus:       utility.FromStringPtr(ad.DisplayStatus),
 		TimeTaken:           ad.TimeTaken.ToDuration(),
 		ExpectedDuration:    ad.ExpectedDuration.ToDuration(),
 		Cost:                ad.EstimatedCost,
 		GenerateTask:        ad.GenerateTask,
 		GeneratedBy:         ad.GeneratedBy,
 		DisplayOnly:         ad.DisplayOnly,
-		Requester:           FromStringPtr(ad.Requester),
+		Requester:           utility.FromStringPtr(ad.Requester),
 		CanSync:             ad.CanSync,
 		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
@@ -343,8 +344,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Timeout:  ad.SyncAtEndOpts.Timeout,
 		},
 		BaseTask: task.BaseTaskInfo{
-			Id:     FromStringPtr(ad.BaseTask.Id),
-			Status: FromStringPtr(ad.BaseTask.Status),
+			Id:     utility.FromStringPtr(ad.BaseTask.Id),
+			Status: utility.FromStringPtr(ad.BaseTask.Status),
 		},
 	}
 	catcher := grip.NewBasicCatcher()
@@ -379,7 +380,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 	if len(ad.ExecutionTasks) > 0 {
 		ets := []string{}
 		for _, t := range ad.ExecutionTasks {
-			ets = append(ets, FromStringPtr(t))
+			ets = append(ets, utility.FromStringPtr(t))
 		}
 		st.ExecutionTasks = ets
 	}
@@ -418,7 +419,7 @@ func (at *APITask) GetArtifacts() error {
 			entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
 		}
 	} else {
-		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(FromStringPtr(at.Id), at.Execution))
+		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "error retrieving artifacts")
@@ -467,12 +468,12 @@ type APITaskCost struct {
 func (atc *APITaskCost) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case task.Task:
-		atc.Id = ToStringPtr(v.Id)
-		atc.DisplayName = ToStringPtr(v.DisplayName)
-		atc.DistroId = ToStringPtr(v.DistroId)
-		atc.BuildVariant = ToStringPtr(v.BuildVariant)
+		atc.Id = utility.ToStringPtr(v.Id)
+		atc.DisplayName = utility.ToStringPtr(v.DisplayName)
+		atc.DistroId = utility.ToStringPtr(v.DistroId)
+		atc.BuildVariant = utility.ToStringPtr(v.BuildVariant)
 		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
-		atc.Githash = ToStringPtr(v.Revision)
+		atc.Githash = utility.ToStringPtr(v.Revision)
 		atc.EstimatedCost = v.Cost
 	default:
 		return errors.New("Incorrect type when unmarshalling task")
