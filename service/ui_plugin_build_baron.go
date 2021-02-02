@@ -138,10 +138,10 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 	}
-	// the execution doesn't matter here. It only matters for webhooks, which will only be used in Spruce
+	// the execution doesn't matter here. It only matters for custom webhooks, which will only be used in Spruce
 	taskNotFound, err := graphql.BbFileTicket(r.Context(), input.TaskId, 0)
 
-	if taskNotFound {
+	if taskNotFound && err != nil {
 		gimlet.WriteJSON(w, err.Error())
 		return
 	}
