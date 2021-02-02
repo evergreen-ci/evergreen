@@ -25,10 +25,6 @@ func TestShuffledQueueSuite(t *testing.T) {
 	suite.Run(t, new(ShuffledQueueSuite))
 }
 
-func (s *ShuffledQueueSuite) SetupSuite() {
-	s.require = s.Require()
-}
-
 func (s *ShuffledQueueSuite) SetupTest() {
 	s.queue = &shuffledLocal{
 		capacity: defaultLocalQueueCapcity,

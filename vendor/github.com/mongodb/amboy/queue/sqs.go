@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/google/uuid"
@@ -43,10 +44,11 @@ type sqsFIFOQueue struct {
 // implementation. This queue, generally is ephemeral: tasks are
 // removed from the queue, and therefore may not handle jobs across
 // restarts.
-func NewSQSFifoQueue(queueName string, workers int) (amboy.Queue, error) {
+func NewSQSFifoQueue(queueName string, workers int, creds *credentials.Credentials) (amboy.Queue, error) {
 	q := &sqsFIFOQueue{
 		sqsClient: sqs.New(session.Must(session.NewSession(&aws.Config{
-			Region: aws.String(region),
+			Credentials: creds,
+			Region:      aws.String(region),
 		}))),
 		id: fmt.Sprintf("queue.remote.sqs.fifo..%s", uuid.New().String()),
 	}

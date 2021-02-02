@@ -149,7 +149,7 @@ API and Documentation
 ---------------------
 
 See the `godoc API documentation
-<http://godoc.org/github.com/mongodb/amboy>` for more information
+<https://godoc.org/github.com/mongodb/amboy>` for more information
 about amboy interfaces and internals.
 
 Development
@@ -184,6 +184,6 @@ iterative development workflows: ::
 Issues
 ~~~~~~
 
-Please file all issues in the `MAKE project
-<https://jira.mongodb.org/browse/MAKE>`_ in the `MongoDB Jira
+Please file all issues in the `EVG project
+<https://jira.mongodb.org/browse/EVG>`_ in the `MongoDB Jira
 <https://jira.mongodb.org/>`_ instance.

@@ -32,7 +32,7 @@ import (
 // LocalShuffled provides a queue implementation that shuffles the
 // order of jobs, relative the insertion order. Unlike
 // some of the other local queue implementations that predate LocalShuffled
-// (e.g. LocalUnordered,) there are no mutexes uses in the implementation.
+// (e.g. LocalUnordered), there are no mutexes used in the implementation.
 type shuffledLocal struct {
 	operations chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job, *fixedStorage)
 	capacity   int
@@ -97,7 +97,8 @@ func (q *shuffledLocal) reactor(ctx context.Context) {
 }
 
 // Put adds a job to the queue, and returns errors if the queue hasn't
-// started or if a job with the same ID value already exists.
+// started or if a job conflicts with one already in the queue (e.g. the job is
+// already in the queue or it cannot acquire the scopes that it needs).
 func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
@@ -111,6 +112,12 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 
 	if err := j.TimeInfo().Validate(); err != nil {
 		return errors.Wrap(err, "invalid job timeinfo")
+	}
+
+	if j.ShouldApplyScopesOnEnqueue() {
+		if err := q.scopes.Acquire(id, j.Scopes()); err != nil {
+			return errors.Wrapf(err, "applying scopes to job")
+		}
 	}
 
 	ret := make(chan error)
@@ -146,6 +153,10 @@ func (q *shuffledLocal) Save(ctx context.Context, j amboy.Job) error {
 
 	if !q.Info().Started {
 		return errors.Errorf("cannot save job %s; queue not started", id)
+	}
+
+	if err := q.scopes.Acquire(id, j.Scopes()); err != nil {
+		return errors.Wrapf(err, "applying scopes to job")
 	}
 
 	ret := make(chan error)
