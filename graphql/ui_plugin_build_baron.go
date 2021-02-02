@@ -56,8 +56,8 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	annotationSettings := buildBaronProjects[t.Project].TaskAnnotationSettings
 	webHook := annotationSettings.FileTicketWebHook
 	if webHook.Endpoint != "" {
-		//todo: add execution
-		resp, err := fileTicketCustomHook(context, taskId, execution, webHook)
+		var resp *http.Response
+		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
 		return resp.StatusCode == http.StatusOK, err
 	}
 
