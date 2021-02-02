@@ -19,6 +19,7 @@ type APITaskAnnotation struct {
 	Note            *APINote        `bson:"note,omitempty" json:"note,omitempty"`
 	Issues          []APIIssueLink  `bson:"issues,omitempty" json:"issues,omitempty"`
 	SuspectedIssues []APIIssueLink  `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	CreatedIssues   []APIIssueLink  `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
 }
 
 type APINote struct {
@@ -121,6 +122,7 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 	m.Metadata = t.Metadata
 	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
 	m.SuspectedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.SuspectedIssues)
+	m.CreatedIssues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.CreatedIssues)
 	m.Note = APINoteBuildFromService(t.Note)
 	return &m
 }
@@ -135,6 +137,7 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 	out.Metadata = m.Metadata
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)
 	out.SuspectedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.SuspectedIssues)
+	out.CreatedIssues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.CreatedIssues)
 	out.Note = APINoteToService(m.Note)
 	return out
 }

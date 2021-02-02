@@ -22,6 +22,8 @@ type TaskAnnotation struct {
 	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// links to tickets possibly related
 	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	// links to tickets created from the task using a custom web hook
+	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
 }
 
 type IssueLink struct {
