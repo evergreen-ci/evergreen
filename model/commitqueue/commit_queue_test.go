@@ -147,11 +147,11 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 
 	found, err := s.q.Remove("not_here")
 	s.NoError(err)
-	s.False(found)
+	s.Nil(found)
 
 	found, err = s.q.Remove("d234")
 	s.NoError(err)
-	s.True(found)
+	s.NotNil(found)
 	items := s.q.Queue
 	s.Len(items, 2)
 	// Still in order
@@ -168,7 +168,7 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 
 	s.NoError(s.q.SetProcessing(true))
 	found, err = s.q.Remove("c123")
-	s.True(found)
+	s.NotNil(found)
 	s.NoError(err)
 	s.NotNil(s.q.Queue[0])
 	s.Equal(s.q.Queue[0].Issue, "e345")
@@ -266,9 +266,10 @@ func TestPreventMergeForItemPR(t *testing.T) {
 	item := CommitQueueItem{
 		Issue:   "1234",
 		Version: patchID,
+		Source:  SourcePullRequest,
 	}
 
-	assert.NoError(t, preventMergeForItem(SourcePullRequest, false, item, "user"))
+	assert.NoError(t, preventMergeForItem(false, item, "user"))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
@@ -282,7 +283,8 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
-		Issue: patchID,
+		Issue:  patchID,
+		Source: SourceDiff,
 	}
 
 	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}
@@ -291,7 +293,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, mergeTask.Insert())
 
 	// Without a corresponding version
-	assert.NoError(t, preventMergeForItem(SourceCommandLine, false, item, "user"))
+	assert.NoError(t, preventMergeForItem(false, item, "user"))
 	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, subscriptions)
@@ -301,7 +303,7 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	assert.Equal(t, int64(0), mergeTask.Priority)
 
 	// With a corresponding version
-	assert.NoError(t, preventMergeForItem(SourceCommandLine, true, item, "user"))
+	assert.NoError(t, preventMergeForItem(true, item, "user"))
 	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)

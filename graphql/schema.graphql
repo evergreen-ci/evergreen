@@ -264,7 +264,9 @@ input SpawnHostInput {
   volumeId: String
   taskId: String
   useProjectSetupScript: Boolean
+  useTaskConfig: Boolean
   spawnHostsStartedByTask: Boolean
+  taskSync: Boolean
 }
 
 input EditSpawnHostInput {
@@ -623,11 +625,11 @@ type Task {
   activated: Boolean!
   activatedBy: String
   activatedTime: Time
-  annotation: Annotation
   ami: String
-  blocked: Boolean!
-  baseTaskMetadata: BaseTaskMetadata
+  annotation: Annotation
   baseStatus: String
+  baseTaskMetadata: BaseTaskMetadata
+  blocked: Boolean!
   buildId: String!
   buildVariant: String!
   canAbort: Boolean!
@@ -635,6 +637,7 @@ type Task {
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
+  canSync: Boolean!
   canUnschedule: Boolean!
   createTime: Time
   details: TaskEndDetail
@@ -647,7 +650,6 @@ type Task {
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
-  totalTestCount: Int!
   failedTestCount: Int!
   finishTime: Time
   generatedBy: String
@@ -656,11 +658,14 @@ type Task {
   hostId: String
   id: String!
   ingestTime: Time
+  isPerfPluginEnabled: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
+  minQueuePosition: Int!
   patchMetadata: PatchMetadata!
   patchNumber: Int
   priority: Int
+  project: Project
   projectId: String!
   reliesOn: [Dependency!]!
   requester: String!
@@ -673,9 +678,8 @@ type Task {
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
+  totalTestCount: Int!
   version: String!
-  minQueuePosition: Int!
-  isPerfPluginEnabled: Boolean!
 }
 
 type Projects {
@@ -689,12 +693,13 @@ type GroupedProjects {
 }
 
 type Project {
-  identifier: String!
-  id: String!
   displayName: String!
-  repo: String!
+  id: String!
+  identifier: String!
   owner: String!
   patches(patchesInput: PatchesInput!): Patches!
+  repo: String!
+  spawnHostScriptPath: String!
 }
 
 type File {

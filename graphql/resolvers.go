@@ -136,6 +136,22 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 	return publicKeys, nil
 }
 
+func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
+	}
+
+	return &apiProjectRef, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if at.Aborted != true {
 		return nil, nil
@@ -377,8 +393,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := MustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
-		err := savePublicKey(ctx, *spawnHostInput.PublicKey)
-		if err != nil {
+		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
 		}
 	}
@@ -413,30 +428,35 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		options.Expiration = spawnHostInput.Expiration
 	}
 
+	// passing an empty string taskId is okay as long as a
+	// taskId is not required by other spawnHostInput parameters
+	var t *task.Task
+	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
+		options.TaskID = *spawnHostInput.TaskID
+		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+		}
+	}
+
 	if util.IsPtrSetToTrue(spawnHostInput.UseProjectSetupScript) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
-		options.TaskID = *spawnHostInput.TaskID
 	}
-
+	if util.IsPtrSetToTrue(spawnHostInput.TaskSync) {
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
+		}
+		options.TaskSync = *spawnHostInput.TaskSync
+	}
 	hc := &data.DBConnector{}
 
 	if util.IsPtrSetToTrue(spawnHostInput.SpawnHostsStartedByTask) {
-		if spawnHostInput.TaskID == nil {
+		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		var t *task.Task
-		t, err = task.FindOneId(*spawnHostInput.TaskID)
-		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding Task with id: %s : %s", *spawnHostInput.TaskID, err))
-		}
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Task with id: %s was not found", *spawnHostInput.TaskID))
-		}
-		err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key)
-		if err != nil {
+		if err = hc.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
 		}
 	}
@@ -449,8 +469,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
 	}
 	apiHost := restModel.APIHost{}
-	err = apiHost.BuildFromService(spawnHost)
-	if err != nil {
+	if err := apiHost.BuildFromService(spawnHost); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
 	}
 	return &apiHost, nil
@@ -898,7 +917,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 }
 
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
-	project, err := r.sc.FindProjectById(id, false)
+	project, err := r.sc.FindProjectById(id, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
 	}
@@ -1501,36 +1520,22 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
 	}
+	commitQueue.Owner = &project.Owner
+	commitQueue.Repo = &project.Repo
 
-	if project.CommitQueue.PatchType == commitqueue.SourcePullRequest {
-		if len(commitQueue.Queue) > 0 {
-			versionID := restModel.FromStringPtr(commitQueue.Queue[0].Version)
-			if versionID != "" {
-				p, err := r.sc.FindPatchById(versionID)
-				if err != nil {
-					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
-				}
-				commitQueue.Queue[0].Patch = p
+	for i, item := range commitQueue.Queue {
+		patchId := ""
+		if restModel.FromStringPtr(item.Version) != "" {
+			patchId = restModel.FromStringPtr(item.Version)
+		} else if restModel.FromStringPtr(item.Issue) != "" && restModel.FromStringPtr(item.Source) == commitqueue.SourceDiff {
+			patchId = restModel.FromStringPtr(item.Issue)
+		}
+		if patchId != "" {
+			p, err := r.sc.FindPatchById(patchId)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
 			}
-		}
-		commitQueue.Owner = restModel.ToStringPtr(project.Owner)
-		commitQueue.Repo = restModel.ToStringPtr(project.Repo)
-	} else {
-		patchIds := []string{}
-		for _, item := range commitQueue.Queue {
-			issue := *item.Issue
-			patchIds = append(patchIds, issue)
-		}
-		patches, err := r.sc.FindPatchesByIds(patchIds)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patches: %s", err.Error()))
-		}
-		for i := range commitQueue.Queue {
-			for j := range patches {
-				if *commitQueue.Queue[i].Issue == *patches[j].Id {
-					commitQueue.Queue[i].Patch = &patches[j]
-				}
-			}
+			commitQueue.Queue[i].Patch = p
 		}
 	}
 
@@ -1990,7 +1995,7 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))
 	}
-	if result != true {
+	if result == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("couldn't remove item %s from commit queue %s", issue, commitQueueID))
 	}
 

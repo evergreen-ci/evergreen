@@ -113,12 +113,14 @@ func (s *commitQueueSuite) TestTryUnstick() {
 	var cq *commitqueue.CommitQueue = &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			commitqueue.CommitQueueItem{
-				Issue: "aabbccddeeff112233445566",
+			{
+				Issue:   "aabbccddeeff112233445566",
+				Source:  commitqueue.SourceDiff,
+				Version: patchID.Hex(),
 			},
 		},
 	}
-	job.TryUnstick(cq)
+	job.TryUnstick(context.Background(), cq, s.projectRef, "")
 	s.Len(cq.Queue, 0)
 }
 

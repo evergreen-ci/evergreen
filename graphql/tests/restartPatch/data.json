@@ -102,10 +102,7 @@
   "projects": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen",
-      "commit_queue": {
-        "patch_type": "PR"
-      }
+      "identifier": "evergreen"
     }
   ]
 }

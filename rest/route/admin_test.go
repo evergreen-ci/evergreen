@@ -308,8 +308,7 @@ func TestRestartVersionsRoute(t *testing.T) {
 	projectRef := &model.ProjectRef{
 		Id: "my-project",
 		CommitQueue: model.CommitQueueParams{
-			PatchType: commitqueue.SourcePullRequest,
-			Enabled:   util.TruePtr(),
+			Enabled: util.TruePtr(),
 		},
 		Enabled: util.TruePtr(),
 		Owner:   "me",

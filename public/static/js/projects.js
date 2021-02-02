@@ -243,7 +243,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     $scope.isDirty = true;
   };
 
-  $scope.addGitTagTeam = function() {
+  $scope.addGitTagTeam = function () {
     $scope.settingsFormData.git_tag_authorized_teams.push($scope.git_tag_team);
     $scope.git_tag_team = "";
   }
@@ -418,9 +418,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           }
         )
         $scope.settingsFormData.github_checks_aliases = $scope.aliases.filter(
-            function (d) {
-              return d.alias === '__github_checks';
-            }
+          function (d) {
+            return d.alias === '__github_checks';
+          }
         )
         $scope.settingsFormData.commit_queue_aliases = $scope.aliases.filter(
           function (d) {
@@ -428,9 +428,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           }
         )
         $scope.settingsFormData.git_tag_aliases = $scope.aliases.filter(
-            function (d) {
-              return d.alias === '__git_tag';
-            }
+          function (d) {
+            return d.alias === '__git_tag';
+          }
         )
         $scope.settingsFormData.patch_aliases = $scope.aliases.filter(
           function (d) {
@@ -442,10 +442,6 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
         if (!$scope.settingsFormData.commit_queue.merge_method) {
           $scope.settingsFormData.commit_queue.merge_method = $scope.validMergeMethods[0];
         }
-        if (!$scope.settingsFormData.commit_queue.patch_type) {
-          $scope.settingsFormData.commit_queue.patch_type = $scope.validPatchTypes[0];
-        }
-
         $scope.subscriptions = _.map(data.subscriptions || [], function (v) {
           t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
           if (!t) {
@@ -613,7 +609,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     $scope.invalidCommitQueuePatchDefinitionMessage = "";
   };
 
-  $scope.addGitTagAlias = function() {
+  $scope.addGitTagAlias = function () {
     if (!$scope.validGitTagVersionDefinition($scope.git_tag_alias)) {
       $scope.invalidGitTagAliasMessage = "An alias must have a git tag alias, variant regex, and exactly one of task regex or tag";
       return;
@@ -636,16 +632,16 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     $scope.invalidPatchAliasMessage = "";
   };
 
-  $scope.addWorkstationCommand = function() {
-      if (!$scope.settingsFormData.workstation_config) {
-        $scope.settingsFormData.workstation_config = {};
-      }
-      if (!$scope.settingsFormData.workstation_config.setup_commands) {
-        $scope.settingsFormData.workstation_config.setup_commands = [];
-      }
-      $scope.settingsFormData.workstation_config.setup_commands =
-        $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
-      $scope.cur_command = {};
+  $scope.addWorkstationCommand = function () {
+    if (!$scope.settingsFormData.workstation_config) {
+      $scope.settingsFormData.workstation_config = {};
+    }
+    if (!$scope.settingsFormData.workstation_config.setup_commands) {
+      $scope.settingsFormData.workstation_config.setup_commands = [];
+    }
+    $scope.settingsFormData.workstation_config.setup_commands =
+      $scope.settingsFormData.workstation_config.setup_commands.concat($scope.cur_command);
+    $scope.cur_command = {};
   }
 
   $scope.removeProjectVar = function (name) {
@@ -857,11 +853,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     return true;
   }
 
-  $scope.patchDefinitionPopulated = function(alias) {
+  $scope.patchDefinitionPopulated = function (alias) {
     return alias && (alias.variant || alias.task || !_.isEmpty(alias.variant_tags) || !_.isEmpty(alias.tags));
   }
 
-  $scope.aliasRemotePathPopulated = function(alias) {
+  $scope.aliasRemotePathPopulated = function (alias) {
     return Boolean(alias.remote_path);
   }
 
@@ -886,7 +882,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
     return $scope.validPatchDefinition(alias) && alias.alias;
   }
 
-  $scope.validWorkstationCommand = function(obj) {
+  $scope.validWorkstationCommand = function (obj) {
     return obj !== undefined && obj.command !== undefined && obj.command !== ""
   }
 
@@ -922,7 +918,9 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   function newPatchTriggerAliasController($scope, $mdDialog) {
     $scope.new_task_specifier = {};
-    $scope.alias = {task_specifiers: []};
+    $scope.alias = {
+      task_specifiers: []
+    };
 
     if ($scope.data.aliasToEdit) {
       $scope.alias = $scope.data.aliasToEdit;
@@ -930,11 +928,11 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.aliasIndex = $scope.data.index;
     }
 
-    $scope.removeTaskSpecifier = function(index) {
+    $scope.removeTaskSpecifier = function (index) {
       $scope.alias.task_specifiers.splice(index, 1);
     }
 
-    $scope.addTaskSpecifier = function() {
+    $scope.addTaskSpecifier = function () {
       if (!$scope.validTaskSpecifier($scope.new_task_specifier)) {
         return
       }
@@ -943,7 +941,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
       $scope.new_task_specifier = {};
     }
 
-    $scope.validTaskSpecifier = function(specifier) {
+    $scope.validTaskSpecifier = function (specifier) {
       // can't specify both an alias and a regex set
       if (specifier.patch_alias && (specifier.variant_regex || specifier.task_regex)) {
         return false
@@ -1202,7 +1200,6 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
 
   $scope.show_build_break = true;
   $scope.validMergeMethods = ["squash", "merge", "rebase"];
-  $scope.validPatchTypes = ["PR", "CLI"];
 });
 
 mciModule.directive('adminNewProject', function () {
