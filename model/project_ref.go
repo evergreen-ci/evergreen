@@ -593,7 +593,11 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 				}
 				repoRefs[pRef.RepoRefId] = repoRef
 			}
-			pRefs[i] = *mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error merging settings")
+			}
+			pRefs[i] = *mergedProject
 		}
 	}
 	return pRefs, nil
