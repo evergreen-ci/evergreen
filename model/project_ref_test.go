@@ -277,7 +277,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "master",
-		Enabled:          util.TruePtr(),
+		Enabled:          util.FalsePtr(),
 		BatchTime:        10,
 		Id:               "iden_",
 		PRTestingEnabled: util.TruePtr(),
