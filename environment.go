@@ -286,8 +286,8 @@ func (e *envState) initSettings(path string) error {
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 
 	credential := options.Credential{
-		Username: settings.user,
-		Password: settings.pwd,
+		Username: settings.User,
+		Password: settings.Pwd,
 	}
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
