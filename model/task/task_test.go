@@ -1670,6 +1670,7 @@ func TestGetTimeSpent(t *testing.T) {
 }
 
 func TestAddHostCreateDetails(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
