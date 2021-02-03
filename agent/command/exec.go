@@ -152,33 +152,79 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
-	expansions := exp.Map()
-	if c.AddExpansionsToEnv {
-		for k, v := range expansions {
-			c.Env[k] = v
-		}
-	}
+	// kim: TODO: remove
+	// expansions := exp.Map()
+	// if c.AddExpansionsToEnv {
+	//     for k, v := range expansions {
+	//         c.Env[k] = v
+	//     }
+	// }
 
-	for _, ei := range c.IncludeExpansionsInEnv {
-		if val, ok := expansions[ei]; ok {
-			c.Env[ei] = val
-		}
-	}
+	// kim: TODO: remove
+	// for _, ei := range c.IncludeExpansionsInEnv {
+	//     if val, ok := expansions[ei]; ok {
+	//         c.Env[ei] = val
+	//     }
+	// }
 
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
+type modifyEnvOptions struct {
+	taskID                 string
+	workingDir             string
+	tmpDir                 string
+	expansions             util.Expansions
+	includeExpansionsInEnv []string
+	addExpansionsToEnv     bool
+}
+
+func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions) map[string]string {
+	if env == nil {
+		env = map[string]string{}
+	}
+
+	// kim: NOTE: this is different from the original behavior because the agent
+	// env vars will always overwrite even if conflicting expansions exist.
+	expansions := opts.expansions.Map()
+	if opts.addExpansionsToEnv {
+		for k, v := range expansions {
+			env[k] = v
+		}
+	}
+
+	for _, expName := range opts.includeExpansionsInEnv {
+		if val, ok := expansions[expName]; ok {
+			env[expName] = val
+		}
+	}
+
+	env[agentutil.MarkerTaskID] = opts.taskID
+	env[agentutil.MarkerAgentPID] = strconv.Itoa(os.Getpid())
+
+	addTempDirs(env, opts.tmpDir)
+
+	if _, ok := env["GOCACHE"]; !ok {
+		env["GOCACHE"] = filepath.Join(opts.workingDir, ".gocache")
+	}
+	if _, ok := env["CI"]; !ok {
+		env["CI"] = "true"
+	}
+
+	return env
+}
+
 func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
-	c.Env[agentutil.MarkerTaskID] = taskID
-	c.Env[agentutil.MarkerAgentPID] = strconv.Itoa(os.Getpid())
-
-	if _, alreadyDefined := c.Env["GOCACHE"]; !alreadyDefined {
-		c.Env["GOCACHE"] = filepath.Join(c.WorkingDir, ".gocache")
-	}
-
-	if _, alreadyDefined := c.Env["CI"]; !alreadyDefined {
-		c.Env["CI"] = "true"
-	}
+	// c.Env[agentutil.MarkerTaskID] = taskID
+	// c.Env[agentutil.MarkerAgentPID] = strconv.Itoa(os.Getpid())
+	//
+	// if _, alreadyDefined := c.Env["GOCACHE"]; !alreadyDefined {
+	//     c.Env["GOCACHE"] = filepath.Join(c.WorkingDir, ".gocache")
+	// }
+	//
+	// if _, alreadyDefined := c.Env["CI"]; !alreadyDefined {
+	//     c.Env["CI"] = "true"
+	// }
 
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
@@ -274,7 +320,16 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Notice(err.Error())
 	}
 
-	addTempDirs(c.Env, taskTmpDir)
+	// kim: TODO: remove
+	// addTempDirs(c.Env, taskTmpDir)
+	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
+		taskID:                 conf.Task.Id,
+		workingDir:             c.WorkingDir,
+		tmpDir:                 taskTmpDir,
+		expansions:             *conf.Expansions,
+		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
+		addExpansionsToEnv:     c.AddExpansionsToEnv,
+	})
 
 	if !c.KeepEmptyArgs {
 		for i := len(c.Args) - 1; i >= 0; i-- {
