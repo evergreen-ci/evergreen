@@ -680,33 +680,14 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	opts := certdepot.CertificateOptions{
 		CommonName: h.JasperCredentialsID,
 		Host:       h.JasperCredentialsID,
-		// kim: TODO: is it valid to add the host ID as part of the IP/domain?
-		// It isn't a real domain, but it seems like it threads the needle with
-		// SANs to allow TLS connections using host IDs as the server name.
-		Domain: domains,
-		IP:     ipAddrs,
-		CA:     evergreen.CAName,
+		Domain:     domains,
+		IP:         ipAddrs,
+		CA:         evergreen.CAName,
 	}
-	grip.Debug(message.Fields{
-		"message": "kim: generating certificate with options",
-		"host_id": h.Id,
-		"distro":  h.Distro.Id,
-		"opts":    opts,
-	})
 	creds, err := env.CertificateDepot().GenerateWithOptions(opts)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message": "kim: failed to generate certificate with options",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-			"opts":    opts,
-		}))
 		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
 	}
-	grip.Debug(message.Fields{
-		"message": "kim: successfully generated certificate with options",
-		"opts":    opts,
-	})
 
 	return creds, nil
 }
