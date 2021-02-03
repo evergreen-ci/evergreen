@@ -1669,6 +1669,25 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, makespan)
 }
 
+func TestAddHostCreateDetails(t *testing.T) {
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", errToSave))
+	dbTask, err := FindOneId(task.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbTask)
+	require.Len(t, dbTask.HostCreateDetails, 1)
+	assert.Equal(t, dbTask.HostCreateDetails[0].HostId, "h1")
+	assert.Contains(t, dbTask.HostCreateDetails[0].Error, "InsufficientCapacityError")
+
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", errToSave))
+	dbTask, err = FindOneId(task.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbTask)
+	assert.Len(t, dbTask.HostCreateDetails, 2)
+}
+
 func TestUpdateDependsOn(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}

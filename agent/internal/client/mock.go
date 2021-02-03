@@ -467,7 +467,9 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 	return []string{"id"}, options.Validate()
 }
 
-func (c *Mock) ListHosts(_ context.Context, _ TaskData) ([]model.CreateHost, error) { return nil, nil }
+func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {
+	return model.HostListResults{}, nil
+}
 
 func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
 	return []byte("this is a log"), nil

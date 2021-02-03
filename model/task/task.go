@@ -137,6 +137,9 @@ type Task struct {
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
+
+	// HostCreateDetails stores information about why host.create failed for this task
+	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
@@ -247,6 +250,11 @@ type DistroCost struct {
 type BaseTaskInfo struct {
 	Id     string `bson:"_id" json:"id"`
 	Status string `bson:"status" json:"status"`
+}
+
+type HostCreateDetail struct {
+	HostId string `bson:"host_id" json:"host_id"`
+	Error  string `bson:"error" json:"error"`
 }
 
 func (d *Dependency) UnmarshalBSON(in []byte) error {
