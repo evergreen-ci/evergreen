@@ -45,22 +45,29 @@ func depotSave(dpt depot.Depot, name string, creds *Credentials) error {
 	return nil
 }
 
-func depotGenerate(dpt Depot, name string, do DepotOptions) (*Credentials, error) {
-	opts := CertificateOptions{
-		CA:         do.CA,
+func depotGenerateDefault(dpt Depot, name string, do DepotOptions) (*Credentials, error) {
+	return depotGenerate(dpt, name, do, CertificateOptions{
 		CommonName: name,
 		Host:       name,
-		Expires:    do.DefaultExpiration,
-	}
+	})
+}
 
-	pemCACrt, err := dpt.Get(CrtTag(do.CA))
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting CA certificate")
+func depotGenerate(dpt Depot, name string, do DepotOptions, opts CertificateOptions) (*Credentials, error) {
+	if opts.CA == "" {
+		opts.CA = do.CA
+	}
+	if opts.Expires == 0 {
+		opts.Expires = do.DefaultExpiration
 	}
 
 	_, key, err := opts.CertRequestInMemory()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem making certificate request and key")
+	}
+
+	pemCACrt, err := dpt.Get(CrtTag(do.CA))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting CA certificate")
 	}
 
 	pemKey, err := key.ExportPrivate()
