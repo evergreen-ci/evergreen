@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/util"
@@ -127,25 +126,6 @@ func (s *eventNotificationSuite) SetupTest() {
 				URL:     "https://example.com",
 				State:   message.GithubStateFailure,
 			},
-		},
-		{
-			ID: "github-pr-merge",
-			Subscriber: event.Subscriber{
-				Type: event.GithubMergeSubscriberType,
-				Target: event.GithubMergeSubscriber{
-					PRs: []event.PRInfo{
-						{
-							Owner:       "evergreen-ci",
-							Repo:        "evergreen",
-							PRNum:       1234,
-							CommitTitle: "PR (#1234)",
-						},
-					},
-					Item:        "1234",
-					MergeMethod: "squash",
-				},
-			},
-			Payload: commitqueue.GithubMergePR{},
 		},
 	}
 	s.webhook = &s.notifications[0]

@@ -396,7 +396,7 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
 		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType,
-		event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType,
+		event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType,
 		event.GithubCheckSubscriberType}
 
 	n := []Notification{}

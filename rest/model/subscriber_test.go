@@ -49,60 +49,6 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	assert.EqualValues(origPrSubscriber, serviceModel)
 }
 
-func TestSubscriberModelsGithubMerge(t *testing.T) {
-	assert := assert.New(t)
-	target := event.GithubMergeSubscriber{
-		PRs: []event.PRInfo{
-			{
-				Owner:       "me",
-				Repo:        "mine",
-				PRNum:       5,
-				Ref:         "deadbeef",
-				CommitTitle: "PR (#5)",
-			},
-		},
-		MergeMethod: "squash",
-		Item:        "5",
-	}
-	subscriber := event.Subscriber{
-		Type:   event.GithubMergeSubscriberType,
-		Target: &target,
-	}
-	apiSubscriber := APISubscriber{}
-	err := apiSubscriber.BuildFromService(subscriber)
-	assert.NoError(err)
-
-	origSubscriberInterface, err := apiSubscriber.ToService()
-	assert.NoError(err)
-
-	origSubscriber, ok := origSubscriberInterface.(event.Subscriber)
-	assert.True(ok)
-	assert.EqualValues(subscriber.Type, origSubscriber.Type)
-	assert.EqualValues(target, origSubscriber.Target)
-
-	// incoming subscribers have target serialized as a map
-	incoming := APISubscriber{
-		Type: utility.ToStringPtr(event.GithubMergeSubscriberType),
-		Target: map[string]interface{}{
-			"prs": []map[string]interface{}{
-				{
-					"owner":        "me",
-					"repo":         "mine",
-					"pr_number":    5,
-					"ref":          "deadbeef",
-					"commit_title": "PR (#5)",
-				},
-			},
-			"merge_method": "squash",
-			"item":         "5",
-		},
-	}
-
-	serviceModel, err := incoming.ToService()
-	assert.NoError(err)
-	assert.EqualValues(origSubscriber, serviceModel)
-}
-
 func TestSubscriberModelsWebhook(t *testing.T) {
 	assert := assert.New(t)
 

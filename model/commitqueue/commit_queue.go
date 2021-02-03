@@ -212,33 +212,26 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists boo
 }
 
 func preventMergeForItem(versionExists bool, item CommitQueueItem, user string) error {
-	if item.Source == SourcePullRequest && item.Version != "" {
-		if err := clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
-			return errors.Wrap(err, "can't clear subscriptions")
-		}
+	if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
+		return errors.Wrap(err, "can't clear subscriptions")
 	}
 
-	if item.Source == SourceDiff && versionExists {
-		if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
-			return errors.Wrap(err, "can't clear subscriptions")
-		}
-
-		// Disable the merge task
-		mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
-		if err != nil {
-			return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
-		}
-		if mergeTask == nil {
-			return errors.New("merge task doesn't exist")
-		}
-		event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
-		if _, err = mergeTask.SetDisabledPriority(user); err != nil {
-			return errors.Wrap(err, "can't disable merge task")
-		}
-		if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
-			return errors.Wrap(err, "can't update build cache for deactivated ")
-		}
+	// Disable the merge task
+	mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
+	if err != nil {
+		return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
 	}
+	if mergeTask == nil {
+		return errors.New("merge task doesn't exist")
+	}
+	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
+	if _, err = mergeTask.SetDisabledPriority(user); err != nil {
+		return errors.Wrap(err, "can't disable merge task")
+	}
+	if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
+		return errors.Wrap(err, "can't update build cache for deactivated ")
+	}
+
 	return nil
 }
 

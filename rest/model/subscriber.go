@@ -76,13 +76,6 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 				return err
 			}
 			target = sub
-		case event.GithubMergeSubscriberType:
-			sub := APIGithubMergeSubscriber{}
-			err := sub.BuildFromService(v.Target)
-			if err != nil {
-				return err
-			}
-			target = sub
 
 		case event.EvergreenWebhookSubscriberType:
 			sub := APIWebhookSubscriber{}
@@ -146,21 +139,6 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Wrap(err, "Github check subscriber target is malformed").Error(),
-			}
-		}
-		target, err = apiModel.ToService()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "can't read subscriber target from API model").Error(),
-			}
-		}
-	case event.GithubMergeSubscriberType:
-		apiModel := APIGithubMergeSubscriber{}
-		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "GitHub merge subscriber target is malformed").Error(),
 			}
 		}
 		target, err = apiModel.ToService()

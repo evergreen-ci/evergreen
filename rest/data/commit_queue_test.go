@@ -361,7 +361,7 @@ func TestConcludeMerge(t *testing.T) {
 	require.NoError(t, commitqueue.InsertQueue(queue))
 	dc := &DBCommitQueueConnector{}
 
-	assert.NoError(t, dc.ConcludeMerge(itemID, projectID, "foo"))
+	assert.NoError(t, dc.ConcludeMerge(itemID, "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

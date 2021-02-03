@@ -256,25 +256,6 @@ func (s *CommitQueueSuite) TestFindOneId() {
 	s.Nil(cq)
 }
 
-func TestPreventMergeForItemPR(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
-
-	patchID := "abcdef012345"
-	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
-	require.NoError(t, patchSub.Upsert())
-
-	item := CommitQueueItem{
-		Issue:   "1234",
-		Version: patchID,
-		Source:  SourcePullRequest,
-	}
-
-	assert.NoError(t, preventMergeForItem(false, item, "user"))
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
-	assert.NoError(t, err)
-	assert.Empty(t, subscriptions)
-}
-
 func TestPreventMergeForItemCLI(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, build.Collection))
 

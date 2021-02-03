@@ -154,6 +154,9 @@ type Patch struct {
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
+	// MergeStatus is only used in gitServePatch to send the status of this
+	// patch on the commit queue to the agent
+	MergeStatus string `json:"merge_status"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }

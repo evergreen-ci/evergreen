@@ -326,6 +326,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	// populate tasks/variants matching the commitqueue alias
 	projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
+	if err = addMergeTaskAndVariant(patchDoc, projectConfig, projectRef, commitqueue.SourcePullRequest); err != nil {
+		j.logError(err, "can't set patch project config", nextItem)
+		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
 	if err = patchDoc.Insert(); err != nil {
 		j.logError(err, "can't insert patch", nextItem)
 		j.dequeue(cq, nextItem)
@@ -344,14 +351,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "problem saving version", nextItem)
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
-		return
-	}
-
-	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id, nextItem.MessageOverride)
-	if err != nil {
-		j.logError(err, "can't subscribe for PR merge", nextItem)
-		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", ""))
 		return
 	}
 
@@ -386,7 +385,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	if err = addMergeTaskAndVariant(patchDoc, project, projectRef); err != nil {
+	if err = addMergeTaskAndVariant(patchDoc, project, projectRef, commitqueue.SourceDiff); err != nil {
 		j.logError(err, "can't set patch project config", nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
 		j.dequeue(cq, nextItem)
@@ -575,39 +574,6 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID, messageOverride string) error {
-	prs := make([]event.PRInfo, 0, len(modulePRs)+1)
-	for _, modulePR := range modulePRs {
-		prs = append(prs, event.PRInfo{
-			Owner:       modulePR.Base.Repo.Owner.GetLogin(),
-			Repo:        *modulePR.Base.Repo.Name,
-			Ref:         *modulePR.Head.SHA,
-			PRNum:       *modulePR.Number,
-			CommitTitle: fmt.Sprintf("%s (#%d)", *modulePR.Title, *modulePR.Number),
-		})
-	}
-	prs = append(prs, event.PRInfo{
-		Owner:           projectRef.Owner,
-		Repo:            projectRef.Repo,
-		Ref:             *pr.Head.SHA,
-		PRNum:           *pr.Number,
-		CommitTitle:     fmt.Sprintf("%s (#%d)", *pr.Title, *pr.Number),
-		MessageOverride: messageOverride,
-	})
-
-	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		PRs:         prs,
-		Item:        strconv.Itoa(*pr.Number),
-		MergeMethod: projectRef.CommitQueue.MergeMethod,
-	})
-	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, mergeSubscriber)
-	if err := patchSub.Upsert(); err != nil {
-		return errors.Wrapf(err, "failed to insert patch subscription for commit queue merge on PR %d", *pr.Number)
-	}
-
-	return nil
-}
-
 func validateBranch(branch *github.Branch) error {
 	if branch == nil {
 		return errors.New("branch is nil")
@@ -621,7 +587,7 @@ func validateBranch(branch *github.Branch) error {
 	return nil
 }
 
-func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef) error {
+func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving Evergreen config")
@@ -649,12 +615,17 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	}
 
 	// Merge task depends on all the tasks already in the patch
+	status := ""
+	if source == commitqueue.SourcePullRequest {
+		status = model.AllStatuses
+	}
 	dependencies := []model.TaskUnitDependency{}
 	for _, vt := range patchDoc.VariantsTasks {
 		for _, t := range vt.Tasks {
 			dependencies = append(dependencies, model.TaskUnitDependency{
 				Name:    t,
 				Variant: vt.Variant,
+				Status:  status,
 			})
 		}
 	}
@@ -671,14 +642,28 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
 			},
-			{
+		},
+		DependsOn: dependencies,
+	}
+
+	if source == commitqueue.SourceDiff {
+		mergeTask.Commands = append(mergeTask.Commands,
+			model.PluginCommandConf{
 				Command: "git.push",
 				Params: map[string]interface{}{
 					"directory": "src",
 				},
-			},
-		},
-		DependsOn: dependencies,
+			})
+	} else if source == commitqueue.SourcePullRequest {
+		mergeTask.Commands = append(mergeTask.Commands,
+			model.PluginCommandConf{
+				Command: "git.merge_pr",
+				Params: map[string]interface{}{
+					"url": fmt.Sprintf("%s/version/%s", settings.Ui.Url, patchDoc.Id.Hex()),
+				},
+			})
+	} else {
+		return errors.Errorf("unknown commit queue source: %s", source)
 	}
 
 	// Define as part of a task group with no pre to skip
