@@ -907,8 +907,28 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
 	expansions.Put("author_email", v.AuthorEmail)
-
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
+	requesterExpansion := ""
+	switch v.Requester {
+	case evergreen.PatchVersionRequester:
+		requesterExpansion = "patch"
+	case evergreen.GithubPRRequester:
+		requesterExpansion = "github_pr"
+	case evergreen.GitTagRequester:
+		requesterExpansion = "github_tag"
+	case evergreen.RepotrackerVersionRequester:
+		requesterExpansion = "commit"
+	case evergreen.TriggerRequester:
+		requesterExpansion = "trigger"
+	case evergreen.MergeTestRequester:
+		requesterExpansion = "commit_queue"
+	case evergreen.AdHocRequester:
+		requesterExpansion = "ad_hoc"
+	default:
+		requesterExpansion = "unknown_requester"
+	}
+	expansions.Put("requester", requesterExpansion)
 
 	if evergreen.IsGitTagRequester(v.Requester) {
 		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
