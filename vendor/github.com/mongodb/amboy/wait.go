@@ -62,8 +62,7 @@ func WaitInterval(ctx context.Context, q Queue, interval time.Duration) bool {
 	}
 }
 
-// WaitIntervalNum waits for a certain number of jobs to complete,
-// with the same semantics as WaitCtxInterval.
+// WaitIntervalNum waits for a certain number of jobs to complete
 func WaitIntervalNum(ctx context.Context, q Queue, interval time.Duration, num int) bool {
 	timer := time.NewTimer(0)
 	defer timer.Stop()

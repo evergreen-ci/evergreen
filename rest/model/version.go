@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -40,27 +41,27 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 		return errors.Errorf("incorrect type when fetching converting version type")
 	}
 
-	apiVersion.Id = ToStringPtr(v.Id)
+	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
 	apiVersion.StartTime = ToTimePtr(v.StartTime)
 	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
-	apiVersion.Revision = ToStringPtr(v.Revision)
-	apiVersion.Author = ToStringPtr(v.Author)
-	apiVersion.AuthorEmail = ToStringPtr(v.AuthorEmail)
-	apiVersion.Message = ToStringPtr(v.Message)
-	apiVersion.Status = ToStringPtr(v.Status)
-	apiVersion.Repo = ToStringPtr(v.Repo)
-	apiVersion.Branch = ToStringPtr(v.Branch)
+	apiVersion.Revision = utility.ToStringPtr(v.Revision)
+	apiVersion.Author = utility.ToStringPtr(v.Author)
+	apiVersion.AuthorEmail = utility.ToStringPtr(v.AuthorEmail)
+	apiVersion.Message = utility.ToStringPtr(v.Message)
+	apiVersion.Status = utility.ToStringPtr(v.Status)
+	apiVersion.Repo = utility.ToStringPtr(v.Repo)
+	apiVersion.Branch = utility.ToStringPtr(v.Branch)
 	apiVersion.Order = v.RevisionOrderNumber
-	apiVersion.Project = ToStringPtr(v.Identifier)
-	apiVersion.Requester = ToStringPtr(v.Requester)
-	apiVersion.Errors = ToStringPtrSlice(v.Errors)
+	apiVersion.Project = utility.ToStringPtr(v.Identifier)
+	apiVersion.Requester = utility.ToStringPtr(v.Requester)
+	apiVersion.Errors = utility.ToStringPtrSlice(v.Errors)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {
 		bd = buildDetail{
-			BuildVariant: ToStringPtr(t.BuildVariant),
-			BuildId:      ToStringPtr(t.BuildId),
+			BuildVariant: utility.ToStringPtr(t.BuildVariant),
+			BuildId:      utility.ToStringPtr(t.BuildId),
 		}
 		apiVersion.BuildVariants = append(apiVersion.BuildVariants, bd)
 	}
@@ -68,8 +69,8 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	params := []APIParameter{}
 	for _, param := range v.Parameters {
 		params = append(params, APIParameter{
-			Key:   ToStringPtr(param.Key),
-			Value: ToStringPtr(param.Value),
+			Key:   utility.ToStringPtr(param.Key),
+			Value: utility.ToStringPtr(param.Value),
 		})
 	}
 	apiVersion.Parameters = params

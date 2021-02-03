@@ -38,11 +38,13 @@ type Base struct {
 	JobType        amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
 	RequiredScopes []string      `bson:"required_scopes" json:"required_scopes" yaml:"required_scopes"`
 
-	priority int
-	timeInfo amboy.JobTimeInfo
-	status   amboy.JobStatusInfo
-	dep      dependency.Manager
-	mutex    sync.RWMutex
+	applyScopesOnEnqueue bool
+	retryInfo            amboy.JobRetryInfo
+	priority             int
+	timeInfo             amboy.JobTimeInfo
+	status               amboy.JobStatusInfo
+	dep                  dependency.Manager
+	mutex                sync.RWMutex
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -280,5 +282,55 @@ func (b *Base) Scopes() []string {
 	}
 
 	return b.RequiredScopes
+}
 
+// SetShouldApplyScopesOnEnqueue overrides the default behavior of scopes so
+// that they apply when the job is inserted into the queue rather than when the
+// job is dispatched.
+func (b *Base) SetShouldApplyScopesOnEnqueue(val bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.applyScopesOnEnqueue = true
+}
+
+// ShouldApplyShouldScopesOnEnqueue returns whether the job's scopes are applied on
+// enqueue. If false, the scopes are applied when the job is dispatched.
+func (b *Base) ShouldApplyScopesOnEnqueue() bool {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	return b.applyScopesOnEnqueue
+}
+
+// RetryInfo returns information and options for the job's retry policies.
+func (b *Base) RetryInfo() amboy.JobRetryInfo {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	return b.retryInfo
+}
+
+// UpdateRetryInfo updates the stored retry information and configuration, but
+// does not modify fields that are unset. In particular, Retryable cannot be
+// unset using UpdateRetryInfo; to achieve this, use SetRetryable.
+func (b *Base) UpdateRetryInfo(info amboy.JobRetryInfo) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if info.Retryable {
+		b.retryInfo.Retryable = true
+	}
+
+	if info.CurrentTrial != 0 {
+		b.retryInfo.CurrentTrial = info.CurrentTrial
+	}
+}
+
+// SetRetryable sets whether or not the job is allowed to retry.
+func (b *Base) SetRetryable(val bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.retryInfo.Retryable = val
 }

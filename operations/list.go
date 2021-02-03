@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -124,7 +123,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 	matching := []model.ProjectRef{}
 	for _, proj := range projs {
-		if util.IsPtrSetToTrue(proj.Enabled) {
+		if utility.FromBoolPtr(proj.Enabled) {
 			matching = append(matching, proj)
 		}
 	}
@@ -351,19 +350,19 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 
 		fmt.Println(len(spawnableDistros), "spawnable distros:")
 		for _, distro := range spawnableDistros {
-			fmt.Println(restmodel.FromStringPtr(distro.Name))
+			fmt.Println(utility.FromStringPtr(distro.Name))
 		}
 
 	} else {
 		fmt.Println(len(distros), "distros:")
 		for _, distro := range distros {
-			fmt.Println(restmodel.FromStringPtr(distro.Name))
+			fmt.Println(utility.FromStringPtr(distro.Name))
 		}
 
 		aliases := map[string][]string{}
 		for _, d := range distros {
 			for _, a := range d.Aliases {
-				aliases[a] = append(aliases[a], restmodel.FromStringPtr(d.Name))
+				aliases[a] = append(aliases[a], utility.FromStringPtr(d.Name))
 			}
 		}
 

@@ -93,7 +93,7 @@ func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),
 		}
 	}
-	h.keyName = model.FromStringPtr(key.Name)
+	h.keyName = utility.FromStringPtr(key.Name)
 	if err := validateKeyName(h.keyName); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -101,7 +101,7 @@ func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	h.keyValue = model.FromStringPtr(key.Key)
+	h.keyValue = utility.FromStringPtr(key.Key)
 	if err := validateKeyValue(h.keyValue); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

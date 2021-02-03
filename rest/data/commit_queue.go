@@ -259,7 +259,7 @@ func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restM
 		return nil, nil
 	}
 
-	return &restModel.APICommitQueue{ProjectID: restModel.ToStringPtr(id), Queue: pc.Queue[id]}, nil
+	return &restModel.APICommitQueue{ProjectID: utility.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
@@ -268,7 +268,7 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user strin
 	}
 
 	for i := range pc.Queue[id] {
-		if restModel.FromStringPtr(pc.Queue[id][i].Issue) == itemId {
+		if utility.FromStringPtr(pc.Queue[id][i].Issue) == itemId {
 			item := pc.Queue[id][i]
 			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
 			return &item, nil
@@ -284,7 +284,7 @@ func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, 
 		return false, errors.Errorf("can't get commit queue for id '%s'", id)
 	}
 	for _, queueItem := range queue {
-		if restModel.FromStringPtr(queueItem.Issue) == item {
+		if utility.FromStringPtr(queueItem.Issue) == item {
 			return true, nil
 		}
 	}

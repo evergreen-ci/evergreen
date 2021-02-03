@@ -133,7 +133,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
-  bbCreateTicket(taskId: String!): Boolean!
+  bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -87,26 +88,26 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToStringPtr(""),
+						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:                   model.ToStringPtr(""),
-							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:              model.ToStringPtr(""),
-							WorkDir:              model.ToStringPtr(""),
+							Id:                   utility.ToStringPtr(""),
+							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              utility.ToStringPtr(""),
+							WorkDir:              utility.ToStringPtr(""),
 							IsVirtualWorkstation: false,
-							User:                 model.ToStringPtr(""),
-							BootstrapMethod:      model.ToStringPtr(""),
+							User:                 utility.ToStringPtr(""),
+							BootstrapMethod:      utility.ToStringPtr(""),
 						},
-						StartedBy:         model.ToStringPtr(""),
-						Provider:          model.ToStringPtr(""),
-						User:              model.ToStringPtr(""),
-						Status:            model.ToStringPtr(""),
-						InstanceType:      model.ToStringPtr(""),
-						AvailabilityZone:  model.ToStringPtr(""),
-						DisplayName:       model.ToStringPtr(""),
-						HomeVolumeID:      model.ToStringPtr(""),
-						Tag:               model.ToStringPtr(""),
+						StartedBy:         utility.ToStringPtr(""),
+						Provider:          utility.ToStringPtr(""),
+						User:              utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(""),
+						InstanceType:      utility.ToStringPtr(""),
+						AvailabilityZone:  utility.ToStringPtr(""),
+						DisplayName:       utility.ToStringPtr(""),
+						HomeVolumeID:      utility.ToStringPtr(""),
+						Tag:               utility.ToStringPtr(""),
 						AttachedVolumeIDs: []string{},
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -135,26 +136,26 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToStringPtr(""),
+						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:                   model.ToStringPtr(""),
-							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:              model.ToStringPtr(""),
-							WorkDir:              model.ToStringPtr(""),
+							Id:                   utility.ToStringPtr(""),
+							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              utility.ToStringPtr(""),
+							WorkDir:              utility.ToStringPtr(""),
 							IsVirtualWorkstation: false,
-							User:                 model.ToStringPtr(""),
-							BootstrapMethod:      model.ToStringPtr(""),
+							User:                 utility.ToStringPtr(""),
+							BootstrapMethod:      utility.ToStringPtr(""),
 						},
-						StartedBy:         model.ToStringPtr(""),
-						Provider:          model.ToStringPtr(""),
-						User:              model.ToStringPtr(""),
-						Status:            model.ToStringPtr(""),
-						InstanceType:      model.ToStringPtr(""),
-						AvailabilityZone:  model.ToStringPtr(""),
-						DisplayName:       model.ToStringPtr(""),
-						HomeVolumeID:      model.ToStringPtr(""),
-						Tag:               model.ToStringPtr(""),
+						StartedBy:         utility.ToStringPtr(""),
+						Provider:          utility.ToStringPtr(""),
+						User:              utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(""),
+						InstanceType:      utility.ToStringPtr(""),
+						AvailabilityZone:  utility.ToStringPtr(""),
+						DisplayName:       utility.ToStringPtr(""),
+						HomeVolumeID:      utility.ToStringPtr(""),
+						Tag:               utility.ToStringPtr(""),
 						AttachedVolumeIDs: []string{},
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -184,26 +185,26 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToStringPtr(""),
+						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:                   model.ToStringPtr(""),
-							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:              model.ToStringPtr(""),
-							WorkDir:              model.ToStringPtr(""),
+							Id:                   utility.ToStringPtr(""),
+							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              utility.ToStringPtr(""),
+							WorkDir:              utility.ToStringPtr(""),
 							IsVirtualWorkstation: false,
-							User:                 model.ToStringPtr(""),
-							BootstrapMethod:      model.ToStringPtr(""),
+							User:                 utility.ToStringPtr(""),
+							BootstrapMethod:      utility.ToStringPtr(""),
 						},
-						StartedBy:         model.ToStringPtr(""),
-						Provider:          model.ToStringPtr(""),
-						User:              model.ToStringPtr(""),
-						Status:            model.ToStringPtr(""),
-						InstanceType:      model.ToStringPtr(""),
-						AvailabilityZone:  model.ToStringPtr(""),
-						DisplayName:       model.ToStringPtr(""),
-						HomeVolumeID:      model.ToStringPtr(""),
-						Tag:               model.ToStringPtr(""),
+						StartedBy:         utility.ToStringPtr(""),
+						Provider:          utility.ToStringPtr(""),
+						User:              utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(""),
+						InstanceType:      utility.ToStringPtr(""),
+						AvailabilityZone:  utility.ToStringPtr(""),
+						DisplayName:       utility.ToStringPtr(""),
+						HomeVolumeID:      utility.ToStringPtr(""),
+						Tag:               utility.ToStringPtr(""),
 						AttachedVolumeIDs: []string{},
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -232,26 +233,26 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id:      model.ToStringPtr(fmt.Sprintf("host%d", i)),
-						HostURL: model.ToStringPtr(""),
+						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
-							Id:                   model.ToStringPtr(""),
-							Provider:             model.ToStringPtr(evergreen.ProviderNameMock),
-							ImageId:              model.ToStringPtr(""),
-							WorkDir:              model.ToStringPtr(""),
+							Id:                   utility.ToStringPtr(""),
+							Provider:             utility.ToStringPtr(evergreen.ProviderNameMock),
+							ImageId:              utility.ToStringPtr(""),
+							WorkDir:              utility.ToStringPtr(""),
 							IsVirtualWorkstation: false,
-							User:                 model.ToStringPtr(""),
-							BootstrapMethod:      model.ToStringPtr(""),
+							User:                 utility.ToStringPtr(""),
+							BootstrapMethod:      utility.ToStringPtr(""),
 						},
-						StartedBy:         model.ToStringPtr(""),
-						Provider:          model.ToStringPtr(""),
-						User:              model.ToStringPtr(""),
-						Status:            model.ToStringPtr(""),
-						InstanceType:      model.ToStringPtr(""),
-						AvailabilityZone:  model.ToStringPtr(""),
-						DisplayName:       model.ToStringPtr(""),
-						HomeVolumeID:      model.ToStringPtr(""),
-						Tag:               model.ToStringPtr(""),
+						StartedBy:         utility.ToStringPtr(""),
+						Provider:          utility.ToStringPtr(""),
+						User:              utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(""),
+						InstanceType:      utility.ToStringPtr(""),
+						AvailabilityZone:  utility.ToStringPtr(""),
+						DisplayName:       utility.ToStringPtr(""),
+						HomeVolumeID:      utility.ToStringPtr(""),
+						Tag:               utility.ToStringPtr(""),
 						AttachedVolumeIDs: []string{},
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -692,16 +693,16 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    model.ToStringPtr(status),
-						TaskId:    model.ToStringPtr(""),
-						TestFile:  model.ToStringPtr(""),
+						Status:    utility.ToStringPtr(status),
+						TaskId:    utility.ToStringPtr(""),
+						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToStringPtr(""),
-							URLRaw: model.ToStringPtr(""),
-							LogId:  model.ToStringPtr(""),
+							URL:    utility.ToStringPtr(""),
+							URLRaw: utility.ToStringPtr(""),
+							LogId:  utility.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -736,16 +737,16 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    model.ToStringPtr(status),
-						TaskId:    model.ToStringPtr(""),
-						TestFile:  model.ToStringPtr(""),
+						Status:    utility.ToStringPtr(status),
+						TaskId:    utility.ToStringPtr(""),
+						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToStringPtr(""),
-							URLRaw: model.ToStringPtr(""),
-							LogId:  model.ToStringPtr(""),
+							URL:    utility.ToStringPtr(""),
+							URLRaw: utility.ToStringPtr(""),
+							LogId:  utility.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -780,16 +781,16 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    model.ToStringPtr(status),
-						TaskId:    model.ToStringPtr(""),
-						TestFile:  model.ToStringPtr(""),
+						Status:    utility.ToStringPtr(status),
+						TaskId:    utility.ToStringPtr(""),
+						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToStringPtr(""),
-							URLRaw: model.ToStringPtr(""),
-							LogId:  model.ToStringPtr(""),
+							URL:    utility.ToStringPtr(""),
+							URLRaw: utility.ToStringPtr(""),
+							LogId:  utility.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -824,16 +825,16 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						Id:        model.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
+						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    model.ToStringPtr(status),
-						TaskId:    model.ToStringPtr(""),
-						TestFile:  model.ToStringPtr(""),
+						Status:    utility.ToStringPtr(status),
+						TaskId:    utility.ToStringPtr(""),
+						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    model.ToStringPtr(""),
-							URLRaw: model.ToStringPtr(""),
-							LogId:  model.ToStringPtr(""),
+							URL:    utility.ToStringPtr(""),
+							URLRaw: utility.ToStringPtr(""),
+							LogId:  utility.ToStringPtr(""),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -995,7 +996,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Priority, ShouldEqual, int64(100))
 			So(resTask.Activated, ShouldBeTrue)
-			So(model.FromStringPtr(resTask.ActivatedBy), ShouldEqual, "testUser")
+			So(utility.FromStringPtr(resTask.ActivatedBy), ShouldEqual, "testUser")
 		})
 	})
 }
@@ -1079,8 +1080,8 @@ func TestTaskGetHandler(t *testing.T) {
 				res := model.APITask{}
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
-				So(model.FromStringPtr(res.Id), ShouldEqual, "testTaskId")
-				So(model.FromStringPtr(res.ProjectId), ShouldEqual, "testProject")
+				So(utility.FromStringPtr(res.Id), ShouldEqual, "testTaskId")
+				So(utility.FromStringPtr(res.ProjectId), ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("and old tasks are available", func() {

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 )
 
 type APISelector struct {
@@ -26,8 +27,8 @@ type APISubscription struct {
 func (s *APISelector) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Selector:
-		s.Data = ToStringPtr(v.Data)
-		s.Type = ToStringPtr(v.Type)
+		s.Data = utility.ToStringPtr(v.Data)
+		s.Type = utility.ToStringPtr(v.Type)
 	default:
 		return errors.New("unrecognized type for APISelector")
 	}
@@ -37,19 +38,19 @@ func (s *APISelector) BuildFromService(h interface{}) error {
 
 func (s *APISelector) ToService() (interface{}, error) {
 	return event.Selector{
-		Data: FromStringPtr(s.Data),
-		Type: FromStringPtr(s.Type),
+		Data: utility.FromStringPtr(s.Data),
+		Type: utility.FromStringPtr(s.Type),
 	}, nil
 }
 
 func (s *APISubscription) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Subscription:
-		s.ID = ToStringPtr(v.ID)
-		s.ResourceType = ToStringPtr(v.ResourceType)
-		s.Trigger = ToStringPtr(v.Trigger)
-		s.Owner = ToStringPtr(v.Owner)
-		s.OwnerType = ToStringPtr(string(v.OwnerType))
+		s.ID = utility.ToStringPtr(v.ID)
+		s.ResourceType = utility.ToStringPtr(v.ResourceType)
+		s.Trigger = utility.ToStringPtr(v.Trigger)
+		s.Owner = utility.ToStringPtr(v.Owner)
+		s.OwnerType = utility.ToStringPtr(string(v.OwnerType))
 		s.TriggerData = v.TriggerData
 		err := s.Subscriber.BuildFromService(v.Subscriber)
 		if err != nil {
@@ -82,11 +83,11 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 
 func (s *APISubscription) ToService() (interface{}, error) {
 	out := event.Subscription{
-		ID:             FromStringPtr(s.ID),
-		ResourceType:   FromStringPtr(s.ResourceType),
-		Trigger:        FromStringPtr(s.Trigger),
-		Owner:          FromStringPtr(s.Owner),
-		OwnerType:      event.OwnerType(FromStringPtr(s.OwnerType)),
+		ID:             utility.FromStringPtr(s.ID),
+		ResourceType:   utility.FromStringPtr(s.ResourceType),
+		Trigger:        utility.FromStringPtr(s.Trigger),
+		Owner:          utility.FromStringPtr(s.Owner),
+		OwnerType:      event.OwnerType(utility.FromStringPtr(s.OwnerType)),
 		Selectors:      []event.Selector{},
 		RegexSelectors: []event.Selector{},
 		TriggerData:    s.TriggerData,

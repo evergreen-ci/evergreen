@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/jasper"
@@ -72,10 +71,10 @@ func resetProjectRefs() {
 		Repo:        "mci-test",
 		Branch:      "master",
 		RemotePath:  "mci",
-		Enabled:     util.TruePtr(),
-		Private:     util.FalsePtr(),
+		Enabled:     utility.TruePtr(),
+		Private:     utility.FalsePtr(),
 		BatchTime:   60,
-		Hidden:      util.FalsePtr(),
+		Hidden:      utility.FalsePtr(),
 	}
 	evgProjectRef = &model.ProjectRef{
 		Repo:       "evergreen",
@@ -83,7 +82,7 @@ func resetProjectRefs() {
 		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		Enabled:    util.TruePtr(),
+		Enabled:    utility.TruePtr(),
 	}
 }
 
@@ -210,10 +209,10 @@ func TestGetRemoteConfig(t *testing.T) {
 				Repo:        "config",
 				Branch:      "master",
 				RemotePath:  "random.txt",
-				Enabled:     util.TruePtr(),
-				Private:     util.FalsePtr(),
+				Enabled:     utility.TruePtr(),
+				Private:     utility.FalsePtr(),
 				BatchTime:   60,
-				Hidden:      util.FalsePtr(),
+				Hidden:      utility.FalsePtr(),
 			}
 			token, err := testConfig.GetGithubOauthToken()
 			So(err, ShouldBeNil)

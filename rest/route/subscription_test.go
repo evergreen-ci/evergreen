@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -181,7 +182,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	resp = h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 	sub := resp.Data().([]model.APISubscription)
-	s.Equal(event.ResourceTypePatch, model.FromStringPtr(sub[0].ResourceType))
+	s.Equal(event.ResourceTypePatch, utility.FromStringPtr(sub[0].ResourceType))
 
 	// delete the subscription
 	d := &subscriptionDeleteHandler{sc: s.sc, id: id}

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -473,16 +474,16 @@ func TestGetVolumesHandler(t *testing.T) {
 	require.Len(t, volumes, 2)
 
 	for _, v := range volumes {
-		assert.Equal(t, "user", model.FromStringPtr(v.CreatedBy))
-		assert.Equal(t, evergreen.DefaultEBSType, model.FromStringPtr(v.Type))
-		assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromStringPtr(v.AvailabilityZone))
-		if model.FromStringPtr(v.ID) == "volume1" {
-			assert.Equal(t, h1.Id, model.FromStringPtr(v.HostID))
-			assert.Equal(t, h1.Volumes[0].DeviceName, model.FromStringPtr(v.DeviceName))
+		assert.Equal(t, "user", utility.FromStringPtr(v.CreatedBy))
+		assert.Equal(t, evergreen.DefaultEBSType, utility.FromStringPtr(v.Type))
+		assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, utility.FromStringPtr(v.AvailabilityZone))
+		if utility.FromStringPtr(v.ID) == "volume1" {
+			assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
+			assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
 			assert.Equal(t, v.Size, 64)
 		} else {
-			assert.Empty(t, model.FromStringPtr(v.HostID))
-			assert.Empty(t, model.FromStringPtr(v.DeviceName))
+			assert.Empty(t, utility.FromStringPtr(v.HostID))
+			assert.Empty(t, utility.FromStringPtr(v.DeviceName))
 			assert.Equal(t, v.Size, 36)
 		}
 	}
@@ -527,11 +528,11 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 	v, ok := resp.Data().(*model.APIVolume)
 	assert.True(t, ok)
 	require.NotNil(t, v)
-	assert.Equal(t, "user", model.FromStringPtr(v.CreatedBy))
-	assert.Equal(t, evergreen.DefaultEBSType, model.FromStringPtr(v.Type))
-	assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, model.FromStringPtr(v.AvailabilityZone))
-	assert.Equal(t, h1.Id, model.FromStringPtr(v.HostID))
-	assert.Equal(t, h1.Volumes[0].DeviceName, model.FromStringPtr(v.DeviceName))
+	assert.Equal(t, "user", utility.FromStringPtr(v.CreatedBy))
+	assert.Equal(t, evergreen.DefaultEBSType, utility.FromStringPtr(v.Type))
+	assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, utility.FromStringPtr(v.AvailabilityZone))
+	assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
+	assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
 	assert.Equal(t, v.Size, 64)
 }
 
@@ -547,8 +548,8 @@ func TestMakeSpawnHostSubscription(t *testing.T) {
 
 	sub, err := makeSpawnHostSubscription("id", event.SlackSubscriberType, user)
 	assert.NoError(t, err)
-	assert.Equal(t, event.ResourceTypeHost, model.FromStringPtr(sub.ResourceType))
+	assert.Equal(t, event.ResourceTypeHost, utility.FromStringPtr(sub.ResourceType))
 	assert.Len(t, sub.Selectors, 1)
-	assert.Equal(t, event.SlackSubscriberType, model.FromStringPtr(sub.Subscriber.Type))
+	assert.Equal(t, event.SlackSubscriberType, utility.FromStringPtr(sub.Subscriber.Type))
 	assert.Equal(t, "@mci", sub.Subscriber.Target)
 }

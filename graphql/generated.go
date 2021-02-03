@@ -306,7 +306,7 @@ type ComplexityRoot struct {
 		AddAnnotationIssue        func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
-		BbCreateTicket            func(childComplexity int, taskID string) int
+		BbCreateTicket            func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions      func(childComplexity int) int
 		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
@@ -810,7 +810,7 @@ type MutationResolver interface {
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
-	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
+	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 }
 type PatchResolver interface {
@@ -2010,7 +2010,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Mutation.clearMySubscriptions":
 		if e.complexity.Mutation.ClearMySubscriptions == nil {
@@ -4687,7 +4687,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
-  bbCreateTicket(taskId: String!): Boolean!
+  bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
 
@@ -5619,6 +5619,14 @@ func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Conte
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -12922,7 +12930,7 @@ func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string))
+		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string), args["execution"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

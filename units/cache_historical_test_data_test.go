@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	_ "github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
@@ -463,7 +463,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Id:         s.projectId,
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		Enabled:    util.TruePtr(),
+		Enabled:    utility.TruePtr(),
 	}
 	err = ref.Insert()
 	s.NoError(err)

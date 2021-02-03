@@ -21,7 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/yaml.v2"
@@ -84,7 +84,7 @@ func setupCLITestHarness() cliTestHarness {
 		Repo:       "sample",
 		Branch:     "master",
 		RemotePath: "evergreen.yml",
-		Enabled:    util.TruePtr(),
+		Enabled:    utility.TruePtr(),
 		BatchTime:  180,
 	}
 	So(projectRef.Insert(), ShouldBeNil)

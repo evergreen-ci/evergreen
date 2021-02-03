@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,18 +36,18 @@ func TestDistroBuildFromService(t *testing.T) {
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
 	require.NoError(t, err)
-	assert.Equal(t, FromStringPtr(apiDistro.Name), d.Id)
-	assert.Equal(t, d.BootstrapSettings.Method, FromStringPtr(apiDistro.BootstrapSettings.Method))
-	assert.Equal(t, d.BootstrapSettings.Communication, FromStringPtr(apiDistro.BootstrapSettings.Communication))
-	assert.Equal(t, d.BootstrapSettings.ClientDir, FromStringPtr(apiDistro.BootstrapSettings.ClientDir))
-	assert.Equal(t, d.BootstrapSettings.JasperBinaryDir, FromStringPtr(apiDistro.BootstrapSettings.JasperBinaryDir))
-	assert.Equal(t, d.BootstrapSettings.JasperCredentialsPath, FromStringPtr(apiDistro.BootstrapSettings.JasperCredentialsPath))
-	assert.Equal(t, d.BootstrapSettings.ServiceUser, FromStringPtr(apiDistro.BootstrapSettings.ServiceUser))
-	assert.Equal(t, d.BootstrapSettings.ShellPath, FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
-	assert.Equal(t, d.Note, FromStringPtr(apiDistro.Note))
-	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
-	assert.Equal(t, d.IcecreamSettings.SchedulerHost, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
-	assert.Equal(t, d.IcecreamSettings.ConfigPath, FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
+	assert.Equal(t, utility.FromStringPtr(apiDistro.Name), d.Id)
+	assert.Equal(t, d.BootstrapSettings.Method, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
+	assert.Equal(t, d.BootstrapSettings.Communication, utility.FromStringPtr(apiDistro.BootstrapSettings.Communication))
+	assert.Equal(t, d.BootstrapSettings.ClientDir, utility.FromStringPtr(apiDistro.BootstrapSettings.ClientDir))
+	assert.Equal(t, d.BootstrapSettings.JasperBinaryDir, utility.FromStringPtr(apiDistro.BootstrapSettings.JasperBinaryDir))
+	assert.Equal(t, d.BootstrapSettings.JasperCredentialsPath, utility.FromStringPtr(apiDistro.BootstrapSettings.JasperCredentialsPath))
+	assert.Equal(t, d.BootstrapSettings.ServiceUser, utility.FromStringPtr(apiDistro.BootstrapSettings.ServiceUser))
+	assert.Equal(t, d.BootstrapSettings.ShellPath, utility.FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
+	assert.Equal(t, d.Note, utility.FromStringPtr(apiDistro.Note))
+	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
+	assert.Equal(t, d.IcecreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
+	assert.Equal(t, d.IcecreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -57,24 +58,24 @@ func TestDistroBuildFromServiceDefaults(t *testing.T) {
 	apiDistro := &APIDistro{}
 	require.NoError(t, apiDistro.BuildFromService(d))
 
-	assert.Equal(t, distro.BootstrapMethodLegacySSH, FromStringPtr(apiDistro.BootstrapSettings.Method))
-	assert.Equal(t, distro.CommunicationMethodLegacySSH, FromStringPtr(apiDistro.BootstrapSettings.Method))
-	assert.Equal(t, distro.CloneMethodLegacySSH, FromStringPtr(apiDistro.CloneMethod))
+	assert.Equal(t, distro.BootstrapMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
+	assert.Equal(t, distro.CommunicationMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
+	assert.Equal(t, distro.CloneMethodLegacySSH, utility.FromStringPtr(apiDistro.CloneMethod))
 }
 
 func TestDistroToService(t *testing.T) {
 	apiDistro := APIDistro{
-		Name:        ToStringPtr("id"),
-		CloneMethod: ToStringPtr(distro.CloneMethodOAuth),
+		Name:        utility.ToStringPtr("id"),
+		CloneMethod: utility.ToStringPtr(distro.CloneMethodOAuth),
 		BootstrapSettings: APIBootstrapSettings{
-			Method:                ToStringPtr(distro.BootstrapMethodSSH),
-			Communication:         ToStringPtr(distro.CommunicationMethodSSH),
-			ClientDir:             ToStringPtr("/client_dir"),
-			JasperBinaryDir:       ToStringPtr("/jasper_binary_dir"),
-			JasperCredentialsPath: ToStringPtr("/jasper_credentials_path"),
-			ServiceUser:           ToStringPtr("service_user"),
-			ShellPath:             ToStringPtr("/shell_path"),
-			Env:                   []APIEnvVar{{Key: ToStringPtr("envKey"), Value: ToStringPtr("envValue")}},
+			Method:                utility.ToStringPtr(distro.BootstrapMethodSSH),
+			Communication:         utility.ToStringPtr(distro.CommunicationMethodSSH),
+			ClientDir:             utility.ToStringPtr("/client_dir"),
+			JasperBinaryDir:       utility.ToStringPtr("/jasper_binary_dir"),
+			JasperCredentialsPath: utility.ToStringPtr("/jasper_credentials_path"),
+			ServiceUser:           utility.ToStringPtr("service_user"),
+			ShellPath:             utility.ToStringPtr("/shell_path"),
+			Env:                   []APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}},
 			ResourceLimits: APIResourceLimits{
 				NumFiles:        1,
 				NumProcesses:    2,
@@ -83,18 +84,18 @@ func TestDistroToService(t *testing.T) {
 			},
 			PreconditionScripts: []APIPreconditionScript{
 				{
-					Path:   ToStringPtr("/tmp/foo"),
-					Script: ToStringPtr("echo foo"),
+					Path:   utility.ToStringPtr("/tmp/foo"),
+					Script: utility.ToStringPtr("echo foo"),
 				},
 			},
 		},
-		Note: ToStringPtr("note1"),
+		Note: utility.ToStringPtr("note1"),
 		HomeVolumeSettings: APIHomeVolumeSettings{
-			FormatCommand: ToStringPtr("format_command"),
+			FormatCommand: utility.ToStringPtr("format_command"),
 		},
 		IcecreamSettings: APIIcecreamSettings{
-			SchedulerHost: ToStringPtr("host"),
-			ConfigPath:    ToStringPtr("config_path"),
+			SchedulerHost: utility.ToStringPtr("host"),
+			ConfigPath:    utility.ToStringPtr("config_path"),
 		},
 	}
 
@@ -104,33 +105,33 @@ func TestDistroToService(t *testing.T) {
 	d, ok := res.(*distro.Distro)
 	require.True(t, ok)
 
-	assert.Equal(t, FromStringPtr(apiDistro.CloneMethod), d.CloneMethod)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Method), d.BootstrapSettings.Method)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Communication), d.BootstrapSettings.Communication)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ClientDir), d.BootstrapSettings.ClientDir)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.JasperBinaryDir), d.BootstrapSettings.JasperBinaryDir)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.JasperCredentialsPath), d.BootstrapSettings.JasperCredentialsPath)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ServiceUser), d.BootstrapSettings.ServiceUser)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.ShellPath), d.BootstrapSettings.ShellPath)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.CloneMethod), d.CloneMethod)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Method), d.BootstrapSettings.Method)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Communication), d.BootstrapSettings.Communication)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.ClientDir), d.BootstrapSettings.ClientDir)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.JasperBinaryDir), d.BootstrapSettings.JasperBinaryDir)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.JasperCredentialsPath), d.BootstrapSettings.JasperCredentialsPath)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.ServiceUser), d.BootstrapSettings.ServiceUser)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.ShellPath), d.BootstrapSettings.ShellPath)
 	require.Len(t, d.BootstrapSettings.Env, 1)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Env[0].Key), d.BootstrapSettings.Env[0].Key)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.Env[0].Value), d.BootstrapSettings.Env[0].Value)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Env[0].Key), d.BootstrapSettings.Env[0].Key)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Env[0].Value), d.BootstrapSettings.Env[0].Value)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumFiles, d.BootstrapSettings.ResourceLimits.NumFiles)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	require.Len(t, d.BootstrapSettings.PreconditionScripts, 1)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Path), d.BootstrapSettings.PreconditionScripts[0].Path)
-	assert.Equal(t, FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
-	assert.Equal(t, FromStringPtr(apiDistro.Note), (d.Note))
-	assert.Equal(t, FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
-	assert.Equal(t, FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)
-	assert.Equal(t, FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IcecreamSettings.ConfigPath)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Path), d.BootstrapSettings.PreconditionScripts[0].Path)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.Note), (d.Note))
+	assert.Equal(t, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IcecreamSettings.ConfigPath)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {
 	apiDistro := APIDistro{
-		Name: ToStringPtr("id"),
+		Name: utility.ToStringPtr("id"),
 	}
 
 	res, err := apiDistro.ToService()

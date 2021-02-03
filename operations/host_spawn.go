@@ -158,7 +158,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", restModel.FromStringPtr(host.Id))
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", utility.FromStringPtr(host.Id))
 			return nil
 		},
 	}
@@ -530,11 +530,11 @@ func hostSSH() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem getting host")
 			}
-			if restModel.FromStringPtr(h.Status) != evergreen.HostRunning {
+			if utility.FromStringPtr(h.Status) != evergreen.HostRunning {
 				return errors.New("host is not running")
 			}
-			user := restModel.FromStringPtr(h.User)
-			url := restModel.FromStringPtr(h.HostURL)
+			user := utility.FromStringPtr(h.User)
+			url := utility.FromStringPtr(h.HostURL)
 			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
@@ -757,16 +757,16 @@ func printVolumes(volumes []restModel.APIVolume, userID string) {
 	}
 	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
-		grip.Infof("\n%-18s: %s\n", "ID", restModel.FromStringPtr(v.ID))
-		if restModel.FromStringPtr(v.DisplayName) != "" {
-			grip.Infof("%-18s: %s\n", "Name", restModel.FromStringPtr(v.DisplayName))
+		grip.Infof("\n%-18s: %s\n", "ID", utility.FromStringPtr(v.ID))
+		if utility.FromStringPtr(v.DisplayName) != "" {
+			grip.Infof("%-18s: %s\n", "Name", utility.FromStringPtr(v.DisplayName))
 		}
 		grip.Infof("%-18s: %d\n", "Size", v.Size)
-		grip.Infof("%-18s: %s\n", "Type", restModel.FromStringPtr(v.Type))
-		grip.Infof("%-18s: %s\n", "Availability Zone", restModel.FromStringPtr(v.AvailabilityZone))
-		if restModel.FromStringPtr(v.HostID) != "" {
-			grip.Infof("%-18s: %s\n", "Device Name", restModel.FromStringPtr(v.DeviceName))
-			grip.Infof("%-18s: %s\n", "Attached to Host", restModel.FromStringPtr(v.HostID))
+		grip.Infof("%-18s: %s\n", "Type", utility.FromStringPtr(v.Type))
+		grip.Infof("%-18s: %s\n", "Availability Zone", utility.FromStringPtr(v.AvailabilityZone))
+		if utility.FromStringPtr(v.HostID) != "" {
+			grip.Infof("%-18s: %s\n", "Device Name", utility.FromStringPtr(v.DeviceName))
+			grip.Infof("%-18s: %s\n", "Attached to Host", utility.FromStringPtr(v.HostID))
 		} else {
 			t, err := restModel.FromTimePtr(v.Expiration)
 			if err == nil && !utility.IsZeroTime(t) {
@@ -834,7 +834,7 @@ func hostCreateVolume() cli.Command {
 				return err
 			}
 
-			grip.Infof("Created volume '%s'.", restModel.FromStringPtr(volume.ID))
+			grip.Infof("Created volume '%s'.", utility.FromStringPtr(volume.ID))
 
 			return nil
 		},
@@ -944,13 +944,13 @@ func hostList() cli.Command {
 func printHosts(hosts []*restModel.APIHost) {
 	for _, h := range hosts {
 		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
-			restModel.FromStringPtr(h.Id),
-			restModel.FromStringPtr(h.DisplayName),
-			restModel.FromStringPtr(h.Distro.Id),
-			restModel.FromStringPtr(h.Status),
-			restModel.FromStringPtr(h.HostURL),
-			restModel.FromStringPtr(h.User),
-			restModel.FromStringPtr(h.AvailabilityZone))
+			utility.FromStringPtr(h.Id),
+			utility.FromStringPtr(h.DisplayName),
+			utility.FromStringPtr(h.Distro.Id),
+			utility.FromStringPtr(h.Status),
+			utility.FromStringPtr(h.HostURL),
+			utility.FromStringPtr(h.User),
+			utility.FromStringPtr(h.AvailabilityZone))
 	}
 }
 
@@ -1108,7 +1108,7 @@ func hostRunCommand() cli.Command {
 					return nil
 				}
 				for _, host := range hosts {
-					hostIDs = append(hostIDs, restModel.FromStringPtr(host.Id))
+					hostIDs = append(hostIDs, utility.FromStringPtr(host.Id))
 				}
 
 				if !skipConfirm {
@@ -1423,11 +1423,11 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	}
 
 	for _, h := range hosts {
-		if restModel.FromStringPtr(h.Id) == hostID {
+		if utility.FromStringPtr(h.Id) == hostID {
 			catcher := grip.NewBasicCatcher()
-			user = restModel.FromStringPtr(h.User)
+			user = utility.FromStringPtr(h.User)
 			catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
-			hostname = restModel.FromStringPtr(h.HostURL)
+			hostname = utility.FromStringPtr(h.HostURL)
 			catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
 			return user, hostname, catcher.Resolve()
 		}

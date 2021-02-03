@@ -38,10 +38,10 @@ type TestLogs struct {
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
-		at.Status = ToStringPtr(v.Status)
-		at.TestFile = ToStringPtr(v.TestFile)
+		at.Status = utility.ToStringPtr(v.Status)
+		at.TestFile = utility.ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
-		at.Id = ToStringPtr(v.ID.Hex())
+		at.Id = utility.ToStringPtr(v.ID.Hex())
 
 		startTime := utility.FromPythonTime(v.StartTime)
 		endTime := utility.FromPythonTime(v.EndTime)
@@ -50,9 +50,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.EndTime = ToTimePtr(endTime)
 
 		at.Logs = TestLogs{
-			URL:     ToStringPtr(v.URL),
-			URLRaw:  ToStringPtr(v.URLRaw),
-			LogId:   ToStringPtr(v.LogID),
+			URL:     utility.ToStringPtr(v.URL),
+			URLRaw:  utility.ToStringPtr(v.URLRaw),
+			LogId:   utility.ToStringPtr(v.LogID),
 			LineNum: v.LineNum,
 		}
 
@@ -78,7 +78,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.RawDisplayURL = &dispString
 		}
 	case string:
-		at.TaskId = ToStringPtr(v)
+		at.TaskId = utility.ToStringPtr(v)
 	default:
 		return fmt.Errorf("Incorrect type when creating APITest")
 	}
@@ -95,11 +95,11 @@ func (at *APITest) ToService() (interface{}, error) {
 		return nil, catcher.Resolve()
 	}
 	return &testresult.TestResult{
-		Status:    FromStringPtr(at.Status),
-		TestFile:  FromStringPtr(at.TestFile),
-		URL:       FromStringPtr(at.Logs.URL),
-		URLRaw:    FromStringPtr(at.Logs.URLRaw),
-		LogID:     FromStringPtr(at.Logs.LogId),
+		Status:    utility.FromStringPtr(at.Status),
+		TestFile:  utility.FromStringPtr(at.TestFile),
+		URL:       utility.FromStringPtr(at.Logs.URL),
+		URLRaw:    utility.FromStringPtr(at.Logs.URLRaw),
+		LogID:     utility.FromStringPtr(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
 		StartTime: utility.ToPythonTime(start),

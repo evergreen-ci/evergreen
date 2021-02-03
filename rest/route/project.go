@@ -255,7 +255,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	projectId := model.FromStringPtr(requestProjectRef.Id)
+	projectId := utility.FromStringPtr(requestProjectRef.Id)
 	if projectId != oldProject.Id {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
@@ -296,15 +296,15 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.project))
 	}
 
-	adminsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
+	adminsToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
 	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...))      // get original and new admin
 	newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
 
-	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
+	usersToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
 	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
 	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
-	teamsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedTeams)
+	teamsToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedTeams)
 	allAuthorizedTeams := utility.UniqueStrings(append(oldProject.GitTagAuthorizedTeams, newProjectRef.GitTagAuthorizedTeams...))
 	newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
@@ -427,7 +427,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	newRevision := model.FromStringPtr(requestProjectRef.Revision)
+	newRevision := utility.FromStringPtr(requestProjectRef.Revision)
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -479,8 +479,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
 	for i := range requestProjectRef.Subscriptions {
-		requestProjectRef.Subscriptions[i].OwnerType = model.ToStringPtr(string(event.OwnerTypeProject))
-		requestProjectRef.Subscriptions[i].Owner = model.ToStringPtr(h.project)
+		requestProjectRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
+		requestProjectRef.Subscriptions[i].Owner = utility.ToStringPtr(h.project)
 	}
 	if err = h.sc.SaveSubscriptions(projectId, requestProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.project))
@@ -488,7 +488,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	toDelete := []string{}
 	for _, deleteSub := range requestProjectRef.DeleteSubscriptions {
-		toDelete = append(toDelete, model.FromStringPtr(deleteSub))
+		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
 	if err = h.sc.DeleteSubscriptions(projectId, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.project))
@@ -525,19 +525,19 @@ func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias
 	aliasesToDelete := map[string]bool{}
 	for _, a := range pRef.Aliases {
 		// return immediately if a new definition has been added
-		if model.FromStringPtr(a.Alias) == alias && !a.Delete {
+		if utility.FromStringPtr(a.Alias) == alias && !a.Delete {
 			return true, nil
 		}
-		aliasesToDelete[model.FromStringPtr(a.ID)] = a.Delete
+		aliasesToDelete[utility.FromStringPtr(a.ID)] = a.Delete
 	}
 
 	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id), model.FromStringPtr(pRef.RepoRefId))
+	aliases, err := h.sc.FindProjectAliases(utility.FromStringPtr(pRef.Id), utility.FromStringPtr(pRef.RepoRefId))
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
 	for _, a := range aliases {
-		if model.FromStringPtr(a.Alias) == alias && !aliasesToDelete[model.FromStringPtr(a.ID)] {
+		if utility.FromStringPtr(a.Alias) == alias && !aliasesToDelete[utility.FromStringPtr(a.ID)] {
 			return true, nil
 		}
 	}
@@ -716,9 +716,9 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		Repo:            project.Repo,
 		Branch:          project.Branch,
 		RepoRefId:       project.RepoRefId,
-		Enabled:         util.FalsePtr(),
+		Enabled:         utility.FalsePtr(),
 		UseRepoSettings: true,
-		Hidden:          util.TruePtr(),
+		Hidden:          utility.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))

@@ -228,71 +228,71 @@ var (
 )
 
 func (p *ProjectRef) IsEnabled() bool {
-	return util.IsPtrSetToTrue(p.Enabled)
+	return utility.FromBoolPtr(p.Enabled)
 }
 
 func (p *ProjectRef) IsPrivate() bool {
-	return util.IsPtrSetToTrue(p.Private)
+	return utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
-	return util.IsPtrSetToTrue(p.Restricted)
+	return utility.FromBoolPtr(p.Restricted)
 }
 
 func (p *ProjectRef) IsPatchingDisabled() bool {
-	return util.IsPtrSetToTrue(p.PatchingDisabled)
+	return utility.FromBoolPtr(p.PatchingDisabled)
 }
 
 func (p *ProjectRef) IsRepotrackerDisabled() bool {
-	return util.IsPtrSetToTrue(p.RepotrackerDisabled)
+	return utility.FromBoolPtr(p.RepotrackerDisabled)
 }
 
 func (p *ProjectRef) IsDispatchingDisabled() bool {
-	return util.IsPtrSetToTrue(p.DispatchingDisabled)
+	return utility.FromBoolPtr(p.DispatchingDisabled)
 }
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
-	return util.IsPtrSetToTrue(p.PRTestingEnabled)
+	return utility.FromBoolPtr(p.PRTestingEnabled)
 }
 
 func (p *ProjectRef) IsGithubChecksEnabled() bool {
-	return util.IsPtrSetToTrue(p.GithubChecksEnabled)
+	return utility.FromBoolPtr(p.GithubChecksEnabled)
 }
 
 func (p *ProjectRef) ShouldDeactivatePrevious() bool {
-	return util.IsPtrSetToTrue(p.DeactivatePrevious)
+	return utility.FromBoolPtr(p.DeactivatePrevious)
 }
 
 func (p *ProjectRef) ShouldNotifyOnBuildFailure() bool {
-	return util.IsPtrSetToTrue(p.NotifyOnBuildFailure)
+	return utility.FromBoolPtr(p.NotifyOnBuildFailure)
 }
 
 func (p *ProjectRef) IsCedarTestResultsEnabled() bool {
-	return util.IsPtrSetToTrue(p.CedarTestResultsEnabled)
+	return utility.FromBoolPtr(p.CedarTestResultsEnabled)
 }
 
 func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
-	return util.IsPtrSetToTrue(p.GitTagVersionsEnabled)
+	return utility.FromBoolPtr(p.GitTagVersionsEnabled)
 }
 
 func (p *ProjectRef) IsStatsCacheDisabled() bool {
-	return util.IsPtrSetToTrue(p.DisabledStatsCache)
+	return utility.FromBoolPtr(p.DisabledStatsCache)
 }
 
 func (p *ProjectRef) IsHidden() bool {
-	return util.IsPtrSetToTrue(p.Hidden)
+	return utility.FromBoolPtr(p.Hidden)
 }
 
 func (p *CommitQueueParams) IsEnabled() bool {
-	return util.IsPtrSetToTrue(p.Enabled)
+	return utility.FromBoolPtr(p.Enabled)
 }
 
 func (ts *TaskSyncOptions) IsPatchEnabled() bool {
-	return util.IsPtrSetToTrue(ts.PatchEnabled)
+	return utility.FromBoolPtr(ts.PatchEnabled)
 }
 
 func (ts *TaskSyncOptions) IsConfigEnabled() bool {
-	return util.IsPtrSetToTrue(ts.ConfigEnabled)
+	return utility.FromBoolPtr(ts.ConfigEnabled)
 }
 
 const (
@@ -346,7 +346,7 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 				Admins:  []string{user.Username()},
 				Owner:   p.Owner,
 				Repo:    p.Repo,
-				Enabled: util.TruePtr(),
+				Enabled: utility.TruePtr(),
 			}}
 			// creates scope and give user admin access to repo
 			if err = repoRef.Add(user); err != nil {

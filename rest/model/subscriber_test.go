@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +35,7 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToStringPtr(event.GithubPullRequestSubscriberType),
+		Type: utility.ToStringPtr(event.GithubPullRequestSubscriberType),
 		Target: map[string]interface{}{
 			"owner":     "me",
 			"repo":      "mine",
@@ -81,7 +82,7 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToStringPtr(event.GithubMergeSubscriberType),
+		Type: utility.ToStringPtr(event.GithubMergeSubscriberType),
 		Target: map[string]interface{}{
 			"prs": []map[string]interface{}{
 				{
@@ -128,7 +129,7 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToStringPtr(event.EvergreenWebhookSubscriberType),
+		Type: utility.ToStringPtr(event.EvergreenWebhookSubscriberType),
 		Target: map[string]interface{}{
 			"url":    "foo",
 			"secret": "bar",
@@ -165,7 +166,7 @@ func TestSubscriberModelsJIRAIssue(t *testing.T) {
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
-		Type: ToStringPtr(event.JIRAIssueSubscriberType),
+		Type: utility.ToStringPtr(event.JIRAIssueSubscriberType),
 		Target: map[string]interface{}{
 			"project":    "ABC",
 			"issue_type": "123",

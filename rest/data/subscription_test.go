@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -79,14 +80,14 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			subs[0].RegexSelectors[0].Data = restModel.ToStringPtr("")
+			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
 			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			assert.NoError(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
 		},
 		"ModifyExistingSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			newData := restModel.ToStringPtr("5678")
+			newData := utility.ToStringPtr("5678")
 			subs[1].Selectors[0].Data = newData
 			assert.NoError(t, c.SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}))
 
@@ -135,18 +136,18 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				},
 			}
 			newSubscription := restModel.APISubscription{
-				ResourceType: restModel.ToStringPtr(event.ResourceTypeTask),
-				Trigger:      restModel.ToStringPtr("outcome"),
-				Owner:        restModel.ToStringPtr("me"),
-				OwnerType:    restModel.ToStringPtr(string(event.OwnerTypePerson)),
+				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
+				Trigger:      utility.ToStringPtr("outcome"),
+				Owner:        utility.ToStringPtr("me"),
+				OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
 				RegexSelectors: []restModel.APISelector{
 					{
-						Type: restModel.ToStringPtr("object"),
-						Data: restModel.ToStringPtr("object_data"),
+						Type: utility.ToStringPtr("object"),
+						Data: utility.ToStringPtr("object_data"),
 					},
 				},
 				Subscriber: restModel.APISubscriber{
-					Type:   restModel.ToStringPtr(event.EmailSubscriberType),
+					Type:   utility.ToStringPtr(event.EmailSubscriberType),
 					Target: "a@domain.invalid",
 				},
 			}

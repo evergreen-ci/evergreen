@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -35,14 +35,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 				Id:         "12345",
 				Identifier: "projectA",
 				Branch:     "abcd",
-				Enabled:    util.TruePtr(),
+				Enabled:    utility.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 			{
 				Id:         "23456",
 				Identifier: "projectB",
 				Branch:     "bcde",
-				Enabled:    util.TruePtr(),
+				Enabled:    utility.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 		},
@@ -95,12 +95,12 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
-	s.NotEqual("projectC", restmodel.FromStringPtr(newProject.Id))
-	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
-	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
+	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
+	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
+	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
 	s.False(*newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", restmodel.FromStringPtr(newProject.Admins[0]))
+	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
 	res, err := s.route.sc.FindProjectById("projectC", false)
 	s.NoError(err)
@@ -108,7 +108,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	res, err = s.route.sc.FindProjectById("projectA", false)
 	s.NoError(err)
 	s.NotNil(res)
-	vars, err := s.route.sc.FindProjectVarsById(restmodel.FromStringPtr(newProject.Id), "", false)
+	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
 	s.NoError(err)
 	s.Require().NotNil(vars)
 	s.Len(vars.Vars, 2)
@@ -132,13 +132,13 @@ func (s *copyVariablesSuite) SetupSuite() {
 			{
 				Id:      "projectA",
 				Branch:  "abcd",
-				Enabled: util.TruePtr(),
+				Enabled: utility.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 			{
 				Id:      "projectB",
 				Branch:  "bcde",
-				Enabled: util.TruePtr(),
+				Enabled: utility.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 		},

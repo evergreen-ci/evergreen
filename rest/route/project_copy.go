@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -72,7 +71,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	// copy project, disable necessary settings
 	oldId := projectToCopy.Id
 	projectToCopy.Identifier = p.newProject
-	projectToCopy.Enabled = util.FalsePtr()
+	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)

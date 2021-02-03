@@ -19,7 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -58,7 +58,7 @@ func (s *commitQueueSuite) SetupSuite() {
 		Owner: "baxterthehacker",
 		Repo:  "public-repo",
 		CommitQueue: model.CommitQueueParams{
-			Enabled:     util.TruePtr(),
+			Enabled:     utility.TruePtr(),
 			MergeMethod: "squash",
 		},
 	}

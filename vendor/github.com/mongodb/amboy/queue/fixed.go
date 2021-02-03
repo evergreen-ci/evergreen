@@ -84,6 +84,12 @@ func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 		return amboy.NewDuplicateJobErrorf("cannot dispatch '%s', already complete", name)
 	}
 
+	if j.ShouldApplyScopesOnEnqueue() {
+		if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
+			return errors.Wrapf(err, "applying scopes to job")
+		}
+	}
+
 	select {
 	case <-ctx.Done():
 		return errors.Wrapf(ctx.Err(), "queue full, cannot add %s", name)
@@ -104,6 +110,10 @@ func (q *limitedSizeLocal) Save(ctx context.Context, j amboy.Job) error {
 
 	if _, ok := q.storage[name]; !ok {
 		return errors.Errorf("cannot save '%s', which is not tracked", name)
+	}
+
+	if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
+		return errors.Wrapf(err, "applying scopes to job")
 	}
 
 	q.storage[name] = j

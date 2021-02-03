@@ -15,7 +15,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -49,12 +49,12 @@ func TestFetchRevisions(t *testing.T) {
 		})
 
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
-			evgProjectRef.RepotrackerDisabled = util.TruePtr()
+			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 			numVersions, err := model.VersionCount(model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
-			evgProjectRef.RepotrackerDisabled = util.FalsePtr()
+			evgProjectRef.RepotrackerDisabled = utility.FalsePtr()
 		})
 
 		Convey("Only get 2 revisions from the given repository if given a "+
@@ -648,7 +648,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj1 := model.ProjectRef{
 		Id:                   "proj1",
-		NotifyOnBuildFailure: util.FalsePtr(),
+		NotifyOnBuildFailure: utility.FalsePtr(),
 	}
 	v1 := model.Version{
 		Id:         "v1",
@@ -665,7 +665,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj2 := model.ProjectRef{
 		Id:                   "proj2",
-		NotifyOnBuildFailure: util.TruePtr(),
+		NotifyOnBuildFailure: utility.TruePtr(),
 		Admins:               []string{"u2", "u3"},
 	}
 	u2 := user.DBUser{
@@ -735,7 +735,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		Enabled:    util.TruePtr(),
+		Enabled:    utility.TruePtr(),
 	}
 	s.rev = &model.Revision{
 		Author:          "me",
@@ -1128,7 +1128,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	pRef := &model.ProjectRef{
 		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
-		GitTagVersionsEnabled: util.TruePtr(),
+		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	assert.NoError(t, evergreen.UpdateConfig(testutil.TestConfig()))
 	v, err := shellVersionFromRevision(context.TODO(), pRef, metadata)

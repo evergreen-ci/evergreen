@@ -57,23 +57,51 @@ func TestDepot(t *testing.T) {
 
 	type testCase struct {
 		name string
-		test func(t *testing.T, d depot.Depot)
+		test func(t *testing.T, d Depot)
 	}
 
 	for _, impl := range []struct {
-		name    string
-		setup   func() depot.Depot
-		check   func(*testing.T, *depot.Tag, []byte)
-		cleanup func()
-		tests   []testCase
+		name      string
+		setup     func() Depot
+		bootstrap func(t *testing.T) Depot
+		check     func(*testing.T, *depot.Tag, []byte)
+		cleanup   func()
+		tests     []testCase
 	}{
 		{
 			name: "File",
-			setup: func() depot.Depot {
+			setup: func() Depot {
 				tempDir, err = ioutil.TempDir(".", "file_depot")
 				require.NoError(t, err)
-				var d *depot.FileDepot
-				d, err = depot.NewFileDepot(tempDir)
+				var d Depot
+				d, err = NewFileDepot(tempDir)
+				require.NoError(t, err)
+				return d
+			},
+			bootstrap: func(t *testing.T) Depot {
+				conf := BootstrapDepotConfig{
+					FileDepot: tempDir,
+					CAName:    "root",
+					CAOpts: &CertificateOptions{
+						CommonName: "root",
+						Expires:    time.Minute,
+					},
+					ServiceName: "localhost",
+					ServiceOpts: &CertificateOptions{
+						CommonName: "localhost",
+						Host:       "localhost",
+						CA:         "root",
+					},
+				}
+				_, err = BootstrapDepot(ctx, conf)
+				require.NoError(t, err)
+				// We have to do this because the bootstrapped file depot
+				// bootstrapped does not include any DepotOptions.
+				var d Depot
+				d, err = MakeFileDepot(tempDir, DepotOptions{
+					CA:                "root",
+					DefaultExpiration: time.Minute,
+				})
 				require.NoError(t, err)
 				return d
 			},
@@ -97,7 +125,7 @@ func TestDepot(t *testing.T) {
 			tests: []testCase{
 				{
 					name: "PutFailsWithExisting",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
 						assert.NoError(t, d.Put(depot.CrtTag(name), []byte("data")))
@@ -115,7 +143,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "DeleteWhenDNE",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
 						assert.Error(t, d.Delete(depot.CrtTag(name)))
@@ -128,15 +156,43 @@ func TestDepot(t *testing.T) {
 		},
 		{
 			name: "LegacyMongoDB",
-			setup: func() depot.Depot {
+			setup: func() Depot {
 				return &mgoCertDepot{
 					session:        session,
 					databaseName:   databaseName,
 					collectionName: collectionName,
 				}
 			},
+			bootstrap: func(t *testing.T) Depot {
+				conf := BootstrapDepotConfig{
+					MongoDepot: &MongoDBOptions{
+						DatabaseName:   databaseName,
+						CollectionName: collectionName,
+						DepotOptions: DepotOptions{
+							CA:                "root",
+							DefaultExpiration: time.Minute,
+						},
+					},
+					CAName: "root",
+					CAOpts: &CertificateOptions{
+						CommonName: "root",
+						Expires:    time.Minute,
+					},
+					ServiceName: "localhost",
+					ServiceOpts: &CertificateOptions{
+						CommonName: "localhost",
+						Host:       "localhost",
+						CA:         "root",
+					},
+				}
+				var d Depot
+				d, err = BootstrapDepot(ctx, conf)
+				require.NoError(t, err)
+				return d
+			},
 			check: func(t *testing.T, tag *depot.Tag, data []byte) {
-				name, key, err := getNameAndKey(tag)
+				var name, key string
+				name, key, err = getNameAndKey(tag)
 				require.NoError(t, err)
 
 				u := &User{}
@@ -165,7 +221,7 @@ func TestDepot(t *testing.T) {
 			tests: []testCase{
 				{
 					name: "PutUpdates",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 						user := &User{
 							ID:            name,
@@ -220,7 +276,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "CheckReturnsFalseOnExistingUserWithNoData",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "alice"
 						u := &User{
 							ID: name,
@@ -235,7 +291,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "GetFailsOnExistingUserWithNoData",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 						u := &User{
 							ID: name,
@@ -261,7 +317,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "DeleteWhenDNE",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
 						assert.NoError(t, d.Delete(depot.CrtTag(name)))
@@ -274,7 +330,7 @@ func TestDepot(t *testing.T) {
 		},
 		{
 			name: "MongoDB",
-			setup: func() depot.Depot {
+			setup: func() Depot {
 				return &mongoDepot{
 					ctx:            ctx,
 					client:         client,
@@ -282,8 +338,37 @@ func TestDepot(t *testing.T) {
 					collectionName: collectionName,
 				}
 			},
+			bootstrap: func(t *testing.T) Depot {
+				conf := BootstrapDepotConfig{
+					MongoDepot: &MongoDBOptions{
+						DatabaseName:   databaseName,
+						CollectionName: collectionName,
+						DepotOptions: DepotOptions{
+							CA:                "root",
+							DefaultExpiration: time.Minute,
+						},
+					},
+					CAName: "root",
+					CAOpts: &CertificateOptions{
+						CommonName: "root",
+						Expires:    time.Minute,
+					},
+					ServiceName: "localhost",
+					ServiceOpts: &CertificateOptions{
+						CommonName: "localhost",
+						Host:       "localhost",
+						CA:         "root",
+						Expires:    time.Minute,
+					},
+				}
+				var d Depot
+				d, err = BootstrapDepot(ctx, conf)
+				require.NoError(t, err)
+				return d
+			},
 			check: func(t *testing.T, tag *depot.Tag, data []byte) {
-				name, key, err := getNameAndKey(tag)
+				var name, key string
+				name, key, err = getNameAndKey(tag)
 				require.NoError(t, err)
 
 				u := &User{}
@@ -310,7 +395,7 @@ func TestDepot(t *testing.T) {
 			tests: []testCase{
 				{
 					name: "PutUpdates",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						coll := client.Database(databaseName).Collection(collectionName)
 						const name = "bob"
 						user := &User{
@@ -367,7 +452,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "CheckReturnsFalseOnExistingUserWithNoData",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "alice"
 						u := &User{
 							ID: name,
@@ -383,7 +468,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "GetFailsOnExistingUserWithNoData",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 						u := &User{
 							ID: name,
@@ -410,7 +495,7 @@ func TestDepot(t *testing.T) {
 				},
 				{
 					name: "DeleteWhenDNE",
-					test: func(t *testing.T, d depot.Depot) {
+					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
 						assert.NoError(t, d.Delete(depot.CrtTag(name)))
@@ -619,6 +704,61 @@ func TestDepot(t *testing.T) {
 					impl.check(t, depot.PrivKeyTag(name), data)
 					impl.check(t, depot.CsrTag(name), data)
 					impl.check(t, depot.CrlTag(name), data)
+				})
+			})
+			t.Run("Generate", func(t *testing.T) {
+				_ = impl.setup()
+				d := impl.bootstrap(t)
+				defer impl.cleanup()
+				const name = "alice"
+
+				t.Run("FailsWithInvalidName", func(t *testing.T) {
+					creds, err := d.Generate("")
+					assert.Error(t, err)
+					assert.Zero(t, creds)
+				})
+				t.Run("GeneratesCertificateInMemory", func(t *testing.T) {
+					creds, err := d.Generate(name)
+					require.NoError(t, err)
+					assert.NotZero(t, creds)
+					assert.Equal(t, name, creds.ServerName)
+
+					data, err := d.Get(depot.CsrTag(name))
+					assert.Error(t, err)
+					assert.Zero(t, data)
+
+					data, err = d.Get(depot.CrtTag(name))
+					assert.Error(t, err)
+					assert.Zero(t, data)
+				})
+			})
+			t.Run("GenerateWithOptions", func(t *testing.T) {
+				_ = impl.setup()
+				d := impl.bootstrap(t)
+				defer impl.cleanup()
+				const name = "alice"
+
+				t.Run("FailsWithZeroOptions", func(t *testing.T) {
+					creds, err := d.GenerateWithOptions(CertificateOptions{})
+					assert.Error(t, err)
+					assert.Zero(t, creds)
+				})
+				t.Run("GeneratesCertificateInMemory", func(t *testing.T) {
+					creds, err := d.GenerateWithOptions(CertificateOptions{
+						CommonName: name,
+						Host:       name,
+					})
+					require.NoError(t, err)
+					assert.NotZero(t, creds)
+					assert.Equal(t, name, creds.ServerName)
+
+					data, err := d.Get(depot.CsrTag(name))
+					assert.Error(t, err)
+					assert.Zero(t, data)
+
+					data, err = d.Get(depot.CrtTag(name))
+					assert.Error(t, err)
+					assert.Zero(t, data)
 				})
 			})
 		})

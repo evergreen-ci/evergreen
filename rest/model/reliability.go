@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/reliability"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -27,10 +28,10 @@ type APITaskReliability struct {
 func (apiTaskReliability *APITaskReliability) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *reliability.TaskReliability:
-		apiTaskReliability.TaskName = ToStringPtr(v.TaskName)
-		apiTaskReliability.BuildVariant = ToStringPtr(v.BuildVariant)
-		apiTaskReliability.Distro = ToStringPtr(v.Distro)
-		apiTaskReliability.Date = ToStringPtr(v.Date.UTC().Format("2006-01-02"))
+		apiTaskReliability.TaskName = utility.ToStringPtr(v.TaskName)
+		apiTaskReliability.BuildVariant = utility.ToStringPtr(v.BuildVariant)
+		apiTaskReliability.Distro = utility.ToStringPtr(v.Distro)
+		apiTaskReliability.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
 		apiTaskReliability.NumSuccess = v.NumSuccess
 		apiTaskReliability.NumFailed = v.NumFailed
@@ -55,9 +56,9 @@ func (apiTaskReliability *APITaskReliability) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTaskReliability *APITaskReliability) StartAtKey() string {
 	return StartAtKey{
-		date:         FromStringPtr(apiTaskReliability.Date),
-		buildVariant: FromStringPtr(apiTaskReliability.BuildVariant),
-		taskName:     FromStringPtr(apiTaskReliability.TaskName),
-		distro:       FromStringPtr(apiTaskReliability.Distro),
+		date:         utility.FromStringPtr(apiTaskReliability.Date),
+		buildVariant: utility.FromStringPtr(apiTaskReliability.BuildVariant),
+		taskName:     utility.FromStringPtr(apiTaskReliability.TaskName),
+		distro:       utility.FromStringPtr(apiTaskReliability.Distro),
 	}.String()
 }

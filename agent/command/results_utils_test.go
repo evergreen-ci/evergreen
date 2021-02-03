@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -59,7 +59,7 @@ func TestSendTestResults(t *testing.T) {
 	}()
 
 	t.Run("ToCedar", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = util.TruePtr()
+		conf.ProjectRef.CedarTestResultsEnabled = utility.TruePtr()
 		checkRecord := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
 			require.NotZero(t, srv.Create)
 			assert.Equal(t, conf.Task.Id, srv.Create.TaskId)
@@ -125,7 +125,7 @@ func TestSendTestResults(t *testing.T) {
 		}
 	})
 	t.Run("ToEvergreen", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = util.FalsePtr()
+		conf.ProjectRef.CedarTestResultsEnabled = utility.FalsePtr()
 
 		require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 		assert.Equal(t, results, comm.LocalTestResults)
@@ -155,7 +155,7 @@ func TestSendTestLog(t *testing.T) {
 	comm := client.NewMock("url")
 
 	t.Run("ToCedar", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = util.TruePtr()
+		conf.ProjectRef.CedarTestResultsEnabled = utility.TruePtr()
 		for _, test := range []struct {
 			name     string
 			testCase func(*testing.T, *timberutil.MockBuildloggerServer)
@@ -222,7 +222,7 @@ func TestSendTestLog(t *testing.T) {
 		}
 	})
 	t.Run("ToEvergreen", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = util.FalsePtr()
+		conf.ProjectRef.CedarTestResultsEnabled = utility.FalsePtr()
 
 		logId, err := sendTestLog(ctx, comm, conf, log)
 		require.NoError(t, err)

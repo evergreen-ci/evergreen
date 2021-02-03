@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func TestProjectRoutes(t *testing.T) {
 		publicId := "pub"
 		public := &model.ProjectRef{
 			Id:      publicId,
-			Enabled: util.TruePtr(),
+			Enabled: utility.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{},
 		}
@@ -83,8 +83,8 @@ func TestProjectRoutes(t *testing.T) {
 		privateId := "priv"
 		private := &model.ProjectRef{
 			Id:      privateId,
-			Enabled: util.TruePtr(),
-			Private: util.TruePtr(),
+			Enabled: utility.TruePtr(),
+			Private: utility.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}

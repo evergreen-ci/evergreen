@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -357,19 +358,19 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
-		Id:      model.ToStringPtr("mock_host_id"),
-		HostURL: model.ToStringPtr("mock_url"),
+		Id:      utility.ToStringPtr("mock_host_id"),
+		HostURL: utility.ToStringPtr("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.ToStringPtr(spawnRequest.DistroID),
-			Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+			Id:       utility.ToStringPtr(spawnRequest.DistroID),
+			Provider: utility.ToStringPtr(evergreen.ProviderNameMock),
 		},
-		Provider:     model.ToStringPtr(evergreen.ProviderNameMock),
-		Status:       model.ToStringPtr(evergreen.HostUninitialized),
-		StartedBy:    model.ToStringPtr("mock_user"),
+		Provider:     utility.ToStringPtr(evergreen.ProviderNameMock),
+		Status:       utility.ToStringPtr(evergreen.HostUninitialized),
+		StartedBy:    utility.ToStringPtr("mock_user"),
 		UserHost:     true,
 		Provisioned:  false,
 		InstanceTags: spawnRequest.InstanceTags,
-		InstanceType: model.ToStringPtr(spawnRequest.InstanceType),
+		InstanceType: utility.ToStringPtr(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }

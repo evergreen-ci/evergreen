@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -69,13 +69,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Id:               "mci",
-		Enabled:          util.TruePtr(),
-		PatchingDisabled: util.FalsePtr(),
+		Enabled:          utility.TruePtr(),
+		PatchingDisabled: utility.FalsePtr(),
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
-		PRTestingEnabled: util.TruePtr(),
+		PRTestingEnabled: utility.TruePtr(),
 		CommitQueue: model.CommitQueueParams{
-			Enabled: util.TruePtr(),
+			Enabled: utility.TruePtr(),
 		},
 	}).Insert())
 

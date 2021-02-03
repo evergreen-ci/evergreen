@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -208,7 +208,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	changes := restModel.APIAdminSettings{
-		ApiUrl: restModel.ToStringPtr("foo"),
+		ApiUrl: utility.ToStringPtr("foo"),
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := s.sc.SetEvergreenSettings(&changes, before, user, true)
@@ -308,9 +308,9 @@ func TestRestartVersionsRoute(t *testing.T) {
 	projectRef := &model.ProjectRef{
 		Id: "my-project",
 		CommitQueue: model.CommitQueueParams{
-			Enabled: util.TruePtr(),
+			Enabled: utility.TruePtr(),
 		},
-		Enabled: util.TruePtr(),
+		Enabled: utility.TruePtr(),
 		Owner:   "me",
 		Repo:    "my-repo",
 		Branch:  "my-branch",

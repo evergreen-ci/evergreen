@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
@@ -322,7 +322,7 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 		Id:     "mci",
 		Admins: []string{"testuser"},
 		CommitQueue: model.CommitQueueParams{
-			Enabled: util.TruePtr(),
+			Enabled: utility.TruePtr(),
 		},
 	}
 	s.NoError(projectRef.Insert())
