@@ -30,9 +30,8 @@ const (
 )
 
 type gitMergePr struct {
-	Status string `mapstructure:"status"`
-	URL    string `mapstructure:"url"`
-	Token  string `mapstructure:"token"`
+	URL   string `mapstructure:"url"`
+	Token string `mapstructure:"token"`
 
 	statusSender send.Sender
 	base
@@ -45,10 +44,6 @@ func (c *gitMergePr) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return err
-	}
-
-	if len(c.Status) == 0 {
-		return errors.New("status must be specified")
 	}
 
 	return nil
@@ -90,10 +85,14 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "failed to setup github status logger")
 	}
 
-	// TODO: should not get here for failed patches
-	c.sendPatchResult(patchDoc.GithubPatchData, conf)
-	if c.Status != evergreen.PatchSucceeded {
-		logger.Task().Warning("not proceeding with merge for failed patch")
+	status := evergreen.PatchFailed
+	// TODO: have this instead look at a new field for "rest of the patch succeeded"
+	if patchDoc.Status == evergreen.PatchSucceeded {
+		status = evergreen.PatchSucceeded
+	}
+	c.sendPatchResult(patchDoc.GithubPatchData, conf, status)
+	if status != evergreen.PatchSucceeded {
+		logger.Task().Warning("at least 1 task failed, will not merge pull request")
 		return nil
 	}
 
@@ -145,10 +144,10 @@ func (c *gitMergePr) sendMergeFailedStatus(githubMessage string, pr thirdparty.G
 	c.statusSender.Send(msg)
 }
 
-func (c *gitMergePr) sendPatchResult(pr thirdparty.GithubPatch, conf *internal.TaskConfig) {
+func (c *gitMergePr) sendPatchResult(pr thirdparty.GithubPatch, conf *internal.TaskConfig, patchStatus string) {
 	state := message.GithubStateFailure
 	description := "merge test failed"
-	if c.Status == evergreen.PatchSucceeded {
+	if patchStatus == evergreen.PatchSucceeded {
 		state = message.GithubStateSuccess
 		description = "merge test succeeded"
 	}
