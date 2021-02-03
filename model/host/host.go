@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"time"
 
@@ -664,10 +665,48 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
 
-	creds, err := env.CertificateDepot().Generate(h.JasperCredentialsID)
+	domains := []string{h.JasperCredentialsID}
+	var ipAddrs []string
+	if h.Host != "" {
+		if net.ParseIP(h.Host) != nil {
+			ipAddrs = append(ipAddrs, h.Host)
+		} else if !utility.StringSliceContains(domains, h.Host) {
+			domains = append(domains, h.Host)
+		}
+	}
+	if h.IP != "" && net.ParseIP(h.IP) != nil {
+		ipAddrs = append(ipAddrs, h.IP)
+	}
+	opts := certdepot.CertificateOptions{
+		CommonName: h.JasperCredentialsID,
+		Host:       h.JasperCredentialsID,
+		// kim: TODO: is it valid to add the host ID as part of the IP/domain?
+		// It isn't a real domain, but it seems like it threads the needle with
+		// SANs to allow TLS connections using host IDs as the server name.
+		Domain: domains,
+		IP:     ipAddrs,
+		CA:     evergreen.CAName,
+	}
+	grip.Debug(message.Fields{
+		"message": "kim: generating certificate with options",
+		"host_id": h.Id,
+		"distro":  h.Distro.Id,
+		"opts":    opts,
+	})
+	creds, err := env.CertificateDepot().GenerateWithOptions(opts)
 	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "kim: failed to generate certificate with options",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"opts":    opts,
+		}))
 		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
 	}
+	grip.Debug(message.Fields{
+		"message": "kim: successfully generated certificate with options",
+		"opts":    opts,
+	})
 
 	return creds, nil
 }
