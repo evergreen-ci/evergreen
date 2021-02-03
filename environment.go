@@ -289,7 +289,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
-	if settings.User != "" {
+	if settings.HasAuth() {
 		credential := options.Credential{
 			Username: settings.User,
 			Password: settings.Pwd,

@@ -710,6 +710,10 @@ type DBSettings struct {
 	Pwd                  string       `yaml:"pwd"`
 }
 
+func (dbs *DBSettings) HasAuth() bool {
+	return dbs.User != ""
+}
+
 // supported banner themes in Evergreen
 type BannerTheme string
 
