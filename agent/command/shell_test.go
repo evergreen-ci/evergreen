@@ -18,6 +18,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// kim: TODO: add integration test to ensure shell.exec sets environment
+// properly for the command.
+
 type shellExecuteCommandSuite struct {
 	ctx    context.Context
 	cancel context.CancelFunc

@@ -32,6 +32,9 @@ type execCmdSuite struct {
 	suite.Suite
 }
 
+// kim: TODO: add integration test to ensure subprocess.exec sets environment
+// properly for the command.
+
 func TestExecCmdSuite(t *testing.T) {
 	suite.Run(t, new(execCmdSuite))
 }
