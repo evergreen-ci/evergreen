@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -1288,11 +1286,6 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 
 func AddHostCreateDetails(taskId, hostId string, hostCreateError error) error {
 	if hostCreateError == nil {
-		grip.Warning(message.Fields{
-			"message": "no error to logs",
-			"task_id": taskId,
-			"host_id": hostId,
-		})
 		return nil
 	}
 	err := UpdateOne(
