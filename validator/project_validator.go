@@ -31,7 +31,7 @@ const (
 	Error ValidationErrorLevel = iota
 	Warning
 	unauthorizedCharacters     = "|"
-	EC2HostCreateTotalLimit    = 100
+	EC2HostCreateTotalLimit    = 1000
 	DockerHostCreateTotalLimit = 200
 	HostCreateLimitPerTask     = 3
 )
