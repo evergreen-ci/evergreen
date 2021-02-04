@@ -34,10 +34,13 @@ type shellExec struct {
 	// explicitly specify another shell.
 	Shell string `mapstructure:"shell"`
 
-	// kim: TODO: document
-	Env                    map[string]string `mapstructure:"env"`
-	AddExpansionsToEnv     bool              `mapstructure:"add_expansions_to_env"`
-	IncludeExpansionsInEnv []string          `mapstructure:"include_expansions_in_env"`
+	Env map[string]string `mapstructure:"env"`
+	// AddExpansionsToEnv adds all defined expansions to the shell environment.
+	AddExpansionsToEnv bool `mapstructure:"add_expansions_to_env"`
+	// IncludeExpansionsInEnv allows users to specify which expansions should be
+	// included in the environment, if they are defined. It is not an error to
+	// specify expansions that are not defined in include_expansions_in_env.
+	IncludeExpansionsInEnv []string `mapstructure:"include_expansions_in_env"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -132,15 +135,6 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 	})
-
-	// kim: TODO: remove
-	// env := map[string]string{
-	//     agentutil.MarkerTaskID:   conf.Task.Id,
-	//     agentutil.MarkerAgentPID: strconv.Itoa(os.Getpid()),
-	//     "GOCACHE":                filepath.Join(c.WorkingDir, ".gocache"),
-	//     "CI":                     "true",
-	// }
-	// addTempDirs(env, taskTmpDir)
 
 	logger.Execution().Debug(message.Fields{
 		"working_directory": c.WorkingDir,

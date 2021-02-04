@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -31,9 +32,6 @@ type execCmdSuite struct {
 
 	suite.Suite
 }
-
-// kim: TODO: add integration test to ensure subprocess.exec sets environment
-// properly for the command.
 
 func TestExecCmdSuite(t *testing.T) {
 	suite.Run(t, new(execCmdSuite))
@@ -348,6 +346,56 @@ func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
 	s.Len(cmd.Env, 1)
 	s.NotEqual("two", cmd.Env["two"])
 	s.Equal("one", cmd.Env["one"])
+}
+
+func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
+	cmd := &subprocessExec{
+		Binary:     "echo",
+		Args:       []string{"hello", "world"},
+		Env:        map[string]string{"foo": "bar"},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
+	defer cancel()
+	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 8)
+	s.Contains(cmd.Env, agentutil.MarkerTaskID)
+	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, "TEMP")
+	s.Contains(cmd.Env, "TMP")
+	s.Contains(cmd.Env, "TMPDIR")
+	s.Contains(cmd.Env, "GOCACHE")
+	s.Contains(cmd.Env, "CI")
+	s.Contains(cmd.Env, "foo")
+}
+
+func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
+	cmd := &subprocessExec{
+		Binary:             "echo",
+		Args:               []string{"hello", "world"},
+		AddExpansionsToEnv: true,
+		WorkingDir:         testutil.GetDirectoryOfFile(),
+	}
+	s.conf.Expansions = util.NewExpansions(map[string]string{
+		"expansion1": "foo",
+		"expansion2": "bar",
+	})
+	cmd.SetJasperManager(s.jasper)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
+	defer cancel()
+	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 9)
+	s.Contains(cmd.Env, agentutil.MarkerTaskID)
+	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, "TEMP")
+	s.Contains(cmd.Env, "TMP")
+	s.Contains(cmd.Env, "TMPDIR")
+	s.Contains(cmd.Env, "GOCACHE")
+	s.Contains(cmd.Env, "CI")
+	for k, v := range s.conf.Expansions.Map() {
+		s.Equal(v, cmd.Env[k])
+	}
 }
 
 func TestAddTemp(t *testing.T) {

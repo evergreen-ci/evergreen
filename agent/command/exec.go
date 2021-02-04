@@ -152,21 +152,6 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
-	// kim: TODO: remove
-	// expansions := exp.Map()
-	// if c.AddExpansionsToEnv {
-	//     for k, v := range expansions {
-	//         c.Env[k] = v
-	//     }
-	// }
-
-	// kim: TODO: remove
-	// for _, ei := range c.IncludeExpansionsInEnv {
-	//     if val, ok := expansions[ei]; ok {
-	//         c.Env[ei] = val
-	//     }
-	// }
-
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
@@ -184,8 +169,6 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 		env = map[string]string{}
 	}
 
-	// kim: NOTE: this is different from the original behavior because the agent
-	// env vars will always overwrite even if conflicting expansions exist.
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
@@ -320,8 +303,6 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Notice(err.Error())
 	}
 
-	// kim: TODO: remove
-	// addTempDirs(c.Env, taskTmpDir)
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
