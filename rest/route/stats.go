@@ -4,6 +4,8 @@ package route
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -483,4 +486,49 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 func makeGetProjectTaskStats(sc data.Connector) gimlet.RouteHandler {
 	return &taskStatsHandler{sc: sc}
+}
+
+type cedarTestStatsMiddleware struct {
+	sc data.Connector
+}
+
+func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+
+	newURL := fmt.Sprintf(
+		"https://cedar.mongodb.com/rest/v1/historical_test_data/%s?%s",
+		gimlet.GetVars(r)["project_id"],
+		r.URL.RawQuery,
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem creating cedar test stats request")))
+		return
+	}
+
+	c := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(c)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem sending test stats request to cedar")))
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode == http.StatusOK {
+		rw.WriteHeader(http.StatusOK)
+		for key, val := range resp.Header() {
+			rw.Header().Set(key, val)
+		}
+		_, err = io.Copy(w, resp.Body)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem writing cedar response")))
+			return
+		}
+
+		return
+	}
+
+	next(rw, r)
 }
