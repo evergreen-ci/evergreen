@@ -27,11 +27,6 @@ type hostCreateHandler struct {
 	sc data.Connector
 }
 
-type HostCreateResults struct {
-	hostID string
-	AMI    string
-}
-
 func makeHostCreateRouteManager(sc data.Connector) gimlet.RouteHandler {
 	return &hostCreateHandler{sc: sc}
 }
@@ -110,19 +105,35 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
+	t, err := h.sc.FindTaskById(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
 	catcher := grip.NewBasicCatcher()
-	results := make([]model.Model, len(hosts))
+	result := model.HostListResults{
+		Hosts:   make([]model.CreateHost, len(hosts)),
+		Details: make([]model.APIHostCreateDetail, len(t.HostCreateDetails)),
+	}
 	for i := range hosts {
 		createHost := model.CreateHost{}
 		if err := createHost.BuildFromService(&hosts[i]); err != nil {
-			catcher.Add(errors.Wrap(err, "error building api host from service"))
+			catcher.Wrapf(err, "error building api host from service")
 		}
-		results[i] = &createHost
+		result.Hosts[i] = createHost
 	}
+
+	for i := range t.HostCreateDetails {
+		details := model.APIHostCreateDetail{}
+		if err := details.BuildFromService(t.HostCreateDetails[i]); err != nil {
+			catcher.Wrapf(err, "error building api host create details from service")
+		}
+		result.Details[i] = details
+	}
+
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(catcher.Resolve())
 	}
-	return gimlet.NewJSONResponse(results)
+	return gimlet.NewJSONResponse(result)
 }
 
 ////////////////////////////////////////////////////////////////////////

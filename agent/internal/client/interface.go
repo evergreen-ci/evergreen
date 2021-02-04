@@ -110,7 +110,7 @@ type Communicator interface {
 
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
-	ListHosts(context.Context, TaskData) ([]restmodel.CreateHost, error)
+	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
 
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
