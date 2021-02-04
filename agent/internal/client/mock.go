@@ -477,6 +477,6 @@ func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus,
 	return &cloud.ContainerStatus{HasStarted: true}, nil
 }
 
-func (c *Mock) ConcludeMerge(ctx context.Context, patchId, project, status string) error {
+func (c *Mock) ConcludeMerge(ctx context.Context, patchId, project, status string, td TaskData) error {
 	return nil
 }

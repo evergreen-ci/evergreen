@@ -866,11 +866,12 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	return body, nil
 }
 
-func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, project, status string) error {
+func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, project, status string, td TaskData) error {
 	info := requestInfo{
-		method:  http.MethodGet,
-		path:    fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
-		version: apiVersion2,
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
+		version:  apiVersion2,
+		taskData: &td,
 	}
 	body := struct {
 		Project string `json:"project"`

@@ -59,7 +59,8 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		}
 		logger.Task().Error(err)
 		logger.Task().Critical(pErr)
-		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, conf.ProjectRef.Identifier, status))
+		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, conf.ProjectRef.Identifier, status, td))
 	}()
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "can't apply expansions")
