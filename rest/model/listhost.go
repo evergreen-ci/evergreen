@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -18,8 +19,8 @@ type APIHostCreateDetail struct {
 func (a *APIHostCreateDetail) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case task.HostCreateDetail:
-		a.HostId = ToStringPtr(v.HostId)
-		a.Error = ToStringPtr(v.Error)
+		a.HostId = utility.ToStringPtr(v.HostId)
+		a.Error = utility.ToStringPtr(v.Error)
 	default:
 		return errors.New("Incorrect type when unmarshalling HostCreateDetail")
 	}
