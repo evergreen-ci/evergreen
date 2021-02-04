@@ -292,11 +292,15 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Notice(err.Error())
 	}
 
+	var exp util.Expansions
+	if err != nil {
+		exp = *conf.Expansions
+	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
 		taskID:                 conf.Task.Id,
 		workingDir:             c.WorkingDir,
 		tmpDir:                 taskTmpDir,
-		expansions:             *conf.Expansions,
+		expansions:             exp,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
 	})
