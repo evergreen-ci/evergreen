@@ -1810,9 +1810,19 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
-func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
 	user := MustHaveUser(ctx)
-	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
+
+	existingPatch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok && gimletErr.StatusCode == http.StatusNotFound {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' does not exist", patchID))
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
+	}
+
+	hasPermission, err := r.hasEnqueuePatchPermission(user, existingPatch)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
 	}
@@ -1820,7 +1830,11 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
-	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
+	if commitMessage == nil {
+		commitMessage = existingPatch.Description
+	}
+
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -1833,12 +1847,8 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 	return newPatch, nil
 }
 
-func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID string) (bool, error) {
+func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) (bool, error) {
 	// patch owner
-	existingPatch, err := r.sc.FindPatchById(patchID)
-	if err != nil {
-		return false, err
-	}
 	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
 		return true, nil
 	}

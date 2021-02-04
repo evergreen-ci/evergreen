@@ -182,7 +182,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
+func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get patch")
@@ -191,7 +191,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return nil, errors.Errorf("no patch found for id '%s'", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatch)
+	newPatch, err := model.MakeMergePatchFromExisting(existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}
@@ -307,7 +307,7 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context,
 	return true, nil
 }
 
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	return nil, nil
 }
 func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
