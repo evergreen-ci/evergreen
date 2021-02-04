@@ -101,7 +101,7 @@ type Communicator interface {
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
 	// if enqueueNext is true then allow item to be processed next
 	EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error)
-	CreatePatchForMerge(ctx context.Context, patchID string) (*restmodel.APIPatch, error)
+	CreatePatchForMerge(ctx context.Context, patchID, commitMessage string) (*restmodel.APIPatch, error)
 	GetMessageForPatch(ctx context.Context, patchID string) (string, error)
 
 	// Notifications
