@@ -645,13 +645,6 @@ func TestMakeMergePatchPatches(t *testing.T) {
 	assert.Contains(t, patchContents, patchDiff)
 }
 
-func TestCanEnqueueToCommitQueue(t *testing.T) {
-	p := Patch{}
-	assert.False(t, p.CanEnqueueToCommitQueue())
-	p.GitInfo = &GitMetadata{Username: "octocat", Email: "octocat@github.com"}
-	assert.True(t, p.CanEnqueueToCommitQueue())
-}
-
 func TestAddMetadataToDiff(t *testing.T) {
 	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
 	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)

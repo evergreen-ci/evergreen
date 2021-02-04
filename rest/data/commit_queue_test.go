@@ -204,7 +204,10 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	existingPatch := &patch.Patch{
 		Author:  "octocat",
 		Project: s.projectRef.Id,
-		GitInfo: &patch.GitMetadata{},
+		GitInfo: &patch.GitMetadata{
+			Username: "octocat",
+			Email:    "octocat @github.com",
+		},
 		PatchedConfig: `
 tasks:
   - name: t0
@@ -223,9 +226,9 @@ buildvariants:
 	s.NoError(err)
 	s.NotNil(newPatch)
 
-	// newPatchDB, err := patch.findOneRepoRefQ(patch.ById(patch.NewId(restModel.FromStringPtr(newPatch.Id))))
-	// s.NoError(err)
-	// s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
+	newPatchDB, err := patch.FindOneId(restModel.FromStringPtr(newPatch.Id))
+	s.NoError(err)
+	s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
