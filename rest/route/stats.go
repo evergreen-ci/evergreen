@@ -488,8 +488,10 @@ func makeGetProjectTaskStats(sc data.Connector) gimlet.RouteHandler {
 	return &taskStatsHandler{sc: sc}
 }
 
-type cedarTestStatsMiddleware struct {
-	sc data.Connector
+type cedarTestStatsMiddleware struct{}
+
+func CheckCedarTestStats() gimlet.Middleware {
+	return &cedarTestStatsMiddleware{}
 }
 
 func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -518,15 +520,16 @@ func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 	}()
 	if resp.StatusCode == http.StatusOK {
 		rw.WriteHeader(http.StatusOK)
-		for key, val := range resp.Header() {
-			rw.Header().Set(key, val)
+		for key, vals := range resp.Header {
+			for _, val := range vals {
+				rw.Header().Add(key, val)
+			}
 		}
-		_, err = io.Copy(w, resp.Body)
+		_, err = io.Copy(rw, resp.Body)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem writing cedar response")))
 			return
 		}
-
 		return
 	}
 
