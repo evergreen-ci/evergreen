@@ -71,10 +71,10 @@ func resetProjectRefs() {
 		Repo:        "mci-test",
 		Branch:      "master",
 		RemotePath:  "mci",
-		Enabled:     true,
-		Private:     false,
+		Enabled:     utility.TruePtr(),
+		Private:     utility.FalsePtr(),
 		BatchTime:   60,
-		Hidden:      false,
+		Hidden:      utility.FalsePtr(),
 	}
 	evgProjectRef = &model.ProjectRef{
 		Repo:       "evergreen",
@@ -82,7 +82,7 @@ func resetProjectRefs() {
 		Id:         "mci",
 		Branch:     "master",
 		RemotePath: "self-tests.yml",
-		Enabled:    true,
+		Enabled:    utility.TruePtr(),
 	}
 }
 
@@ -209,10 +209,10 @@ func TestGetRemoteConfig(t *testing.T) {
 				Repo:        "config",
 				Branch:      "master",
 				RemotePath:  "random.txt",
-				Enabled:     true,
-				Private:     false,
+				Enabled:     utility.TruePtr(),
+				Private:     utility.FalsePtr(),
 				BatchTime:   60,
-				Hidden:      false,
+				Hidden:      utility.FalsePtr(),
 			}
 			token, err := testConfig.GetGithubOauthToken()
 			So(err, ShouldBeNil)

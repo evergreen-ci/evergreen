@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -31,8 +32,8 @@ func getMockProjectSettings() ProjectSettingsEvent {
 	return ProjectSettingsEvent{
 		ProjectRef: ProjectRef{
 			Owner:   "admin",
-			Enabled: true,
-			Private: true,
+			Enabled: utility.TruePtr(),
+			Private: utility.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},
@@ -67,7 +68,7 @@ func getMockProjectSettings() ProjectSettingsEvent {
 func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
-	after.ProjectRef.Enabled = false
+	after.ProjectRef.Enabled = utility.FalsePtr()
 
 	s.NoError(LogProjectModified(projectId, username, &before, &after))
 

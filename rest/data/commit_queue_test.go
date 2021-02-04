@@ -39,10 +39,10 @@ func (s *CommitQueueSuite) SetupTest() {
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
 		Branch:           "master",
-		Enabled:          true,
-		PatchingDisabled: false,
+		Enabled:          utility.TruePtr(),
+		PatchingDisabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		},
 	}
 	s.Require().NoError(s.projectRef.Insert())

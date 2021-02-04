@@ -72,11 +72,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 			CachedProjects: []model.ProjectRef{
 				model.ProjectRef{
 					Id:          "bth",
-					Enabled:     true,
+					Enabled:     utility.TruePtr(),
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
 					Branch:      "master",
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				},
 			},
 		},
@@ -204,7 +204,7 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "changes",
@@ -335,7 +335,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	pRef := model.ProjectRef{
 		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
-		GitTagVersionsEnabled: true,
+		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

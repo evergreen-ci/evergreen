@@ -57,7 +57,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
+	if opCtx.ProjectRef != nil && opCtx.ProjectRef.IsPrivate() && user == nil {
 		// Project is private and user is not authorized so return not found
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -380,7 +380,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if !projRef.CommitQueue.Enabled {
+	if !projRef.CommitQueue.IsEnabled() {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Commit queue is not enabled for project",
@@ -604,7 +604,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
-	if user == nil && projectRef.Private {
+	if user == nil && projectRef.IsPrivate() {
 		projectID = ""
 	}
 

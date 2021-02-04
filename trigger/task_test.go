@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
 	proj := model.ProjectRef{
 		Id:                   "proj",
-		NotifyOnBuildFailure: true,
+		NotifyOnBuildFailure: utility.TruePtr(),
 		Admins:               []string{"admin"},
 	}
 	assert.NoError(proj.Insert())

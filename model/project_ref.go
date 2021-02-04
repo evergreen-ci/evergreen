@@ -26,6 +26,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
@@ -33,32 +34,32 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-// The ProjectRef struct contains general information, independent of any
-// revision control system, needed to track a given project
+// The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
+// Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
 	Id                      string                         `bson:"_id" json:"id" yaml:"id"`
 	DisplayName             string                         `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled                 bool                           `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private                 bool                           `bson:"private" json:"private" yaml:"private"`
-	Restricted              bool                           `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Enabled                 *bool                          `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private                 *bool                          `bson:"private" json:"private" yaml:"private"`
+	Restricted              *bool                          `bson:"restricted" json:"restricted" yaml:"restricted"`
 	Owner                   string                         `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                    string                         `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch                  string                         `bson:"branch_name" json:"branch_name" yaml:"branch"` // only definable at the branch level
+	Branch                  string                         `bson:"branch_name" json:"branch_name" yaml:"branch"`
 	RemotePath              string                         `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled        bool                           `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled     bool                           `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled     bool                           `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	PRTestingEnabled        bool                           `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled     bool                           `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
+	PatchingDisabled        *bool                          `bson:"patching_disabled" json:"patching_disabled"`
+	RepotrackerDisabled     *bool                          `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled     *bool                          `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	PRTestingEnabled        *bool                          `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled     *bool                          `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
 	BatchTime               int                            `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious      bool                           `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DeactivatePrevious      *bool                          `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	DefaultLogger           string                         `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure    bool                           `bson:"notify_on_failure" json:"notify_on_failure"`
+	NotifyOnBuildFailure    *bool                          `bson:"notify_on_failure" json:"notify_on_failure"`
 	Triggers                []TriggerDefinition            `bson:"triggers,omitempty" json:"triggers,omitempty"`
 	PatchTriggerAliases     []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases,omitempty" json:"patch_trigger_aliases,omitempty"`
 	PeriodicBuilds          []PeriodicBuildDefinition      `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
-	CedarTestResultsEnabled bool                           `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CedarTestResultsEnabled *bool                          `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
 	CommitQueue             CommitQueueParams              `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
@@ -79,7 +80,7 @@ type ProjectRef struct {
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users,omitempty" json:"git_tag_authorized_users,omitempty"`
 	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams,omitempty" json:"git_tag_authorized_teams,omitempty"`
-	GitTagVersionsEnabled bool     `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
+	GitTagVersionsEnabled *bool    `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
@@ -87,14 +88,14 @@ type ProjectRef struct {
 
 	// List of regular expressions describing files to ignore when caching historical test results
 	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
-	DisabledStatsCache    bool     `bson:"disabled_stats_cache" json:"disabled_stats_cache"`
+	DisabledStatsCache    *bool    `bson:"disabled_stats_cache" json:"disabled_stats_cache"`
 
 	// List of commands
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden bool `bson:"hidden" json:"hidden"`
+	Hidden *bool `bson:"hidden" json:"hidden"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -102,7 +103,7 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled     bool   `bson:"enabled" json:"enabled"`
+	Enabled     *bool  `bson:"enabled" json:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method"`
 	Message     string `bson:"message,omitempty" json:"message,omitempty"`
 }
@@ -110,8 +111,8 @@ type CommitQueueParams struct {
 // TaskSyncOptions contains information about which features are allowed for
 // syncing task directories to S3.
 type TaskSyncOptions struct {
-	ConfigEnabled bool `bson:"config_enabled" json:"config_enabled"`
-	PatchEnabled  bool `bson:"patch_enabled" json:"patch_enabled"`
+	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled"`
+	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -226,6 +227,74 @@ var (
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 )
 
+func (p *ProjectRef) IsEnabled() bool {
+	return utility.FromBoolPtr(p.Enabled)
+}
+
+func (p *ProjectRef) IsPrivate() bool {
+	return utility.FromBoolPtr(p.Private)
+}
+
+func (p *ProjectRef) IsRestricted() bool {
+	return utility.FromBoolPtr(p.Restricted)
+}
+
+func (p *ProjectRef) IsPatchingDisabled() bool {
+	return utility.FromBoolPtr(p.PatchingDisabled)
+}
+
+func (p *ProjectRef) IsRepotrackerDisabled() bool {
+	return utility.FromBoolPtr(p.RepotrackerDisabled)
+}
+
+func (p *ProjectRef) IsDispatchingDisabled() bool {
+	return utility.FromBoolPtr(p.DispatchingDisabled)
+}
+
+func (p *ProjectRef) IsPRTestingEnabled() bool {
+	return utility.FromBoolPtr(p.PRTestingEnabled)
+}
+
+func (p *ProjectRef) IsGithubChecksEnabled() bool {
+	return utility.FromBoolPtr(p.GithubChecksEnabled)
+}
+
+func (p *ProjectRef) ShouldDeactivatePrevious() bool {
+	return utility.FromBoolPtr(p.DeactivatePrevious)
+}
+
+func (p *ProjectRef) ShouldNotifyOnBuildFailure() bool {
+	return utility.FromBoolPtr(p.NotifyOnBuildFailure)
+}
+
+func (p *ProjectRef) IsCedarTestResultsEnabled() bool {
+	return utility.FromBoolPtr(p.CedarTestResultsEnabled)
+}
+
+func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
+	return utility.FromBoolPtr(p.GitTagVersionsEnabled)
+}
+
+func (p *ProjectRef) IsStatsCacheDisabled() bool {
+	return utility.FromBoolPtr(p.DisabledStatsCache)
+}
+
+func (p *ProjectRef) IsHidden() bool {
+	return utility.FromBoolPtr(p.Hidden)
+}
+
+func (p *CommitQueueParams) IsEnabled() bool {
+	return utility.FromBoolPtr(p.Enabled)
+}
+
+func (ts *TaskSyncOptions) IsPatchEnabled() bool {
+	return utility.FromBoolPtr(ts.PatchEnabled)
+}
+
+func (ts *TaskSyncOptions) IsConfigEnabled() bool {
+	return utility.FromBoolPtr(ts.ConfigEnabled)
+}
+
 const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
@@ -277,7 +346,7 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 				Admins:  []string{user.Username()},
 				Owner:   p.Owner,
 				Repo:    p.Repo,
-				Enabled: true,
+				Enabled: utility.TruePtr(),
 			}}
 			// creates scope and give user admin access to repo
 			if err = repoRef.Add(user); err != nil {
@@ -325,7 +394,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	if p.UseRepoSettings {
 		parentScope = GetRepoScope(p.RepoRefId)
 	}
-	if p.Restricted {
+	if p.IsRestricted() {
 		parentScope = evergreen.AllProjectsScope
 	}
 
@@ -415,33 +484,41 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		return mergeBranchAndRepoSettings(pRef, repoRef), nil
+		return mergeBranchAndRepoSettings(pRef, repoRef)
 	}
 	return pRef, nil
 }
 
-func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) *ProjectRef {
-	// if the setting is not defined in the project, default to the repo settings.
-	// For booleans, we default to the repo setting if the boolean is false, except for enabled.
-	reflectedBranch := reflect.ValueOf(pRef)
-	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically reference the ProjectRef part of RepoRef
+// If the setting is not defined in the project, default to the repo settings.
+func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef, error) {
+	var err error
+	defer func() {
+		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
+	}()
+	reflectedBranch := reflect.ValueOf(pRef).Elem()
+	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
-	isProjectDisabled := !pRef.Enabled
-	for i := 0; i < reflectedBranch.Elem().NumField(); i++ {
+	recursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+	return pRef, err
+}
 
-		branchField := reflectedBranch.Elem().Field(i)
+func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
+	// Iterate through each field of the struct.
+	for i := 0; i < structToSet.NumField(); i++ {
+		branchField := structToSet.Field(i)
+
+		// If the field isn't set, use the default field.
+		// Note for pointers and maps, we consider the field undefined if the item is nil or empty length,
+		// and we don't check for subfields. This allows us to group some settings together as defined or undefined.
 		if util.IsFieldUndefined(branchField) {
-			reflectedField := reflectedRepo.Field(i)
+			reflectedField := structToDefaultFrom.Field(i)
 			branchField.Set(reflectedField)
+
+			// If the field is a struct and isn't undefined, then we check each subfield recursively.
+		} else if branchField.Kind() == reflect.Struct {
+			recursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
 		}
 	}
-
-	// if the branch was explicitly disabled, override any repo setting
-	if isProjectDisabled {
-		pRef.Enabled = false
-	}
-
-	return pRef
 }
 
 func FindIdForProject(identifier string) (string, error) {
@@ -464,7 +541,7 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefPrivateKey: false,
+			ProjectRefPrivateKey: bson.M{"$ne": true},
 		},
 		db.NoProjection,
 		[]string{"-" + ProjectRefDisplayNameKey},
@@ -516,7 +593,11 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 				}
 				repoRefs[pRef.RepoRefId] = repoRef
 			}
-			pRefs[i] = *mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error merging settings")
+			}
+			pRefs[i] = *mergedProject
 		}
 	}
 	return pRefs, nil
@@ -655,7 +736,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	if l > 1 {
 		count := 0
 		for i := range projectRefs {
-			if projectRefs[i].PRTestingEnabled {
+			if projectRefs[i].IsPRTestingEnabled() {
 				target = i
 				count += 1
 			}
@@ -669,7 +750,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 
 	}
 
-	if l == 0 || !projectRefs[target].PRTestingEnabled {
+	if l == 0 || !projectRefs[target].IsPRTestingEnabled() {
 		return nil, nil
 	}
 
@@ -1213,13 +1294,13 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 
 func (p *ProjectRef) CommitQueueIsOn() error {
 	catcher := grip.NewBasicCatcher()
-	if !p.Enabled {
+	if !p.IsEnabled() {
 		catcher.Add(errors.Errorf("project '%s' is disabled", p.Id))
 	}
-	if p.PatchingDisabled {
+	if p.IsPatchingDisabled() {
 		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Id))
 	}
-	if !p.CommitQueue.Enabled {
+	if !p.CommitQueue.IsEnabled() {
 		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Id))
 	}
 

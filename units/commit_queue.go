@@ -167,7 +167,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("no project found for queue id %s", j.QueueID))
 		return
 	}
-	if !projectRef.CommitQueue.Enabled {
+	if !projectRef.CommitQueue.IsEnabled() {
 		grip.Info(message.Fields{
 			"source":  "commit queue",
 			"job_id":  j.ID(),

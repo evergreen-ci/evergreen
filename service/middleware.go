@@ -243,7 +243,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		usr := gimlet.GetUser(r.Context())
-		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private {
+		if projCtx.ProjectRef != nil && projCtx.ProjectRef.IsPrivate() {
 			if usr == nil {
 				uis.RedirectToLogin(w, r)
 				return
@@ -292,10 +292,10 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 			pc.IsAdmin = true
 		}
 
-		if !p.Enabled {
+		if !p.IsEnabled() {
 			continue
 		}
-		if !p.Private || includePrivate {
+		if !p.IsPrivate() || includePrivate {
 			uiProj := restModel.UIProjectFields{
 				DisplayName: p.DisplayName,
 				Identifier:  p.Identifier,

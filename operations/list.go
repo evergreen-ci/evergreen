@@ -123,7 +123,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 	matching := []model.ProjectRef{}
 	for _, proj := range projs {
-		if proj.Enabled {
+		if utility.FromBoolPtr(proj.Enabled) {
 			matching = append(matching, proj)
 		}
 	}

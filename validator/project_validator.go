@@ -1391,7 +1391,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
 func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
-	if ref.TaskSync.ConfigEnabled {
+	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
 	var errs ValidationErrors

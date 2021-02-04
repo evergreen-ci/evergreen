@@ -27,7 +27,7 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 			Id:      "repo_ref",
 			Repo:    "repo",
 			Owner:   "mongodb",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		},
 	}
 	require.NoError(t, repoRef.Insert())

@@ -2595,7 +2595,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ref := &model.ProjectRef{
 				TaskSync: model.TaskSyncOptions{
-					ConfigEnabled: testParams.taskSyncEnabledForConfig,
+					ConfigEnabled: &testParams.taskSyncEnabledForConfig,
 				},
 			}
 			p := &model.Project{Tasks: testParams.tasks}
@@ -2621,7 +2621,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 	}
 	assert.NotEmpty(t, validateTaskSyncSettings(p, ref))
 
-	ref.TaskSync.ConfigEnabled = true
+	ref.TaskSync.ConfigEnabled = utility.TruePtr()
 	assert.Empty(t, validateTaskSyncSettings(p, ref))
 
 	p.Tasks = []model.ProjectTask{}
