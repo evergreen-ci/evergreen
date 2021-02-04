@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -69,7 +70,7 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
+	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	new_id := mgobson.NewObjectId()
@@ -243,7 +244,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1]])
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
+	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -252,7 +253,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1]])
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.ToStringPtr(s.objIds[0]), p.Id)
+	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 
 	rm.patchId = s.objIds[1]
 	res = rm.Run(ctx)
@@ -296,8 +297,8 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], ProjectId: model.ToStringPtr("proj")},
-			{Id: &s.objIds[1], ProjectId: model.ToStringPtr("proj")},
+			{Id: &s.objIds[0], ProjectId: utility.ToStringPtr("proj")},
+			{Id: &s.objIds[1], ProjectId: utility.ToStringPtr("proj")},
 		},
 		CachedAborted:  make(map[string]string),
 		CachedPriority: make(map[string]int64),

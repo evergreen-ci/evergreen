@@ -501,6 +501,16 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
+			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
+				"message":              "not updating running task group task, because current group needs to be torn down",
+				"task_distro_id":       nextTask.DistroId,
+				"task_id":              nextTask.Id,
+				"task_group":           nextTask.TaskGroup,
+				"task_build_variant":   nextTask.BuildVariant,
+				"task_version":         nextTask.Version,
+				"task_project":         nextTask.Project,
+				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+			})
 			return nil, true, nil
 		}
 
@@ -558,6 +568,20 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				}
 				if numHosts > nextTask.TaskGroupMaxHosts {
 					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
+				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
+					// if the previous task in the group has yet to run and should run, then wait for it
+					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
+					if err != nil {
+						return nil, false, errors.WithStack(err)
+					}
+					for _, tgTask := range tgTasks {
+						if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
+							break
+						}
+						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() {
+							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
+						}
+					}
 				}
 			}
 

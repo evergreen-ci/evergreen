@@ -27,11 +27,11 @@ func (d *DequeueItem) Send() error {
 		return errors.Errorf("no queue found for project '%s'", d.ProjectID)
 	}
 
-	found, err := queue.Remove(d.Item)
+	foundItem, err := queue.Remove(d.Item)
 	if err != nil {
 		return errors.Wrap(err, "can't remove item")
 	}
-	if !found {
+	if foundItem == nil {
 		return errors.Errorf("item '%s' not found on queue '%s'", d.Item, d.ProjectID)
 	}
 
@@ -39,7 +39,14 @@ func (d *DequeueItem) Send() error {
 	if d.Status == evergreen.PatchFailed {
 		status = evergreen.MergeTestFailed
 	}
-	event.LogCommitQueueConcludeTest(d.Item, status)
+	version := foundItem.Version
+	if version == "" {
+		version = foundItem.Issue
+	}
+	if version == "" {
+		return errors.Errorf("item %s in queue %s has no version", d.Item, d.ProjectID)
+	}
+	event.LogCommitQueueConcludeTest(version, status)
 
 	if err = queue.SetProcessing(false); err != nil {
 		return errors.Wrap(err, "can't set processing to false")

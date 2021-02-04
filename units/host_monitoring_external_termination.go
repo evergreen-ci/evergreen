@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -55,6 +54,8 @@ func NewHostMonitorExternalStateJob(env evergreen.Environment, h *host.Host, id 
 	job.host = h
 	job.HostID = h.Id
 
+	job.env = env
+
 	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorExternalStateCheckName, job.HostID, id))
 
 	return job
@@ -96,8 +97,10 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	j.AddError(err)
 }
 
-// handleExternallyTerminatedHost will check if a host from a dynamic provider has been terminated
-// and clean up the host if it has. Returns true if the host has been externally terminated
+// handleExternallyTerminatedHost will check if a host from a dynamic provider
+// has been terminated or stopped by a source external to Evergreen itself. If
+// so, clean up the host. Returns true if the host has been externally terminated
+// or stopped.
 func handleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
 	if h.Provider == evergreen.ProviderNameStatic {
 		return false, nil
@@ -125,37 +128,24 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
 		}
 		return false, nil
-	case cloud.StatusTerminated:
-		grip.Info(message.Fields{
-			"op_id":   id,
-			"message": "host terminated externally",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		})
+	case cloud.StatusStopped, cloud.StatusTerminated:
+		// Avoid accidentally terminating non-agent hosts that are stopped (e.g.
+		// spawn hosts).
+		if cloudStatus == cloud.StatusStopped && (h.UserHost || h.StartedBy != evergreen.User) {
+			return false, errors.New("non-agent host is stopped and should not be terminated")
+		}
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
-		// the instance was terminated from outside our control
-		catcher := grip.NewBasicCatcher()
-		err = h.SetTerminated(evergreen.HostExternalUserName, "terminated externally")
-		catcher.Add(err)
+		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
 		grip.Error(message.WrapError(err, message.Fields{
-			"op_id":   id,
-			"message": "error setting host status to terminated in db",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
+			"message":      "could not enqueue job to terminate externally-modified host",
+			"cloud_status": cloudStatus.String(),
+			"host_id":      h.Id,
+			"distro":       h.Distro.Id,
+			"op_id":        id,
 		}))
-
-		err = model.ClearAndResetStrandedTask(h)
-		catcher.Add(errors.Wrap(err, "can't clear stranded tasks"))
-		grip.Error(message.WrapError(err, message.Fields{
-			"op_id":   id,
-			"message": "can't clear stranded tasks",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-		}))
-
-		return true, catcher.Resolve()
+		return true, err
 	default:
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",
@@ -163,7 +153,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"host_id":      h.Id,
 			"distro":       h.Distro.Id,
 			"host_status":  h.Status,
-			"cloud_status": cloudStatus,
+			"cloud_status": cloudStatus.String(),
 		})
 		return false, errors.Errorf("unexpected host status '%s'", cloudStatus)
 	}

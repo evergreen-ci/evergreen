@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -51,19 +52,19 @@ func (c *Mock) SetAPIKey(apiKey string)   { c.apiKey = apiKey }
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
-		Id:      model.ToStringPtr("mock_host_id"),
-		HostURL: model.ToStringPtr("mock_url"),
+		Id:      utility.ToStringPtr("mock_host_id"),
+		HostURL: utility.ToStringPtr("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.ToStringPtr(spawnRequest.DistroID),
-			Provider: model.ToStringPtr(evergreen.ProviderNameMock),
+			Id:       utility.ToStringPtr(spawnRequest.DistroID),
+			Provider: utility.ToStringPtr(evergreen.ProviderNameMock),
 		},
-		Provider:     model.ToStringPtr(evergreen.ProviderNameMock),
-		Status:       model.ToStringPtr(evergreen.HostUninitialized),
-		StartedBy:    model.ToStringPtr("mock_user"),
+		Provider:     utility.ToStringPtr(evergreen.ProviderNameMock),
+		Status:       utility.ToStringPtr(evergreen.HostUninitialized),
+		StartedBy:    utility.ToStringPtr("mock_user"),
 		UserHost:     true,
 		Provisioned:  false,
 		InstanceTags: spawnRequest.InstanceTags,
-		InstanceType: model.ToStringPtr(spawnRequest.InstanceType),
+		InstanceType: utility.ToStringPtr(spawnRequest.InstanceType),
 	}
 	return mockHost, nil
 }
@@ -160,11 +161,11 @@ func (c *Mock) ExecuteOnDistro(context.Context, string, model.APIDistroScriptOpt
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
 		{
-			Name:             model.ToStringPtr("archlinux-build"),
+			Name:             utility.ToStringPtr("archlinux-build"),
 			UserSpawnAllowed: true,
 		},
 		{
-			Name:             model.ToStringPtr("baas-linux"),
+			Name:             utility.ToStringPtr("baas-linux"),
 			UserSpawnAllowed: false,
 		},
 	}
@@ -174,12 +175,12 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	return []model.APIPubKey{
 		{
-			Name: model.ToStringPtr("key0"),
-			Key:  model.ToStringPtr("ssh-fake 12345"),
+			Name: utility.ToStringPtr("key0"),
+			Key:  utility.ToStringPtr("ssh-fake 12345"),
 		},
 		{
-			Name: model.ToStringPtr("key1"),
-			Key:  model.ToStringPtr("ssh-fake 67890"),
+			Name: utility.ToStringPtr("key1"),
+			Key:  utility.ToStringPtr("ssh-fake 67890"),
 		},
 	}, nil
 }
@@ -247,23 +248,23 @@ func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message str
 
 func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
 	return &model.APICommitQueue{
-		ProjectID: model.ToStringPtr("mci"),
+		ProjectID: utility.ToStringPtr("mci"),
 		Queue: []model.APICommitQueueItem{
 			{
-				Issue: model.ToStringPtr("123"),
+				Issue: utility.ToStringPtr("123"),
 				Modules: []model.APIModule{
 					{
-						Module: model.ToStringPtr("test_module"),
-						Issue:  model.ToStringPtr("345"),
+						Module: utility.ToStringPtr("test_module"),
+						Issue:  utility.ToStringPtr("345"),
 					},
 				},
 			},
 			{
-				Issue: model.ToStringPtr("345"),
+				Issue: utility.ToStringPtr("345"),
 				Modules: []model.APIModule{
 					{
-						Module: model.ToStringPtr("test_module2"),
-						Issue:  model.ToStringPtr("567"),
+						Module: utility.ToStringPtr("test_module2"),
+						Issue:  utility.ToStringPtr("567"),
 					},
 				},
 			},

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	mgobson "gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -23,8 +25,14 @@ import (
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func (pc *DBProjectConnector) FindProjectById(id string) (*model.ProjectRef, error) {
-	p, err := model.FindOneProjectRef(id)
+func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*model.ProjectRef, error) {
+	var p *model.ProjectRef
+	var err error
+	if includeRepo {
+		p, err = model.FindMergedProjectRef(id)
+	} else {
+		p, err = model.FindOneProjectRef(id)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -161,18 +169,39 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) (
 	return projects, nil
 }
 
-// FindProjectVarsById returns the variables associated with the given project.
-func (pc *DBProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {
-	vars, err := model.FindOneProjectVars(id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
-	}
-	if vars == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("variables for project '%s' not found", id),
+// FindProjectVarsById returns the variables associated with the project and repo (if given).
+func (pc *DBProjectConnector) FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
+	var repoVars *model.ProjectVars
+	var err error
+	if repoId != "" {
+		repoVars, err = model.FindOneProjectVars(repoId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem fetching variables for repo '%s'", repoId)
+		}
+		if repoVars == nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("variables for repo '%s' not found", repoId),
+			}
 		}
 	}
+	var vars *model.ProjectVars
+	if id != "" {
+		vars, err = model.FindOneProjectVars(id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
+		}
+		if vars == nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("variables for project '%s' not found", id),
+			}
+		}
+		vars.MergeWithRepoVars(repoVars)
+	} else {
+		vars = repoVars
+	}
+
 	if redact {
 		vars = vars.RedactPrivateVars()
 	}
@@ -390,9 +419,9 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 	return projects, nil
 }
 
-func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		if p.Id == projectId {
+		if p.Id == projectId || p.Identifier == projectId {
 			return &p, nil
 		}
 	}
@@ -403,6 +432,7 @@ func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.Projec
 }
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	projectRef.Id = mgobson.NewObjectId().Hex()
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{
@@ -416,8 +446,9 @@ func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *u
 }
 
 func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
-	for _, p := range pc.CachedProjects {
+	for i, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
+			pc.CachedProjects[i] = *projectRef
 			return nil
 		}
 	}
@@ -450,32 +481,47 @@ tasks:
 	return p, pp, err
 }
 
-func (pc *MockProjectConnector) FindProjectVarsById(id string, redact bool) (*restModel.APIProjectVars, error) {
+func (pc *MockProjectConnector) FindProjectVarsById(id, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	varsModel := &restModel.APIProjectVars{}
+	repoVars := &model.ProjectVars{
+		Id:   id,
+		Vars: map[string]string{},
+	}
 	res := &model.ProjectVars{
 		Id:   id,
 		Vars: map[string]string{},
 	}
+	found := false
 	for _, v := range pc.CachedVars {
 		if v.Id == id {
+			found = true
 			for key, val := range v.Vars {
 				res.Vars[key] = val
 			}
 			res.PrivateVars = v.PrivateVars
-			if redact {
-				res = res.RedactPrivateVars()
+		}
+		if v.Id == repoId {
+			found = true
+			for key, val := range v.Vars {
+				repoVars.Vars[key] = val
 			}
-
-			if err := varsModel.BuildFromService(res); err != nil {
-				return nil, errors.Wrapf(err, "error building project variables from service")
-			}
-			return varsModel, nil
+			repoVars.PrivateVars = v.PrivateVars
 		}
 	}
-	return nil, gimlet.ErrorResponse{
-		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("variables for project '%s' not found", id),
+	if !found {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("variables for project '%s' not found", id),
+		}
 	}
+	res.MergeWithRepoVars(repoVars)
+	if redact {
+		res = res.RedactPrivateVars()
+	}
+	if err := varsModel.BuildFromService(res); err != nil {
+		return nil, errors.Wrapf(err, "error building project variables from service")
+	}
+	return varsModel, nil
 }
 
 func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {

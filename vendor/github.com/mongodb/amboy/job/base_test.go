@@ -121,3 +121,32 @@ func (s *BaseCheckSuite) TestTimeInfoSetsValues() {
 	s.Equal(result.Start, last.Start)
 	s.Equal(result.End, last.End)
 }
+
+func (s *BaseCheckSuite) TestSetRetryable() {
+	s.Require().False(s.base.RetryInfo().Retryable)
+	s.base.SetRetryable(true)
+	s.Require().True(s.base.RetryInfo().Retryable)
+	s.base.SetRetryable(false)
+	s.False(s.base.RetryInfo().Retryable)
+}
+
+func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
+	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
+		Retryable: true,
+	})
+	s.Require().True(s.base.RetryInfo().Retryable)
+
+	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
+		Retryable: false,
+	})
+	s.Require().True(s.base.RetryInfo().Retryable)
+
+	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
+		CurrentTrial: 5,
+	})
+
+	s.Equal(amboy.JobRetryInfo{
+		Retryable:    true,
+		CurrentTrial: 5,
+	}, s.base.RetryInfo())
+}

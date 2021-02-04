@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,9 +64,9 @@ func TestGetRepoIDGetHandler(t *testing.T) {
 	err = alias.BuildFromService(repoAlias)
 	assert.NoError(t, err)
 
-	assert.Equal(t, repoRef.Id, model.FromStringPtr(repo.Id))
-	assert.Equal(t, repoRef.Repo, model.FromStringPtr(repo.Repo))
-	assert.Equal(t, repoRef.Owner, model.FromStringPtr(repo.Owner))
+	assert.Equal(t, repoRef.Id, utility.FromStringPtr(repo.Id))
+	assert.Equal(t, repoRef.Repo, utility.FromStringPtr(repo.Repo))
+	assert.Equal(t, repoRef.Owner, utility.FromStringPtr(repo.Owner))
 	assert.Equal(t, repoRef.Enabled, repo.Enabled)
 	assert.Len(t, repo.Aliases, 1)
 	assert.Equal(t, alias, repo.Aliases[0])

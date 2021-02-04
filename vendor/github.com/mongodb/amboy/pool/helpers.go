@@ -24,7 +24,15 @@ func jitterNilJobWait() time.Duration {
 }
 
 func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
-	job.Run(ctx)
+	var jobCtx context.Context
+	if maxTime := job.TimeInfo().MaxTime; maxTime > 0 {
+		var jobCancel context.CancelFunc
+		jobCtx, jobCancel = context.WithTimeout(ctx, maxTime)
+		defer jobCancel()
+	} else {
+		jobCtx = ctx
+	}
+	job.Run(jobCtx)
 	q.Complete(ctx, job)
 	ti := job.TimeInfo()
 	r := message.Fields{

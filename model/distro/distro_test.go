@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	_ "github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
@@ -398,7 +398,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		PlannerSettings: PlannerSettings{
 			Version:                   evergreen.PlannerVersionTunable,
 			TargetTime:                98765000000000,
-			GroupVersions:             util.TruePtr(),
+			GroupVersions:             utility.TruePtr(),
 			PatchFactor:               25,
 			PatchTimeInQueueFactor:    0,
 			CommitQueueFactor:         0,

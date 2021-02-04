@@ -181,7 +181,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == t.Id {
 		// Check if the host was externally terminated. When the running task is
-		// cleared on the host, an agent or agent moniitor deploy might run,
+		// cleared on the host, an agent or agent monitor deploy might run,
 		// which updates the LCT and prevents detection of external termination
 		// until the deploy job runs out of retries.
 		var terminated bool
@@ -210,12 +210,8 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
 		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking execution task ended")
-	} else if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "can't mark display task for reset")
-		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task in task group ended")
 	}
+
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }
 

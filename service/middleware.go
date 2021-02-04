@@ -298,7 +298,8 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 		if !p.Private || includePrivate {
 			uiProj := restModel.UIProjectFields{
 				DisplayName: p.DisplayName,
-				Identifier:  p.Id,
+				Identifier:  p.Identifier,
+				Id:          p.Id,
 				Repo:        p.Repo,
 				Owner:       p.Owner,
 			}
@@ -335,6 +336,11 @@ func (uis *UIServer) getRequestProjectId(r *http.Request) string {
 // context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
 	dbUser := gimlet.GetUser(r.Context())
+	if dbUser == nil {
+		dbUser = &user.DBUser{
+			SystemRoles: evergreen.UnauthedUserRoles,
+		}
+	}
 
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
@@ -348,20 +354,23 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return pc, err
 	}
 
-	projectId := uis.getRequestProjectId(r)
-	if dbUser == nil {
-		dbUser = &user.DBUser{
-			SystemRoles: evergreen.UnauthedUserRoles,
+	requestProjectId := uis.getRequestProjectId(r)
+	projectId := ""
+	for _, p := range pc.AllProjects {
+		if p.Identifier == requestProjectId || p.Id == requestProjectId {
+			projectId = p.Id
 		}
 	}
-	opts := gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksView.Value,
-	}
-	if !dbUser.HasPermission(opts) {
-		projectId = ""
+	if projectId != "" {
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}
+		if !dbUser.HasPermission(opts) {
+			projectId = ""
+		}
 	}
 
 	// If we still don't have a default projectId, just use the first
@@ -369,13 +378,13 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	if projectId == "" {
 		for _, p := range pc.AllProjects {
 			opts := gimlet.PermissionOpts{
-				Resource:      p.Identifier, // TODO: add ID to UIProjectFields for this to work
+				Resource:      p.Id,
 				ResourceType:  evergreen.ProjectResourceType,
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
 			}
 			if dbUser.HasPermission(opts) {
-				projectId = p.Identifier
+				projectId = p.Id
 				break
 			}
 		}

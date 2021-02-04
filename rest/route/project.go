@@ -235,7 +235,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run updates a project by name.
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	oldProject, err := h.sc.FindProjectById(h.project)
+	oldProject, err := h.sc.FindProjectById(h.project, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -255,7 +255,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	projectId := model.FromStringPtr(requestProjectRef.Id)
+	projectId := utility.FromStringPtr(requestProjectRef.Id)
 	if projectId != oldProject.Id {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
@@ -274,6 +274,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
+	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
 	if err = newProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -289,27 +290,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 	}
-	if newProjectRef.RepoRefId != oldProject.RepoRefId {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "can't change repo ref ID manually",
-		})
-	}
 
 	before, err := h.sc.GetProjectSettingsEvent(newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.project))
 	}
 
-	adminsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
+	adminsToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteAdmins)
 	allAdmins := utility.UniqueStrings(append(oldProject.Admins, newProjectRef.Admins...))      // get original and new admin
 	newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
 
-	usersToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
+	usersToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedUsers)
 	allAuthorizedUsers := utility.UniqueStrings(append(oldProject.GitTagAuthorizedUsers, newProjectRef.GitTagAuthorizedUsers...))
 	newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
-	teamsToDelete := model.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedTeams)
+	teamsToDelete := utility.FromStringPtrSlice(requestProjectRef.DeleteGitTagAuthorizedTeams)
 	allAuthorizedTeams := utility.UniqueStrings(append(oldProject.GitTagAuthorizedTeams, newProjectRef.GitTagAuthorizedTeams...))
 	newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
@@ -432,7 +427,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	newRevision := model.FromStringPtr(requestProjectRef.Revision)
+	newRevision := utility.FromStringPtr(requestProjectRef.Revision)
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -483,8 +478,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
 	for i := range requestProjectRef.Subscriptions {
-		requestProjectRef.Subscriptions[i].OwnerType = model.ToStringPtr(string(event.OwnerTypeProject))
-		requestProjectRef.Subscriptions[i].Owner = model.ToStringPtr(h.project)
+		requestProjectRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
+		requestProjectRef.Subscriptions[i].Owner = utility.ToStringPtr(h.project)
 	}
 	if err = h.sc.SaveSubscriptions(projectId, requestProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.project))
@@ -492,7 +487,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	toDelete := []string{}
 	for _, deleteSub := range requestProjectRef.DeleteSubscriptions {
-		toDelete = append(toDelete, model.FromStringPtr(deleteSub))
+		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
 	if err = h.sc.DeleteSubscriptions(projectId, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.project))
@@ -529,19 +524,19 @@ func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias
 	aliasesToDelete := map[string]bool{}
 	for _, a := range pRef.Aliases {
 		// return immediately if a new definition has been added
-		if model.FromStringPtr(a.Alias) == alias && !a.Delete {
+		if utility.FromStringPtr(a.Alias) == alias && !a.Delete {
 			return true, nil
 		}
-		aliasesToDelete[model.FromStringPtr(a.ID)] = a.Delete
+		aliasesToDelete[utility.FromStringPtr(a.ID)] = a.Delete
 	}
 
 	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(model.FromStringPtr(pRef.Id))
+	aliases, err := h.sc.FindProjectAliases(utility.FromStringPtr(pRef.Id), utility.FromStringPtr(pRef.RepoRefId))
 	if err != nil {
 		return false, errors.Wrapf(err, "Error checking existing patch definitions")
 	}
 	for _, a := range aliases {
-		if model.FromStringPtr(a.Alias) == alias && !aliasesToDelete[model.FromStringPtr(a.ID)] {
+		if utility.FromStringPtr(a.Alias) == alias && !aliasesToDelete[utility.FromStringPtr(a.ID)] {
 			return true, nil
 		}
 	}
@@ -587,7 +582,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.sc.FindProjectById(h.projectName)
+	p, err := h.sc.FindProjectById(h.projectName, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectName))
 	}
@@ -614,7 +609,6 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
-	dbProjectRef.Id = h.projectName
 	dbProjectRef.Identifier = h.projectName
 
 	responder := gimlet.NewJSONResponse(struct{}{})
@@ -728,6 +722,9 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
 	}
+	if err = h.sc.UpdateAdminRoles(project, nil, project.Admins); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
+	}
 
 	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
 	if err != nil {
@@ -757,6 +754,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectIDGetHandler struct {
 	projectName string
+	includeRepo bool
 	sc          data.Connector
 }
 
@@ -774,11 +772,12 @@ func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
+	h.includeRepo = r.URL.Query().Get("includeRepo") == "true"
 	return nil
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := h.sc.FindProjectById(h.projectName)
+	project, err := h.sc.FindProjectById(h.projectName, h.includeRepo)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -787,7 +786,6 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projectModel := &model.APIProjectRef{}
-
 	if err = projectModel.BuildFromService(project); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "problem converting project document",
@@ -795,12 +793,17 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	variables, err := h.sc.FindProjectVarsById(project.Id, true)
+	// we pass the repoId through so we don't have to re-look up the project
+	repoId := ""
+	if h.includeRepo {
+		repoId = project.RepoRefId
+	}
+	variables, err := h.sc.FindProjectVarsById(project.Id, repoId, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id); err != nil {
+	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id, repoId); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {

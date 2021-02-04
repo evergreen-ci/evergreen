@@ -22,14 +22,11 @@
       "local_config": "",
       "deactivate_previous": true,
       "hidden": false,
-      "admins": [
-        "sam.kleinman"
-      ],
+      "admins": ["sam.kleinman"],
       "repotracker_error": null,
       "commit_queue": {
         "enabled": false,
-        "merge_method": "squash",
-        "patch_type": "PR"
+        "merge_method": "squash"
       },
       "disabled_stats_cache": false,
       "files_ignored_from_cache": null,
@@ -80,7 +77,7 @@
       "display_name": "display name",
       "host_id": "host",
       "restarts": 5,
-      "execution": 5,
+      "execution": 0,
       "order": 5,
       "r": "something",
       "status": "started",
@@ -91,10 +88,7 @@
         "timed_out": false
       },
       "display_only": true,
-      "execution_tasks": [
-        "exec1",
-        "exec2"
-      ],
+      "execution_tasks": ["exec1", "exec2"],
       "generate_task": false,
       "generated_by": "something"
     }
@@ -128,7 +122,7 @@
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_STARTED",
       "data": {
-        "execution": 50,
+        "execution": 0,
         "h_id": "hostid",
         "jira": "an_issue",
         "pri": 55,
@@ -203,7 +197,7 @@
       "r_id": "logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
       "e_type": "TASK_SCHEDULED",
       "data": {
-        "execution": 55,
+        "execution": 0,
         "ts": {
           "$date": "2020-03-03T15:45:16.460Z"
         }

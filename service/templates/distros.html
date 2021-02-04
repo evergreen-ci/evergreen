@@ -281,8 +281,12 @@ Evergreen - Distros
                 <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.settings.hosts">
                   <tbody id="hosts-table">
                     <tr ng-repeat="host in activeDistro.settings.hosts">
-                      <td><input ng-readonly="readOnly" required name="hostName" type="text" ng-model="host.name" class="col-md-10"
-                          placeholder="Machine DNS name"></td>
+                      <td>
+                        <input ng-readonly="readOnly" required name="hostName" type="text" ng-model="host.name" class="col-md-10"
+                          placeholder="Machine DNS name">
+                        <input ng-readonly="readOnly" name="hostSSHPort" type="number" ng-model="host.ssh_port" class="col-md-10"
+                            placeholder="SSH port">
+                      </td>
                       <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeHost(host)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
                     </tr>
                   </tbody>

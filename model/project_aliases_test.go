@@ -282,45 +282,45 @@ func TestMatching(t *testing.T) {
 	task := &ProjectTask{
 		Name: "t1",
 	}
-	match, err := bv1Matches.HasMatchingTask(task)
+	match, err := bv1Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = bv1Matches.HasMatchingTask(task)
+	match, err = bv1Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.False(match)
 	task = &ProjectTask{
 		Name: "t2",
 	}
-	match, err = bv2Matches.HasMatchingTask(task)
+	match, err = bv2Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{
 		Tags: []string{"tag3"},
 		Name: "t3",
 	}
-	match, err = bv3Matches.HasMatchingTask(task)
+	match, err = bv3Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.True(match)
 	task = &ProjectTask{}
-	match, err = bv3Matches.HasMatchingTask(task)
+	match, err = bv3Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.False(match)
 
 	task = &ProjectTask{
 		Tags: []string{"tag4"},
 	}
-	match, err = bv5Matches.HasMatchingTask(task)
+	match, err = bv5Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.False(match)
 
-	match, err = tagsMatches.HasMatchingTask(task)
+	match, err = tagsMatches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.True(match)
 
-	match, err = bv4Matches.HasMatchingTask(task)
+	match, err = bv4Matches.HasMatchingTask(task.Name, task.Tags)
 	assert.NoError(err)
 	assert.True(match)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -59,28 +60,28 @@ func TestAPIPatch(t *testing.T) {
 	err := a.BuildFromService(p)
 	assert.NoError(err)
 
-	assert.Equal(p.Id.Hex(), FromStringPtr(a.Id))
-	assert.Equal(p.Description, FromStringPtr(a.Description))
-	assert.Equal(p.Project, FromStringPtr(a.ProjectId))
-	assert.Equal(p.Project, FromStringPtr(a.Branch))
-	assert.Equal(p.Githash, FromStringPtr(a.Githash))
+	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
+	assert.Equal(p.Description, utility.FromStringPtr(a.Description))
+	assert.Equal(p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(p.Project, utility.FromStringPtr(a.Branch))
+	assert.Equal(p.Githash, utility.FromStringPtr(a.Githash))
 	assert.Equal(p.PatchNumber, a.PatchNumber)
-	assert.Equal(p.Author, FromStringPtr(a.Author))
-	assert.Equal(p.Version, FromStringPtr(a.Version))
-	assert.Equal(p.Status, FromStringPtr(a.Status))
+	assert.Equal(p.Author, utility.FromStringPtr(a.Author))
+	assert.Equal(p.Version, utility.FromStringPtr(a.Version))
+	assert.Equal(p.Status, utility.FromStringPtr(a.Status))
 	assert.Zero(a.CreateTime.Sub(p.CreateTime))
 	assert.Equal(-time.Hour, a.CreateTime.Sub(p.StartTime))
 	assert.Equal(-2*time.Hour, a.CreateTime.Sub(p.FinishTime))
 	for i, variant := range a.Variants {
-		assert.Equal(p.BuildVariants[i], FromStringPtr(variant))
+		assert.Equal(p.BuildVariants[i], utility.FromStringPtr(variant))
 	}
 	for i, task := range a.Tasks {
-		assert.Equal(p.Tasks[i], FromStringPtr(task))
+		assert.Equal(p.Tasks[i], utility.FromStringPtr(task))
 	}
 	for i, vt := range a.VariantsTasks {
-		assert.Equal(p.VariantsTasks[i].Variant, FromStringPtr(vt.Name))
+		assert.Equal(p.VariantsTasks[i].Variant, utility.FromStringPtr(vt.Name))
 	}
-	assert.Equal("__github", FromStringPtr(a.Alias))
+	assert.Equal("__github", utility.FromStringPtr(a.Alias))
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
@@ -101,10 +102,10 @@ func TestGithubPatch(t *testing.T) {
 	err := a.BuildFromService(p)
 	assert.NoError(err)
 	assert.Equal(123, a.PRNumber)
-	assert.Equal("evergreen-ci", FromStringPtr(a.BaseOwner))
-	assert.Equal("evergreen", FromStringPtr(a.BaseRepo))
-	assert.Equal("octocat", FromStringPtr(a.HeadOwner))
-	assert.Equal("evergreen", FromStringPtr(a.HeadRepo))
-	assert.Equal("hash", FromStringPtr(a.HeadHash))
-	assert.Equal("octocat", FromStringPtr(a.Author))
+	assert.Equal("evergreen-ci", utility.FromStringPtr(a.BaseOwner))
+	assert.Equal("evergreen", utility.FromStringPtr(a.BaseRepo))
+	assert.Equal("octocat", utility.FromStringPtr(a.HeadOwner))
+	assert.Equal("evergreen", utility.FromStringPtr(a.HeadRepo))
+	assert.Equal("hash", utility.FromStringPtr(a.HeadHash))
+	assert.Equal("octocat", utility.FromStringPtr(a.Author))
 }

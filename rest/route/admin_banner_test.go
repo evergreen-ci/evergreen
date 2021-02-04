@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +31,7 @@ func TestSetBanner(t *testing.T) {
 
 	// test changing the banner with no change in theme
 	body := model.APIBanner{
-		Text: model.ToStringPtr("hello evergreen users!"),
+		Text: utility.ToStringPtr("hello evergreen users!"),
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(err)
@@ -48,12 +49,12 @@ func TestSetBanner(t *testing.T) {
 
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(model.FromStringPtr(body.Text), settings.Banner)
+	assert.Equal(utility.FromStringPtr(body.Text), settings.Banner)
 
 	// test changing the theme
 	body = model.APIBanner{
-		Text:  model.ToStringPtr("banner is changing again"),
-		Theme: model.ToStringPtr("important"),
+		Text:  utility.ToStringPtr("banner is changing again"),
+		Theme: utility.ToStringPtr("important"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
@@ -69,12 +70,12 @@ func TestSetBanner(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Status())
 	settings, err = sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(model.FromStringPtr(body.Theme), string(settings.BannerTheme))
+	assert.Equal(utility.FromStringPtr(body.Theme), string(settings.BannerTheme))
 
 	// test invalid theme enum
 	body = model.APIBanner{
-		Text:  model.ToStringPtr(""),
-		Theme: model.ToStringPtr("foo"),
+		Text:  utility.ToStringPtr(""),
+		Theme: utility.ToStringPtr("foo"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
@@ -118,6 +119,6 @@ func TestFetchBanner(t *testing.T) {
 	modelInterface, err := resp.Data().(model.Model).ToService()
 	assert.NoError(err)
 	banner := modelInterface.(*model.APIBanner)
-	assert.Equal("foo", model.FromStringPtr(banner.Text))
-	assert.Equal("warning", model.FromStringPtr(banner.Theme))
+	assert.Equal("foo", utility.FromStringPtr(banner.Text))
+	assert.Equal("warning", utility.FromStringPtr(banner.Theme))
 }

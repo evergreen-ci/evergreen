@@ -167,7 +167,30 @@ func (s *JobInterchangeSuite) TestTimeInfoPersists() {
 			s.Equal(ti, j.TimeInfo())
 		}
 	}
+}
 
+func (s *JobInterchangeSuite) TestApplyScopesOnEnqueuePersists() {
+	s.job.SetShouldApplyScopesOnEnqueue(true)
+
+	i, err := MakeJobInterchange(s.job, s.format)
+	s.Require().NoError(err)
+
+	j, err := i.Resolve(s.format)
+	s.Require().NoError(err)
+	s.True(j.ShouldApplyScopesOnEnqueue())
+}
+
+func (s *JobInterchangeSuite) TestRetryInfoPersists() {
+	info := amboy.JobRetryInfo{
+		Retryable:    true,
+		CurrentTrial: 5,
+	}
+	s.job.UpdateRetryInfo(info)
+	s.Equal(info, s.job.RetryInfo())
+
+	ji, err := MakeJobInterchange(s.job, s.format)
+	s.Require().NoError(err)
+	s.Equal(info, ji.RetryInfo)
 }
 
 // DependencyInterchangeSuite tests the DependencyInterchange format

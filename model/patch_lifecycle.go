@@ -552,7 +552,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex()})
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
 
 	return errors.Wrap(err, "can't enqueue item")
 }
@@ -630,7 +630,7 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string
 	return patchDoc, nil
 }
 
-func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
+func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []string, error) {
 	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding failed commit queue patches for project in time range")
@@ -651,135 +651,91 @@ func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptio
 		}
 		return toBeRequeued, nil, nil
 	}
-	if patchType == commitqueue.PRPatchType {
-		restarted, notRestarted := restartPRItems(patches, cq)
-		return restarted, notRestarted, nil
+	patchesRestarted := []string{}
+	patchesFailed := []string{}
+	for _, p := range patches {
+		// use the PR number to determine if this is a PR or diff patch. Currently there
+		// is not a reliable field that is set for diff patches
+		var err error
+		if p.GithubPatchData.PRNumber > 0 {
+			err = restartPRItem(p, cq)
+		} else {
+			err = restartDiffItem(p, cq)
+		}
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":        p.Id,
+				"commit_queue": cq.ProjectID,
+				"message":      "error restarting commit queue item",
+				"pr_number":    p.GithubPatchData.PRNumber,
+			}))
+			patchesFailed = append(patchesFailed, p.Id.Hex())
+		} else {
+			patchesRestarted = append(patchesRestarted, p.Id.Hex())
+		}
 	}
-	if patchType == commitqueue.CLIPatchType {
-		restarted, notRestarted := restartCLIItems(patches, cq)
-		return restarted, notRestarted, nil
-	}
-	return nil, nil, errors.Errorf("patch type '%s' is invalid", patchType)
+
+	return patchesRestarted, patchesFailed, nil
 }
 
-func restartPRItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]string, []string) {
-	restartedPatches := []string{}
-	patchesWithErrors := []string{}
-	for _, p := range patches {
-		// reconstruct commit queue item from patch
-		modules := []commitqueue.Module{}
-		for _, modulePatch := range p.Patches {
-			if modulePatch.ModuleName != "" {
-				module := commitqueue.Module{
-					Module: modulePatch.ModuleName,
-					Issue:  modulePatch.PatchSet.Patch,
-				}
-				modules = append(modules, module)
+func restartPRItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
+	// reconstruct commit queue item from patch
+	modules := []commitqueue.Module{}
+	for _, modulePatch := range p.Patches {
+		if modulePatch.ModuleName != "" {
+			module := commitqueue.Module{
+				Module: modulePatch.ModuleName,
+				Issue:  modulePatch.PatchSet.Patch,
 			}
+			modules = append(modules, module)
 		}
-		item := commitqueue.CommitQueueItem{
-			Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
-			Modules: modules,
-		}
-		if _, err := cq.Enqueue(item); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.PRPatchType,
-				"item":              item.Issue,
-				"message":           "error enqueuing item",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		restartedPatches = append(restartedPatches, p.Id.Hex())
 	}
-	return restartedPatches, patchesWithErrors
+	item := commitqueue.CommitQueueItem{
+		Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
+		Modules: modules,
+		Source:  commitqueue.SourcePullRequest,
+	}
+	if _, err := cq.Enqueue(item); err != nil {
+		return errors.Wrap(err, "error enqueuing item")
+	}
+
+	return nil
 }
 
-func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]string, []string) {
-	restartedPatches := []string{}
-	patchesWithErrors := []string{}
-	for _, p := range patches {
-		u, err := user.FindOne(user.ById(p.Author))
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.CLIPatchType,
-				"user":              p.Author,
-				"message":           "error finding user patch",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		if u == nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.CLIPatchType,
-				"user":              p.Author,
-				"message":           "user for patch not found",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		patchNumber, err := u.IncPatchNumber()
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.CLIPatchType,
-				"user":              p.Author,
-				"message":           "error computing patch number",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		newPatch := patch.Patch{
-			Id:              mgobson.NewObjectId(),
-			Project:         p.Project,
-			Author:          p.Author,
-			Githash:         p.Githash,
-			CreateTime:      time.Now(),
-			Status:          evergreen.PatchCreated,
-			Description:     p.Description,
-			GithubPatchData: p.GithubPatchData,
-			Tasks:           p.Tasks,
-			VariantsTasks:   p.VariantsTasks,
-			BuildVariants:   p.BuildVariants,
-			Alias:           p.Alias,
-			Patches:         p.Patches,
-			PatchNumber:     patchNumber,
-		}
-
-		if err = newPatch.Insert(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.CLIPatchType,
-				"message":           "error inserting new patch",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex()}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":             p.Id,
-				"commit_queue":      cq.ProjectID,
-				"commit_queue_type": commitqueue.CLIPatchType,
-				"message":           "error enqueueing item",
-				"operation":         "restart failed commit queue versions",
-			}))
-			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
-			continue
-		}
-		restartedPatches = append(restartedPatches, p.Id.Hex())
+func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
+	u, err := user.FindOne(user.ById(p.Author))
+	if err != nil {
+		return errors.Wrapf(err, "error finding user %s", p.Author)
 	}
-	return restartedPatches, patchesWithErrors
+	if u == nil {
+		return errors.Errorf("user %s not found", p.Author)
+	}
+	patchNumber, err := u.IncPatchNumber()
+	if err != nil {
+		return errors.Wrap(err, "error incrementing patch number")
+	}
+	newPatch := patch.Patch{
+		Id:              mgobson.NewObjectId(),
+		Project:         p.Project,
+		Author:          p.Author,
+		Githash:         p.Githash,
+		CreateTime:      time.Now(),
+		Status:          evergreen.PatchCreated,
+		Description:     p.Description,
+		GithubPatchData: p.GithubPatchData,
+		Tasks:           p.Tasks,
+		VariantsTasks:   p.VariantsTasks,
+		BuildVariants:   p.BuildVariants,
+		Alias:           p.Alias,
+		Patches:         p.Patches,
+		PatchNumber:     patchNumber,
+	}
+
+	if err = newPatch.Insert(); err != nil {
+		return errors.Wrap(err, "error inserting patch")
+	}
+	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
+		return errors.Wrap(err, "error enqueuing item")
+	}
+	return nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -23,6 +22,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type (
@@ -402,11 +402,11 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
-	item, ok := vars["item"]
+	itemId, ok := vars["item"]
 	if !ok {
-		item, ok = vars["patch_id"]
+		itemId, ok = vars["patch_id"]
 	}
-	if !ok || item == "" {
+	if !ok || itemId == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "No item provided",
@@ -414,8 +414,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if projRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
-		patch, err := m.sc.FindPatchById(item)
+	if bson.IsObjectIdHex(itemId) {
+		patch, err := m.sc.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
@@ -427,18 +427,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
-	}
-
-	if projRef.CommitQueue.PatchType == commitqueue.PRPatchType {
-		itemInt, err := strconv.Atoi(item)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "item is not an integer",
-			}))
-			return
-		}
-
+	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
 		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -459,6 +448,12 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
+	} else {
+		grip.Error(message.Fields{
+			"message": "commit queue entry has unknown source",
+			"entry":   itemId,
+			"project": projRef.Identifier,
+		})
 	}
 
 	next(rw, r)
@@ -537,6 +532,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	}
 
 	projectID := util.CoalesceStrings(append(query["project_id"], query["projectId"]...), vars["project_id"], vars["projectId"])
+	repoID := util.CoalesceStrings(append(query["repo_id"], query["repoId"]...), vars["repo_id"], vars["repoId"])
 	destProjectID := util.CoalesceString(query["dest_project"]...)
 
 	versionID := util.CoalesceStrings(append(query["version_id"], query["versionId"]...), vars["version_id"], vars["versionId"])
@@ -585,27 +581,38 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		}
 	}
 
-	projectRef, err := model.FindOneProjectRef(projectID)
+	if repoID != "" {
+		var repoRef *model.RepoRef
+		repoRef, err = model.FindOneRepoRef(repoID)
+		if err != nil {
+			return nil, http.StatusInternalServerError, errors.WithStack(err)
+		}
+		if repoRef == nil {
+			return nil, http.StatusNotFound, errors.Errorf("error finding the repo '%s'", repoID)
+		}
+		return []string{repoID}, http.StatusOK, nil
+	}
+
+	projectRef, err := model.FindMergedProjectRef(projectID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, errors.WithStack(err)
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)
 	}
+	projectID = projectRef.Id
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
-	if user == nil {
-		if projectRef.Private {
-			projectID = ""
-		}
+	if user == nil && projectRef.Private {
+		projectID = ""
 	}
 
 	// no project found - return a 404
 	if projectID == "" {
 		return nil, http.StatusNotFound, errors.New("no project found")
 	}
-	res := []string{projectID}
+	res := []string{projectRef.Id}
 	if destProjectID != "" {
 		res = append(res, destProjectID)
 	}

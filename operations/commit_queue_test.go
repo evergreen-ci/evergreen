@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -32,6 +33,8 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
+	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))
 }
 
@@ -96,21 +99,20 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(p3.Insert())
 
 	pRef := &model.ProjectRef{
-		Id:          "mci",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
+		Id: "mci",
 	}
 	s.Require().NoError(pRef.Insert())
 
 	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex()})
+	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(0, pos)
-	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex()})
+	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(1, pos)
-	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p3.Id.Hex()})
+	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p3.Id.Hex(), Source: commitqueue.SourceDiff})
 	s.NoError(err)
 	s.Equal(2, pos)
 
@@ -128,7 +130,6 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
 	s.Contains(stringOut, "Description : do things")
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
@@ -155,8 +156,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	}
 	s.NoError(p1.Insert())
 	pRef := &model.ProjectRef{
-		Id:          "mci",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.CLIPatchType},
+		Id: "mci",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -164,8 +164,8 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			{Issue: fakeIssue},
-			{Issue: p1.Id.Hex()},
+			{Issue: fakeIssue, Source: commitqueue.SourceDiff},
+			{Issue: p1.Id.Hex(), Source: commitqueue.SourceDiff},
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
@@ -183,7 +183,6 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, fmt.Sprintf("Error getting patch for issue '%s'", fakeIssue))
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
@@ -194,14 +193,17 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			commitqueue.CommitQueueItem{
-				Issue: "123",
+			{
+				Issue:  "123",
+				Source: commitqueue.SourcePullRequest,
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "456",
+			{
+				Issue:  "456",
+				Source: commitqueue.SourcePullRequest,
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "789",
+			{
+				Issue:  "789",
+				Source: commitqueue.SourcePullRequest,
 			},
 		},
 	}
@@ -209,10 +211,9 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	cq.Queue[0].Version = "my_version"
 	s.NoError(cq.UpdateVersion(cq.Queue[0]))
 	pRef := &model.ProjectRef{
-		Id:          "mci",
-		Owner:       "evergreen-ci",
-		Repo:        "evergreen",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
+		Id:    "mci",
+		Owner: "evergreen-ci",
+		Repo:  "evergreen",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -230,9 +231,6 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	stringOut := string(out[:])
 
 	s.Contains(stringOut, "Project: mci")
-	s.Contains(stringOut, "Repo: evergreen")
-	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.PRPatchType))
-	s.Contains(stringOut, "Owner: evergreen-ci")
 	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, "PR # : 123")
 	s.Contains(stringOut, "PR # : 456")
@@ -248,30 +246,32 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			commitqueue.CommitQueueItem{
-				Issue: "123",
+			{
+				Issue:  "123",
+				Source: commitqueue.SourcePullRequest,
 				Modules: []commitqueue.Module{
-					commitqueue.Module{
+					{
 						Module: "test_module",
 						Issue:  "1234",
 					},
 				},
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "456",
+			{
+				Issue:  "456",
+				Source: commitqueue.SourcePullRequest,
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "789",
+			{
+				Issue:  "789",
+				Source: commitqueue.SourcePullRequest,
 			},
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
 	pRef := &model.ProjectRef{
-		Id:          "mci",
-		Owner:       "me",
-		Repo:        "evergreen",
-		CommitQueue: model.CommitQueueParams{PatchType: commitqueue.PRPatchType},
+		Id:    "mci",
+		Owner: "me",
+		Repo:  "evergreen",
 	}
 	s.Require().NoError(pRef.Insert())
 
@@ -298,17 +298,21 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 
 func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
+	validId := bson.NewObjectId().Hex()
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
-			commitqueue.CommitQueueItem{
-				Issue: "123",
+			{
+				Issue:  validId,
+				Source: commitqueue.SourceDiff,
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "456",
+			{
+				Issue:  bson.NewObjectId().Hex(),
+				Source: commitqueue.SourceDiff,
 			},
-			commitqueue.CommitQueueItem{
-				Issue: "789",
+			{
+				Issue:  bson.NewObjectId().Hex(),
+				Source: commitqueue.SourceDiff,
 			},
 		},
 	}
@@ -328,11 +332,11 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	s.NoError(grip.SetSender(send.MakePlainLogger()))
-	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", "123"))
+	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", validId))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
 	stringOut := string(out[:])
 
-	s.Contains(stringOut, "Item '123' deleted")
+	s.Contains(stringOut, fmt.Sprintf("Item '%s' deleted", validId))
 }

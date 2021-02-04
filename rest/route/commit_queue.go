@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -85,7 +86,7 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	projectRef, err := cq.sc.FindProjectById(cq.project)
+	projectRef, err := cq.sc.FindProjectById(cq.project, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
 	}
@@ -93,11 +94,11 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
 	}
 
-	found, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
+	removed, err := cq.sc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
-	if !found {
+	if removed == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no matching item for project ID '%s', item '%s'", cq.project, cq.item),
@@ -105,7 +106,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	// Send GitHub status
-	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))
@@ -207,7 +208,7 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 	if patchEmpty {
 		return gimlet.MakeJSONErrorResponder(errors.New("can't enqueue item, patch is empty"))
 	}
-	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToStringPtr(cq.item)}, cq.force)
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: utility.ToStringPtr(cq.item), Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}

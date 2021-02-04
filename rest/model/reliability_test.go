@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -54,16 +55,16 @@ func TestAPITaskReliabilityStartAtKey(t *testing.T) {
 	assert := assert.New(t)
 
 	apiDoc := APITaskReliability{
-		TaskName:     ToStringPtr("task1"),
-		BuildVariant: ToStringPtr("variant1"),
-		Distro:       ToStringPtr("distro1"),
-		Date:         ToStringPtr("2018-07-15"),
+		TaskName:     utility.ToStringPtr("task1"),
+		BuildVariant: utility.ToStringPtr("variant1"),
+		Distro:       utility.ToStringPtr("distro1"),
+		Date:         utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15|variant1|task1||distro1", apiDoc.StartAtKey())
 
 	apiDoc = APITaskReliability{
-		TaskName: ToStringPtr("task1"),
-		Date:     ToStringPtr("2018-07-15"),
+		TaskName: utility.ToStringPtr("task1"),
+		Date:     utility.ToStringPtr("2018-07-15"),
 	}
 	assert.Equal("2018-07-15||task1||", apiDoc.StartAtKey())
 }

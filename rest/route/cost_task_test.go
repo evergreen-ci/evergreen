@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -99,9 +100,9 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataNoPagination() {
 	s.Equal(http.StatusOK, resp.Status())
 	payload := resp.Data().([]interface{})
 	s.Len(payload, 3)
-	s.Equal(model.ToStringPtr("task1"), (payload[0]).(*model.APITaskCost).Id)
-	s.Equal(model.ToStringPtr("task2"), (payload[1]).(*model.APITaskCost).Id)
-	s.Equal(model.ToStringPtr("task3"), (payload[2]).(*model.APITaskCost).Id)
+	s.Equal(utility.ToStringPtr("task1"), (payload[0]).(*model.APITaskCost).Id)
+	s.Equal(utility.ToStringPtr("task2"), (payload[1]).(*model.APITaskCost).Id)
+	s.Equal(utility.ToStringPtr("task3"), (payload[2]).(*model.APITaskCost).Id)
 	pages := resp.Pages()
 	s.Nil(pages)
 }
@@ -118,7 +119,7 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataNextPage() {
 	s.Equal(http.StatusOK, resp.Status())
 	payload := resp.Data().([]interface{})
 	s.Len(payload, 1)
-	s.Equal(model.ToStringPtr("task1"), (payload[0]).(*model.APITaskCost).Id)
+	s.Equal(utility.ToStringPtr("task1"), (payload[0]).(*model.APITaskCost).Id)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
@@ -141,7 +142,7 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPageKey() {
 	s.Equal(http.StatusOK, resp.Status())
 	payload := resp.Data().([]interface{})
 	s.Len(payload, 1)
-	s.Equal(model.ToStringPtr("task3"), (payload[0]).(*model.APITaskCost).Id)
+	s.Equal(utility.ToStringPtr("task3"), (payload[0]).(*model.APITaskCost).Id)
 }
 
 // If the given parameters yield no results, it should merely return an empty

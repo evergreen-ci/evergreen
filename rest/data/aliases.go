@@ -3,6 +3,7 @@ package data
 import (
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -12,10 +13,22 @@ import (
 type DBAliasConnector struct{}
 
 // FindProjectAliases queries the database to find all aliases.
-func (d *DBAliasConnector) FindProjectAliases(projectId string) ([]restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProject(projectId)
-	if err != nil {
-		return nil, err
+// If the repoId is given, we default to repo aliases if there are no project aliases.
+func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
+	var err error
+	var aliases model.ProjectAliases
+	if projectId != "" {
+		aliases, err = model.FindAliasesForProject(projectId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(aliases) == 0 && repoId != "" {
+		aliases, err = model.FindAliasesForProject(repoId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
+		}
 	}
 	if aliases == nil {
 		return nil, nil
@@ -52,7 +65,7 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	catcher := grip.NewBasicCatcher()
 	for _, aliasModel := range aliases {
 		if aliasModel.Delete {
-			aliasesToDelete = append(aliasesToDelete, restModel.FromStringPtr(aliasModel.ID))
+			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(aliasModel.ID))
 		} else {
 			v, err := aliasModel.ToService()
 			catcher.Add(errors.Wrap(err, "problem converting to project variable model"))
@@ -101,7 +114,7 @@ type MockAliasConnector struct {
 }
 
 // FindAllAliases is a mock implementation for testing.
-func (d *MockAliasConnector) FindProjectAliases(projectId string) ([]restModel.APIProjectAlias, error) {
+func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
 	return d.Aliases, nil
 }
 
@@ -113,8 +126,8 @@ func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []re
 	return nil
 }
 func (d *MockAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
-	if len(d.Aliases) == 1 && restModel.FromStringPtr(d.Aliases[0].RemotePath) != "" {
-		return true, restModel.FromStringPtr(d.Aliases[0].RemotePath), nil
+	if len(d.Aliases) == 1 && utility.FromStringPtr(d.Aliases[0].RemotePath) != "" {
+		return true, utility.FromStringPtr(d.Aliases[0].RemotePath), nil
 	}
 	return len(d.Aliases) > 0, "", nil
 }

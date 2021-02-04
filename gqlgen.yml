@@ -71,6 +71,12 @@ models:
         resolver: true
       isPerfPluginEnabled:
         resolver: true
+      project:
+        resolver: true
+      canModifyAnnotation:
+        resolver: true
+      executionTasksFull:
+        resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskEndDetail:

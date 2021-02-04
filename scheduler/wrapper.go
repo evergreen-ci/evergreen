@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -42,15 +41,15 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	if distro.Disabled {
 		// we can just clear these queues, the tasks will persist
 		// and get rescheduled once the distro is no longer disabled
-		var queue_info model.DistroQueueInfo
-		queue_info, err = model.GetDistroQueueInfo(distro.Id)
+		var queueInfo model.DistroQueueInfo
+		queueInfo, err = model.GetDistroQueueInfo(distro.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "cannot get distro queue information for disabled distro",
 				"distro":  distro.Id,
 			}))
 		}
-		if queue_info.Length > 0 {
+		if queueInfo.Length > 0 {
 			err = model.ClearTaskQueue(distro.Id)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -60,7 +59,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 			}
 			grip.Info(message.Fields{
 				"distro":      distro.Id,
-				"removed_len": queue_info.Length,
+				"removed_len": queueInfo.Length,
 				"operation":   "removed queue of disabled distro",
 			})
 		}
@@ -149,15 +148,6 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 
 	staticHosts := []string{}
 	for _, h := range settings.Hosts {
-		hostInfo, err := util.ParseSSHInfo(h.Name)
-		if err != nil {
-			return nil, err
-		}
-		user := hostInfo.User
-		if user == "" {
-			user = d.User
-		}
-
 		dbHost, err := host.FindOneId(h.Name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
@@ -167,8 +157,9 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 		provisioned := provisionChange == host.ReprovisionNone || (dbHost != nil && dbHost.Provisioned)
 		staticHost := host.Host{
 			Id:               h.Name,
-			User:             user,
+			User:             d.User,
 			Host:             h.Name,
+			SSHPort:          h.SSHPort,
 			Distro:           d,
 			CreationTime:     time.Now(),
 			StartedBy:        evergreen.User,

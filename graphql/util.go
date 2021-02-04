@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -306,12 +305,12 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 	variantMappings := make(map[string]model.BuildVariant)
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
-		for _, TaskFromVariant := range variant.Tasks {
-			if !util.IsPtrSetToFalse(TaskFromVariant.Patchable) && !util.IsPtrSetToTrue(TaskFromVariant.GitTagOnly) {
-				if TaskFromVariant.IsGroup {
-					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
+		for _, taskFromVariant := range variant.Tasks {
+			if utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+				if taskFromVariant.IsGroup {
+					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
 				} else {
-					tasksForVariant = append(tasksForVariant, TaskFromVariant)
+					tasksForVariant = append(tasksForVariant, taskFromVariant)
 				}
 			}
 		}
@@ -322,7 +321,7 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
 		// add a task name to the list if it's patchable and not restricted to git tags
-		if !util.IsPtrSetToFalse(task.Patchable) && !util.IsPtrSetToTrue(task.GitTagOnly) {
+		if utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -496,8 +495,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				}
 				proj = projRef
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Id,
-				proj.CommitQueue.PatchType, version.Id, user.DisplayName())
+			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Id, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}

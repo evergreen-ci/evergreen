@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,14 +32,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 	s.data = data.MockProjectConnector{
 		CachedProjects: []model.ProjectRef{
 			{
-				Id:         "projectA",
+				Id:         "12345",
 				Identifier: "projectA",
 				Branch:     "abcd",
 				Enabled:    true,
 				Admins:     []string{"my-user"},
 			},
 			{
-				Id:         "projectB",
+				Id:         "23456",
 				Identifier: "projectB",
 				Branch:     "bcde",
 				Enabled:    true,
@@ -47,7 +48,7 @@ func (s *ProjectCopySuite) SetupSuite() {
 		},
 		CachedVars: []*model.ProjectVars{
 			{
-				Id:          "projectA",
+				Id:          "12345",
 				Vars:        map[string]string{"a": "1", "b": "2"},
 				PrivateVars: map[string]bool{"b": true},
 			},
@@ -94,19 +95,23 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
-	s.Equal("projectC", restmodel.FromStringPtr(newProject.Id))
-	s.Equal("projectC", restmodel.FromStringPtr(newProject.Identifier))
-	s.Equal("abcd", restmodel.FromStringPtr(newProject.Branch))
+	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
+	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
+	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
 	s.False(newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", restmodel.FromStringPtr(newProject.Admins[0]))
+	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
-	res, err := s.route.sc.FindProjectById("projectC")
+	res, err := s.route.sc.FindProjectById("projectC", false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = s.route.sc.FindProjectById("projectA")
+	res, err = s.route.sc.FindProjectById("projectA", false)
 	s.NoError(err)
 	s.NotNil(res)
+	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
+	s.NoError(err)
+	s.Require().NotNil(vars)
+	s.Len(vars.Vars, 2)
 }
 
 type copyVariablesSuite struct {

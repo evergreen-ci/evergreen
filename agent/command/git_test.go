@@ -331,7 +331,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
 				foundCloneErr = true
 			}
-			if strings.Contains(msg.Message, "Permission denied (publickey)") {
+			if strings.Contains(msg.Message, "Permission denied (publickey)") || strings.Contains(msg.Message, "Host key verification failed.") {
 				foundSSHErr = true
 			}
 		}

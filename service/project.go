@@ -7,9 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/gimlet/rolemanager"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -20,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -109,14 +108,18 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
 	}
 
-	projVars, err := model.FindOneProjectVars(id)
+	projVars, err := model.FindOneProjectVars(projRef.Id)
 	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if projVars == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	projVars = projVars.RedactPrivateVars()
 
-	projectAliases, err := model.FindAliasesForProject(id)
+	projectAliases, err := model.FindAliasesForProject(projRef.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -211,20 +214,19 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	projectRef, err := model.FindOneProjectRef(id)
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
 	if projectRef == nil {
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-
+	id = projectRef.Id
 	origProjectRef := *projectRef
 
 	responseRef := struct {
+		Id                      string                         `json:"id"`
 		Identifier              string                         `json:"identifier"`
 		DisplayName             string                         `json:"display_name"`
 		RemotePath              string                         `json:"remote_path"`
@@ -254,7 +256,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
-		UseRepoSettings         bool                           `json:"use_repo_settings"`
 		Hidden                  bool                           `json:"hidden"`
 		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
 		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
@@ -519,6 +520,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	projectRef.Id = id
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
@@ -536,9 +538,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
 	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
-	projectRef.UseRepoSettings = responseRef.UseRepoSettings
 	projectRef.Hidden = responseRef.Hidden
-	projectRef.Id = id
+	projectRef.Identifier = responseRef.Identifier
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.GithubChecksEnabled = responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
@@ -571,22 +572,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
-		}
-	}
-
-	// if owner/repo has changed or we're toggling repo settings off, update scope
-	if projectRef.Owner != origProjectRef.Owner || projectRef.Repo != origProjectRef.Repo ||
-		(!projectRef.UseRepoSettings && origProjectRef.UseRepoSettings) {
-		if err = projectRef.RemoveFromRepoScope(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error removing project ref from old repo scope"))
-			return
-		}
-		projectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if projectRef.UseRepoSettings && projectRef.RepoRefId == "" {
-		if err = projectRef.AddToRepoScope(dbUser); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
 		}
 	}
 
@@ -656,11 +641,16 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	// if we're copying a project we should use the variables from the DB for that project,
 	// in order to get/store the correct values for private variables.
-	if responseRef.Identifier != id && responseRef.Identifier != "" {
-		projectVars, err = model.FindOneProjectVars(responseRef.Identifier)
+	if responseRef.Id != id && responseRef.Id != "" {
+		projectVars, err = model.FindOneProjectVars(responseRef.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "problem getting variables for project '%s'", responseRef.Identifier))
+			return
+		}
+		if projectVars == nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Errorf("no project variables for project '%s'", responseRef.Identifier))
 			return
 		}
 		projectVars.Id = id
@@ -776,7 +766,6 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newProject := model.ProjectRef{
-		Id:         id,
 		Identifier: id,
 		Hidden:     false,
 	}
@@ -902,12 +891,12 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
-func verifyAliasExists(alias, projectIdentifier string, newAliasDefinitions []model.ProjectAlias, deletedAliasDefinitionIDs []string) (bool, error) {
+func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.ProjectAlias, deletedAliasDefinitionIDs []string) (bool, error) {
 	if len(newAliasDefinitions) > 0 {
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectIdentifier, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

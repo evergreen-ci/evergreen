@@ -47,7 +47,7 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
-	projectToCopy, err := p.sc.FindProjectById(p.oldProject)
+	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.oldProject))
 	}
@@ -56,7 +56,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// verify project with new name doesn't exist
-	_, err = p.sc.FindProjectById(p.newProject)
+	_, err = p.sc.FindProjectById(p.newProject, false)
 	if err == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("provide different ID for new project"))
 	}
@@ -70,7 +70,6 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// copy project, disable necessary settings
 	oldId := projectToCopy.Id
-	projectToCopy.Id = p.newProject // TODO: this will be internally generated in future work
 	projectToCopy.Identifier = p.newProject
 	projectToCopy.Enabled = false
 	projectToCopy.PRTestingEnabled = false
@@ -145,17 +144,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo) // ensure project is existing
+	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	copyFromProject, err := p.sc.FindProjectById(p.copyFrom) // ensure project is existing
+	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
 	}
 
-	varsToCopy, err := p.sc.FindProjectVarsById(copyFromProject.Id, p.opts.DryRun) //dont redact private variables unless it's a dry run
+	varsToCopy, err := p.sc.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
 	}

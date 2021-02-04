@@ -51,13 +51,13 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem converting repo document"))
 	}
 
-	repoVars, err := h.sc.FindProjectVarsById(repo.Id, true)
+	repoVars, err := h.sc.FindProjectVarsById("", repo.Id, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	repoModel.Variables = *repoVars
 
-	if repoModel.Aliases, err = h.sc.FindProjectAliases(repo.Id); err != nil {
+	if repoModel.Aliases, err = h.sc.FindProjectAliases("", repo.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

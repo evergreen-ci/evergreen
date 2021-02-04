@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -25,22 +26,22 @@ func TestHostBuildFromService(t *testing.T) {
 		modelPairs := []hostCompare{
 			{
 				ah: APIHost{
-					Id: ToStringPtr("testId"),
+					Id: utility.ToStringPtr("testId"),
 					Distro: DistroInfo{
-						Id:       ToStringPtr("testDistroId"),
-						Provider: ToStringPtr("testDistroProvider"),
+						Id:       utility.ToStringPtr("testDistroId"),
+						Provider: utility.ToStringPtr("testDistroProvider"),
 					},
 					Provisioned:  true,
-					StartedBy:    ToStringPtr("testStarter"),
-					InstanceType: ToStringPtr("testType"),
-					User:         ToStringPtr("testUser"),
-					Status:       ToStringPtr("testStatus"),
+					StartedBy:    utility.ToStringPtr("testStarter"),
+					InstanceType: utility.ToStringPtr("testType"),
+					User:         utility.ToStringPtr("testUser"),
+					Status:       utility.ToStringPtr("testStatus"),
 					RunningTask: TaskInfo{
-						Id:           ToStringPtr("testRunningTaskId"),
-						Name:         ToStringPtr("testRTName"),
+						Id:           utility.ToStringPtr("testRunningTaskId"),
+						Name:         utility.ToStringPtr("testRTName"),
 						DispatchTime: &timeNow,
-						VersionId:    ToStringPtr("testVersionId"),
-						BuildId:      ToStringPtr("testBuildId"),
+						VersionId:    utility.ToStringPtr("testVersionId"),
+						BuildId:      utility.ToStringPtr("testBuildId"),
 					},
 				},
 				sh: host.Host{
@@ -85,8 +86,8 @@ func TestHostBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				err = apiHost.BuildFromService(hc.sh)
 				So(err, ShouldBeNil)
-				So(FromStringPtr(apiHost.Id), ShouldEqual, FromStringPtr(hc.ah.Id))
-				So(FromStringPtr(apiHost.Status), ShouldEqual, FromStringPtr(hc.ah.Status))
+				So(utility.FromStringPtr(apiHost.Id), ShouldEqual, utility.FromStringPtr(hc.ah.Id))
+				So(utility.FromStringPtr(apiHost.Status), ShouldEqual, utility.FromStringPtr(hc.ah.Status))
 			}
 		})
 	})

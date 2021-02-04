@@ -165,7 +165,11 @@ func (m *mgoCertDepot) Delete(tag *depot.Tag) error {
 func (m *mgoCertDepot) Save(name string, creds *Credentials) error { return depotSave(m, name, creds) }
 func (m *mgoCertDepot) Find(name string) (*Credentials, error)     { return depotFind(m, name, m.opts) }
 func (m *mgoCertDepot) Generate(name string) (*Credentials, error) {
-	return depotGenerate(m, name, m.opts)
+	return depotGenerateDefault(m, name, m.opts)
+}
+
+func (m *mgoCertDepot) GenerateWithOptions(opts CertificateOptions) (*Credentials, error) {
+	return depotGenerate(m, opts.CommonName, m.opts, opts)
 }
 
 func errNotNotFound(err error) bool {

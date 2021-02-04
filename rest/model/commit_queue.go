@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -23,6 +24,7 @@ type APICommitQueueItem struct {
 	Modules         []APIModule `json:"modules"`
 	Patch           *APIPatch   `json:"patch"`
 	MessageOverride *string     `json:"message_override"`
+	Source          *string     `json:"source"`
 }
 
 type APIModule struct {
@@ -44,7 +46,7 @@ func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 		return errors.Errorf("incorrect type '%T' when converting commit queue", h)
 	}
 
-	cq.ProjectID = ToStringPtr(cqService.ProjectID)
+	cq.ProjectID = utility.ToStringPtr(cqService.ProjectID)
 	for _, item := range cqService.Queue {
 		cqItem := APICommitQueueItem{}
 		if err := cqItem.BuildFromService(item); err != nil {
@@ -65,15 +67,16 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	if !ok {
 		return errors.Errorf("incorrect type '%T' when converting commit queue item", h)
 	}
-	item.Issue = ToStringPtr(cqItemService.Issue)
-	item.Version = ToStringPtr(cqItemService.Version)
+	item.Issue = utility.ToStringPtr(cqItemService.Issue)
+	item.Version = utility.ToStringPtr(cqItemService.Version)
 	item.EnqueueTime = ToTimePtr(cqItemService.EnqueueTime)
-	item.MessageOverride = ToStringPtr(cqItemService.MessageOverride)
+	item.MessageOverride = utility.ToStringPtr(cqItemService.MessageOverride)
+	item.Source = utility.ToStringPtr(cqItemService.Source)
 
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
-			Module: ToStringPtr(module.Module),
-			Issue:  ToStringPtr(module.Issue),
+			Module: utility.ToStringPtr(module.Module),
+			Issue:  utility.ToStringPtr(module.Issue),
 		})
 	}
 
@@ -82,14 +85,15 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 
 func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	serviceItem := commitqueue.CommitQueueItem{
-		Issue:           FromStringPtr(item.Issue),
-		Version:         FromStringPtr(item.Version),
-		MessageOverride: FromStringPtr(item.MessageOverride),
+		Issue:           utility.FromStringPtr(item.Issue),
+		Version:         utility.FromStringPtr(item.Version),
+		MessageOverride: utility.FromStringPtr(item.MessageOverride),
+		Source:          utility.FromStringPtr(item.Source),
 	}
 	for _, module := range item.Modules {
 		serviceModule := commitqueue.Module{
-			Module: FromStringPtr(module.Module),
-			Issue:  FromStringPtr(module.Issue),
+			Module: utility.FromStringPtr(module.Module),
+			Issue:  utility.FromStringPtr(module.Issue),
 		}
 		serviceItem.Modules = append(serviceItem.Modules, serviceModule)
 	}
@@ -127,8 +131,8 @@ func parseFirstLine(comment string) GithubCommentCqData {
 	moduleSlices := moduleRegex.FindAllStringSubmatch(comment, -1)
 	for _, moduleSlice := range moduleSlices {
 		modules = append(modules, APIModule{
-			Module: ToStringPtr(moduleSlice[1]),
-			Issue:  ToStringPtr(moduleSlice[2]),
+			Module: utility.ToStringPtr(moduleSlice[1]),
+			Issue:  utility.ToStringPtr(moduleSlice[2]),
 		})
 	}
 

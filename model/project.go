@@ -198,19 +198,19 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
-	return util.IsPtrSetToFalse(bvt.Patchable)
+	return !utility.FromBoolTPtr(bvt.Patchable)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
-	return util.IsPtrSetToTrue(bvt.PatchOnly)
+	return utility.FromBoolPtr(bvt.PatchOnly)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
-	return util.IsPtrSetToFalse(bvt.AllowForGitTag)
+	return !utility.FromBoolTPtr(bvt.AllowForGitTag)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
-	return util.IsPtrSetToTrue(bvt.GitTagOnly)
+	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
 type BuildVariant struct {
@@ -906,7 +906,29 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
+	expansions.Put("author_email", v.AuthorEmail)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
+	requesterExpansion := ""
+	switch v.Requester {
+	case evergreen.PatchVersionRequester:
+		requesterExpansion = "patch"
+	case evergreen.GithubPRRequester:
+		requesterExpansion = "github_pr"
+	case evergreen.GitTagRequester:
+		requesterExpansion = "github_tag"
+	case evergreen.RepotrackerVersionRequester:
+		requesterExpansion = "commit"
+	case evergreen.TriggerRequester:
+		requesterExpansion = "trigger"
+	case evergreen.MergeTestRequester:
+		requesterExpansion = "commit_queue"
+	case evergreen.AdHocRequester:
+		requesterExpansion = "ad_hoc"
+	default:
+		requesterExpansion = "unknown_requester"
+	}
+	expansions.Put("requester", requesterExpansion)
 
 	if evergreen.IsGitTagRequester(v.Requester) {
 		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
@@ -1069,26 +1091,26 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
-func FindLatestVersionWithValidProject(identifier string) (*Version, *Project, error) {
+func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, error) {
 	const retryCount = 5
-	if identifier == "" {
-		return nil, nil, errors.WithStack(errors.New("cannot pass empty identifier to FindLatestVersionWithValidProject"))
+	if projectId == "" {
+		return nil, nil, errors.WithStack(errors.New("cannot pass empty projectId to FindLatestVersionWithValidProject"))
 	}
 	project := &Project{
-		Identifier: identifier,
+		Identifier: projectId,
 	}
 
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
 	for i := 0; i < retryCount; i++ {
-		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(identifier, revisionOrderNum)
+		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
 			// database error, don't log critical
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = LoadProjectForVersion(lastGoodVersion, identifier, true)
+			project, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
 		if err == nil {
@@ -1097,7 +1119,7 @@ func FindLatestVersionWithValidProject(identifier string) (*Version, *Project, e
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "last known good version has malformed config",
 			"version": lastGoodVersion.Id,
-			"project": identifier,
+			"project": projectId,
 		}))
 	}
 
@@ -1150,6 +1172,24 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 		}
 	}
 	return nil
+}
+
+// GetTaskNameAndTags checks the project for a task or task group matching the
+// build variant task unit, and returns the name and tags
+func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
+	if bvt.IsGroup {
+		ptg := p.FindTaskGroup(bvt.Name)
+		if ptg == nil {
+			return "", nil, false
+		}
+		return ptg.Name, ptg.Tags, true
+	}
+
+	pt := p.FindProjectTask(bvt.Name)
+	if pt == nil {
+		return "", nil, false
+	}
+	return pt.Name, pt.Tags, true
 }
 
 func (p *Project) FindProjectTask(name string) *ProjectTask {
@@ -1280,7 +1320,7 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			if util.IsPtrSetToFalse(t.Patchable) || util.IsPtrSetToTrue(t.GitTagOnly) {
+			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
 				continue
 			}
 			tasks = append(tasks, t.Name)

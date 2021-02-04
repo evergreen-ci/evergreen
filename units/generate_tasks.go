@@ -60,11 +60,6 @@ func NewGenerateTasksJob(id string, ts string) amboy.Job {
 func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	start := time.Now()
 	if t.GeneratedTasks {
-		grip.Debug(message.Fields{
-			"message": "attempted to generate tasks, but generator already ran for this task",
-			"task":    t.Id,
-			"version": t.Version,
-		})
 		return mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
@@ -265,10 +260,6 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	err = j.generate(ctx, t)
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
-	if err != nil && !shouldNoop {
-		j.AddError(err)
-	}
-	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",
@@ -294,6 +285,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"job":           j.ID(),
 		"version":       t.Version,
 	}))
+
+	if err != nil && !shouldNoop {
+		j.AddError(err)
+		return
+	}
+	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
 }
 
 func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
