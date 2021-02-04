@@ -36,7 +36,6 @@ type APIPatch struct {
 	GithubPatchData         githubPatch      `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges       []APIModulePatch `json:"module_code_changes"`
 	Parameters              []APIParameter   `json:"parameters"`
-	DownstreamParameters    []APIParameter   `json:"downstream_parameters"`
 	PatchedConfig           *string          `json:"patched_config"`
 	Project                 *string          `json:"project"`
 	CanEnqueueToCommitQueue bool             `json:"can_enqueue_to_commit_queue"`
@@ -128,16 +127,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		}
 	}
 
-	if v.DownstreamParameters != nil {
-		apiPatch.DownstreamParameters = []APIParameter{}
-		for _, param := range v.DownstreamParameters {
-			apiPatch.DownstreamParameters = append(apiPatch.DownstreamParameters, APIParameter{
-				Key:   ToStringPtr(param.Key),
-				Value: ToStringPtr(param.Value),
-			})
-		}
-	}
-
 	if env := evergreen.GetEnvironment(); env != nil {
 		codeChanges := []APIModulePatch{}
 		apiURL := env.Settings().ApiUrl
@@ -220,15 +209,6 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 			res.Parameters = append(res.Parameters, patch.Parameter{
 				Key:   utility.FromStringPtr(param.Key),
 				Value: utility.FromStringPtr(param.Value),
-			})
-		}
-	}
-	if apiPatch.DownstreamParameters != nil {
-		res.DownstreamParameters = []patch.Parameter{}
-		for _, param := range apiPatch.DownstreamParameters {
-			res.DownstreamParameters = append(res.DownstreamParameters, patch.Parameter{
-				Key:   FromStringPtr(param.Key),
-				Value: FromStringPtr(param.Value),
 			})
 		}
 	}
