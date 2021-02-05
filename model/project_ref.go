@@ -654,9 +654,11 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 	}
 }
 func byOwnerRepoAndBranch(owner, repoName, branch string) bson.M {
-	res := byOwnerAndRepo(owner, repoName)
-	res[ProjectRefBranchKey] = branch
-	return res
+	return bson.M{
+		ProjectRefOwnerKey:  owner,
+		ProjectRefRepoKey:   repoName,
+		ProjectRefBranchKey: branch,
+	}
 }
 
 func byId(identifier string) db.Q {
@@ -674,10 +676,8 @@ func FindMergedProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]Pro
 	projectRefs := []ProjectRef{}
 
 	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch)}}
-	// aggregate owner/repo/branch
+	pipeline = append(pipeline, pipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
-	pipeline = append(pipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true))
-	err = db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
