@@ -159,16 +159,6 @@ func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) 
 	return nil
 }
 
-// FindProjects queries the backing database for the specified projects
-func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
-	projects, err := model.FindProjectRefs(key, limit, sortDir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
-	}
-
-	return projects, nil
-}
-
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
 func (pc *DBProjectConnector) FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
@@ -389,34 +379,6 @@ type MockProjectConnector struct {
 	CachedProjects []model.ProjectRef
 	CachedVars     []*model.ProjectVars
 	CachedEvents   []restModel.APIProjectEvent
-}
-
-// FindProjects queries the cached projects slice for the matching projects.
-// Assumes CachedProjects is sorted in alphabetical order of project identifier.
-func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
-	projects := []model.ProjectRef{}
-	if sortDir > 0 {
-		for i := 0; i < len(pc.CachedProjects); i++ {
-			p := pc.CachedProjects[i]
-			if p.Id >= key {
-				projects = append(projects, p)
-				if len(projects) == limit {
-					break
-				}
-			}
-		}
-	} else {
-		for i := len(pc.CachedProjects) - 1; i >= 0; i-- {
-			p := pc.CachedProjects[i]
-			if p.Id < key {
-				projects = append(projects, p)
-				if len(projects) == limit {
-					break
-				}
-			}
-		}
-	}
-	return projects, nil
 }
 
 func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {

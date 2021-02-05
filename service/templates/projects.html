@@ -106,9 +106,15 @@ Evergreen Projects
             </label> <br>
             <label class="muted col-lg-offset-1">Enable testing</label>
           </div>
-          <div class="radio">
+          <div class="radio" ng-hide="settingsFormData.enabled === null">
             <label class="control-label">
               <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong>
+            </label> <br>
+            <label class="muted col-lg-offset-1">Suspend testing</label>
+          </div>
+          <div class="radio" ng-hide="settingsFormData.enabled != null">
+            <label class="control-label">
+              <input type="radio" ng-model="settingsFormData.enabled" ng-value="null"> <strong> Disabled </strong>
             </label> <br>
             <label class="muted col-lg-offset-1">Suspend testing</label>
           </div>
@@ -197,9 +203,15 @@ Evergreen Projects
                 </label> <br>
                 <label class="muted col-lg-offset-1">Users must be logged in to see this project.</label>
               </div>
-              <div class="radio">
+              <div class="radio" ng-hide="settingsFormData.private == null">
                 <label class="control-label">
                   <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong>
+                </label> <br>
+                <label class="muted col-lg-offset-1">Anyone can see this project.</label>
+              </div>
+              <div class="radio" ng-hide="settingsFormData.private != null">
+                <label class="control-label">
+                  <input type="radio" ng-model="settingsFormData.private" ng-value="null"> <strong> Public </strong>
                 </label> <br>
                 <label class="muted col-lg-offset-1">Anyone can see this project.</label>
               </div>

@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -350,13 +349,12 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.Equal("ident1", projectRef.Id)
 	assert.Equal("buildlogger", projectRef.DefaultLogger)
 
-	// 2 matching documents, error!
+	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
 	require.NoError(doc.Insert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
-	assert.Error(err)
-	assert.Contains(err.Error(), "found 2 project refs, when 1 was expected")
-	require.Nil(projectRef)
+	assert.NoError(err)
+	assert.NotNil(projectRef)
 }
 
 func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
@@ -364,33 +362,70 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.Clear(ProjectRefCollection))
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
-	assert.NoError(err)
-	assert.Nil(projectRef)
+	//projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	//assert.NoError(err)
+	//assert.Nil(projectRef)
+	//
+	//doc := &ProjectRef{
+	//	Owner:   "mongodb",
+	//	Repo:    "mci",
+	//	Branch:  "master",
+	//	Id:      "mci",
+	//	Enabled: utility.TruePtr(),
+	//}
+	//require.NoError(doc.Insert())
+	//
+	//projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	//assert.NoError(err)
+	//assert.Nil(projectRef)
+	//
+	//doc.CommitQueue.Enabled = utility.TruePtr()
+	//require.NoError(db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: "mci"}, doc))
+	//
+	//projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	//assert.NoError(err)
+	//assert.NotNil(projectRef)
+	//assert.Equal("mci", projectRef.Id)
+	//assert.Equal("buildlogger", projectRef.DefaultLogger)
 
+	// doc defaults to repo, which is not enabled
 	doc := &ProjectRef{
-		Owner:   "mongodb",
-		Repo:    "mci",
-		Branch:  "master",
-		Id:      "mci",
-		Enabled: utility.TruePtr(),
+		Owner:           "mongodb",
+		Repo:            "mci",
+		Branch:          "main",
+		Id:              "mci_main",
+		RepoRefId:       "my_repo",
+		UseRepoSettings: true,
 	}
-	require.NoError(doc.Insert())
+	repoDoc := &RepoRef{ProjectRef{Id: "my_repo"}}
+	assert.NoError(doc.Insert())
+	assert.NoError(repoDoc.Insert())
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	fmt.Println("First test")
+	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	doc.CommitQueue.Enabled = utility.TruePtr()
-	require.NoError(db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: "mci"}, doc))
+	// doc defaults to repo, which is enabled
+	repoDoc.Enabled = utility.TruePtr()
+	repoDoc.CommitQueue.Enabled = utility.TruePtr()
+	assert.NoError(repoDoc.Update())
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	fmt.Println("Second test")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
-	assert.Equal("mci", projectRef.Id)
+	assert.Equal("mci_main", projectRef.Id)
 	assert.Equal("buildlogger", projectRef.DefaultLogger)
+
+	// doc doesn't default to repo
+	doc.CommitQueue.Enabled = utility.FalsePtr()
+	assert.NoError(doc.Update())
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	assert.NoError(err)
+	assert.Nil(projectRef)
 }
 
 func TestCanEnableCommitQueue(t *testing.T) {

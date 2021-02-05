@@ -136,7 +136,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/raw").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makePatchRawHandler(sc))
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(checkUser, submitPatches).RouteHandler(makeRestartPatch(sc))
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(checkUser, addProject, submitPatches, checkCommitQueueItemOwner).RouteHandler(makeMergePatch(sc))
-	app.AddRoute("/projects").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectAliasResultsHandler(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(checkUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID(sc))

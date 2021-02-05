@@ -1202,7 +1202,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
+func PopulatePeriodicBuilds() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		projects, err := model.FindPeriodicProjects()
 		if err != nil {
