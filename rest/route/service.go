@@ -22,6 +22,8 @@ type HandlerOpts struct {
 // the api to the router.
 func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc := &data.DBConnector{}
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
 
 	sc.SetURL(opts.URL)
 
@@ -48,10 +50,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
-	cedarTestStats := CheckCedarTestStats()
-
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
+	cedarTestStats := CheckCedarTestStats(settings)
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
