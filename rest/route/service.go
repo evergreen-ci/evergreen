@@ -50,7 +50,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
-	cedarTestStats := CheckCedarTestStats(settings)
+	cedarTestStats := checkCedarTestStats(settings)
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))

@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -492,7 +494,7 @@ type cedarTestStatsMiddleware struct {
 	settings *evergreen.Settings
 }
 
-func CheckCedarTestStats(settings *evergreen.Settings) gimlet.Middleware {
+func checkCedarTestStats(settings *evergreen.Settings) gimlet.Middleware {
 	return &cedarTestStatsMiddleware{
 		settings: settings,
 	}
@@ -531,10 +533,11 @@ func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 			}
 		}
 		_, err = io.Copy(rw, resp.Body)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem writing cedar response")))
-			return
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"route":      "/projects/{project_id}/test_stats",
+			"message":    "problem copying cedar test stats",
+			"project_id": gimlet.GetVars(r)["project_id"],
+		}))
 		return
 	}
 
