@@ -307,12 +307,11 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 
 func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
 	p.Triggers.DownstreamParameters = parameters
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
-			"$set": bson.M{
-				TriggerInfoDownstreamParametersKey: parameters,
-			},
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": parameters}},
 		},
 	)
 }
@@ -642,6 +641,25 @@ func (p *Patch) IsBackport() bool {
 
 func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
+}
+
+func (p *Patch) SetParametersFromParent() error {
+	parentPatchId := p.Triggers.ParentPatch
+	parentPatch, err := FindOneId(parentPatchId)
+	if err != nil {
+		return errors.Wrap(err, "can't get parent patch")
+	}
+	if parentPatch == nil {
+		return errors.Wrap(err, fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+	}
+	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
+		p.Parameters = downstreamParams
+		err = p.SetParameters(downstreamParams)
+		if err != nil {
+			return errors.Wrap(err, "error setting parameters")
+		}
+	}
+	return nil
 }
 
 func (p *Patch) GetRequester() string {

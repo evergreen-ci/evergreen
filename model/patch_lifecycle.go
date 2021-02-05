@@ -308,6 +308,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
 
+	if p.IsChild() {
+		if err = p.SetParametersFromParent(); err != nil {
+			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
+		}
+	}
+
 	patchVersion := &Version{
 		Id:                  p.Id.Hex(),
 		CreateTime:          time.Now(),
@@ -409,11 +415,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
-	if p.IsChild() {
-		if err = GetParameters(p); err != nil {
-			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
-		}
-	}
 	mongoClient := evergreen.GetEnvironment().Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
@@ -449,21 +450,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	return patchVersion, nil
-}
-
-func GetParameters(patchDoc *patch.Patch) error {
-	parentPatchId := patchDoc.Triggers.ParentPatch
-	parentPatch, err := patch.FindOneId(parentPatchId)
-	if err != nil {
-		return errors.Wrap(err, "can't get parent patch")
-	}
-	if parentPatch == nil {
-		return errors.Wrap(err, fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
-	}
-	if downstreamParams := parentPatch.Triggers.DownstreamParameters; downstreamParams != nil {
-		patchDoc.Parameters = downstreamParams
-	}
-	return nil
 }
 
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
