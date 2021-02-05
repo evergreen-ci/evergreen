@@ -264,8 +264,9 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
-		Issue:  patchID,
-		Source: SourceDiff,
+		Issue:   patchID,
+		Source:  SourceDiff,
+		Version: patchID,
 	}
 
 	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}
@@ -273,19 +274,9 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID, BuildId: "b1"}
 	require.NoError(t, mergeTask.Insert())
 
-	// Without a corresponding version
-	assert.NoError(t, preventMergeForItem(false, item, "user"))
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
-	assert.NoError(t, err)
-	assert.NotEmpty(t, subscriptions)
-
-	mergeTask, err = task.FindOneId("t1")
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), mergeTask.Priority)
-
 	// With a corresponding version
-	assert.NoError(t, preventMergeForItem(true, item, "user"))
-	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, preventMergeForItem(item, "user"))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
 

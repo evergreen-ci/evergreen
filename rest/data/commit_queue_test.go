@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type CommitQueueSuite struct {
@@ -352,16 +353,21 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 func TestConcludeMerge(t *testing.T) {
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
-	itemID := "abcdef"
+	itemID := bson.NewObjectId()
+	p := patch.Patch{
+		Id:      itemID,
+		Project: projectID,
+	}
+	assert.NoError(t, p.Insert())
 	queue := &commitqueue.CommitQueue{
 		ProjectID:  projectID,
-		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID, Version: itemID}},
+		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID.Hex(), Version: itemID.Hex()}},
 		Processing: true,
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
 	dc := &DBCommitQueueConnector{}
 
-	assert.NoError(t, dc.ConcludeMerge(itemID, "foo"))
+	assert.NoError(t, dc.ConcludeMerge(itemID.Hex(), "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

@@ -420,6 +420,9 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	// we should count 1 of each type
 	v := reflect.ValueOf(stats).Elem()
 	for i := 0; i < v.NumField(); i++ {
+		if i == 6 {
+			continue // TODO: temporary until GithubMerge is removed as a notification type
+		}
 		f := v.Field(i)
 		s.Equal(1, int(f.Int()))
 	}

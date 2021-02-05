@@ -206,18 +206,20 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists boo
 	if removed == nil || head.Issue != issue {
 		return nil, nil
 	}
+	if versionExists {
+		err = preventMergeForItem(head, user)
+	}
 
-	return removed, errors.Wrapf(preventMergeForItem(versionExists, head, user),
-		"can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
+	return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
 }
 
-func preventMergeForItem(versionExists bool, item CommitQueueItem, user string) error {
-	if err := clearVersionPatchSubscriber(item.Issue, event.CommitQueueDequeueSubscriberType); err != nil {
+func preventMergeForItem(item CommitQueueItem, user string) error {
+	if err := clearVersionPatchSubscriber(item.Version, event.CommitQueueDequeueSubscriberType); err != nil {
 		return errors.Wrap(err, "can't clear subscriptions")
 	}
 
 	// Disable the merge task
-	mergeTask, err := task.FindMergeTaskForVersion(item.Issue)
+	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
 	if err != nil {
 		return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
 	}

@@ -304,8 +304,9 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
 			{
-				Issue:  validId,
-				Source: commitqueue.SourceDiff,
+				Issue:   validId,
+				Source:  commitqueue.SourceDiff,
+				Version: validId,
 			},
 			{
 				Issue:  bson.NewObjectId().Hex(),
