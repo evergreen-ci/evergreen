@@ -583,6 +583,29 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
+func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, patchData apimodels.PatchData, taskId string) error {
+	if len(patchData.DownstreamParams) == 0 {
+		return nil
+	}
+
+	info := requestInfo{
+		method: http.MethodPost,
+		taskData: &TaskData{
+			ID: taskId,
+		},
+		version: apiVersion2,
+	}
+
+	info.setTaskPathSuffix("downstreamParams")
+	resp, err := c.retryRequest(ctx, info, patchData)
+	if err != nil {
+		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskId, err.Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
 	info := requestInfo{
 		method:   http.MethodGet,

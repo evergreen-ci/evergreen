@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
@@ -381,6 +382,42 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
 }
 
+// SetDownstreamParams updates file mappings for a task or build
+func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request) {
+	// todo: make sure api is v2
+	// to do in api: get the patch by the patch id, and set the downstream params using that method.
+
+	t := MustHaveTask(r)
+	grip.Infoln("Setting downstream expansions for task:", t.Id)
+
+	var patchData apimodels.PatchData
+	err := utility.ReadJSON(util.NewRequestReader(r), &patchData)
+	if err != nil {
+		message := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
+		grip.Error(message)
+		gimlet.WriteJSONError(w, message)
+		return
+	}
+
+	p, err := patch.FindOneId(patchData.PatchId)
+	if err != nil {
+
+		message := fmt.Sprintf("error loading patch: %v: %v", patchData.PatchId, err)
+		grip.Error(message)
+		gimlet.WriteJSONError(w, message)
+		return
+	}
+
+	if err = p.SetDownstreamParameters(patchData.DownstreamParams); err != nil {
+		message := fmt.Sprintf("error setting patch parameters: %s", err)
+		grip.Error(message)
+		gimlet.WriteJSONInternalError(w, message)
+		return
+	}
+
+	gimlet.WriteJSON(w, fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
+}
+
 // AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
@@ -601,6 +638,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(checkTask, checkHost).Handler(as.GetDistroView).Get()
+	app.Route().Version(2).Route("/task/{taskId}/downstreamParams").Wrap(checkTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()

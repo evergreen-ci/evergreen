@@ -118,6 +118,8 @@ type Communicator interface {
 
 	// ConcludeMerge reports the status of a commit queue merge back to the server
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
+
+	SetDownstreamParams(ctx context.Context, patchData apimodels.PatchData, taskId string) error
 }
 
 type LoggerMetadata struct {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -305,4 +306,9 @@ type DistroView struct {
 	CloneMethod         string `json:"clone_method"`
 	DisableShallowClone bool   `json:"disable_shallow_clone"`
 	WorkDir             string `json:"work_dir"`
+}
+
+type PatchData struct {
+	PatchId          string            `mapstructure:"patch_id"`
+	DownstreamParams []patch.Parameter `mapstructure:"downstream_params"`
 }

@@ -399,6 +399,11 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
+func (c *Mock) SetDownstreamParams(ctx context.Context, patchData apimodels.PatchData, taskId string) error {
+	// todo
+	return nil
+}
+
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
 func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.TestLog) (string, error) {
