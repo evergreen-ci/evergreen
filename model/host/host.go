@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"time"
 
@@ -663,8 +664,36 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	if err := h.DeleteJasperCredentials(ctx, env); err != nil {
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
+	addToSet := func(set []string, val string) []string {
+		if utility.StringSliceContains(set, val) {
+			return set
+		}
+		return append(set, val)
+	}
 
-	creds, err := env.CertificateDepot().Generate(h.JasperCredentialsID)
+	domains := []string{h.JasperCredentialsID}
+	var ipAddrs []string
+	if net.ParseIP(h.JasperCredentialsID) != nil {
+		ipAddrs = addToSet(ipAddrs, h.JasperCredentialsID)
+	}
+	if h.Host != "" {
+		if net.ParseIP(h.Host) != nil {
+			ipAddrs = addToSet(ipAddrs, h.Host)
+		} else {
+			domains = addToSet(domains, h.Host)
+		}
+	}
+	if h.IP != "" && net.ParseIP(h.IP) != nil {
+		ipAddrs = addToSet(ipAddrs, h.IP)
+	}
+	opts := certdepot.CertificateOptions{
+		CommonName: h.JasperCredentialsID,
+		Host:       h.JasperCredentialsID,
+		Domain:     domains,
+		IP:         ipAddrs,
+		CA:         evergreen.CAName,
+	}
+	creds, err := env.CertificateDepot().GenerateWithOptions(opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
 	}

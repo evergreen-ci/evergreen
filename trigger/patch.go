@@ -140,13 +140,17 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		githubDescription: "tasks are running",
 	}
 	slackColor := evergreenFailColor
+	finishTime := t.patch.FinishTime
+	if utility.IsZeroTime(finishTime) {
+		finishTime = time.Now()
+	}
 	if t.data.Status == evergreen.PatchSucceeded {
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
-		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
 	} else if t.data.Status == evergreen.PatchFailed {
 		data.githubState = message.GithubStateFailure
-		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
 	}
 	if t.patch.IsGithubPRPatch() {
 		data.slack = append(data.slack, message.SlackAttachment{

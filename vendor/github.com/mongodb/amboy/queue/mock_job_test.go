@@ -46,7 +46,6 @@ func init() {
 	registry.AddJobType("sleep", func() amboy.Job { return newSleepJob() })
 }
 
-//
 type mockJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 }

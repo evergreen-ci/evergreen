@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -57,7 +58,7 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 
 	case event.Subscriber:
-		s.Type = ToStringPtr(v.Type)
+		s.Type = utility.ToStringPtr(v.Type)
 		var target interface{}
 
 		switch v.Type {
@@ -120,9 +121,9 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	var target interface{}
 	var err error
 	out := event.Subscriber{
-		Type: FromStringPtr(s.Type),
+		Type: utility.FromStringPtr(s.Type),
 	}
-	switch FromStringPtr(s.Type) {
+	switch utility.FromStringPtr(s.Type) {
 
 	case event.GithubPullRequestSubscriberType:
 		apiModel := APIGithubPRSubscriber{}
@@ -209,7 +210,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	default:
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("unknown subscriber type: '%s'", FromStringPtr(s.Type)),
+			Message:    fmt.Sprintf("unknown subscriber type: '%s'", utility.FromStringPtr(s.Type)),
 		}
 	}
 
@@ -220,9 +221,9 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.GithubPullRequestSubscriber:
-		s.Owner = ToStringPtr(v.Owner)
-		s.Repo = ToStringPtr(v.Repo)
-		s.Ref = ToStringPtr(v.Ref)
+		s.Owner = utility.ToStringPtr(v.Owner)
+		s.Repo = utility.ToStringPtr(v.Repo)
+		s.Ref = utility.ToStringPtr(v.Ref)
 		s.PRNumber = v.PRNumber
 
 	default:
@@ -234,18 +235,18 @@ func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIGithubCheckSubscriber) ToService() (interface{}, error) {
 	return event.GithubCheckSubscriber{
-		Owner: FromStringPtr(s.Owner),
-		Repo:  FromStringPtr(s.Repo),
-		Ref:   FromStringPtr(s.Ref),
+		Owner: utility.FromStringPtr(s.Owner),
+		Repo:  utility.FromStringPtr(s.Repo),
+		Ref:   utility.FromStringPtr(s.Ref),
 	}, nil
 }
 
 func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.GithubCheckSubscriber:
-		s.Owner = ToStringPtr(v.Owner)
-		s.Repo = ToStringPtr(v.Repo)
-		s.Ref = ToStringPtr(v.Ref)
+		s.Owner = utility.ToStringPtr(v.Owner)
+		s.Repo = utility.ToStringPtr(v.Repo)
+		s.Ref = utility.ToStringPtr(v.Ref)
 
 	default:
 		return errors.Errorf("type '%T' does not match subscriber type APIGithubCheckSubscriber", v)
@@ -256,9 +257,9 @@ func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 	return event.GithubPullRequestSubscriber{
-		Owner:    FromStringPtr(s.Owner),
-		Repo:     FromStringPtr(s.Repo),
-		Ref:      FromStringPtr(s.Ref),
+		Owner:    utility.FromStringPtr(s.Owner),
+		Repo:     utility.FromStringPtr(s.Repo),
+		Ref:      utility.FromStringPtr(s.Ref),
 		PRNumber: s.PRNumber,
 	}, nil
 }
@@ -266,8 +267,8 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.GithubMergeSubscriber:
-		s.MergeMethod = ToStringPtr(v.MergeMethod)
-		s.Item = ToStringPtr(v.Item)
+		s.MergeMethod = utility.ToStringPtr(v.MergeMethod)
+		s.Item = utility.ToStringPtr(v.Item)
 		s.PRs = make([]APIPRInfo, 0, len(v.PRs))
 		for _, pr := range v.PRs {
 			apiPR := APIPRInfo{}
@@ -295,19 +296,19 @@ func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
 
 	return event.GithubMergeSubscriber{
 		PRs:         prs,
-		MergeMethod: FromStringPtr(s.MergeMethod),
-		Item:        FromStringPtr(s.Item),
+		MergeMethod: utility.FromStringPtr(s.MergeMethod),
+		Item:        utility.FromStringPtr(s.Item),
 	}, nil
 }
 
 func (s *APIPRInfo) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.PRInfo:
-		s.Owner = ToStringPtr(v.Owner)
-		s.Repo = ToStringPtr(v.Repo)
+		s.Owner = utility.ToStringPtr(v.Owner)
+		s.Repo = utility.ToStringPtr(v.Repo)
 		s.PRNumber = v.PRNum
-		s.Ref = ToStringPtr(v.Ref)
-		s.CommitTitle = ToStringPtr(v.CommitTitle)
+		s.Ref = utility.ToStringPtr(v.Ref)
+		s.CommitTitle = utility.ToStringPtr(v.CommitTitle)
 	}
 
 	return nil
@@ -315,19 +316,19 @@ func (s *APIPRInfo) BuildFromService(h interface{}) error {
 
 func (s *APIPRInfo) ToService() (interface{}, error) {
 	return event.PRInfo{
-		Owner:       FromStringPtr(s.Owner),
-		Repo:        FromStringPtr(s.Repo),
+		Owner:       utility.FromStringPtr(s.Owner),
+		Repo:        utility.FromStringPtr(s.Repo),
 		PRNum:       s.PRNumber,
-		Ref:         FromStringPtr(s.Ref),
-		CommitTitle: FromStringPtr(s.CommitTitle),
+		Ref:         utility.FromStringPtr(s.Ref),
+		CommitTitle: utility.FromStringPtr(s.CommitTitle),
 	}, nil
 }
 
 func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
-		s.URL = ToStringPtr(v.URL)
-		s.Secret = ToStringPtr(string(v.Secret))
+		s.URL = utility.ToStringPtr(v.URL)
+		s.Secret = utility.ToStringPtr(string(v.Secret))
 		s.Headers = []APIWebhookHeader{}
 		for _, header := range v.Headers {
 			apiHeader := APIWebhookHeader{}
@@ -344,8 +345,8 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIWebhookSubscriber) ToService() (interface{}, error) {
 	sub := event.WebhookSubscriber{
-		URL:     FromStringPtr(s.URL),
-		Secret:  []byte(FromStringPtr(s.Secret)),
+		URL:     utility.FromStringPtr(s.URL),
+		Secret:  []byte(utility.FromStringPtr(s.Secret)),
 		Headers: []event.WebhookHeader{},
 	}
 	for _, apiHeader := range s.Headers {
@@ -374,8 +375,8 @@ type APIJIRAIssueSubscriber struct {
 func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.JIRAIssueSubscriber:
-		s.Project = ToStringPtr(v.Project)
-		s.IssueType = ToStringPtr(v.IssueType)
+		s.Project = utility.ToStringPtr(v.Project)
+		s.IssueType = utility.ToStringPtr(v.IssueType)
 
 	default:
 		return errors.Errorf("type '%T' does not match subscriber type APIJIRAIssueSubscriber", v)
@@ -386,7 +387,7 @@ func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIJIRAIssueSubscriber) ToService() (interface{}, error) {
 	return event.JIRAIssueSubscriber{
-		Project:   FromStringPtr(s.Project),
-		IssueType: FromStringPtr(s.IssueType),
+		Project:   utility.FromStringPtr(s.Project),
+		IssueType: utility.FromStringPtr(s.IssueType),
 	}, nil
 }

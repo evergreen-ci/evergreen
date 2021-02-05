@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -457,7 +458,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	if err != nil {
 		return nil, errors.New("error getting github token")
 	}
-	if !pRef.GitTagVersionsEnabled {
+	if !pRef.IsGitTagVersionsEnabled() {
 		return nil, nil
 	}
 
@@ -565,10 +566,10 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 	item := restModel.APICommitQueueItem{
-		Issue:           restModel.ToStringPtr(strconv.Itoa(PRNum)),
+		Issue:           utility.ToStringPtr(strconv.Itoa(PRNum)),
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
-		Source:          restModel.ToStringPtr(commitqueue.SourcePullRequest),
+		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {

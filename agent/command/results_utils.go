@@ -25,7 +25,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 
 	logger.Task().Info("Attaching results to server...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	if conf.ProjectRef.CedarTestResultsEnabled {
+	if conf.ProjectRef.IsCedarTestResultsEnabled() {
 		if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, results); err != nil {
 			logger.Task().Errorf("problem posting parsed results to the cedar: %+v", err)
 			return errors.Wrap(err, "problem sending test results to cedar")
@@ -43,7 +43,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 
 // sendTestLog sends test logs to the API server and Cedar.
 func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, log *model.TestLog) (string, error) {
-	if conf.ProjectRef.CedarTestResultsEnabled {
+	if conf.ProjectRef.IsCedarTestResultsEnabled() {
 		return "", errors.Wrap(sendTestLogToCedar(ctx, conf.Task, comm, log), "problem sending test logs to cedar")
 	}
 

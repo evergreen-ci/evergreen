@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,8 +22,8 @@ func TestAPIGithubHook(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(APIGithubHook{
 		HookID: 1,
-		Owner:  ToStringPtr("evergreen-ci"),
-		Repo:   ToStringPtr("evergreen"),
+		Owner:  utility.ToStringPtr("evergreen-ci"),
+		Repo:   utility.ToStringPtr("evergreen"),
 	}, apiHook)
 
 	apiHook = APIGithubHook{}

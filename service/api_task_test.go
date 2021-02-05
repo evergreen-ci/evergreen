@@ -180,7 +180,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -205,7 +205,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 
 		})
 		Convey("tasks with a disabled project should be removed from the queue", func() {
-			pref.Enabled = false
+			pref.Enabled = utility.FalsePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
@@ -218,7 +218,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(currentTq.Length(), ShouldEqual, 0)
 		})
 		Convey("tasks belonging to a project with dispatching disabled should be removed from the queue", func() {
-			pref.DispatchingDisabled = true
+			pref.DispatchingDisabled = utility.TruePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
@@ -528,7 +528,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -811,7 +811,7 @@ func TestNextTask(t *testing.T) {
 
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 
 		So(pref.Insert(), ShouldBeNil)

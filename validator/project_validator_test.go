@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -573,94 +572,94 @@ func TestValidateTaskRuns(t *testing.T) {
 	}
 	Convey("When a task is patchable, not patch-only, and not git-tag-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.TruePtr()
-		project.Tasks[0].PatchOnly = util.FalsePtr()
-		project.Tasks[0].GitTagOnly = util.FalsePtr()
+		project.Tasks[0].Patchable = utility.TruePtr()
+		project.Tasks[0].PatchOnly = utility.FalsePtr()
+		project.Tasks[0].GitTagOnly = utility.FalsePtr()
 	})
 	Convey("When a task is not patchable, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.FalsePtr()
+		project.Tasks[0].Patchable = utility.FalsePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is patch-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = util.TruePtr()
+		project.Tasks[0].PatchOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is git-tag-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is not patchable and not patch-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.FalsePtr()
-		project.Tasks[0].PatchOnly = util.FalsePtr()
+		project.Tasks[0].Patchable = utility.FalsePtr()
+		project.Tasks[0].PatchOnly = utility.FalsePtr()
 	})
 	Convey("When a task is not patchable and patch-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.FalsePtr()
-		project.Tasks[0].PatchOnly = util.TruePtr()
+		project.Tasks[0].Patchable = utility.FalsePtr()
+		project.Tasks[0].PatchOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patchable and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.TruePtr()
-		project.Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].Patchable = utility.TruePtr()
+		project.Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patch-only and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = util.TruePtr()
-		project.Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].PatchOnly = utility.TruePtr()
+		project.Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is not allowed for git tags and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].AllowForGitTag = util.FalsePtr()
-		project.Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].AllowForGitTag = utility.FalsePtr()
+		project.Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is not allowed for git tags and the variant is git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].AllowForGitTag = util.FalsePtr()
-		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].AllowForGitTag = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is git-tag-only and the variant is not allowed for git tags, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].GitTagOnly = util.TruePtr()
-		project.BuildVariants[0].Tasks[0].AllowForGitTag = util.FalsePtr()
+		project.Tasks[0].GitTagOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.FalsePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patch-only and the build variant task unit is not patchable, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = util.TruePtr()
-		project.BuildVariants[0].Tasks[0].Patchable = util.FalsePtr()
+		project.Tasks[0].PatchOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is not patchable and the build variant task unit is patch-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.FalsePtr()
-		project.BuildVariants[0].Tasks[0].PatchOnly = util.TruePtr()
+		project.Tasks[0].Patchable = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patch-only and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = util.TruePtr()
-		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].PatchOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patchable and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = util.TruePtr()
-		project.BuildVariants[0].Tasks[0].GitTagOnly = util.TruePtr()
+		project.Tasks[0].Patchable = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When the build variant task unit is not patchable and patch-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.BuildVariants[0].Tasks[0].Patchable = util.FalsePtr()
-		project.BuildVariants[0].Tasks[0].PatchOnly = util.TruePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 	})
 }
 
@@ -2596,7 +2595,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ref := &model.ProjectRef{
 				TaskSync: model.TaskSyncOptions{
-					ConfigEnabled: testParams.taskSyncEnabledForConfig,
+					ConfigEnabled: &testParams.taskSyncEnabledForConfig,
 				},
 			}
 			p := &model.Project{Tasks: testParams.tasks}
@@ -2622,7 +2621,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 	}
 	assert.NotEmpty(t, validateTaskSyncSettings(p, ref))
 
-	ref.TaskSync.ConfigEnabled = true
+	ref.TaskSync.ConfigEnabled = utility.TruePtr()
 	assert.Empty(t, validateTaskSyncSettings(p, ref))
 
 	p.Tasks = []model.ProjectTask{}
@@ -3007,8 +3006,6 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 }
 
 func TestDependencyMustRun(t *testing.T) {
-	falsePtr := util.FalsePtr()
-	truePtr := util.TruePtr()
 	for testName, testCase := range map[string]struct {
 		source                model.TVPair
 		target                model.TVPair
@@ -3090,7 +3087,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3110,7 +3107,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "C", Variant: "rhel"},
 					},
@@ -3134,7 +3131,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3154,7 +3151,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "C", Variant: "rhel"},
 					},
@@ -3286,13 +3283,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 				},
 			},
 			expectDependencyFound: true,
@@ -3307,13 +3304,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
 					},
@@ -3332,13 +3329,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: true,
@@ -3353,13 +3350,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "C", Variant: "rhel"},
 					},
@@ -3378,13 +3375,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					GitTagOnly: truePtr,
+					GitTagOnly: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3399,13 +3396,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					GitTagOnly: truePtr,
+					GitTagOnly: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3421,13 +3418,13 @@ func TestDependencyMustRun(t *testing.T) {
 			},
 			tvToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
 				{TaskName: "A", Variant: "ubuntu"}: {
-					Patchable: falsePtr,
+					Patchable: utility.FalsePtr(),
 					DependsOn: []model.TaskUnitDependency{
 						{Name: "B", Variant: "ubuntu"},
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					AllowForGitTag: falsePtr,
+					AllowForGitTag: utility.FalsePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3448,7 +3445,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					AllowForGitTag: truePtr,
+					AllowForGitTag: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: true,
@@ -3469,7 +3466,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					PatchOnly: truePtr,
+					PatchOnly: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: false,
@@ -3489,7 +3486,7 @@ func TestDependencyMustRun(t *testing.T) {
 					},
 				},
 				{TaskName: "B", Variant: "ubuntu"}: {
-					GitTagOnly: truePtr,
+					GitTagOnly: utility.TruePtr(),
 				},
 			},
 			expectDependencyFound: true,

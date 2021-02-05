@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -232,8 +233,8 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		}
 		attachments = append(attachments, *attachment)
 	}
-	target := model.FromStringPtr(h.APISlack.Target)
-	msg := model.FromStringPtr(h.APISlack.Msg)
+	target := utility.FromStringPtr(h.APISlack.Target)
+	msg := utility.FromStringPtr(h.APISlack.Msg)
 
 	h.composer = message.NewSlackMessage(level.Notice, target, msg, attachments)
 	s, err := h.environment.GetSender(evergreen.SenderSlack)

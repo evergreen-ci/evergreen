@@ -198,19 +198,19 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
-	return util.IsPtrSetToFalse(bvt.Patchable)
+	return !utility.FromBoolTPtr(bvt.Patchable)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
-	return util.IsPtrSetToTrue(bvt.PatchOnly)
+	return utility.FromBoolPtr(bvt.PatchOnly)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
-	return util.IsPtrSetToFalse(bvt.AllowForGitTag)
+	return !utility.FromBoolTPtr(bvt.AllowForGitTag)
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
-	return util.IsPtrSetToTrue(bvt.GitTagOnly)
+	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
 type BuildVariant struct {
@@ -907,8 +907,28 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
 	expansions.Put("author_email", v.AuthorEmail)
-
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
+	requesterExpansion := ""
+	switch v.Requester {
+	case evergreen.PatchVersionRequester:
+		requesterExpansion = "patch"
+	case evergreen.GithubPRRequester:
+		requesterExpansion = "github_pr"
+	case evergreen.GitTagRequester:
+		requesterExpansion = "github_tag"
+	case evergreen.RepotrackerVersionRequester:
+		requesterExpansion = "commit"
+	case evergreen.TriggerRequester:
+		requesterExpansion = "trigger"
+	case evergreen.MergeTestRequester:
+		requesterExpansion = "commit_queue"
+	case evergreen.AdHocRequester:
+		requesterExpansion = "ad_hoc"
+	default:
+		requesterExpansion = "unknown_requester"
+	}
+	expansions.Put("requester", requesterExpansion)
 
 	if evergreen.IsGitTagRequester(v.Requester) {
 		expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
@@ -1300,7 +1320,7 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
-			if util.IsPtrSetToFalse(t.Patchable) || util.IsPtrSetToTrue(t.GitTagOnly) {
+			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
 				continue
 			}
 			tasks = append(tasks, t.Name)

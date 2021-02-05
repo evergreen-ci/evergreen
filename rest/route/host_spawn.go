@@ -1011,7 +1011,7 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 			if h != nil {
 				for _, attachment := range h.Volumes {
 					if attachment.VolumeID == v.ID {
-						volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
+						volumeDoc.DeviceName = utility.ToStringPtr(attachment.DeviceName)
 					}
 				}
 			}
@@ -1074,7 +1074,7 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 		if attachedHost != nil {
 			for _, attachment := range attachedHost.Volumes {
 				if attachment.VolumeID == v.ID {
-					volumeDoc.DeviceName = model.ToStringPtr(attachment.DeviceName)
+					volumeDoc.DeviceName = utility.ToStringPtr(attachment.DeviceName)
 				}
 			}
 		}
@@ -1190,7 +1190,7 @@ func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Reques
 		return err
 	}
 
-	h.rdpPassword = model.FromStringPtr(hostModify.RDPPwd)
+	h.rdpPassword = utility.FromStringPtr(hostModify.RDPPwd)
 	if !host.ValidateRDPPassword(h.rdpPassword) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -1266,7 +1266,7 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 		return err
 	}
 
-	addHours, err := strconv.Atoi(model.FromStringPtr(hostModify.AddHours))
+	addHours, err := strconv.Atoi(utility.FromStringPtr(hostModify.AddHours))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -1511,12 +1511,12 @@ func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser)
 	var subscriber model.APISubscriber
 	if subscriberType == event.SlackSubscriberType {
 		subscriber = model.APISubscriber{
-			Type:   model.ToStringPtr(event.SlackSubscriberType),
+			Type:   utility.ToStringPtr(event.SlackSubscriberType),
 			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
 		}
 	} else if subscriberType == event.EmailSubscriberType {
 		subscriber = model.APISubscriber{
-			Type:   model.ToStringPtr(event.EmailSubscriberType),
+			Type:   utility.ToStringPtr(event.EmailSubscriberType),
 			Target: user.Email(),
 		}
 	} else {
@@ -1524,13 +1524,13 @@ func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser)
 	}
 
 	return model.APISubscription{
-		OwnerType:    model.ToStringPtr(string(event.OwnerTypePerson)),
-		ResourceType: model.ToStringPtr(event.ResourceTypeHost),
-		Trigger:      model.ToStringPtr(event.TriggerOutcome),
+		OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
+		ResourceType: utility.ToStringPtr(event.ResourceTypeHost),
+		Trigger:      utility.ToStringPtr(event.TriggerOutcome),
 		Selectors: []model.APISelector{
 			{
-				Type: model.ToStringPtr(event.SelectorID),
-				Data: model.ToStringPtr(hostID),
+				Type: utility.ToStringPtr(event.SelectorID),
+				Data: utility.ToStringPtr(hostID),
 			},
 		},
 		Subscriber: subscriber,

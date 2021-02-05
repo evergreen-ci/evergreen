@@ -30,6 +30,7 @@ var (
 	StartTimeKey                = bsonutil.MustHaveTag(Task{}, "StartTime")
 	FinishTimeKey               = bsonutil.MustHaveTag(Task{}, "FinishTime")
 	ActivatedTimeKey            = bsonutil.MustHaveTag(Task{}, "ActivatedTime")
+	DependenciesMetTimeKey      = bsonutil.MustHaveTag(Task{}, "DependenciesMetTime")
 	VersionKey                  = bsonutil.MustHaveTag(Task{}, "Version")
 	ProjectKey                  = bsonutil.MustHaveTag(Task{}, "Project")
 	RevisionKey                 = bsonutil.MustHaveTag(Task{}, "Revision")
@@ -75,6 +76,7 @@ var (
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
+	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
@@ -1280,4 +1282,18 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 		}},
 	)
 	return err
+}
+
+func AddHostCreateDetails(taskId, hostId string, hostCreateError error) error {
+	if hostCreateError == nil {
+		return nil
+	}
+	err := UpdateOne(
+		bson.M{
+			IdKey: taskId,
+		},
+		bson.M{"$push": bson.M{
+			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
+		}})
+	return errors.Wrapf(err, "error adding details of host creation failure to task")
 }

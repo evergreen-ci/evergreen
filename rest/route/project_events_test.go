@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -29,10 +30,10 @@ func TestProjectEventsTestSuite(t *testing.T) {
 func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
-			Owner:      restModel.ToStringPtr("admin"),
-			Enabled:    true,
-			Private:    true,
-			Identifier: restModel.ToStringPtr(projectId),
+			Owner:      utility.ToStringPtr("admin"),
+			Enabled:    utility.TruePtr(),
+			Private:    utility.TruePtr(),
+			Identifier: utility.ToStringPtr(projectId),
 			Admins:     []*string{},
 		},
 		GitHubWebhooksEnabled: true,
@@ -41,17 +42,17 @@ func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
-			Alias:   restModel.ToStringPtr("alias1"),
-			Variant: restModel.ToStringPtr("ubuntu"),
-			Task:    restModel.ToStringPtr("subcommand"),
+			Alias:   utility.ToStringPtr("alias1"),
+			Variant: utility.ToStringPtr("ubuntu"),
+			Task:    utility.ToStringPtr("subcommand"),
 		},
 		},
 		Subscriptions: []restModel.APISubscription{restModel.APISubscription{
-			ID:           restModel.ToStringPtr("subscription1"),
-			ResourceType: restModel.ToStringPtr("project"),
-			Owner:        restModel.ToStringPtr("admin"),
+			ID:           utility.ToStringPtr("subscription1"),
+			ResourceType: utility.ToStringPtr("project"),
+			Owner:        utility.ToStringPtr("admin"),
 			Subscriber: restModel.APISubscriber{
-				Type:   restModel.ToStringPtr(event.GithubPullRequestSubscriberType),
+				Type:   utility.ToStringPtr(event.GithubPullRequestSubscriberType),
 				Target: restModel.APIGithubPRSubscriber{},
 			},
 		},
@@ -64,11 +65,11 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	beforeSettings := getMockProjectSettings(s.projectId)
 
 	afterSettings := getMockProjectSettings(s.projectId)
-	afterSettings.ProjectRef.Enabled = false
+	afterSettings.ProjectRef.Enabled = utility.FalsePtr()
 
 	s.event = restModel.APIProjectEvent{
 		Timestamp: restModel.ToTimePtr(time.Now()),
-		User:      restModel.ToStringPtr("me"),
+		User:      utility.ToStringPtr("me"),
 		Before:    beforeSettings,
 		After:     afterSettings,
 	}

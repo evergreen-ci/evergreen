@@ -2,11 +2,13 @@ package patch
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -126,6 +128,12 @@ type BackportInfo struct {
 	SHA     string `bson:"sha,omitempty" json:"sha,omitempty"`
 }
 
+type GitMetadata struct {
+	Username   string `bson:"username" json:"username"`
+	Email      string `bson:"email" json:"email"`
+	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
 	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
@@ -152,6 +160,7 @@ type Patch struct {
 	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
 	MergePatch      string                 `bson:"merge_patch"`
 	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
+	GitInfo         *GitMetadata           `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 }
@@ -254,16 +263,10 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 			continue
 		}
 
-		file, err := db.GetGridFile(GridFSPrefix, patchPart.PatchSet.PatchFileId)
+		rawStr, err := FetchPatchContents(patchPart.PatchSet.PatchFileId)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "can't get patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
 		}
-		defer file.Close() //nolint: evg-lint
-		raw, err := ioutil.ReadAll(file)
-		if err != nil {
-			return err
-		}
-		rawStr := string(raw)
 		if useRaw || !IsMailboxDiff(rawStr) {
 			p.Patches[i].PatchSet.Patch = rawStr
 			continue
@@ -276,6 +279,20 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 		p.Patches[i].PatchSet.Patch = diffs
 	}
 	return nil
+}
+
+func FetchPatchContents(patchfileID string) (string, error) {
+	fileReader, err := db.GetGridFile(GridFSPrefix, patchfileID)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get grid file from the db")
+	}
+	defer fileReader.Close()
+	patchContents, err := ioutil.ReadAll(fileReader)
+	if err != nil {
+		return "", errors.Wrap(err, "problem reading patch contents")
+	}
+
+	return string(patchContents), nil
 }
 
 // UpdateVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
@@ -638,14 +655,8 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
-func (p *Patch) CanEnqueueToCommitQueue() bool {
-	for _, modulePatch := range p.Patches {
-		if !modulePatch.IsMbox {
-			return false
-		}
-	}
-
-	return true
+func (p *Patch) HasValidGitInfo() bool {
+	return p.GitInfo != nil && p.GitInfo.Email != "" && p.GitInfo.Username != ""
 }
 
 func (p *Patch) MakeBackportDescription() (string, error) {
@@ -696,25 +707,113 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 		return patchSet, errors.Wrap(err, "can't get github auth token")
 	}
 
-	commit, err := thirdparty.GetRawPatchCommit(ctx, githubToken, owner, repo, sha)
+	diff, err := thirdparty.GetCommitDiff(ctx, githubToken, owner, repo, sha)
 	if err != nil {
-		return patchSet, errors.Wrapf(err, "problem getting commit '%s/%s:%s'", owner, repo, sha)
+		return patchSet, errors.Wrapf(err, "problem getting commit diff for '%s/%s:%s'", owner, repo, sha)
+	}
+
+	commitInfo, err := thirdparty.GetCommitEvent(ctx, githubToken, owner, repo, sha)
+	if err != nil {
+		return patchSet, errors.Wrapf(err, "problem getting commit info for '%s/%s:%s'", owner, repo, sha)
+	}
+	if commitInfo == nil || commitInfo.Commit == nil || commitInfo.Commit.Author == nil {
+		return patchSet, errors.New("Github returned a malformed commit")
+	}
+	authorName := commitInfo.Commit.Author.GetName()
+	authorEmail := commitInfo.Commit.Author.GetEmail()
+	message := commitInfo.Commit.GetMessage()
+
+	mboxPatch, err := addMetadataToDiff(diff, message, time.Now(), GitMetadata{Username: authorName, Email: authorEmail})
+	if err != nil {
+		return patchSet, errors.Wrap(err, "can't convert diff to mbox format")
 	}
 
 	patchFileID := mgobson.NewObjectId()
-	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(commit)); err != nil {
+	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
 		return patchSet, errors.Wrap(err, "can't write patch to db")
 	}
 
-	summaries, commitMessages, err := thirdparty.GetPatchSummariesFromMboxPatch(commit)
-	if err != nil {
-		return patchSet, errors.Wrapf(err, "error getting summaries by commit")
+	summaries := []thirdparty.Summary{}
+	for _, file := range commitInfo.Files {
+		if file != nil {
+			summaries = append(summaries, thirdparty.Summary{
+				Name:        file.GetFilename(),
+				Additions:   file.GetAdditions(),
+				Deletions:   file.GetDeletions(),
+				Description: message,
+			})
+		}
 	}
 
 	patchSet.Summary = summaries
-	patchSet.CommitMessages = commitMessages
+	patchSet.CommitMessages = []string{message}
 	patchSet.PatchFileId = patchFileID.Hex()
 	return patchSet, nil
+}
+
+func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
+	if !existingPatch.HasValidGitInfo() {
+		return nil, errors.New("can't make merge patches without GitInfo")
+	}
+
+	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
+	for _, modulePatch := range existingPatch.Patches {
+		diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch patch contents")
+		}
+		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't convert diff to mbox format")
+		}
+		patchFileID := mgobson.NewObjectId()
+		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
+			return nil, errors.Wrap(err, "can't write new patch to db")
+		}
+		newModulePatches = append(newModulePatches, ModulePatch{
+			ModuleName: modulePatch.ModuleName,
+			IsMbox:     true,
+			PatchSet: PatchSet{
+				PatchFileId:    patchFileID.Hex(),
+				CommitMessages: []string{commitMessage},
+				Summary:        modulePatch.PatchSet.Summary,
+			},
+		})
+	}
+
+	return newModulePatches, nil
+}
+
+func addMetadataToDiff(diff string, subject string, commitTime time.Time, metadata GitMetadata) (string, error) {
+	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+Date: {{.CurrentTime}}
+Subject: {{.Subject}}
+
+---
+{{.Diff}}
+{{if .Metadata.GitVersion }}--
+{{.Metadata.GitVersion}}
+
+{{end}}`))
+
+	out := bytes.Buffer{}
+	err := mboxTemplate.Execute(&out, struct {
+		Metadata    GitMetadata
+		CurrentTime string
+		Subject     string
+		Diff        string
+	}{
+		Metadata:    metadata,
+		CurrentTime: commitTime.Format(time.RFC1123Z),
+		Subject:     subject,
+		Diff:        diff,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "problem executing mbox template")
+	}
+
+	return out.String(), nil
 }
 
 func IsMailboxDiff(patchDiff string) bool {

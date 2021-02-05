@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -294,7 +295,7 @@ func TestMockPatchConnectorAbortByIdSuite(t *testing.T) {
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []model.APIPatch{
-				{Id: &s.obj_ids[0], Version: model.ToStringPtr("version1")},
+				{Id: &s.obj_ids[0], Version: utility.ToStringPtr("version1")},
 				{Id: &s.obj_ids[1]},
 			},
 			CachedAborted: make(map[string]string),

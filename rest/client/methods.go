@@ -368,7 +368,7 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
 				return fmt.Errorf("Error forming response body response: %v", err)
 			}
-			if model.FromStringPtr(hostResp.Status) == status {
+			if utility.FromStringPtr(hostResp.Status) == status {
 				return nil
 			}
 			timer.Reset(retryInterval)
@@ -403,7 +403,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 		path:   fmt.Sprintf("hosts/%s/change_password", hostID),
 	}
 	body := model.APISpawnHostModify{
-		RDPPwd: model.ToStringPtr(rdpPassword),
+		RDPPwd: utility.ToStringPtr(rdpPassword),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -427,7 +427,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 		path:   fmt.Sprintf("hosts/%s/extend_expiration", hostID),
 	}
 	body := model.APISpawnHostModify{
-		AddHours: model.ToStringPtr(fmt.Sprintf("%d", addHours)),
+		AddHours: utility.ToStringPtr(fmt.Sprintf("%d", addHours)),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -509,7 +509,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return model.FromStringPtr(banner.Text), nil
+	return utility.FromStringPtr(banner.Text), nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
@@ -813,8 +813,8 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	}
 
 	key := model.APIPubKey{
-		Name: model.ToStringPtr(keyName),
-		Key:  model.ToStringPtr(keyValue),
+		Name: utility.ToStringPtr(keyName),
+		Key:  utility.ToStringPtr(keyValue),
 	}
 
 	resp, err := c.request(ctx, info, key)
@@ -1138,13 +1138,16 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 	return positionResp.Position, nil
 }
 
-func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
+func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID, commitMessage string) (*model.APIPatch, error) {
 	info := requestInfo{
 		method: http.MethodPut,
 		path:   fmt.Sprintf("/patches/%s/merge_patch", patchID),
 	}
+	body := struct {
+		CommitMessage string `json:"commit_message"`
+	}{CommitMessage: commitMessage}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.request(ctx, info, body)
 	if err != nil {
 		return nil, err
 	}

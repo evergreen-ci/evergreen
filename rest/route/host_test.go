@@ -20,6 +20,7 @@ import (
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
@@ -300,7 +301,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 	s.NotNil(res)
 
 	s.True(ok)
-	s.Equal(model.ToStringPtr("host1"), h.Id)
+	s.Equal(utility.ToStringPtr("host1"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdLast() {
@@ -314,7 +315,7 @@ func (s *HostSuite) TestFindByIdLast() {
 	s.NotNil(res)
 
 	s.True(ok)
-	s.Equal(model.ToStringPtr("host2"), h.Id)
+	s.Equal(utility.ToStringPtr("host2"), h.Id)
 
 }
 
@@ -330,17 +331,17 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	host := s.sc.MockHostConnector.CachedHosts[0]
 	apiHost := model.APIHost{}
 	s.NoError(apiHost.BuildFromService(host))
-	s.Equal(apiHost.Id, model.ToStringPtr(host.Id))
-	s.Equal(apiHost.HostURL, model.ToStringPtr(host.Host))
+	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
+	s.Equal(apiHost.HostURL, utility.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
-	s.Equal(apiHost.StartedBy, model.ToStringPtr(host.StartedBy))
-	s.Equal(apiHost.Provider, model.ToStringPtr(host.Provider))
-	s.Equal(apiHost.User, model.ToStringPtr(host.User))
-	s.Equal(apiHost.Status, model.ToStringPtr(host.Status))
+	s.Equal(apiHost.StartedBy, utility.ToStringPtr(host.StartedBy))
+	s.Equal(apiHost.Provider, utility.ToStringPtr(host.Provider))
+	s.Equal(apiHost.User, utility.ToStringPtr(host.User))
+	s.Equal(apiHost.Status, utility.ToStringPtr(host.Status))
 	s.Equal(apiHost.UserHost, host.UserHost)
-	s.Equal(apiHost.Distro.Id, model.ToStringPtr(host.Distro.Id))
-	s.Equal(apiHost.Distro.Provider, model.ToStringPtr(host.Distro.Provider))
-	s.Equal(apiHost.Distro.ImageId, model.ToStringPtr(""))
+	s.Equal(apiHost.Distro.Id, utility.ToStringPtr(host.Distro.Id))
+	s.Equal(apiHost.Distro.Provider, utility.ToStringPtr(host.Distro.Provider))
+	s.Equal(apiHost.Distro.ImageId, utility.ToStringPtr(""))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -520,13 +521,13 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
 	invalidPasswords := []*string{
-		model.ToStringPtr(""),
-		model.ToStringPtr("weak"),
-		model.ToStringPtr("stilltooweak1"),
-		model.ToStringPtr("火a111")}
+		utility.ToStringPtr(""),
+		utility.ToStringPtr("weak"),
+		utility.ToStringPtr("stilltooweak1"),
+		utility.ToStringPtr("火a111")}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
-			HostID: model.ToStringPtr("host1"),
+			HostID: utility.ToStringPtr("host1"),
 			RDPPwd: password,
 		}
 		err := s.tryParseAndValidate(mod)
@@ -610,15 +611,15 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 
 func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
 	invalidExpirations := []*string{
-		model.ToStringPtr("not a number"),
-		model.ToStringPtr("0"),
-		model.ToStringPtr("9223372036854775807"),
-		model.ToStringPtr(""),
+		utility.ToStringPtr("not a number"),
+		utility.ToStringPtr("0"),
+		utility.ToStringPtr("9223372036854775807"),
+		utility.ToStringPtr(""),
 	}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
-			HostID:   model.ToStringPtr("host1"),
-			RDPPwd:   model.ToStringPtr(""),
+			HostID:   utility.ToStringPtr("host1"),
+			RDPPwd:   utility.ToStringPtr(""),
 			AddHours: extendBy,
 		}
 
@@ -716,7 +717,7 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	var r *http.Request
-	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", model.FromStringPtr(mod.HostID)), bytes.NewReader(data))
+	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", utility.FromStringPtr(mod.HostID)), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -871,7 +872,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "test_repo0",
 		Branch:    "master",
-		Enabled:   true,
+		Enabled:   utility.TruePtr(),
 		BatchTime: 10,
 		Id:        "test0",
 		Admins:    []string{"user1", "user0"},
@@ -880,7 +881,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 		Owner:     "mongodb",
 		Repo:      "test_repo1",
 		Branch:    "master",
-		Enabled:   true,
+		Enabled:   utility.TruePtr(),
 		BatchTime: 10,
 		Id:        "test1",
 		Admins:    []string{"user1", "user2"},
@@ -954,7 +955,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts := resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h0", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h0", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostFilterGetHandler{
 		sc:     connector,
@@ -964,7 +965,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts = resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h1", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h1", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostFilterGetHandler{
 		sc:     connector,
@@ -974,7 +975,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	hosts = resp.Data().([]interface{})
 	require.Len(t, hosts, 1)
-	assert.Equal(t, "h2", model.FromStringPtr(hosts[0].(*model.APIHost).Id))
+	assert.Equal(t, "h2", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }
 
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {

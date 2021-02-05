@@ -31,7 +31,7 @@ const (
 	Error ValidationErrorLevel = iota
 	Warning
 	unauthorizedCharacters     = "|"
-	EC2HostCreateTotalLimit    = 100
+	EC2HostCreateTotalLimit    = 1000
 	DockerHostCreateTotalLimit = 200
 	HostCreateLimitPerTask     = 3
 )
@@ -1044,7 +1044,7 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 					bvtu.Name),
 			})
 		}
-		if bvtu.SkipOnNonGitTagBuild() && util.IsPtrSetToTrue(bvtu.Patchable) {
+		if bvtu.SkipOnNonGitTagBuild() && utility.FromBoolPtr(bvtu.Patchable) {
 			errs = append(errs, ValidationError{
 				Level: Warning,
 				Message: fmt.Sprintf("task '%s' cannot be patchable if it only runs for git tag builds",
@@ -1391,7 +1391,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
 func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
-	if ref.TaskSync.ConfigEnabled {
+	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
 	var errs ValidationErrors

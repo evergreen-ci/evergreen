@@ -306,13 +306,13 @@ type ComplexityRoot struct {
 		AddAnnotationIssue        func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject        func(childComplexity int, identifier string) int
 		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
-		BbCreateTicket            func(childComplexity int, taskID string) int
+		BbCreateTicket            func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions      func(childComplexity int) int
 		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
 		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
-		EnqueuePatch              func(childComplexity int, patchID string) int
+		EnqueuePatch              func(childComplexity int, patchID string, commitMessage *string) int
 		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
@@ -783,7 +783,7 @@ type MutationResolver interface {
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
-	EnqueuePatch(ctx context.Context, patchID string) (*model.APIPatch, error)
+	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -810,7 +810,7 @@ type MutationResolver interface {
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
-	BbCreateTicket(ctx context.Context, taskID string) (bool, error)
+	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 }
 type PatchResolver interface {
@@ -2010,7 +2010,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Mutation.BbCreateTicket(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Mutation.clearMySubscriptions":
 		if e.complexity.Mutation.ClearMySubscriptions == nil {
@@ -2077,7 +2077,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string)), true
+		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string), args["commitMessage"].(*string)), true
 
 	case "Mutation.moveAnnotationIssue":
 		if e.complexity.Mutation.MoveAnnotationIssue == nil {
@@ -4634,7 +4634,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
-  enqueuePatch(patchId: String!): Patch!
+  enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -4687,7 +4687,7 @@ type Mutation {
   detachVolumeFromHost(volumeId: String!): Boolean!
   removeVolume(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
-  bbCreateTicket(taskId: String!): Boolean!
+  bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
 
@@ -5619,6 +5619,14 @@ func (ec *executionContext) field_Mutation_bbCreateTicket_args(ctx context.Conte
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
 	return args, nil
 }
 
@@ -5713,6 +5721,14 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 		}
 	}
 	args["patchId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["commitMessage"]; ok {
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["commitMessage"] = arg1
 	return args, nil
 }
 
@@ -11821,7 +11837,7 @@ func (ec *executionContext) _Mutation_enqueuePatch(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().EnqueuePatch(rctx, args["patchId"].(string))
+		return ec.resolvers.Mutation().EnqueuePatch(rctx, args["patchId"].(string), args["commitMessage"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12922,7 +12938,7 @@ func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string))
+		return ec.resolvers.Mutation().BbCreateTicket(rctx, args["taskId"].(string), args["execution"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

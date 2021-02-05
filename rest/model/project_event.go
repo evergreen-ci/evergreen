@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -53,7 +54,7 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 			return errors.New("unable to convert event data to project change")
 		}
 
-		user := ToStringPtr(data.User)
+		user := utility.ToStringPtr(data.User)
 		before, err := DbProjectSettingsToRestModel(data.Before)
 		if err != nil {
 			return errors.Wrap(err, "unable to convert 'before' changes")
@@ -131,16 +132,16 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 
 func (a *APIProjectAlias) ToService() (interface{}, error) {
 	res := model.ProjectAlias{
-		Alias:       FromStringPtr(a.Alias),
-		Task:        FromStringPtr(a.Task),
-		Variant:     FromStringPtr(a.Variant),
-		GitTag:      FromStringPtr(a.GitTag),
-		RemotePath:  FromStringPtr(a.RemotePath),
-		TaskTags:    FromStringPtrSlice(a.TaskTags),
-		VariantTags: FromStringPtrSlice(a.VariantTags),
+		Alias:       utility.FromStringPtr(a.Alias),
+		Task:        utility.FromStringPtr(a.Task),
+		Variant:     utility.FromStringPtr(a.Variant),
+		GitTag:      utility.FromStringPtr(a.GitTag),
+		RemotePath:  utility.FromStringPtr(a.RemotePath),
+		TaskTags:    utility.FromStringPtrSlice(a.TaskTags),
+		VariantTags: utility.FromStringPtrSlice(a.VariantTags),
 	}
-	if model.IsValidId(FromStringPtr(a.ID)) {
-		res.ID = model.NewId(FromStringPtr(a.ID))
+	if model.IsValidId(utility.FromStringPtr(a.ID)) {
+		res.ID = model.NewId(utility.FromStringPtr(a.ID))
 	}
 	return res, nil
 }
@@ -148,29 +149,29 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *model.ProjectAlias:
-		APITaskTags := ToStringPtrSlice(v.TaskTags)
-		APIVariantTags := ToStringPtrSlice(v.VariantTags)
+		APITaskTags := utility.ToStringPtrSlice(v.TaskTags)
+		APIVariantTags := utility.ToStringPtrSlice(v.VariantTags)
 
-		a.Alias = ToStringPtr(v.Alias)
-		a.Variant = ToStringPtr(v.Variant)
-		a.GitTag = ToStringPtr(v.GitTag)
-		a.RemotePath = ToStringPtr(v.RemotePath)
-		a.Task = ToStringPtr(v.Task)
+		a.Alias = utility.ToStringPtr(v.Alias)
+		a.Variant = utility.ToStringPtr(v.Variant)
+		a.GitTag = utility.ToStringPtr(v.GitTag)
+		a.RemotePath = utility.ToStringPtr(v.RemotePath)
+		a.Task = utility.ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
-		a.ID = ToStringPtr(v.ID.Hex())
+		a.ID = utility.ToStringPtr(v.ID.Hex())
 	case model.ProjectAlias:
-		APITaskTags := ToStringPtrSlice(v.TaskTags)
-		APIVariantTags := ToStringPtrSlice(v.VariantTags)
+		APITaskTags := utility.ToStringPtrSlice(v.TaskTags)
+		APIVariantTags := utility.ToStringPtrSlice(v.VariantTags)
 
-		a.Alias = ToStringPtr(v.Alias)
-		a.Variant = ToStringPtr(v.Variant)
-		a.GitTag = ToStringPtr(v.GitTag)
-		a.RemotePath = ToStringPtr(v.RemotePath)
-		a.Task = ToStringPtr(v.Task)
+		a.Alias = utility.ToStringPtr(v.Alias)
+		a.Variant = utility.ToStringPtr(v.Variant)
+		a.GitTag = utility.ToStringPtr(v.GitTag)
+		a.RemotePath = utility.ToStringPtr(v.RemotePath)
+		a.Task = utility.ToStringPtr(v.Task)
 		a.VariantTags = APIVariantTags
 		a.TaskTags = APITaskTags
-		a.ID = ToStringPtr(v.ID.Hex())
+		a.ID = utility.ToStringPtr(v.ID.Hex())
 	default:
 		return errors.New("Invalid type of argument")
 	}
@@ -181,13 +182,13 @@ func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := APIProjectAlias{
-			Alias:       ToStringPtr(alias.Alias),
-			Variant:     ToStringPtr(alias.Variant),
-			Task:        ToStringPtr(alias.Task),
-			RemotePath:  ToStringPtr(alias.RemotePath),
-			GitTag:      ToStringPtr(alias.GitTag),
-			TaskTags:    ToStringPtrSlice(alias.TaskTags),
-			VariantTags: ToStringPtrSlice(alias.VariantTags),
+			Alias:       utility.ToStringPtr(alias.Alias),
+			Variant:     utility.ToStringPtr(alias.Variant),
+			Task:        utility.ToStringPtr(alias.Task),
+			RemotePath:  utility.ToStringPtr(alias.RemotePath),
+			GitTag:      utility.ToStringPtr(alias.GitTag),
+			TaskTags:    utility.ToStringPtrSlice(alias.TaskTags),
+			VariantTags: utility.ToStringPtrSlice(alias.VariantTags),
 		}
 		result = append(result, apiAlias)
 	}

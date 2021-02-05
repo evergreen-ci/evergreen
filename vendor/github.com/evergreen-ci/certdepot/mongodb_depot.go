@@ -176,7 +176,11 @@ func (m *mongoDepot) Delete(tag *depot.Tag) error {
 func (m *mongoDepot) Save(name string, creds *Credentials) error { return depotSave(m, name, creds) }
 func (m *mongoDepot) Find(name string) (*Credentials, error)     { return depotFind(m, name, m.opts) }
 func (m *mongoDepot) Generate(name string) (*Credentials, error) {
-	return depotGenerate(m, name, m.opts)
+	return depotGenerateDefault(m, name, m.opts)
+}
+
+func (m *mongoDepot) GenerateWithOptions(opts CertificateOptions) (*Credentials, error) {
+	return depotGenerate(m, opts.CommonName, m.opts, opts)
 }
 
 func errNotNoDocuments(err error) bool {

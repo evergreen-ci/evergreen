@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -71,11 +72,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 			CachedProjects: []model.ProjectRef{
 				model.ProjectRef{
 					Id:          "bth",
-					Enabled:     true,
+					Enabled:     utility.TruePtr(),
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
 					Branch:      "master",
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				},
 			},
 		},
@@ -203,7 +204,7 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "changes",
@@ -238,9 +239,9 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 
 	s.NoError(err)
 	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
-		s.Equal("1", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
-		s.Equal("test_module", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
-		s.Equal("1234", restModel.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
+		s.Equal("1", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
+		s.Equal("test_module", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
+		s.Equal("1234", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
 	}
 }
 
@@ -304,7 +305,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 
 	// try dequeue works when an item matches
-	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToStringPtr("1")}, false)
+	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: utility.ToStringPtr("1")}, false)
 	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 	queue, err := s.sc.FindCommitQueueForProject("bth")
@@ -326,15 +327,15 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	}
 	s.sc.Aliases = []restModel.APIProjectAlias{
 		{
-			Alias:      restModel.ToStringPtr(evergreen.GitTagAlias),
-			GitTag:     restModel.ToStringPtr("release"),
-			RemotePath: restModel.ToStringPtr("rest/route/testdata/release.yml"),
+			Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+			GitTag:     utility.ToStringPtr("release"),
+			RemotePath: utility.ToStringPtr("rest/route/testdata/release.yml"),
 		},
 	}
 	pRef := model.ProjectRef{
 		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
-		GitTagVersionsEnabled: true,
+		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

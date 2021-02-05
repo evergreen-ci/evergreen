@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -23,6 +22,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type (
@@ -57,7 +57,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
+	if opCtx.ProjectRef != nil && opCtx.ProjectRef.IsPrivate() && user == nil {
 		// Project is private and user is not authorized so return not found
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -380,7 +380,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if !projRef.CommitQueue.Enabled {
+	if !projRef.CommitQueue.IsEnabled() {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Commit queue is not enabled for project",
@@ -414,25 +414,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	cq, err := commitqueue.FindOneId(projRef.Id)
-	if err != nil || cq == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "No commit queue for project found",
-		}))
-		return
-	}
-	spot := cq.FindItem(itemId)
-	if spot == -1 {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "Item not found in queue",
-		}))
-		return
-	}
-	entry := cq.Queue[spot]
-
-	if entry.Source == commitqueue.SourceDiff {
+	if bson.IsObjectIdHex(itemId) {
 		patch, err := m.sc.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
@@ -445,16 +427,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			}))
 			return
 		}
-	} else if entry.Source == commitqueue.SourcePullRequest {
-		itemInt, err := strconv.Atoi(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "item is not an integer",
-			}))
-			return
-		}
-
+	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
 		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -478,7 +451,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	} else {
 		grip.Error(message.Fields{
 			"message": "commit queue entry has unknown source",
-			"entry":   entry,
+			"entry":   itemId,
 			"project": projRef.Identifier,
 		})
 	}
@@ -631,7 +604,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	// check to see if this is an anonymous user requesting a private project
 	user := gimlet.GetUser(r.Context())
-	if user == nil && projectRef.Private {
+	if user == nil && projectRef.IsPrivate() {
 		projectID = ""
 	}
 

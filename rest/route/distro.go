@@ -171,24 +171,24 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{
-		Name: model.ToStringPtr(h.distroID),
+		Name: utility.ToStringPtr(h.distroID),
 		FinderSettings: model.APIFinderSettings{
-			Version: model.ToStringPtr(evergreen.FinderVersionLegacy),
+			Version: utility.ToStringPtr(evergreen.FinderVersionLegacy),
 		},
 		PlannerSettings: model.APIPlannerSettings{
-			Version: model.ToStringPtr(evergreen.PlannerVersionLegacy),
+			Version: utility.ToStringPtr(evergreen.PlannerVersionLegacy),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
-			Version: model.ToStringPtr(evergreen.DispatcherVersionRevised),
+			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevised),
 		},
 		HostAllocatorSettings: model.APIHostAllocatorSettings{
-			Version: model.ToStringPtr(evergreen.HostAllocatorUtilization),
+			Version: utility.ToStringPtr(evergreen.HostAllocatorUtilization),
 		},
 		BootstrapSettings: model.APIBootstrapSettings{
-			Method:        model.ToStringPtr(distro.BootstrapMethodLegacySSH),
-			Communication: model.ToStringPtr(distro.CommunicationMethodLegacySSH),
+			Method:        utility.ToStringPtr(distro.BootstrapMethodLegacySSH),
+			Communication: utility.ToStringPtr(distro.CommunicationMethodLegacySSH),
 		},
-		CloneMethod: model.ToStringPtr(distro.CloneMethodLegacySSH),
+		CloneMethod: utility.ToStringPtr(distro.CloneMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
@@ -650,7 +650,7 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 		})
 	}
 
-	id := model.FromStringPtr(apiDistro.Name)
+	id := utility.FromStringPtr(apiDistro.Name)
 	if resourceID != id {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,

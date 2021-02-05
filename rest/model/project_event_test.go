@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -19,8 +20,8 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 	return model.ProjectSettingsEvent{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
-			Enabled: true,
-			Private: true,
+			Enabled: utility.TruePtr(),
+			Private: utility.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},
@@ -95,7 +96,7 @@ func (s *ProjectEventSuite) SetupTest() {
 
 func (s *ProjectEventSuite) TestProjectEventMetadata() {
 	s.Equal(s.modelEvent.Timestamp, *s.APIEvent.Timestamp)
-	s.Equal(s.projChanges.User, FromStringPtr(s.APIEvent.User))
+	s.Equal(s.projChanges.User, utility.FromStringPtr(s.APIEvent.User))
 }
 
 func (s *ProjectEventSuite) TestProjectRef() {
@@ -124,16 +125,16 @@ func (s *ProjectEventSuite) TestProjectAliases() {
 }
 
 func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectRef) {
-	suite.Equal(in.Owner, FromStringPtr(out.Owner))
-	suite.Equal(in.Repo, FromStringPtr(out.Repo))
-	suite.Equal(in.Branch, FromStringPtr(out.Branch))
+	suite.Equal(in.Owner, utility.FromStringPtr(out.Owner))
+	suite.Equal(in.Repo, utility.FromStringPtr(out.Repo))
+	suite.Equal(in.Branch, utility.FromStringPtr(out.Branch))
 	suite.Equal(in.Enabled, out.Enabled)
 	suite.Equal(in.Private, out.Private)
 	suite.Equal(in.BatchTime, out.BatchTime)
-	suite.Equal(in.RemotePath, FromStringPtr(out.RemotePath))
-	suite.Equal(in.Id, FromStringPtr(out.Id))
-	suite.Equal(in.Identifier, FromStringPtr(out.Identifier))
-	suite.Equal(in.DisplayName, FromStringPtr(out.DisplayName))
+	suite.Equal(in.RemotePath, utility.FromStringPtr(out.RemotePath))
+	suite.Equal(in.Id, utility.FromStringPtr(out.Id))
+	suite.Equal(in.Identifier, utility.FromStringPtr(out.Identifier))
+	suite.Equal(in.DisplayName, utility.FromStringPtr(out.DisplayName))
 	suite.Equal(in.DeactivatePrevious, out.DeactivatePrevious)
 	suite.Equal(in.TracksPushEvents, out.TracksPushEvents)
 	suite.Equal(in.PRTestingEnabled, out.PRTestingEnabled)
@@ -141,7 +142,7 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 
 	suite.Require().Equal(len(in.Admins), len(out.Admins))
 	for i, admin := range in.Admins {
-		suite.Equal(admin, FromStringPtr(out.Admins[i]))
+		suite.Equal(admin, utility.FromStringPtr(out.Admins[i]))
 	}
 
 	suite.Equal(in.NotifyOnBuildFailure, out.NotifyOnBuildFailure)
@@ -162,9 +163,9 @@ func checkVars(suite *ProjectEventSuite, in model.ProjectVars, out APIProjectVar
 func checkAliases(suite *ProjectEventSuite, in []model.ProjectAlias, out []APIProjectAlias) {
 	suite.Require().Equal(len(in), len(out))
 	for i, alias := range in {
-		suite.Equal(alias.Alias, FromStringPtr(out[i].Alias))
-		suite.Equal(alias.Variant, FromStringPtr(out[i].Variant))
-		suite.Equal(alias.Task, FromStringPtr(out[i].Task))
+		suite.Equal(alias.Alias, utility.FromStringPtr(out[i].Alias))
+		suite.Equal(alias.Variant, utility.FromStringPtr(out[i].Variant))
+		suite.Equal(alias.Task, utility.FromStringPtr(out[i].Task))
 
 		suite.Require().Equal(len(alias.TaskTags), len(out[i].TaskTags))
 		suite.Require().Equal(len(alias.VariantTags), len(out[i].VariantTags))
@@ -180,26 +181,26 @@ func checkAliases(suite *ProjectEventSuite, in []model.ProjectAlias, out []APIPr
 func checkSubscriptions(suite *ProjectEventSuite, in []event.Subscription, out []APISubscription) {
 	suite.Require().Equal(len(in), len(out))
 	for i, subscription := range in {
-		suite.Equal(subscription.ID, FromStringPtr(out[i].ID))
-		suite.Equal(subscription.ResourceType, FromStringPtr(out[i].ResourceType))
-		suite.Equal(subscription.Trigger, FromStringPtr(out[i].Trigger))
+		suite.Equal(subscription.ID, utility.FromStringPtr(out[i].ID))
+		suite.Equal(subscription.ResourceType, utility.FromStringPtr(out[i].ResourceType))
+		suite.Equal(subscription.Trigger, utility.FromStringPtr(out[i].Trigger))
 
 		suite.Require().Equal(len(subscription.Selectors), len(out[i].Selectors))
 		for j, selector := range subscription.Selectors {
-			suite.Equal(selector.Type, FromStringPtr(out[i].Selectors[j].Type))
-			suite.Equal(selector.Data, FromStringPtr(out[i].Selectors[j].Data))
+			suite.Equal(selector.Type, utility.FromStringPtr(out[i].Selectors[j].Type))
+			suite.Equal(selector.Data, utility.FromStringPtr(out[i].Selectors[j].Data))
 		}
 
 		suite.Require().Equal(len(subscription.RegexSelectors), len(out[i].RegexSelectors))
 		for j, selector := range subscription.RegexSelectors {
-			suite.Equal(selector.Type, FromStringPtr(out[i].RegexSelectors[j].Type))
-			suite.Equal(selector.Data, FromStringPtr(out[i].RegexSelectors[j].Data))
+			suite.Equal(selector.Type, utility.FromStringPtr(out[i].RegexSelectors[j].Type))
+			suite.Equal(selector.Data, utility.FromStringPtr(out[i].RegexSelectors[j].Data))
 		}
 
-		suite.Equal(subscription.Subscriber.Type, FromStringPtr(out[i].Subscriber.Type))
+		suite.Equal(subscription.Subscriber.Type, utility.FromStringPtr(out[i].Subscriber.Type))
 		checkSubscriptionTarget(suite, subscription.Subscriber.Target, out[i].Subscriber.Target)
-		suite.Equal(string(subscription.OwnerType), FromStringPtr(out[i].OwnerType))
-		suite.Equal(subscription.Owner, FromStringPtr(out[i].Owner))
+		suite.Equal(string(subscription.OwnerType), utility.FromStringPtr(out[i].OwnerType))
+		suite.Equal(subscription.Owner, utility.FromStringPtr(out[i].Owner))
 	}
 }
 
@@ -208,27 +209,27 @@ func checkSubscriptionTarget(suite *ProjectEventSuite, inTarget interface{}, out
 	case *event.GithubPullRequestSubscriber:
 		outTargetGithub, ok := outTarget.(APIGithubPRSubscriber)
 		suite.Require().True(ok)
-		suite.Equal(v.Owner, FromStringPtr(outTargetGithub.Owner))
-		suite.Equal(v.Repo, FromStringPtr(outTargetGithub.Repo))
+		suite.Equal(v.Owner, utility.FromStringPtr(outTargetGithub.Owner))
+		suite.Equal(v.Repo, utility.FromStringPtr(outTargetGithub.Repo))
 		suite.Equal(v.PRNumber, outTargetGithub.PRNumber)
-		suite.Equal(v.Ref, FromStringPtr(outTargetGithub.Ref))
+		suite.Equal(v.Ref, utility.FromStringPtr(outTargetGithub.Ref))
 
 	case *event.WebhookSubscriber:
 		outTargetWebhook, ok := outTarget.(APIWebhookSubscriber)
 		suite.Require().True(ok)
-		suite.Equal(v.URL, FromStringPtr(outTargetWebhook.URL))
-		suite.Equal(v.Secret, FromStringPtr(outTargetWebhook.Secret))
+		suite.Equal(v.URL, utility.FromStringPtr(outTargetWebhook.URL))
+		suite.Equal(v.Secret, utility.FromStringPtr(outTargetWebhook.Secret))
 
 	case *event.JIRAIssueSubscriber:
 		outTargetJIRA, ok := outTarget.(APIJIRAIssueSubscriber)
 		suite.Require().True(ok)
-		suite.Equal(v.Project, FromStringPtr(outTargetJIRA.Project))
-		suite.Equal(v.IssueType, FromStringPtr(outTargetJIRA.IssueType))
+		suite.Equal(v.Project, utility.FromStringPtr(outTargetJIRA.Project))
+		suite.Equal(v.IssueType, utility.FromStringPtr(outTargetJIRA.IssueType))
 
 	case *string: // JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType
 		outTargetString, ok := outTarget.(*string)
 		suite.Require().True(ok)
-		suite.Equal(v, FromStringPtr(outTargetString))
+		suite.Equal(v, utility.FromStringPtr(outTargetString))
 
 	default:
 		suite.FailNow("Unknown target type")

@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -24,9 +25,9 @@ type APIEntry struct {
 func (f *APIFile) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case artifact.File:
-		f.Name = ToStringPtr(v.Name)
-		f.Link = ToStringPtr(v.Link)
-		f.Visibility = ToStringPtr(v.Visibility)
+		f.Name = utility.ToStringPtr(v.Name)
+		f.Link = utility.ToStringPtr(v.Link)
+		f.Visibility = utility.ToStringPtr(v.Visibility)
 		f.IgnoreForFetch = v.IgnoreForFetch
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -36,9 +37,9 @@ func (f *APIFile) BuildFromService(h interface{}) error {
 
 func (f *APIFile) ToService() (interface{}, error) {
 	return artifact.File{
-		Name:           FromStringPtr(f.Name),
-		Link:           FromStringPtr(f.Link),
-		Visibility:     FromStringPtr(f.Visibility),
+		Name:           utility.FromStringPtr(f.Name),
+		Link:           utility.FromStringPtr(f.Link),
+		Visibility:     utility.FromStringPtr(f.Visibility),
 		IgnoreForFetch: f.IgnoreForFetch,
 	}, nil
 }
@@ -47,9 +48,9 @@ func (e *APIEntry) BuildFromService(h interface{}) error {
 	catcher := grip.NewBasicCatcher()
 	switch v := h.(type) {
 	case artifact.Entry:
-		e.TaskId = ToStringPtr(v.TaskId)
-		e.TaskDisplayName = ToStringPtr(v.TaskDisplayName)
-		e.BuildId = ToStringPtr(v.BuildId)
+		e.TaskId = utility.ToStringPtr(v.TaskId)
+		e.TaskDisplayName = utility.ToStringPtr(v.TaskDisplayName)
+		e.BuildId = utility.ToStringPtr(v.BuildId)
 		e.Execution = v.Execution
 		for _, file := range v.Files {
 			apiFile := APIFile{}
@@ -64,9 +65,9 @@ func (e *APIEntry) BuildFromService(h interface{}) error {
 
 func (e *APIEntry) ToService() (interface{}, error) {
 	entry := artifact.Entry{
-		TaskId:          FromStringPtr(e.TaskId),
-		TaskDisplayName: FromStringPtr(e.TaskDisplayName),
-		BuildId:         FromStringPtr(e.BuildId),
+		TaskId:          utility.FromStringPtr(e.TaskId),
+		TaskDisplayName: utility.FromStringPtr(e.TaskDisplayName),
+		BuildId:         utility.FromStringPtr(e.BuildId),
 		Execution:       e.Execution,
 	}
 	catcher := grip.NewBasicCatcher()

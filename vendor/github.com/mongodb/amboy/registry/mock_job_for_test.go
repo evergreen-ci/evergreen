@@ -17,16 +17,19 @@ func init() {
 }
 
 type JobTest struct {
-	Name        string              `bson:"name" json:"name" yaml:"name"`
-	Content     string              `bson:"content" json:"content" yaml:"content"`
-	ShouldFail  bool                `bson:"should_fail" json:"should_fail" yaml:"should_fail"`
-	HadError    bool                `bson:"has_error" json:"has_error" yaml:"has_error"`
-	IsLocked    bool                `bson:"is_locked" json:"is_locked" yaml:"is_locked"`
-	JobPriority int                 `bson:"priority" json:"priority" yaml:"priority"`
-	T           amboy.JobType       `bson:"type" json:"type" yaml:"type"`
-	Stat        amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
-	TimingInfo  amboy.JobTimeInfo   `bson:"time_info" json:"time_info" yaml:"time_info"`
-	LockScopes  []string            `bson:"scopes" json:"scopes" yaml:"scopes"`
+	Name                 string              `bson:"name" json:"name" yaml:"name"`
+	Content              string              `bson:"content" json:"content" yaml:"content"`
+	ShouldFail           bool                `bson:"should_fail" json:"should_fail" yaml:"should_fail"`
+	HadError             bool                `bson:"has_error" json:"has_error" yaml:"has_error"`
+	IsLocked             bool                `bson:"is_locked" json:"is_locked" yaml:"is_locked"`
+	JobPriority          int                 `bson:"priority" json:"priority" yaml:"priority"`
+	T                    amboy.JobType       `bson:"type" json:"type" yaml:"type"`
+	Stat                 amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
+	TimingInfo           amboy.JobTimeInfo   `bson:"time_info" json:"time_info" yaml:"time_info"`
+	LockScopes           []string            `bson:"scopes" json:"scopes" yaml:"scopes"`
+	ApplyScopesOnEnqueue bool                `bson:"apply_scopes_on_enqueue" json:"apply_scopes_on_enqueue" yaml:"apply_scopes_on_enqueue"`
+
+	JobRetry amboy.JobRetryInfo
 
 	dep dependency.Manager
 }
@@ -143,4 +146,24 @@ func (j *JobTest) SetScopes(in []string) {
 
 func (j *JobTest) Scopes() []string {
 	return j.LockScopes
+}
+
+func (j *JobTest) SetShouldApplyScopesOnEnqueue(val bool) {
+	j.ApplyScopesOnEnqueue = val
+}
+
+func (j *JobTest) ShouldApplyScopesOnEnqueue() bool {
+	return j.ApplyScopesOnEnqueue
+}
+
+func (j *JobTest) RetryInfo() amboy.JobRetryInfo {
+	return j.JobRetry
+}
+
+func (j *JobTest) UpdateRetryInfo(info amboy.JobRetryInfo) {
+	j.JobRetry = info
+}
+
+func (j *JobTest) SetRetryable(val bool) {
+	j.JobRetry.Retryable = val
 }

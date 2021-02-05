@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -108,7 +107,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	// Send GitHub status
-	if restModel.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
+	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))
@@ -210,7 +209,7 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 	if patchEmpty {
 		return gimlet.MakeJSONErrorResponder(errors.New("can't enqueue item, patch is empty"))
 	}
-	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToStringPtr(cq.item), Source: restModel.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: utility.ToStringPtr(cq.item), Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}

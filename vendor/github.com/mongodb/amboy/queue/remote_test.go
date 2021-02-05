@@ -10,11 +10,9 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
-	"github.com/stretchr/testify/assert"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func init() {
@@ -24,10 +22,11 @@ func init() {
 type RemoteUnorderedSuite struct {
 	queue             *remoteUnordered
 	driver            remoteQueueDriver
-	driverConstructor func() remoteQueueDriver
-	tearDown          func()
+	driverConstructor func() (remoteQueueDriver, error)
+	tearDown          func() error
 	require           *require.Assertions
-	canceler          context.CancelFunc
+	ctx               context.Context
+	cancel            context.CancelFunc
 	suite.Suite
 }
 
@@ -37,29 +36,22 @@ func TestRemoteUnorderedMongoSuite(t *testing.T) {
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
-	require.NoError(t, err)
-
-	err = client.Connect(ctx)
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, client.Disconnect(ctx))
-	}()
-
-	require.NoError(t, client.Database(opts.DB).Drop(ctx))
-
-	tests.driverConstructor = func() remoteQueueDriver {
-		d, err := openNewMongoDriver(ctx, name, opts, client)
-		require.NoError(t, err)
-		return d
+	tests.driverConstructor = func() (remoteQueueDriver, error) {
+		return newMongoDriver(name, opts)
 	}
 
-	tests.tearDown = func() {
-		require.NoError(t, client.Database(opts.DB).Drop(ctx))
+	tests.tearDown = func() error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
+		mDriver, ok := tests.driver.(*mongoDriver)
+		if !ok {
+			return errors.New("cannot tear down mongo driver tests because test suite is not running a mongo driver")
+		}
+		if err := mDriver.getCollection().Database().Drop(ctx); err != nil {
+			return errors.Wrapf(err, "removing collection '%s'", mDriver.getCollection().Name())
+		}
+		return nil
 	}
 
 	suite.Run(t, tests)
@@ -68,15 +60,12 @@ func TestRemoteUnorderedMongoSuite(t *testing.T) {
 // TODO run these same tests with different drivers by cloning the
 // above Test function and replacing the driverConstructor function.
 
-func (s *RemoteUnorderedSuite) SetupSuite() {
-	s.require = s.Require()
-}
-
 func (s *RemoteUnorderedSuite) SetupTest() {
-	ctx, canceler := context.WithCancel(context.Background())
-	s.driver = s.driverConstructor()
-	s.canceler = canceler
-	s.NoError(s.driver.Open(ctx))
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	var err error
+	s.driver, err = s.driverConstructor()
+	s.Require().NoError(err)
+	s.Require().NoError(s.driver.Open(s.ctx))
 	s.queue = newRemoteUnordered(2).(*remoteUnordered)
 }
 
@@ -85,8 +74,8 @@ func (s *RemoteUnorderedSuite) TearDownTest() {
 	// the context to prevent closing the connection before
 	// running the teardown procedure, given that some connection
 	// resources may be shared in the driver.
-	s.tearDown()
-	s.canceler()
+	s.NoError(s.tearDown())
+	s.cancel()
 }
 
 func (s *RemoteUnorderedSuite) TestDriverIsUnitializedByDefault() {
@@ -98,54 +87,47 @@ func (s *RemoteUnorderedSuite) TestRemoteUnorderdImplementsQueueInterface() {
 }
 
 func (s *RemoteUnorderedSuite) TestJobPutIntoQueueFetchableViaGetMethod() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.NoError(s.queue.SetDriver(s.driver))
-	s.NotNil(s.queue.Driver())
+	s.Require().NoError(s.queue.SetDriver(s.driver))
+	s.Require().NotNil(s.queue.Driver())
 
 	j := job.NewShellJob("echo foo", "")
 	name := j.ID()
-	s.NoError(s.queue.Put(ctx, j))
-	fetchedJob, ok := s.queue.Get(ctx, name)
+	s.NoError(s.queue.Put(s.ctx, j))
+	fetchedJob, ok := s.queue.Get(s.ctx, name)
+	s.Require().True(ok)
 
-	if s.True(ok) {
-		s.IsType(j.Dependency(), fetchedJob.Dependency())
-		s.Equal(j.ID(), fetchedJob.ID())
-		s.Equal(j.Type(), fetchedJob.Type())
+	s.IsType(j.Dependency(), fetchedJob.Dependency())
+	s.Equal(j.ID(), fetchedJob.ID())
+	s.Equal(j.Type(), fetchedJob.Type())
 
-		nj := fetchedJob.(*job.ShellJob)
-		s.Equal(j.ID(), nj.ID())
-		s.Equal(j.Status().Completed, nj.Status().Completed)
-		s.Equal(j.Command, nj.Command, fmt.Sprintf("%+v\n%+v", j, nj))
-		s.Equal(j.Output, nj.Output)
-		s.Equal(j.WorkingDir, nj.WorkingDir)
-		s.Equal(j.Type(), nj.Type())
-	}
+	nj := fetchedJob.(*job.ShellJob)
+	s.Equal(j.ID(), nj.ID())
+	s.Equal(j.Status().Completed, nj.Status().Completed)
+	s.Equal(j.Command, nj.Command, fmt.Sprintf("%+v\n%+v", j, nj))
+	s.Equal(j.Output, nj.Output)
+	s.Equal(j.WorkingDir, nj.WorkingDir)
+	s.Equal(j.Type(), nj.Type())
 }
 
 func (s *RemoteUnorderedSuite) TestGetMethodHandlesMissingJobs() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.Require().Nil(s.queue.Driver())
+	s.Require().NoError(s.queue.SetDriver(s.driver))
+	s.Require().NotNil(s.queue.Driver())
 
-	s.Nil(s.queue.Driver())
-	s.NoError(s.queue.SetDriver(s.driver))
-	s.NotNil(s.queue.Driver())
-
-	s.NoError(s.queue.Start(ctx))
+	s.NoError(s.queue.Start(s.ctx))
 
 	j := job.NewShellJob("echo foo", "")
 	name := j.ID()
 
 	// before putting a job in the queue, it shouldn't exist.
-	fetchedJob, ok := s.queue.Get(ctx, name)
+	fetchedJob, ok := s.queue.Get(s.ctx, name)
 	s.False(ok)
 	s.Nil(fetchedJob)
 
-	s.NoError(s.queue.Put(ctx, j))
+	s.NoError(s.queue.Put(s.ctx, j))
 
 	// wrong name also returns error case
-	fetchedJob, ok = s.queue.Get(ctx, name+name)
+	fetchedJob, ok = s.queue.Get(s.ctx, name+name)
 	s.False(ok)
 	s.Nil(fetchedJob)
 }
@@ -249,7 +231,7 @@ func (s *RemoteUnorderedSuite) TestStartMethodCanBeCalledMultipleTimes() {
 }
 
 func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
-	s.require.NoError(s.queue.SetDriver(s.driver))
+	s.Require().NoError(s.queue.SetDriver(s.driver))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -276,7 +258,7 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 	}
 
 	s.queue.started = true
-	s.require.NoError(s.queue.Start(ctx))
+	s.Require().NoError(s.queue.Start(ctx))
 	go s.queue.jobServer(ctx)
 
 	observed := 0
@@ -304,7 +286,7 @@ checkResults:
 		}
 
 	}
-	s.require.NoError(ctx.Err())
+	s.Require().NoError(ctx.Err())
 	qStat := s.queue.Stats(ctx)
 	s.True(qStat.Running >= numLocked)
 	s.True(qStat.Total == created)
@@ -315,7 +297,7 @@ checkResults:
 func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.require.NoError(s.queue.SetDriver(s.driver))
+	s.Require().NoError(s.queue.SetDriver(s.driver))
 
 	names := make(map[string]struct{})
 
@@ -340,7 +322,7 @@ func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
 func (s *RemoteUnorderedSuite) TestTimeInfoPersists() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	s.require.NoError(s.queue.SetDriver(s.driver))
+	s.Require().NoError(s.queue.SetDriver(s.driver))
 	j := newMockJob()
 	s.Zero(j.TimeInfo())
 	s.NoError(s.queue.Put(ctx, j))

@@ -224,7 +224,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark task as finished
 	updates := model.StatusChanges{}
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.ShouldDeactivatePrevious(), &updates)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -485,7 +485,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
-		if !projectRef.Enabled || projectRef.DispatchingDisabled {
+		if !projectRef.IsEnabled() || projectRef.IsDispatchingDisabled() {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
@@ -559,21 +559,6 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
 				}
-				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum > nextTask.TaskGroupOrder {
-					grip.Debug(message.Fields{
-						"message":              "task group race but we're still dispatching",
-						"dispatch_race":        fmt.Sprintf("current task is order %d, another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum),
-						"task_distro_id":       nextTask.DistroId,
-						"task_id":              nextTask.Id,
-						"host_id":              currentHost.Id,
-						"task_group":           nextTask.TaskGroup,
-						"task_build_variant":   nextTask.BuildVariant,
-						"task_version":         nextTask.Version,
-						"task_project":         nextTask.Project,
-						"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
-						"task_group_order":     nextTask.TaskGroupOrder,
-					})
-				}
 			}
 			// for multiple-host task groups and single-host task groups without order cached
 			if minTaskGroupOrderNum == 0 {
@@ -583,6 +568,20 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				}
 				if numHosts > nextTask.TaskGroupMaxHosts {
 					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
+				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
+					// if the previous task in the group has yet to run and should run, then wait for it
+					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
+					if err != nil {
+						return nil, false, errors.WithStack(err)
+					}
+					for _, tgTask := range tgTasks {
+						if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
+							break
+						}
+						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() {
+							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
+						}
+					}
 				}
 			}
 

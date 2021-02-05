@@ -3,11 +3,13 @@ package queue
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
@@ -22,6 +24,10 @@ type SQSFifoQueueSuite struct {
 	jobID string
 }
 
+func awsTestCredentialsFromEnv() *credentials.Credentials {
+	return credentials.NewStaticCredentials(os.Getenv("AWS_KEY"), os.Getenv("AWS_SECRET"), "")
+}
+
 func TestSQSFifoQueueSuite(t *testing.T) {
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		t.Skip("skipping SQS tests on non-core platforms")
@@ -34,13 +40,13 @@ func (s *SQSFifoQueueSuite) SetupTest() {
 	defer cancel()
 
 	var err error
-	s.queue, err = NewSQSFifoQueue(randomString(4), 4)
-	s.NoError(err)
+	s.queue, err = NewSQSFifoQueue(randomString(4), 4, awsTestCredentialsFromEnv())
+	s.Require().NoError(err)
 	r := pool.NewSingle()
-	s.NoError(r.SetQueue(s.queue))
-	s.NoError(s.queue.SetRunner(r))
-	s.Equal(r, s.queue.Runner())
-	s.NoError(s.queue.Start(ctx))
+	s.Require().NoError(r.SetQueue(s.queue))
+	s.Require().NoError(s.queue.SetRunner(r))
+	s.Require().Equal(r, s.queue.Runner())
+	s.Require().NoError(s.queue.Start(ctx))
 
 	stats := s.queue.Stats(ctx)
 	s.Equal(0, stats.Total)
@@ -103,7 +109,7 @@ func TestSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	q, err := NewSQSFifoQueue(randomString(8), 4)
+	q, err := NewSQSFifoQueue(randomString(8), 4, awsTestCredentialsFromEnv())
 	assert.NoError(err)
 	assert.NoError(q.Start(ctx))
 	wg := &sync.WaitGroup{}
@@ -147,11 +153,11 @@ func TestMultipleSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 
 	defer cancel()
 	name := randomString(8)
-	q, err := NewSQSFifoQueue(name, 4)
+	q, err := NewSQSFifoQueue(name, 4, awsTestCredentialsFromEnv())
 	assert.NoError(err)
 	assert.NoError(q.Start(ctx))
 
-	q2, err := NewSQSFifoQueue(name, 4)
+	q2, err := NewSQSFifoQueue(name, 4, awsTestCredentialsFromEnv())
 	assert.NoError(err)
 	assert.NoError(q2.Start(ctx))
 

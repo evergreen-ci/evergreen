@@ -4,15 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
@@ -184,7 +183,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
+func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get patch")
@@ -193,7 +192,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return nil, errors.Errorf("no patch found for id '%s'", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatch)
+	newPatch, err := model.MakeMergePatchFromExisting(existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}
@@ -290,7 +289,7 @@ func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restM
 		return nil, nil
 	}
 
-	return &restModel.APICommitQueue{ProjectID: restModel.ToStringPtr(id), Queue: pc.Queue[id]}, nil
+	return &restModel.APICommitQueue{ProjectID: utility.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
@@ -299,7 +298,7 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user strin
 	}
 
 	for i := range pc.Queue[id] {
-		if restModel.FromStringPtr(pc.Queue[id][i].Issue) == itemId {
+		if utility.FromStringPtr(pc.Queue[id][i].Issue) == itemId {
 			item := pc.Queue[id][i]
 			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
 			return &item, nil
@@ -315,7 +314,7 @@ func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, 
 		return false, errors.Errorf("can't get commit queue for id '%s'", id)
 	}
 	for _, queueItem := range queue {
-		if restModel.FromStringPtr(queueItem.Issue) == item {
+		if utility.FromStringPtr(queueItem.Issue) == item {
 			return true, nil
 		}
 	}
@@ -338,7 +337,7 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context,
 	return true, nil
 }
 
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	return nil, nil
 }
 func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {

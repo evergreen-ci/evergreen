@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -52,8 +53,8 @@ func notificationSlack() cli.Command {
 			defer cancel()
 
 			apiSlack := model.APISlack{
-				Target: model.ToStringPtr(target),
-				Msg:    model.ToStringPtr(msg),
+				Target: utility.ToStringPtr(target),
+				Msg:    utility.ToStringPtr(msg),
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -120,10 +121,10 @@ func notificationEmail() cli.Command {
 			defer cancel()
 
 			apiEmail := model.APIEmail{
-				From:       model.ToStringPtr(from),
-				Subject:    model.ToStringPtr(subject),
+				From:       utility.ToStringPtr(from),
+				Subject:    utility.ToStringPtr(subject),
 				Recipients: recipients,
-				Body:       model.ToStringPtr(body),
+				Body:       utility.ToStringPtr(body),
 			}
 
 			conf, err := NewClientSettings(confPath)
