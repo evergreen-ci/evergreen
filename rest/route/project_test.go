@@ -369,9 +369,8 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
-	data  data.MockProjectConnector
-	sc    *data.MockConnector
-	route *projectGetHandler
+	data data.MockProjectConnector
+	sc   *data.MockConnector
 
 	suite.Suite
 }
@@ -396,52 +395,6 @@ func (s *ProjectGetSuite) SetupSuite() {
 		URL:                  "https://evergreen.example.net",
 		MockProjectConnector: s.data,
 	}
-}
-
-func (s *ProjectGetSuite) SetupTest() {
-	s.route = &projectGetHandler{sc: s.sc}
-}
-
-func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
-	s.route.key = "zzz"
-	s.route.limit = 1
-
-	resp := s.route.Run(context.Background())
-	s.Equal(http.StatusNotFound, resp.Status())
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no projects found")
-}
-
-func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	s.route.key = "projectC"
-	s.route.limit = 1
-
-	resp := s.route.Run(context.Background())
-	s.NotNil(resp)
-	payload := resp.Data().([]interface{})
-
-	s.Len(payload, 1)
-	s.Equal(utility.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
-
-	pageData := resp.Pages()
-	s.Nil(pageData.Prev)
-	s.NotNil(pageData.Next)
-
-	s.Equal("projectD", pageData.Next.Key)
-}
-
-func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	s.route.key = "projectA"
-	s.route.limit = 100
-
-	resp := s.route.Run(context.Background())
-	s.NotNil(resp)
-	payload := resp.Data().([]interface{})
-
-	s.Len(payload, 6)
-	s.Equal(utility.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])
-	s.Equal(utility.ToStringPtr("projectB"), (payload[1]).(*model.APIProjectRef).Id, payload[1])
-
-	s.Nil(resp.Pages())
 }
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
