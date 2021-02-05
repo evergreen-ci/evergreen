@@ -115,6 +115,9 @@ type Communicator interface {
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
 	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
+
+	// ConcludeMerge reports the status of a commit queue merge back to the server
+	ConcludeMerge(ctx context.Context, patchId, project, status string, td TaskData) error
 }
 
 type LoggerMetadata struct {

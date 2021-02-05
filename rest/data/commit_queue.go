@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -222,6 +223,35 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	return project.CommitQueue.Message, nil
 }
 
+func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, project, status string) error {
+	event.LogCommitQueueConcludeTest(patchID, status)
+	cq, err := commitqueue.FindOneId(project)
+	if err != nil {
+		return errors.Wrapf(err, "can't find commit queue for '%s'", project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", project)
+	}
+	item := ""
+	for _, entry := range cq.Queue {
+		if entry.Version == patchID {
+			item = entry.Issue
+			break
+		}
+	}
+	if item == "" {
+		return errors.Errorf("no entry found for patch '%s'", patchID)
+	}
+	found, err := cq.Remove(item)
+	if err != nil {
+		return errors.Wrapf(err, "can't dequeue '%s' from commit queue", item)
+	}
+	if found == nil {
+		return errors.Errorf("item '%s' did not exist on the queue", item)
+	}
+	return nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -312,4 +342,8 @@ func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exi
 }
 func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
 	return "", nil
+}
+
+func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, project, status string) error {
+	return nil
 }
