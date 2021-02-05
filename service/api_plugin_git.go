@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -28,10 +29,11 @@ func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
 
 func (as *APIServer) gitServePatchFile(w http.ResponseWriter, r *http.Request) {
 	fileId := gimlet.GetVars(r)["patchfile_id"]
-	patchContents, err := patch.FetchPatchContents(fileId)
+	data, err := db.GetGridFile(patch.GridFSPrefix, fileId)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading file from db: %v", err), http.StatusInternalServerError)
 		return
 	}
-	gimlet.WriteText(w, patchContents)
+	defer data.Close()
+	gimlet.WriteText(w, data)
 }

@@ -446,9 +446,13 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
-	patchContents, err := patch.FetchPatchContents(patchFileID)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchFileID)
 	s.Require().NoError(err)
-	s.NotEmpty(patchContents)
+	s.Require().NotNil(reader)
+	defer reader.Close()
+	bytes, err := ioutil.ReadAll(reader)
+	s.NoError(err)
+	s.NotEmpty(bytes)
 }
 
 func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {

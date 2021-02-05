@@ -283,13 +283,13 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	return commit, nil
 }
 
-// GetCommitDiff gets the diff of the specified commit via an API call to GitHub
-func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
+// GetRawCommit gets the specified commit via an API call to GitHub
+func GetRawPatchCommit(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
 	httpClient := getGithubClient(oauthToken)
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
-	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Diff})
+	commit, resp, err := client.Repositories.GetCommitRaw(ctx, repoOwner, repo, sha, github.RawOptions{Type: github.Patch})
 	if resp != nil {
 		defer resp.Body.Close()
 		if err != nil {

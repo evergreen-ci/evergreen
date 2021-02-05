@@ -146,6 +146,12 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
+			if !params.PreserveCommits {
+				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
+				if err != nil {
+					return err
+				}
+			}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
@@ -241,10 +247,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem reading diff file")
 			}
 
-			diffData := &localDiff{
-				fullPatch: string(fullPatch),
-				base:      base,
-			}
+			diffData := &localDiff{string(fullPatch), "", "", base}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err

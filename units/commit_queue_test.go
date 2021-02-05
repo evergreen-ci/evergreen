@@ -171,7 +171,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 		},
 	}
 
-	patchContents := `diff --git a/myfile.go b/myfile.go
+	patchContent := `diff --git a/myfile.go b/myfile.go
 	index abcdef..123456 100644
 	--- a/myfile.go
 	+++ b/myfile.go
@@ -180,12 +180,15 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 			}
 	`
 
-	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContents))
+	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContent))
 	s.Len(patchDoc.Patches, 1)
 	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
-	storedPatchContents, err := patch.FetchPatchContents(patchDoc.Patches[0].PatchSet.PatchFileId)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
 	s.NoError(err)
-	s.Equal(patchContents, storedPatchContents)
+	defer reader.Close()
+	bytes, err := ioutil.ReadAll(reader)
+	s.NoError(err)
+	s.Equal(patchContent, string(bytes))
 }
 
 func (s *commitQueueSuite) TestValidateBranch() {
