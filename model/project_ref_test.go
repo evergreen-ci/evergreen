@@ -266,7 +266,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	assert.NoError(db.Clear(ProjectRefCollection))
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
 	projectRefs, err := FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
@@ -298,6 +298,34 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	projectRef.Id = "ident2"
 	assert.NoError(projectRef.Insert())
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.Len(projectRefs, 2)
+
+	projectRef.Id = "uses_repo"
+	projectRef.Enabled = nil
+	projectRef.RepoRefId = "my_repo"
+	projectRef.UseRepoSettings = true
+	assert.NoError(projectRef.Insert())
+
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.FalsePtr(),
+	}}
+	assert.NoError(repoRef.Insert())
+
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.Len(projectRefs, 2)
+
+	repoRef.Enabled = utility.TruePtr()
+	assert.NoError(repoRef.Upsert())
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.Len(projectRefs, 3)
+
+	projectRef.Enabled = utility.FalsePtr()
+	assert.NoError(projectRef.Upsert())
 	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
@@ -467,18 +495,28 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.Clear(ProjectRefCollection))
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.TruePtr(),
+		CommitQueue: CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}}
+	assert.NoError(repoRef.Insert())
 	doc := &ProjectRef{
-		Enabled:    utility.TruePtr(),
-		Owner:      "mongodb",
-		Repo:       "mci",
-		Branch:     "master",
-		Identifier: "mci",
-		Id:         "1",
+		Enabled:         utility.TruePtr(),
+		Owner:           "mongodb",
+		Repo:            "mci",
+		Branch:          "master",
+		Identifier:      "mci",
+		Id:              "1",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -502,6 +540,20 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert.Equal("buildlogger", projectRefs[0].DefaultLogger)
 	assert.Equal("mci", projectRefs[1].Identifier)
 	assert.Equal("buildlogger", projectRefs[1].DefaultLogger)
+
+	doc.Id = "both_settings_from_repo"
+	doc.Enabled = nil
+	doc.CommitQueue.Enabled = nil
+	assert.NoError(doc.Insert())
+	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
+	assert.NoError(err)
+	assert.Len(projectRefs, 3)
+
+	repoRef.CommitQueue.Enabled = utility.FalsePtr()
+	assert.NoError(repoRef.Upsert())
+	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
+	assert.NoError(err)
+	assert.Len(projectRefs, 2)
 }
 
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
@@ -553,20 +605,30 @@ func TestGetPatchTriggerAlias(t *testing.T) {
 }
 
 func TestFindDownstreamProjects(t *testing.T) {
-	require.NoError(t, db.Clear(ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, repoRef.Insert())
+
 	proj1 := ProjectRef{
-		Id:       "evergreen",
-		Enabled:  utility.TruePtr(),
-		Triggers: []TriggerDefinition{{Project: "grip"}},
+		Id:              "evergreen",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
+		Enabled:         utility.TruePtr(),
+		Triggers:        []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj1.Insert())
 
 	proj2 := ProjectRef{
-		Id:       "mci",
-		Enabled:  utility.FalsePtr(),
-		Triggers: []TriggerDefinition{{Project: "grip"}},
+		Id:              "mci",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
+		Enabled:         utility.FalsePtr(),
+		Triggers:        []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj2.Insert())
 
@@ -575,6 +637,18 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.Len(t, projects, 1)
 	proj1.DefaultLogger = "buildlogger"
 	assert.Equal(t, proj1, projects[0])
+
+	proj1.Enabled = nil
+	assert.NoError(t, proj1.Upsert())
+	projects, err = FindDownstreamProjects("grip")
+	assert.NoError(t, err)
+	assert.Len(t, projects, 1)
+
+	proj2.Enabled = nil
+	assert.NoError(t, proj2.Upsert())
+	projects, err = FindDownstreamProjects("grip")
+	assert.NoError(t, err)
+	assert.Len(t, projects, 2)
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -683,6 +757,42 @@ func TestGetProjectSetupCommands(t *testing.T) {
 	assert.Len(t, cmds, 2)
 	assert.Contains(t, cmds[0].String(), "c0")
 	assert.Contains(t, cmds[1].String(), "c1")
+}
+
+func TestFindPeriodicProjects(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	repoRef := RepoRef{ProjectRef{
+		Enabled:        utility.TruePtr(),
+		Id:             "my_repo",
+		PeriodicBuilds: []PeriodicBuildDefinition{{ID: "repo_def"}},
+	}}
+	assert.NoError(t, repoRef.Insert())
+
+	pRef := ProjectRef{
+		Id:              "p1",
+		RepoRefId:       "my_repo",
+		UseRepoSettings: true,
+		PeriodicBuilds:  []PeriodicBuildDefinition{},
+	}
+	assert.NoError(t, pRef.Insert())
+
+	pRef.Id = "p2"
+	pRef.PeriodicBuilds = []PeriodicBuildDefinition{{ID: "p1"}}
+	assert.NoError(t, pRef.Insert())
+
+	pRef.Id = "p3"
+	pRef.PeriodicBuilds = nil
+	assert.NoError(t, pRef.Insert())
+
+	pRef.Id = "p4"
+	pRef.Enabled = utility.FalsePtr()
+	pRef.PeriodicBuilds = []PeriodicBuildDefinition{{ID: "p1"}}
+	assert.NoError(t, pRef.Insert())
+
+	projects, err := FindPeriodicProjects()
+	assert.NoError(t, err)
+	assert.Len(t, projects, 2)
 }
 
 func TestPointers(t *testing.T) {
