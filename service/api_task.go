@@ -762,7 +762,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
 			"run_id":      runId,
 		})
-		stepStart = time.Now()
 		gimlet.WriteJSON(w, response)
 		return
 	}
