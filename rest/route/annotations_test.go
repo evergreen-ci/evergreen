@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -393,15 +394,15 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		sc: &data.MockConnector{},
 	}
 	a.Issues = []model.APIIssueLink{
-		model.APIIssueLink{
+		{
 			URL: utility.ToStringPtr("issuelink.com"),
 		},
-		model.APIIssueLink{
+		{
 			URL: utility.ToStringPtr("https://issuelink.com/ticket"),
 		},
 	}
 	a.SuspectedIssues = []model.APIIssueLink{
-		model.APIIssueLink{
+		{
 			URL: utility.ToStringPtr("https://issuelinkcom"),
 		},
 	}
@@ -537,4 +538,134 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
 	require.NoError(t, err)
 	assert.Equal(t, "task-1-note_1_updated", annotation.Note.Message)
+}
+
+// test created tickets route
+func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
+	testProject := "testProject"
+	tasks := []task.Task{
+		{Id: "t1", Execution: 1, Project: testProject},
+		{Id: "t2", Execution: 1, Project: testProject},
+	}
+	for _, each := range tasks {
+		assert.NoError(t, each.Insert())
+	}
+	h := &createdTicketByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
+
+	execution1 := 1
+	url := utility.ToStringPtr("https://issuelink.com")
+	ticket := &model.APIIssueLink{
+		URL:      url,
+		IssueKey: utility.ToStringPtr("some key 0"),
+	}
+
+	jsonBody, err := json.Marshal(ticket)
+	buffer := bytes.NewBuffer(jsonBody)
+	r, err := http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
+	assert.NoError(t, err)
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "there is no web-hook configured for 'testProject'")
+
+	plugins := evergreen.PluginConfig{
+		"buildbaron": {
+			"projects": map[string]evergreen.BuildBaronProject{
+				testProject: {
+					TicketCreateProject: "EVG",
+					TaskAnnotationSettings: evergreen.AnnotationsSettings{
+						FileTicketWebHook: evergreen.WebHook{
+							Endpoint: "random",
+						},
+					},
+				},
+			},
+		},
+	}
+	evergreen.GetEnvironment().Settings().Plugins = plugins
+
+	r, err = http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
+	assert.NoError(t, err)
+	assert.NoError(t, h.Parse(ctx, r))
+	assert.Equal(t, "t1", h.taskId)
+	assert.Equal(t, &execution1, h.execution)
+	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
+	assert.Equal(t, url, h.ticket.URL)
+
+	// test with an invalid URL
+	h = &createdTicketByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
+	ticket.URL = utility.ToStringPtr("issuelink.com")
+	jsonBody, err = json.Marshal(ticket)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("PUT", "/task/t1/annotations?execution=1", buffer)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
+	assert.NoError(t, err)
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
+
+	// test with a task that doesn't exist
+	h = &createdTicketByTaskPutHandler{
+		sc: &data.MockConnector{},
+	}
+
+	r, err = http.NewRequest("PUT", "/task/t1/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
+	assert.NoError(t, err)
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "the task 'non-existent' does not exist")
+}
+
+func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
+	execution0 := 0
+
+	ticket := &model.APIIssueLink{
+		URL:      utility.ToStringPtr("https://issuelink1.com"),
+		IssueKey: utility.ToStringPtr("Issue_key_1"),
+	}
+
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
+
+	//test when there is no annotation for the task
+	h := &createdTicketByTaskPutHandler{
+		sc:        &data.MockConnector{},
+		taskId:    "t1",
+		execution: &execution0,
+		ticket:    ticket,
+		user:      &user.DBUser{Id: "test_annotation_user"},
+	}
+	resp := h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
+	require.NoError(t, err)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
+	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
+
+	// add a ticket to the existing annotation
+	h.ticket = &model.APIIssueLink{
+		URL:      utility.ToStringPtr("https://issuelink2.com"),
+		IssueKey: utility.ToStringPtr("Issue_key_2"),
+	}
+
+	resp = h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
+	require.NoError(t, err)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
+	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
+	assert.Equal(t, "https://issuelink2.com", annotation.CreatedIssues[1].URL)
+	assert.Equal(t, "Issue_key_2", annotation.CreatedIssues[1].IssueKey)
 }

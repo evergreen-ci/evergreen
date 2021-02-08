@@ -173,6 +173,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(checkUser, addProject, editTasks).RouteHandler(makeModifyTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(checkUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByTask(sc))
 	app.AddRoute("/tasks/{task_id}/annotation").Version(2).Put().Wrap(checkUser, editAnnotations).RouteHandler(makePutAnnotationsByTask(sc))
+	app.AddRoute("/tasks/{task_id}/created_ticket").Version(2).Put().Wrap(checkUser, editAnnotations).RouteHandler(makeCreatedTicketByTask(sc))
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeTaskAbortHandler(sc))
 	app.AddRoute("/tasks/{task_id}/display_task").Version(2).Get().Wrap(checkTask).RouteHandler(makeGetDisplayTaskHandler(sc))
 	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().Wrap(checkTask).RouteHandler(makeGenerateTasksHandler(sc, opts.QueueGroup))

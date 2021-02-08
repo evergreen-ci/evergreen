@@ -213,3 +213,20 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	)
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
 }
+
+func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: WebHookRequester,
+	}
+	ticket.Source = source
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(taskId, execution),
+		bson.M{
+			"$addToSet": bson.M{CreatedIssuesKey: ticket},
+		},
+	)
+	return errors.Wrapf(err, "problem adding ticket to '%s'", taskId)
+}
