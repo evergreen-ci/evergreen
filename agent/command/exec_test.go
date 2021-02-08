@@ -4,18 +4,14 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -168,6 +164,19 @@ func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
 		},
 	}
 	s.Error(cmd.ParseParams(map[string]interface{}{}))
+}
+
+func (s *execCmdSuite) TestGetProcEnvSetting() {
+	cmd := &subprocessExec{
+		Binary:    "bash",
+		SystemLog: true,
+	}
+	cmd.SetJasperManager(s.jasper)
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	s.Len(cmd.Env, 4)
+	s.NotNil(exec)
 }
 
 func (s *execCmdSuite) TestRunCommand() {
@@ -348,54 +357,34 @@ func (s *execCmdSuite) TestExpansionsEnvOptionDisabled() {
 	s.Equal("one", cmd.Env["one"])
 }
 
-func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
+func (s *execCmdSuite) TestExpansionsEnvOptionEnabled() {
 	cmd := &subprocessExec{
-		Binary:     "echo",
-		Args:       []string{"hello", "world"},
-		Env:        map[string]string{"foo": "bar"},
-		WorkingDir: testutil.GetDirectoryOfFile(),
+		Env:                map[string]string{},
+		WorkingDir:         testutil.GetDirectoryOfFile(),
+		AddExpansionsToEnv: true,
 	}
-	cmd.SetJasperManager(s.jasper)
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
-	defer cancel()
-	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
-	s.Len(cmd.Env, 8)
-	s.Contains(cmd.Env, agentutil.MarkerTaskID)
-	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
-	s.Contains(cmd.Env, "TEMP")
-	s.Contains(cmd.Env, "TMP")
-	s.Contains(cmd.Env, "TMPDIR")
-	s.Contains(cmd.Env, "GOCACHE")
-	s.Contains(cmd.Env, "CI")
-	s.Contains(cmd.Env, "foo")
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	cmd.Env["one"] = "one"
+	s.Equal("one", cmd.Env["one"])
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two", "one": "1"})))
+	s.Len(cmd.Env, 2)
+	s.Equal("two", cmd.Env["two"])
+	s.Equal("1", cmd.Env["one"])
 }
 
-func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
+func (s *execCmdSuite) TestIncludeExpansionsInEnv() {
 	cmd := &subprocessExec{
-		Binary:             "echo",
-		Args:               []string{"hello", "world"},
-		AddExpansionsToEnv: true,
-		WorkingDir:         testutil.GetDirectoryOfFile(),
+		Env:                    map[string]string{},
+		WorkingDir:             testutil.GetDirectoryOfFile(),
+		IncludeExpansionsInEnv: []string{"foo", "bar"},
 	}
-	s.conf.Expansions = util.NewExpansions(map[string]string{
-		"expansion1": "foo",
-		"expansion2": "bar",
-	})
-	cmd.SetJasperManager(s.jasper)
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
-	defer cancel()
-	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
-	s.Len(cmd.Env, 9)
-	s.Contains(cmd.Env, agentutil.MarkerTaskID)
-	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
-	s.Contains(cmd.Env, "TEMP")
-	s.Contains(cmd.Env, "TMP")
-	s.Contains(cmd.Env, "TMPDIR")
-	s.Contains(cmd.Env, "GOCACHE")
-	s.Contains(cmd.Env, "CI")
-	for k, v := range s.conf.Expansions.Map() {
-		s.Equal(v, cmd.Env[k])
-	}
+
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
+	s.Len(cmd.Env, 0)
+	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"foo": "one", "bar": "two", "baz": "three"})))
+	s.Len(cmd.Env, 2)
 }
 
 func TestAddTemp(t *testing.T) {
@@ -419,8 +408,8 @@ func TestAddTemp(t *testing.T) {
 		"CorrectKeys": func(t *testing.T, env map[string]string) {
 			addTempDirs(env, "bar")
 			assert.Len(t, env, 3)
-			assert.Equal(t, "bar", env["TEMP"])
 			assert.Equal(t, "bar", env["TMP"])
+			assert.Equal(t, "bar", env["TEMP"])
 			assert.Equal(t, "bar", env["TMPDIR"])
 		},
 	} {
@@ -428,182 +417,6 @@ func TestAddTemp(t *testing.T) {
 			env := make(map[string]string)
 			require.Len(t, env, 0)
 			test(t, env)
-		})
-	}
-}
-
-func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, exp util.Expansions){
-		"SetsDefaultAndRequiredEnvWhenStandardValuesAreGiven": func(t *testing.T, exp util.Expansions) {
-			opts := modifyEnvOptions{
-				taskID:     "task_id",
-				workingDir: "working_dir",
-				tmpDir:     "tmp_dir",
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			assert.Len(t, env, 7)
-			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
-			assert.Contains(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
-			assert.Contains(t, opts.tmpDir, env["TEMP"])
-			assert.Contains(t, opts.tmpDir, env["TMP"])
-			assert.Contains(t, opts.tmpDir, env["TMPDIR"])
-			assert.Equal(t, filepath.Join(opts.workingDir, ".gocache"), env["GOCACHE"])
-			assert.Equal(t, "true", env["CI"])
-		},
-		"SetsDefaultAndRequiredEnvEvenWhenStandardValuesAreZero": func(t *testing.T, exp util.Expansions) {
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{})
-			assert.Len(t, env, 7)
-			assert.Contains(t, env, agentutil.MarkerTaskID)
-			assert.Contains(t, env, agentutil.MarkerAgentPID)
-			assert.Contains(t, env, "TEMP")
-			assert.Contains(t, env, "TMP")
-			assert.Contains(t, env, "TMPDIR")
-			assert.Equal(t, ".gocache", env["GOCACHE"])
-			assert.Equal(t, "true", env["CI"])
-		},
-		"AgentEnvVarsOverridesExplicitlySetEnvVars": func(t *testing.T, exp util.Expansions) {
-			opts := modifyEnvOptions{
-				taskID: "real_task_id",
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{
-				agentutil.MarkerAgentPID: "12345",
-				agentutil.MarkerTaskID:   "fake_task_id",
-			}, opts)
-			assert.Equal(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
-			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
-		},
-		"ExplicitlySetEnVVarsOverrideDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
-			gocache := "/path/to/gocache"
-			ci := "definitely not Jenkins"
-			tmpDir := "/some/tmpdir"
-			env := defaultAndApplyExpansionsToEnv(map[string]string{
-				"GOCACHE": gocache,
-				"CI":      ci,
-				"TEMP":    tmpDir,
-				"TMP":     "/some/tmpdir",
-				"TMPDIR":  tmpDir,
-			}, modifyEnvOptions{tmpDir: "/tmp"})
-			assert.Equal(t, gocache, env["GOCACHE"])
-			assert.Equal(t, ci, env["CI"])
-		},
-		"AddExpansionsToEnvAddsAllExpansions": func(t *testing.T, exp util.Expansions) {
-			env := defaultAndApplyExpansionsToEnv(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			}, modifyEnvOptions{
-				expansions:         exp,
-				addExpansionsToEnv: true,
-			})
-			assert.Equal(t, "val1", env["key1"])
-			assert.Equal(t, "val2", env["key2"])
-			for k, v := range exp.Map() {
-				assert.Equal(t, v, env[k])
-			}
-		},
-		"AddExpansionsToEnvOverridesDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
-			exp.Put("CI", "actually it's Jenkins")
-			exp.Put("GOCACHE", "/path/to/gocache")
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{
-				expansions:         exp,
-				addExpansionsToEnv: true,
-			})
-			for k, v := range exp.Map() {
-				assert.Equal(t, v, env[k])
-			}
-		},
-		"AgentEnvVarsOverrideExpansionsAddedToEnv": func(t *testing.T, exp util.Expansions) {
-			agentEnvVars := map[string]string{
-				agentutil.MarkerAgentPID: "12345",
-				agentutil.MarkerTaskID:   "fake_task_id",
-			}
-			exp.Update(agentEnvVars)
-			opts := modifyEnvOptions{
-				taskID:             "task_id",
-				expansions:         exp,
-				addExpansionsToEnv: true,
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			for k, v := range exp.Map() {
-				if _, ok := agentEnvVars[k]; ok {
-					continue
-				}
-				assert.Equal(t, v, env[k])
-			}
-			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
-			assert.Equal(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
-		},
-		"IncludeExpansionsToEnvSelectivelyIncludesExpansions": func(t *testing.T, exp util.Expansions) {
-			var include []string
-			for k := range exp.Map() {
-				include = append(include, k)
-				break
-			}
-			opts := modifyEnvOptions{
-				taskID:                 "task_id",
-				expansions:             exp,
-				includeExpansionsInEnv: include,
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			for k, v := range exp.Map() {
-				if utility.StringSliceContains(include, k) {
-					assert.Equal(t, v, env[k])
-				} else {
-					_, ok := env[k]
-					assert.False(t, ok)
-				}
-			}
-		},
-		"IncludeExpansionsInEnvOverridesDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
-			exp.Put("CI", "Travis")
-			exp.Put("GOCACHE", "/path/to/gocache")
-			include := []string{"GOCACHE", "CI"}
-			opts := modifyEnvOptions{
-				expansions:             exp,
-				includeExpansionsInEnv: include,
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			for k, v := range exp.Map() {
-				if utility.StringSliceContains(include, k) {
-					assert.Equal(t, v, env[k])
-				} else {
-					_, ok := env[k]
-					assert.False(t, ok)
-				}
-			}
-		},
-		"AgentEnvVarsOverrideExpansionsIncludedInEnv": func(t *testing.T, exp util.Expansions) {
-			agentEnvVars := map[string]string{
-				agentutil.MarkerAgentPID: "12345",
-				agentutil.MarkerTaskID:   "fake_task_id",
-			}
-			exp.Update(agentEnvVars)
-			opts := modifyEnvOptions{
-				taskID:                 "task_id",
-				expansions:             exp,
-				includeExpansionsInEnv: []string{agentutil.MarkerAgentPID, agentutil.MarkerTaskID},
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
-			assert.Equal(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
-		},
-		"IncludeExpansionsToEnvIgnoresNonexistentExpansions": func(t *testing.T, exp util.Expansions) {
-			include := []string{"nonexistent1", "nonexistent2"}
-			opts := modifyEnvOptions{
-				expansions:             exp,
-				includeExpansionsInEnv: include,
-			}
-			env := defaultAndApplyExpansionsToEnv(map[string]string{}, opts)
-			for _, expName := range include {
-				assert.NotContains(t, env, expName)
-			}
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			exp := util.NewExpansions(map[string]string{
-				"expansion1": "foo",
-				"expansion2": "bar",
-			})
-			testCase(t, *exp)
 		})
 	}
 }

@@ -3,7 +3,9 @@ package command
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -33,14 +35,6 @@ type shellExec struct {
 	// with. Defaults to "sh", but users can customize to
 	// explicitly specify another shell.
 	Shell string `mapstructure:"shell"`
-
-	Env map[string]string `mapstructure:"env"`
-	// AddExpansionsToEnv adds all defined expansions to the shell environment.
-	AddExpansionsToEnv bool `mapstructure:"add_expansions_to_env"`
-	// IncludeExpansionsInEnv allows users to specify which expansions should be
-	// included in the environment, if they are defined. It is not an error to
-	// specify expansions that are not defined in include_expansions_in_env.
-	IncludeExpansionsInEnv []string `mapstructure:"include_expansions_in_env"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -95,10 +89,6 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}
 
-	if c.Env == nil {
-		c.Env = map[string]string{}
-	}
-
 	return nil
 }
 
@@ -127,18 +117,13 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		logger.Execution().Notice(err.Error())
 	}
 
-	var exp util.Expansions
-	if conf.Expansions != nil {
-		exp = *conf.Expansions
+	env := map[string]string{
+		agentutil.MarkerTaskID:   conf.Task.Id,
+		agentutil.MarkerAgentPID: strconv.Itoa(os.Getpid()),
+		"GOCACHE":                filepath.Join(c.WorkingDir, ".gocache"),
+		"CI":                     "true",
 	}
-	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
-		taskID:                 conf.Task.Id,
-		workingDir:             c.WorkingDir,
-		tmpDir:                 taskTmpDir,
-		expansions:             exp,
-		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
-		addExpansionsToEnv:     c.AddExpansionsToEnv,
-	})
+	addTempDirs(env, taskTmpDir)
 
 	logger.Execution().Debug(message.Fields{
 		"working_directory": c.WorkingDir,
@@ -146,7 +131,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	})
 
 	cmd := c.JasperManager().CreateCommand(ctx).
-		Background(c.Background).Directory(c.WorkingDir).Environment(c.Env).Append(c.Shell).
+		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			opts.StandardInput = strings.NewReader(c.Script)
@@ -239,11 +224,6 @@ func (c *shellExec) doExpansions(exp *util.Expansions) error {
 
 	c.Script, err = exp.ExpandString(c.Script)
 	catcher.Add(err)
-
-	for k, v := range c.Env {
-		c.Env[k], err = exp.ExpandString(v)
-		catcher.Add(err)
-	}
 
 	return catcher.Resolve()
 }
