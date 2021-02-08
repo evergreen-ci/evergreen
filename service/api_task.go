@@ -544,6 +544,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_version":            nextTask.Version,
 			"task_project":            nextTask.Project,
 			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
+			"task_group_order":        nextTask.TaskGroupOrder,
 		})
 
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
@@ -558,17 +559,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
-				}
-			}
-			// for multiple-host task groups and single-host task groups without order cached
-			if minTaskGroupOrderNum == 0 {
-				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-				if err != nil {
-					return nil, false, errors.WithStack(err)
-				}
-				if numHosts > nextTask.TaskGroupMaxHosts {
-					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
-				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
+				} else if nextTask.TaskGroupOrder > 1 {
 					// if the previous task in the group has yet to run and should run, then wait for it
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
@@ -582,6 +573,16 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
 						}
 					}
+				}
+			}
+			// for multiple-host task groups and single-host task groups without order cached
+			if minTaskGroupOrderNum == 0 && dispatchRace == "" {
+				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+				if err != nil {
+					return nil, false, errors.WithStack(err)
+				}
+				if numHosts > nextTask.TaskGroupMaxHosts {
+					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
 				}
 			}
 
