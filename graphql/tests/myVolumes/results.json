@@ -7,7 +7,7 @@
           "myVolumes": [
             {
               "id": "1de2728dd9de82efc02dc21f6ca046eaa559462414d28e0b6bba6436436ac873",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
@@ -20,11 +20,12 @@
               "host": {
                 "id": "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc",
                 "displayName": "turtles rule"
-              }
+              },
+              "uiDisplayName": "1de2728dd9de82efc02dc21f6ca046eaa559462414d28e0b6bba6436436ac873"
             },
             {
               "id": "1da2d18d7fea548ed83a05895764056bc7437d6cac1c13d78f5fd2f27eb40a84",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "a real display name",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
@@ -37,11 +38,12 @@
               "host": {
                 "id": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479",
                 "displayName": ""
-              }
+              },
+              "uiDisplayName": "a real display name"
             },
             {
               "id": "randomid",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
@@ -51,7 +53,8 @@
               "noExpiration": false,
               "homeVolume": true,
               "creationTime": "2020-06-05T15:43:18Z",
-              "host": null
+              "host": null,
+              "uiDisplayName": "randomid"
             }
           ]
         }
