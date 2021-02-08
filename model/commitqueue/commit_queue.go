@@ -231,7 +231,7 @@ func preventMergeForItem(item CommitQueueItem, user string) error {
 		return errors.Wrap(err, "can't disable merge task")
 	}
 	if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
-		return errors.Wrap(err, "can't update build cache for deactivated ")
+		return errors.Wrapf(err, "error updating task cache for build %s", mergeTask.BuildId)
 	}
 
 	return nil

@@ -95,6 +95,8 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.Task().Warning("at least 1 task failed, will not merge pull request")
 		return nil
 	}
+	// only successful patches should get past here. Failed patches will just send the failed
+	// status to github
 
 	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

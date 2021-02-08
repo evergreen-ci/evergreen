@@ -229,6 +229,9 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	if err != nil {
 		return errors.Wrap(err, "error finding patch")
 	}
+	if p == nil {
+		return errors.Errorf("patch %s not found", patchID)
+	}
 	cq, err := commitqueue.FindOneId(p.Project)
 	if err != nil {
 		return errors.Wrapf(err, "can't find commit queue for '%s'", p.Project)

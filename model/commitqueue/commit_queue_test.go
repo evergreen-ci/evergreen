@@ -256,7 +256,7 @@ func (s *CommitQueueSuite) TestFindOneId() {
 	s.Nil(cq)
 }
 
-func TestPreventMergeForItemCLI(t *testing.T) {
+func TestPreventMergeForItem(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, build.Collection))
 
 	patchID := "abcdef012345"
