@@ -162,13 +162,16 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
 	}
 
-	q := db.Query(match).Sort([]string{IDKey}).Project(bson.M{
+	q := db.Query(match).Project(bson.M{
 		TaskIDKey:    0,
 		ExecutionKey: 0,
 	})
 
 	if limit > 0 {
 		q = q.Limit(limit)
+	} else {
+		// Don't sort if unlimited EVG-13965.
+		q = q.Sort([]string{IDKey})
 	}
 
 	return q

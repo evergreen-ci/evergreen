@@ -293,7 +293,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	}
 
 	var exp util.Expansions
-	if err != nil {
+	if conf.Expansions != nil {
 		exp = *conf.Expansions
 	}
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{

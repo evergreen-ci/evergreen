@@ -544,6 +544,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_version":            nextTask.Version,
 			"task_project":            nextTask.Project,
 			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
+			"task_group_order":        nextTask.TaskGroupOrder,
 		})
 
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
@@ -558,17 +559,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
-				}
-			}
-			// for multiple-host task groups and single-host task groups without order cached
-			if minTaskGroupOrderNum == 0 {
-				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-				if err != nil {
-					return nil, false, errors.WithStack(err)
-				}
-				if numHosts > nextTask.TaskGroupMaxHosts {
-					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
-				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
+				} else if nextTask.TaskGroupOrder > 1 {
 					// if the previous task in the group has yet to run and should run, then wait for it
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
@@ -582,6 +573,16 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
 						}
 					}
+				}
+			}
+			// for multiple-host task groups and single-host task groups without order cached
+			if minTaskGroupOrderNum == 0 && dispatchRace == "" {
+				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+				if err != nil {
+					return nil, false, errors.WithStack(err)
+				}
+				if numHosts > nextTask.TaskGroupMaxHosts {
+					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
 				}
 			}
 
@@ -647,6 +648,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	h := MustHaveHost(r)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	distroToMonitor := "rhel80-medium"
+	runId := utility.RandomString()
 
 	if h.AgentStartTime.IsZero() {
 		if err := h.SetAgentStartTime(); err != nil {
@@ -665,6 +668,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "SetAgentStartTime",
+		"duration_ms": time.Now().Sub(begin).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart := time.Now()
 
 	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
@@ -673,6 +683,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"provisioning": h.Distro.BootstrapSettings.Method,
 		"operation":    "next_task",
 	}))
+
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "SetUserDataHostProvisioned",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 
 	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
 		h.NeedsReprovision == host.ReprovisionJasperRestart)
@@ -690,6 +708,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
 		return
 	}
+
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "handleReprovisioning",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 
 	var err error
 	if checkHostHealth(h) {
@@ -709,6 +735,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteJSON(w, response)
 			return
 		}
+		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "next_task performance",
+			"step":        "StopAgentMonitor",
+			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 
 		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -723,15 +756,35 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteJSON(w, response)
 			return
 		}
+		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "next_task performance",
+			"step":        "SetNeedsAgentDeploy",
+			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"run_id":      runId,
+		})
 		gimlet.WriteJSON(w, response)
 		return
 	}
 	var agentExit bool
 	details, agentExit := getDetails(response, h, w, r)
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "SetNeedsAgentDeploy",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 	if agentExit {
 		return
 	}
 	response, agentExit = handleOldAgentRevision(response, details, h, w)
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "SetNeedsAgentDeploy",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 	if agentExit {
 		return
 	}
@@ -755,6 +808,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "GetServiceFlags",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
+
 	var nextTask *task.Task
 	var shouldRunTeardown bool
 
@@ -768,6 +829,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "LoadTaskQueue",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
+
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
 		// assign the task to a host and retrieve the task
@@ -779,6 +848,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "assignNextAvailableTask",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 
 	// if we didn't find a task in the "primary" queue, then we
 	// try again from the alias queue. (this code runs if the
@@ -798,6 +875,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "next_task performance",
+			"step":        "LoadDistroAliasTaskQueue + assignNextAvailableTask",
+			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 	}
 
 	// if we haven't assigned a task still, then we need to return early.
@@ -831,7 +915,21 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "MarkTaskDispatched",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 	setNextTask(nextTask, &response)
+	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "next_task performance",
+		"step":        "setNextTask",
+		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"run_id":      runId,
+		"next_task":   nextTask.Id,
+	})
 	gimlet.WriteJSON(w, response)
 }
 
