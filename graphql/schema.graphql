@@ -492,6 +492,7 @@ type Volume {
   homeVolume: Boolean!
   host: Host
   creationTime: Time
+  uiDisplayName: String!
 }
 
 type PatchProject {
