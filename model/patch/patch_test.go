@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -749,4 +750,65 @@ func checkEqualVTs(t *testing.T, expected []VariantTasks, actual []VariantTasks)
 		}
 		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
 	}
+}
+
+func TestSetParametersFromParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	parentPatchID := mgobson.NewObjectId()
+	parentPatch := Patch{
+		Id: parentPatchID,
+		Triggers: TriggerInfo{
+			DownstreamParameters: []Parameter{
+				{
+					Key:   "hello",
+					Value: "notHello",
+				},
+			},
+		},
+	}
+	assert.NoError(parentPatch.Insert())
+	p := Patch{
+		Id: bson.NewObjectId(),
+		Triggers: TriggerInfo{
+			ParentPatch: parentPatchID.Hex(),
+		},
+	}
+	// assert.NoError(p.Insert())
+	assert.NoError(p.SetParametersFromParent())
+	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
+}
+
+func TestSetDownstreamParameters(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	p := Patch{
+		Id: mgobson.NewObjectId(),
+		Triggers: TriggerInfo{
+			DownstreamParameters: []Parameter{
+				{
+					Key:   "key_0",
+					Value: "value_0",
+				},
+			},
+		},
+	}
+	assert.NoError(p.Insert())
+
+	paramsToAdd := []Parameter{
+		{
+			Key:   "key_1",
+			Value: "value_1",
+		},
+		{
+			Key:   "key_2",
+			Value: "value_2",
+		},
+	}
+
+	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
+	assert.Equal(p.Triggers.DownstreamParameters[0].Key, "key_0")
+	assert.Equal(p.Triggers.DownstreamParameters[1].Key, "key_1")
+	assert.Equal(p.Triggers.DownstreamParameters[2].Key, "key_2")
 }

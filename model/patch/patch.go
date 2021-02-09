@@ -306,7 +306,10 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 }
 
 func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
-	p.Triggers.DownstreamParameters = parameters
+	for _, param := range parameters {
+		p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, param)
+	}
+
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
@@ -650,10 +653,10 @@ func (p *Patch) SetParametersFromParent() error {
 		return errors.Wrap(err, "can't get parent patch")
 	}
 	if parentPatch == nil {
-		return errors.Wrap(err, fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		return errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
 	}
+
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
-		p.Parameters = downstreamParams
 		err = p.SetParameters(downstreamParams)
 		if err != nil {
 			return errors.Wrap(err, "error setting parameters")
