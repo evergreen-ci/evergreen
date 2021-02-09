@@ -325,6 +325,7 @@ type TaskQueueDistro {
 }
 
 type Host {
+  homeVolume: Volume
   id: ID!
   hostUrl: String!
   tag: String!

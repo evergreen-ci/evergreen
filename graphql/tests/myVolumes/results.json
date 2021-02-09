@@ -7,7 +7,7 @@
           "myVolumes": [
             {
               "id": "1de2728dd9de82efc02dc21f6ca046eaa559462414d28e0b6bba6436436ac873",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
@@ -24,7 +24,7 @@
             },
             {
               "id": "1da2d18d7fea548ed83a05895764056bc7437d6cac1c13d78f5fd2f27eb40a84",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "a real display name",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
@@ -41,7 +41,7 @@
             },
             {
               "id": "randomid",
-              "displayName": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "displayName": "",
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
