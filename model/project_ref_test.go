@@ -108,7 +108,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
 	assert.False(t, utility.FromBoolPtr(mergedProject.TaskSync.ConfigEnabled))
 	assert.True(t, utility.FromBoolPtr(mergedProject.TaskSync.PatchEnabled))
-	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 1)
+	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 0) // empty lists take precedent
 	require.Len(t, mergedProject.PatchTriggerAliases, 1)
 	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
 	assert.Equal(t, "a different branch", mergedProject.PatchTriggerAliases[0].ChildProject)
