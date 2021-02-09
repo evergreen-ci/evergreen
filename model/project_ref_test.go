@@ -81,6 +81,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		GitTagVersionsEnabled: utility.FalsePtr(),
 		PRTestingEnabled:      utility.TruePtr(),
 		GitTagAuthorizedTeams: []string{"my team"},
+		GitTagAuthorizedUsers: []string{"my user"},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
 		},
@@ -109,6 +110,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.False(t, utility.FromBoolPtr(mergedProject.TaskSync.ConfigEnabled))
 	assert.True(t, utility.FromBoolPtr(mergedProject.TaskSync.PatchEnabled))
 	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 0) // empty lists take precedent
+	assert.Len(t, mergedProject.GitTagAuthorizedUsers, 1)
 	require.Len(t, mergedProject.PatchTriggerAliases, 1)
 	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
 	assert.Equal(t, "a different branch", mergedProject.PatchTriggerAliases[0].ChildProject)

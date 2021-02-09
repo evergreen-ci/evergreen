@@ -775,7 +775,7 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRe
 	projectRefs := []ProjectRef{}
 
 	pipeline := []bson.M{byOwnerAndRepo(owner, repo)}
-	pipeline = append(projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true))
+	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
