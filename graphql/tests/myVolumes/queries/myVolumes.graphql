@@ -15,6 +15,5 @@
       id
       displayName
     }
-    uiDisplayName
   }
 }

@@ -761,7 +761,6 @@ type ComplexityRoot struct {
 		NoExpiration     func(childComplexity int) int
 		Size             func(childComplexity int) int
 		Type             func(childComplexity int) int
-		UIDisplayName    func(childComplexity int) int
 	}
 }
 
@@ -917,8 +916,6 @@ type UserResolver interface {
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
-
-	UIDisplayName(ctx context.Context, obj *model.APIVolume) (string, error)
 }
 
 type executableSchema struct {
@@ -4501,13 +4498,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.Type(childComplexity), true
 
-	case "Volume.uiDisplayName":
-		if e.complexity.Volume.UIDisplayName == nil {
-			break
-		}
-
-		return e.complexity.Volume.UIDisplayName(childComplexity), true
-
 	}
 	return 0, false
 }
@@ -5066,7 +5056,6 @@ type Volume {
   homeVolume: Boolean!
   host: Host
   creationTime: Time
-  uiDisplayName: String!
 }
 
 type PatchProject {
@@ -22712,40 +22701,6 @@ func (ec *executionContext) _Volume_creationTime(ctx context.Context, field grap
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Volume_uiDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Volume",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Volume().UIDisplayName(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28810,20 +28765,6 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			})
 		case "creationTime":
 			out.Values[i] = ec._Volume_creationTime(ctx, field, obj)
-		case "uiDisplayName":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Volume_uiDisplayName(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

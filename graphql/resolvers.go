@@ -129,13 +129,6 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	return volumes, nil
 }
 
-func (r *volumeResolver) UIDisplayName(ctx context.Context, obj *restModel.APIVolume) (string, error) {
-	if obj.DisplayName != nil && *obj.DisplayName != "" {
-		return *obj.DisplayName, nil
-	}
-	return *obj.ID, nil
-}
-
 func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*restModel.APIHost, error) {
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
