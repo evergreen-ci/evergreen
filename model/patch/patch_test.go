@@ -774,7 +774,7 @@ func TestSetParametersFromParent(t *testing.T) {
 			ParentPatch: parentPatchID.Hex(),
 		},
 	}
-	// assert.NoError(p.Insert())
+	assert.NoError(p.Insert())
 	assert.NoError(p.SetParametersFromParent())
 	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
 }
