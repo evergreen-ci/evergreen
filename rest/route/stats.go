@@ -509,12 +509,11 @@ func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 		gimlet.GetVars(r)["project_id"],
 		r.URL.RawQuery,
 	)
-	req, err := http.NewRequest(http.MethodGet, newURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem creating cedar test stats request")))
 		return
 	}
-	req = req.WithContext(ctx)
 
 	c := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(c)
