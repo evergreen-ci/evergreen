@@ -130,10 +130,9 @@ clientsLoop:
 		}
 		for _, h := range hosts {
 			statusCtx, cancel := context.WithTimeout(ctx, time.Minute)
-			defer cancel()
-
 			startAt := time.Now()
 			cloudStatus, err := m.GetInstanceStatus(statusCtx, &h)
+			cancel()
 			grip.Debug(message.Fields{
 				"message":       "finished getting instance status",
 				"host_id":       h.Id,
