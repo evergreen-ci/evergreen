@@ -212,8 +212,9 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	// Return as an ordered slice of statuses
-	startAt = time.Now()
+	runningHosts := 0
 	statuses := []CloudStatus{}
+	startAt = time.Now()
 	for _, h := range hosts {
 		status := ec2StatusToEvergreenStatus(*instanceMap[h.Id].State.Name)
 		if status == StatusRunning {
@@ -222,13 +223,14 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 				"message": "can't update host cached data",
 				"host_id": h.Id,
 			}))
+			runningHosts += 1
 		}
 		statuses = append(statuses, status)
 	}
 	grip.Debug(message.Fields{
-		"message":       "finished caching host data",
-		"num_hosts":     len(hosts),
-		"duration_secs": time.Since(startAt).Seconds(),
+		"message":           "finished caching host data",
+		"num_hosts_running": runningHosts,
+		"duration_secs":     time.Since(startAt).Seconds(),
 	})
 	return statuses, nil
 }
