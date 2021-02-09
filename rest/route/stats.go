@@ -4,8 +4,6 @@ package route
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,9 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -488,58 +483,4 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 func makeGetProjectTaskStats(sc data.Connector) gimlet.RouteHandler {
 	return &taskStatsHandler{sc: sc}
-}
-
-type cedarTestStatsMiddleware struct {
-	settings *evergreen.Settings
-}
-
-func checkCedarTestStats(settings *evergreen.Settings) gimlet.Middleware {
-	return &cedarTestStatsMiddleware{
-		settings: settings,
-	}
-}
-
-func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-
-	newURL := fmt.Sprintf(
-		"https://%s/rest/v1/historical_test_data/%s?%s",
-		m.settings.Cedar.BaseURL,
-		gimlet.GetVars(r)["project_id"],
-		r.URL.RawQuery,
-	)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem creating cedar test stats request")))
-		return
-	}
-
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-
-	resp, err := c.Do(req)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem sending test stats request to cedar")))
-		return
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	if resp.StatusCode == http.StatusOK {
-		for key, vals := range resp.Header {
-			for _, val := range vals {
-				rw.Header().Add(key, val)
-			}
-		}
-		_, err = io.Copy(rw, resp.Body)
-		grip.Error(message.WrapError(err, message.Fields{
-			"route":      "/projects/{project_id}/test_stats",
-			"message":    "problem copying cedar test stats",
-			"project_id": gimlet.GetVars(r)["project_id"],
-		}))
-		return
-	}
-
-	next(rw, r)
 }

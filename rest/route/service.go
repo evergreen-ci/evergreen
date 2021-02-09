@@ -22,8 +22,6 @@ type HandlerOpts struct {
 // the api to the router.
 func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc := &data.DBConnector{}
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
 
 	sc.SetURL(opts.URL)
 
@@ -50,7 +48,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
-	cedarTestStats := checkCedarTestStats(settings)
+
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -152,7 +152,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTasksByProjectAndCommitHandler(sc))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskReliability(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTaskStats(sc))
-	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser, viewTasks, cedarTestStats).RouteHandler(makeGetProjectTestStats(sc))
+	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(sc))
 	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectTasks(sc))
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases(sc))
