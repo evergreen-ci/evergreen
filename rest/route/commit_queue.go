@@ -253,8 +253,7 @@ func (p *cqMessageForPatch) Run(ctx context.Context) gimlet.Responder {
 }
 
 type commitQueueConcludeMerge struct {
-	Project string `json:"project"`
-	Status  string `json:"status"`
+	Status string `json:"status"`
 
 	patchId string
 	sc      data.Connector
@@ -283,9 +282,6 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 	if err := utility.ReadJSON(body, p); err != nil {
 		return errors.Wrap(err, "unable to parse request body")
 	}
-	if p.Project == "" {
-		return errors.New("project must be specified")
-	}
 	if p.Status == "" {
 		return errors.New("status must be specified")
 	}
@@ -294,7 +290,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
-	err := p.sc.ConcludeMerge(p.patchId, p.Project, p.Status)
+	err := p.sc.ConcludeMerge(p.patchId, p.Status)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

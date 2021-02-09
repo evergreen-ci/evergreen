@@ -223,14 +223,21 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	return project.CommitQueue.Message, nil
 }
 
-func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, project, status string) error {
+func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	event.LogCommitQueueConcludeTest(patchID, status)
-	cq, err := commitqueue.FindOneId(project)
+	p, err := patch.FindOneId(patchID)
 	if err != nil {
-		return errors.Wrapf(err, "can't find commit queue for '%s'", project)
+		return errors.Wrap(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("patch '%s' not found", patchID)
+	}
+	cq, err := commitqueue.FindOneId(p.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't find commit queue for '%s'", p.Project)
 	}
 	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", project)
+		return errors.Errorf("no commit queue found for '%s'", p.Project)
 	}
 	item := ""
 	for _, entry := range cq.Queue {
@@ -344,6 +351,6 @@ func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, 
 	return "", nil
 }
 
-func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, project, status string) error {
+func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	return nil
 }

@@ -163,7 +163,7 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	case event.EmailSubscriberType:
 		return checkFlag(j.flags.EmailNotificationsDisabled)
 
-	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
+	case event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 		return checkFlag(j.flags.CommitQueueDisabled)
 
 	default:

@@ -117,7 +117,7 @@ type Communicator interface {
 	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
 
 	// ConcludeMerge reports the status of a commit queue merge back to the server
-	ConcludeMerge(ctx context.Context, patchId, project, status string, td TaskData) error
+	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
 }
 
 type LoggerMetadata struct {
