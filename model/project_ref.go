@@ -821,6 +821,36 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
+// FindProjectRefs returns limit refs starting at project id key in the sortDir direction.
+func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	filter := bson.M{}
+	sortSpec := ProjectRefIdKey
+
+	if sortDir < 0 {
+		sortSpec = "-" + sortSpec
+		filter[ProjectRefIdKey] = bson.M{"$lt": key}
+	} else {
+		filter[ProjectRefIdKey] = bson.M{"$gte": key}
+	}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		filter,
+		db.NoProjection,
+		[]string{sortSpec},
+		db.NoSkip,
+		limit,
+		&projectRefs,
+	)
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+	}
+
+	return projectRefs, err
+}
+
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {

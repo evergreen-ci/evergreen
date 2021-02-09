@@ -23,6 +23,96 @@ import (
 	"github.com/pkg/errors"
 )
 
+type projectGetHandler struct {
+	key   string
+	limit int
+	user  *user.DBUser
+	sc    data.Connector
+}
+
+func makeFetchProjectsRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectGetHandler{
+		sc: sc,
+	}
+}
+
+func (p *projectGetHandler) Factory() gimlet.RouteHandler {
+	return &projectGetHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.user, _ = gimlet.GetUser(ctx).(*user.DBUser)
+
+	vals := r.URL.Query()
+
+	p.key = vals.Get("start_at")
+	var err error
+	p.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
+	projects, err := p.sc.FindProjects(p.key, p.limit+1, 1)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	if len(projects) == 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "no projects found",
+			StatusCode: http.StatusNotFound,
+		})
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(projects)
+	if len(projects) > p.limit {
+		lastIndex = p.limit
+
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             projects[p.limit].Id,
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
+		}
+	}
+	projects = projects[:lastIndex]
+
+	for _, proj := range projects {
+		projectModel := &model.APIProjectRef{}
+		if err = projectModel.BuildFromService(proj); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    "problem converting project document",
+				StatusCode: http.StatusInternalServerError,
+			})
+		}
+
+		if err = resp.AddData(projectModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	return resp
+}
+
 type versionsGetHandler struct {
 	project string
 	limit   int

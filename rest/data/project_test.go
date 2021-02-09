@@ -271,6 +271,65 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
 }
 
+func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
+	projects, err := s.ctx.FindProjects("", 7, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 6)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
+	projects, err := s.ctx.FindProjects("zzz", 7, -1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 6)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
+	projects, err := s.ctx.FindProjects("", 3, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 3)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
+	projects, err := s.ctx.FindProjects("", 2, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 2)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
+	projects, err := s.ctx.FindProjects("zzz", 2, -1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 2)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
+	projects, err := s.ctx.FindProjects("projectB", 1, 1)
+	s.NoError(err)
+	s.Len(projects, 1)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
+	projects, err := s.ctx.FindProjects("projectD", 1, -1)
+	s.NoError(err)
+	s.Len(projects, 1)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
+	projects, err := s.ctx.FindProjects("zzz", 1, 1)
+	s.NoError(err)
+	s.Len(projects, 0)
+}
+
+func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
+	projects, err := s.ctx.FindProjects("aaa", 1, -1)
+	s.NoError(err)
+	s.Len(projects, 0)
+}
+
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := s.ctx.GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
