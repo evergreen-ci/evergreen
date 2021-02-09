@@ -184,9 +184,16 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 	defer m.client.Close()
 
+	startAt := time.Now()
 	describeInstancesOutput, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: instanceIDs,
 	})
+	grip.Debug(message.Fields{
+		"message":       "finished getting describe instances",
+		"num_hosts":     len(hosts),
+		"duration_secs": time.Since(startAt).Seconds(),
+	})
+
 	if err != nil {
 		return nil, errors.Wrap(err, "error describing instances")
 	}
@@ -205,6 +212,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	// Return as an ordered slice of statuses
+	startAt = time.Now()
 	statuses := []CloudStatus{}
 	for _, h := range hosts {
 		status := ec2StatusToEvergreenStatus(*instanceMap[h.Id].State.Name)
@@ -217,6 +225,11 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		}
 		statuses = append(statuses, status)
 	}
+	grip.Debug(message.Fields{
+		"message":       "finished caching host data",
+		"num_hosts":     len(hosts),
+		"duration_secs": time.Since(startAt).Seconds(),
+	})
 	return statuses, nil
 }
 
