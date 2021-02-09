@@ -169,26 +169,6 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.Len(p.FilesIgnoredFromCache, 0)
 }
 
-func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
-	ctx := context.Background()
-	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-
-	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
-	h.body = jsonBody
-	h.project = "dimoxinil"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	p, err := s.sc.FindProjectById("dimoxinil", true)
-	s.NoError(err)
-	s.False(p.FilesIgnoredFromCache == nil)
-	s.Len(p.FilesIgnoredFromCache, 0)
-}
-
 func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
