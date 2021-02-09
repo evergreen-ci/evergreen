@@ -406,10 +406,6 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 		}
 	}
 
-	// set TaskExecution to the latest execution if it's not specified
-	if h.execution == nil {
-		h.execution = &t.Execution
-	}
 	u := MustHaveUser(ctx)
 	h.user = u
 	return nil
