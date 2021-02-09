@@ -100,8 +100,11 @@ clientsLoop:
 			return
 		}
 		if batch, ok := m.(cloud.BatchManager); ok {
+			statusesCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+			defer cancel()
+
 			startAt := time.Now()
-			statuses, err := batch.GetInstanceStatuses(ctx, hosts)
+			statuses, err := batch.GetInstanceStatuses(statusesCtx, hosts)
 			grip.Debug(message.Fields{
 				"message":       "finished getting instance statuses",
 				"num_hosts":     len(hosts),
@@ -126,8 +129,11 @@ clientsLoop:
 			continue clientsLoop
 		}
 		for _, h := range hosts {
+			statusCtx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+
 			startAt := time.Now()
-			cloudStatus, err := m.GetInstanceStatus(ctx, &h)
+			cloudStatus, err := m.GetInstanceStatus(statusCtx, &h)
 			grip.Debug(message.Fields{
 				"message":       "finished getting instance status",
 				"host_id":       h.Id,
