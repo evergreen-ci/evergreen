@@ -362,7 +362,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	executionString := r.URL.Query().Get("execution")
 	if executionString == "" {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task execution must be specified"),
+			Message:    "the task execution must be specified",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
