@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestConfigChanged(t *testing.T) {
@@ -596,7 +595,7 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			p := Patch{
-				Id: mgobson.NewObjectId(),
+				Id: bson.NewObjectId(),
 				SyncAtEndOpts: SyncAtEndOptions{
 					BuildVariants: testCase.syncBVs,
 					Tasks:         testCase.syncTasks,
@@ -755,7 +754,7 @@ func checkEqualVTs(t *testing.T, expected []VariantTasks, actual []VariantTasks)
 func TestSetParametersFromParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	parentPatchID := mgobson.NewObjectId()
+	parentPatchID := bson.NewObjectId()
 	parentPatch := Patch{
 		Id: parentPatchID,
 		Triggers: TriggerInfo{
@@ -784,7 +783,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	p := Patch{
-		Id: mgobson.NewObjectId(),
+		Id: bson.NewObjectId(),
 		Triggers: TriggerInfo{
 			DownstreamParameters: []Parameter{
 				{
