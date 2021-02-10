@@ -218,14 +218,14 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
-		Requester: WebHookRequester,
+		Requester: WebhookRequester,
 	}
 	ticket.Source = source
 	_, err := db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
-			"$addToSet": bson.M{CreatedIssuesKey: ticket},
+			"$push": bson.M{CreatedIssuesKey: ticket},
 		},
 	)
 	return errors.Wrapf(err, "problem adding ticket to '%s'", taskId)

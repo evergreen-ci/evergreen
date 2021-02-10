@@ -25,7 +25,7 @@ const (
 	Collection       = "task_annotations"
 	UIRequester      = "ui"
 	APIRequester     = "api"
-	WebHookRequester = "webhook"
+	WebhookRequester = "webhook"
 )
 
 // FindOne gets one TaskAnnotation for the given query.

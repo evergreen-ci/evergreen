@@ -330,7 +330,7 @@ func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 type createdTicketByTaskPutHandler struct {
 	taskId    string
-	execution *int
+	execution int
 	user      gimlet.User
 	ticket    *model.APIIssueLink
 	sc        data.Connector
@@ -359,14 +359,15 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	// for now, tickets will be created for a specific task execution only
 	// and will not be visible on other executions
-	if r.URL.Query().Get("execution") == "" {
+	executionString := r.URL.Query().Get("execution")
+	if executionString == "" {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("the task execution must be specified"),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	execution, err := strconv.Atoi(r.URL.Query().Get("execution"))
-	h.execution = &execution
+	execution, err := strconv.Atoi(executionString)
+	h.execution = execution
 
 	// check if the task exists
 	t, err := task.FindOne(task.ById(h.taskId))
@@ -379,11 +380,11 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	// if there is no custom web-hook configured, return an error because the
+	// if there is no custom webhook configured, return an error because the
 	// purpose of this endpoint is to store the ticket created by the web-hook
 	if !graphql.IsWebhookConfigured(t) {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("there is no web-hook configured for '%s'", t.Project),
+			Message:    fmt.Sprintf("there is no webhook configured for '%s'", t.Project),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -412,8 +413,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	// todo: error if the bb is configured
-	err := annotations.AddCreatedTicket(h.taskId, *h.execution, *model.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
+	err := annotations.AddCreatedTicket(h.taskId, h.execution, *model.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

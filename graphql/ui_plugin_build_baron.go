@@ -77,11 +77,8 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 }
 
 func IsWebhookConfigured(t *task.Task) bool {
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
-	buildBaronProjects := BbGetConfig(settings)
-	annotationSettings := buildBaronProjects[t.Project].TaskAnnotationSettings
-	webHook := annotationSettings.FileTicketWebHook
+	buildBaronProjects := BbGetConfig(evergreen.GetEnvironment().Settings())
+	webHook := buildBaronProjects[t.Project].TaskAnnotationSettings.FileTicketWebHook
 	return webHook.Endpoint != ""
 }
 

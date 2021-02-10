@@ -569,7 +569,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "there is no web-hook configured for 'testProject'")
+	assert.Contains(t, err.Error(), "there is no webhook configured for 'testProject'")
 
 	plugins := evergreen.PluginConfig{
 		"buildbaron": {
@@ -626,7 +626,6 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 
 func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection))
-	execution0 := 0
 
 	ticket := &model.APIIssueLink{
 		URL:      utility.ToStringPtr("https://issuelink1.com"),
@@ -639,7 +638,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	h := &createdTicketByTaskPutHandler{
 		sc:        &data.MockConnector{},
 		taskId:    "t1",
-		execution: &execution0,
+		execution: 0,
 		ticket:    ticket,
 		user:      &user.DBUser{Id: "test_annotation_user"},
 	}
