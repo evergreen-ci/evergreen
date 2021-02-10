@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -54,6 +55,11 @@ type gitFetchProject struct {
 
 	CommitterName  string `mapstructure:"committer_name"`
 	CommitterEmail string `mapstructure:"committer_email"`
+
+	// AdditionalPatches is mostly used by evergreen internally and specifies additional patches to
+	// apply (for commit queue merges testing with changes from prior tasks). Patches are applied in the
+	// order listed in this param, with the main patch being applied last
+	AdditionalPatches []string `mapstructure:"additional_patches"`
 
 	base
 }
@@ -405,9 +411,10 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	}
 
 	var p *patch.Patch
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+		p, err = comm.GetTaskPatch(ctx, td)
 		if err != nil {
 			return errors.Wrap(err, "Failed to get patch")
 		}
@@ -438,6 +445,8 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 			revision = module.Branch
 			c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
 		} else {
+			// use submodule revisions based on the main patch. If there is a need in the future,
+			// this could maybe use the most recent submodule revision of all requested patches
 			if p != nil {
 				module := p.FindModule(moduleName)
 				if module != nil {
@@ -533,6 +542,25 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 
 	//Apply patches if this is a patch and we haven't already gotten the changes from a PR
 	if evergreen.IsPatchRequester(conf.Task.Requester) && conf.GithubPatchData.PRNumber == 0 {
+		for _, patchId := range c.AdditionalPatches {
+			if bson.IsObjectIdHex(patchId) {
+				p, err = comm.GetTaskPatch(ctx, td)
+				if err != nil {
+					return errors.Wrap(err, "unable to get additional patch")
+				}
+				if p == nil {
+					return errors.New("additional patch not found")
+				}
+				if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
+					return errors.Wrap(err, "Failed to get patch contents")
+				}
+				if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
+					return errors.Wrapf(err, "error applying patch '%s'", p.Id.Hex())
+				}
+				logger.Task().Infof("applied additional changes from patch '%s'", patchId)
+			}
+		}
+
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "Failed to get patch contents")
 			logger.Execution().Error(err.Error())
