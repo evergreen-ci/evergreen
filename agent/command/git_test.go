@@ -149,7 +149,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(conf, opts)
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
@@ -480,7 +480,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main'", cmds[3])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
 
@@ -497,8 +497,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("set +o xtrace", cmds[3])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\"", cmds[4])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'", cmds[5])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[4])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
