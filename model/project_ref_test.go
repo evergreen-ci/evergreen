@@ -424,7 +424,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	doc = &ProjectRef{
 		Owner:           "mongodb",
 		Repo:            "mci",
-		Branch:          "main",
+		Branch:          "not_main",
 		Id:              "mci_main",
 		RepoRefId:       "my_repo",
 		UseRepoSettings: true,
@@ -433,7 +433,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.NoError(doc.Insert())
 	assert.NoError(repoDoc.Insert())
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -442,7 +442,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	repoDoc.CommitQueue.Enabled = utility.TruePtr()
 	assert.NoError(repoDoc.Update())
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("mci_main", projectRef.Id)
@@ -451,7 +451,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(doc.Update())
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 }
