@@ -556,7 +556,6 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
-	execution1 := 1
 	url := utility.ToStringPtr("https://issuelink.com")
 	ticket := &model.APIIssueLink{
 		URL:      url,
@@ -592,7 +591,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, h.Parse(ctx, r))
 	assert.Equal(t, "t1", h.taskId)
-	assert.Equal(t, &execution1, h.execution)
+	assert.Equal(t, 1, h.execution)
 	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
 	assert.Equal(t, url, h.ticket.URL)
 
