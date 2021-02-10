@@ -16,6 +16,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -399,7 +400,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) SetDownstreamParams(ctx context.Context, patchData apimodels.PatchData, taskId string) error {
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patch.Parameter, taskId string) error {
 	// todo
 	return nil
 }

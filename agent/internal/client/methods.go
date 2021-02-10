@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -583,8 +584,8 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
-func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, patchData apimodels.PatchData, taskId string) error {
-	if len(patchData.DownstreamParams) == 0 {
+func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patch.Parameter, taskId string) error {
+	if len(downstreamParams) == 0 {
 		return nil
 	}
 
@@ -597,7 +598,7 @@ func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, patchData ap
 	}
 
 	info.setTaskPathSuffix("downstreamParams")
-	resp, err := c.retryRequest(ctx, info, patchData)
+	resp, err := c.retryRequest(ctx, info, downstreamParams)
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskId, err.Error())
 	}

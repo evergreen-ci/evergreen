@@ -314,9 +314,7 @@ func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
-			"$set": bson.M{
-				bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey): parameters,
-			},
+			"$push": bson.M{triggersKey: bson.M{"$each": parameters}},
 		},
 	)
 }

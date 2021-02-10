@@ -384,34 +384,39 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 
 // SetDownstreamParams updates file mappings for a task or build
 func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request) {
-	// todo: make sure api is v2
-	// to do in api: get the patch by the patch id, and set the downstream params using that method.
-
 	t := MustHaveTask(r)
 	grip.Infoln("Setting downstream expansions for task:", t.Id)
 
-	var patchData apimodels.PatchData
-	err := utility.ReadJSON(util.NewRequestReader(r), &patchData)
+	var downstreamParams []patch.Parameter
+	err := utility.ReadJSON(util.NewRequestReader(r), &downstreamParams)
 	if err != nil {
-		message := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
-		grip.Error(message)
-		gimlet.WriteJSONError(w, message)
+		errorMessage := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
+		return
+	}
+	p, err := patch.FindOne(patch.ByVersion(t.Version))
+
+	if err != nil {
+		errorMessage := fmt.Sprintf("error loading patch: %v: ", err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
 		return
 	}
 
-	p, err := patch.FindOneId(patchData.PatchId)
-	if err != nil {
-
-		message := fmt.Sprintf("error loading patch: %v: %v", patchData.PatchId, err)
-		grip.Error(message)
-		gimlet.WriteJSONError(w, message)
-		return
-	}
-
-	if err = p.SetDownstreamParameters(patchData.DownstreamParams); err != nil {
-		message := fmt.Sprintf("error setting patch parameters: %s", err)
-		grip.Error(message)
-		gimlet.WriteJSONInternalError(w, message)
+	if err = p.SetDownstreamParameters(downstreamParams); err != nil {
+		errorMessage := fmt.Sprintf("error setting patch parameters: %s", err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONInternalError(w, errorMessage)
 		return
 	}
 

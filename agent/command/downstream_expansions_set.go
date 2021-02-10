@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -75,18 +74,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 
 		logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", filename)
 
-		var patch *patch.Patch
-		patch, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
-		if err != nil {
-			return err
-		}
-
-		patchData := apimodels.PatchData{
-			PatchId:          patch.Id.Hex(),
-			DownstreamParams: c.DownstreamParams,
-		}
-		err = comm.SetDownstreamParams(ctx, patchData, conf.Task.Id)
-
+		err = comm.SetDownstreamParams(ctx, c.DownstreamParams, conf.Task.Id)
 		if err != nil {
 			return errors.WithStack(err)
 		}
