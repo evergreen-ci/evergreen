@@ -798,15 +798,15 @@ func TestMergeTestResultsBulk(t *testing.T) {
 }
 
 func TestTaskSetResultsFields(t *testing.T) {
-	taskID := "jstestfuzz_self_tests_replication_fuzzers_main_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	taskID := "jstestfuzz_self_tests_replication_fuzzers_master_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
 	project := "jstestfuzz-self-tests"
 	distroID := "amazon2-test"
 	buildVariant := "replication_fuzzers"
 	displayName := "fuzzer"
 	requester := "gitter_request"
 
-	displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_main_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
-	executionDisplayName := "main"
+	displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
+	executionDisplayName := "master"
 	StartTime := 1569431862.508
 	EndTime := 1569431887.2
 

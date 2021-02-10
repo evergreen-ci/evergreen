@@ -75,7 +75,7 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 	}
 	// need to try to unmarshal into 2 different structs since the JUnit XML schema
 	// allows for <testsuite> or <testsuites> to be the root
-	// https://github.com/windyroad/JUnit-Schema/blob/main/JUnit.xsd
+	// https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
 	if err = xml.Unmarshal(fileData, &results); err != nil {
 		return nil, err
 	}

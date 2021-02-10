@@ -36,7 +36,7 @@ func TestManifestLoad(t *testing.T) {
 
 	SkipConvey("With a SimpleRegistry and test project file", t, func() {
 
-		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "manifest", "mongodb-mongo-main.yml")
+		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "manifest", "mongodb-mongo-master.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
 
