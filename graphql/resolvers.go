@@ -158,10 +158,10 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	info := AbortInfo{
-		User:       &at.AbortInfo.User,
-		TaskID:     &at.AbortInfo.TaskID,
-		NewVersion: &at.AbortInfo.NewVersion,
-		PrClosed:   &at.AbortInfo.PRClosed,
+		User:       at.AbortInfo.User,
+		TaskID:     at.AbortInfo.TaskID,
+		NewVersion: at.AbortInfo.NewVersion,
+		PrClosed:   at.AbortInfo.PRClosed,
 	}
 
 	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
@@ -180,8 +180,8 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
 	}
 
-	info.TaskDisplayName = &abortedTask.DisplayName
-	info.BuildVariantDisplayName = &abortedTaskBuild.DisplayName
+	info.TaskDisplayName = abortedTask.DisplayName
+	info.BuildVariantDisplayName = abortedTaskBuild.DisplayName
 
 	return &info, nil
 }
