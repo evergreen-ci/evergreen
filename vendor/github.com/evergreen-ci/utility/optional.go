@@ -166,10 +166,7 @@ func ToStringPtrSlice(in []string) []*string {
 // FromStringPtrSlice returns a slice of strings from a slice of string
 // pointers.
 func FromStringPtrSlice(in []*string) []string {
-	if in == nil {
-		return nil
-	}
-	res := []string{}
+	var res []string
 	for _, each := range in {
 		res = append(res, FromStringPtr(each))
 	}
