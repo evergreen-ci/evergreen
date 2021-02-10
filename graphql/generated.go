@@ -4580,7 +4580,7 @@ var sources = []*ast.Source{
     patchId: String!
     sortBy: TaskSortCategory = STATUS
     sortDir: SortDirection = ASC
-    sorts: [SortOrder!]
+    sorts: [SortOrder]!
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
@@ -6478,7 +6478,7 @@ func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, raw
 	args["sortDir"] = arg2
 	var arg3 []*SortOrder
 	if tmp, ok := rawArgs["sorts"]; ok {
-		arg3, err = ec.unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx, tmp)
+		arg3, err = ec.unmarshalNSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -30367,16 +30367,24 @@ func (ec *executionContext) marshalNSortDirection2githubᚗcomᚋevergreenᚑci�
 	return v
 }
 
-func (ec *executionContext) unmarshalNSortOrder2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) (SortOrder, error) {
-	return ec.unmarshalInputSortOrder(ctx, v)
-}
-
-func (ec *executionContext) unmarshalNSortOrder2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) (*SortOrder, error) {
-	if v == nil {
-		return nil, nil
+func (ec *executionContext) unmarshalNSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) ([]*SortOrder, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
 	}
-	res, err := ec.unmarshalNSortOrder2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx, v)
-	return &res, err
+	var err error
+	res := make([]*SortOrder, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOSortOrder2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalNSource2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx context.Context, sel ast.SelectionSet, v model.APISource) graphql.Marshaler {
@@ -32105,24 +32113,16 @@ func (ec *executionContext) marshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑ
 	return v
 }
 
-func (ec *executionContext) unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx context.Context, v interface{}) ([]*SortOrder, error) {
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
+func (ec *executionContext) unmarshalOSortOrder2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) (SortOrder, error) {
+	return ec.unmarshalInputSortOrder(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOSortOrder2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx context.Context, v interface{}) (*SortOrder, error) {
+	if v == nil {
+		return nil, nil
 	}
-	var err error
-	res := make([]*SortOrder, len(vSlice))
-	for i := range vSlice {
-		res[i], err = ec.unmarshalNSortOrder2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
+	res, err := ec.unmarshalOSortOrder2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrder(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) unmarshalOSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx context.Context, v interface{}) (SpawnHostInput, error) {

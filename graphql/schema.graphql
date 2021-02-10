@@ -16,7 +16,7 @@ type Query {
     patchId: String!
     sortBy: TaskSortCategory = STATUS
     sortDir: SortDirection = ASC
-    sorts: [SortOrder!]
+    sorts: [SortOrder]!
     page: Int = 0
     limit: Int = 0
     statuses: [String!] = []
