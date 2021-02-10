@@ -333,7 +333,9 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline)
+	c := database.C(task.Collection)
+	c.SetMaxTime(time.Minute)
+	agg := c.Pipe(pipeline)
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
@@ -356,7 +358,9 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 	}
 	defer session.Close()
 
-	pipeline := mdb.C(task.Collection).Pipe(
+	c := mdb.C(task.Collection)
+	c.SetMaxTime(time.Minute)
+	pipeline := c.Pipe(
 		[]bson.M{
 			{
 				"$match": bson.M{
