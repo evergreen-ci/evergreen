@@ -354,8 +354,15 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 				"distro":  h.Distro.Id,
 			}))
 		}
+		grip.WarningWhen(err == EC2InsufficientCapacityError, message.WrapError(err, message.Fields{
+			"message":       "RunInstances API call encountered insufficient capacity",
+			"action":        "removing",
+			"host_id":       h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
 		msg := "RunInstances API call returned an error"
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(err != EC2InsufficientCapacityError, message.WrapError(err, message.Fields{
 			"message":       msg,
 			"action":        "removing",
 			"host_id":       h.Id,
