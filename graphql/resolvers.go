@@ -175,30 +175,30 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	info := AbortInfo{
-		User:       &at.AbortInfo.User,
-		TaskID:     &at.AbortInfo.TaskID,
-		NewVersion: &at.AbortInfo.NewVersion,
-		PrClosed:   &at.AbortInfo.PRClosed,
+		User:       at.AbortInfo.User,
+		TaskID:     at.AbortInfo.TaskID,
+		NewVersion: at.AbortInfo.NewVersion,
+		PrClosed:   at.AbortInfo.PRClosed,
 	}
 
 	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
 	if err != nil {
-		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
 	}
 	if abortedTask == nil {
-		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
 	}
 
 	abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
 	if err != nil {
-		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
 	}
 	if abortedTaskBuild == nil {
-		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
 	}
 
-	info.TaskDisplayName = &abortedTask.DisplayName
-	info.BuildVariantDisplayName = &abortedTaskBuild.DisplayName
+	info.TaskDisplayName = abortedTask.DisplayName
+	info.BuildVariantDisplayName = abortedTaskBuild.DisplayName
 
 	return &info, nil
 }

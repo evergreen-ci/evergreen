@@ -5019,7 +5019,7 @@ type Patch {
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
-  alias: String!
+  alias: String
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
@@ -5176,16 +5176,16 @@ type BaseTaskMetadata {
 }
 
 type AbortInfo {
-  user: String
-  taskID: String
-  taskDisplayName: String
-  buildVariantDisplayName: String
-  newVersion: String
-  prClosed: Boolean
+  user: String!
+  taskID: String!
+  taskDisplayName: String!
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
 }
 
 type Task {
-  aborted: Boolean
+  aborted: Boolean!
   abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
@@ -6886,11 +6886,14 @@ func (ec *executionContext) _AbortInfo_user(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_taskID(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6917,11 +6920,14 @@ func (ec *executionContext) _AbortInfo_taskID(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_taskDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6948,11 +6954,14 @@ func (ec *executionContext) _AbortInfo_taskDisplayName(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6979,11 +6988,14 @@ func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -7010,11 +7022,14 @@ func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -7041,11 +7056,14 @@ func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -13873,14 +13891,11 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_duration(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -17373,11 +17388,14 @@ func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.Col
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_abortInfo(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -24575,16 +24593,34 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = graphql.MarshalString("AbortInfo")
 		case "user":
 			out.Values[i] = ec._AbortInfo_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "taskID":
 			out.Values[i] = ec._AbortInfo_taskID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "taskDisplayName":
 			out.Values[i] = ec._AbortInfo_taskDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "buildVariantDisplayName":
 			out.Values[i] = ec._AbortInfo_buildVariantDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "newVersion":
 			out.Values[i] = ec._AbortInfo_newVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "prClosed":
 			out.Values[i] = ec._AbortInfo_prClosed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26240,9 +26276,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "duration":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -27455,6 +27488,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("Task")
 		case "aborted":
 			out.Values[i] = ec._Task_aborted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "abortInfo":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
