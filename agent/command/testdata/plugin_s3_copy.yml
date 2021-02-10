@@ -1,7 +1,7 @@
 owner: deafgoat
 repo: mci_test
 repokind: github
-branch: master
+branch: main
 enabled: true
 batchtime: 180
 tasks:
