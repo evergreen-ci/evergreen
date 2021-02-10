@@ -367,6 +367,12 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 		}
 	}
 	execution, err := strconv.Atoi(executionString)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot convert '%s' to int: '%s'", executionString, err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
 	h.execution = execution
 
 	// check if the task exists
