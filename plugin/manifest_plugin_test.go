@@ -19,7 +19,7 @@ func TestManifest(t *testing.T) {
 			Modules:     map[string]*manifest.Module{},
 		}
 		m.Modules["sample"] = &manifest.Module{
-			Branch:   "master",
+			Branch:   "main",
 			Revision: "xyz345",
 			Repo:     "repo",
 			Owner:    "sr527",

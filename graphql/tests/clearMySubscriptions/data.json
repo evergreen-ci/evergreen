@@ -23,7 +23,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -62,7 +62,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -108,7 +108,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 }
             ],
             "regex_selectors" : [ ],
@@ -151,7 +151,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -193,7 +193,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -229,7 +229,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -275,7 +275,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -309,7 +309,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -352,7 +352,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -392,7 +392,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -433,7 +433,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -468,7 +468,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",
@@ -511,7 +511,7 @@
                 },
                 {
                     "type" : "project",
-                    "data" : "master"
+                    "data" : "main"
                 },
                 {
                     "type" : "owner",

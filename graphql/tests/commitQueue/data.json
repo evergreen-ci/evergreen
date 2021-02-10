@@ -39,13 +39,13 @@
             "patch_file_id": "5e9748c4e3c331422d0d1d7b",
             "summary": [
               {
-                "filename": "jstests/replsets/awaitable_ismaster_errors_on_horizon_change.js",
+                "filename": "jstests/replsets/awaitable_ismain_errors_on_horizon_change.js",
                 "additions": 1,
                 "deletions": 1,
                 "description": "SERVER-46893 Allow streamable isMaster to wait on"
               },
               {
-                "filename": "jstests/replsets/awaitable_ismaster_on_nodes_with_invalid_configs.js",
+                "filename": "jstests/replsets/awaitable_ismain_on_nodes_with_invalid_configs.js",
                 "additions": 172,
                 "deletions": 0,
                 "description": "SERVER-46893 Allow streamable isMaster to wait on"

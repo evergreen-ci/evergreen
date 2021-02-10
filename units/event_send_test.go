@@ -118,7 +118,7 @@ func (s *eventNotificationSuite) SetupTest() {
 					Owner:    "evergreen-ci",
 					Repo:     "evergreen",
 					PRNumber: 1234,
-					Ref:      "master",
+					Ref:      "main",
 				},
 			},
 			Payload: message.GithubStatus{

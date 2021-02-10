@@ -871,7 +871,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 	projectRef0 := &dbModel.ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "test_repo0",
-		Branch:    "master",
+		Branch:    "main",
 		Enabled:   utility.TruePtr(),
 		BatchTime: 10,
 		Id:        "test0",
@@ -880,7 +880,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 	projectRef1 := &dbModel.ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "test_repo1",
-		Branch:    "master",
+		Branch:    "main",
 		Enabled:   utility.TruePtr(),
 		BatchTime: 10,
 		Id:        "test1",

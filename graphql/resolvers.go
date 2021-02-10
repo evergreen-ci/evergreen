@@ -83,6 +83,23 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 	return obj.Distro.Id, nil
 }
 
+func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
+	if obj.HomeVolumeID != nil && *obj.HomeVolumeID != "" {
+		volId := *obj.HomeVolumeID
+		volume, err := r.sc.FindVolumeById(volId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+		}
+		apiVolume := &restModel.APIVolume{}
+		err = apiVolume.BuildFromService(volume)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
+		}
+		return apiVolume, nil
+	}
+	return nil, nil
+}
+
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
@@ -104,7 +121,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", volId)
+			return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "error building volume '%s' from service", volId).Error())
 		}
 		volumes = append(volumes, apiVolume)
 	}
