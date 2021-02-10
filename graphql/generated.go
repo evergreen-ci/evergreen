@@ -5019,7 +5019,7 @@ type Patch {
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
-  alias: String!
+  alias: String
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
@@ -13891,14 +13891,11 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_duration(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -26279,9 +26276,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "duration":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

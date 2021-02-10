@@ -455,7 +455,7 @@ type Patch {
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
-  alias: String!
+  alias: String
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
