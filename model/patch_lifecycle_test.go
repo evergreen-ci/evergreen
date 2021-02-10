@@ -36,7 +36,7 @@ var (
 	patchFile       = "testdata/patch2.diff"
 	patchOwner      = "deafgoat"
 	patchRepo       = "config"
-	patchBranch     = "main"
+	patchBranch     = "master"
 
 	// newProjectPatchFile is a diff that adds a new project configuration file
 	// located at newConfigFilePath.

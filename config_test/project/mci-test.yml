@@ -3,7 +3,7 @@ id: mci-test
 owner: deafgoat
 repo: mci-test
 repokind: github
-branch: main
+branch: master
 enabled: true
 batchtime: 10
 stepback: true

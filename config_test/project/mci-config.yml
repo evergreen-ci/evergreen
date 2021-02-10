@@ -3,7 +3,7 @@ id: mci-config
 owner: deafgoat
 repo: config
 repokind: github
-branch: main
+branch: master
 enabled: true
 batchtime: 10
 stepback: true
