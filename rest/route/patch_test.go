@@ -622,7 +622,7 @@ modules:
 - name: render-module
   repo: git@github.com:evergreen-ci/render.git
   prefix: modules
-  branch: master
+  branch: main
 
 buildvariants:
 - name: osx-108
@@ -657,7 +657,7 @@ buildvariants:
 		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "evergreen.yml",
 		Enabled:    utility.TruePtr(),
 		BatchTime:  180,

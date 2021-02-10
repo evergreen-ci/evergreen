@@ -270,7 +270,7 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 			Login: github.String("github.user"),
 		},
 		Base: &github.PullRequestBranch{
-			Ref: github.String("master"),
+			Ref: github.String("main"),
 		},
 		Head: &github.PullRequestBranch{
 			SHA: github.String("abcdef1234"),

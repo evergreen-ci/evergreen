@@ -109,7 +109,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 		Id:      "orchard",
 		Owner:   "evergreen-ci",
 		Repo:    "evergreen",
-		Branch:  "master",
+		Branch:  "main",
 		Admins:  []string{"johnny.appleseed"},
 	}
 	adminRole := gimlet.Role{
@@ -154,7 +154,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		Id:      "mci",
 		Owner:   "evergreen-ci",
 		Repo:    "evergreen",
-		Branch:  "master",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -205,7 +205,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		Id:      "mci",
 		Owner:   "evergreen-ci",
 		Repo:    "evergreen",
-		Branch:  "master",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -256,7 +256,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Id:      "mci",
 		Owner:   "evergreen-ci",
 		Repo:    "evergreen",
-		Branch:  "master",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
