@@ -7,9 +7,8 @@ The Base type provides an implementation of the amboy.Job interface
 that does *not* have a Run method, and can be embedded in your own job
 implementations to avoid implemented duplicated common
 functionality. The type also implements several methods which are not
-part of the Job interface for error handling (e.g. AddError and
-HasErrors), and methods for marking tasks complete and setting the ID
-(e.g. MarkComplete and SetID).
+part of the Job interface for error handling (e.g. HasErrors), and methods for
+marking tasks complete and setting the ID (e.g. MarkComplete and SetID).
 
 All job implementations should use this functionality, although there
 are some situations where jobs may want independent implementation of
@@ -62,9 +61,8 @@ func (b *Base) MarkComplete() {
 	b.status.Completed = true
 }
 
-// AddError takes an error object and if it is non-nil, tracks it
-// internally. This operation is thread safe, but not part of the Job
-// interface.
+// AddError takes an error object and if it is non-nil, tracks it internally.
+// This operation is thread safe.
 func (b *Base) AddError(err error) {
 	if err != nil {
 		b.mutex.Lock()
@@ -72,6 +70,20 @@ func (b *Base) AddError(err error) {
 
 		b.status.Errors = append(b.status.Errors, err.Error())
 	}
+}
+
+// AddRetryableError takes an error object and if it is non-nil, tracks it
+// internally and marks the job as needing to retry. This operation is thread
+// safe.
+func (b *Base) AddRetryableError(err error) {
+	if err == nil {
+		return
+	}
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.status.Errors = append(b.status.Errors, err.Error())
+	b.retryInfo.NeedsRetry = true
 }
 
 // HasErrors checks the stored errors in the object and reports if
@@ -312,25 +324,18 @@ func (b *Base) RetryInfo() amboy.JobRetryInfo {
 }
 
 // UpdateRetryInfo updates the stored retry information and configuration, but
-// does not modify fields that are unset. In particular, Retryable cannot be
-// unset using UpdateRetryInfo; to achieve this, use SetRetryable.
-func (b *Base) UpdateRetryInfo(info amboy.JobRetryInfo) {
+// does not modify fields that are unset.
+func (b *Base) UpdateRetryInfo(opts amboy.JobRetryOptions) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if info.Retryable {
-		b.retryInfo.Retryable = true
+	if opts.Retryable != nil {
+		b.retryInfo.Retryable = *opts.Retryable
 	}
-
-	if info.CurrentTrial != 0 {
-		b.retryInfo.CurrentTrial = info.CurrentTrial
+	if opts.NeedsRetry != nil {
+		b.retryInfo.NeedsRetry = *opts.NeedsRetry
 	}
-}
-
-// SetRetryable sets whether or not the job is allowed to retry.
-func (b *Base) SetRetryable(val bool) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	b.retryInfo.Retryable = val
+	if opts.CurrentTrial != nil {
+		b.retryInfo.CurrentTrial = *opts.CurrentTrial
+	}
 }

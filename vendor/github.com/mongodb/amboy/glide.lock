@@ -35,6 +35,8 @@ imports:
   version: afeadc9b9f628ce2a9d11a7e5b25dac8a0970727
 - name: github.com/evergreen-ci/poplar
   version: 952cf7a06a66d844a5450c6db6802faeb0f1a72e
+- name: github.com/evergreen-ci/utility
+  version: aaeb41d8ac416e8989f5d3175d2c2b607bed1aed
 
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
