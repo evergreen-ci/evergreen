@@ -163,7 +163,7 @@ func (d *mongoDriver) start(ctx context.Context, client *mongo.Client) error {
 func (d *mongoDriver) getCollection() *mongo.Collection {
 	db := d.client.Database(d.opts.DB)
 	if d.opts.UseGroups {
-		return db.Collection(addGroupSufix(d.name))
+		return db.Collection(addGroupSuffix(d.name))
 	}
 
 	return db.Collection(addJobsSuffix(d.name))
@@ -711,9 +711,9 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 	var (
 		qd             bson.M
 		job            amboy.Job
-		misses         int64
-		dispatchMisses int64
-		dispatchSkips  int64
+		misses         int
+		dispatchMisses int
+		dispatchSkips  int
 	)
 
 	startAt := time.Now()
@@ -740,11 +740,9 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 		opts.SetSort(bson.M{"priority": -1})
 	}
 
-	j := &registry.JobInterchange{}
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-RETRY:
 	for {
 		select {
 		case <-ctx.Done():
@@ -766,95 +764,13 @@ RETRY:
 				return nil
 			}
 
-		CURSOR:
-			for iter.Next(ctx) {
-				if err = iter.Decode(j); err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"id":            d.instanceID,
-						"service":       "amboy.queue.mdb",
-						"operation":     "converting next job",
-						"message":       "problem reading document from cursor",
-						"is_group":      d.opts.UseGroups,
-						"group":         d.opts.GroupName,
-						"duration_secs": time.Since(startAt).Seconds(),
-					}))
-					// try for the next thing in the iterator if we can
-					continue CURSOR
-				}
-
-				job, err = j.Resolve(d.opts.Format)
-				if err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"id":            d.instanceID,
-						"service":       "amboy.queue.mdb",
-						"operation":     "converting document",
-						"message":       "problem converting job from intermediate form",
-						"is_group":      d.opts.UseGroups,
-						"group":         d.opts.GroupName,
-						"duration_secs": time.Since(startAt).Seconds(),
-					}))
-					// try for the next thing in the iterator if we can
-					job = nil
-					continue CURSOR
-				}
-
-				if job.TimeInfo().IsStale() {
-					var res *mongo.DeleteResult
-
-					res, err = d.getCollection().DeleteOne(ctx, bson.M{"_id": job.ID()})
-					msg := message.Fields{
-						"id":            d.instanceID,
-						"service":       "amboy.queue.mdb",
-						"num_deleted":   res.DeletedCount,
-						"message":       "found stale job",
-						"operation":     "job staleness check",
-						"job":           job.ID(),
-						"job_type":      job.Type().Name,
-						"is_group":      d.opts.UseGroups,
-						"group":         d.opts.GroupName,
-						"duration_secs": time.Since(startAt).Seconds(),
-					}
-					grip.Warning(message.WrapError(err, msg))
-					grip.NoticeWhen(err == nil, msg)
-					job = nil
-					continue CURSOR
-				}
-
-				if !isDispatchable(job.Status(), d.opts.LockTimeout) {
-					dispatchSkips++
-					job = nil
-					continue CURSOR
-				} else if d.scopesInUse(ctx, job.Scopes()) && !jobCanRestart(job.Status(), d.opts.LockTimeout) {
-					dispatchSkips++
-					job = nil
-					continue CURSOR
-				}
-
-				if err = d.dispatcher.Dispatch(ctx, job); err != nil {
-					dispatchMisses++
-					grip.DebugWhen(
-						isDispatchable(job.Status(), d.opts.LockTimeout),
-						message.WrapError(err, message.Fields{
-							"id":            d.instanceID,
-							"service":       "amboy.queue.mdb",
-							"operation":     "dispatch job",
-							"job_id":        job.ID(),
-							"job_type":      job.Type().Name,
-							"scopes":        job.Scopes(),
-							"stat":          job.Status(),
-							"is_group":      d.opts.UseGroups,
-							"group":         d.opts.GroupName,
-							"dup_key":       isMongoDupKey(err),
-							"duration_secs": time.Since(startAt).Seconds(),
-						}),
-					)
-					job = nil
-					continue CURSOR
-				}
-				break CURSOR
-			}
-
+			job, dispatchInfo := d.tryDispatchJob(ctx, iter, startAt)
+			dispatchMisses += dispatchInfo.misses
+			dispatchSkips += dispatchInfo.skips
 			if err = iter.Err(); err != nil {
+				if job != nil {
+					d.dispatcher.Release(ctx, job)
+				}
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":            d.instanceID,
 					"service":       "amboy.queue.mdb",
@@ -868,6 +784,9 @@ RETRY:
 			}
 
 			if err = iter.Close(ctx); err != nil {
+				if job != nil {
+					d.dispatcher.Release(ctx, job)
+				}
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
 					"service":   "amboy.queue.mdb",
@@ -880,14 +799,115 @@ RETRY:
 			}
 
 			if job != nil {
-				break RETRY
+				return job
 			}
 
-			timer.Reset(time.Duration(misses * rand.Int63n(int64(d.opts.WaitInterval))))
-			continue RETRY
+			timer.Reset(time.Duration(misses * rand.Intn(int(d.opts.WaitInterval))))
 		}
 	}
-	return job
+}
+
+// dispatchAttemptInfo contains aggregate statistics on an attempt to dispatch
+// jobs.
+type dispatchAttemptInfo struct {
+	// skips is the number of times it encountered a job that was not yet ready
+	// to dispatch.
+	skips int
+	// misses is the number of times the dispatcher attempted to dispatch a job
+	// but failed.
+	misses int
+}
+
+// tryDispatchJob takes an iterator over the candidate Amboy jobs and attempts
+// to dispatch one of them. If it succeeds, it returns the successfully
+// dispatched job.
+func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, startAt time.Time) (amboy.Job, dispatchAttemptInfo) {
+	var dispatchInfo dispatchAttemptInfo
+	for iter.Next(ctx) {
+		j := &registry.JobInterchange{}
+		if err := iter.Decode(j); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"id":            d.instanceID,
+				"service":       "amboy.queue.mdb",
+				"operation":     "converting next job",
+				"message":       "problem reading document from cursor",
+				"is_group":      d.opts.UseGroups,
+				"group":         d.opts.GroupName,
+				"duration_secs": time.Since(startAt).Seconds(),
+			}))
+			// try for the next thing in the iterator if we can
+			continue
+		}
+
+		job, err := j.Resolve(d.opts.Format)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"id":            d.instanceID,
+				"service":       "amboy.queue.mdb",
+				"operation":     "converting document",
+				"message":       "problem converting job from intermediate form",
+				"is_group":      d.opts.UseGroups,
+				"group":         d.opts.GroupName,
+				"duration_secs": time.Since(startAt).Seconds(),
+			}))
+			// try for the next thing in the iterator if we can
+			continue
+		}
+
+		if job.TimeInfo().IsStale() {
+			// Delete stale jobs from the queue.
+			var res *mongo.DeleteResult
+
+			res, err = d.getCollection().DeleteOne(ctx, bson.M{"_id": job.ID()})
+			msg := message.Fields{
+				"id":            d.instanceID,
+				"service":       "amboy.queue.mdb",
+				"num_deleted":   res.DeletedCount,
+				"message":       "found stale job",
+				"operation":     "job staleness check",
+				"job_id":        job.ID(),
+				"job_type":      job.Type().Name,
+				"is_group":      d.opts.UseGroups,
+				"group":         d.opts.GroupName,
+				"duration_secs": time.Since(startAt).Seconds(),
+			}
+			grip.Warning(message.WrapError(err, msg))
+			grip.NoticeWhen(err == nil, msg)
+			continue
+		}
+
+		if !isDispatchable(job.Status(), d.opts.LockTimeout) {
+			dispatchInfo.skips++
+			continue
+		} else if d.scopesInUse(ctx, job.Scopes()) && !jobCanRestart(job.Status(), d.opts.LockTimeout) {
+			dispatchInfo.skips++
+			continue
+		}
+
+		if err = d.dispatcher.Dispatch(ctx, job); err != nil {
+			dispatchInfo.misses++
+			grip.DebugWhen(
+				isDispatchable(job.Status(), d.opts.LockTimeout),
+				message.WrapError(err, message.Fields{
+					"id":            d.instanceID,
+					"service":       "amboy.queue.mdb",
+					"operation":     "dispatch job",
+					"job_id":        job.ID(),
+					"job_type":      job.Type().Name,
+					"scopes":        job.Scopes(),
+					"stat":          job.Status(),
+					"is_group":      d.opts.UseGroups,
+					"group":         d.opts.GroupName,
+					"dup_key":       isMongoDupKey(err),
+					"duration_secs": time.Since(startAt).Seconds(),
+				}),
+			)
+			continue
+		}
+		return job, dispatchInfo
+	}
+
+	return nil, dispatchInfo
 }
 
 func (d *mongoDriver) scopesInUse(ctx context.Context, scopes []string) bool {

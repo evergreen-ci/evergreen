@@ -100,7 +100,7 @@ func RunJob(ctx context.Context, job Job) error {
 	job.Run(ctx)
 	ti.End = time.Now()
 	msg := message.Fields{
-		"job":           job.ID(),
+		"job_id":        job.ID(),
 		"job_type":      job.Type().Name,
 		"duration_secs": ti.Duration().Seconds(),
 	}

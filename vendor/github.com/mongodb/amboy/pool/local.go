@@ -85,7 +85,7 @@ func (r *localWorkers) Start(ctx context.Context) error {
 	r.canceler = cancel
 
 	for w := 1; w <= r.size; w++ {
-		go worker(workerCtx, "local", r.queue, &r.wg)
+		go worker(workerCtx, "local", r.queue, &r.wg, &r.mu)
 		grip.Debugf("started worker %d of %d waiting for jobs", w, r.size)
 	}
 

@@ -36,7 +36,7 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 	q.Complete(ctx, job)
 	ti := job.TimeInfo()
 	r := message.Fields{
-		"job":           job.ID(),
+		"job_id":        job.ID(),
 		"job_type":      job.Type().Name,
 		"duration_secs": ti.Duration().Seconds(),
 		"dispatch_secs": ti.Start.Sub(ti.Created).Seconds(),
@@ -58,7 +58,7 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 	}
 }
 
-func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup) {
+func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup, mu sync.Locker) {
 	var (
 		err    error
 		job    amboy.Job
@@ -66,7 +66,10 @@ func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup) 
 		ctx    context.Context
 	)
 
+	mu.Lock()
 	wg.Add(1)
+	mu.Unlock()
+
 	defer wg.Done()
 	defer func() {
 		// if we hit a panic we want to add an error to the job;
@@ -77,7 +80,7 @@ func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup) 
 				q.Complete(bctx, job)
 			}
 			// start a replacement worker.
-			go worker(bctx, id, q, wg)
+			go worker(bctx, id, q, wg, mu)
 		}
 
 		if cancel != nil {

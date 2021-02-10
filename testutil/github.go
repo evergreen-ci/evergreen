@@ -18,7 +18,7 @@ func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title
 			},
 		},
 		Base: &github.PullRequestBranch{
-			Ref: github.String("master"),
+			Ref: github.String("main"),
 			Repo: &github.Repository{
 				FullName: github.String(baseRepoName),
 			},

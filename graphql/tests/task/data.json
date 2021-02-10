@@ -36,7 +36,7 @@
       "ignored": false,
       "owner_name": "",
       "repo_name": "",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "",
       "build_variants_status": [
         {
@@ -81,7 +81,7 @@
       "ignored": false,
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "github",
       "build_variants_status": [
         {

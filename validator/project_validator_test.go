@@ -706,31 +706,31 @@ func TestValidateModules(t *testing.T) {
 				Modules: model.ModuleList{
 					model.Module{
 						Name:   "module-0",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-0",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-1",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-2",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-1",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 				},
@@ -747,7 +747,7 @@ func TestValidateModules(t *testing.T) {
 					},
 					model.Module{
 						Name:   "module-1",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
@@ -764,26 +764,26 @@ func TestValidateModules(t *testing.T) {
 				Modules: model.ModuleList{
 					model.Module{
 						Name:   "module-0",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-1",
-						Branch: "master",
+						Branch: "main",
 					},
 					model.Module{
 						Name:   "module-2",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "evergreen-ci/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-3",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:/evergreen.git",
 					},
 					model.Module{
 						Name:   "module-4",
-						Branch: "master",
+						Branch: "main",
 						Repo:   "git@github.com:evergreen-ci/.git",
 					},
 				},

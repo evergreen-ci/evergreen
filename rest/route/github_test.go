@@ -75,7 +75,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 					Enabled:     utility.TruePtr(),
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
-					Branch:      "master",
+					Branch:      "main",
 					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				},
 			},
@@ -92,16 +92,16 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24743)
+	s.Len(s.prBody, 24731)
 	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
-	s.Len(s.pushBody, 7603)
+	s.Len(s.pushBody, 7597)
 	s.commitQueueCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
-	s.Len(s.commitQueueCommentBody, 11496)
+	s.Len(s.commitQueueCommentBody, 11494)
 	s.retryCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
 	s.NoError(err)
-	s.Len(s.retryCommentBody, 11470)
+	s.Len(s.retryCommentBody, 11468)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -267,7 +267,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 
 	owner := "baxterthehacker"
 	repo := "public-repo"
-	branch := "master"
+	branch := "main"
 	number := 1
 
 	fillerString := "a"

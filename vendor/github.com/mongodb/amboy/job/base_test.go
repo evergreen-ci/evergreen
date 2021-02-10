@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/stretchr/testify/require"
@@ -44,6 +45,16 @@ func (s *BaseCheckSuite) TestAddErrorWithNilObjectDoesNotChangeErrorState() {
 	}
 }
 
+func (s *BaseCheckSuite) TestAddRetryableErrorWithNilObjectDoesNotChangeErrorState() {
+	for i := 0; i < 100; i++ {
+		s.base.AddRetryableError(nil)
+		s.NoError(s.base.Error())
+		s.Len(s.base.status.Errors, 0)
+		s.False(s.base.HasErrors())
+		s.False(s.base.RetryInfo().NeedsRetry)
+	}
+}
+
 func (s *BaseCheckSuite) TestAddErrorsPersistsErrorsInJob() {
 	for i := 1; i <= 100; i++ {
 		s.base.AddError(errors.New("foo"))
@@ -51,6 +62,17 @@ func (s *BaseCheckSuite) TestAddErrorsPersistsErrorsInJob() {
 		s.Len(s.base.status.Errors, i)
 		s.True(s.base.HasErrors())
 		s.Len(strings.Split(s.base.Error().Error(), "\n"), i)
+	}
+}
+
+func (s *BaseCheckSuite) TestAddRetryableErrorsPersistsErrorsInJob() {
+	for i := 1; i <= 100; i++ {
+		s.base.AddRetryableError(errors.New("foo"))
+		s.Error(s.base.Error())
+		s.Len(s.base.status.Errors, i)
+		s.True(s.base.HasErrors())
+		s.Len(strings.Split(s.base.Error().Error(), "\n"), i)
+		s.True(s.base.RetryInfo().NeedsRetry)
 	}
 }
 
@@ -122,31 +144,37 @@ func (s *BaseCheckSuite) TestTimeInfoSetsValues() {
 	s.Equal(result.End, last.End)
 }
 
-func (s *BaseCheckSuite) TestSetRetryable() {
-	s.Require().False(s.base.RetryInfo().Retryable)
-	s.base.SetRetryable(true)
-	s.Require().True(s.base.RetryInfo().Retryable)
-	s.base.SetRetryable(false)
-	s.False(s.base.RetryInfo().Retryable)
-}
-
 func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
-	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
+	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable: utility.TruePtr(),
+	})
+	s.Require().Equal(amboy.JobRetryInfo{
 		Retryable: true,
-	})
-	s.Require().True(s.base.RetryInfo().Retryable)
+	}, s.base.RetryInfo())
 
-	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
-		Retryable: false,
-	})
-	s.Require().True(s.base.RetryInfo().Retryable)
-
-	s.base.UpdateRetryInfo(amboy.JobRetryInfo{
-		CurrentTrial: 5,
+	trial := 5
+	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
+		CurrentTrial: utility.ToIntPtr(trial),
 	})
 
-	s.Equal(amboy.JobRetryInfo{
+	s.Require().Equal(amboy.JobRetryInfo{
 		Retryable:    true,
-		CurrentTrial: 5,
+		CurrentTrial: trial,
+	}, s.base.RetryInfo())
+
+	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable: utility.FalsePtr(),
+	})
+	s.Require().Equal(amboy.JobRetryInfo{
+		CurrentTrial: trial,
+	}, s.base.RetryInfo())
+
+	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
+		NeedsRetry: utility.TruePtr(),
+	})
+
+	s.Require().Equal(amboy.JobRetryInfo{
+		NeedsRetry:   true,
+		CurrentTrial: trial,
 	}, s.base.RetryInfo())
 }

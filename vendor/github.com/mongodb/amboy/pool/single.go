@@ -70,7 +70,7 @@ func (r *single) Start(ctx context.Context) error {
 	waiter := make(chan struct{})
 	go func(wg *sync.WaitGroup) {
 		close(waiter)
-		worker(workerCtx, "single", r.queue, wg)
+		worker(workerCtx, "single", r.queue, wg, &r.mu)
 		grip.Info("worker process complete")
 	}(&r.wg)
 

@@ -97,7 +97,7 @@ modules:
 - name: render-module
   repo: git@github.com:evergreen-ci/render.git
   prefix: modules
-  branch: master
+  branch: main
 
 buildvariants:
 - name: osx-108

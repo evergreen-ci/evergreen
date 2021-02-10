@@ -185,7 +185,7 @@ func (s *JobInterchangeSuite) TestRetryInfoPersists() {
 		Retryable:    true,
 		CurrentTrial: 5,
 	}
-	s.job.UpdateRetryInfo(info)
+	s.job.UpdateRetryInfo(info.Options())
 	s.Equal(info, s.job.RetryInfo())
 
 	ji, err := MakeJobInterchange(s.job, s.format)

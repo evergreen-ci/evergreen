@@ -179,9 +179,10 @@ type PatchSet struct {
 }
 
 type TriggerInfo struct {
-	Aliases      []string `bson:"aliases,omitempty"`
-	ParentPatch  string   `bson:"parent_patch,omitempty"`
-	ChildPatches []string `bson:"child_patches,omitempty"`
+	Aliases              []string    `bson:"aliases,omitempty"`
+	ParentPatch          string      `bson:"parent_patch,omitempty"`
+	ChildPatches         []string    `bson:"child_patches,omitempty"`
+	DownstreamParameters []Parameter `bson:"downstream_parameters,omitempty"`
 }
 
 type PatchTriggerDefinition struct {
@@ -300,6 +301,20 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 			"$set": bson.M{
 				ParametersKey: parameters,
 			},
+		},
+	)
+}
+
+func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
+	for _, param := range parameters {
+		p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, param)
+	}
+
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$push": bson.M{triggersKey: bson.M{"$each": parameters}},
 		},
 	)
 }
@@ -629,6 +644,25 @@ func (p *Patch) IsBackport() bool {
 
 func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
+}
+
+func (p *Patch) SetParametersFromParent() error {
+	parentPatchId := p.Triggers.ParentPatch
+	parentPatch, err := FindOneId(parentPatchId)
+	if err != nil {
+		return errors.Wrap(err, "can't get parent patch")
+	}
+	if parentPatch == nil {
+		return errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+	}
+
+	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
+		err = p.SetParameters(downstreamParams)
+		if err != nil {
+			return errors.Wrap(err, "error setting parameters")
+		}
+	}
+	return nil
 }
 
 func (p *Patch) GetRequester() string {

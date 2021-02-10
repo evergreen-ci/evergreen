@@ -79,9 +79,9 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 			case dependency.Unresolved:
 				grip.Warning(message.MakeFieldsMessage("detected a dependency error",
 					message.Fields{
-						"job":   id,
-						"edges": dep.Edges(),
-						"dep":   dep.Type(),
+						"job_id": id,
+						"edges":  dep.Edges(),
+						"dep":    dep.Type(),
 					}))
 				q.dispatcher.Release(ctx, job)
 				q.addBlocked(job.ID())
@@ -89,7 +89,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 			case dependency.Blocked:
 				edges := dep.Edges()
 				grip.Debug(message.Fields{
-					"job":       id,
+					"job_id":    id,
 					"edges":     edges,
 					"dep":       dep.Type(),
 					"job_type":  job.Type().Name,
@@ -119,9 +119,9 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				q.dispatcher.Release(ctx, job)
 				grip.Warning(message.MakeFieldsMessage("detected invalid dependency",
 					message.Fields{
-						"job":   id,
-						"edges": dep.Edges(),
-						"dep":   dep.Type(),
+						"job_id": id,
+						"edges":  dep.Edges(),
+						"dep":    dep.Type(),
 						"state": message.Fields{
 							"value":  dep.State(),
 							"valid":  dependency.IsValidState(dep.State()),
