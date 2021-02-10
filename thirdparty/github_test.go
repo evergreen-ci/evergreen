@@ -274,7 +274,7 @@ func TestValidatePR(t *testing.T) {
 
 	prBody, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
 	assert.NoError(err)
-	assert.Len(prBody, 24757)
+	assert.Len(prBody, 24745)
 	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
 	assert.NoError(err)
 	prEvent, ok := webhookInterface.(*github.PullRequestEvent)

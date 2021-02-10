@@ -49,7 +49,7 @@ func (s *commitQueueSuite) SetupSuite() {
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Require().Len(s.prBody, 24757)
+	s.Require().Len(s.prBody, 24745)
 
 	s.projectRef = &model.ProjectRef{
 		Id:    "mci",
