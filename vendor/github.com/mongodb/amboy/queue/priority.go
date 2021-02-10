@@ -100,7 +100,7 @@ func (q *priorityLocalQueue) Next(ctx context.Context) amboy.Job {
 				q.storage.Remove(job.ID())
 				grip.Notice(message.Fields{
 					"state":    "stale",
-					"job":      job.ID(),
+					"job_id":   job.ID(),
 					"job_type": job.Type().Name,
 				})
 				continue

@@ -182,10 +182,10 @@ func (q *depGraphOrderedLocal) Next(ctx context.Context) amboy.Job {
 	case job := <-q.channel:
 		grip.Error(message.WrapError(q.dispatcher.Dispatch(ctx, job),
 			message.Fields{
-				"job":    job.ID(),
-				"event":  "improperly dispatched job",
-				"impact": "possible duplicate execution",
-				"queue":  q.ID(),
+				"job_id":   job.ID(),
+				"event":    "improperly dispatched job",
+				"impact":   "possible duplicate execution",
+				"queue_id": q.ID(),
 			}))
 		return job
 	}

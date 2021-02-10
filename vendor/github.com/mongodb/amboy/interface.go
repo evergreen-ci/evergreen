@@ -54,12 +54,9 @@ type Job interface {
 	UpdateTimeInfo(JobTimeInfo)
 
 	// RetryInfo reports information about the job's retry behavior.
-	// UpdateRetryInfo method only modifies non-zero fields.
 	RetryInfo() JobRetryInfo
-	UpdateRetryInfo(JobRetryInfo)
-	// SetRetryable determines whether or not the job is allowed to retry, which
-	// gives a mechanism to disable retryability after it's enabled.
-	SetRetryable(bool)
+	// UpdateRetryInfo method modifies all set fields from the given options.
+	UpdateRetryInfo(JobRetryOptions)
 
 	// Provides access to the job's priority value, which some
 	// queues may use to order job dispatching. Most Jobs
@@ -71,6 +68,9 @@ type Job interface {
 	// AddError allows another actor to annotate the job with an
 	// error.
 	AddError(error)
+	// AddRetryableError annotates the job with an error and marks the job as
+	// needing to retry.
+	AddRetryableError(error)
 	// Error returns an error object if the task was an
 	// error. Typically if the job has not run, this is nil.
 	Error() error
@@ -144,8 +144,36 @@ type JobTimeInfo struct {
 // JobRetryInfo stores configuration and information for a job that can retry.
 // Support for retrying jobs is optional for Queue implementations.
 type JobRetryInfo struct {
-	Retryable    bool `bson:"retryable,omitempty" json:"retryable,omitempty" yaml:"retryable,omitempty"`
-	CurrentTrial int  `bson:"current_trial,omitempty" json:"current_trial,omitempty" yaml:"current_trial,omitempty"`
+	// Retryable indicates whether the job should use Amboy's built-in retry
+	// mechanism.
+	Retryable bool `bson:"retryable" json:"retryable,omitempty" yaml:"retryable,omitempty"`
+	// NeedsRetry indicates whether the job is supposed to retry when it is
+	// complete. This will only be considered if Retryable is true.
+	NeedsRetry bool `bson:"needs_retry" json:"needs_retry,omitempty" yaml:"needs_retry,omitempty"`
+	// CurrentTrial is the current attempt number. This is zero-indexed, so the
+	// first time the job attempts to run, its value is 0. Each subsequent retry
+	// increments this value.
+	CurrentTrial int `bson:"current_trial,omitempty" json:"current_trial,omitempty" yaml:"current_trial,omitempty"`
+}
+
+// Options returns a JobRetryInfo as its equivalent JobRetryOptions. In other
+// words, if the returned result is used with Job.UpdateRetryInfo(), the job
+// will have the same JobRetryInfo as this one.
+func (info *JobRetryInfo) Options() JobRetryOptions {
+	return JobRetryOptions{
+		Retryable:    &info.Retryable,
+		NeedsRetry:   &info.NeedsRetry,
+		CurrentTrial: &info.CurrentTrial,
+	}
+}
+
+// JobRetryOptions represents configuration options for a job that can retry.
+// Their meaning corresponds to the fields in JobRetryInfo, but is more amenable
+// to optional input values.
+type JobRetryOptions struct {
+	Retryable    *bool `bson:"-" json:"-" yaml:"-"`
+	NeedsRetry   *bool `bson:"-" json:"-" yaml:"-"`
+	CurrentTrial *int  `bson:"-" json:"-" yaml:"-"`
 }
 
 // Duration is a convenience function to return a duration for a job.
