@@ -315,7 +315,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Enabled: utility.TruePtr(),
 		Owner:   "evergreen-ci",
 		Repo:    "sample",
-		Branch:  "master",
+		Branch:  "main",
 	}
 	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{

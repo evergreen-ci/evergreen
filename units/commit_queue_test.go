@@ -253,7 +253,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		Id:         "evergreen",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 	}
 	s.NoError(projectRef.Insert())

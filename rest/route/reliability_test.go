@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	projectID = "mongodb-mongo-master"
+	projectID = "mongodb-mongo-main"
 )
 
 func configureTaskReliability(disabled bool) error {

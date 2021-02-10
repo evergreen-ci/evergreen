@@ -75,7 +75,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 					Enabled:     utility.TruePtr(),
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
-					Branch:      "master",
+					Branch:      "main",
 					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				},
 			},
@@ -267,7 +267,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 
 	owner := "baxterthehacker"
 	repo := "public-repo"
-	branch := "master"
+	branch := "main"
 	number := 1
 
 	fillerString := "a"

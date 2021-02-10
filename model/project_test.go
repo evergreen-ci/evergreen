@@ -307,7 +307,7 @@ buildvariants:
 	assert.NoError(projectRef.Insert())
 	v := &Version{
 		Id:                  "v1",
-		Branch:              "master",
+		Branch:              "main",
 		Author:              "somebody",
 		AuthorEmail:         "somebody@somewhere.com",
 		RevisionOrderNumber: 42,
@@ -346,7 +346,7 @@ buildvariants:
 	assert.Equal("0ed7cbd33263043fa95aadb3f6068ef8d076854a", expansions.Get("revision"))
 	assert.Equal("mci", expansions.Get("project"))
 	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
-	assert.Equal("master", expansions.Get("branch_name"))
+	assert.Equal("main", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
@@ -1152,14 +1152,14 @@ func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
 	projModules := ModuleList{
-		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "master"},
+		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "main"},
 		{Name: "wt", Repo: "git@github.com:else/wt.git", Branch: "develop"},
 	}
 
 	manifest1 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.True(projModules.IsIdentical(manifest1))
@@ -1167,7 +1167,7 @@ func TestModuleList(t *testing.T) {
 	manifest2 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "different branch", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest2))
@@ -1175,8 +1175,8 @@ func TestModuleList(t *testing.T) {
 	manifest3 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
-			"extra":      &manifest.Module{Branch: "master", Repo: "repo", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"extra":      &manifest.Module{Branch: "main", Repo: "repo", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest3))

@@ -41,7 +41,7 @@ func (s *CommitQueueSuite) SetupTest() {
 		Id:               "mci",
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Branch:           "master",
+		Branch:           "main",
 		Enabled:          utility.TruePtr(),
 		PatchingDisabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
@@ -239,7 +239,7 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.Equal(1234, int(*pr.User.ID))
 
 	s.Require().NotNil(pr.Base.Ref)
-	s.Equal("master", *pr.Base.Ref)
+	s.Equal("main", *pr.Base.Ref)
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {

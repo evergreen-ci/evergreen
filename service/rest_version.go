@@ -574,7 +574,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// queryParams should list build variants, example:
-	// GET /rest/v1/projects/mongodb-mongo-master/last_green?linux-64=1&windows-64=1
+	// GET /rest/v1/projects/mongodb-mongo-main/last_green?linux-64=1&windows-64=1
 	queryParams := r.URL.Query()
 
 	// Make sure all query params are valid variants and put them in an array

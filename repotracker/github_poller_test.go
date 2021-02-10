@@ -69,7 +69,7 @@ func resetProjectRefs() {
 		DisplayName: "MCI Test",
 		Owner:       "deafgoat",
 		Repo:        "mci-test",
-		Branch:      "master",
+		Branch:      "main",
 		RemotePath:  "mci",
 		Enabled:     utility.TruePtr(),
 		Private:     utility.FalsePtr(),
@@ -80,7 +80,7 @@ func resetProjectRefs() {
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
 		Id:         "mci",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 		Enabled:    utility.TruePtr(),
 	}
@@ -185,7 +185,7 @@ func TestGetRevisionsSince(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 		Convey("If the revision is not valid because it has less than 10 characters, should return an error", func() {
-			_, err := self.GetRevisionsSince("master", 10)
+			_, err := self.GetRevisionsSince("main", 10)
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -207,7 +207,7 @@ func TestGetRemoteConfig(t *testing.T) {
 				DisplayName: "MCI Test",
 				Owner:       "deafgoat",
 				Repo:        "config",
-				Branch:      "master",
+				Branch:      "main",
 				RemotePath:  "random.txt",
 				Enabled:     utility.TruePtr(),
 				Private:     utility.FalsePtr(),

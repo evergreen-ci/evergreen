@@ -101,10 +101,10 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 }
 
 func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "master")
+	branch, err := GetBranchEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotPanics(func() {
-		s.Equal("master", *branch.Name)
+		s.Equal("main", *branch.Name)
 		s.NotNil(*branch.Commit)
 	})
 }
@@ -216,7 +216,7 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 		PRNumber:   448,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}
 
 	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, p)

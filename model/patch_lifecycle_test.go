@@ -36,7 +36,7 @@ var (
 	patchFile       = "testdata/patch2.diff"
 	patchOwner      = "deafgoat"
 	patchRepo       = "config"
-	patchBranch     = "master"
+	patchBranch     = "main"
 
 	// newProjectPatchFile is a diff that adds a new project configuration file
 	// located at newConfigFilePath.
@@ -737,7 +737,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 	projectRef := &ProjectRef{
 		Repo:   "evergreen",
 		Owner:  "evergreen-ci",
-		Branch: "master",
+		Branch: "main",
 	}
 
 	project := &Project{
@@ -761,7 +761,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 			PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
 		},
 	}
-	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:master'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit' into 'evergreen-ci/evergreen:main'", MakeCommitQueueDescription(patches, projectRef, project))
 
 	// main repo + module commits
 	patches = []patch.ModulePatch{
@@ -775,7 +775,7 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:master' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
+	assert.Equal(t, "Commit Queue Merge: 'Commit 1 <- Commit 2' into 'evergreen-ci/evergreen:main' || 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project))
 
 	// module only commits
 	patches = []patch.ModulePatch{

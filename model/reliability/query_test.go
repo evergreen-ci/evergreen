@@ -20,7 +20,7 @@ var day2 = day1.Add(24 * time.Hour)
 var day8 = day1.Add(7 * 24 * time.Hour)
 
 const (
-	project    = "mongodb-mongo-master"
+	project    = "mongodb-mongo-main"
 	task1      = "task1"
 	task2      = "task2"
 	task3      = "task3"
