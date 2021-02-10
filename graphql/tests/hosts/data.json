@@ -1094,11 +1094,11 @@
       "last_bv": "enterprise-ubuntu1804-ppc64le",
       "last_group": "",
       "last_project": "mongodb-mongo-master",
-      "last_task": "mongodb_mongo_master_enterprise_ubuntu1804_ppc64le_gle_auth_834a3c49d9ea9bfe2361650475158fc0dbb374cd_20_06_18_01_33_45",
+      "last_task": "mongodb_mongo_main_enterprise_ubuntu1804_ppc64le_gle_auth_834a3c49d9ea9bfe2361650475158fc0dbb374cd_20_06_18_01_33_45",
       "last_task_completed_time": {
         "$date": "2020-06-20T05:34:51.433Z"
       },
-      "last_version": "mongodb_mongo_master_834a3c49d9ea9bfe2361650475158fc0dbb374cd",
+      "last_version": "mongodb_mongo_main_834a3c49d9ea9bfe2361650475158fc0dbb374cd",
       "jasper_credentials_id": "",
       "jasper_deploy_attempts": 0,
       "needs_agent_monitor": false,
@@ -1470,12 +1470,12 @@
       },
       "last_bv": "osx",
       "last_group": "",
-      "last_project": "cloud-automation-master",
-      "last_task": "cloud_automation_master_osx_OSXTestGroup41_788f2b2b5f520a61cd2203edd509cd243283260a_20_02_25_07_32_39",
+      "last_project": "cloud-automation-main",
+      "last_task": "cloud_automation_main_osx_OSXTestGroup41_788f2b2b5f520a61cd2203edd509cd243283260a_20_02_25_07_32_39",
       "last_task_completed_time": {
         "$date": "2020-02-25T08:40:04.623Z"
       },
-      "last_version": "cloud_automation_master_788f2b2b5f520a61cd2203edd509cd243283260a",
+      "last_version": "cloud_automation_main_788f2b2b5f520a61cd2203edd509cd243283260a",
       "jasper_restart_attempts": 0,
       "prov_time": {
         "$date": "2020-02-13T18:19:23.282Z"

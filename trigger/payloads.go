@@ -401,15 +401,6 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 		}
 		return msg, nil
 
-	case event.GithubMergeSubscriberType:
-		msg := &commitqueue.GithubMergePR{
-			Status:    data.PastTenseStatus,
-			PatchID:   data.ID,
-			URL:       data.URL,
-			ProjectID: data.Project,
-		}
-		return msg, nil
-
 	case event.CommitQueueDequeueSubscriberType:
 		return &commitqueue.DequeueItem{
 			Status:    data.PastTenseStatus,

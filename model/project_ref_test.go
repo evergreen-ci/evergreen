@@ -25,7 +25,7 @@ func TestFindOneProjectRef(t *testing.T) {
 	projectRef := &ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "mci",
-		Branch:    "master",
+		Branch:    "main",
 		Enabled:   utility.TruePtr(),
 		BatchTime: 10,
 		Id:        "ident",
@@ -38,7 +38,7 @@ func TestFindOneProjectRef(t *testing.T) {
 
 	assert.Equal(projectRefFromDB.Owner, "mongodb")
 	assert.Equal(projectRefFromDB.Repo, "mci")
-	assert.Equal(projectRefFromDB.Branch, "master")
+	assert.Equal(projectRefFromDB.Branch, "main")
 	assert.True(projectRefFromDB.IsEnabled())
 	assert.Equal(projectRefFromDB.BatchTime, 10)
 	assert.Equal(projectRefFromDB.Id, "ident")
@@ -73,7 +73,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	repoRef := &RepoRef{ProjectRef{
 		Id:                    "mongodb_mci",
 		Repo:                  "mci",
-		Branch:                "master",
+		Branch:                "main",
 		SpawnHostScriptPath:   "my-path",
 		Admins:                []string{"john.liu"},
 		Enabled:               utility.TruePtr(),
@@ -128,7 +128,7 @@ func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	projectRef := &ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "mci",
-		Branch:    "master",
+		Branch:    "main",
 		Enabled:   utility.TruePtr(),
 		BatchTime: maxBatchTime + 1,
 		Id:        "ident",
@@ -270,21 +270,21 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRefs, err := FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err := FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
 	projectRef := &ProjectRef{
 		Owner:            "mongodb",
 		Repo:             "mci",
-		Branch:           "master",
+		Branch:           "main",
 		Enabled:          utility.FalsePtr(),
 		BatchTime:        10,
 		Id:               "iden_",
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -292,7 +292,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRef.Enabled = utility.TruePtr()
 	assert.NoError(projectRef.Insert())
 
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.Len(projectRefs, 1)
 	assert.Equal("ident", projectRefs[0].Id)
@@ -300,7 +300,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	projectRef.Id = "ident2"
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 
@@ -340,14 +340,14 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 
 	require.NoError(db.Clear(ProjectRefCollection))
 
-	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
 		Owner:            "mongodb",
 		Repo:             "mci",
-		Branch:           "master",
+		Branch:           "main",
 		Enabled:          utility.FalsePtr(),
 		BatchTime:        10,
 		Id:               "ident0",
@@ -356,7 +356,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	require.NoError(doc.Insert())
 
 	// 1 disabled document = no match
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -365,7 +365,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.Enabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.Nil(projectRef)
 
@@ -373,7 +373,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	doc.Id = "ident1"
 	doc.PRTestingEnabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Id)
@@ -382,7 +382,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 }
@@ -394,27 +394,27 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "mci",
-		Branch:  "master",
+		Branch:  "main",
 		Id:      "mci",
 		Enabled: utility.TruePtr(),
 	}
 	require.NoError(doc.Insert())
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
 	require.NoError(db.Update(ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc))
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("mci", projectRef.Id)
@@ -464,7 +464,7 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	doc := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "mci",
-		Branch:  "master",
+		Branch:  "main",
 		Id:      "mci",
 		Enabled: utility.TruePtr(),
 		CommitQueue: CommitQueueParams{
@@ -479,7 +479,7 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	doc2 := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "mci",
-		Branch:  "master",
+		Branch:  "main",
 		Id:      "not-mci",
 		Enabled: utility.TruePtr(),
 		CommitQueue: CommitQueueParams{
@@ -514,7 +514,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 		Enabled:         utility.TruePtr(),
 		Owner:           "mongodb",
 		Repo:            "mci",
-		Branch:          "master",
+		Branch:          "main",
 		Identifier:      "mci",
 		Id:              "1",
 		RepoRefId:       repoRef.Id,

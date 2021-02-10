@@ -2,6 +2,6 @@ identifier: evergreen-ci-render
 id: evergreen-ci-render
 owner: evergreen-ci
 repo: render
-branch: master
+branch: main
 enabled: true
 batchtime: 180

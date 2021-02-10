@@ -82,7 +82,7 @@ func setupCLITestHarness() cliTestHarness {
 		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "evergreen.yml",
 		Enabled:    utility.TruePtr(),
 		BatchTime:  180,

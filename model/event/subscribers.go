@@ -18,7 +18,7 @@ const (
 	EvergreenWebhookSubscriberType   = "evergreen-webhook"
 	EmailSubscriberType              = "email"
 	SlackSubscriberType              = "slack"
-	GithubMergeSubscriberType        = "github-merge"
+	GithubMergeSubscriberType        = "github-merge" //TODO: remove this once deployed
 	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
 	EnqueuePatchSubscriberType       = "enqueue-patch"
 	SubscriberTypeNone               = "none"
@@ -190,13 +190,6 @@ func (s *GithubMergeSubscriber) String() string {
 		s.MergeMethod,
 		s.Item,
 	)
-}
-
-func NewGithubMergeSubscriber(s GithubMergeSubscriber) Subscriber {
-	return Subscriber{
-		Type:   GithubMergeSubscriberType,
-		Target: s,
-	}
 }
 
 func NewCommitQueueDequeueSubscriber() Subscriber {

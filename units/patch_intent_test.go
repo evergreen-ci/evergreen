@@ -71,7 +71,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Id:               "mci",
 		Enabled:          utility.TruePtr(),
 		PatchingDisabled: utility.FalsePtr(),
-		Branch:           "master",
+		Branch:           "main",
 		RemotePath:       "self-tests.yml",
 		PRTestingEnabled: utility.TruePtr(),
 		CommitQueue: model.CommitQueueParams{
@@ -133,7 +133,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		PRNumber:   448,
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
-		BaseBranch: "master",
+		BaseBranch: "main",
 		HeadOwner:  "richardsamuels",
 		HeadRepo:   "evergreen",
 		HeadHash:   "something",
@@ -446,9 +446,13 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
-	patchContents, err := patch.FetchPatchContents(patchFileID)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchFileID)
 	s.Require().NoError(err)
-	s.NotEmpty(patchContents)
+	s.Require().NotNil(reader)
+	defer reader.Close()
+	bytes, err := ioutil.ReadAll(reader)
+	s.NoError(err)
+	s.NotEmpty(bytes)
 }
 
 func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {

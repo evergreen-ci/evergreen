@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -51,7 +49,7 @@ func (s *commitQueueSuite) SetupSuite() {
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Require().Len(s.prBody, 24757)
+	s.Require().Len(s.prBody, 24745)
 
 	s.projectRef = &model.ProjectRef{
 		Id:    "mci",
@@ -129,32 +127,6 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 	s.Equal("commit-queue:mci_job-1", job.ID())
 }
 
-func (s *commitQueueSuite) TestSubscribeMerge() {
-	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef", ""))
-
-	selectors := []event.Selector{
-		event.Selector{
-			Type: "id",
-			Data: "abcdef",
-		},
-	}
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, selectors)
-	s.NoError(err)
-	s.Require().Len(subscriptions, 1)
-
-	subscription := subscriptions[0]
-
-	s.Equal(event.GithubMergeSubscriberType, subscription.Subscriber.Type)
-	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
-	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
-	s.True(ok)
-	s.Require().Len(target.PRs, 1)
-	s.Equal(s.projectRef.Owner, target.PRs[0].Owner)
-	s.Equal(s.projectRef.Repo, target.PRs[0].Repo)
-	s.Equal(fmt.Sprintf("%s (#%d)", s.pr.GetTitle(), *s.pr.Number), target.PRs[0].CommitTitle)
-}
-
 func (s *commitQueueSuite) TestWritePatchInfo() {
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
@@ -171,7 +143,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 		},
 	}
 
-	patchContents := `diff --git a/myfile.go b/myfile.go
+	patchContent := `diff --git a/myfile.go b/myfile.go
 	index abcdef..123456 100644
 	--- a/myfile.go
 	+++ b/myfile.go
@@ -180,12 +152,15 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 			}
 	`
 
-	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContents))
+	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContent))
 	s.Len(patchDoc.Patches, 1)
 	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
-	storedPatchContents, err := patch.FetchPatchContents(patchDoc.Patches[0].PatchSet.PatchFileId)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
 	s.NoError(err)
-	s.Equal(patchContents, storedPatchContents)
+	defer reader.Close()
+	bytes, err := ioutil.ReadAll(reader)
+	s.NoError(err)
+	s.Equal(patchContent, string(bytes))
 }
 
 func (s *commitQueueSuite) TestValidateBranch() {
@@ -216,7 +191,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	patchDoc := &patch.Patch{}
 	ref := &model.ProjectRef{}
 
-	s.NoError(addMergeTaskAndVariant(patchDoc, project, ref))
+	s.NoError(addMergeTaskAndVariant(patchDoc, project, ref, commitqueue.SourceDiff))
 
 	s.Require().Len(patchDoc.BuildVariants, 1)
 	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
@@ -278,7 +253,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		Id:         "evergreen",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 	}
 	s.NoError(projectRef.Insert())

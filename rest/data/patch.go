@@ -62,7 +62,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 		return nil, errors.WithStack(err)
 	}
 
-	p, err := patch.FindOneId(patchId)
+	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return nil, err
 	}

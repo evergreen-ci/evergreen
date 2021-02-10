@@ -338,10 +338,11 @@ type Connector interface {
 	CommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
-	CreatePatchForMerge(context.Context, string, string) (*restModel.APIPatch, error)
+	CreatePatchForMerge(context.Context, string) (*restModel.APIPatch, error)
 	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 	GetMessageForPatch(string) (string, error)
+	ConcludeMerge(string, string) error
 
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (io.Reader, error)

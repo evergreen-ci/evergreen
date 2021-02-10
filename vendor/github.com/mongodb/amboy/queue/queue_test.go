@@ -229,7 +229,7 @@ func MongoDBQueueTestCases(client *mongo.Client) []QueueTestCase {
 						d.Close()
 					}
 
-					return client.Database(opts.MDB.DB).Collection(addGroupSufix(name)).Drop(ctx)
+					return client.Database(opts.MDB.DB).Collection(addGroupSuffix(name)).Drop(ctx)
 				}
 
 				return q, closer, nil

@@ -83,6 +83,23 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 	return obj.Distro.Id, nil
 }
 
+func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
+	if obj.HomeVolumeID != nil && *obj.HomeVolumeID != "" {
+		volId := *obj.HomeVolumeID
+		volume, err := r.sc.FindVolumeById(volId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+		}
+		apiVolume := &restModel.APIVolume{}
+		err = apiVolume.BuildFromService(volume)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
+		}
+		return apiVolume, nil
+	}
+	return nil, nil
+}
+
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
@@ -104,7 +121,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", volId)
+			return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "error building volume '%s' from service", volId).Error())
 		}
 		volumes = append(volumes, apiVolume)
 	}
@@ -1810,19 +1827,9 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
-func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
 	user := MustHaveUser(ctx)
-
-	existingPatch, err := r.sc.FindPatchById(patchID)
-	if err != nil {
-		gimletErr, ok := err.(gimlet.ErrorResponse)
-		if ok && gimletErr.StatusCode == http.StatusNotFound {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' does not exist", patchID))
-		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
-	}
-
-	hasPermission, err := r.hasEnqueuePatchPermission(user, existingPatch)
+	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
 	}
@@ -1830,11 +1837,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
-	if commitMessage == nil {
-		commitMessage = existingPatch.Description
-	}
-
-	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -1847,8 +1850,12 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	return newPatch, nil
 }
 
-func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) (bool, error) {
+func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID string) (bool, error) {
 	// patch owner
+	existingPatch, err := r.sc.FindPatchById(patchID)
+	if err != nil {
+		return false, err
+	}
 	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
 		return true, nil
 	}

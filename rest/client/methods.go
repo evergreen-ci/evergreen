@@ -1138,16 +1138,13 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 	return positionResp.Position, nil
 }
 
-func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID, commitMessage string) (*model.APIPatch, error) {
+func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID string) (*model.APIPatch, error) {
 	info := requestInfo{
 		method: http.MethodPut,
 		path:   fmt.Sprintf("/patches/%s/merge_patch", patchID),
 	}
-	body := struct {
-		CommitMessage string `json:"commit_message"`
-	}{CommitMessage: commitMessage}
 
-	resp, err := c.request(ctx, info, body)
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, err
 	}

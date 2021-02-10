@@ -450,8 +450,6 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 //
 //    /patches/{patch_id}/merge_patch
 type mergePatchHandler struct {
-	CommitMessage string `json:"commit_message"`
-
 	patchId string
 	sc      data.Connector
 }
@@ -470,18 +468,11 @@ func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
 
 func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
-
-	body := util.NewRequestReader(r)
-	defer body.Close()
-	if err := utility.ReadJSON(body, p); err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
 	return nil
 }
 
 func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
+	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
 	}

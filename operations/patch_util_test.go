@@ -147,6 +147,36 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
 	s.Contains(pp.Tasks, "mytask2")
 }
 
+func (s *PatchUtilTestSuite) TestAddMetadataToDiff() {
+	metadata := GitMetadata{
+		Username:    "octocat",
+		Email:       "octocat@github.com",
+		CurrentTime: "Tue, 7 Jul 2020 16:50:42 -0400",
+		GitVersion:  "2.19.1",
+		Subject:     "EVG-12345 diff to mbox",
+	}
+
+	diffData := &localDiff{
+		fullPatch: "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {",
+		log:       "operations/patch_util.go           |  17 ---",
+	}
+
+	mboxDiff, err := addMetadataToDiff(diffData, metadata)
+	s.NoError(err)
+	s.Equal(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
+Date: Tue, 7 Jul 2020 16:50:42 -0400
+Subject: EVG-12345 diff to mbox
+
+---
+operations/patch_util.go           |  17 ---
+
++ func diffToMbox(diffData *localDiff, subject string) (string, error) {
+--
+2.19.1
+`, mboxDiff)
+}
+
 func (s *PatchUtilTestSuite) TestParseGitVersionString() {
 	versionStrings := map[string]string{
 		"git version 2.19.1":                   "2.19.1",

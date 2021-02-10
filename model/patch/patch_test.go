@@ -3,7 +3,6 @@ package patch
 import (
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestConfigChanged(t *testing.T) {
@@ -163,7 +162,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 		MergeCommitSHA: github.String("abcdef"),
 	}
 
-	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias)
+	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "")
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)
@@ -596,7 +595,7 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			p := Patch{
-				Id: mgobson.NewObjectId(),
+				Id: bson.NewObjectId(),
 				SyncAtEndOpts: SyncAtEndOptions{
 					BuildVariants: testCase.syncBVs,
 					Tasks:         testCase.syncTasks,
@@ -611,85 +610,6 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 			checkEqualVTs(t, testCase.expectedSyncVTs, dbPatch.SyncAtEndOpts.VariantsTasks)
 			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncAtEndOpts.VariantsTasks)
 		})
-	}
-}
-
-func TestMakeMergePatchPatches(t *testing.T) {
-	require.NoError(t, db.ClearGridCollections(GridFSPrefix))
-	patchDiff := "Lorem Ipsum"
-	patchFileID := mgobson.NewObjectId()
-	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
-
-	existingPatch := &Patch{
-		Patches: []ModulePatch{
-			{
-				ModuleName: "0",
-				PatchSet: PatchSet{
-					PatchFileId: patchFileID.Hex(),
-				},
-			},
-		},
-		GitInfo: &GitMetadata{
-			Email:    "octocat@github.com",
-			Username: "octocat",
-		},
-	}
-	newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
-	assert.NoError(t, err)
-	assert.Len(t, newPatches, 1)
-	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
-
-	patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
-	require.NoError(t, err)
-	assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
-	assert.Contains(t, patchContents, patchDiff)
-}
-
-func TestAddMetadataToDiff(t *testing.T) {
-	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
-	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-
-	tests := map[string]func(*testing.T){
-		"without git version": func(t *testing.T) {
-			metadata := GitMetadata{
-				Username: "octocat",
-				Email:    "octocat@github.com",
-			}
-			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-			assert.NoError(t, err)
-			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: octocat <octocat@github.com>
-Date: Tue, 10 Nov 2009 23:00:00 +0000
-Subject: EVG-12345 diff to mbox
-
----
-+ func diffToMbox(diffData *localDiff, subject string) (string, error) {
-`, mboxDiff)
-		},
-		"with git version": func(t *testing.T) {
-			metadata := GitMetadata{
-				Username:   "octocat",
-				Email:      "octocat@github.com",
-				GitVersion: "2.19.1",
-			}
-			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-			assert.NoError(t, err)
-			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: octocat <octocat@github.com>
-Date: Tue, 10 Nov 2009 23:00:00 +0000
-Subject: EVG-12345 diff to mbox
-
----
-+ func diffToMbox(diffData *localDiff, subject string) (string, error) {
---
-2.19.1
-
-`, mboxDiff)
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, test)
 	}
 }
 
@@ -829,4 +749,65 @@ func checkEqualVTs(t *testing.T, expected []VariantTasks, actual []VariantTasks)
 		}
 		assert.True(t, found, "build variant '%s' not found", expectedVT.Variant)
 	}
+}
+
+func TestSetParametersFromParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	parentPatchID := bson.NewObjectId()
+	parentPatch := Patch{
+		Id: parentPatchID,
+		Triggers: TriggerInfo{
+			DownstreamParameters: []Parameter{
+				{
+					Key:   "hello",
+					Value: "notHello",
+				},
+			},
+		},
+	}
+	assert.NoError(parentPatch.Insert())
+	p := Patch{
+		Id: bson.NewObjectId(),
+		Triggers: TriggerInfo{
+			ParentPatch: parentPatchID.Hex(),
+		},
+	}
+	assert.NoError(p.Insert())
+	assert.NoError(p.SetParametersFromParent())
+	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
+}
+
+func TestSetDownstreamParameters(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	p := Patch{
+		Id: bson.NewObjectId(),
+		Triggers: TriggerInfo{
+			DownstreamParameters: []Parameter{
+				{
+					Key:   "key_0",
+					Value: "value_0",
+				},
+			},
+		},
+	}
+	assert.NoError(p.Insert())
+
+	paramsToAdd := []Parameter{
+		{
+			Key:   "key_1",
+			Value: "value_1",
+		},
+		{
+			Key:   "key_2",
+			Value: "value_2",
+		},
+	}
+
+	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
+	assert.Equal(p.Triggers.DownstreamParameters[0].Key, "key_0")
+	assert.Equal(p.Triggers.DownstreamParameters[1].Key, "key_1")
+	assert.Equal(p.Triggers.DownstreamParameters[2].Key, "key_2")
 }

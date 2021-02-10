@@ -80,7 +80,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
-  enqueuePatch(patchId: String!, commitMessage: String): Patch!
+  enqueuePatch(patchId: String!): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -325,6 +325,7 @@ type TaskQueueDistro {
 }
 
 type Host {
+  homeVolume: Volume
   id: ID!
   hostUrl: String!
   tag: String!

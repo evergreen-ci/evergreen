@@ -84,7 +84,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
-				Branch:      "master",
+				Branch:      "main",
 			},
 			{
 				Id:          "projectB",
@@ -93,7 +93,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
-				Branch:      "master",
+				Branch:      "main",
 			},
 			{
 				Id:          "projectC",
@@ -102,7 +102,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
-				Branch:      "master",
+				Branch:      "main",
 			},
 			{Id: "projectD", Private: utility.FalsePtr()},
 			{Id: "projectE", Private: utility.FalsePtr()},
@@ -220,7 +220,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "gimlet",
-					Branch:      "master",
+					Branch:      "main",
 				},
 				{
 					Id:          "projectB",
@@ -228,7 +228,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "evergreen",
-					Branch:      "master",
+					Branch:      "main",
 				},
 				{
 					Id:          "projectC",
@@ -236,7 +236,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "evergreen",
-					Branch:      "master",
+					Branch:      "main",
 				},
 				{Id: "projectD", Private: utility.FalsePtr()},
 				{Id: "projectE", Private: utility.FalsePtr()},
@@ -337,11 +337,11 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "master")
+	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
+	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }

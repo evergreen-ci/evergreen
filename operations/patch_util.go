@@ -51,7 +51,6 @@ type localDiff struct {
 	patchSummary string
 	log          string
 	base         string
-	gitMetadata  patch.GitMetadata
 }
 
 type patchParams struct {
@@ -93,7 +92,6 @@ type patchSubmission struct {
 	parameters        []patch.Parameter
 	triggerAliases    []string
 	backportOf        patch.BackportInfo
-	gitMetadata       patch.GitMetadata
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -113,7 +111,6 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		backportOf:        p.BackportOf,
 		parameters:        p.Parameters,
 		triggerAliases:    p.TriggerAliases,
-		gitMetadata:       diffData.gitMetadata,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -575,19 +572,7 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 			return nil, errors.Wrap(err, "Error getting patch")
 		}
 	}
-
-	gitMetadata, err := getGitConfigMetadata()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error getting git metadata")
-	}
-
-	return &localDiff{
-		fullPatch:    fullPatch,
-		patchSummary: stat,
-		log:          log,
-		base:         mergeBase,
-		gitMetadata:  gitMetadata,
-	}, nil
+	return &localDiff{fullPatch, stat, log, mergeBase}, nil
 }
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" (where branch2 can optionally be a githash)
@@ -711,9 +696,63 @@ func gitUncommittedChanges() (bool, error) {
 	return len(out) != 0, nil
 }
 
-func getGitConfigMetadata() (patch.GitMetadata, error) {
+func diffToMbox(diffData *localDiff, subject string) (string, error) {
+	if len(diffData.fullPatch) == 0 {
+		return "", nil
+	}
+
+	metadata, err := getGitConfigMetadata()
+	if err != nil {
+		grip.Error(errors.Wrap(err, "Problem getting git metadata. Patch will be ineligible to be enqueued on the commit queue."))
+		return diffData.fullPatch, nil
+	}
+	metadata.Subject = subject
+
+	return addMetadataToDiff(diffData, metadata)
+}
+
+func addMetadataToDiff(diffData *localDiff, metadata GitMetadata) (string, error) {
+	mboxTemplate := template.Must(template.New("mbox").Parse(`From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: {{.Metadata.Username}} <{{.Metadata.Email}}>
+Date: {{.Metadata.CurrentTime}}
+Subject: {{.Metadata.Subject}}
+
+---
+{{.DiffStat}}
+
+{{.DiffContent}}
+--
+{{.Metadata.GitVersion}}
+`))
+
+	out := bytes.Buffer{}
+	err := mboxTemplate.Execute(&out, struct {
+		Metadata    GitMetadata
+		DiffStat    string
+		DiffContent string
+	}{
+		Metadata:    metadata,
+		DiffStat:    diffData.log,
+		DiffContent: diffData.fullPatch,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "problem executing mbox template")
+	}
+
+	return out.String(), nil
+}
+
+type GitMetadata struct {
+	Username    string
+	Email       string
+	CurrentTime string
+	GitVersion  string
+	Subject     string
+}
+
+func getGitConfigMetadata() (GitMetadata, error) {
 	var err error
-	metadata := patch.GitMetadata{}
+	metadata := GitMetadata{}
 	username, err := gitCmd("config", "user.name")
 	if err != nil {
 		return metadata, errors.Wrap(err, "can't get git user.name")
@@ -726,23 +765,21 @@ func getGitConfigMetadata() (patch.GitMetadata, error) {
 	}
 	metadata.Email = strings.TrimSpace(email)
 
-	version, err := getGitVersion()
-	if err == nil {
-		metadata.GitVersion = version
-	}
+	metadata.CurrentTime = time.Now().Format(time.RFC1123Z)
 
-	return metadata, nil
-}
-
-func getGitVersion() (string, error) {
 	// We need just the version number, but git gives it as part of a larger string.
 	// Parse the version number out of the version string.
 	versionString, err := gitCmd("version")
 	if err != nil {
-		return "", errors.Wrap(err, "can't run git version")
+		return metadata, errors.Wrap(err, "can't get git version")
+	}
+	versionString = strings.TrimSpace(versionString)
+	metadata.GitVersion, err = parseGitVersion(versionString)
+	if err != nil {
+		return metadata, errors.Wrap(err, "can't get git version")
 	}
 
-	return parseGitVersion(strings.TrimSpace(versionString))
+	return metadata, nil
 }
 
 func parseGitVersion(version string) (string, error) {

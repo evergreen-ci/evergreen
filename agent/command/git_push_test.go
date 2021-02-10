@@ -36,7 +36,7 @@ func TestGitPush(t *testing.T) {
 	comm := client.NewMock("http://localhost.com")
 	conf := &internal.TaskConfig{
 		Task:       &task.Task{},
-		ProjectRef: &model.ProjectRef{Branch: "master"},
+		ProjectRef: &model.ProjectRef{Branch: "main"},
 		Distro:     &apimodels.DistroView{CloneMethod: distro.CloneMethodOAuth},
 		Expansions: &util.Expansions{},
 	}
@@ -77,9 +77,9 @@ func TestGitPush(t *testing.T) {
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
 
 			commands := []string{
-				"git checkout master",
-				"git rev-parse master@{upstream}",
-				"git push origin master",
+				"git checkout main",
+				"git rev-parse main@{upstream}",
+				"git push origin main",
 			}
 
 			require.Len(t, manager.Procs, len(commands))
@@ -124,7 +124,7 @@ func TestGitPush(t *testing.T) {
 
 			params := pushParams{
 				directory: repoDir,
-				branch:    "master",
+				branch:    "main",
 			}
 			assert.NoError(t, c.pushPatch(ctx, logger, params))
 
@@ -152,13 +152,13 @@ func TestGitPush(t *testing.T) {
 			c.base.jasper = manager
 			params := pushParams{
 				directory: c.Directory,
-				branch:    "master",
+				branch:    "main",
 				token:     token,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
-				"git push origin master",
+				"git push origin main",
 			}
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
@@ -175,9 +175,9 @@ func TestGitPush(t *testing.T) {
 		"RevParse": func(*testing.T) {
 			manager := &mock.Manager{}
 			c.base.jasper = manager
-			_, err = c.revParse(context.Background(), conf, logger, "master@{upstream}")
+			_, err = c.revParse(context.Background(), conf, logger, "main@{upstream}")
 			assert.NoError(t, err)
-			commands := []string{"git rev-parse master@{upstream}"}
+			commands := []string{"git rev-parse main@{upstream}"}
 
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -182,7 +183,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get patch")
@@ -191,7 +192,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return nil, errors.Errorf("no patch found for id '%s'", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatch, commitMessage)
+	newPatch, err := model.MakeMergePatchFromExisting(existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}
@@ -222,6 +223,42 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	return project.CommitQueue.Message, nil
 }
 
+func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
+	event.LogCommitQueueConcludeTest(patchID, status)
+	p, err := patch.FindOneId(patchID)
+	if err != nil {
+		return errors.Wrap(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.Errorf("patch '%s' not found", patchID)
+	}
+	cq, err := commitqueue.FindOneId(p.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't find commit queue for '%s'", p.Project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", p.Project)
+	}
+	item := ""
+	for _, entry := range cq.Queue {
+		if entry.Version == patchID {
+			item = entry.Issue
+			break
+		}
+	}
+	if item == "" {
+		return errors.Errorf("no entry found for patch '%s'", patchID)
+	}
+	found, err := cq.Remove(item)
+	if err != nil {
+		return errors.Wrapf(err, "can't dequeue '%s' from commit queue", item)
+	}
+	if found == nil {
+		return errors.Errorf("item '%s' did not exist on the queue", item)
+	}
+	return nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -233,7 +270,7 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 			Login: github.String("github.user"),
 		},
 		Base: &github.PullRequestBranch{
-			Ref: github.String("master"),
+			Ref: github.String("main"),
 		},
 		Head: &github.PullRequestBranch{
 			SHA: github.String("abcdef1234"),
@@ -307,9 +344,13 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context,
 	return true, nil
 }
 
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID string) (*restModel.APIPatch, error) {
 	return nil, nil
 }
 func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
 	return "", nil
+}
+
+func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, status string) error {
+	return nil
 }

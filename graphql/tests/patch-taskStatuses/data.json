@@ -21,7 +21,7 @@
       "ignored": false,
       "owner_name": "",
       "repo_name": "",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "",
       "build_variants_status": [
         {
@@ -66,7 +66,7 @@
       "ignored": false,
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "github",
       "build_variants_status": [
         {
@@ -353,7 +353,7 @@
         "pr_number": 27,
         "base_owner": "evergreen-ci",
         "base_repo": "spruce",
-        "base_branch": "master",
+        "base_branch": "main",
         "head_owner": "evergreen-ci",
         "head_repo": "spruce",
         "head_hash": "2b37dacf86f9d4d1545faaba37c7c5693202e645",

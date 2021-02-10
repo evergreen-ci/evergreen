@@ -240,7 +240,7 @@ func (s *ProjectPutSuite) TestParse() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -269,7 +269,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -491,7 +491,7 @@ func getMockProjectsConnector() *data.MockConnector {
 				{
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
-					Branch:             "master",
+					Branch:             "main",
 					Enabled:            utility.FalsePtr(),
 					Private:            utility.TruePtr(),
 					BatchTime:          0,

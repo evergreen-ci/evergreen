@@ -733,7 +733,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
 		Id:         "mci",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 		Enabled:    utility.TruePtr(),
 	}
@@ -1044,7 +1044,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 			},
 		},
 	}
@@ -1052,7 +1052,7 @@ func TestCreateManifest(t *testing.T) {
 	projRef := &model.ProjectRef{
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
-		Branch: "master",
+		Branch: "main",
 	}
 
 	manifest, err := CreateManifest(v, &proj, projRef, settings)
@@ -1063,7 +1063,7 @@ func TestCreateManifest(t *testing.T) {
 	module, ok := manifest.Modules["module1"]
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
-	assert.Equal("master", module.Branch)
+	assert.Equal("main", module.Branch)
 	// the most recent module commit as of the version's revision (from 5/30/15)
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
@@ -1075,7 +1075,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 				Ref:    hash,
 			},
 		},
@@ -1088,7 +1088,7 @@ func TestCreateManifest(t *testing.T) {
 	module, ok = manifest.Modules["module1"]
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
-	assert.Equal("master", module.Branch)
+	assert.Equal("main", module.Branch)
 	assert.Equal(hash, module.Revision)
 	assert.NotEmpty(module.URL)
 
@@ -1100,7 +1100,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 				Ref:    hash,
 			},
 		},
