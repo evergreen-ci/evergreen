@@ -72,7 +72,8 @@ type ProjectRef struct {
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
-	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
+	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
+	TracksPushEvents *bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
 	// TaskSync holds settings for synchronizing task directories to S3.
 	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
@@ -283,6 +284,10 @@ func (p *ProjectRef) IsHidden() bool {
 	return utility.FromBoolPtr(p.Hidden)
 }
 
+func (p *ProjectRef) DoesTrackPushEvents() bool {
+	return utility.FromBoolPtr(p.TracksPushEvents)
+}
+
 func (p *CommitQueueParams) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
@@ -293,6 +298,10 @@ func (ts *TaskSyncOptions) IsPatchEnabled() bool {
 
 func (ts *TaskSyncOptions) IsConfigEnabled() bool {
 	return utility.FromBoolPtr(ts.ConfigEnabled)
+}
+
+func (p *ProjectRef) AliasesNeeded() bool {
+	return p.IsGithubChecksEnabled() || p.IsGitTagVersionsEnabled() || p.IsGithubChecksEnabled() || p.IsPRTestingEnabled()
 }
 
 const (
@@ -809,6 +818,53 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRe
 	}
 
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
+func FindProjectRefsWithRepo(repoRef *RepoRef) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefRepoKey:  repoRef.Repo,
+			ProjectRefOwnerKey: repoRef.Owner,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range projectRefs {
+		projectRefs[i].checkDefaultLogger()
+		if projectRefs[i].UseRepoSettings {
+			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error merging settings")
+			}
+			projectRefs[i] = *mergedProject
+		}
+	}
+	return projectRefs, nil
+}
+
+func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
+	return db.Update(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefRepoRefIdKey:       repoId,
+			projectRefUseRepoSettingsKey: true,
+		},
+		bson.M{
+			"$set": bson.M{
+				ProjectRefOwnerKey: owner,
+				ProjectRefRepoKey:  repo,
+			},
+		})
 }
 
 func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {

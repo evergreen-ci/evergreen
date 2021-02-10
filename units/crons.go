@@ -57,7 +57,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
 			// only do catchup jobs for enabled projects that track push events.
-			if !proj.IsEnabled() || proj.IsRepotrackerDisabled() || !proj.TracksPushEvents {
+			if !proj.IsEnabled() || proj.IsRepotrackerDisabled() || !proj.DoesTrackPushEvents() {
 				continue
 			}
 

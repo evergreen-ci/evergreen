@@ -44,6 +44,20 @@ func FindOneId(id string) (*CommitQueue, error) {
 	return findOne(db.Query(bson.M{IdKey: id}))
 }
 
+func Upsert(id string) error {
+	cq, err := FindOneId(id)
+	if err != nil {
+		return errors.Wrapf(err, "database error finding commit queue")
+	}
+	if cq == nil {
+		cq = &CommitQueue{ProjectID: id}
+		if err = InsertQueue(cq); err != nil {
+			return errors.Wrapf(err, "problem inserting new commit queue")
+		}
+	}
+	return nil
+}
+
 func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, queue)
