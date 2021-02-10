@@ -1470,6 +1470,8 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	return upstreamProject.DisplayName, nil
 }
 
+// projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that have the projectKey
+// explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
 	return []bson.M{
 		lookupRepoStep,
@@ -1482,6 +1484,9 @@ func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bs
 	}
 }
 
+// projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that are
+// 1) explicitly enabled, or that default to the repo which is enabled, and
+// 2) they have triggers defined for this project, or they default to the repo, which has a trigger for this project defined.
 func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 	return []bson.M{
 		lookupRepoStep,
@@ -1505,6 +1510,9 @@ func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 	}
 }
 
+// projectRefPipelineForCommitQueue is an aggregation pipeline to find projects that are
+// 1) explicitly enabled, or that default to the repo which is enabled, and
+// 2) the commit queue is explicitly enabled, or defaults to the repo which has the commit queue enabled
 func projectRefPipelineForCommitQueueEnabled() []bson.M {
 	return []bson.M{
 		lookupRepoStep,
@@ -1528,6 +1536,9 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 	}
 }
 
+// projectRefPipelineForPeriodicBuilds is an aggregation pipeline to find projects that are
+// 1) explicitly enabled, or that default to the repo which is enabled, and
+// 2) they have periodic builds defined, or they default to the repo which has periodic builds defined.
 func projectRefPipelineForPeriodicBuilds() []bson.M {
 	nonEmptySize := bson.M{"$gt": bson.M{"$size": 0}}
 	return []bson.M{
