@@ -305,6 +305,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		RemotePath: "self-tests.yml",
+		Branch:     "main",
 		Triggers: []model.TriggerDefinition{
 			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
@@ -374,6 +375,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
+	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
