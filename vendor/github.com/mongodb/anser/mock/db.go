@@ -174,6 +174,9 @@ func (c *LegacyCollection) UpdateId(id, u interface{}) error {
 	return nil
 }
 
+// SetMaxTime is not implemented by the LegacyCollection.
+func (c *LegacyCollection) SetMaxTime(d time.Duration) {}
+
 type Query struct {
 	Query           interface{}
 	Project         interface{}

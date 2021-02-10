@@ -261,8 +261,6 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	}
 	defer session.Close()
 
-	session.SetSocketTimeout(time.Minute)
-
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
 		return chunk, errors.WithStack(err)
@@ -357,8 +355,6 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 		return nil, errors.Wrap(err, "problem getting database session")
 	}
 	defer session.Close()
-
-	session.SetSocketTimeout(time.Minute)
 
 	pipeline := mdb.C(task.Collection).Pipe(
 		[]bson.M{

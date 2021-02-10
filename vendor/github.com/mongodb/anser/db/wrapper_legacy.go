@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -65,6 +67,9 @@ func (c collectionLegacyWrapper) UpsertId(q, u interface{}) (*ChangeInfo, error)
 	i, err := c.Collection.UpsertId(q, u)
 	return buildChangeInfo(i), errors.WithStack(err)
 }
+
+// SetMaxTime is not implemented by the collectionLegacyWrapper.
+func (c collectionLegacyWrapper) SetMaxTime(d time.Duration) {}
 
 type queryLegacyWrapper struct {
 	*mgo.Query

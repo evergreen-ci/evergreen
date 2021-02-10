@@ -38,6 +38,8 @@ type Collection interface {
 	RemoveId(interface{}) error
 	RemoveAll(interface{}) (*ChangeInfo, error)
 	Bulk() Bulk
+
+	SetMaxTime(time.Duration)
 }
 
 type Query interface {

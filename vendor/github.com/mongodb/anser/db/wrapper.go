@@ -71,14 +71,19 @@ func (d *databaseWrapper) C(coll string) Collection {
 }
 
 type collectionWrapper struct {
-	ctx  context.Context
-	coll *mongo.Collection
+	ctx     context.Context
+	coll    *mongo.Collection
+	maxTime time.Duration
 }
 
 func (c *collectionWrapper) DropCollection() error { return errors.WithStack(c.coll.Drop(c.ctx)) }
 
 func (c *collectionWrapper) Pipe(p interface{}) Results {
-	cursor, err := c.coll.Aggregate(c.ctx, p, options.Aggregate().SetAllowDiskUse(true))
+	opts := options.Aggregate().SetAllowDiskUse(true)
+	if c.maxTime > 0 {
+		opts = opts.SetMaxTime(c.maxTime)
+	}
+	cursor, err := c.coll.Aggregate(c.ctx, p, opts)
 
 	return &resultsWrapper{
 		err:    err,
@@ -242,6 +247,11 @@ func (c *collectionWrapper) Bulk() Bulk {
 		ctx:  c.ctx,
 		coll: c.coll,
 	}
+}
+
+// SetMaxTime sets maxTimeMS for an aggregation.
+func (c *collectionWrapper) SetMaxTime(d time.Duration) {
+	c.maxTime = d
 }
 
 type bulkWrapper struct {
