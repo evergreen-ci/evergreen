@@ -274,7 +274,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 			counts.commitQueueIds = append(counts.commitQueueIds, p.Id)
 		}
 		if p.IsPRTestingEnabled() {
-			counts.commitQueueIds = append(counts.prTestingIds, p.Id)
+			counts.prTestingIds = append(counts.prTestingIds, p.Id)
 		}
 		if p.IsGitTagVersionsEnabled() {
 			counts.gitTagIds = append(counts.gitTagIds, p.Id)
