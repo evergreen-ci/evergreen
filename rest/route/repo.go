@@ -378,7 +378,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 	// if we've turned on the commit queue for some branch, we need to verify that it has the commit queue enabled
 	for _, info := range branchInfo {
 		if len(info.commitQueueIds) > 0 {
-			catcher.Add(commitqueue.Upsert(info.commitQueueIds[0]))
+			catcher.Add(commitqueue.EnsureCommitQueueExistsForProject(info.commitQueueIds[0]))
 		}
 	}
 	return catcher.Resolve()

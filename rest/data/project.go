@@ -71,7 +71,7 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 	return nil
 }
 
-// UpdateRepo updates the given model.RepoRef.Id. We use Upsert to ensure that only values relevant to repos get updated.
+// UpdateRepo updates the given model.RepoRef.Id. We use EnsureCommitQueueExistsForProject to ensure that only values relevant to repos get updated.
 func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	err := repoRef.Upsert()
 	if err != nil {
@@ -152,7 +152,7 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	return commitqueue.Upsert(projectRef.Id)
+	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
 }
 
 func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) error {
