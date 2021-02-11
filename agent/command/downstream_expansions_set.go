@@ -17,31 +17,28 @@ import (
 // setExpansions takes a file of key value pairs and
 // sets the downstream parameters for a patch
 type setDownstream struct {
-	// Key-value pairs for updating the task's parameters with
-	DownstreamParams []patch.Parameter `mapstructure:"downstream_params"`
-
 	// Filename for a yaml file containing key-value pairs
 	YamlFile          string `mapstructure:"file"`
 	IgnoreMissingFile bool   `mapstructure:"ignore_missing_file"`
 	base
+
+	// Key-value pairs for updating the task's parameters with
+	downstreamParams []patch.Parameter
 }
 
 func setExpansionsFactory() Command   { return &setDownstream{} }
 func (c *setDownstream) Name() string { return "downstream_expansions.set" }
 
-// ParseParams validates the input to the update, returning and error
+// ParseParams validates the input to setDownstream, returning and error
 // if something is incorrect. Fulfills Command interface.
 func (c *setDownstream) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error parsing '%v' params", c.Name())
 	}
 
-	for _, item := range c.DownstreamParams {
-		if item.Key == "" {
-			return errors.Errorf("error parsing '%v' params: key must not be "+
-				"a blank string", c.Name())
-		}
+	if c.YamlFile == "" {
+		return errors.New("file cannot be blank")
 	}
 
 	return nil
@@ -52,35 +49,33 @@ func (c *setDownstream) ParseParams(params map[string]interface{}) error {
 func (c *setDownstream) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
-	if c.YamlFile != "" {
-		c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
-		if err != nil {
-			return errors.WithStack(err)
-		}
 
-		filename := filepath.Join(conf.WorkDir, c.YamlFile)
-
-		_, err = os.Stat(filename)
-		if os.IsNotExist(err) {
-			if c.IgnoreMissingFile {
-				return nil
-			}
-			return errors.Errorf("file '%s' does not exist", filename)
-		}
-		err = c.ParseFromFile(filename)
-		if err != nil {
-			return err
-		}
-
-		logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", filename)
-
-		err = comm.SetDownstreamParams(ctx, c.DownstreamParams, conf.Task.Id)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
+	if err != nil {
+		return errors.WithStack(err)
 	}
-	return nil
 
+	filename := filepath.Join(conf.WorkDir, c.YamlFile)
+
+	_, err = os.Stat(filename)
+	if os.IsNotExist(err) {
+		if c.IgnoreMissingFile {
+			return nil
+		}
+		return errors.Errorf("file '%s' does not exist", filename)
+	}
+	err = c.ParseFromFile(filename)
+	if err != nil {
+		return err
+	}
+	logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", c.YamlFile)
+
+	err = comm.SetDownstreamParams(ctx, c.downstreamParams, conf.Task.Id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 func (c *setDownstream) ParseFromFile(filename string) error {
@@ -99,7 +94,7 @@ func (c *setDownstream) ParseFromFile(filename string) error {
 			Key:   k,
 			Value: v,
 		}
-		c.DownstreamParams = append(c.DownstreamParams, param)
+		c.downstreamParams = append(c.downstreamParams, param)
 	}
 
 	return nil
