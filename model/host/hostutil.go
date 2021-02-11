@@ -1047,7 +1047,7 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 // spawnHostSetupConfigDirCommands the shell script that sets up the
 // config directory on a spawn host. In particular, it makes the client binary
 // directory, puts both the evergreen yaml and the client into it, and attempts
-// to add the directory to the path.,
+// to add the directory to the path.
 func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
