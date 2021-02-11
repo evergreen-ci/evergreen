@@ -203,4 +203,28 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	aliases, err := dbModel.FindAliasesForProject(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, aliases, 2)
+
+	body = bytes.NewBuffer([]byte(`{"owner_name": "10gen"}`))
+	r, err = http.NewRequest("GET", "/repos/repo_ref", body)
+	assert.NoError(t, err)
+	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
+	require.NoError(t, h.Parse(ctx, r))
+	assert.Equal(t, "10gen", h.newRepoRef.Owner)
+	resp = h.Run(ctx)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	assert.Equal(t, resp.Data().(gimlet.ErrorResponse).Message, "owner not authorized")
+
+	h.settings.GithubOrgs = append(h.settings.GithubOrgs, "10gen")
+	resp = h.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	repoRef, err = dbModel.FindOneRepoRef(repoRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoRef)
+	assert.Equal(t, "10gen", repoRef.Owner)
+
+	pRefs, err := dbModel.FindMergedProjectRefsByRepoAndBranch("10gen", "mongo", "main")
+	assert.NoError(t, err)
+	require.Len(t, pRefs, 1)
+	assert.Equal(t, branchProject.Id, pRefs[0].Id)
 }
