@@ -762,7 +762,8 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 		return nil
 	}
 	query := bson.M{
-		IdKey: taskID,
+		IdKey:             taskID,
+		GeneratedTasksKey: bson.M{"$exists": false},
 	}
 	update := bson.M{
 		"$set": bson.M{
