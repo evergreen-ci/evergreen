@@ -72,7 +72,6 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "error finding project"))
 		return
 	}
-
 	var definition *model.PeriodicBuildDefinition
 	for _, d := range j.project.PeriodicBuilds {
 		if d.ID == j.DefinitionID {
