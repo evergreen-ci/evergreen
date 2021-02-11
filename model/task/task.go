@@ -739,26 +739,41 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
-		return nil
-	}
+func MarkGeneratedTasks(taskID string) error {
 	query := bson.M{
 		IdKey:             taskID,
 		GeneratedTasksKey: bson.M{"$exists": false},
 	}
-	set := bson.M{GeneratedTasksKey: true}
-	if errorToSet != nil {
-		set[GenerateTasksErrorKey] = errorToSet.Error()
-	}
 	update := bson.M{
-		"$set": set,
+		"$set": bson.M{
+			GeneratedTasksKey: true,
+		},
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return errors.Wrap(err, "problem marking generate.tasks complete")
+}
+
+// MarkGeneratedTasksErr marks that the taask hit errors generating tasks.
+func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
+	if errorToSet == nil || adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
+		return nil
+	}
+	query := bson.M{
+		IdKey: taskID,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GenerateTasksErrorKey: errorToSet.Error(),
+		},
+	}
+	err := UpdateOne(query, update)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return errors.Wrap(err, "problem setting generate.tasks error")
 }
 
 func GenerateNotRun() ([]Task, error) {
