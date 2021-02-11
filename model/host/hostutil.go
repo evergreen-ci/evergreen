@@ -515,8 +515,11 @@ func (h *Host) MakeJasperDirsCommand() string {
 
 // changeOwnerCommand returns the command to modify the given file on the host
 // to be owned by the distro owner.
-func (h *Host) changeOwnerCommand(path string) string {
-	cmd := fmt.Sprintf("chown -R %s %s", h.User, path)
+func (h *Host) changeOwnerCommand(paths ...string) string {
+	if len(paths) == 0 {
+		return ""
+	}
+	cmd := strings.Join(append([]string{"chown", "-R", h.User}, paths...), " ")
 	if h.Distro.IsWindows() {
 		return cmd
 	}
@@ -1059,6 +1062,7 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
+		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), ".profile"), filepath.Join(h.Distro.HomeDir(), ".bash_profile"))),
 	}, " && ")
 }
 
