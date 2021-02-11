@@ -62,9 +62,10 @@ var (
 	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
 
 	// BSON fields for the patch trigger struct
-	TriggerInfoAliasesKey      = bsonutil.MustHaveTag(TriggerInfo{}, "Aliases")
-	TriggerInfoParentPatchKey  = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
-	TriggerInfoChildPatchesKey = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
+	TriggerInfoAliasesKey              = bsonutil.MustHaveTag(TriggerInfo{}, "Aliases")
+	TriggerInfoParentPatchKey          = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
+	TriggerInfoChildPatchesKey         = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
+	TriggerInfoDownstreamParametersKey = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
 )
 
 // Query Validation

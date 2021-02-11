@@ -76,6 +76,12 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	return taskNotFound, nil
 }
 
+func IsWebhookConfigured(t *task.Task) bool {
+	buildBaronProjects := BbGetConfig(evergreen.GetEnvironment().Settings())
+	webHook := buildBaronProjects[t.Project].TaskAnnotationSettings.FileTicketWebHook
+	return webHook.Endpoint != ""
+}
+
 // fileTicketCustomHook uses a custom hook to create a ticket for a task with the given test failures.
 func fileTicketCustomHook(context context.Context, taskId string, execution int, webHook evergreen.WebHook) (*http.Response, error) {
 

@@ -1,6 +1,13 @@
 {
+  "volumes": [
+    {
+      "_id": "crazy_volume",
+      "display_name": "a crazy thing"
+    }
+  ],
   "hosts": [
     {
+      "home_volume_id": "crazy_volume",
       "_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "container_images": null,
       "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },

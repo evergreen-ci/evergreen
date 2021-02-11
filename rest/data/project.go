@@ -395,6 +395,32 @@ type MockProjectConnector struct {
 	CachedEvents   []restModel.APIProjectEvent
 }
 
+func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
+	for _, p := range pc.CachedProjects {
+		if p.Id == projectId || p.Identifier == projectId {
+			return &p, nil
+		}
+	}
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("project with id '%s' not found", projectId),
+	}
+}
+
+func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	projectRef.Id = mgobson.NewObjectId().Hex()
+	for _, p := range pc.CachedProjects {
+		if p.Id == projectRef.Id {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Id),
+			}
+		}
+	}
+	pc.CachedProjects = append(pc.CachedProjects, *projectRef)
+	return nil
+}
+
 // FindProjects queries the cached projects slice for the matching projects.
 // Assumes CachedProjects is sorted in alphabetical order of project identifier.
 func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
@@ -421,32 +447,6 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int)
 		}
 	}
 	return projects, nil
-}
-
-func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
-	for _, p := range pc.CachedProjects {
-		if p.Id == projectId || p.Identifier == projectId {
-			return &p, nil
-		}
-	}
-	return nil, gimlet.ErrorResponse{
-		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("project with id '%s' not found", projectId),
-	}
-}
-
-func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
-	projectRef.Id = mgobson.NewObjectId().Hex()
-	for _, p := range pc.CachedProjects {
-		if p.Id == projectRef.Id {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Id),
-			}
-		}
-	}
-	pc.CachedProjects = append(pc.CachedProjects, *projectRef)
-	return nil
 }
 
 func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {

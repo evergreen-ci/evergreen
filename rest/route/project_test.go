@@ -149,6 +149,26 @@ func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
 	s.Contains(u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
 }
 
+func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
+	ctx := context.Background()
+	h := s.rm.(*projectIDPatchHandler)
+	h.user = &user.DBUser{Id: "me"}
+
+	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
+	h.body = jsonBody
+	h.project = "dimoxinil"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err := s.sc.FindProjectById("dimoxinil", true)
+	s.NoError(err)
+	s.False(p.FilesIgnoredFromCache == nil)
+	s.Len(p.FilesIgnoredFromCache, 0)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}
@@ -177,7 +197,7 @@ func (s *ProjectPutSuite) TestParse() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -206,7 +226,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -428,7 +448,7 @@ func getMockProjectsConnector() *data.MockConnector {
 				{
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
-					Branch:             "master",
+					Branch:             "main",
 					Enabled:            utility.FalsePtr(),
 					Private:            utility.TruePtr(),
 					BatchTime:          0,

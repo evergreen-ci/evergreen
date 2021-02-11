@@ -17,4 +17,4 @@ buildvariants:
 modules:
   - name: sample
     repo: git@github.com:evergreen-ci/sample.git
-    branch: master
+    branch: main

@@ -52,7 +52,7 @@ func (s *LocalWorkersSuite) TestPanicJobsDoNotPanicHarness() {
 	wg := &sync.WaitGroup{}
 
 	s.queue.toProcess = jobsChanWithPanicingJobs(ctx, s.size)
-	s.NotPanics(func() { worker(ctx, "test-local", s.queue, wg) })
+	s.NotPanics(func() { worker(ctx, "test-local", s.queue, wg, &sync.Mutex{}) })
 }
 
 func (s *LocalWorkersSuite) TestConstructedInstanceImplementsInterface() {

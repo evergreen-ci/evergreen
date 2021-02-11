@@ -83,6 +83,23 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 	return obj.Distro.Id, nil
 }
 
+func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
+	if obj.HomeVolumeID != nil && *obj.HomeVolumeID != "" {
+		volId := *obj.HomeVolumeID
+		volume, err := r.sc.FindVolumeById(volId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+		}
+		apiVolume := &restModel.APIVolume{}
+		err = apiVolume.BuildFromService(volume)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
+		}
+		return apiVolume, nil
+	}
+	return nil, nil
+}
+
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
@@ -104,7 +121,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", volId)
+			return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "error building volume '%s' from service", volId).Error())
 		}
 		volumes = append(volumes, apiVolume)
 	}
@@ -158,30 +175,30 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	info := AbortInfo{
-		User:       &at.AbortInfo.User,
-		TaskID:     &at.AbortInfo.TaskID,
-		NewVersion: &at.AbortInfo.NewVersion,
-		PrClosed:   &at.AbortInfo.PRClosed,
+		User:       at.AbortInfo.User,
+		TaskID:     at.AbortInfo.TaskID,
+		NewVersion: at.AbortInfo.NewVersion,
+		PrClosed:   at.AbortInfo.PRClosed,
 	}
 
-	abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
-	if err != nil {
-		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
+	if len(at.AbortInfo.TaskID) > 0 {
+		abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
+		}
+		if abortedTask == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
+		}
+		abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
+		}
+		if abortedTaskBuild == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
+		}
+		info.TaskDisplayName = abortedTask.DisplayName
+		info.BuildVariantDisplayName = abortedTaskBuild.DisplayName
 	}
-	if abortedTask == nil {
-		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", at.AbortInfo.TaskID, err.Error()))
-	}
-
-	abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
-	if err != nil {
-		return &info, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
-	}
-	if abortedTaskBuild == nil {
-		return &info, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
-	}
-
-	info.TaskDisplayName = &abortedTask.DisplayName
-	info.BuildVariantDisplayName = &abortedTaskBuild.DisplayName
 
 	return &info, nil
 }

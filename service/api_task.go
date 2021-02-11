@@ -671,7 +671,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "SetAgentStartTime",
-		"duration_ms": time.Now().Sub(begin).Milliseconds(),
+		"duration_ms": time.Now().Sub(begin),
 		"run_id":      runId,
 	})
 	stepStart := time.Now()
@@ -687,7 +687,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "SetUserDataHostProvisioned",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -712,7 +712,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "handleReprovisioning",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -738,7 +738,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "next_task performance",
 			"step":        "StopAgentMonitor",
-			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ms": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -759,7 +759,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "next_task performance",
 			"step":        "SetNeedsAgentDeploy",
-			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ms": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		gimlet.WriteJSON(w, response)
@@ -770,7 +770,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "SetNeedsAgentDeploy",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -781,7 +781,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "SetNeedsAgentDeploy",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -811,7 +811,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "GetServiceFlags",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -832,7 +832,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "LoadTaskQueue",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -852,7 +852,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "assignNextAvailableTask",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -878,7 +878,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "next_task performance",
 			"step":        "LoadDistroAliasTaskQueue + assignNextAvailableTask",
-			"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ms": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -918,7 +918,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "MarkTaskDispatched",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -926,7 +926,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	grip.DebugWhen(h.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "next_task performance",
 		"step":        "setNextTask",
-		"duration_ms": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ms": time.Now().Sub(stepStart),
 		"run_id":      runId,
 		"next_task":   nextTask.Id,
 	})

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type CommitQueueSuite struct {
@@ -40,7 +41,7 @@ func (s *CommitQueueSuite) SetupTest() {
 		Id:               "mci",
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Branch:           "master",
+		Branch:           "main",
 		Enabled:          utility.TruePtr(),
 		PatchingDisabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
@@ -238,7 +239,7 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.Equal(1234, int(*pr.User.ID))
 
 	s.Require().NotNil(pr.Base.Ref)
-	s.Equal("master", *pr.Base.Ref)
+	s.Equal("main", *pr.Base.Ref)
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
@@ -352,16 +353,21 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 func TestConcludeMerge(t *testing.T) {
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
-	itemID := "abcdef"
+	itemID := bson.NewObjectId()
+	p := patch.Patch{
+		Id:      itemID,
+		Project: projectID,
+	}
+	assert.NoError(t, p.Insert())
 	queue := &commitqueue.CommitQueue{
 		ProjectID:  projectID,
-		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID, Version: itemID}},
+		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID.Hex(), Version: itemID.Hex()}},
 		Processing: true,
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
 	dc := &DBCommitQueueConnector{}
 
-	assert.NoError(t, dc.ConcludeMerge(itemID, projectID, "foo"))
+	assert.NoError(t, dc.ConcludeMerge(itemID.Hex(), "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

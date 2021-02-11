@@ -461,7 +461,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
 		Id:         s.projectId,
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 		Enabled:    utility.TruePtr(),
 	}

@@ -24,19 +24,39 @@ type RepoRef struct {
 
 var (
 	// bson fields for the RepoRef struct
-	RepoRefIdKey                  = bsonutil.MustHaveTag(RepoRef{}, "Id")
-	RepoRefOwnerKey               = bsonutil.MustHaveTag(RepoRef{}, "Owner")
-	RepoRefRepoKey                = bsonutil.MustHaveTag(RepoRef{}, "Repo")
-	RepoRefEnabledKey             = bsonutil.MustHaveTag(RepoRef{}, "Enabled")
-	RepoRefPrivateKey             = bsonutil.MustHaveTag(RepoRef{}, "Private")
-	RepoRefDisplayNameKey         = bsonutil.MustHaveTag(RepoRef{}, "DisplayName")
-	RepoRefRemotePathKey          = bsonutil.MustHaveTag(RepoRef{}, "RemotePath")
-	RepoRefAdminsKey              = bsonutil.MustHaveTag(RepoRef{}, "Admins")
-	RepoRefPRTestingEnabledKey    = bsonutil.MustHaveTag(RepoRef{}, "PRTestingEnabled")
-	RepoRefRepotrackerDisabledKey = bsonutil.MustHaveTag(RepoRef{}, "RepotrackerDisabled")
-	RepoRefDispatchingDisabledKey = bsonutil.MustHaveTag(RepoRef{}, "DispatchingDisabled")
-	RepoRefPatchingDisabledKey    = bsonutil.MustHaveTag(RepoRef{}, "PatchingDisabled")
-	RepoRefSpawnHostScriptPathKey = bsonutil.MustHaveTag(RepoRef{}, "SpawnHostScriptPath")
+	RepoRefIdKey                      = bsonutil.MustHaveTag(RepoRef{}, "Id")
+	RepoRefOwnerKey                   = bsonutil.MustHaveTag(RepoRef{}, "Owner")
+	RepoRefRepoKey                    = bsonutil.MustHaveTag(RepoRef{}, "Repo")
+	RepoRefEnabledKey                 = bsonutil.MustHaveTag(RepoRef{}, "Enabled")
+	RepoRefIdentifierKey              = bsonutil.MustHaveTag(RepoRef{}, "Identifier")
+	RepoRefDeactivatePreviousKey      = bsonutil.MustHaveTag(RepoRef{}, "DeactivatePrevious")
+	RepoRefHiddenKey                  = bsonutil.MustHaveTag(RepoRef{}, "Hidden")
+	RepoRefBatchTimeKey               = bsonutil.MustHaveTag(RepoRef{}, "BatchTime")
+	RepoRefFilesIgnoredFromCacheKey   = bsonutil.MustHaveTag(RepoRef{}, "FilesIgnoredFromCache")
+	RepoRefDisabledStatsCacheKey      = bsonutil.MustHaveTag(RepoRef{}, "DisabledStatsCache")
+	RepoRefGitTagAuthorizedUsersKey   = bsonutil.MustHaveTag(RepoRef{}, "GitTagAuthorizedUsers")
+	RepoRefGitTagAuthorizedTeamsKey   = bsonutil.MustHaveTag(RepoRef{}, "GitTagAuthorizedTeams")
+	RepoRefTracksPushEventsKey        = bsonutil.MustHaveTag(RepoRef{}, "TracksPushEvents")
+	RepoRefDefaultLoggerKey           = bsonutil.MustHaveTag(RepoRef{}, "DefaultLogger")
+	RepoRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(RepoRef{}, "CedarTestResultsEnabled")
+	RepoRefPrivateKey                 = bsonutil.MustHaveTag(RepoRef{}, "Private")
+	RepoRefRestrictedKey              = bsonutil.MustHaveTag(RepoRef{}, "Restricted")
+	RepoRefRemotePathKey              = bsonutil.MustHaveTag(RepoRef{}, "RemotePath")
+	RepoRefAdminsKey                  = bsonutil.MustHaveTag(RepoRef{}, "Admins")
+	RepoRefPRTestingEnabledKey        = bsonutil.MustHaveTag(RepoRef{}, "PRTestingEnabled")
+	RepoRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(RepoRef{}, "GithubChecksEnabled")
+	RepoRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(RepoRef{}, "GitTagVersionsEnabled")
+	RepoRefCommitQueueKey             = bsonutil.MustHaveTag(RepoRef{}, "CommitQueue")
+	RepoRefTaskSyncKey                = bsonutil.MustHaveTag(RepoRef{}, "TaskSync")
+	RepoRefNotifyOnFailureKey         = bsonutil.MustHaveTag(RepoRef{}, "NotifyOnBuildFailure")
+	RepoRefPatchTriggerAliasesKey     = bsonutil.MustHaveTag(RepoRef{}, "PatchTriggerAliases")
+	RepoRefPeriodicBuildsKey          = bsonutil.MustHaveTag(RepoRef{}, "PeriodicBuilds")
+	RepoRefTriggersKey                = bsonutil.MustHaveTag(RepoRef{}, "Triggers")
+	RepoRefWorkstationConfigKey       = bsonutil.MustHaveTag(RepoRef{}, "WorkstationConfig")
+	RepoRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(RepoRef{}, "RepotrackerDisabled")
+	RepoRefDispatchingDisabledKey     = bsonutil.MustHaveTag(RepoRef{}, "DispatchingDisabled")
+	RepoRefPatchingDisabledKey        = bsonutil.MustHaveTag(RepoRef{}, "PatchingDisabled")
+	RepoRefSpawnHostScriptPathKey     = bsonutil.MustHaveTag(RepoRef{}, "SpawnHostScriptPath")
 )
 
 func (r *RepoRef) Add(creator *user.DBUser) error {
@@ -61,18 +81,38 @@ func (r *RepoRef) Upsert() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				RepoRefEnabledKey:             r.Enabled,
-				RepoRefPrivateKey:             r.Private,
-				RepoRefOwnerKey:               r.Owner,
-				RepoRefRepoKey:                r.Repo,
-				RepoRefDisplayNameKey:         r.DisplayName,
-				RepoRefRemotePathKey:          r.RemotePath,
-				RepoRefAdminsKey:              r.Admins,
-				RepoRefPRTestingEnabledKey:    r.PRTestingEnabled,
-				RepoRefPatchingDisabledKey:    r.PatchingDisabled,
-				RepoRefRepotrackerDisabledKey: r.RepotrackerDisabled,
-				RepoRefDispatchingDisabledKey: r.DispatchingDisabled,
-				RepoRefSpawnHostScriptPathKey: r.SpawnHostScriptPath,
+				RepoRefEnabledKey:                 r.Enabled,
+				RepoRefPrivateKey:                 r.Private,
+				RepoRefRestrictedKey:              r.Restricted,
+				RepoRefOwnerKey:                   r.Owner,
+				RepoRefRepoKey:                    r.Repo,
+				RepoRefRemotePathKey:              r.RemotePath,
+				RepoRefAdminsKey:                  r.Admins,
+				RepoRefPRTestingEnabledKey:        r.PRTestingEnabled,
+				RepoRefPatchingDisabledKey:        r.PatchingDisabled,
+				RepoRefRepotrackerDisabledKey:     r.RepotrackerDisabled,
+				RepoRefDispatchingDisabledKey:     r.DispatchingDisabled,
+				RepoRefSpawnHostScriptPathKey:     r.SpawnHostScriptPath,
+				RepoRefIdentifierKey:              r.Identifier,
+				RepoRefDeactivatePreviousKey:      r.DeactivatePrevious,
+				RepoRefHiddenKey:                  r.Hidden,
+				RepoRefBatchTimeKey:               r.BatchTime,
+				RepoRefFilesIgnoredFromCacheKey:   r.FilesIgnoredFromCache,
+				RepoRefDisabledStatsCacheKey:      r.DisabledStatsCache,
+				RepoRefGitTagAuthorizedUsersKey:   r.GitTagAuthorizedUsers,
+				RepoRefGitTagAuthorizedTeamsKey:   r.GitTagAuthorizedTeams,
+				RepoRefTracksPushEventsKey:        r.TracksPushEvents,
+				RepoRefDefaultLoggerKey:           r.DefaultLogger,
+				RepoRefCedarTestResultsEnabledKey: r.CedarTestResultsEnabled,
+				RepoRefGithubChecksEnabledKey:     r.GithubChecksEnabled,
+				RepoRefGitTagVersionsEnabledKey:   r.GitTagVersionsEnabled,
+				RepoRefCommitQueueKey:             r.CommitQueue,
+				RepoRefTaskSyncKey:                r.TaskSync,
+				RepoRefNotifyOnFailureKey:         r.NotifyOnBuildFailure,
+				RepoRefPatchTriggerAliasesKey:     r.PatchTriggerAliases,
+				RepoRefPeriodicBuildsKey:          r.PeriodicBuilds,
+				RepoRefTriggersKey:                r.Triggers,
+				RepoRefWorkstationConfigKey:       r.WorkstationConfig,
 			},
 		},
 	)

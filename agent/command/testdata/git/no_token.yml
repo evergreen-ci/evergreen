@@ -1,6 +1,6 @@
 owner: evergreen-ci
 repo: doesntexist
-branch: master
+branch: main
 enabled: true
 batch_time: 180
 

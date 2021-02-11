@@ -60,7 +60,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.Task().Error(err)
 		logger.Task().Critical(pErr)
 		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, conf.ProjectRef.Identifier, status, td))
+		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "can't apply expansions")
@@ -71,24 +71,23 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "unable to get patch")
 	}
 
-	_, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
-	if err != nil {
-		return errors.Wrap(err, "failed to get token")
+	token := c.Token
+	if token == "" {
+		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	}
-	httpClient := utility.GetOAuth2HTTPClient(projectToken)
+	httpClient := utility.GetOAuth2HTTPClient(token)
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token: projectToken,
+		Token: token,
 	}, "")
 	if err != nil {
 		return errors.Wrap(err, "failed to setup github status logger")
 	}
 
 	status := evergreen.PatchFailed
-	// TODO: have this instead look at a new field for "rest of the patch succeeded"
-	if patchDoc.Status == evergreen.PatchSucceeded {
+	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
 		status = evergreen.PatchSucceeded
 	}
 	c.sendPatchResult(patchDoc.GithubPatchData, conf, status)
@@ -96,8 +95,10 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.Task().Warning("at least 1 task failed, will not merge pull request")
 		return nil
 	}
+	// only successful patches should get past here. Failed patches will just send the failed
+	// status to github
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mergeMethod := conf.ProjectRef.CommitQueue.MergeMethod
 	title := patchDoc.GithubPatchData.CommitTitle
@@ -113,7 +114,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	// do the merge
-	res, _, err := githubClient.PullRequests.Merge(ctx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+	res, _, err := githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitTitle, mergeOpts)
 	if err != nil {
 		c.sendMergeFailedStatus(fmt.Sprintf("Github Error: %s", err.Error()), patchDoc.GithubPatchData, conf)

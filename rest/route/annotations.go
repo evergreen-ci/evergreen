@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -309,6 +310,116 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	if err != nil {
+		gimlet.NewJSONInternalErrorResponse(err)
+	}
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
+	}
+	return responder
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PUT /rest/v2/tasks/{task_id}/created_ticket
+
+// this api will be used by teams who set up their own web hook to file a ticket, to send
+// us the information for the ticket that was created so that we can store and display it.
+
+type createdTicketByTaskPutHandler struct {
+	taskId    string
+	execution int
+	user      gimlet.User
+	ticket    *model.APIIssueLink
+	sc        data.Connector
+}
+
+func makeCreatedTicketByTask(sc data.Connector) gimlet.RouteHandler {
+	return &createdTicketByTaskPutHandler{
+		sc: sc,
+	}
+}
+
+func (h *createdTicketByTaskPutHandler) Factory() gimlet.RouteHandler {
+	return &createdTicketByTaskPutHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	h.taskId = gimlet.GetVars(r)["task_id"]
+	if h.taskId == "" {
+		return gimlet.ErrorResponse{
+			Message:    "task ID cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	// for now, tickets will be created for a specific task execution only
+	// and will not be visible on other executions
+	executionString := r.URL.Query().Get("execution")
+	if executionString == "" {
+		return gimlet.ErrorResponse{
+			Message:    "the task execution must be specified",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	execution, err := strconv.Atoi(executionString)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot convert '%s' to int: '%s'", executionString, err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	h.execution = execution
+
+	// check if the task exists
+	t, err := task.FindOne(task.ById(h.taskId))
+	if err != nil {
+		return errors.Wrap(err, "error finding task")
+	}
+	if t == nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	// if there is no custom webhook configured, return an error because the
+	// purpose of this endpoint is to store the ticket created by the web-hook
+	if !graphql.IsWebhookConfigured(t) {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("there is no webhook configured for '%s'", t.Project),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	err = json.NewDecoder(body).Decode(&h.ticket)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	//validate the url
+	if err = util.CheckURL(utility.FromStringPtr(h.ticket.URL)); err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the url is not valid: '%s' ", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	u := MustHaveUser(ctx)
+	h.user = u
+	return nil
+}
+
+func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
+	err := annotations.AddCreatedTicket(h.taskId, h.execution, *model.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

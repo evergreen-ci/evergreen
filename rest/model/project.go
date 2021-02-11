@@ -183,7 +183,7 @@ type APIProjectRef struct {
 	RepotrackerDisabled         *bool                `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                `json:"dispatching_disabled"`
 	DisabledStatsCache          *bool                `json:"disabled_stats_cache"`
-	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache,omitempty"`
+	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache"`
 	Admins                      []*string            `json:"admins"`
 	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
 	GitTagAuthorizedUsers       []*string            `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`

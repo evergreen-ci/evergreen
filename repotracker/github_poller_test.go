@@ -80,7 +80,7 @@ func resetProjectRefs() {
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
 		Id:         "mci",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 		Enabled:    utility.TruePtr(),
 	}

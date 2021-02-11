@@ -658,6 +658,10 @@ func validateBVNames(project *model.Project) ValidationErrors {
 						project.Identifier, buildVariant.Name),
 				},
 			)
+		} else if dispName == evergreen.MergeTaskVariant {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("the variant name '%s' is reserved for the commit queue", evergreen.MergeTaskVariant),
+			})
 		}
 		displayNames[dispName] = displayNames[dispName] + 1
 
