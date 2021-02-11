@@ -190,7 +190,7 @@ imports:
   - name: github.com/robfig/cron
     version: 70971dc81bab3671fde85647b0a1367929f92be8
   - name: github.com/evergreen-ci/utility
-    version: aaeb41d8ac416e8989f5d3175d2c2b607bed1aed
+    version: 4582e840f25813bc71566b2379a2ec7f2e247d49
 
   - name: github.com/robbiet480/go.sns
     version: ca087b49e1da69fa4f163521cc98b1eaf7b66ffd
