@@ -24,10 +24,19 @@ type TaskGroupData struct {
 	Info  model.TaskGroupInfo
 }
 
-func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, int, error) {
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
 	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
+
+	// calculate approximate number of free hosts for the distro-scheduler-report
+	freeHosts := make([]host.Host, 0, len(hostAllocatorData.ExistingHosts))
+	for _, existingDistroHost := range hostAllocatorData.ExistingHosts {
+		if existingDistroHost.RunningTask == "" {
+			freeHosts = append(freeHosts, existingDistroHost)
+		}
+	}
+
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
 		grip.Info(message.Fields{
 			"message":        "distro is at max hosts",
@@ -36,11 +45,12 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			"max_hosts":      distro.HostAllocatorSettings.MaximumHosts,
 			"provider":       distro.Provider,
 		})
-		return 0, nil
+		return 0, len(freeHosts), nil
 	}
 
 	// only want to meet minimum hosts
 	if distro.Disabled {
+
 		numNewHostsToRequest := minimumHostsThreshold - numExistingHosts
 
 		if numNewHostsToRequest > 0 {
@@ -52,9 +62,9 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 				"num_existing_hosts":         numExistingHosts,
 				"total_new_hosts_to_request": numNewHostsToRequest,
 			})
-			return numNewHostsToRequest, nil
+			return numNewHostsToRequest, len(freeHosts), nil
 		}
-		return 0, nil
+		return 0, len(freeHosts), nil
 	}
 
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
@@ -63,6 +73,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	taskGroupingDuration := time.Since(taskGroupingBeginsAt)
 
 	numNewHostsRequired := 0
+	numFreeApprox := 0
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -75,7 +86,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// calculate number of hosts needed for this group
-		n, err := evalHostUtilization(
+		n, free, err := evalHostUtilization(
 			ctx,
 			distro,
 			taskGroupData,
@@ -85,11 +96,12 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			maxHosts)
 
 		if err != nil {
-			return 0, errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
+			return 0, len(freeHosts), errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
 		}
 
 		// add up total number of hosts needed for all groups
 		numNewHostsRequired += n
+		numFreeApprox += free
 	}
 
 	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?
@@ -113,13 +125,13 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		"total_new_hosts_to_request":           numNewHostsToRequest,
 	})
 
-	return numNewHostsToRequest, nil
+	return numNewHostsToRequest, numFreeApprox, nil
 }
 
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
-func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, error) {
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, int, error) {
 	evalStartAt := time.Now()
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
@@ -129,17 +141,17 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	numNewHosts := 0
 
 	if !d.IsEphemeral() {
-		return 0, nil
+		return 0, 0, nil
 	}
 	// Why do we do this here?
 	if ctx.Err() != nil {
-		return 0, errors.New("context canceled, not evaluating host utilization")
+		return 0, 0, errors.New("context canceled, not evaluating host utilization")
 	}
 
 	if containerPool != nil {
 		parentDistro, err := distro.FindOne(distro.ById(containerPool.Distro))
 		if err != nil {
-			return 0, errors.Wrap(err, "error finding parent distros")
+			return 0, 0, errors.Wrap(err, "error finding parent distros")
 		}
 		maxHosts = parentDistro.HostAllocatorSettings.MaximumHosts * containerPool.MaxContainers
 	}
@@ -148,7 +160,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	startAt := time.Now()
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
-		return numNewHosts, err
+		return numNewHosts, numFreeHosts, err
 	}
 	freeHostDur := time.Since(startAt)
 
@@ -181,7 +193,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 
 	// alert if the distro is underwater
 	if maxHosts < 1 {
-		return 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.HostAllocatorSettings.MaximumHosts)
+		return 0, 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.HostAllocatorSettings.MaximumHosts)
 	}
 	underWaterAlert := message.Fields{
 		"provider":  d.Provider,
@@ -212,7 +224,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		"op_dur_total_secs":            time.Since(evalStartAt).Seconds(),
 	})
 
-	return numNewHosts, nil
+	return numNewHosts, numFreeHosts, nil
 }
 
 // groupByTaskGroup takes a list of hosts and tasks and returns them grouped by task group

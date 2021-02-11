@@ -152,7 +152,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	// nHosts is the number of additional hosts desired.
-	nHosts, err := hostAllocator(ctx, hostAllocatorData)
+	nHosts, nHostsFree, err := hostAllocator(ctx, hostAllocatorData)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Error calculating the number of new hosts required for distro id '%s'", j.DistroID))
 		return
@@ -199,26 +199,35 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	})
 
 	var makespan time.Duration
-	if len(hostsSpawned) != 0 {
-		makespan = distroQueueInfo.ExpectedDuration / time.Duration(len(hostsSpawned))
-	} else if distroQueueInfo.Length > 0 {
-		makespan = distroQueueInfo.ExpectedDuration
-	}
+
+	// ignoring all the tasks that will take longer than the threshold to run,
+	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
+	// the scheduled tasks in the queue?
+	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
+
+	existingCap := time.Duration(nHostsFree) * distroQueueInfo.MaxDurationThreshold
+	spawnCap := time.Duration(len(hostsSpawned)) * distroQueueInfo.MaxDurationThreshold
+
+	makespan = scheduledDuration / (existingCap + spawnCap)
+
+	makespanSansSpawns := scheduledDuration / existingCap
 
 	grip.Info(message.Fields{
-		"message":                 "distro-scheduler-report",
-		"job_type":                hostAllocatorJobName,
-		"distro":                  distro.Id,
-		"provider":                distro.Provider,
-		"max_hosts":               distro.HostAllocatorSettings.MaximumHosts,
-		"num_new_hosts":           len(hostsSpawned),
-		"pool_info":               existingHosts.Stats(),
-		"queue":                   eventInfo,
-		"total_runtime":           distroQueueInfo.ExpectedDuration.String(),
-		"runtime_secs":            distroQueueInfo.ExpectedDuration.Seconds(),
-		"predicted_makespan":      makespan.String(),
-		"predicted_makespan_secs": makespan.Seconds(),
-		"instance":                j.ID(),
-		"runner":                  scheduler.RunnerName,
+		"message":                           "distro-scheduler-report",
+		"job_type":                          hostAllocatorJobName,
+		"distro":                            distro.Id,
+		"provider":                          distro.Provider,
+		"max_hosts":                         distro.HostAllocatorSettings.MaximumHosts,
+		"num_new_hosts":                     len(hostsSpawned),
+		"pool_info":                         existingHosts.Stats(),
+		"queue":                             eventInfo,
+		"total_runtime":                     distroQueueInfo.ExpectedDuration.String(),
+		"runtime_secs":                      distroQueueInfo.ExpectedDuration.Seconds(),
+		"predicted_makespan":                makespan.String(),
+		"predicted_makespan_secs":           makespan.Seconds(),
+		"predicted_makespan_no_spawns":      makespanSansSpawns.String(),
+		"predicted_makespan_no_spawns_secs": makespanSansSpawns.Seconds(),
+		"instance":                          j.ID(),
+		"runner":                            scheduler.RunnerName,
 	})
 }
