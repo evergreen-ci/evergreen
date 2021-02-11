@@ -756,7 +756,7 @@ func MarkGeneratedTasks(taskID string) error {
 	return errors.Wrap(err, "problem marking generate.tasks complete")
 }
 
-// MarkGeneratedTasksErr marks that the taask hit errors generating tasks.
+// MarkGeneratedTasksErr marks that the task hit errors generating tasks.
 func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 	if errorToSet == nil || adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
 		return nil

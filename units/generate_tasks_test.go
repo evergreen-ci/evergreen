@@ -392,4 +392,5 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	dbTask, err := task.FindOneId(sampleTask.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, "unable to find version sample_version", dbTask.GenerateTasksError)
+	assert.False(t, dbTask.GeneratedTasks)
 }
