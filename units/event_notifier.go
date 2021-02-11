@@ -275,7 +275,7 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 	case event.SlackSubscriberType:
 		return !flags.SlackNotificationsDisabled
 
-	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
+	case event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
 		return !flags.CommitQueueDisabled
 
 	default:

@@ -367,7 +367,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		// Check whether the project associated with the particular version
 		// is accessible to this user. If not, we exclude it from the version
 		// history. This is done to hide the existence of the private project.
-		if projCtx.ProjectRef.Private && user == nil {
+		if projCtx.ProjectRef.IsPrivate() && user == nil {
 			continue
 		}
 

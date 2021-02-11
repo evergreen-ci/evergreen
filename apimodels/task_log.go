@@ -98,6 +98,8 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		PrintPriority: opts.PrintPriority,
 		Tail:          opts.Tail,
 	}
+
+	// TODO: Remove after EVG-13831 cedar DB migration.
 	switch opts.LogType {
 	case TaskLogPrefix:
 		getOpts.ProcessName = evergreen.LogTypeTask
@@ -106,8 +108,28 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 	case AgentLogPrefix:
 		getOpts.ProcessName = evergreen.LogTypeAgent
 	}
-
 	logReader, err := buildlogger.GetLogs(ctx, getOpts)
+	if err == nil {
+		return logReader, nil
+	}
+	getOpts.ProcessName = ""
+
+	switch opts.LogType {
+	case TaskLogPrefix:
+		getOpts.Tags = []string{evergreen.LogTypeTask}
+	case SystemLogPrefix:
+		getOpts.Tags = []string{evergreen.LogTypeSystem}
+	case AgentLogPrefix:
+		getOpts.Tags = []string{evergreen.LogTypeAgent}
+	default:
+		getOpts.Tags = []string{
+			evergreen.LogTypeTask,
+			evergreen.LogTypeSystem,
+			evergreen.LogTypeAgent,
+		}
+	}
+	logReader, err = buildlogger.GetLogs(ctx, getOpts)
+
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
 }
 

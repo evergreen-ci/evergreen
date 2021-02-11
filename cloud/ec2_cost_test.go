@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"

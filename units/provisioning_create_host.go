@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -433,7 +434,12 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 		}))
 		j.AddError(err)
 	} else if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding {
-		event.LogHostStartFinished(j.host.Id, false)
+		if j.host.SpawnOptions.SpawnedByTask {
+			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.Error()); err != nil {
+				j.AddError(errors.Wrapf(err, "error adding host create error details"))
+			}
+		}
+
 	}
 }
 

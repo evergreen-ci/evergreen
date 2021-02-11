@@ -31,8 +31,8 @@ func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
 			Owner:      utility.ToStringPtr("admin"),
-			Enabled:    true,
-			Private:    true,
+			Enabled:    utility.TruePtr(),
+			Private:    utility.TruePtr(),
 			Identifier: utility.ToStringPtr(projectId),
 			Admins:     []*string{},
 		},
@@ -65,7 +65,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	beforeSettings := getMockProjectSettings(s.projectId)
 
 	afterSettings := getMockProjectSettings(s.projectId)
-	afterSettings.ProjectRef.Enabled = false
+	afterSettings.ProjectRef.Enabled = utility.FalsePtr()
 
 	s.event = restModel.APIProjectEvent{
 		Timestamp: restModel.ToTimePtr(time.Now()),

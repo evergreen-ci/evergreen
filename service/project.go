@@ -134,13 +134,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	CQConflictingRefs := []string{}
 	githubChecksConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
-		if ref.PRTestingEnabled && ref.Id != projRef.Id {
+		if ref.IsPRTestingEnabled() && ref.Id != projRef.Id {
 			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}
-		if ref.CommitQueue.Enabled && ref.Id != projRef.Id {
+		if ref.CommitQueue.IsEnabled() && ref.Id != projRef.Id {
 			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
 		}
-		if ref.GithubChecksEnabled && ref.Id != projRef.Id {
+		if ref.IsGithubChecksEnabled() && ref.Id != projRef.Id {
 			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
 		}
 	}
@@ -365,81 +365,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			// branch we don't have access to
 		}
 	}
-	var aliasesDefined bool
-	var conflictingRefs []model.ProjectRef
-	if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
-		conflictingRefs, err = model.FindMergedProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	if responseRef.PRTestingEnabled {
-		if hook == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
-			return
-		}
-
-		for _, ref := range conflictingRefs {
-			if ref.PRTestingEnabled && ref.Id != id {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Id))
-				return
-			}
-		}
-
-		// verify there are PR aliases defined
-		aliasesDefined, err = verifyAliasExists(evergreen.GithubPRAlias, projectRef.Id, responseRef.GitHubPRAliases, responseRef.DeleteAliases)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
-			return
-		}
-		if !aliasesDefined {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
-			return
-		}
-	}
-
-	if responseRef.GithubChecksEnabled {
-		if hook == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Github checks in this repo, must enable GitHub webhooks first"))
-			return
-		}
-		for _, ref := range conflictingRefs {
-			if ref.GithubChecksEnabled && ref.Id != id {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
-				return
-			}
-		}
-		// verify there are github checks aliases defined
-		aliasesDefined, err = verifyAliasExists(evergreen.GithubChecksAlias, projectRef.Id, responseRef.GithubChecksAliases, responseRef.DeleteAliases)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub check aliases are set"))
-			return
-		}
-		if !aliasesDefined {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable Github checks without definitions"))
-			return
-		}
-	}
-	// verify git tag alias parameters
-	if responseRef.GitTagVersionsEnabled {
-		aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Id, responseRef.GitTagAliases, responseRef.DeleteAliases)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
-			return
-		}
-		if !aliasesDefined {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
-			return
-		}
-		if len(responseRef.GitTagAuthorizedUsers) == 0 && len(responseRef.GitTagAuthorizedTeams) == 0 {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users or teams to create git tag versions"))
-			return
-		}
-	}
-
-	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
 	commitQueueParamsInterface, err := responseRef.CommitQueue.ToService()
 	commitQueueParams, ok := commitQueueParamsInterface.(model.CommitQueueParams)
 	if err != nil || !ok {
@@ -447,45 +372,122 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if commitQueueParams.Enabled {
-		var projRef *model.ProjectRef
-		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Id != id {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Id))
-			return
-		}
-
-		if hook == nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
-			return
-		}
-
-		// verify there are commit queue aliases defined
-		var exists bool
-		exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Id, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
-			return
-		}
-		if !exists {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable commit queue without patch definitions"))
-			return
-		}
-		var cq *commitqueue.CommitQueue
-		cq, err = commitqueue.FindOneId(projectRef.Id)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		if cq == nil {
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
-			if err = commitqueue.InsertQueue(cq); err != nil {
+	var aliasesDefined bool
+	var conflictingRefs []model.ProjectRef
+	if responseRef.Enabled {
+		if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
+			conflictingRefs, err = model.FindMergedProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
+			}
+		}
+
+		if responseRef.PRTestingEnabled {
+			if hook == nil {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
+				return
+			}
+
+			for _, ref := range conflictingRefs {
+				if ref.IsPRTestingEnabled() && ref.Id != id {
+					uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Id))
+					return
+				}
+			}
+
+			// verify there are PR aliases defined
+			aliasesDefined, err = verifyAliasExists(evergreen.GithubPRAlias, projectRef.Id, responseRef.GitHubPRAliases, responseRef.DeleteAliases)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
+				return
+			}
+			if !aliasesDefined {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
+				return
+			}
+		}
+
+		if responseRef.GithubChecksEnabled {
+			if hook == nil {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable Github checks in this repo, must enable GitHub webhooks first"))
+				return
+			}
+			for _, ref := range conflictingRefs {
+				if ref.IsGithubChecksEnabled() && ref.Id != id {
+					uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable github checks in this repo, must disable in '%s' first", ref.Id))
+					return
+				}
+			}
+			// verify there are github checks aliases defined
+			aliasesDefined, err = verifyAliasExists(evergreen.GithubChecksAlias, projectRef.Id, responseRef.GithubChecksAliases, responseRef.DeleteAliases)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub check aliases are set"))
+				return
+			}
+			if !aliasesDefined {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable Github checks without definitions"))
+				return
+			}
+		}
+		// verify git tag alias parameters
+		if responseRef.GitTagVersionsEnabled {
+			aliasesDefined, err = verifyAliasExists(evergreen.GitTagAlias, projectRef.Id, responseRef.GitTagAliases, responseRef.DeleteAliases)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
+				return
+			}
+			if !aliasesDefined {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
+				return
+			}
+			if len(responseRef.GitTagAuthorizedUsers) == 0 && len(responseRef.GitTagAuthorizedTeams) == 0 {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users or teams to create git tag versions"))
+				return
+			}
+		}
+
+		// Prevent multiple projects tracking the same repo/branch from enabling commit queue
+		if commitQueueParams.IsEnabled() {
+			var projRef *model.ProjectRef
+			projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if projRef != nil && projRef.CommitQueue.IsEnabled() && projRef.Id != id {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Id))
+				return
+			}
+
+			if hook == nil {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
+				return
+			}
+
+			// verify there are commit queue aliases defined
+			var exists bool
+			exists, err = verifyAliasExists(evergreen.CommitQueueAlias, projectRef.Id, responseRef.CommitQueueAliases, responseRef.DeleteAliases)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
+				return
+			}
+			if !exists {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable commit queue without patch definitions"))
+				return
+			}
+			var cq *commitqueue.CommitQueue
+			cq, err = commitqueue.FindOneId(projectRef.Id)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			if cq == nil {
+				cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
+				if err = commitqueue.InsertQueue(cq); err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+					return
+				}
 			}
 		}
 	}
@@ -526,32 +528,32 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
-	projectRef.Enabled = responseRef.Enabled
+	projectRef.Enabled = &responseRef.Enabled
 	projectRef.DefaultLogger = responseRef.DefaultLogger
-	projectRef.CedarTestResultsEnabled = responseRef.CedarTestResultsEnabled
-	projectRef.Private = responseRef.Private
-	projectRef.Restricted = responseRef.Restricted
+	projectRef.CedarTestResultsEnabled = &responseRef.CedarTestResultsEnabled
+	projectRef.Private = &responseRef.Private
+	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
-	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
+	projectRef.DeactivatePrevious = &responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.GitTagAuthorizedUsers = responseRef.GitTagAuthorizedUsers
 	projectRef.GitTagAuthorizedTeams = responseRef.GitTagAuthorizedTeams
-	projectRef.GitTagVersionsEnabled = responseRef.GitTagVersionsEnabled
-	projectRef.Hidden = responseRef.Hidden
+	projectRef.GitTagVersionsEnabled = &responseRef.GitTagVersionsEnabled
+	projectRef.Hidden = &responseRef.Hidden
 	projectRef.Identifier = responseRef.Identifier
-	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.GithubChecksEnabled = responseRef.GithubChecksEnabled
+	projectRef.PRTestingEnabled = &responseRef.PRTestingEnabled
+	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
-	projectRef.PatchingDisabled = responseRef.PatchingDisabled
-	projectRef.DispatchingDisabled = responseRef.DispatchingDisabled
-	projectRef.RepotrackerDisabled = responseRef.RepotrackerDisabled
-	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
+	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
+	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
+	projectRef.RepotrackerDisabled = &responseRef.RepotrackerDisabled
+	projectRef.NotifyOnBuildFailure = &responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.PatchTriggerAliases = responseRef.PatchTriggerAliases
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
-	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
+	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.TracksPushEvents = hook != nil
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
@@ -719,7 +721,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if origProjectRef.Restricted != projectRef.Restricted {
-		if projectRef.Restricted {
+		if projectRef.IsRestricted() {
 			err = projectRef.MakeRestricted(ctx)
 		} else {
 			err = projectRef.MakeUnrestricted(ctx)
@@ -765,10 +767,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newProject := model.ProjectRef{
-		Identifier: id,
-		Hidden:     false,
-	}
+	newProject := model.ProjectRef{Identifier: id}
 
 	err = newProject.Add(dbUser)
 	if err != nil {

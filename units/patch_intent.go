@@ -213,21 +213,21 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "can't find patch project")
 	}
 
-	if !pref.Enabled {
+	if !pref.IsEnabled() {
 		j.gitHubError = ProjectDisabled
 		return errors.New("project is disabled")
 	}
 
-	if pref.PatchingDisabled {
+	if pref.IsPatchingDisabled() {
 		j.gitHubError = PatchingDisabled
 		return errors.New("patching is disabled for project")
 	}
 
-	if patchDoc.IsBackport() && !pref.CommitQueue.Enabled {
+	if patchDoc.IsBackport() && !pref.CommitQueue.IsEnabled() {
 		return errors.New("commit queue is disabled for project")
 	}
 
-	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
+	if !pref.TaskSync.IsPatchEnabled() && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
 		j.gitHubError = PatchTaskSyncDisabled
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
 	}

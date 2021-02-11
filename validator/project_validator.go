@@ -31,7 +31,7 @@ const (
 	Error ValidationErrorLevel = iota
 	Warning
 	unauthorizedCharacters     = "|"
-	EC2HostCreateTotalLimit    = 100
+	EC2HostCreateTotalLimit    = 1000
 	DockerHostCreateTotalLimit = 200
 	HostCreateLimitPerTask     = 3
 )
@@ -658,6 +658,10 @@ func validateBVNames(project *model.Project) ValidationErrors {
 						project.Identifier, buildVariant.Name),
 				},
 			)
+		} else if dispName == evergreen.MergeTaskVariant {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("the variant name '%s' is reserved for the commit queue", evergreen.MergeTaskVariant),
+			})
 		}
 		displayNames[dispName] = displayNames[dispName] + 1
 
@@ -1391,7 +1395,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
 func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
-	if ref.TaskSync.ConfigEnabled {
+	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
 	var errs ValidationErrors

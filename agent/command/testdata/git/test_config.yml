@@ -1,7 +1,7 @@
 owner: evergreen-ci
 repo: sample
 repokind: github
-branch: master
+branch: main
 enabled: true
 batch_time: 180
 

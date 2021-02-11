@@ -1455,7 +1455,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	}
 
 	q := []commitqueue.CommitQueueItem{
-		{Issue: patchID, Source: commitqueue.SourceDiff},
+		{Issue: patchID, Source: commitqueue.SourceDiff, Version: patchID},
 		{Issue: "42"},
 	}
 	cq := &commitqueue.CommitQueue{
@@ -1506,6 +1506,9 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	b := build.Build{
 		Id:      "my-build",
 		Version: v.Id,
+		Tasks: []build.TaskCache{
+			{Id: "merge"},
+		},
 	}
 	t1 := &task.Task{
 		Id:        "t1",
@@ -1535,9 +1538,17 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 		Version:   v.Id,
 		BuildId:   b.Id,
 	}
+	m := task.Task{
+		Id:               "merge",
+		Status:           evergreen.TaskUndispatched,
+		Activated:        true,
+		CommitQueueMerge: true,
+		Version:          v.Id,
+		BuildId:          b.Id,
+	}
 	q := []commitqueue.CommitQueueItem{
-		{Issue: "12"},
-		{Issue: "42"},
+		{Issue: "12", Source: commitqueue.SourcePullRequest, Version: v.Id},
+		{Issue: "42", Source: commitqueue.SourcePullRequest},
 	}
 	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Processing: true, Queue: q}
 	assert.NoError(t, v.Insert())
@@ -1547,6 +1558,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 	assert.NoError(t, t3.Insert())
 	assert.NoError(t, t4.Insert())
+	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
 	pRef := &ProjectRef{Id: cq.ProjectID}

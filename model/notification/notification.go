@@ -356,9 +356,6 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
 
-		case event.GithubMergeSubscriberType:
-			nStats.GithubMerge = data.Count
-
 		case event.CommitQueueDequeueSubscriberType:
 			nStats.CommitQueueDequeue = data.Count
 

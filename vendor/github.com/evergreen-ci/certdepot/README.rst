@@ -21,13 +21,13 @@ Certificate Creation and Signing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SSL certificates and certificate authorities (CAs) can easily be created and
-signed using Certdepot. 
+signed using Certdepot.
 
 
 MongoDB Backed Depot
 ~~~~~~~~~~~~~~~~~~~~
 
-Certdepot implements a certstrap 
+Certdepot implements a certstrap
 `depot <https://godoc.org/github.com/square/certstrap/depot#Depot>`_ backed by
 MongoDB. This facilitates the storing and fetching of SSL certificates to and
 from a Mongo database. There are various functions for maintaining the depot,
@@ -74,7 +74,7 @@ with that CA in the depot: ::
 	// stores it in the depot
 	certOpts.CreateCertificate(d)
 
-The following does the same as above, but now using the bootstrap 
+The following does the same as above, but now using the bootstrap
 functionality: ::
 	bootstrapConf := certdepot.BootstrapDepotConfig{
                 MongoDepot:  mongoOpts,
@@ -119,7 +119,7 @@ project.
 Documentation
 -------------
 
-See the 
+See the
 `certdepot godoc <https://godoc.org/github.com/evergreen-ci/certdepot>`_ for
 complete documentation of certdepot.
 

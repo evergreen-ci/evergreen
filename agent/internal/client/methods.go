@@ -761,7 +761,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	return ids, nil
 }
 
-func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {
+func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) (restmodel.HostListResults, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
@@ -769,17 +769,17 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		path:     fmt.Sprintf("hosts/%s/list", td.ID),
 	}
 
+	result := restmodel.HostListResults{}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
+		return result, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
-	hosts := []restmodel.CreateHost{}
-	if err := utility.ReadJSON(resp.Body, &hosts); err != nil {
-		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
+	if err := utility.ReadJSON(resp.Body, &result); err != nil {
+		return result, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
 	}
-	return hosts, nil
+	return result, nil
 }
 
 func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
@@ -864,4 +864,29 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	return body, nil
+}
+
+func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
+		version:  apiVersion2,
+		taskData: &td,
+	}
+	body := struct {
+		Status string `json:"status"`
+	}{
+		Status: status,
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error concluding merge")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return utility.RespErrorf(resp, "error concluding merge")
+	}
+
+	return nil
 }

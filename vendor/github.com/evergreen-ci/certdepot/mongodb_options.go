@@ -25,7 +25,7 @@ var (
 	userTTLKey           = bsonutil.MustHaveTag(User{}, "TTL")
 )
 
-// MongoDBOptions conatins options for NewMongoDBCertDepot,
+// MongoDBOptions contains options for NewMongoDBCertDepot,
 // NewMongoDBCertDepotWithClient, NewMgoCertDepot, and
 // NewMgoCertDepotWithSession.
 type MongoDBOptions struct {

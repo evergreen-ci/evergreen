@@ -15,6 +15,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -48,12 +49,12 @@ func TestFetchRevisions(t *testing.T) {
 		})
 
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
-			evgProjectRef.RepotrackerDisabled = true
+			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 			numVersions, err := model.VersionCount(model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
-			evgProjectRef.RepotrackerDisabled = false
+			evgProjectRef.RepotrackerDisabled = utility.FalsePtr()
 		})
 
 		Convey("Only get 2 revisions from the given repository if given a "+
@@ -647,7 +648,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj1 := model.ProjectRef{
 		Id:                   "proj1",
-		NotifyOnBuildFailure: false,
+		NotifyOnBuildFailure: utility.FalsePtr(),
 	}
 	v1 := model.Version{
 		Id:         "v1",
@@ -664,7 +665,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
 	proj2 := model.ProjectRef{
 		Id:                   "proj2",
-		NotifyOnBuildFailure: true,
+		NotifyOnBuildFailure: utility.TruePtr(),
 		Admins:               []string{"u2", "u3"},
 	}
 	u2 := user.DBUser{
@@ -732,9 +733,9 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Repo:       "evergreen",
 		Owner:      "evergreen-ci",
 		Id:         "mci",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
-		Enabled:    true,
+		Enabled:    utility.TruePtr(),
 	}
 	s.rev = &model.Revision{
 		Author:          "me",
@@ -1043,7 +1044,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 			},
 		},
 	}
@@ -1051,7 +1052,7 @@ func TestCreateManifest(t *testing.T) {
 	projRef := &model.ProjectRef{
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
-		Branch: "master",
+		Branch: "main",
 	}
 
 	manifest, err := CreateManifest(v, &proj, projRef, settings)
@@ -1062,7 +1063,7 @@ func TestCreateManifest(t *testing.T) {
 	module, ok := manifest.Modules["module1"]
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
-	assert.Equal("master", module.Branch)
+	assert.Equal("main", module.Branch)
 	// the most recent module commit as of the version's revision (from 5/30/15)
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
@@ -1074,7 +1075,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 				Ref:    hash,
 			},
 		},
@@ -1087,7 +1088,7 @@ func TestCreateManifest(t *testing.T) {
 	module, ok = manifest.Modules["module1"]
 	assert.True(ok)
 	assert.Equal("sample", module.Repo)
-	assert.Equal("master", module.Branch)
+	assert.Equal("main", module.Branch)
 	assert.Equal(hash, module.Revision)
 	assert.NotEmpty(module.URL)
 
@@ -1099,7 +1100,7 @@ func TestCreateManifest(t *testing.T) {
 			{
 				Name:   "module1",
 				Repo:   "git@github.com:evergreen-ci/sample.git",
-				Branch: "master",
+				Branch: "main",
 				Ref:    hash,
 			},
 		},
@@ -1127,7 +1128,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	pRef := &model.ProjectRef{
 		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
-		GitTagVersionsEnabled: true,
+		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	assert.NoError(t, evergreen.UpdateConfig(testutil.TestConfig()))
 	v, err := shellVersionFromRevision(context.TODO(), pRef, metadata)

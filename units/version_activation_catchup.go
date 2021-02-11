@@ -78,7 +78,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 
 	count := 0
 	for _, ref := range projects {
-		if !ref.Enabled {
+		if !ref.IsEnabled() {
 			continue
 		}
 		j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(ref),

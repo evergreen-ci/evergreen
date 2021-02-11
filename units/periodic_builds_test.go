@@ -32,7 +32,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
 		RemotePath: "evergreen.yml",
-		Branch:     "master",
+		Branch:     "main",
 		PeriodicBuilds: []model.PeriodicBuildDefinition{
 			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", Alias: "alias", NextRunTime: now.Add(time.Hour)},
 		},

@@ -196,6 +196,7 @@ type ComplexityRoot struct {
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		Expiration            func(childComplexity int) int
+		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
 		HostURL               func(childComplexity int) int
 		Id                    func(childComplexity int) int
@@ -769,6 +770,8 @@ type AnnotationResolver interface {
 	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (*bool, error)
 }
 type HostResolver interface {
+	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
+
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
@@ -1482,6 +1485,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Expiration(childComplexity), true
+
+	case "Host.homeVolume":
+		if e.complexity.Host.HomeVolume == nil {
+			break
+		}
+
+		return e.complexity.Host.HomeVolume(childComplexity), true
 
 	case "Host.homeVolumeID":
 		if e.complexity.Host.HomeVolumeID == nil {
@@ -4879,6 +4889,7 @@ type TaskQueueDistro {
 }
 
 type Host {
+  homeVolume: Volume
   id: ID!
   hostUrl: String!
   tag: String!
@@ -5008,7 +5019,7 @@ type Patch {
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
-  alias: String!
+  alias: String
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
@@ -5165,16 +5176,16 @@ type BaseTaskMetadata {
 }
 
 type AbortInfo {
-  user: String
-  taskID: String
-  taskDisplayName: String
-  buildVariantDisplayName: String
-  newVersion: String
-  prClosed: Boolean
+  user: String!
+  taskID: String!
+  taskDisplayName: String!
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
 }
 
 type Task {
-  aborted: Boolean
+  aborted: Boolean!
   abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
@@ -6875,11 +6886,14 @@ func (ec *executionContext) _AbortInfo_user(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_taskID(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6906,11 +6920,14 @@ func (ec *executionContext) _AbortInfo_taskID(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_taskDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6937,11 +6954,14 @@ func (ec *executionContext) _AbortInfo_taskDisplayName(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6968,11 +6988,14 @@ func (ec *executionContext) _AbortInfo_buildVariantDisplayName(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -6999,11 +7022,14 @@ func (ec *executionContext) _AbortInfo_newVersion(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graphql.CollectedField, obj *AbortInfo) (ret graphql.Marshaler) {
@@ -7030,11 +7056,14 @@ func (ec *executionContext) _AbortInfo_prClosed(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -9165,6 +9194,37 @@ func (ec *executionContext) _GroupedProjects_projects(ctx context.Context, field
 	res := resTmp.([]*model.APIProjectRef)
 	fc.Result = res
 	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRefᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Host_homeVolume(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Host",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().HomeVolume(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVolume)
+	fc.Result = res
+	return ec.marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -13831,14 +13891,11 @@ func (ec *executionContext) _Patch_alias(ctx context.Context, field graphql.Coll
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_duration(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -17331,11 +17388,14 @@ func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.Col
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_abortInfo(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -24533,16 +24593,34 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = graphql.MarshalString("AbortInfo")
 		case "user":
 			out.Values[i] = ec._AbortInfo_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "taskID":
 			out.Values[i] = ec._AbortInfo_taskID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "taskDisplayName":
 			out.Values[i] = ec._AbortInfo_taskDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "buildVariantDisplayName":
 			out.Values[i] = ec._AbortInfo_buildVariantDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "newVersion":
 			out.Values[i] = ec._AbortInfo_newVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "prClosed":
 			out.Values[i] = ec._AbortInfo_prClosed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25204,6 +25282,17 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Host")
+		case "homeVolume":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_homeVolume(ctx, field, obj)
+				return res
+			})
 		case "id":
 			out.Values[i] = ec._Host_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -26187,9 +26276,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "duration":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -27402,6 +27488,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("Task")
 		case "aborted":
 			out.Values[i] = ec._Task_aborted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "abortInfo":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -32346,6 +32435,17 @@ func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergr
 
 func (ec *executionContext) marshalOVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOVolume2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v model.APIVolume) graphql.Marshaler {
+	return ec._Volume(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v *model.APIVolume) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Volume(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvendorᚋgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

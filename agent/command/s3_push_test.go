@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,7 +154,7 @@ func TestS3PushExecute(t *testing.T) {
 				ProjectRef: &model.ProjectRef{
 					Id: "project_identifier",
 					TaskSync: model.TaskSyncOptions{
-						ConfigEnabled: true,
+						ConfigEnabled: utility.TruePtr(),
 					},
 				},
 				TaskSync: evergreen.S3Credentials{

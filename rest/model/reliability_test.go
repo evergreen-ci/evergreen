@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/utility"
-
 	"github.com/stretchr/testify/assert"
 )
 

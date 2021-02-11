@@ -220,7 +220,7 @@ func (s *ProjectPutSuite) TestParse() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -249,7 +249,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
+				"branch_name": "main",
 				"enabled": false,
 				"private": true,
 				"batch_time": 0,
@@ -471,24 +471,24 @@ func getMockProjectsConnector() *data.MockConnector {
 				{
 					Owner:              "dimoxinil",
 					Repo:               "dimoxinil-enterprise-repo",
-					Branch:             "master",
-					Enabled:            false,
-					Private:            true,
+					Branch:             "main",
+					Enabled:            utility.FalsePtr(),
+					Private:            utility.TruePtr(),
 					BatchTime:          0,
 					RemotePath:         "evergreen.yml",
 					Id:                 "dimoxinil",
 					DisplayName:        "Dimoxinil",
-					DeactivatePrevious: false,
+					DeactivatePrevious: utility.FalsePtr(),
 					TracksPushEvents:   false,
-					PRTestingEnabled:   false,
+					PRTestingEnabled:   utility.FalsePtr(),
 					CommitQueue: serviceModel.CommitQueueParams{
-						Enabled: false,
+						Enabled: utility.FalsePtr(),
 					},
-					Hidden:                false,
-					PatchingDisabled:      false,
+					Hidden:                utility.FalsePtr(),
+					PatchingDisabled:      utility.FalsePtr(),
 					Admins:                []string{"langdon.alger"},
-					NotifyOnBuildFailure:  false,
-					DisabledStatsCache:    true,
+					NotifyOnBuildFailure:  utility.FalsePtr(),
+					DisabledStatsCache:    utility.TruePtr(),
 					FilesIgnoredFromCache: []string{"ignored"},
 				},
 			},
@@ -568,7 +568,7 @@ func TestDeleteProject(t *testing.T) {
 			Id:      "repo_ref",
 			Owner:   "mongodb",
 			Repo:    "test_repo",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		},
 	}
 	assert.NoError(t, repo.Insert())
@@ -582,15 +582,15 @@ func TestDeleteProject(t *testing.T) {
 			Owner:                "mongodb",
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
-			Enabled:              true,
-			Private:              true,
+			Enabled:              utility.TruePtr(),
+			Private:              utility.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			UseRepoSettings:      true,
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     true,
-			PRTestingEnabled:     true,
+			PRTestingEnabled:     utility.TruePtr(),
 			Admins:               []string{"admin0", "admin1"},
-			NotifyOnBuildFailure: true,
+			NotifyOnBuildFailure: utility.TruePtr(),
 		}
 
 		projects = append(projects, project)
@@ -639,9 +639,9 @@ func TestDeleteProject(t *testing.T) {
 			Repo:            repo.Repo,
 			Branch:          projects[i].Branch,
 			RepoRefId:       repo.Id,
-			Enabled:         false,
+			Enabled:         utility.FalsePtr(),
 			UseRepoSettings: true,
-			Hidden:          true,
+			Hidden:          utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 

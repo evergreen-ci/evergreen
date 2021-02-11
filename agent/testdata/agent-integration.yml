@@ -2,7 +2,7 @@ display_name: evergreen-ci-render
 owner: evergreen-ci
 repo: render
 repokind: github
-branch: master
+branch: main
 enabled: true
 batch_time: 180
 stepback: true
@@ -316,7 +316,7 @@ modules:
 - name: recursive
   repo: git@github.com:evergreen-ci/render.git
   prefix: recursive/clone
-  branch: master
+  branch: main
 
 #######################################
 # Buildvariants

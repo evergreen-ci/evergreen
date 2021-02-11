@@ -121,7 +121,7 @@ imports:
   - name: github.com/mongodb/grip
     version: 52301f66a09ae5a1c276e3d884af1185db5dbbf4
   - name: github.com/mongodb/amboy
-    version: 8f9c89f81680b88c3f90503e9f2efeeea946c0b3
+    version: c3275e3384e78a425594f29013af7c2a06fc53ae
   - name: github.com/evergreen-ci/gimlet
     version: 5a704471d124e95f37fea15e98736bf84c87d4f8
   - name: github.com/evergreen-ci/shrub
@@ -140,7 +140,7 @@ imports:
     version: 75f93ec68b7847d65e8c0508a8553608e0e60aff
 
   - name: github.com/evergreen-ci/certdepot
-    version: 270990334f8f50e41a803e88f169d2f467e376c5
+    version: 9456d26c9ecb153ae54a546691e8d9aae859201b
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4

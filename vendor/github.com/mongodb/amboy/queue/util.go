@@ -21,6 +21,6 @@ func trimJobsSuffix(s string) string {
 	return strings.TrimSuffix(s, ".jobs")
 }
 
-func addGroupSufix(s string) string {
+func addGroupSuffix(s string) string {
 	return s + ".group"
 }

@@ -308,6 +308,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
 
+	if p.IsChild() {
+		if err = p.SetParametersFromParent(); err != nil {
+			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
+		}
+	}
+
 	patchVersion := &Version{
 		Id:                  p.Id.Hex(),
 		CreateTime:          time.Now(),

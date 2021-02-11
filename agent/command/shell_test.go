@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -46,7 +47,14 @@ func (s *shellExecuteCommandSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &internal.TaskConfig{
+		Expansions: &util.Expansions{},
+		Task: &task.Task{
+			Id:     "task_id",
+			Secret: "task_secret",
+		},
+		Project: &model.Project{},
+	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 
@@ -170,4 +178,54 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	s.Require().NotNil(err)
 	s.Contains(err.Error(), "shell command interrupted")
 	s.NotContains(err.Error(), "error while stopping process")
+}
+
+func (s *shellExecuteCommandSuite) TestEnvIsSetAndDefaulted() {
+	cmd := &shellExec{
+		Script:     "echo hello world",
+		Shell:      "bash",
+		Env:        map[string]string{"foo": "bar"},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
+	defer cancel()
+	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 8)
+	s.Contains(cmd.Env, agentutil.MarkerTaskID)
+	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, "TEMP")
+	s.Contains(cmd.Env, "TMP")
+	s.Contains(cmd.Env, "TMPDIR")
+	s.Contains(cmd.Env, "GOCACHE")
+	s.Contains(cmd.Env, "CI")
+	s.Contains(cmd.Env, "foo")
+}
+
+func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
+	cmd := &shellExec{
+		Script:             "echo hello world",
+		Shell:              "bash",
+		AddExpansionsToEnv: true,
+		WorkingDir:         testutil.GetDirectoryOfFile(),
+	}
+	s.conf.Expansions = util.NewExpansions(map[string]string{
+		"expansion1": "foo",
+		"expansion2": "bar",
+	})
+	cmd.SetJasperManager(s.jasper)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
+	defer cancel()
+	s.Require().NoError(cmd.Execute(ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Env, 9)
+	s.Contains(cmd.Env, agentutil.MarkerTaskID)
+	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, "TEMP")
+	s.Contains(cmd.Env, "TMP")
+	s.Contains(cmd.Env, "TMPDIR")
+	s.Contains(cmd.Env, "GOCACHE")
+	s.Contains(cmd.Env, "CI")
+	for k, v := range s.conf.Expansions.Map() {
+		s.Equal(v, cmd.Env[k])
+	}
 }
