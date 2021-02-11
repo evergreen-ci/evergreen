@@ -16,7 +16,11 @@ import (
 func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
+	patchId := t.Version
+	if patchParam, exists := r.URL.Query()["patch"]; exists {
+		patchId = patchParam[0]
+	}
+	p, err := patch.FindOne(patch.ByVersion(patchId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "problem fetching patch for task '%s' from db", t.Id))

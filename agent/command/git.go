@@ -229,6 +229,12 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 			"must not be blank", c.Name())
 	}
 
+	for _, patchId := range c.AdditionalPatches {
+		if !bson.IsObjectIdHex(patchId) {
+			return errors.Errorf("additional patch '%s' is not a valid ID", patchId)
+		}
+	}
+
 	return nil
 }
 
@@ -414,7 +420,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, td)
+		p, err = comm.GetTaskPatch(ctx, td, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to get patch")
 		}
@@ -543,22 +549,20 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	//Apply patches if this is a patch and we haven't already gotten the changes from a PR
 	if evergreen.IsPatchRequester(conf.Task.Requester) && conf.GithubPatchData.PRNumber == 0 {
 		for _, patchId := range c.AdditionalPatches {
-			if bson.IsObjectIdHex(patchId) {
-				p, err = comm.GetTaskPatch(ctx, td)
-				if err != nil {
-					return errors.Wrap(err, "unable to get additional patch")
-				}
-				if p == nil {
-					return errors.New("additional patch not found")
-				}
-				if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
-					return errors.Wrap(err, "Failed to get patch contents")
-				}
-				if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
-					return errors.Wrapf(err, "error applying patch '%s'", p.Id.Hex())
-				}
-				logger.Task().Infof("applied additional changes from patch '%s'", patchId)
+			p, err = comm.GetTaskPatch(ctx, td, patchId)
+			if err != nil {
+				return errors.Wrap(err, "unable to get additional patch")
 			}
+			if p == nil {
+				return errors.New("additional patch not found")
+			}
+			if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
+				return errors.Wrap(err, "Failed to get patch contents")
+			}
+			if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
+				return errors.Wrapf(err, "error applying patch '%s'", p.Id.Hex())
+			}
+			logger.Task().Infof("applied additional changes from patch '%s'", patchId)
 		}
 
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {

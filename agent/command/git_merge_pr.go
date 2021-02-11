@@ -66,7 +66,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "can't apply expansions")
 	}
 
-	patchDoc, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	patchDoc, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
 		return errors.Wrap(err, "unable to get patch")
 	}

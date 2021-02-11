@@ -356,7 +356,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(tc.taskModel.Requester) {
 		grip.Info("Fetching patch document for Github PR request.")
-		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
+		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
 		if err != nil {
 			err = errors.Wrap(err, "couldn't fetch patch for Github PR request")
 			grip.Error(err.Error())
