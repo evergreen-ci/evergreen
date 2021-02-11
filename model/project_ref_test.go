@@ -316,19 +316,19 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	}}
 	assert.NoError(repoRef.Insert())
 
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 
 	repoRef.Enabled = utility.TruePtr()
 	assert.NoError(repoRef.Upsert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 3)
 
 	projectRef.Enabled = utility.FalsePtr()
 	assert.NoError(projectRef.Upsert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "master")
+	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 }
