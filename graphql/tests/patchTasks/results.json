@@ -32,6 +32,78 @@
       }
     },
     {
+      "query_file": "sorts.graphql",
+      "result": {
+        "data": {
+          "patchTasks": {
+            "tasks": [
+              {
+                "id": "4",
+                "status": "task-timed-out",
+                "baseTask": {
+                  "status": "success"
+                },
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "blocked": false
+              },
+              {
+                "id": "2",
+                "status": "failed",
+                "baseTask": {
+                  "status": "failed"
+                },
+                "displayName": "test-cloud",
+                "buildVariant": "ubuntu1604",
+                "blocked": false
+              },
+              {
+                "id": "1.5",
+                "status": "system-failed",
+                "baseTask": {
+                  "status": "success"
+                },
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "blocked": false
+              },
+              {
+                "id": "4.5",
+                "status": "system-failed",
+                "baseTask": {
+                  "status": "success"
+                },
+                "displayName": "compile",
+                "buildVariant": "windows",
+                "blocked": false
+              },
+              {
+                "id": "1",
+                "status": "success",
+                "baseTask": {
+                  "status": "success"
+                },
+                "displayName": "test-thirdparty-docker",
+                "buildVariant": "ubuntu1604",
+                "blocked": true
+              },
+              {
+                "id": "3",
+                "status": "success",
+                "baseTask": {
+                  "status": "failed"
+                },
+                "displayName": "lint",
+                "buildVariant": "windows",
+                "blocked": false
+              }
+            ],
+            "count": 6
+          }
+        }
+      }
+    },
+    {
       "query_file": "filter-by-variant.graphql",
       "result": {
         "data": {
@@ -437,18 +509,18 @@
                 "buildVariant": "windows"
               },
               {
-                "id": "4",
-                "status": "task-timed-out",
-                "baseStatus": "success",
-                "displayName": "compile",
-                "buildVariant": "windows"
-              },
-              {
                 "id": "2",
                 "status": "failed",
                 "baseStatus": "failed",
                 "displayName": "test-cloud",
                 "buildVariant": "ubuntu1604"
+              },
+              {
+                "id": "4",
+                "status": "task-timed-out",
+                "baseStatus": "success",
+                "displayName": "compile",
+                "buildVariant": "windows"
               }
             ],
             "count": 6
