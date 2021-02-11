@@ -216,6 +216,17 @@ func TestPatchRepoIDHandler(t *testing.T) {
 
 	h.settings.GithubOrgs = append(h.settings.GithubOrgs, "10gen")
 	resp = h.Run(ctx)
+	assert.Equal(t, http.StatusBadRequest, resp.Status())
+	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "must enable Github webhooks first")
+
+	hook = dbModel.GithubHook{
+		HookID: 2,
+		Owner:  "10gen",
+		Repo:   repoRef.Repo,
+	}
+	assert.NoError(t, hook.Insert())
+
+	resp = h.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
 	repoRef, err = dbModel.FindOneRepoRef(repoRef.Id)

@@ -793,14 +793,21 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRe
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-func FindProjectRefsWithRepo(repoRef *RepoRef) ([]ProjectRef, error) {
+// FindMergedProjectRefsForRepo considers either owner/repo and repo ref ID, in case the owner/repo of the repo ref is going to change.
+// So we get all the branch projects in the new repo, and all the branch projects that might change owner/repo.
+func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefRepoKey:  repoRef.Repo,
-			ProjectRefOwnerKey: repoRef.Owner,
+			"$or": []bson.M{
+				{
+					ProjectRefOwnerKey: repoRef.Owner,
+					ProjectRefRepoKey:  repoRef.Repo,
+				},
+				{ProjectRefRepoRefIdKey: repoRef.Id},
+			},
 		},
 		db.NoProjection,
 		db.NoSort,

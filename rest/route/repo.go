@@ -252,7 +252,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 
 	catcher := grip.NewBasicCatcher()
 	// get every project that uses the repo, and merge them
-	pRefs, err := dbModel.FindProjectRefsWithRepo(newRepoRef)
+	pRefs, err := dbModel.FindMergedProjectRefsForRepo(newRepoRef)
 	if err != nil {
 		return errors.Wrapf(err, "error finding branch projects for repo")
 	}
@@ -288,17 +288,17 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 	for branch, info := range branchInfo {
 		if len(info.commitQueueIds) > 0 {
 			catcher.ErrorfWhen(len(info.commitQueueIds) > 1, "commit queue is enabled in multiple projects for branch '%s': %v", branch, info.commitQueueIds)
-			catcher.ErrorfWhen(!hasHook, "cannot enable commit queue for repo, must enable GitHub webhooks first")
+			catcher.ErrorfWhen(!hasHook, "cannot enable commit queue for repo, must enable Github webhooks first")
 		}
 		if len(info.prTestingIds) > 0 {
 			catcher.ErrorfWhen(len(info.prTestingIds) > 1, "PR testing is enabled in multiple projects for branch '%s': %v", branch, info.prTestingIds)
-			catcher.ErrorfWhen(!hasHook, "cannot enable PR testing for repo, must enable GitHub webhooks first")
+			catcher.ErrorfWhen(!hasHook, "cannot enable PR testing for repo, must enable Github webhooks first")
 		}
 		if len(info.githubCheckIds) > 0 {
-			catcher.ErrorfWhen(!hasHook, "cannot enable github checks for repo, must enable GitHub webhooks first")
+			catcher.ErrorfWhen(!hasHook, "cannot enable github checks for repo, must enable Github webhooks first")
 		}
 		if len(info.gitTagIds) > 0 {
-			catcher.ErrorfWhen(!hasHook, "cannot enable git tag versions for repo, must enable GitHub webhooks first")
+			catcher.ErrorfWhen(!hasHook, "cannot enable git tag versions for repo, must enable Github webhooks first")
 		}
 	}
 
