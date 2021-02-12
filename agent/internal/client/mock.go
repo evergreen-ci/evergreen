@@ -66,10 +66,11 @@ type Mock struct {
 	TestLogCount     int
 
 	// data collected by mocked methods
-	logMessages     map[string][]apimodels.LogMessage
-	PatchFiles      map[string]string
-	keyVal          map[string]*serviceModel.KeyVal
-	LastMessageSent time.Time
+	logMessages      map[string][]apimodels.LogMessage
+	PatchFiles       map[string]string
+	keyVal           map[string]*serviceModel.KeyVal
+	LastMessageSent  time.Time
+	DownstreamParams []patch.Parameter
 
 	mu sync.RWMutex
 }
@@ -401,7 +402,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 }
 
 func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patch.Parameter, taskId string) error {
-	// todo
+	c.DownstreamParams = downstreamParams
 	return nil
 }
 
