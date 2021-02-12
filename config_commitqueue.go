@@ -12,12 +12,14 @@ type CommitQueueConfig struct {
 	MergeTaskDistro string `yaml:"merge_task_distro" bson:"merge_task_distro" json:"merge_task_distro"`
 	CommitterName   string `yaml:"committer_name" bson:"committer_name" json:"committer_name"`
 	CommitterEmail  string `yaml:"committer_email" bson:"committer_email" json:"committer_email"`
+	BatchSize       int    `yaml:"batch_size" bson:"batch_size" json:"batch_size"`
 }
 
 var (
-	mergeTaskDistroKey = bsonutil.MustHaveTag(CommitQueueConfig{}, "MergeTaskDistro")
-	committerNameKey   = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterName")
-	committerEmailKey  = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterEmail")
+	mergeTaskDistroKey      = bsonutil.MustHaveTag(CommitQueueConfig{}, "MergeTaskDistro")
+	committerNameKey        = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterName")
+	committerEmailKey       = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterEmail")
+	commitQueueBatchSizekey = bsonutil.MustHaveTag(CommitQueueConfig{}, "BatchSize")
 )
 
 func (c *CommitQueueConfig) SectionId() string { return "commit_queue" }
@@ -52,9 +54,10 @@ func (c *CommitQueueConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			mergeTaskDistroKey: c.MergeTaskDistro,
-			committerNameKey:   c.CommitterName,
-			committerEmailKey:  c.CommitterEmail,
+			mergeTaskDistroKey:      c.MergeTaskDistro,
+			committerNameKey:        c.CommitterName,
+			committerEmailKey:       c.CommitterEmail,
+			commitQueueBatchSizekey: c.BatchSize,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
