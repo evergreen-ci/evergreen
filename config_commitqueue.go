@@ -19,7 +19,7 @@ var (
 	mergeTaskDistroKey      = bsonutil.MustHaveTag(CommitQueueConfig{}, "MergeTaskDistro")
 	committerNameKey        = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterName")
 	committerEmailKey       = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterEmail")
-	commitQueueBatchSizekey = bsonutil.MustHaveTag(CommitQueueConfig{}, "BatchSize")
+	commitQueueBatchSizeKey = bsonutil.MustHaveTag(CommitQueueConfig{}, "BatchSize")
 )
 
 func (c *CommitQueueConfig) SectionId() string { return "commit_queue" }
@@ -57,7 +57,7 @@ func (c *CommitQueueConfig) Set() error {
 			mergeTaskDistroKey:      c.MergeTaskDistro,
 			committerNameKey:        c.CommitterName,
 			committerEmailKey:       c.CommitterEmail,
-			commitQueueBatchSizekey: c.BatchSize,
+			commitQueueBatchSizeKey: c.BatchSize,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
