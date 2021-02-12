@@ -346,7 +346,7 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	return out, nil
 }
 
-func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
+func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
 	if !ok {
 		return &patchmodel.Patch{}, nil

@@ -52,6 +52,8 @@ type GitGetProjectSuite struct {
 	taskConfig4 *internal.TaskConfig
 	modelData5  *modelutil.TestModelData
 	taskConfig5 *internal.TaskConfig
+	modelData6  *modelutil.TestModelData
+	taskConfig6 *internal.TaskConfig // used for TestMergeMultiplePatches
 
 	suite.Suite
 }
@@ -82,6 +84,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
+	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -130,6 +133,12 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData5)
 	s.Require().NoError(err)
+
+	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.InlinePatch)
+	s.Require().NoError(err)
+	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
+	s.Require().NoError(err)
+	s.taskConfig6.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -907,4 +916,54 @@ func (s *GitGetProjectSuite) TestReorderPatches() {
 	s.Equal("m0", patches[0].ModuleName)
 	s.Equal("m1", patches[1].ModuleName)
 	s.Equal("", patches[2].ModuleName)
+}
+
+func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
+	conf := s.taskConfig6
+	token, err := s.settings.GetGithubOauthToken()
+	s.Require().NoError(err)
+	conf.Expansions.Put("github", token)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = context.WithValue(ctx, "patch", &patch.Patch{
+		Id: "p",
+		Patches: []patch.ModulePatch{
+			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}},
+		},
+	})
+	comm := client.NewMock("http://localhost.com")
+	comm.PatchFiles["patchfile1"] = `
+diff --git a/README.md b/README.md
+index edc0c34..8e82862 100644
+--- a/README.md
++++ b/README.md
+@@ -1,2 +1,3 @@
+ mci_test
+ ========
++another line
+`
+
+	sender := send.MakeInternalLogger()
+	logger := client.NewSingleChannelLogHarness("test", sender)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			pluginCmds, err := Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	successMessage := "applied additional changes from patch '555555555555555555555555'"
+	foundSuccessMessage := false
+	for msg, ok := sender.GetMessageSafe(); ok; msg, ok = sender.GetMessageSafe() {
+		if strings.Contains(msg.Message.String(), successMessage) {
+			foundSuccessMessage = true
+		}
+	}
+	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
 }

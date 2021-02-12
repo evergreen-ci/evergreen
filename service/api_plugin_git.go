@@ -14,17 +14,22 @@ import (
 )
 
 func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
+	var patchId string
+	if patchParam, exists := r.URL.Query()["patch"]; exists {
+		patchId = patchParam[0]
+	} else {
+		t := MustHaveTask(r)
+		patchId = t.Version
+	}
+	p, err := patch.FindOne(patch.ByVersion(patchId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrapf(err, "problem fetching patch for task '%s' from db", t.Id))
+			errors.Wrapf(err, "problem fetching patch '%s'", patchId))
 		return
 	}
 	if p == nil {
 		as.LoggedError(w, r, http.StatusNotFound,
-			errors.Errorf("no patch found for task %s", t.Id))
+			errors.Errorf("no patch with ID '%s' found", patchId))
 		return
 	}
 
