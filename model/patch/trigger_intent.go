@@ -71,6 +71,10 @@ func (t *TriggerIntent) ShouldFinalizePatch() bool {
 	return t.ParentStatus == ""
 }
 
+func (t *TriggerIntent) ReusePreviousPatchDefinition() bool {
+	return false
+}
+
 func (t *TriggerIntent) GetAlias() string {
 	// triggers have no alias
 	return ""

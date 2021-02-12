@@ -55,6 +55,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Finalize          bool               `json:"finalize"`
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Alias             string             `json:"alias"`
+		ReuseDefinition   bool               `json:"reuse_definition"`
 	}{}
 	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -107,19 +108,20 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:           dbUser.Id,
-		Project:        pref.Id,
-		BaseGitHash:    data.Githash,
-		Module:         r.FormValue("module"),
-		PatchContent:   patchString,
-		Description:    data.Description,
-		Finalize:       data.Finalize,
-		Parameters:     data.Parameters,
-		Variants:       data.Variants,
-		Tasks:          data.Tasks,
-		Alias:          data.Alias,
-		TriggerAliases: data.TriggerAliases,
-		BackportOf:     data.BackportInfo,
+		User:            dbUser.Id,
+		Project:         pref.Id,
+		BaseGitHash:     data.Githash,
+		Module:          r.FormValue("module"),
+		PatchContent:    patchString,
+		Description:     data.Description,
+		Finalize:        data.Finalize,
+		Parameters:      data.Parameters,
+		Variants:        data.Variants,
+		Tasks:           data.Tasks,
+		Alias:           data.Alias,
+		TriggerAliases:  data.TriggerAliases,
+		BackportOf:      data.BackportInfo,
+		ReuseDefinition: data.ReuseDefinition,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,
@@ -127,6 +129,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			Timeout:       data.SyncTimeout,
 		},
 	})
+
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return

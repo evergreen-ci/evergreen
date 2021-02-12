@@ -259,7 +259,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
-	// TODO: add only user-defined parameters to patch/version
 	patchDoc.PatchedConfig = projectYaml
 
 	for _, modulePatch := range patchDoc.Patches {
@@ -274,6 +273,17 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				return errors.Errorf("no module named '%s'", modulePatch.ModuleName)
 			}
 		}
+	}
+
+	if j.intent.ReusePreviousPatchDefinition() {
+		previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), pref.Id))
+		if err != nil {
+			return errors.Wrap(err, "error querying for most recent patch")
+		}
+		if previousPatch == nil {
+			return errors.Errorf("no previous patch available")
+		}
+		patchDoc.VariantsTasks = previousPatch.VariantsTasks
 	}
 
 	// verify that all variants exists
