@@ -276,7 +276,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
-		previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), pref.Id))
+		var previousPatch *patch.Patch
+		previousPatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), pref.Id))
 		if err != nil {
 			return errors.Wrap(err, "error querying for most recent patch")
 		}
