@@ -812,7 +812,10 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 }
 
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, task.DisplayNameKey, []string{}, []string{}, "", "", 1, 0, 0, []string{task.DisplayStatusKey}, nil)
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, []string{}, []string{}, "", "", 0, 0, []string{task.DisplayStatusKey}, defaultSort)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -1093,31 +1096,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 	return &pjs, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *TaskSortCategory, sortDir *SortDirection, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
-	sorter := ""
-	if sortBy != nil {
-		switch *sortBy {
-		case TaskSortCategoryStatus:
-			sorter = task.DisplayStatusKey
-			break
-		case TaskSortCategoryName:
-			sorter = task.DisplayNameKey
-			break
-		case TaskSortCategoryBaseStatus:
-			// base status is not a field on the task db model; therefore sorting by base status
-			// cannot be done in the mongo query. sorting by base status is done in the resolver.
-			break
-		case TaskSortCategoryVariant:
-			sorter = task.BuildVariantKey
-			break
-		default:
-			break
-		}
-	}
-	sortDirParam := 1
-	if *sortDir == SortDirectionDesc {
-		sortDirParam = -1
-	}
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1159,28 +1138,11 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sortBy *
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	tasks, count, err := r.sc.FindTasksByVersion(patchID, sorter, statuses, baseStatuses, variantParam, taskNameParam, sortDirParam, pageParam, limitParam, []string{}, taskSorts)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, statuses, baseStatuses, variantParam, taskNameParam, pageParam, limitParam, []string{}, taskSorts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
 	taskResults := ConvertDBTasksToGqlTasks(tasks)
-
-	if *sortBy == TaskSortCategoryBaseStatus {
-		sort.SliceStable(taskResults, func(i, j int) bool {
-			iBaseStatus := ""
-			if taskResults[i].BaseStatus != nil {
-				iBaseStatus = *taskResults[i].BaseStatus
-			}
-			jBaseStatus := ""
-			if taskResults[j].BaseStatus != nil {
-				jBaseStatus = *taskResults[j].BaseStatus
-			}
-			if sortDirParam == 1 {
-				return iBaseStatus < jBaseStatus
-			}
-			return iBaseStatus > jBaseStatus
-		})
-	}
 
 	patchTasks := PatchTasks{
 		Count: count,
@@ -1479,7 +1441,10 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(patchID, task.DisplayNameKey, []string{}, []string{}, "", "", 1, 0, 0, []string{}, nil)
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
