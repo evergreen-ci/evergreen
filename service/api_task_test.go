@@ -118,7 +118,7 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 	return w
 }
 
-func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId string, details *apimodels.PatchData) *httptest.ResponseRecorder {
+func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId string, details *[]patch.Parameter) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
@@ -1487,16 +1487,17 @@ func TestDownstreamParams(t *testing.T) {
 			{Key: "key_1", Value: "value_1"},
 			{Key: "key_2", Value: "value_2"},
 		}
+		versionId := "myTestVersion"
 		parentPatchId := "5bedc62ee4055d31f0340b1d"
 		parentPatch := patch.Patch{
-			Id: mgobson.ObjectIdHex(parentPatchId),
+			Id:      mgobson.ObjectIdHex(parentPatchId),
+			Version: versionId,
 		}
 		So(parentPatch.Insert(), ShouldBeNil)
 
 		hostId := "h1"
 		projectId := "proj"
 		buildID := "b1"
-		versionId := "v1"
 
 		task1 := task.Task{
 			Id:        "task1",
@@ -1537,11 +1538,7 @@ func TestDownstreamParams(t *testing.T) {
 
 		Convey("with a patchId and parameters set in PatchData", func() {
 
-			details := &apimodels.PatchData{
-				PatchId:          parentPatchId,
-				DownstreamParams: parameters,
-			}
-			resp := getDownstreamParamsEndpoint(t, as, hostId, task1.Id, details)
+			resp := getDownstreamParamsEndpoint(t, as, hostId, task1.Id, &parameters)
 			So(resp, ShouldNotBeNil)
 			Convey("should return http status ok", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)

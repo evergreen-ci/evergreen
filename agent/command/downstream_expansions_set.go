@@ -70,9 +70,11 @@ func (c *setDownstream) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", c.YamlFile)
 
-	err = comm.SetDownstreamParams(ctx, c.downstreamParams, conf.Task.Id)
-	if err != nil {
-		return errors.WithStack(err)
+	if len(c.downstreamParams) != 0 {
+		err = comm.SetDownstreamParams(ctx, c.downstreamParams, conf.Task.Id)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil

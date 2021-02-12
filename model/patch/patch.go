@@ -307,6 +307,7 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 
 func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
 	for _, param := range parameters {
+		//HERE
 		p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, param)
 	}
 

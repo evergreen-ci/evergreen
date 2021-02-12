@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -584,11 +583,7 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
-func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patch.Parameter, taskId string) error {
-	if len(downstreamParams) == 0 {
-		return nil
-	}
-
+func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		taskData: &TaskData{
