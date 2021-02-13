@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -276,15 +276,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
-		var previousPatch *patch.Patch
-		previousPatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), pref.Id))
+		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project)
 		if err != nil {
-			return errors.Wrap(err, "error querying for most recent patch")
+			return err
 		}
-		if previousPatch == nil {
-			return errors.Errorf("no previous patch available")
-		}
-		patchDoc.VariantsTasks = previousPatch.VariantsTasks
 	}
 
 	// verify that all variants exists
@@ -419,6 +414,40 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	return catcher.Resolve()
+}
+
+func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project) ([]patch.VariantTasks, error) {
+	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying for most recent patch")
+	}
+	if previousPatch == nil {
+		return nil, errors.Errorf("no previous patch available")
+	}
+
+	var res []patch.VariantTasks
+	for _, vt := range previousPatch.VariantsTasks {
+		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
+		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
+
+		// I want the subset of vt.tasks that exists in tasksForVariant
+		tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
+		var displayTasks []patch.DisplayTask
+		for _, dt := range vt.DisplayTasks {
+			if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
+				displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
+			}
+		}
+
+		if len(tasks)+len(displayTasks) > 0 {
+			res = append(res, patch.VariantTasks{
+				Variant:      vt.Variant,
+				Tasks:        tasks,
+				DisplayTasks: displayTasks,
+			})
+		}
+	}
+	return res, nil
 }
 
 func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef) error {

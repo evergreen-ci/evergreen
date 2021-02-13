@@ -58,7 +58,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			},
 			cli.BoolFlag{
 				Name:  reuseDefinitionFlag,
-				Usage: "use the same tasks/variants defined for the last patch scheduled for this project",
+				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
 			},
 		))
 }

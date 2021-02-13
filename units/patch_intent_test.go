@@ -248,6 +248,63 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
+func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
+	s.NoError((&patch.Patch{
+		Id:         mgobson.NewObjectId(),
+		Activated:  true,
+		Project:    s.project,
+		CreateTime: time.Now(),
+		Author:     "me",
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"t1", "t2"},
+			},
+			{
+				Variant:      "bv_only_dt",
+				DisplayTasks: []patch.DisplayTask{{Name: "dt1"}},
+			},
+			{
+				Variant:      "bv_different_dt",
+				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+			},
+		},
+	}).Insert())
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:            "me",
+		Project:         s.project,
+		BaseGitHash:     s.hash,
+		Description:     s.desc,
+		ReuseDefinition: true,
+	})
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.user = &user.DBUser{Id: "me"}
+	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
+		{
+			Name:  "bv1",
+			Tasks: []model.BuildVariantTaskUnit{{Name: "t1"}},
+		},
+		{
+			Name:         "bv_only_dt",
+			DisplayTasks: []patch.DisplayTask{{Name: "different_dt"}},
+		},
+		{
+			Name:         "bv_different_dt",
+			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+		},
+	}}
+	vt, err := j.getPreviousPatchDefinition(&project)
+	s.NoError(err)
+	s.Require().Len(vt, 2)
+	s.Equal("bv1", vt[0].Variant)
+	s.Require().Len(vt[0].Tasks, 1)
+	s.Equal("t1", vt[0].Tasks[0])
+	s.Equal("bv_different_dt", vt[1].Variant)
+	s.Require().Len(vt[1].DisplayTasks, 1)
+	s.Equal("dt2", vt[1].DisplayTasks[0].Name)
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
