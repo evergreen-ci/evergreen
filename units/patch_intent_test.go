@@ -278,6 +278,7 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 		Description:     s.desc,
 		ReuseDefinition: true,
 	})
+	s.NoError(err)
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.user = &user.DBUser{Id: "me"}
 	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
