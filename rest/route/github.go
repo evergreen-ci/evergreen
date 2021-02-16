@@ -372,17 +372,17 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
 	}
 
-	versionForProject := map[string]*model.Version{}
+	foundVersion := map[string]bool{}
 
 	catcher := grip.NewBasicCatcher()
 
-	// iterate through all projects before retrying
+	// iterate through all projects before retrying. Only retry on errors related to finding the version.
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			retryCatcher := grip.NewBasicCatcher()
 			for _, pRef := range projectRefs {
-				if versionForProject[pRef.Id] != nil {
+				if foundVersion[pRef.Id] {
 					continue
 				}
 				var existingVersion *model.Version
@@ -391,68 +391,61 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
 				if err != nil {
 					retryCatcher.Wrapf(err, "problem finding version for project '%s' with revision '%s'", pRef.Id, hash)
-				} else if existingVersion == nil {
+					continue
+				}
+				if existingVersion == nil {
 					retryCatcher.Errorf("no version for project '%s' with revision '%s' to add tag to", pRef.Id, hash)
-				} else {
-					versionForProject[pRef.Id] = existingVersion
+					continue
+				}
+				foundVersion[pRef.Id] = true
+				grip.Debug(message.Fields{
+					"source":  "github hook",
+					"message": "adding tag to version",
+					"version": existingVersion.Id,
+					"ref":     event.GetRef(),
+					"event":   gh.eventType,
+					"branch":  pRef.Branch,
+					"owner":   pRef.Owner,
+					"repo":    pRef.Repo,
+					"hash":    hash,
+					"tag":     tag,
+				})
+
+				if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
+					catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
+					continue
+				}
+
+				revision := model.Revision{
+					Author:          existingVersion.Author,
+					AuthorID:        existingVersion.AuthorID,
+					AuthorEmail:     existingVersion.AuthorEmail,
+					Revision:        existingVersion.Revision,
+					RevisionMessage: existingVersion.Message,
+				}
+				v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
+				if err != nil {
+					catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
+					continue
+				}
+				if v != nil {
+					grip.Info(message.Fields{
+						"source":  "github hook",
+						"msg_id":  gh.msgID,
+						"event":   gh.eventType,
+						"ref":     event.GetRef(),
+						"owner":   ownerAndRepo[0],
+						"repo":    ownerAndRepo[1],
+						"tag":     tag,
+						"version": v.Id,
+						"message": "triggered version from git tag",
+					})
 				}
 			}
 			return retryCatcher.HasErrors(), retryCatcher.Resolve()
-		}, 5, 100*time.Millisecond, time.Second*2)
+		}, 5, 100*time.Millisecond, time.Second*3)
 
 	catcher.Add(err)
-
-	for _, pRef := range projectRefs {
-		existingVersion := versionForProject[pRef.Id]
-		if existingVersion == nil {
-			continue
-		}
-
-		grip.Debug(message.Fields{
-			"source":  "github hook",
-			"message": "adding tag to version",
-			"version": existingVersion.Id,
-			"ref":     event.GetRef(),
-			"event":   gh.eventType,
-			"branch":  pRef.Branch,
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"hash":    hash,
-			"tag":     tag,
-		})
-
-		if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
-			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
-			continue
-		}
-
-		revision := model.Revision{
-			Author:          existingVersion.Author,
-			AuthorID:        existingVersion.AuthorID,
-			AuthorEmail:     existingVersion.AuthorEmail,
-			Revision:        existingVersion.Revision,
-			RevisionMessage: existingVersion.Message,
-		}
-		v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
-			continue
-		}
-		if v != nil {
-			grip.Info(message.Fields{
-				"source":  "github hook",
-				"msg_id":  gh.msgID,
-				"event":   gh.eventType,
-				"ref":     event.GetRef(),
-				"owner":   ownerAndRepo[0],
-				"repo":    ownerAndRepo[1],
-				"tag":     tag,
-				"version": v.Id,
-				"message": "triggered version from git tag",
-			})
-		}
-	}
-
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
 		"msg_id":  gh.msgID,
