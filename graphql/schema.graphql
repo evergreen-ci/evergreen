@@ -944,7 +944,7 @@ type Annotation {
   createdIssues: [IssueLink]
   userCanModify: Boolean
   # todo: make this required
-  webhookConfigured: Boolean
+  webhookConfigured: Boolean!
 }
 
 type Note {

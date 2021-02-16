@@ -771,7 +771,7 @@ type AnnotationResolver interface {
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 
 	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (*bool, error)
-	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (*bool, error)
+	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
@@ -5526,7 +5526,7 @@ type Annotation {
   createdIssues: [IssueLink]
   userCanModify: Boolean
   # todo: make this required
-  webhookConfigured: Boolean
+  webhookConfigured: Boolean!
 }
 
 type Note {
@@ -7350,11 +7350,14 @@ func (ec *executionContext) _Annotation_webhookConfigured(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
@@ -24769,6 +24772,9 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 					}
 				}()
 				res = ec._Annotation_webhookConfigured(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
