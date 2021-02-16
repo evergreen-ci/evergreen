@@ -2516,6 +2516,9 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 	if err != nil {
 		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
 	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
+	}
 	permissions := gimlet.PermissionOpts{
 		Resource:      t.Project,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -2525,6 +2528,21 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 	res := authUser.HasPermission(permissions)
 	return &res, nil
 
+}
+
+func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
+	t, err := r.sc.FindTaskById(*obj.TaskId)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	if t == nil {
+		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
+	}
+	return IsWebhookConfigured(t), nil
+}
+
+func (r *annotationResolver) CreatedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	return restModel.GetJiraTickets(obj.CreatedIssues)
 }
 
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {

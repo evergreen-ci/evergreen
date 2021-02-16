@@ -46,6 +46,8 @@ models:
         resolver: true
       suspectedIssues:
         resolver: true
+      createdIssues:
+        resolver: true
   Note:
     model: github.com/evergreen-ci/evergreen/rest/model.APINote
   IssueLinkInput:
