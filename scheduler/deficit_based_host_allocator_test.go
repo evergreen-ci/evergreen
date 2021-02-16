@@ -40,7 +40,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				}
 
 				So(deficitNumNewHostsForDistro(ctx, hostAllocatorData,
-					dist), ShouldEqual, 0)
+					dist), ShouldEqual, 0, 0)
 			})
 
 		Convey("if the number of existing hosts equals the max hosts, no new"+
@@ -53,7 +53,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
-				ShouldEqual, 0)
+				ShouldEqual, 0, 0)
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 			}
@@ -70,7 +70,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
-				ShouldEqual, 0)
+				ShouldEqual, 0, 0)
 		})
 
 		Convey("if the number of existing hosts exceeds the max hosts, no new"+
@@ -92,7 +92,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
-				ShouldEqual, 0)
+				ShouldEqual, 0, 2)
 		})
 
 		Convey("if the number of tasks to run is less than the number of free"+
