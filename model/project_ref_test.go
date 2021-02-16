@@ -492,6 +492,50 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	assert.False(ok)
 }
 
+func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	projectRefs, err := FindMergedEnabledProjectRefsByOwnerAndRepo("mongodb", "mci")
+	assert.NoError(t, err)
+	assert.Empty(t, projectRefs)
+
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, repoRef.Insert())
+	doc := &ProjectRef{
+		Enabled:         utility.TruePtr(),
+		Owner:           "mongodb",
+		Repo:            "mci",
+		Branch:          "main",
+		Identifier:      "mci",
+		Id:              "1",
+		RepoRefId:       repoRef.Id,
+		UseRepoSettings: true,
+	}
+	assert.NoError(t, doc.Insert())
+	doc.Enabled = nil
+	doc.Id = "2"
+	assert.NoError(t, doc.Insert())
+
+	doc.Enabled = utility.FalsePtr()
+	doc.Id = "3"
+	assert.NoError(t, doc.Insert())
+
+	doc.Enabled = utility.TruePtr()
+	doc.RepoRefId = ""
+	doc.UseRepoSettings = false
+	doc.Id = "4"
+	assert.NoError(t, doc.Insert())
+
+	projectRefs, err = FindMergedEnabledProjectRefsByOwnerAndRepo("mongodb", "mci")
+	assert.NoError(t, err)
+	require.Len(t, projectRefs, 3)
+	assert.NotEqual(t, projectRefs[0].Id, "3")
+	assert.NotEqual(t, projectRefs[1].Id, "3")
+	assert.NotEqual(t, projectRefs[2].Id, "3")
+}
+
 func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)

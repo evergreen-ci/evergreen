@@ -774,7 +774,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	pipeline := []bson.M{byOwnerAndRepo(owner, repo)}
+	pipeline := []bson.M{{"$match": byOwnerAndRepo(owner, repo)}}
 	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
