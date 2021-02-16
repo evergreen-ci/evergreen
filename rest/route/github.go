@@ -371,27 +371,40 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		})
 		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
 	}
+
+	versionForProject := map[string]*model.Version{}
+
 	catcher := grip.NewBasicCatcher()
-	for _, pRef := range projectRefs {
-		var existingVersion *model.Version
-		err = util.Retry(
-			ctx,
-			func() (bool, error) {
+
+	// iterate through all projects before retrying
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			retryCatcher := grip.NewBasicCatcher()
+			for _, pRef := range projectRefs {
+				if versionForProject[pRef.Id] != nil {
+					continue
+				}
+				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
 				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
 				if err != nil {
-					return true, err
+					retryCatcher.Wrapf(err, "problem finding version for project '%s' with revision '%s'", pRef.Id, hash)
+				} else if existingVersion == nil {
+					retryCatcher.Errorf("no version for project '%s' with revision '%s' to add tag to", pRef.Id, hash)
+				} else {
+					versionForProject[pRef.Id] = existingVersion
 				}
-				if existingVersion == nil {
-					return true, errors.New("no existing version to add tag to")
-				}
-				return false, nil
-			}, 5, time.Second, time.Second*10)
+			}
+			return retryCatcher.HasErrors(), retryCatcher.Resolve()
+		}, 5, 100*time.Millisecond, time.Second*2)
 
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
-				pRef.Id, hash, tag.Tag))
+	catcher.Add(err)
+
+	for _, pRef := range projectRefs {
+		existingVersion := versionForProject[pRef.Id]
+		if existingVersion == nil {
 			continue
 		}
 
@@ -439,6 +452,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			})
 		}
 	}
+
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
 		"msg_id":  gh.msgID,
