@@ -34,10 +34,11 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		if proj.TicketCreateProject == "" {
-			return fmt.Errorf("ticket_create_project cannot be blank")
+		webhookConfigured := proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != ""
+		if !webhookConfigured && proj.TicketCreateProject == "" {
+			return fmt.Errorf("ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank")
 		}
-		if len(proj.TicketSearchProjects) == 0 {
+		if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
 			return fmt.Errorf("ticket_search_projects cannot be empty")
 		}
 		if proj.BFSuggestionServer != "" {
@@ -59,7 +60,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		if proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
+		if webhookConfigured {
 			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
 				return errors.Wrapf(err, `Failed to parse webhook endpoint for project "%s"`, projName)
 			}
