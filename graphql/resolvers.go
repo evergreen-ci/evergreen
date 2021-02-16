@@ -2535,6 +2535,10 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	return IsWebhookConfigured(t), nil
 }
 
+func (r *annotationResolver) CreatedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
+	return restModel.GetJiraTickets(obj.CreatedIssues)
+}
+
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
 	return restModel.GetJiraTickets(obj.Issues)
 }
