@@ -2516,6 +2516,9 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 	if err != nil {
 		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
 	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
+	}
 	permissions := gimlet.PermissionOpts{
 		Resource:      t.Project,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -2530,7 +2533,10 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {
-		return false, err
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	if t == nil {
+		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
 	return IsWebhookConfigured(t), nil
 }

@@ -943,7 +943,6 @@ type Annotation {
   suspectedIssues: [IssueLink]
   createdIssues: [IssueLink]
   userCanModify: Boolean
-  # todo: make this required
   webhookConfigured: Boolean!
 }
 
