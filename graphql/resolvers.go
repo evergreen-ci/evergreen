@@ -2530,7 +2530,7 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (*bool, error) {
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {
-		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+		return nil, err
 	}
 	res := IsWebhookConfigured(t)
 	return &res, nil
