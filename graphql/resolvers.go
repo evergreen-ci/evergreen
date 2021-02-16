@@ -2527,6 +2527,15 @@ func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.A
 
 }
 
+func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (*bool, error) {
+	t, err := r.sc.FindTaskById(*obj.TaskId)
+	if err != nil {
+		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	}
+	res := IsWebhookConfigured(t)
+	return &res, nil
+}
+
 func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
 	return restModel.GetJiraTickets(obj.Issues)
 }
