@@ -29,6 +29,7 @@ func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m
 
 type CommitQueueItem struct {
 	Issue           string    `bson:"issue"`
+	PatchId         string    `bson:"patch_id,omitempty"`
 	Version         string    `bson:"version,omitempty"`
 	EnqueueTime     time.Time `bson:"enqueue_time"`
 	Modules         []Module  `bson:"modules"`
@@ -138,7 +139,7 @@ func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
 
 func (q *CommitQueue) FindItem(issue string) int {
 	for i, queued := range q.Queue {
-		if queued.Issue == issue {
+		if queued.Issue == issue || queued.Version == issue {
 			return i
 		}
 	}

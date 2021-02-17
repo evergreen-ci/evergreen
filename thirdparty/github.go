@@ -11,11 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -750,4 +753,63 @@ func missingBaseRepoOwnerLogin(pr *github.PullRequest) bool {
 
 func missingHeadSHA(pr *github.PullRequest) bool {
 	return pr.Head == nil || pr.Head.GetSHA() == ""
+}
+
+func SendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubState, description, versionID string) error {
+	env := evergreen.GetEnvironment()
+	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	if err != nil {
+		return errors.Wrap(err, "can't get GitHub status sender")
+	}
+
+	var url string
+	if versionID != "" {
+		uiConfig := evergreen.UIConfig{}
+		if err := uiConfig.Get(env); err == nil {
+			urlBase := uiConfig.Url
+			url = fmt.Sprintf("%s/version/%s", urlBase, versionID)
+		}
+	}
+
+	msg := message.GithubStatus{
+		Owner:       *pr.Base.Repo.Owner.Login,
+		Repo:        *pr.Base.Repo.Name,
+		Ref:         *pr.Head.SHA,
+		Context:     commitqueue.GithubContext,
+		State:       state,
+		Description: description,
+		URL:         url,
+	}
+
+	c := message.NewGithubStatusMessageWithRepo(level.Notice, msg)
+	sender.Send(c)
+
+	return nil
+}
+
+func GetPullRequest(ctx context.Context, issue int, githubToken, owner, repo string) (*github.PullRequest, error) {
+	pr, err := GetGithubPullRequest(ctx, githubToken, owner, repo, issue)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get PR from GitHub")
+	}
+
+	if err = ValidatePR(pr); err != nil {
+		return nil, errors.Wrap(err, "GitHub returned an incomplete PR")
+	}
+
+	if pr.Mergeable == nil {
+		if *pr.Merged {
+			return pr, errors.New("PR is already merged")
+		}
+		// GitHub hasn't yet tested if the PR is mergeable.
+		// Check back later
+		// See: https://developer.github.com/v3/pulls/#response-1
+		return pr, errors.New("GitHub hasn't yet generated a merge commit")
+	}
+
+	if !*pr.Mergeable {
+		return pr, errors.New("PR is not mergeable")
+	}
+
+	return pr, nil
 }

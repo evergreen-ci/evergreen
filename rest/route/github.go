@@ -573,11 +573,25 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if projectRef == nil {
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
+
+	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, PRNum, cqInfo.Modules, cqInfo.MessageOverride)
+	if err != nil {
+		sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "failed to create patch", "")
+		grip.Error(message.WrapError(sendErr, message.Fields{
+			"message": "error sending patch creation failure to github",
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"pr":      PRNum,
+		}))
+		return errors.Wrap(err, "error adding patch")
+	}
+
 	item := restModel.APICommitQueueItem{
 		Issue:           utility.ToStringPtr(strconv.Itoa(PRNum)),
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
 		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
+		PatchId:         &patchId,
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
@@ -587,7 +601,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
 		return errors.New("PR contains no head branch SHA")
 	}
-	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, PRNum)
+	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, PRNum, patchId)
 	q := evergreen.GetEnvironment().LocalQueue()
 	grip.Error(message.WrapError(q.Put(ctx, pushJob), message.Fields{
 		"source":  "github hook",
