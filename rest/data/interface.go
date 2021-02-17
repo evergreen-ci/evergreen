@@ -90,6 +90,8 @@ type Connector interface {
 	UpdateProject(*model.ProjectRef) error
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
+	UpdateRepo(*model.RepoRef) error
+
 	// GetProjectFromFile finds the file for the projectRef and returns the translated project, using the given token
 	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (*model.Project, *model.ParserProject, error)
 
@@ -282,8 +284,9 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
-	// FindProjectAliases queries the database to find all aliases. Includes repo aliases if repoId is provided.
-	FindProjectAliases(string, string) ([]restModel.APIProjectAlias, error)
+	// FindProjectAliases queries the database to find all aliases (including or excluding those specified).
+	// Includes repo aliases if repoId is provided.
+	FindProjectAliases(string, string, []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error)
 	// CopyProjectAliases copies aliases from the first project for the second project.
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project

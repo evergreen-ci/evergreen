@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	mgobson "gopkg.in/mgo.v2/bson"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -15,9 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // DBProjectConnector is a struct that implements the Project related methods
@@ -69,6 +69,18 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 	return nil
 }
 
+// UpdateRepo updates the given model.RepoRef.Id. We use EnsureCommitQueueExistsForProject to ensure that only values relevant to repos get updated.
+func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
+	err := repoRef.Upsert()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("repo with id '%s' was not updated", repoRef.Id),
+		}
+	}
+	return nil
+}
+
 func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &pRef,
@@ -86,7 +98,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
 	}
 	if hook != nil {
-		projectRef.TracksPushEvents = true
+		projectRef.TracksPushEvents = utility.TruePtr()
 		return true, nil
 	}
 
@@ -107,14 +119,14 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 			"owner":   projectRef.Owner,
 			"repo":    projectRef.Repo,
 		}))
-		projectRef.TracksPushEvents = false
+		projectRef.TracksPushEvents = utility.FalsePtr()
 		return false, nil
 	}
 
 	if err = hook.Insert(); err != nil {
 		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
 	}
-	projectRef.TracksPushEvents = true
+	projectRef.TracksPushEvents = utility.TruePtr()
 	return true, nil
 }
 
@@ -138,17 +150,7 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	cq, err := commitqueue.FindOneId(projectRef.Id)
-	if err != nil {
-		return errors.Wrapf(err, "database error finding commit queue")
-	}
-	if cq == nil {
-		cq = &commitqueue.CommitQueue{ProjectID: projectRef.Id}
-		if err = commitqueue.InsertQueue(cq); err != nil {
-			return errors.Wrapf(err, "problem inserting new commit queue")
-		}
-	}
-	return nil
+	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
 }
 
 func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) error {
@@ -456,6 +458,10 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 	}
+}
+
+func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
+	return nil
 }
 
 func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {

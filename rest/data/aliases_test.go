@@ -68,46 +68,48 @@ func (a *AliasSuite) SetupTest() {
 }
 
 func (a *AliasSuite) TestFindProjectAliases() {
-	found, err := a.sc.FindProjectAliases("project_id", "")
+	found, err := a.sc.FindProjectAliases("project_id", "", nil)
 	a.NoError(err)
 	a.Len(found, 3)
 
-	found, err = a.sc.FindProjectAliases("project_id", "repo_id")
+	found, err = a.sc.FindProjectAliases("project_id", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 3) // ignore repo
 
-	found, err = a.sc.FindProjectAliases("non-existent", "")
+	found, err = a.sc.FindProjectAliases("non-existent", "", nil)
 	a.NoError(err)
 	a.Len(found, 0)
 
-	found, err = a.sc.FindProjectAliases("non-existent", "repo_id")
+	found, err = a.sc.FindProjectAliases("non-existent", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 1) // from repo
 
-	found, err = a.sc.FindProjectAliases("", "repo_id")
+	found, err = a.sc.FindProjectAliases("", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 1)
+
+	// TODO: add test
 }
 
 func (a *AliasSuite) TestCopyProjectAliases() {
-	res, err := a.sc.FindProjectAliases("new_project_id", "")
+	res, err := a.sc.FindProjectAliases("new_project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 0)
 
 	a.NoError(a.sc.CopyProjectAliases("project_id", "new_project_id"))
 
-	res, err = a.sc.FindProjectAliases("project_id", "")
+	res, err = a.sc.FindProjectAliases("project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 3)
 
-	res, err = a.sc.FindProjectAliases("new_project_id", "")
+	res, err = a.sc.FindProjectAliases("new_project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 3)
 
 }
 
 func (a *AliasSuite) TestUpdateProjectAliases() {
-	found, err := a.sc.FindProjectAliases("other_project_id", "")
+	found, err := a.sc.FindProjectAliases("other_project_id", "", nil)
 	a.NoError(err)
 	a.Require().Len(found, 2)
 	toUpdate := found[0]
@@ -124,7 +126,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 		},
 	}
 	a.NoError(a.sc.UpdateProjectAliases("other_project_id", aliasUpdates))
-	found, err = a.sc.FindProjectAliases("other_project_id", "")
+	found, err = a.sc.FindProjectAliases("other_project_id", "", nil)
 	a.NoError(err)
 	a.Require().Len(found, 2) // added one alias, deleted another
 

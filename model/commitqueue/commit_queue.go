@@ -154,6 +154,21 @@ func (q *CommitQueue) SetProcessing(status bool) error {
 	return nil
 }
 
+// EnsureCommitQueueExistsForProject inserts a skeleton commit queue if project doesn't have one
+func EnsureCommitQueueExistsForProject(id string) error {
+	cq, err := FindOneId(id)
+	if err != nil {
+		return errors.Wrapf(err, "database error finding commit queue")
+	}
+	if cq == nil {
+		cq = &CommitQueue{ProjectID: id}
+		if err = InsertQueue(cq); err != nil {
+			return errors.Wrapf(err, "problem inserting new commit queue")
+		}
+	}
+	return nil
+}
+
 func TriggersCommitQueue(commentAction string, comment string) bool {
 	if commentAction == "deleted" {
 		return false

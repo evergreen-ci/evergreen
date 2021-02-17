@@ -169,49 +169,6 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.Len(p.FilesIgnoredFromCache, 0)
 }
 
-func (s *ProjectPatchByIDSuite) TestHasAliasDefined() {
-	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-
-	projectID := "evergreen"
-	// a new definition for the github alias is added
-	pref := &model.APIProjectRef{
-		Identifier: utility.ToStringPtr(projectID),
-		Aliases: []model.APIProjectAlias{
-			{
-				Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
-			},
-		},
-	}
-
-	exists, err := h.hasAliasDefined(pref, evergreen.GithubPRAlias)
-	s.NoError(err)
-	s.True(exists)
-
-	// a definition already exists
-	s.sc.MockAliasConnector.Aliases = []model.APIProjectAlias{
-		{
-			ID:    utility.ToStringPtr("abcdef"),
-			Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
-		},
-	}
-	pref.Aliases = nil
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
-	s.NoError(err)
-	s.True(exists)
-
-	// the only existing github alias is being deleted
-	pref.Aliases = []model.APIProjectAlias{
-		{
-			ID:     utility.ToStringPtr("abcdef"),
-			Delete: true,
-		},
-	}
-	exists, err = h.hasAliasDefined(pref, evergreen.GithubPRAlias)
-	s.NoError(err)
-	s.False(exists)
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}
@@ -499,7 +456,7 @@ func getMockProjectsConnector() *data.MockConnector {
 					Id:                 "dimoxinil",
 					DisplayName:        "Dimoxinil",
 					DeactivatePrevious: utility.FalsePtr(),
-					TracksPushEvents:   false,
+					TracksPushEvents:   utility.FalsePtr(),
 					PRTestingEnabled:   utility.FalsePtr(),
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: utility.FalsePtr(),
@@ -607,7 +564,7 @@ func TestDeleteProject(t *testing.T) {
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			UseRepoSettings:      true,
 			RepoRefId:            "repo_ref",
-			TracksPushEvents:     true,
+			TracksPushEvents:     utility.TruePtr(),
 			PRTestingEnabled:     utility.TruePtr(),
 			Admins:               []string{"admin0", "admin1"},
 			NotifyOnBuildFailure: utility.TruePtr(),

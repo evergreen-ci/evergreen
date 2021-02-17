@@ -440,7 +440,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	// doc defaults to repo, which is enabled
 	repoDoc.Enabled = utility.TruePtr()
 	repoDoc.CommitQueue.Enabled = utility.TruePtr()
-	assert.NoError(repoDoc.Update())
+	assert.NoError(repoDoc.Upsert())
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)

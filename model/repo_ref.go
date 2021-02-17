@@ -71,16 +71,6 @@ func (r *RepoRef) Insert() error {
 	return db.Insert(RepoRefCollection, r)
 }
 
-func (r *RepoRef) Update() error {
-	return db.Update(
-		RepoRefCollection,
-		bson.M{
-			RepoRefIdKey: r.Id,
-		},
-		r,
-	)
-}
-
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created
 func (r *RepoRef) Upsert() error {

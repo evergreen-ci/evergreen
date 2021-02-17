@@ -169,9 +169,10 @@ type APIProjectRef struct {
 	Identifier                  *string              `json:"identifier"`
 	DisplayName                 *string              `json:"display_name"`
 	DeactivatePrevious          *bool                `json:"deactivate_previous"`
-	TracksPushEvents            bool                 `json:"tracks_push_events"`
+	TracksPushEvents            *bool                `json:"tracks_push_events"`
 	PRTestingEnabled            *bool                `json:"pr_testing_enabled"`
 	GitTagVersionsEnabled       *bool                `json:"git_tag_versions_enabled"`
+	GithubChecksEnabled         *bool                `json:"github_checks_enabled"`
 	UseRepoSettings             bool                 `json:"use_repo_settings"`
 	RepoRefId                   *string              `json:"repo_ref_id"`
 	DefaultLogger               *string              `json:"default_logger"`
@@ -242,6 +243,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DefaultLogger:         utility.FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:      p.PRTestingEnabled,
 		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
+		GithubChecksEnabled:   p.GithubChecksEnabled,
 		UseRepoSettings:       p.UseRepoSettings,
 		RepoRefId:             utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
@@ -324,6 +326,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
+	p.GithubChecksEnabled = projectRef.GithubChecksEnabled
 	p.UseRepoSettings = projectRef.UseRepoSettings
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.CommitQueue = cq

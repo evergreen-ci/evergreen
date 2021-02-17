@@ -14,9 +14,20 @@ type DBAliasConnector struct{}
 
 // FindProjectAliases queries the database to find all aliases.
 // If the repoId is given, we default to repo aliases if there are no project aliases.
-func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
+// If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
+func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
 	var err error
 	var aliases model.ProjectAliases
+	// should this logic just be folded into FindProjectAliases?
+	aliasesToDelete := []string{}
+	aliasModels := []restModel.APIProjectAlias{}
+	for _, a := range aliasesToAdd {
+		if a.Delete {
+			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(a.ID))
+		} else {
+			aliasModels = append(aliasModels, a)
+		}
+	}
 	if projectId != "" {
 		aliases, err = model.FindAliasesForProject(projectId)
 		if err != nil {
@@ -33,8 +44,10 @@ func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string) ([]restM
 	if aliases == nil {
 		return nil, nil
 	}
-	aliasModels := []restModel.APIProjectAlias{}
 	for _, alias := range aliases {
+		if utility.StringSliceContains(aliasesToDelete, alias.ID.Hex()) {
+			continue
+		}
 		aliasModel := restModel.APIProjectAlias{}
 		if err := aliasModel.BuildFromService(alias); err != nil {
 			return nil, err
@@ -114,7 +127,7 @@ type MockAliasConnector struct {
 }
 
 // FindAllAliases is a mock implementation for testing.
-func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string) ([]restModel.APIProjectAlias, error) {
+func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
 	return d.Aliases, nil
 }
 
