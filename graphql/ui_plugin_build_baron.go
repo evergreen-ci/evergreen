@@ -192,15 +192,14 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	buildBaronProjects := BbGetConfig(settings)
 	bbProj, ok := buildBaronProjects[t.Project]
 
-	// if the project uses custom ticket creation, don't use the default search
-	if bbProj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
-		return nil, bbConfig, errors.Errorf("Build Baron project for %s is configured to use a custom webhook", t.Project)
-	}
-
 	if !ok {
 		return nil, bbConfig, errors.Errorf("Build Baron project for %s not found", t.Project)
 	}
 	bbConfig.ProjectFound = true
+	// if the project uses custom ticket creation, don't use the default search
+	if bbProj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
+		return nil, bbConfig, errors.Errorf("Build Baron project for %s is configured to use a custom webhook", t.Project)
+	}
 
 	// the build baron is configured if the jira search is configured
 	if len(bbProj.TicketSearchProjects) <= 0 {
