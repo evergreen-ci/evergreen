@@ -2415,16 +2415,10 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
-		return &BuildBaron{
-			SearchReturnInfo:     searchReturnInfo,
-			BuildBaronConfigured: false,
-		}, nil
-	}
 
 	return &BuildBaron{
 		SearchReturnInfo:     searchReturnInfo,
-		BuildBaronConfigured: true,
+		BuildBaronConfigured: bbConfig.ProjectFound && bbConfig.SearchConfigured,
 	}, nil
 }
 
