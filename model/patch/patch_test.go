@@ -617,7 +617,7 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 func TestMakeMergePatchPatches(t *testing.T) {
 	require.NoError(t, db.ClearGridCollections(GridFSPrefix))
 	patchDiff := "Lorem Ipsum"
-	patchFileID := mgobson.NewObjectId()
+	patchFileID := bson.NewObjectId()
 	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
 
 	existingPatch := &Patch{
