@@ -65,9 +65,9 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		// the webhook cannot be used if the default build baron creation and search is configurd
 		if webhookConfigured {
 			if len(proj.TicketCreateProject) != 0 {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(message.Fields{
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
-					"project_name": projName}))
+					"project_name": projName})
 			}
 			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
