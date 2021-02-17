@@ -412,7 +412,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				})
 
 				if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
-					catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
+					catcher.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
 					continue
 				}
 
@@ -423,9 +423,10 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					Revision:        existingVersion.Revision,
 					RevisionMessage: existingVersion.Message,
 				}
-				v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
+				var v *model.Version
+				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
 				if err != nil {
-					catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
+					catcher.Wrapf(err, "error adding new version for tag '%s'", tag.Tag)
 					continue
 				}
 				if v != nil {
