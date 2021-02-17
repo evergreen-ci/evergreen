@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -62,7 +64,10 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		}
 		if webhookConfigured {
 			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
-				return errors.Wrapf(err, `Failed to parse webhook endpoint for project "%s"`, projName)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": fmt.Sprintf(`Failed to parse webhook endpoint for project "%s"`, projName),
+					"error":   err,
+				}))
 			}
 		}
 	}
