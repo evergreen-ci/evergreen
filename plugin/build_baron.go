@@ -71,9 +71,8 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			}
 			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message": "Failed to parse webhook endpoint for project",
+					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))
-			}
 			}
 		}
 	}
