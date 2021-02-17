@@ -120,7 +120,11 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !bbConfig.ProjectFound {
-		gimlet.WriteJSON(rw, err.Error())
+		gimlet.WriteJSON(rw, "build baron project not found")
+		return
+	}
+	if !bbConfig.SearchConfigured {
+		gimlet.WriteJSON(rw, "build baron search is not configured")
 		return
 	}
 
