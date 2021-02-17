@@ -208,11 +208,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	}
 	bbConfig.SearchConfigured = true
 
-	// if the project uses custom ticket creation, don't use the default search
-	if bbProj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
-		return nil, bbConfig, errors.Errorf("Build Baron project for %s is configured to use a custom webhook", t.Project)
-	}
-
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}
