@@ -115,12 +115,12 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	exec := vars["execution"]
 
 	searchReturnInfo, bbConfig, err := graphql.GetSearchReturnInfo(taskId, exec)
-	if !bbConfig.ProjectFound {
-		gimlet.WriteJSON(rw, err.Error())
-		return
-	}
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
+		return
+	}
+	if !bbConfig.ProjectFound {
+		gimlet.WriteJSON(rw, err.Error())
 		return
 	}
 
