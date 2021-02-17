@@ -118,7 +118,7 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 	return w
 }
 
-func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId string, details *[]patch.Parameter) *httptest.ResponseRecorder {
+func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId string, details []patch.Parameter) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
@@ -137,7 +137,7 @@ func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId str
 	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
 	request.Header.Add(evergreen.TaskSecretHeader, taskSecret)
 
-	jsonBytes, err := json.Marshal(*details)
+	jsonBytes, err := json.Marshal(details)
 	require.NoError(t, err, "error marshalling json")
 	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 
@@ -1538,7 +1538,7 @@ func TestDownstreamParams(t *testing.T) {
 
 		Convey("with a patchId and parameters set in PatchData", func() {
 
-			resp := getDownstreamParamsEndpoint(t, as, hostId, task1.Id, &parameters)
+			resp := getDownstreamParamsEndpoint(t, as, hostId, task1.Id, parameters)
 			So(resp, ShouldNotBeNil)
 			Convey("should return http status ok", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)

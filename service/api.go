@@ -410,6 +410,16 @@ func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if p == nil {
+		errorMessage := "patch not found"
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
+		return
+	}
+
 	if err = p.SetDownstreamParameters(downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("error setting patch parameters: %s", err)
 		grip.Error(message.Fields{

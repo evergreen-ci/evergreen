@@ -16,7 +16,6 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -70,7 +69,7 @@ type Mock struct {
 	PatchFiles       map[string]string
 	keyVal           map[string]*serviceModel.KeyVal
 	LastMessageSent  time.Time
-	DownstreamParams []patch.Parameter
+	DownstreamParams []patchmodel.Parameter
 
 	mu sync.RWMutex
 }
@@ -401,7 +400,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patch.Parameter, taskId string) error {
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
 	c.DownstreamParams = downstreamParams
 	return nil
 }
