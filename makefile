@@ -456,7 +456,10 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(shell pwd) GOPATH=$(gopath)
+ifeq (,$(GOCONVEY_REPORTER))
+	testRunEnv += GOCONVEY_REPORTER=silent
+endif
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif
