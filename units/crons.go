@@ -956,19 +956,8 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return errors.Wrap(err, "problem finding hosts that need their Jasper service restarted")
 		}
 
-		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for _, h := range hosts {
-			expiration, err := h.JasperCredentialsExpiration(ctx, env)
-			if err != nil {
-				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
-				// If we cannot get the credentials for some reason (e.g. the
-				// host's credentials were deleted), assume the credentials have
-				// expired.
-				expiration = time.Now()
-			}
-			foundExpiration := err == nil
-
-			catcher.Add(queue.Put(ctx, NewJasperRestartJob(env, h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)))
+			catcher.Wrapf(EnqueueHostReprovisioningJob(ctx, env, &h), "host %s", h.Id)
 		}
 
 		return catcher.Resolve()
@@ -1013,15 +1002,9 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 			return errors.Wrap(err, "problem finding hosts that need reprovisioning")
 		}
 
-		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			switch h.NeedsReprovision {
-			case host.ReprovisionToLegacy:
-				catcher.Add(queue.Put(ctx, NewConvertHostToLegacyProvisioningJob(env, h, ts, 0)))
-			case host.ReprovisionToNew:
-				catcher.Add(queue.Put(ctx, NewConvertHostToNewProvisioningJob(env, h, ts, 0)))
-			}
+			catcher.Wrapf(EnqueueHostReprovisioningJob(ctx, env, &h), "host '%s'", h.Id)
 		}
 
 		return catcher.Resolve()

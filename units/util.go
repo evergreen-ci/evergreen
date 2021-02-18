@@ -2,10 +2,14 @@ package units
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -44,4 +48,39 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "error disabling poisoned host")
 	}
 	return env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, &h, nil, reason))
+}
+
+// EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts
+// that do not need to reprovision, this is a no-op.
+func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+
+	switch h.NeedsReprovision {
+	case host.ReprovisionToLegacy:
+		if err := env.RemoteQueue().Put(ctx, NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
+			return errors.Wrap(err, "enqueueing job to reprovision host to legacy")
+		}
+	case host.ReprovisionToNew:
+		if err := env.RemoteQueue().Put(ctx, NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
+			return errors.Wrap(err, "enqueueing job to reprovision host to new")
+		}
+	case host.ReprovisionJasperRestart:
+		expiration, err := h.JasperCredentialsExpiration(ctx, env)
+		if err != nil {
+			grip.Warning(message.WrapError(err, "getting credentials expiration time"))
+			// If we cannot get the credentials for some reason (e.g. the
+			// host's credentials were deleted), assume the credentials have
+			// expired.
+			expiration = time.Now()
+		}
+		foundExpiration := err == nil
+		if err := env.RemoteQueue().Put(ctx, NewJasperRestartJob(env, *h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
+			return errors.Wrap(err, "enqueueing jobs to restart Jasper")
+		}
+	}
+
+	return nil
 }

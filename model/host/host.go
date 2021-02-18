@@ -1022,7 +1022,11 @@ func (h *Host) SetNeedsReprovisionToNew(user string) error {
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
-	return h.MarkAsReprovisioning()
+	if err := h.MarkAsReprovisioning(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *Host) setAwaitingReprovisionToNew(user string) error {
