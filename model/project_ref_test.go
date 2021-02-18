@@ -423,6 +423,12 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(repoDoc.Upsert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	repoDoc.RemotePath = "my_path"
+	assert.NoError(repoDoc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("disabled_project", projectRef.Id)
 
