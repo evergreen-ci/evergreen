@@ -74,6 +74,7 @@ type patchParams struct {
 	BackportOf        patch.BackportInfo
 	TriggerAliases    []string
 	Parameters        []patch.Parameter
+	ReuseDefinition   bool
 }
 
 type patchSubmission struct {
@@ -92,6 +93,7 @@ type patchSubmission struct {
 	parameters        []patch.Parameter
 	triggerAliases    []string
 	backportOf        patch.BackportInfo
+	reuseDefinition   bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -111,6 +113,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		backportOf:        p.BackportOf,
 		parameters:        p.Parameters,
 		triggerAliases:    p.TriggerAliases,
+		reuseDefinition:   p.ReuseDefinition,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

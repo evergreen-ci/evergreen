@@ -78,6 +78,8 @@ type cliIntent struct {
 
 	// BackportOf specifies what to backport
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
+
+	ReuseDefinition bool `bson:"reuse_definition"`
 }
 
 // BSON fields for the patches
@@ -149,6 +151,10 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 	return c.Finalize
 }
 
+func (c *cliIntent) ReusePreviousPatchDefinition() bool {
+	return c.ReuseDefinition
+}
+
 func (g *cliIntent) RequesterIdentity() string {
 	return evergreen.PatchVersionRequester
 }
@@ -184,20 +190,21 @@ func (c *cliIntent) NewPatch() *Patch {
 }
 
 type CLIIntentParams struct {
-	User           string
-	Project        string
-	BaseGitHash    string
-	Module         string
-	PatchContent   string
-	Description    string
-	Finalize       bool
-	BackportOf     BackportInfo
-	Parameters     []Parameter
-	Variants       []string
-	Tasks          []string
-	Alias          string
-	TriggerAliases []string
-	SyncParams     SyncAtEndOptions
+	User            string
+	Project         string
+	BaseGitHash     string
+	Module          string
+	PatchContent    string
+	Description     string
+	Finalize        bool
+	BackportOf      BackportInfo
+	Parameters      []Parameter
+	Variants        []string
+	Tasks           []string
+	Alias           string
+	TriggerAliases  []string
+	ReuseDefinition bool
+	SyncParams      SyncAtEndOptions
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -237,22 +244,23 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:     mgobson.NewObjectId().Hex(),
-		IntentType:     CliIntentType,
-		PatchContent:   params.PatchContent,
-		Description:    params.Description,
-		BuildVariants:  params.Variants,
-		Tasks:          params.Tasks,
-		Parameters:     params.Parameters,
-		SyncAtEndOpts:  params.SyncParams,
-		User:           params.User,
-		ProjectID:      params.Project,
-		BaseHash:       params.BaseGitHash,
-		Finalize:       params.Finalize,
-		Module:         params.Module,
-		Alias:          params.Alias,
-		TriggerAliases: params.TriggerAliases,
-		BackportOf:     params.BackportOf,
+		DocumentID:      mgobson.NewObjectId().Hex(),
+		IntentType:      CliIntentType,
+		PatchContent:    params.PatchContent,
+		Description:     params.Description,
+		BuildVariants:   params.Variants,
+		Tasks:           params.Tasks,
+		Parameters:      params.Parameters,
+		SyncAtEndOpts:   params.SyncParams,
+		User:            params.User,
+		ProjectID:       params.Project,
+		BaseHash:        params.BaseGitHash,
+		Finalize:        params.Finalize,
+		Module:          params.Module,
+		Alias:           params.Alias,
+		TriggerAliases:  params.TriggerAliases,
+		BackportOf:      params.BackportOf,
+		ReuseDefinition: params.ReuseDefinition,
 	}, nil
 }
 
