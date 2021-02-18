@@ -372,3 +372,25 @@ buildvariants:
 	}
 	assert.True(foundGeneratedtask)
 }
+
+func TestMarkGeneratedTasksError(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	sampleTask := task.Task{
+		Id:                    "sample_task",
+		Version:               "sample_version",
+		BuildId:               "sample_build_id",
+		Project:               "mci",
+		DisplayName:           "sample_task",
+		GeneratedJSONAsString: sampleGeneratedProject,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(t, sampleTask.Insert())
+
+	j := NewGenerateTasksJob(sampleTask.Id, "1")
+	j.Run(context.Background())
+	assert.Error(t, j.Error())
+	dbTask, err := task.FindOneId(sampleTask.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, "unable to find version sample_version", dbTask.GenerateTasksError)
+	assert.False(t, dbTask.GeneratedTasks)
+}

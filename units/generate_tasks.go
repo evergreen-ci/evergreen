@@ -76,7 +76,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "error finding version %s", t.Version)
 	}
 	if v == nil {
-		return errors.Wrapf(err, "unable to find version %s", t.Version)
+		return errors.Errorf("unable to find version %s", t.Version)
 	}
 	p, pp, err := model.LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
@@ -288,9 +288,10 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	if err != nil && !shouldNoop {
 		j.AddError(err)
+		j.AddError(task.MarkGeneratedTasksErr(j.TaskID, err))
 		return
 	}
-	j.AddError(task.MarkGeneratedTasks(j.TaskID, err))
+	j.AddError(task.MarkGeneratedTasks(j.TaskID))
 }
 
 func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
