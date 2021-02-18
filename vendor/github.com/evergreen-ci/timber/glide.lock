@@ -35,4 +35,4 @@ imports:
 - name: github.com/golang/protobuf
   version: c823c79ea1570fb5ff454033735a8e68575d1d0f
 - name: github.com/evergreen-ci/juniper
-  version: 75f93ec68b7847d65e8c0508a8553608e0e60aff
+  version: ec84479428bb65f832b21ccbb334b9714560c6f8

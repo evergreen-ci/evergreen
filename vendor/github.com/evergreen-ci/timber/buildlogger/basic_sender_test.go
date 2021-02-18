@@ -402,13 +402,13 @@ func TestSend(t *testing.T) {
 		m = message.ConvertToComposer(level.Emergency, "emergency")
 		b.Send(m)
 		require.NotEmpty(t, b.buffer)
-		assert.Equal(t, m.String(), b.buffer[len(b.buffer)-1].Data)
+		assert.EqualValues(t, m.String(), b.buffer[len(b.buffer)-1].Data)
 
 		require.NoError(t, b.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Debug}))
 		m = message.ConvertToComposer(level.Debug, "debug")
 		b.Send(m)
 		require.NotEmpty(t, b.buffer)
-		assert.Equal(t, m.String(), b.buffer[len(b.buffer)-1].Data)
+		assert.EqualValues(t, m.String(), b.buffer[len(b.buffer)-1].Data)
 	})
 	t.Run("FlushAtCapacityWithNewLineCheck", func(t *testing.T) {
 		mc := &mockClient{}
@@ -436,7 +436,7 @@ func TestSend(t *testing.T) {
 				assert.Nil(t, mc.logLines)
 				require.True(t, len(b.buffer) >= len(lines))
 				assert.Equal(t, time.Now().Unix(), b.buffer[len(b.buffer)-1].Timestamp.Seconds)
-				assert.Equal(t, line, b.buffer[len(b.buffer)-(len(lines)-i)].Data)
+				assert.EqualValues(t, line, b.buffer[len(b.buffer)-(len(lines)-i)].Data)
 				messages = append(messages, line)
 			}
 		}
@@ -450,7 +450,7 @@ func TestSend(t *testing.T) {
 		assert.Equal(t, b.opts.logID, mc.logLines.LogId)
 		assert.Len(t, mc.logLines.Lines, len(messages))
 		for i := range mc.logLines.Lines {
-			assert.Equal(t, messages[i], mc.logLines.Lines[i].Data)
+			assert.EqualValues(t, messages[i], mc.logLines.Lines[i].Data)
 			assert.EqualValues(t, level.Debug, mc.logLines.Lines[0].Priority)
 		}
 	})
@@ -476,7 +476,7 @@ func TestSend(t *testing.T) {
 			assert.Nil(t, mc.logLines)
 			require.NotEmpty(t, b.buffer)
 			assert.Equal(t, time.Now().Unix(), b.buffer[len(b.buffer)-1].Timestamp.Seconds)
-			assert.Equal(t, m.String(), b.buffer[len(b.buffer)-1].Data)
+			assert.EqualValues(t, m.String(), b.buffer[len(b.buffer)-1].Data)
 			messages = append(messages, m)
 		}
 		assert.Equal(t, b.opts.MaxBufferSize, b.bufferSize)
@@ -489,7 +489,7 @@ func TestSend(t *testing.T) {
 		assert.Equal(t, b.opts.logID, mc.logLines.LogId)
 		assert.Len(t, mc.logLines.Lines, len(messages))
 		for i := range mc.logLines.Lines {
-			assert.Equal(t, messages[i].String(), mc.logLines.Lines[i].Data)
+			assert.EqualValues(t, messages[i].String(), mc.logLines.Lines[i].Data)
 			assert.EqualValues(t, messages[i].Priority(), mc.logLines.Lines[i].Priority)
 		}
 	})
@@ -513,7 +513,7 @@ func TestSend(t *testing.T) {
 		require.Empty(t, b.buffer)
 		b.mu.Unlock()
 		require.Len(t, mc.logLines.Lines, 1)
-		assert.Equal(t, m.String(), mc.logLines.Lines[0].Data)
+		assert.EqualValues(t, m.String(), mc.logLines.Lines[0].Data)
 		assert.EqualValues(t, m.Priority(), mc.logLines.Lines[0].Priority)
 
 		// flush resets timer
@@ -527,7 +527,7 @@ func TestSend(t *testing.T) {
 		require.Empty(t, b.buffer)
 		b.mu.Unlock()
 		require.Len(t, mc.logLines.Lines, 1)
-		assert.Equal(t, m.String(), mc.logLines.Lines[0].Data)
+		assert.EqualValues(t, m.String(), mc.logLines.Lines[0].Data)
 		assert.EqualValues(t, m.Priority(), mc.logLines.Lines[0].Priority)
 
 		// recent last flush
@@ -538,7 +538,7 @@ func TestSend(t *testing.T) {
 		require.NotEmpty(t, b.buffer)
 		time.Sleep(2 * time.Second)
 		require.NotEmpty(t, b.buffer)
-		assert.Equal(t, m.String(), b.buffer[0].Data)
+		assert.EqualValues(t, m.String(), b.buffer[0].Data)
 	})
 	t.Run("GroupComposer", func(t *testing.T) {
 		mc := &mockClient{}
@@ -553,12 +553,26 @@ func TestSend(t *testing.T) {
 		b.Send(m)
 		assert.Len(t, b.buffer, 3)
 		assert.Equal(t, len(m1.String())+len(m2.String())-1, b.bufferSize)
-		assert.Equal(t, strings.Split(m1.String(), "\n")[0], b.buffer[0].Data)
+		assert.EqualValues(t, strings.Split(m1.String(), "\n")[0], b.buffer[0].Data)
 		assert.EqualValues(t, m.Priority(), b.buffer[0].Priority)
-		assert.Equal(t, strings.Split(m1.String(), "\n")[1], b.buffer[1].Data)
+		assert.EqualValues(t, strings.Split(m1.String(), "\n")[1], b.buffer[1].Data)
 		assert.EqualValues(t, m.Priority(), b.buffer[1].Priority)
-		assert.Equal(t, m2.String(), b.buffer[2].Data)
+		assert.EqualValues(t, m2.String(), b.buffer[2].Data)
 		assert.EqualValues(t, m.Priority(), b.buffer[2].Priority)
+	})
+	t.Run("WithPrefix", func(t *testing.T) {
+		mc := &mockClient{}
+		ms := &mockSender{Base: send.NewBase("test")}
+		b := createSender(ctx, mc, ms)
+		b.opts.MaxBufferSize = 4096
+		b.opts.Prefix = "prefix"
+
+		m := message.ConvertToComposer(level.Emergency, "Hello world!")
+		b.Send(m)
+		require.NoError(t, b.Close())
+		require.Len(t, mc.logLines.Lines, 1)
+		assert.EqualValues(t, fmt.Sprintf("[%s] %s", b.opts.Prefix, m.String()), mc.logLines.Lines[0].Data)
+		assert.EqualValues(t, m.Priority(), mc.logLines.Lines[0].Priority)
 	})
 	t.Run("RPCError", func(t *testing.T) {
 		str := "overflow"
@@ -607,7 +621,7 @@ func TestFlush(t *testing.T) {
 		assert.Zero(t, b.bufferSize)
 		assert.True(t, time.Since(b.lastFlush) <= time.Second)
 		require.Len(t, mc.logLines.Lines, 1)
-		assert.Equal(t, "overflow", mc.logLines.Lines[0].Data)
+		assert.EqualValues(t, "overflow", mc.logLines.Lines[0].Data)
 	})
 	t.Run("ClosedSender", func(t *testing.T) {
 		mc := &mockClient{}
@@ -666,7 +680,7 @@ func TestClose(t *testing.T) {
 		b := createSender(subCtx, mc, ms)
 		b.opts.logID = "id"
 		b.opts.SetExitCode(2)
-		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
+		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: []byte("some data")}
 		b.buffer = append(b.buffer, logLine)
 
 		require.NoError(t, b.Close())
@@ -698,7 +712,7 @@ func TestClose(t *testing.T) {
 		mc := &mockClient{appendErr: true}
 		ms := &mockSender{Base: send.NewBase("test")}
 		b := createSender(subCtx, mc, ms)
-		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: "some data"}
+		logLine := &gopb.LogLine{Timestamp: &timestamp.Timestamp{}, Data: []byte("some data")}
 		b.buffer = append(b.buffer, logLine)
 
 		assert.Error(t, b.Close())
