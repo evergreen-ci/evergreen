@@ -56,7 +56,7 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+	ts := utility.RoundPartOfHour(15).Format(TSFormat)
 
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
