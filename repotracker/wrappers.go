@@ -68,10 +68,6 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 }
 
 func ActivateBuildsForProject(project model.ProjectRef) error {
-	if !project.IsEnabled() {
-		return errors.Errorf("project disabled: %s", project.Id)
-	}
-
 	if err := model.DoProjectActivation(project.Id); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",

@@ -234,7 +234,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.NotNil(t, repoRef)
 	assert.Equal(t, "10gen", repoRef.Owner)
 
-	pRefs, err := dbModel.FindMergedProjectRefsByRepoAndBranch("10gen", "mongo", "main")
+	pRefs, err := dbModel.FindMergedEnabledProjectRefsByRepoAndBranch("10gen", "mongo", "main")
 	assert.NoError(t, err)
 	require.Len(t, pRefs, 1)
 	assert.Equal(t, branchProject.Id, pRefs[0].Id)
