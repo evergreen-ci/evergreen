@@ -761,6 +761,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(u.Insert())
 	p := ProjectRef{
 		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		Branch:     "main",
+		Hidden:     utility.TruePtr(),
 	}
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
@@ -779,6 +783,32 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(role)
 	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(err)
+	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
+	projectId := p.Id
+
+	// check that an added project uses the hidden project's ID
+	u = user.DBUser{Id: "you"}
+	assert.NoError(u.Insert())
+	p.Identifier = "differentProject"
+	p.Id = ""
+	assert.NoError(p.Add(&u))
+	assert.NotEmpty(p.Id)
+	assert.True(mgobson.IsObjectIdHex(p.Id))
+	assert.Equal(projectId, p.Id)
+
+	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
+	assert.NoError(err)
+	assert.NotNil(scope)
+	role, err = rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	})
+	assert.NoError(err)
+	assert.NotNil(role)
+	dbUser, err = user.FindOneById(u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }

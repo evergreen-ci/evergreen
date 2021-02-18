@@ -325,9 +325,29 @@ func (projectRef *ProjectRef) Insert() error {
 
 func (p *ProjectRef) Add(creator *user.DBUser) error {
 	p.Id = mgobson.NewObjectId().Hex()
+
+	// if a hidden project exists for this configuration, use that ID
+	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
+		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(p.Owner, p.Repo, p.Branch)
+		if err != nil {
+			return errors.Wrapf(err, "error querying for hidden project")
+		}
+		if hidden != nil {
+			p.Id = hidden.Id
+			err := p.Upsert()
+			if err != nil {
+				return errors.Wrapf(err, "error upserting project ref '%s'", hidden.Id)
+			}
+			if creator != nil {
+				return p.UpdateAdminRoles([]string{creator.Id}, nil)
+			}
+			return nil
+		}
+	}
+
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting distro")
+		return errors.Wrap(err, "Error inserting project ref")
 	}
 	return p.AddPermissions(creator)
 }
@@ -693,7 +713,7 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-// FindHiddenMergedProjectRefByRepoAndBranch finds a hidden ProjectRef with matching repo/branch, and merges repo information.
+// FindAllMergedProjectRefByRepoAndBranch finds a hidden ProjectRef with matching repo/branch, and merges repo information.
 func FindAllMergedProjectRefByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
@@ -859,6 +879,13 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		"branch":  branch,
 	})
 	return nil, nil
+}
+
+func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+	q := byOwnerRepoAndBranch(owner, repo, branch)
+	q[ProjectRefHiddenKey] = true
+
+	return findOneProjectRefQ(db.Query(q))
 }
 
 func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
