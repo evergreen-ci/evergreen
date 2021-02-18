@@ -118,7 +118,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 
 	catcher = grip.NewBasicCatcher()
 	for _, modulePR := range modulePRs {
-		catcher.Add(thirdparty.SendCommitQueueGithubStatus(modulePR, message.GithubStatePending, "preparing to test merge", patchDoc.Id.Hex()))
+		catcher.Add(thirdparty.SendCommitQueueGithubStatus(modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 	}
 
 	return patchDoc.Id.Hex(), catcher.Resolve()

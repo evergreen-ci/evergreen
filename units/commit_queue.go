@@ -342,8 +342,9 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 			return
 		}
 
+		// TODO EVG-14087 also do this when we finalize, with a different message
 		for _, modulePR := range modulePRs {
-			j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", patchDoc.Id.Hex()))
+			j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
 		}
 	} else {
 		var err error
