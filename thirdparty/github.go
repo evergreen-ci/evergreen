@@ -766,8 +766,7 @@ func SendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 	if versionID != "" {
 		uiConfig := evergreen.UIConfig{}
 		if err := uiConfig.Get(env); err == nil {
-			urlBase := uiConfig.Url
-			url = fmt.Sprintf("%s/version/%s", urlBase, versionID)
+			url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionID)
 		}
 	}
 

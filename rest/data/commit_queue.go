@@ -91,7 +91,8 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 			"pr":         prNum,
 			"merge_errs": catcher.Resolve(),
 		}))
-		return "", errors.Wrap(catcher.Resolve(), "errors found validation project configuration file")
+
+		return "", errors.Wrap(catcher.Resolve(), "errors found validating project configuration file")
 	}
 
 	if err = writePatchInfo(patchDoc, patchSummaries, p); err != nil {

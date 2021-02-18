@@ -139,7 +139,7 @@ func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
 
 func (q *CommitQueue) FindItem(issue string) int {
 	for i, queued := range q.Queue {
-		if queued.Issue == issue || queued.Version == issue {
+		if queued.Issue == issue || queued.Version == issue || queued.PatchId == issue {
 			return i
 		}
 	}
