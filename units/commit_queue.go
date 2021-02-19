@@ -1,3 +1,4 @@
+//nolint:shadow
 package units
 
 import (
