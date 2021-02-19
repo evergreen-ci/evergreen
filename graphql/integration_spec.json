@@ -477,7 +477,7 @@
         "restarts": 5,
         "execution": 0,
         "order": 5,
-        "r": "patch_request",
+        "r": "merge_test",
         "status": "started",
         "details": {
           "status": "status",
