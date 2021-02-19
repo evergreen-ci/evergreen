@@ -486,6 +486,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		isDisabled := projectRef.IsDispatchingDisabled()
+		// hidden projects can only run PR tasks
 		if !projectRef.IsEnabled() && (queueItem.Requester != evergreen.GithubPRRequester || !projectRef.IsHidden()) {
 			isDisabled = true
 		}

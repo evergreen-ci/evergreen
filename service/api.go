@@ -326,12 +326,14 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		RestrictedVars: map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
-	if projectVars != nil {
-		res.Vars = projectVars.GetUnrestrictedVars()
-		res.RestrictedVars = projectVars.GetRestrictedVars()
-		if projectVars.PrivateVars != nil {
-			res.PrivateVars = projectVars.PrivateVars
-		}
+	if projectVars == nil {
+		gimlet.WriteJSON(w, res)
+		return
+	}
+	res.Vars = projectVars.GetUnrestrictedVars()
+	res.RestrictedVars = projectVars.GetRestrictedVars()
+	if projectVars.PrivateVars != nil {
+		res.PrivateVars = projectVars.PrivateVars
 	}
 
 	v, err := model.VersionFindOne(model.VersionById(t.Version))

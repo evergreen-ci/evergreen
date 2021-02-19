@@ -713,8 +713,9 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
-// FindAllMergedProjectRefByRepoAndBranch finds a hidden ProjectRef with matching repo/branch, and merges repo information.
-func FindAllMergedProjectRefByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+// FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch finds ProjectRef with matching repo/branch that
+// rely on the repo configuration, and merges that info.
+func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	q := byOwnerRepoAndBranch(owner, repoName, branch)
@@ -805,17 +806,24 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		return nil, nil
 	}
 
-	projectRefs, err = FindAllMergedProjectRefByRepoAndBranch(owner, repo, branch)
+	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding merged all project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
 
-	// use disabled project if it exists, otherwise use hidden.
+	// if a disabled project exists, then return early
 	var hiddenProject *ProjectRef
 	for i, p := range projectRefs {
 		if !p.IsEnabled() && !p.IsHidden() {
-			return &p, nil
+			grip.Debug(message.Fields{
+				"source":  "find project ref for PR testing",
+				"message": "project ref is disabled, not PR testing",
+				"owner":   owner,
+				"repo":    repo,
+				"branch":  branch,
+			})
+			return nil, nil
 		}
 		if p.IsHidden() {
 			hiddenProject = &projectRefs[i]
