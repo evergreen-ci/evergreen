@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/shrub"
@@ -64,7 +63,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") || strings.HasPrefix(dir, filepath.Join("rest", "model", "testdata")) {
+			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
@@ -154,7 +153,7 @@ func generateTasks() (*shrub.Configuration, error) {
 	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
-		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
+		conf.Task(name).MustHaveTestResults(true).FunctionWithVars("run-make", map[string]string{"target": name})
 		lintTargets = append(lintTargets, name)
 	}
 
