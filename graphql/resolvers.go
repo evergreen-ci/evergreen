@@ -1798,17 +1798,13 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	existingPatch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
-		if ok && gimletErr.StatusCode == http.StatusNotFound {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' does not exist", patchID))
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
 
-	hasPermission, err := r.hasEnqueuePatchPermission(user, existingPatch)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
-	}
-	if !hasPermission {
+	if !hasEnqueuePatchPermission(user, existingPatch) {
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
@@ -1827,34 +1823,6 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	}
 
 	return newPatch, nil
-}
-
-func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) (bool, error) {
-	// patch owner
-	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
-		return true, nil
-	}
-
-	// superuser
-	permissions := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}
-	if u == nil {
-		return false, nil
-	}
-	if u.HasPermission(permissions) {
-		return true, nil
-	}
-
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}), nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
