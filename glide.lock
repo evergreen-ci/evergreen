@@ -125,7 +125,7 @@ imports:
   - name: github.com/evergreen-ci/gimlet
     version: 5a704471d124e95f37fea15e98736bf84c87d4f8
   - name: github.com/evergreen-ci/shrub
-    version: c335f3500b4c16d51a43c21533d18fb9059af8c5
+    version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
     version: 1a7ed05e11ee7fef549d3a0644a572da2e98ab02
   - name: github.com/mongodb/jasper

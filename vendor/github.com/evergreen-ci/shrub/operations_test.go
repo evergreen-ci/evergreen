@@ -13,7 +13,7 @@ func TestWellformedOperations(t *testing.T) {
 		"subprocess.scripting":  CmdSubprocessScripting{},
 		"s3Copy.copy":           CmdS3Copy{},
 		"s3.get":                CmdS3Get{},
-		"s3.put":                CmdS3Put{CredKey: "foo", CredSecret: "bar", LocalFile: "baz"},
+		"s3.put":                CmdS3Put{AWSKey: "foo", AWSSecret: "bar", LocalFile: "baz"},
 		"s3.push":               CmdS3Push{},
 		"s3.pull":               CmdS3Pull{},
 		"git.get_project":       CmdGetProject{},
@@ -27,6 +27,13 @@ func TestWellformedOperations(t *testing.T) {
 		"archive.zip_extract":   CmdArchiveExtract{Format: ZIP},
 		"archive.targz_extract": CmdArchiveExtract{Format: TARBALL},
 		"archive.auto_extract":  CmdArchiveExtract{Format: ArchiveFormat("auto")},
+		"host.create":           CmdHostCreate{},
+		"host.list":             CmdHostList{},
+		"expansions.update":     CmdExpansionsUpdate{},
+		"expansions.write":      CmdExpansionsWrite{},
+		"json.send":             CmdJSONSend{},
+		"perf.send":             CmdPerfSend{},
+		"timeout.update":        CmdTimeoutUpdate{},
 	}
 
 	for name, cmd := range cases {
@@ -58,9 +65,9 @@ func TestPoorlyFormedOperations(t *testing.T) {
 	cases := map[string]Command{
 		"s3put.empty":         CmdS3Put{},
 		"s3put.nocreds":       CmdS3Put{LocalFile: "baz"},
-		"s3put.nofile":        CmdS3Put{CredKey: "foo", CredSecret: "bar"},
-		"s3put.nosecret":      CmdS3Put{CredKey: "foo", LocalFile: "baz"},
-		"s3put.nokey":         CmdS3Put{CredSecret: "bar", LocalFile: "baz"},
+		"s3put.nofile":        CmdS3Put{AWSKey: "foo", AWSSecret: "bar"},
+		"s3put.nosecret":      CmdS3Put{AWSKey: "foo", LocalFile: "baz"},
+		"s3put.nokey":         CmdS3Put{AWSSecret: "bar", LocalFile: "baz"},
 		"gotest.empty":        CmdResultsGoTest{},
 		"gotest.both":         CmdResultsGoTest{JSONFormat: true, LegacyFormat: true},
 		"archive.create_auto": CmdArchiveCreate{Format: ArchiveFormat("auto")},
