@@ -338,7 +338,9 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
 
-	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
