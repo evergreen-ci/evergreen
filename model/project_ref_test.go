@@ -89,7 +89,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
 	}}
-	assert.NoError(t, repoRef.Insert())
+	assert.NoError(t, repoRef.Upsert())
 
 	mergedProject, err := FindMergedProjectRef("ident")
 	assert.NoError(t, err)
@@ -314,7 +314,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		Id:      "my_repo",
 		Enabled: utility.FalsePtr(),
 	}}
-	assert.NoError(repoRef.Insert())
+	assert.NoError(repoRef.Upsert())
 
 	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
@@ -331,6 +331,180 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
+}
+
+func TestCreateNewRepoRef(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
+		evergreen.ScopeCollection, ProjectVarsCollection))
+	doc1 := &ProjectRef{
+		Id:                    "id1",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci",
+		Enabled:               utility.TruePtr(),
+		FilesIgnoredFromCache: []string{"file1", "file2"},
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+	}
+	assert.NoError(t, doc1.Insert())
+	doc2 := &ProjectRef{
+		Id:                    "id2",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci2",
+		Enabled:               utility.TruePtr(),
+		FilesIgnoredFromCache: []string{"file2"},
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.FalsePtr(),
+		GithubChecksEnabled:   utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+	}
+	assert.NoError(t, doc2.Insert())
+	doc3 := &ProjectRef{
+		Id:      "id3",
+		Owner:   "mongodb",
+		Repo:    "mongo",
+		Branch:  "mci2",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, doc3.Insert())
+
+	projectVariables := []ProjectVars{
+		{
+			Id: doc1.Id,
+			Vars: map[string]string{
+				"hello": "world",
+				"sdc":   "buggy",
+				"roses": "red",
+				"ever":  "green",
+			},
+			PrivateVars: map[string]bool{
+				"sdc": true,
+			},
+		},
+		{
+			Id: doc2.Id,
+			Vars: map[string]string{
+				"hello":   "world",
+				"violets": "blue",
+				"sdc":     "buggy",
+				"ever":    "green",
+			},
+			RestrictedVars: map[string]bool{
+				"ever": true,
+			},
+		},
+		{
+			Id: doc3.Id,
+			Vars: map[string]string{
+				"it's me": "adele",
+			},
+		},
+	}
+	for _, vars := range projectVariables {
+		assert.NoError(t, vars.Insert())
+	}
+
+	projectAliases := ProjectAliases{
+		ProjectAlias{
+			ProjectID: doc1.Id,
+			Task:      ".*",
+			Variant:   ".*",
+			Alias:     evergreen.GithubPRAlias,
+		},
+		ProjectAlias{
+			ProjectID: doc2.Id,
+			Task:      ".*",
+			Variant:   ".*",
+			Alias:     evergreen.GithubPRAlias,
+		},
+		ProjectAlias{
+			ProjectID: doc1.Id,
+			TaskTags:  []string{"t2"},
+			Variant:   ".*",
+			Alias:     evergreen.GithubChecksAlias,
+		},
+		ProjectAlias{
+			ProjectID: doc2.Id,
+			TaskTags:  []string{"t1"},
+			Variant:   ".*",
+			Alias:     evergreen.GithubChecksAlias,
+		},
+		ProjectAlias{
+			ProjectID:   doc1.Id,
+			Task:        ".*",
+			VariantTags: []string{"v1"},
+			Alias:       evergreen.GitTagAlias,
+		},
+		ProjectAlias{
+			ProjectID:   doc2.Id,
+			Task:        ".*",
+			VariantTags: []string{"v1"},
+			Alias:       evergreen.GitTagAlias,
+		},
+		ProjectAlias{
+			ProjectID:  doc1.Id,
+			RemotePath: "random",
+			Alias:      "random-alias",
+		},
+	}
+	for _, a := range projectAliases {
+		assert.NoError(t, a.Upsert())
+	}
+	u := user.DBUser{Id: "me"}
+	assert.NoError(t, u.Insert())
+	repoRef, err := doc2.createNewRepoRef(&u)
+	assert.NoError(t, err)
+	require.NotNil(t, repoRef)
+	assert.Equal(t, "mongodb", repoRef.Owner)
+	assert.Equal(t, "mongo", repoRef.Repo)
+	assert.Contains(t, repoRef.Admins, "bob")
+	assert.Contains(t, repoRef.Admins, "other bob")
+	assert.Contains(t, repoRef.Admins, "me")
+	assert.Empty(t, repoRef.FilesIgnoredFromCache)
+	assert.True(t, repoRef.IsEnabled())
+	assert.True(t, repoRef.IsPRTestingEnabled())
+	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
+	assert.Nil(t, repoRef.NotifyOnBuildFailure)
+	assert.Nil(t, repoRef.GithubChecksEnabled)
+	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
+	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
+
+	projectVars, err := FindOneProjectVars(repoRef.Id)
+	assert.NoError(t, err)
+	assert.Len(t, projectVars.Vars, 3)
+	assert.Len(t, projectVars.PrivateVars, 1)
+	assert.Len(t, projectVars.RestrictedVars, 1)
+	assert.Equal(t, "world", projectVars.Vars["hello"])
+	assert.Equal(t, "buggy", projectVars.Vars["sdc"])
+	assert.Equal(t, "green", projectVars.Vars["ever"])
+	assert.True(t, projectVars.PrivateVars["sdc"])
+	assert.True(t, projectVars.RestrictedVars["ever"])
+
+	projectAliases, err = FindAliasesForProject(repoRef.Id)
+	assert.NoError(t, err)
+	assert.Len(t, projectAliases, 2)
+	for _, a := range projectAliases {
+		assert.Empty(t, a.RemotePath)
+		assert.Empty(t, a.GitTag)
+		assert.Empty(t, a.TaskTags)
+		if a.Alias == evergreen.GithubPRAlias {
+			assert.Equal(t, ".*", a.Task)
+			assert.Equal(t, ".*", a.Variant)
+			assert.Empty(t, a.VariantTags)
+		} else {
+			assert.Equal(t, evergreen.GitTagAlias, a.Alias)
+			assert.Equal(t, ".*", a.Task)
+			assert.Contains(t, a.VariantTags, "v1")
+		}
+	}
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
@@ -502,7 +676,7 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 		Id:      "my_repo",
 		Enabled: utility.TruePtr(),
 	}}
-	assert.NoError(t, repoRef.Insert())
+	assert.NoError(t, repoRef.Upsert())
 	doc := &ProjectRef{
 		Enabled:         utility.TruePtr(),
 		Owner:           "mongodb",
@@ -553,7 +727,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 	}}
-	assert.NoError(repoRef.Insert())
+	assert.NoError(repoRef.Upsert())
 	doc := &ProjectRef{
 		Enabled:         utility.TruePtr(),
 		Owner:           "mongodb",
@@ -658,7 +832,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 		Id:      "my_repo",
 		Enabled: utility.TruePtr(),
 	}}
-	assert.NoError(t, repoRef.Insert())
+	assert.NoError(t, repoRef.Upsert())
 
 	proj1 := ProjectRef{
 		Id:              "evergreen",
@@ -813,7 +987,7 @@ func TestFindPeriodicProjects(t *testing.T) {
 		Id:             "my_repo",
 		PeriodicBuilds: []PeriodicBuildDefinition{{ID: "repo_def"}},
 	}}
-	assert.NoError(t, repoRef.Insert())
+	assert.NoError(t, repoRef.Upsert())
 
 	pRef := ProjectRef{
 		Id:              "p1",

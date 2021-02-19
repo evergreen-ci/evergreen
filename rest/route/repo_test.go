@@ -35,7 +35,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 	}
-	require.NoError(t, repoRef.Insert())
+	require.NoError(t, repoRef.Upsert())
 
 	repoVars := &dbModel.ProjectVars{
 		Id:   repoRef.Id,
@@ -91,7 +91,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 	}
-	assert.NoError(t, repoRef.Insert())
+	assert.NoError(t, repoRef.Upsert())
 	hook := dbModel.GithubHook{
 		HookID: 1,
 		Owner:  repoRef.Owner,
