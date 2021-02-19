@@ -143,6 +143,13 @@ func TestSetActiveState(t *testing.T) {
 				So(testTask.Activated, ShouldEqual, false)
 			})
 
+			Convey("commit queue merges cannot be scheduled", func() {
+				testTask.Requester = evergreen.MergeTestRequester
+				err := SetActiveState(testTask, userName, true)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "commit queue tasks cannot be manually scheduled")
+			})
+
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {

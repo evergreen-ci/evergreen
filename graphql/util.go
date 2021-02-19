@@ -474,6 +474,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:
+		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
+			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
+		}
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}
