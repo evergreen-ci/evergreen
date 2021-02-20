@@ -235,11 +235,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeactivatePrevious      bool                           `json:"deactivate_previous"`
 		Branch                  string                         `json:"branch_name"`
 		ProjVarsMap             map[string]string              `json:"project_vars"`
-		GitHubPRAliases         []model.ProjectAlias           `json:"github_aliases"`
-		GithubChecksAliases     []model.ProjectAlias           `json:"github_checks_aliases"`
-		CommitQueueAliases      []model.ProjectAlias           `json:"commit_queue_aliases"`
-		PatchAliases            []model.ProjectAlias           `json:"patch_aliases"`
-		GitTagAliases           []model.ProjectAlias           `json:"git_tag_aliases"`
+		GitHubPRAliases         []model.ProjectAlias           `json:"github_aliases,omitempty"`
+		GithubChecksAliases     []model.ProjectAlias           `json:"github_checks_aliases,omitempty"`
+		CommitQueueAliases      []model.ProjectAlias           `json:"commit_queue_aliases,omitempty"`
+		PatchAliases            []model.ProjectAlias           `json:"patch_aliases,omitempty"`
+		GitTagAliases           []model.ProjectAlias           `json:"git_tag_aliases,omitempty"`
 		DeleteAliases           []string                       `json:"delete_aliases"`
 		DefaultLogger           string                         `json:"default_logger"`
 		CedarTestResultsEnabled bool                           `json:"cedar_test_results_enabled"`
@@ -251,8 +251,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Owner                   string                         `json:"owner_name"`
 		Repo                    string                         `json:"repo_name"`
 		Admins                  []string                       `json:"admins"`
-		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users"`
-		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams"`
+		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users,omitempty"`
+		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams,omitempty"`
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
 		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
@@ -268,14 +268,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		} `json:"alert_config"`
 		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
 		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
+		Subscriptions         []restModel.APISubscription      `json:"subscriptions,omitempty"`
 		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition        `json:"triggers"`
-		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases"`
-		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
+		Triggers              []model.TriggerDefinition        `json:"triggers,omitempty"`
+		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases,omitempty"`
+		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache,omitempty"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
-		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
-		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
+		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_configs"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
@@ -555,7 +555,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
-	projectRef.TracksPushEvents = hook != nil
+	if hook != nil {
+		projectRef.TracksPushEvents = utility.TruePtr()
+	}
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}

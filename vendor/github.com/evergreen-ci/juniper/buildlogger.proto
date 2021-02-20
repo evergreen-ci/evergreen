@@ -48,7 +48,7 @@ message LogLines {
 message LogLine {
   int32 priority = 1;
   google.protobuf.Timestamp timestamp = 2;
-  string data = 3;
+  bytes data = 3;
 }
 
 message LogEndInfo {

@@ -45,32 +45,32 @@ func TestVariantBuilders(t *testing.T) {
 			assert(t, v2 == v, "chainable")
 		},
 		"SetExpansionSetter": func(t *testing.T, v *Variant) {
-			v.Expanisons = map[string]interface{}{}
-			assert(t, v.Expanisons != nil)
+			v.Expansions = map[string]interface{}{}
+			assert(t, v.Expansions != nil)
 			v2 := v.SetExpansions(nil)
 			assert(t, v2 == v, "chainable")
-			assert(t, v.Expanisons == nil)
+			assert(t, v.Expansions == nil)
 		},
 		"SetExpansionOverride": func(t *testing.T, v *Variant) {
-			v.Expanisons = map[string]interface{}{"b": "one"}
-			assert(t, len(v.Expanisons) == 1)
+			v.Expansions = map[string]interface{}{"b": "one"}
+			assert(t, len(v.Expansions) == 1)
 			v2 := v.SetExpansions(map[string]interface{}{"a": "two"})
 			assert(t, v2 == v, "chainable")
-			assert(t, len(v.Expanisons) == 1)
-			assert(t, v.Expanisons["a"] == "two")
+			assert(t, len(v.Expansions) == 1)
+			assert(t, v.Expansions["a"] == "two")
 		},
 		"AddExpansionFirst": func(t *testing.T, v *Variant) {
-			assert(t, v.Expanisons == nil)
+			assert(t, v.Expansions == nil)
 			v2 := v.Expansion("one", 2)
 			assert(t, v2 == v, "chainable")
-			assert(t, len(v.Expanisons) == 1)
-			assert(t, v.Expanisons["one"] == 2)
+			assert(t, len(v.Expansions) == 1)
+			assert(t, v.Expansions["one"] == 2)
 		},
 		"AddExpansionSecond": func(t *testing.T, v *Variant) {
 			v2 := v.Expansion("one", 2).Expansion("two", 42)
 			assert(t, v2 == v, "chainable")
-			assert(t, len(v.Expanisons) == 2)
-			assert(t, v.Expanisons["two"] == 42)
+			assert(t, len(v.Expansions) == 2)
+			assert(t, v.Expansions["two"] == 42)
 		},
 		"DisplayTaskNil": func(t *testing.T, v *Variant) {
 			assert(t, len(v.DisplayTaskSpecs) == 0, "default value")

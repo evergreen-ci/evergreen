@@ -167,10 +167,9 @@ func TestResultsQuery(taskIds []string, testId, testName, status string, limit, 
 		ExecutionKey: 0,
 	})
 
+	// Don't sort if unlimited EVG-13965.
 	if limit > 0 {
 		q = q.Limit(limit)
-	} else {
-		// Don't sort if unlimited EVG-13965.
 		q = q.Sort([]string{IDKey})
 	}
 

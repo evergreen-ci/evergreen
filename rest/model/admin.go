@@ -1134,6 +1134,7 @@ type APICommitQueueConfig struct {
 	MergeTaskDistro *string `json:"merge_task_distro"`
 	CommitterName   *string `json:"committer_name"`
 	CommitterEmail  *string `json:"committer_email"`
+	BatchSize       int     `json:"batch_size"`
 }
 
 func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
@@ -1141,6 +1142,7 @@ func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 		a.MergeTaskDistro = utility.ToStringPtr(v.MergeTaskDistro)
 		a.CommitterName = utility.ToStringPtr(v.CommitterName)
 		a.CommitterEmail = utility.ToStringPtr(v.CommitterEmail)
+		a.BatchSize = v.BatchSize
 
 		return nil
 	}
@@ -1153,6 +1155,7 @@ func (a *APICommitQueueConfig) ToService() (interface{}, error) {
 		MergeTaskDistro: utility.FromStringPtr(a.MergeTaskDistro),
 		CommitterName:   utility.FromStringPtr(a.CommitterName),
 		CommitterEmail:  utility.FromStringPtr(a.CommitterEmail),
+		BatchSize:       a.BatchSize,
 	}, nil
 }
 

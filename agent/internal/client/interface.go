@@ -88,7 +88,7 @@ type Communicator interface {
 	// used by task commands.
 	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
-	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
+	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
 	// The following operations are used by
@@ -118,6 +118,8 @@ type Communicator interface {
 
 	// ConcludeMerge reports the status of a commit queue merge back to the server
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
+
+	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error
 }
 
 type LoggerMetadata struct {

@@ -739,26 +739,42 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
-		return nil
-	}
+func MarkGeneratedTasks(taskID string) error {
 	query := bson.M{
 		IdKey:             taskID,
 		GeneratedTasksKey: bson.M{"$exists": false},
 	}
-	set := bson.M{GeneratedTasksKey: true}
-	if errorToSet != nil {
-		set[GenerateTasksErrorKey] = errorToSet.Error()
-	}
 	update := bson.M{
-		"$set": set,
+		"$set": bson.M{
+			GeneratedTasksKey: true,
+		},
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return errors.Wrap(err, "problem marking generate.tasks complete")
+}
+
+// MarkGeneratedTasksErr marks that the task hit errors generating tasks.
+func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
+	if errorToSet == nil || adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
+		return nil
+	}
+	query := bson.M{
+		IdKey:             taskID,
+		GeneratedTasksKey: bson.M{"$exists": false},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GenerateTasksErrorKey: errorToSet.Error(),
+		},
+	}
+	err := UpdateOne(query, update)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return errors.Wrap(err, "problem setting generate.tasks error")
 }
 
 func GenerateNotRun() ([]Task, error) {
@@ -2750,7 +2766,6 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}

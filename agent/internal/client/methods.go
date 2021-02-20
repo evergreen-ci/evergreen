@@ -448,15 +448,20 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
-// multiple times upon failure.
-func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) (*patchmodel.Patch, error) {
+// multiple times upon failure. If patchId is not specified, the task's
+// patch is returned
+func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch := patchmodel.Patch{}
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 		version:  apiVersion1,
 	}
-	info.setTaskPathSuffix("git/patch")
+	suffix := "git/patch"
+	if patchId != "" {
+		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
+	}
+	info.setTaskPathSuffix(suffix)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "failed to get patch for task %s: %s", taskData.ID, err.Error())
@@ -577,6 +582,25 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to post files for task %s: %s", taskData.ID, err.Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		taskData: &TaskData{
+			ID: taskId,
+		},
+		version: apiVersion2,
+	}
+
+	info.setTaskPathSuffix("downstreamParams")
+	resp, err := c.retryRequest(ctx, info, downstreamParams)
+	if err != nil {
+		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskId, err.Error())
 	}
 	defer resp.Body.Close()
 

@@ -1,16 +1,19 @@
 {
   patchTasks(
     patchId: "5e4ff3abe3c3317e352062e4"
-    limit: 2
+    limit: 50
     page: 0
-    sorts: [{ Key: VARIANT, Direction: DESC }]
-    variant: "ubuntu1604"
-    taskName: "party"
+    sorts: [
+      { Key: STATUS, Direction: ASC }
+      { Key: BASE_STATUS, Direction: DESC }
+    ]
   ) {
     tasks {
       id
       status
-      baseStatus
+      baseTask {
+        status
+      }
       displayName
       buildVariant
       blocked

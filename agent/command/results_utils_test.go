@@ -208,8 +208,8 @@ func TestSendTestLog(t *testing.T) {
 					for _, data := range srv.Data {
 						require.Len(t, data, 1)
 						require.Len(t, data[0].Lines, 2)
-						assert.Equal(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
-						assert.Equal(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
+						assert.EqualValues(t, strings.Trim(log.Lines[0], "\n"), data[0].Lines[0].Data)
+						assert.EqualValues(t, strings.Trim(log.Lines[1], "\n"), data[0].Lines[1].Data)
 					}
 
 				},

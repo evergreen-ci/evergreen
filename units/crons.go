@@ -57,7 +57,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
 			// only do catchup jobs for enabled projects that track push events.
-			if !proj.IsEnabled() || proj.IsRepotrackerDisabled() || !proj.TracksPushEvents {
+			if !proj.IsEnabled() || proj.IsRepotrackerDisabled() || !proj.DoesTrackPushEvents() {
 				continue
 			}
 
@@ -1202,7 +1202,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
+func PopulatePeriodicBuilds() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		projects, err := model.FindPeriodicProjects()
 		if err != nil {

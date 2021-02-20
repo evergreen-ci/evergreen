@@ -14,8 +14,6 @@ type Query {
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
-    sortBy: TaskSortCategory = STATUS
-    sortDir: SortDirection = ASC
     sorts: [SortOrder!]
     page: Int = 0
     limit: Int = 0
@@ -943,7 +941,9 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  createdIssues: [IssueLink]
   userCanModify: Boolean
+  webhookConfigured: Boolean!
 }
 
 type Note {
