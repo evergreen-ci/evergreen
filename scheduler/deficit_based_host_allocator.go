@@ -19,15 +19,16 @@ func DeficitBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloca
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
 func deficitNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAllocatorData, distro distro.Distro) (int, int) {
-	if !distro.IsEphemeral() {
-		return 0, 0
-	}
 
 	freeHosts := make([]host.Host, 0, len(hostAllocatorData.ExistingHosts))
 	for _, existingDistroHost := range hostAllocatorData.ExistingHosts {
 		if existingDistroHost.RunningTask == "" {
 			freeHosts = append(freeHosts, existingDistroHost)
 		}
+	}
+
+	if !distro.IsEphemeral() {
+		return 0, len(freeHosts)
 	}
 
 	numNewHosts := util.Min(
