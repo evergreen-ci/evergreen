@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -60,11 +61,11 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
-		if err := env.RemoteQueue().Put(ctx, NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
 			return errors.Wrap(err, "enqueueing job to reprovision host to legacy")
 		}
 	case host.ReprovisionToNew:
-		if err := env.RemoteQueue().Put(ctx, NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
 			return errors.Wrap(err, "enqueueing job to reprovision host to new")
 		}
 	case host.ReprovisionJasperRestart:
@@ -77,7 +78,7 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 			expiration = time.Now()
 		}
 		foundExpiration := err == nil
-		if err := env.RemoteQueue().Put(ctx, NewJasperRestartJob(env, *h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewJasperRestartJob(env, *h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
 			return errors.Wrap(err, "enqueueing jobs to restart Jasper")
 		}
 	}
