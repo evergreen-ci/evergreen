@@ -68,74 +68,6 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	return job
 }
 
-func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
-	nextItem, valid := cq.Next()
-	if !valid {
-		return
-	}
-
-	// unstuck the queue if the patch is done.
-	version := ""
-	if nextItem.Source == commitqueue.SourceDiff {
-		version = nextItem.Issue
-	} else if nextItem.Source == commitqueue.SourcePullRequest {
-		version = nextItem.Version
-	} else {
-		grip.Error(message.Fields{
-			"message": "stuck commit queue entry has unknown source",
-			"entry":   nextItem,
-			"project": projectRef.Identifier,
-			"job_id":  j.ID(),
-		})
-	}
-	if version == "" || !patch.IsValidId(version) {
-		j.dequeue(cq, nextItem)
-		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
-		return
-	}
-
-	patchDoc, err := patch.FindOne(patch.ByStringId(version).WithFields(patch.FinishTimeKey, patch.StatusKey))
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
-		return
-	}
-	if patchDoc == nil {
-		j.dequeue(cq, nextItem)
-		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
-		if nextItem.Source == commitqueue.SourcePullRequest {
-			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
-			if err != nil {
-				j.AddError(err)
-				return
-			}
-			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
-		}
-		return
-	}
-
-	// patch is done
-	if !utility.IsZeroTime(patchDoc.FinishTime) {
-		j.dequeue(cq, nextItem)
-		status := evergreen.MergeTestSucceeded
-		if patchDoc.Status == evergreen.PatchFailed {
-			status = evergreen.MergeTestFailed
-		}
-		event.LogCommitQueueConcludeTest(version, status)
-		grip.Info(message.Fields{
-			"source":                "commit queue",
-			"patch status":          status,
-			"job_id":                j.ID(),
-			"item_id":               nextItem.Issue,
-			"project_id":            cq.ProjectID,
-			"processing_seconds":    time.Since(cq.ProcessingUpdatedTime).Seconds(),
-			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
-			"message":               "patch done and dequeued",
-		})
-	}
-
-	return
-}
-
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
@@ -249,6 +181,74 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"item":    nextItem,
 		"message": "finished processing item",
 	})
+}
+
+func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
+	nextItem, valid := cq.Next()
+	if !valid {
+		return
+	}
+
+	// unstuck the queue if the patch is done.
+	version := ""
+	if nextItem.Source == commitqueue.SourceDiff {
+		version = nextItem.Issue
+	} else if nextItem.Source == commitqueue.SourcePullRequest {
+		version = nextItem.Version
+	} else {
+		grip.Error(message.Fields{
+			"message": "stuck commit queue entry has unknown source",
+			"entry":   nextItem,
+			"project": projectRef.Identifier,
+			"job_id":  j.ID(),
+		})
+	}
+	if version == "" || !patch.IsValidId(version) {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
+		return
+	}
+
+	patchDoc, err := patch.FindOne(patch.ByStringId(version).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
+		return
+	}
+	if patchDoc == nil {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
+		if nextItem.Source == commitqueue.SourcePullRequest {
+			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
+		}
+		return
+	}
+
+	// patch is done
+	if !utility.IsZeroTime(patchDoc.FinishTime) {
+		j.dequeue(cq, nextItem)
+		status := evergreen.MergeTestSucceeded
+		if patchDoc.Status == evergreen.PatchFailed {
+			status = evergreen.MergeTestFailed
+		}
+		event.LogCommitQueueConcludeTest(version, status)
+		grip.Info(message.Fields{
+			"source":                "commit queue",
+			"patch status":          status,
+			"job_id":                j.ID(),
+			"item_id":               nextItem.Issue,
+			"project_id":            cq.ProjectID,
+			"processing_seconds":    time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
+			"message":               "patch done and dequeued",
+		})
+	}
+
+	return
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
