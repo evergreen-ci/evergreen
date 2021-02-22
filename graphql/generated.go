@@ -536,66 +536,67 @@ type ComplexityRoot struct {
 	}
 
 	Task struct {
-		AbortInfo           func(childComplexity int) int
-		Aborted             func(childComplexity int) int
-		Activated           func(childComplexity int) int
-		ActivatedBy         func(childComplexity int) int
-		ActivatedTime       func(childComplexity int) int
-		Ami                 func(childComplexity int) int
-		Annotation          func(childComplexity int) int
-		BaseStatus          func(childComplexity int) int
-		BaseTaskMetadata    func(childComplexity int) int
-		Blocked             func(childComplexity int) int
-		BuildId             func(childComplexity int) int
-		BuildVariant        func(childComplexity int) int
-		CanAbort            func(childComplexity int) int
-		CanModifyAnnotation func(childComplexity int) int
-		CanRestart          func(childComplexity int) int
-		CanSchedule         func(childComplexity int) int
-		CanSetPriority      func(childComplexity int) int
-		CanSync             func(childComplexity int) int
-		CanUnschedule       func(childComplexity int) int
-		CreateTime          func(childComplexity int) int
-		Details             func(childComplexity int) int
-		DispatchTime        func(childComplexity int) int
-		DisplayName         func(childComplexity int) int
-		DisplayOnly         func(childComplexity int) int
-		DistroId            func(childComplexity int) int
-		EstimatedStart      func(childComplexity int) int
-		Execution           func(childComplexity int) int
-		ExecutionTasks      func(childComplexity int) int
-		ExecutionTasksFull  func(childComplexity int) int
-		ExpectedDuration    func(childComplexity int) int
-		FailedTestCount     func(childComplexity int) int
-		FinishTime          func(childComplexity int) int
-		GenerateTask        func(childComplexity int) int
-		GeneratedBy         func(childComplexity int) int
-		GeneratedByName     func(childComplexity int) int
-		HostId              func(childComplexity int) int
-		Id                  func(childComplexity int) int
-		IngestTime          func(childComplexity int) int
-		IsPerfPluginEnabled func(childComplexity int) int
-		LatestExecution     func(childComplexity int) int
-		Logs                func(childComplexity int) int
-		MinQueuePosition    func(childComplexity int) int
-		PatchMetadata       func(childComplexity int) int
-		PatchNumber         func(childComplexity int) int
-		Priority            func(childComplexity int) int
-		Project             func(childComplexity int) int
-		ProjectId           func(childComplexity int) int
-		ReliesOn            func(childComplexity int) int
-		Requester           func(childComplexity int) int
-		Restarts            func(childComplexity int) int
-		Revision            func(childComplexity int) int
-		ScheduledTime       func(childComplexity int) int
-		SpawnHostLink       func(childComplexity int) int
-		StartTime           func(childComplexity int) int
-		Status              func(childComplexity int) int
-		TaskGroup           func(childComplexity int) int
-		TaskGroupMaxHosts   func(childComplexity int) int
-		TimeTaken           func(childComplexity int) int
-		TotalTestCount      func(childComplexity int) int
-		Version             func(childComplexity int) int
+		AbortInfo               func(childComplexity int) int
+		Aborted                 func(childComplexity int) int
+		Activated               func(childComplexity int) int
+		ActivatedBy             func(childComplexity int) int
+		ActivatedTime           func(childComplexity int) int
+		Ami                     func(childComplexity int) int
+		Annotation              func(childComplexity int) int
+		BaseStatus              func(childComplexity int) int
+		BaseTaskMetadata        func(childComplexity int) int
+		Blocked                 func(childComplexity int) int
+		BuildId                 func(childComplexity int) int
+		BuildVariant            func(childComplexity int) int
+		BuildVariantDisplayName func(childComplexity int) int
+		CanAbort                func(childComplexity int) int
+		CanModifyAnnotation     func(childComplexity int) int
+		CanRestart              func(childComplexity int) int
+		CanSchedule             func(childComplexity int) int
+		CanSetPriority          func(childComplexity int) int
+		CanSync                 func(childComplexity int) int
+		CanUnschedule           func(childComplexity int) int
+		CreateTime              func(childComplexity int) int
+		Details                 func(childComplexity int) int
+		DispatchTime            func(childComplexity int) int
+		DisplayName             func(childComplexity int) int
+		DisplayOnly             func(childComplexity int) int
+		DistroId                func(childComplexity int) int
+		EstimatedStart          func(childComplexity int) int
+		Execution               func(childComplexity int) int
+		ExecutionTasks          func(childComplexity int) int
+		ExecutionTasksFull      func(childComplexity int) int
+		ExpectedDuration        func(childComplexity int) int
+		FailedTestCount         func(childComplexity int) int
+		FinishTime              func(childComplexity int) int
+		GenerateTask            func(childComplexity int) int
+		GeneratedBy             func(childComplexity int) int
+		GeneratedByName         func(childComplexity int) int
+		HostId                  func(childComplexity int) int
+		Id                      func(childComplexity int) int
+		IngestTime              func(childComplexity int) int
+		IsPerfPluginEnabled     func(childComplexity int) int
+		LatestExecution         func(childComplexity int) int
+		Logs                    func(childComplexity int) int
+		MinQueuePosition        func(childComplexity int) int
+		PatchMetadata           func(childComplexity int) int
+		PatchNumber             func(childComplexity int) int
+		Priority                func(childComplexity int) int
+		Project                 func(childComplexity int) int
+		ProjectId               func(childComplexity int) int
+		ReliesOn                func(childComplexity int) int
+		Requester               func(childComplexity int) int
+		Restarts                func(childComplexity int) int
+		Revision                func(childComplexity int) int
+		ScheduledTime           func(childComplexity int) int
+		SpawnHostLink           func(childComplexity int) int
+		StartTime               func(childComplexity int) int
+		Status                  func(childComplexity int) int
+		TaskGroup               func(childComplexity int) int
+		TaskGroupMaxHosts       func(childComplexity int) int
+		TimeTaken               func(childComplexity int) int
+		TotalTestCount          func(childComplexity int) int
+		Version                 func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -662,16 +663,17 @@ type ComplexityRoot struct {
 	}
 
 	TaskResult struct {
-		Aborted            func(childComplexity int) int
-		BaseStatus         func(childComplexity int) int
-		BaseTask           func(childComplexity int) int
-		Blocked            func(childComplexity int) int
-		BuildVariant       func(childComplexity int) int
-		DisplayName        func(childComplexity int) int
-		ExecutionTasksFull func(childComplexity int) int
-		ID                 func(childComplexity int) int
-		Status             func(childComplexity int) int
-		Version            func(childComplexity int) int
+		Aborted                 func(childComplexity int) int
+		BaseStatus              func(childComplexity int) int
+		BaseTask                func(childComplexity int) int
+		Blocked                 func(childComplexity int) int
+		BuildVariant            func(childComplexity int) int
+		BuildVariantDisplayName func(childComplexity int) int
+		DisplayName             func(childComplexity int) int
+		ExecutionTasksFull      func(childComplexity int) int
+		ID                      func(childComplexity int) int
+		Status                  func(childComplexity int) int
+		Version                 func(childComplexity int) int
 	}
 
 	TaskTestResult struct {
@@ -875,6 +877,7 @@ type TaskResolver interface {
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
+	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
 	CanModifyAnnotation(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -3447,6 +3450,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.BuildVariant(childComplexity), true
 
+	case "Task.buildVariantDisplayName":
+		if e.complexity.Task.BuildVariantDisplayName == nil {
+			break
+		}
+
+		return e.complexity.Task.BuildVariantDisplayName(childComplexity), true
+
 	case "Task.canAbort":
 		if e.complexity.Task.CanAbort == nil {
 			break
@@ -4090,6 +4100,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskResult.BuildVariant(childComplexity), true
+
+	case "TaskResult.buildVariantDisplayName":
+		if e.complexity.TaskResult.BuildVariantDisplayName == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.BuildVariantDisplayName(childComplexity), true
 
 	case "TaskResult.displayName":
 		if e.complexity.TaskResult.DisplayName == nil {
@@ -5103,6 +5120,7 @@ type TaskResult {
   baseStatus: String
   baseTask: BaseTaskResult
   buildVariant: String!
+  buildVariantDisplayName: String!
   blocked: Boolean!
   executionTasksFull: [Task!]
 }
@@ -5213,6 +5231,7 @@ type Task {
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
+  buildVariantDisplayName: String
   canAbort: Boolean!
   canModifyAnnotation: Boolean!
   canRestart: Boolean!
@@ -5525,7 +5544,6 @@ type Annotation {
   suspectedIssues: [IssueLink]
   createdIssues: [IssueLink]
   userCanModify: Boolean
-  # todo: make this required
   webhookConfigured: Boolean!
 }
 
@@ -17819,6 +17837,37 @@ func (ec *executionContext) _Task_buildVariant(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BuildVariantDisplayName(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20898,6 +20947,40 @@ func (ec *executionContext) _TaskResult_buildVariant(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildVariant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskResult_buildVariantDisplayName(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildVariantDisplayName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27654,6 +27737,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "buildVariantDisplayName":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_buildVariantDisplayName(ctx, field, obj)
+				return res
+			})
 		case "canAbort":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -28369,6 +28463,11 @@ func (ec *executionContext) _TaskResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TaskResult_baseTask(ctx, field, obj)
 		case "buildVariant":
 			out.Values[i] = ec._TaskResult_buildVariant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "buildVariantDisplayName":
+			out.Values[i] = ec._TaskResult_buildVariantDisplayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

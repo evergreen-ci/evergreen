@@ -210,16 +210,17 @@ type TaskQueueDistro struct {
 }
 
 type TaskResult struct {
-	ID                 string           `json:"id"`
-	Aborted            bool             `json:"aborted"`
-	DisplayName        string           `json:"displayName"`
-	Version            string           `json:"version"`
-	Status             string           `json:"status"`
-	BaseStatus         *string          `json:"baseStatus"`
-	BaseTask           *BaseTaskResult  `json:"baseTask"`
-	BuildVariant       string           `json:"buildVariant"`
-	Blocked            bool             `json:"blocked"`
-	ExecutionTasksFull []*model.APITask `json:"executionTasksFull"`
+	ID                      string           `json:"id"`
+	Aborted                 bool             `json:"aborted"`
+	DisplayName             string           `json:"displayName"`
+	Version                 string           `json:"version"`
+	Status                  string           `json:"status"`
+	BaseStatus              *string          `json:"baseStatus"`
+	BaseTask                *BaseTaskResult  `json:"baseTask"`
+	BuildVariant            string           `json:"buildVariant"`
+	BuildVariantDisplayName string           `json:"buildVariantDisplayName"`
+	Blocked                 bool             `json:"blocked"`
+	ExecutionTasksFull      []*model.APITask `json:"executionTasksFull"`
 }
 
 type TaskTestResult struct {

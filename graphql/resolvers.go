@@ -1142,7 +1142,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
-	taskResults := ConvertDBTasksToGqlTasks(tasks)
+	taskResults, err := ConvertDBTasksToGqlTasks(ctx, r.sc, tasks)
 
 	patchTasks := PatchTasks{
 		Count: count,
@@ -2406,6 +2406,23 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 
 	return executionTasks, nil
+}
+
+func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	b, err := build.FindOneId(t.BuildId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", t.BuildId, t.Id))
+	}
+	return &b.DisplayName, nil
+
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {

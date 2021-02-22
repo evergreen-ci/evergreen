@@ -413,9 +413,17 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
+func ConvertDBTasksToGqlTasks(ctx context.Context, sc data.Connector, tasks []task.Task) ([]*TaskResult, error) {
 	var taskResults []*TaskResult
+	variantDisplayName := make(map[string]string)
 	for _, t := range tasks {
+		if _, ok := variantDisplayName[t.BuildVariant]; !ok {
+			build, err := sc.FindBuildById(t.BuildId)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", t.BuildId, err))
+			}
+			variantDisplayName[t.BuildVariant] = build.DisplayName
+		}
 		baseStatus := t.BaseTask.Status
 		result := TaskResult{
 			ID:           t.Id,
@@ -430,6 +438,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 				ID:     t.BaseTask.Id,
 				Status: t.BaseTask.Status,
 			},
+			BuildVariantDisplayName: variantDisplayName[t.BuildVariant],
 		}
 		if len(t.ExecutionTasksFull) > 0 {
 			ets := []*restModel.APITask{}
@@ -448,7 +457,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 
 		taskResults = append(taskResults, &result)
 	}
-	return taskResults
+	return taskResults, nil
 }
 
 type VersionModificationAction string

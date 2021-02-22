@@ -521,6 +521,7 @@ type TaskResult {
   baseStatus: String
   baseTask: BaseTaskResult
   buildVariant: String!
+  buildVariantDisplayName: String!
   blocked: Boolean!
   executionTasksFull: [Task!]
 }
@@ -631,6 +632,7 @@ type Task {
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
+  buildVariantDisplayName: String
   canAbort: Boolean!
   canModifyAnnotation: Boolean!
   canRestart: Boolean!
