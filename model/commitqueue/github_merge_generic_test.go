@@ -44,9 +44,8 @@ func TestDequeueFromCommitQueue(t *testing.T) {
 	projectID := "evergreen"
 	itemID := "abcdef"
 	queue := &CommitQueue{
-		ProjectID:  projectID,
-		Queue:      []CommitQueueItem{{Issue: itemID}},
-		Processing: true,
+		ProjectID: projectID,
+		Queue:     []CommitQueueItem{{Issue: itemID}},
 	}
 	require.NoError(t, insert(queue))
 
@@ -59,5 +58,4 @@ func TestDequeueFromCommitQueue(t *testing.T) {
 	queue, err := FindOneId(projectID)
 	require.NoError(t, err)
 	assert.Len(t, queue.Queue, 0)
-	assert.False(t, queue.Processing)
 }

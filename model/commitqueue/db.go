@@ -1,8 +1,6 @@
 package commitqueue
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -15,13 +13,11 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey                    = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey                 = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	ProcessingKey            = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
-	ProcessingUpdatedTimeKey = bsonutil.MustHaveTag(CommitQueue{}, "ProcessingUpdatedTime")
-	IssueKey                 = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
-	VersionKey               = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
-	EnqueueTimeKey           = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
+	IdKey          = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey       = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	IssueKey       = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey     = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	EnqueueTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -114,29 +110,11 @@ func remove(id, issue string) error {
 	)
 }
 
-// if setting processing to true, ensure the queue isn't currently processing
-func setProcessing(id string, processing bool) error {
-	update := bson.M{IdKey: id}
-	if processing {
-		update[ProcessingKey] = false
-	}
-	return updateOne(
-		update,
-		bson.M{
-			"$set": bson.M{
-				ProcessingKey:            processing,
-				ProcessingUpdatedTimeKey: time.Now(),
-			},
-		},
-	)
-}
-
 func clearAll() (int, error) {
 	return updateAll(
 		struct{}{},
 		bson.M{
 			"$unset": bson.M{QueueKey: 1},
-			"$set":   bson.M{ProcessingKey: false},
 		},
 	)
 }

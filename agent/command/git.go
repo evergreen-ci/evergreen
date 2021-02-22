@@ -27,7 +27,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -55,11 +54,6 @@ type gitFetchProject struct {
 
 	CommitterName  string `mapstructure:"committer_name"`
 	CommitterEmail string `mapstructure:"committer_email"`
-
-	// AdditionalPatches is mostly used by evergreen internally and specifies additional patches to
-	// apply (for commit queue merges testing with changes from prior tasks). Patches are applied in the
-	// order listed in this param, with the main patch being applied last
-	AdditionalPatches []string `mapstructure:"additional_patches"`
 
 	base
 }
@@ -227,12 +221,6 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	if c.Directory == "" {
 		return errors.Errorf("error parsing '%s' params: value for directory "+
 			"must not be blank", c.Name())
-	}
-
-	for _, patchId := range c.AdditionalPatches {
-		if !bson.IsObjectIdHex(patchId) {
-			return errors.Errorf("additional patch '%s' is not a valid ID", patchId)
-		}
 	}
 
 	return nil
@@ -417,12 +405,20 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	}
 
 	var p *patch.Patch
+	// additionalPatches is used by evergreen internally and specifies additional patches to
+	// apply (for commit queue merges testing with changes from prior tasks). Patches are applied in the
+	// order returned, with the main patch being applied last
+	var additionalPatches []string
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
 		p, err = comm.GetTaskPatch(ctx, td, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to get patch")
+		}
+
+		if conf.Task.Requester == evergreen.MergeTestRequester {
+			additionalPatches, err = comm.GetAdditionalPatches(ctx, conf.Task.Version, td)
 		}
 	}
 
@@ -548,21 +544,24 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 
 	//Apply patches if this is a patch and we haven't already gotten the changes from a PR
 	if evergreen.IsPatchRequester(conf.Task.Requester) && conf.GithubPatchData.PRNumber == 0 {
-		for _, patchId := range c.AdditionalPatches {
-			p, err = comm.GetTaskPatch(ctx, td, patchId)
-			if err != nil {
-				return errors.Wrap(err, "unable to get additional patch")
+		if !conf.Task.CommitQueueMerge {
+			for _, patchId := range additionalPatches {
+				logger.Task().Infof("attempting to apply additional changes from patch '%s'", patchId)
+				newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
+				if err != nil {
+					return errors.Wrap(err, "unable to get additional patch")
+				}
+				if newPatch == nil {
+					return errors.New("additional patch not found")
+				}
+				if err = c.getPatchContents(ctx, comm, logger, conf, newPatch); err != nil {
+					return errors.Wrap(err, "Failed to get patch contents")
+				}
+				if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
+					return errors.Wrapf(err, "error applying patch '%s'", newPatch.Id.Hex())
+				}
+				logger.Task().Infof("applied additional changes from patch '%s'", patchId)
 			}
-			if p == nil {
-				return errors.New("additional patch not found")
-			}
-			if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
-				return errors.Wrap(err, "Failed to get patch contents")
-			}
-			if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
-				return errors.Wrapf(err, "error applying patch '%s'", p.Id.Hex())
-			}
-			logger.Task().Infof("applied additional changes from patch '%s'", patchId)
 		}
 
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {

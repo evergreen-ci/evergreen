@@ -892,7 +892,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 
 func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
 	info := requestInfo{
-		method:   http.MethodGet,
+		method:   http.MethodPost,
 		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
 		version:  apiVersion2,
 		taskData: &td,
@@ -913,4 +913,28 @@ func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status st
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("commit_queue/%s/additional", patchId),
+		version:  apiVersion2,
+		taskData: &td,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting additional patches")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, utility.RespErrorf(resp, "error getting additional patches")
+	}
+	patches := []string{}
+	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
+		return nil, errors.Wrap(err, "problem parsing reponse")
+	}
+
+	return patches, nil
 }

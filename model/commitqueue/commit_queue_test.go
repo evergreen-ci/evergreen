@@ -166,21 +166,11 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Equal("c123", items[0].Issue)
 	s.Equal("e345", items[1].Issue)
 
-	s.NoError(s.q.SetProcessing(true))
 	found, err = s.q.Remove("c123")
 	s.NotNil(found)
 	s.NoError(err)
 	s.NotNil(s.q.Queue[0])
 	s.Equal(s.q.Queue[0].Issue, "e345")
-	s.False(s.q.Processing)
-}
-
-// can only update processing successfully if the status will actually be changed
-func (s *CommitQueueSuite) TestProcessing() {
-	s.NoError(s.q.SetProcessing(true))
-	s.Error(s.q.SetProcessing(true))
-	s.NoError(s.q.SetProcessing(false))
-	s.NoError(s.q.SetProcessing(false))
 }
 
 func (s *CommitQueueSuite) TestClearAll() {
@@ -300,4 +290,44 @@ func TestClearVersionPatchSubscriber(t *testing.T) {
 	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subs)
+}
+
+func TestNextUnprocessed(t *testing.T) {
+	q := CommitQueue{
+		Queue: []CommitQueueItem{},
+	}
+	assert.Len(t, q.NextUnprocessed(1), 0)
+	assert.Len(t, q.NextUnprocessed(0), 0)
+	q.Queue = append(q.Queue, CommitQueueItem{Issue: "1"})
+	assert.Len(t, q.NextUnprocessed(1), 1)
+	assert.Len(t, q.NextUnprocessed(0), 0)
+	q.Queue = append(q.Queue, CommitQueueItem{Issue: "2"})
+	next2 := q.NextUnprocessed(2)
+	assert.Equal(t, "1", next2[0].Issue)
+	assert.Equal(t, "2", next2[1].Issue)
+	assert.Len(t, q.NextUnprocessed(0), 0)
+	assert.Len(t, q.NextUnprocessed(5), 2)
+	q.Queue = append(q.Queue, CommitQueueItem{Issue: "3"})
+	next2 = q.NextUnprocessed(2)
+	assert.Equal(t, "1", next2[0].Issue)
+	assert.Equal(t, "2", next2[1].Issue)
+	assert.Len(t, next2, 2)
+	q.Queue = append(q.Queue, CommitQueueItem{Issue: "4", Version: "4"})
+	next4 := q.NextUnprocessed(4)
+	assert.Equal(t, "1", next4[0].Issue)
+	assert.Equal(t, "2", next4[1].Issue)
+	assert.Equal(t, "3", next4[2].Issue)
+	assert.Len(t, next4, 3)
+}
+
+func TestNumProcessing(t *testing.T) {
+	q := CommitQueue{
+		Queue: []CommitQueueItem{
+			{Issue: "1", Version: "1"},
+			{Issue: "2", Version: "2"},
+			{Issue: "3", Version: "3"},
+			{Issue: "4"},
+		},
+	}
+	assert.Equal(t, 3, q.NumProcessing())
 }
