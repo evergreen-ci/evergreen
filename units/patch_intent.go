@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -556,32 +555,27 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 // getModulePatch reads the patch from GridFS, processes it, and
 // stores the resulting summaries in the returned ModulePatch
 func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
-	readCloser, err := db.GetGridFile(patch.GridFSPrefix, modulePatch.PatchSet.PatchFileId)
+	patchContents, err := patch.FetchPatchContents(modulePatch.PatchSet.PatchFileId)
 	if err != nil {
-		return modulePatch, errors.Wrap(err, "error getting patch file")
-	}
-	defer readCloser.Close()
-	patchBytes, err := ioutil.ReadAll(readCloser)
-	if err != nil {
-		return modulePatch, errors.Wrap(err, "error parsing patch")
+		return modulePatch, errors.Wrap(err, "can't fetch patch contents")
 	}
 
 	var summaries []thirdparty.Summary
-	if patch.IsMailboxDiff(string(patchBytes)) {
+	if patch.IsMailboxDiff(patchContents) {
 		var commitMessages []string
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(string(patchBytes))
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContents)
 		if err != nil {
 			return modulePatch, errors.Wrapf(err, "error getting summaries by commit")
 		}
 		modulePatch.PatchSet.CommitMessages = commitMessages
 	} else {
-		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
+		summaries, err = thirdparty.GetPatchSummaries(patchContents)
 		if err != nil {
 			return modulePatch, errors.Wrap(err, "error getting patch summaries")
 		}
 	}
 
-	modulePatch.IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
+	modulePatch.IsMbox = len(patchContents) == 0 || patch.IsMailboxDiff(patchContents)
 	modulePatch.ModuleName = ""
 	modulePatch.PatchSet.Summary = summaries
 	return modulePatch, nil

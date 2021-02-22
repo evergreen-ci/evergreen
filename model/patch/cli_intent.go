@@ -79,6 +79,9 @@ type cliIntent struct {
 	// BackportOf specifies what to backport
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
 
+	// GitInfo contains information about the author's git environment
+	GitInfo *GitMetadata `bson:"git_info,omitempty"`
+
 	ReuseDefinition bool `bson:"reuse_definition"`
 }
 
@@ -175,6 +178,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		SyncAtEndOpts: c.SyncAtEndOpts,
 		BackportOf:    c.BackportOf,
 		Patches:       []ModulePatch{},
+		GitInfo:       c.GitInfo,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -198,6 +202,7 @@ type CLIIntentParams struct {
 	Description     string
 	Finalize        bool
 	BackportOf      BackportInfo
+	GitInfo         *GitMetadata
 	Parameters      []Parameter
 	Variants        []string
 	Tasks           []string
@@ -260,6 +265,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Alias:           params.Alias,
 		TriggerAliases:  params.TriggerAliases,
 		BackportOf:      params.BackportOf,
+		GitInfo:         params.GitInfo,
 		ReuseDefinition: params.ReuseDefinition,
 	}, nil
 }

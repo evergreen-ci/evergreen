@@ -151,6 +151,35 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 	return baseTaskStatusesByDisplayNameByVariant, nil
 }
 
+func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
+	if u == nil || existingPatch == nil {
+		return false
+	}
+
+	// patch owner
+	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
+		return true
+	}
+
+	// superuser
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if u.HasPermission(permissions) {
+		return true
+	}
+
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+}
+
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
 func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {

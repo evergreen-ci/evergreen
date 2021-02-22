@@ -655,7 +655,7 @@ func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 		if len(c.CommitterEmail) > 0 {
 			committerEmail = c.CommitterEmail
 		}
-		return fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr < "%s"`, committerName, committerEmail, patchFile), nil
+		return fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, committerName, committerEmail, patchFile), nil
 	}
 
 	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil
