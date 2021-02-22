@@ -207,8 +207,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	timeToEmpty := scheduledDuration / time.Duration((nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold))
 	timeToEmptyNoSpawns := scheduledDuration / time.Duration((nHostsFree - distroQueueInfo.CountDurationOverThreshold))
 
-	hostQueueRatio := time.Duration(timeToEmpty) / distroQueueInfo.MaxDurationThreshold
-	noSpawnsRatio := time.Duration(timeToEmptyNoSpawns) / distroQueueInfo.MaxDurationThreshold
+	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
 	grip.Info(message.Fields{
 		"message":                    "distro-scheduler-report",
@@ -223,8 +223,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"runtime_secs":               distroQueueInfo.ExpectedDuration.Seconds(),
 		"time_to_empty":              timeToEmpty.String(),
 		"time_to_empty_no_spawns":    timeToEmptyNoSpawns.String(),
-		"host_queue_ratio":           hostQueueRatio.String(),
-		"host_queue_ratio_no_spawns": noSpawnsRatio.String(),
+		"host_queue_ratio":           hostQueueRatio,
+		"host_queue_ratio_no_spawns": noSpawnsRatio,
 		"instance":                   j.ID(),
 		"runner":                     scheduler.RunnerName,
 	})
