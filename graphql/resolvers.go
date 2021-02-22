@@ -2412,18 +2412,13 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int)
 	execString := strconv.Itoa(exec)
 
 	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskID, execString)
-	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
-		return &BuildBaron{
-			SearchReturnInfo:     searchReturnInfo,
-			BuildBaronConfigured: false,
-		}, nil
-	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+
 	return &BuildBaron{
 		SearchReturnInfo:     searchReturnInfo,
-		BuildBaronConfigured: true,
+		BuildBaronConfigured: bbConfig.ProjectFound && bbConfig.SearchConfigured,
 	}, nil
 }
 
