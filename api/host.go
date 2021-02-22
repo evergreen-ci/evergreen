@@ -136,6 +136,10 @@ func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, us
 			return http.StatusInternalServerError, modifyErr
 		}
 
+		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+			return nil
+		}
+
 		// Enqueue the job immediately, if possible.
 		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -154,6 +158,10 @@ func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment,
 		modifyErr := h.SetNeedsReprovisionToNew(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
+		}
+
+		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+			return nil
 		}
 
 		// Enqueue the job immediately, if possible.
