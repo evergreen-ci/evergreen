@@ -395,20 +395,26 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	}}
 	assert.NoError(repoDoc.Insert())
 	doc = &ProjectRef{
-		Id:               "disabled_project",
+		Id:              "defaulting_project",
+		Owner:           "mongodb",
+		Repo:            "mci",
+		Branch:          "mine",
+		UseRepoSettings: true,
+		RepoRefId:       repoDoc.Id,
+	}
+	assert.NoError(doc.Insert())
+	doc2 := &ProjectRef{
+		Id:               "hidden_project",
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "mine",
-		Enabled:          utility.FalsePtr(),
-		PRTestingEnabled: utility.FalsePtr(),
 		UseRepoSettings:  true,
 		RepoRefId:        repoDoc.Id,
+		Enabled:          utility.FalsePtr(),
+		PRTestingEnabled: utility.FalsePtr(),
+		Hidden:           utility.TruePtr(),
 	}
-	assert.NoError(doc.Insert())
-
-	doc.Hidden = utility.TruePtr()
-	doc.Id = "hidden_project"
-	assert.NoError(doc.Insert())
+	assert.NoError(doc2.Insert())
 
 	// repo doesn't have PR testing enabled, so no project returned
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
@@ -425,24 +431,39 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(repoDoc.Upsert())
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
+	require.NotNil(projectRef)
+	assert.Equal("defaulting_project", projectRef.Id)
+
+	// project PR testing explicitly disabled
+	doc.PRTestingEnabled = utility.FalsePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// project explicitly disabled
+	doc.Enabled = utility.FalsePtr()
+	doc.PRTestingEnabled = utility.TruePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// branch with no project doesn't work if repo not configured right
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
-	assert.NoError(err)
-	require.NotNil(projectRef)
-	assert.Equal("disabled_project", projectRef.Id)
-
-	// branch with no project
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
 	assert.NoError(err)
-	require.NotNil(projectRef)
+	assert.NotNil(projectRef)
 	assert.Equal("yours", projectRef.Branch)
 	assert.True(projectRef.IsHidden())
 	firstAttemptId := projectRef.Id
 
-	// verify we return the same project
+	// verify we return the same hidden project
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
 	assert.NoError(err)
 	require.NotNil(projectRef)
