@@ -103,12 +103,13 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 	return job
 }
 
-func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
+func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNumber int, patchId string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.UpdateType = githubUpdateTypePushToCommitQueue
 	job.Owner = owner
 	job.Repo = repo
 	job.Ref = ref
+	job.FetchID = patchId
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
 	return job
@@ -205,7 +206,9 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = commitqueue.GithubContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
-
+		if j.FetchID != "" {
+			status.URL = fmt.Sprintf("%s/patch/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
+		}
 	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
 		status.Context = commitqueue.GithubContext
 		status.Description = "removed from queue"

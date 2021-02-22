@@ -1,3 +1,4 @@
+//nolint:shadow
 package units
 
 import (
@@ -251,6 +252,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+	var patchDoc *patch.Patch
 	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		j.logError(err, "PR not valid for merge", nextItem)
@@ -265,80 +267,100 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, nextItem.MessageOverride)
-	if err != nil {
-		j.logError(err, "can't make patch", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
-	if err != nil {
-		j.logError(err, "can't get patch info", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	errs := validator.CheckProjectSyntax(projectConfig)
-	errs = append(errs, validator.CheckProjectSettings(projectConfig, projectRef)...)
-	catcher := grip.NewBasicCatcher()
-	for _, validationErr := range errs.AtLevel(validator.Error) {
-		catcher.Add(validationErr)
-	}
-	if catcher.HasErrors() {
-		update := NewGithubStatusUpdateJobForProcessingError(
-			commitqueue.GithubContext,
-			pr.Base.User.GetLogin(),
-			pr.Base.Repo.GetName(),
-			pr.Head.GetRef(),
-			InvalidConfig,
-		)
-		update.Run(ctx)
-		j.AddError(update.Error())
-		j.logError(catcher.Resolve(), "invalid config file", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	if err = writePatchInfo(patchDoc, patchSummaries, patch); err != nil {
-		j.logError(err, "can't make patch", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	modulePRs, modulePatches, dequeue, err := getModules(ctx, githubToken, nextItem, projectConfig)
-	if err != nil {
-		j.logError(err, "can't get modules", nextItem)
-		if dequeue {
-			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
+	if nextItem.PatchId == "" {
+		patchDoc, err = patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, nextItem.MessageOverride)
+		if err != nil {
+			j.logError(err, "can't make patch", nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 			j.dequeue(cq, nextItem)
-		} else {
-			j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
+			return
 		}
-		return
-	}
-	patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
 
-	// populate tasks/variants matching the commitqueue alias
-	projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+		patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
+		if err != nil {
+			j.logError(err, "can't get patch info", nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+			j.dequeue(cq, nextItem)
+			return
+		}
 
-	if err = addMergeTaskAndVariant(patchDoc, projectConfig, projectRef, commitqueue.SourcePullRequest); err != nil {
-		j.logError(err, "can't set patch project config", nextItem)
-		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
-		return
+		errs := validator.CheckProjectSyntax(projectConfig)
+		errs = append(errs, validator.CheckProjectSettings(projectConfig, projectRef)...)
+		catcher := grip.NewBasicCatcher()
+		for _, validationErr := range errs.AtLevel(validator.Error) {
+			catcher.Add(validationErr)
+		}
+		if catcher.HasErrors() {
+			update := NewGithubStatusUpdateJobForProcessingError(
+				commitqueue.GithubContext,
+				pr.Base.User.GetLogin(),
+				pr.Base.Repo.GetName(),
+				pr.Head.GetRef(),
+				InvalidConfig,
+			)
+			update.Run(ctx)
+			j.AddError(update.Error())
+			j.logError(catcher.Resolve(), "invalid config file", nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+			j.dequeue(cq, nextItem)
+			return
+		}
+
+		if err = writePatchInfo(patchDoc, patchSummaries, patch); err != nil {
+			j.logError(err, "can't make patch", nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+			j.dequeue(cq, nextItem)
+			return
+		}
+
+		modulePRs, modulePatches, dequeue, err := getModules(ctx, githubToken, nextItem, projectConfig)
+		if err != nil {
+			j.logError(err, "can't get modules", nextItem)
+			if dequeue {
+				j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
+				j.dequeue(cq, nextItem)
+			} else {
+				j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
+			}
+			return
+		}
+		patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
+
+		// populate tasks/variants matching the commitqueue alias
+		projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+
+		if err = addMergeTaskAndVariant(patchDoc, projectConfig, projectRef, commitqueue.SourcePullRequest); err != nil {
+			j.logError(err, "can't set patch project config", nextItem)
+			event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
+			j.dequeue(cq, nextItem)
+			return
+		}
+
+		if err = patchDoc.Insert(); err != nil {
+			j.logError(err, "can't insert patch", nextItem)
+			j.dequeue(cq, nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+			return
+		}
+
+		// TODO EVG-14087 also do this when we finalize, with a different message
+		for _, modulePR := range modulePRs {
+			j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "added to queue", patchDoc.Id.Hex()))
+		}
+	} else {
+		var err error
+		patchDoc, err = patch.FindOneId(nextItem.PatchId)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "error finding patch '%s'", nextItem.Version))
+			return
+		}
+		if patchDoc == nil {
+			j.AddError(errors.Errorf("patch '%s' not found", nextItem.Version))
+			return
+		}
 	}
 
-	if err = patchDoc.Insert(); err != nil {
-		j.logError(err, "can't insert patch", nextItem)
-		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
-		return
-	}
+	// TODO EVG-14087 delete above
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
@@ -355,9 +377,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
-	for _, modulePR := range modulePRs {
-		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
-	}
 
 	event.LogCommitQueueStartTestEvent(v.Id)
 }

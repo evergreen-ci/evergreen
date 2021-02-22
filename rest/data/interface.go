@@ -336,6 +336,7 @@ type Connector interface {
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	// if bool is true, move the commit queue item to be processed next.
 	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
+	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)
 	FindCommitQueueForProject(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
