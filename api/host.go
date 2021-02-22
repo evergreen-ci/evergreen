@@ -119,17 +119,8 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 		currentStatus == evergreen.HostQuarantined &&
 		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
 	if unquarantinedAndNeedsReprovision {
-		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
+		if _, err = GetReprovisionToNewCallback(ctx, env, u.Username())(h); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
-		}
-
-		// Enqueue the job immediately, if possible.
-		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message":           "could not enqueue job to reprovision host",
-				"host_id":           h.Id,
-				"needs_reprovision": h.NeedsReprovision,
-			}))
 		}
 
 		return HostReprovisionConfirm, http.StatusOK, nil

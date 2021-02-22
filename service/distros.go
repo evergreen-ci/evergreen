@@ -9,12 +9,12 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -198,21 +198,12 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if shouldReprovisionToNew {
 			catcher := grip.NewBasicCatcher()
-			for _, h := range hosts {
-				if err = h.SetNeedsReprovisionToNew(u.Username()); err != nil {
-					catcher.Wrapf(err, "could not mark host '%s' as needing to reprovision", h.Id)
-					continue
-				}
 
-				// Enqueue the job immediately, if possible.
-				if err = units.EnqueueHostReprovisioningJob(r.Context(), uis.env, &h); err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"message":           "could not enqueue job to reprovision host",
-						"host_id":           h.Id,
-						"needs_reprovision": h.NeedsReprovision,
-					}))
-				}
+			for _, h := range hosts {
+				_, err = api.GetReprovisionToNewCallback(r.Context(), uis.env, u.Username())(&h)
+				catcher.Wrapf(err, "marking host '%s' as needing to reprovision", h.Id)
 			}
+
 			if catcher.HasErrors() {
 				message := fmt.Sprintf("error marking hosts as needing to reprovision: %s", err.Error())
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -221,21 +212,12 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if shouldRestartJasper {
 			catcher := grip.NewBasicCatcher()
-			for _, h := range hosts {
-				if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
-					catcher.Wrapf(err, "could not mark host '%s' as needing Jasper service restarted", h.Id)
-					continue
-				}
 
-				// Enqueue the job immediately, if possible.
-				if err = units.EnqueueHostReprovisioningJob(r.Context(), uis.env, &h); err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
-						"message":           "could not enqueue job to reprovision host",
-						"host_id":           h.Id,
-						"needs_reprovision": h.NeedsReprovision,
-					}))
-				}
+			for _, h := range hosts {
+				_, err = api.GetRestartJasperCallback(r.Context(), uis.env, u.Username())(&h)
+				catcher.Wrapf(err, "marking host '%s' as needing Jasper service restarted", h.Id)
 			}
+
 			if catcher.HasErrors() {
 				message := fmt.Sprintf("error marking hosts as needing Jasper service restarted: %s", err.Error())
 				PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
