@@ -31,6 +31,10 @@ type Intent interface {
 	// intent should be finalized
 	ShouldFinalizePatch() bool
 
+	// ReusePreviousPatchDefinition gives the patch the same tasks/variants
+	// as the previous patch submitted for this project by the user.
+	ReusePreviousPatchDefinition() bool
+
 	// GetAlias defines the variants and tasks this intent should run on.
 	GetAlias() string
 

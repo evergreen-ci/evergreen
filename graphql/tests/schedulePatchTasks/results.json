@@ -24,6 +24,23 @@
           "schedulePatchTasks": "5e4ff3abe3c3317e352062e4"
         }
       }
+    },
+    {
+      "query_file": "schedule-commitqueue-merge.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "commit queue merges cannot be manually scheduled",
+            "path": ["schedulePatchTasks"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "schedulePatchTasks": null
+        }
+      }
     }
   ]
 }

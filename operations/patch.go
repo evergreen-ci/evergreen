@@ -17,6 +17,7 @@ const (
 	patchDescriptionFlagName = "description"
 	patchVerboseFlagName     = "verbose"
 	patchTriggerAliasFlag    = "trigger-alias"
+	reuseDefinitionFlag      = "reuse"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -54,6 +55,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.StringSliceFlag{
 				Name:  patchTriggerAliasFlag,
 				Usage: "patch trigger alias (set by project admin) specifying tasks from other projects",
+			},
+			cli.BoolFlag{
+				Name:  reuseDefinitionFlag,
+				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
 			},
 		))
 }
@@ -99,6 +104,7 @@ func Patch() cli.Command {
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
+				ReuseDefinition:   c.Bool(reuseDefinitionFlag),
 			}
 
 			var err error
@@ -114,6 +120,9 @@ func Patch() cli.Command {
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
+			}
+			if params.ReuseDefinition && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
@@ -146,12 +155,6 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if !params.PreserveCommits {
-				diffData.fullPatch, err = diffToMbox(diffData, params.Description)
-				if err != nil {
-					return err
-				}
-			}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
@@ -174,12 +177,12 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 	catcher := grip.NewBasicCatcher()
 	for _, param := range params {
 		pair := strings.Split(param, "=")
-		if len(pair) != 2 {
+		if len(pair) < 2 {
 			catcher.Add(errors.Errorf("problem parsing parameter '%s'", param))
-			continue
 		}
-
-		res = append(res, patch.Parameter{Key: pair[0], Value: pair[1]})
+		key := pair[0]
+		val := strings.Join(pair[1:], "=")
+		res = append(res, patch.Parameter{Key: key, Value: val})
 	}
 	return res, catcher.Resolve()
 }
@@ -247,7 +250,10 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem reading diff file")
 			}
 
-			diffData := &localDiff{string(fullPatch), "", "", base}
+			diffData := &localDiff{
+				fullPatch: string(fullPatch),
+				base:      base,
+			}
 
 			if err = params.validateSubmission(diffData); err != nil {
 				return err

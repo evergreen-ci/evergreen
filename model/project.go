@@ -1223,6 +1223,19 @@ func (p *Project) FindTasksForVariant(build string) []string {
 	return nil
 }
 
+func (p *Project) FindDisplayTasksForVariant(build string) []string {
+	for _, b := range p.BuildVariants {
+		if b.Name == build {
+			displayTasks := make([]string, 0, len(b.DisplayTasks))
+			for _, dt := range b.DisplayTasks {
+				displayTasks = append(displayTasks, dt.Name)
+			}
+			return displayTasks
+		}
+	}
+	return nil
+}
+
 func (p *Project) FindAllVariants() []string {
 	variants := make([]string, 0, len(p.BuildVariants))
 	for _, b := range p.BuildVariants {

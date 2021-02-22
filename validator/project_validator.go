@@ -1131,7 +1131,7 @@ func validateParameters(p *model.Project) ValidationErrors {
 		if strings.Contains(param.Parameter.Key, "=") {
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("parameter '%s' cannot contain `=`", param.Parameter.Key),
+				Message: fmt.Sprintf("parameter name '%s' cannot contain `=`", param.Parameter.Key),
 			})
 		}
 		if param.Parameter.Key == "" {

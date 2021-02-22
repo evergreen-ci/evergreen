@@ -29,10 +29,12 @@ func TestDownstreamExpansions(t *testing.T) {
 				path := filepath.Join(cwd, "testdata", "git", "test_expansions.yml")
 				cmd := &setDownstream{YamlFile: path}
 				assert.Nil(t, cmd.Execute(ctx, comm, logger, conf))
-				assert.Equal(t, cmd.downstreamParams[0].Key, "key_1")
-				assert.Equal(t, cmd.downstreamParams[0].Value, "value_1")
-				assert.Equal(t, cmd.downstreamParams[1].Key, "my_docker_image")
-				assert.Equal(t, cmd.downstreamParams[1].Value, "my_image")
+				params := map[string]string{}
+				for i := range cmd.downstreamParams {
+					params[cmd.downstreamParams[i].Key] = cmd.downstreamParams[i].Value
+				}
+				assert.Equal(t, "value_1", params["key_1"])
+				assert.Equal(t, "my_image", params["my_docker_image"])
 				assert.NotNil(t, comm.DownstreamParams)
 			},
 		} {

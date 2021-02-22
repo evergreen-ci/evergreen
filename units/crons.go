@@ -46,7 +46,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllMergedTrackedProjectRefsWithRepoInfo()
+		projects, err := model.FindAllMergedProjectRefsWithRepoInfo()
 		if err != nil {
 			return errors.WithStack(err)
 		}
