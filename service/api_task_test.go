@@ -1248,7 +1248,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		sampleHost := host.Host{
 			Id: hostId,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 			},
 			Secret:                hostSecret,
 			RunningTask:           task1.Id,

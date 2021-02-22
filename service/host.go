@@ -141,7 +141,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
-	env := evergreen.GetEnvironment()
+	env := uis.env
 	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 	id := gimlet.GetVars(r)["host_id"]
@@ -170,7 +170,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			msg        string
 			statusCode int
 		)
-		msg, statusCode, err = api.ModifyHostStatus(queue, h, opts.Status, opts.Notes, u)
+		msg, statusCode, err = api.ModifyHostStatus(r.Context(), env, queue, h, opts.Status, opts.Notes, u)
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
 				StatusCode: statusCode,
@@ -181,17 +181,29 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(msg))
 		gimlet.WriteJSON(w, api.HostStatusWriteConfirm)
 	case "restartJasper":
-		if err = h.SetNeedsJasperRestart(u.Username()); err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
+		var statusCode int
+		statusCode, err = api.GetRestartJasperCallback(r.Context(), env, u.Username())(h)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    err.Error(),
+			}))
 			return
 		}
+
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostRestartJasperConfirm))
 		gimlet.WriteJSON(w, api.HostRestartJasperConfirm)
 	case "reprovisionToNew":
-		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeTextInternalErrorResponder(err))
+		var statusCode int
+		statusCode, err = api.GetReprovisionToNewCallback(r.Context(), env, u.Username())(h)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    err.Error(),
+			}))
 			return
 		}
+
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(api.HostReprovisionConfirm))
 		gimlet.WriteJSON(w, api.HostReprovisionConfirm)
 	default:
@@ -215,13 +227,14 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	env := uis.env
+
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		env := evergreen.GetEnvironment()
 		rq := env.RemoteQueue()
 
-		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, opts.Status, opts.Notes, user))
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(r.Context(), env, rq, opts.Status, opts.Notes, user))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error updating status on selected hosts: %s", err.Error()), httpStatus)
 			return
@@ -229,7 +242,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) will be updated to '%s'", hostsUpdated, opts.Status)))
 	case "restartJasper":
-		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(r.Context(), env, user.Username()))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()), httpStatus)
 			return
@@ -237,7 +250,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d host(s) marked as needing Jasper service restarted", hostsUpdated)))
 	case "reprovisionToNew":
-		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(user.Username()))
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(r.Context(), env, user.Username()))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error marking selected hosts as needing to reprovision: %s", err.Error()), httpStatus)
 			return

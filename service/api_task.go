@@ -322,33 +322,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // prepareForReprovision readies host for reprovisioning.
-func prepareForReprovision(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, w http.ResponseWriter) error {
+func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
-	switch h.NeedsReprovision {
-	case host.ReprovisionToLegacy:
-		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to legacy"))
-		}
-	case host.ReprovisionToNew:
-		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
-		}
-	case host.ReprovisionJasperRestart:
-		expiration, err := h.JasperCredentialsExpiration(ctx, env)
-		if err != nil {
-			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
-		}
-		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
-		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to restart Jasper"))
-		}
+	// Enqueue the job immediately, if possible.
+	if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "could not enqueue job to reprovision host",
+			"host_id":           h.Id,
+			"needs_reprovision": h.NeedsReprovision,
+		}))
 	}
 
 	return nil
@@ -765,7 +750,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var response apimodels.NextTaskResponse
-	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
+	if responded := handleReprovisioning(ctx, as.env, h, response, w); responded {
 		return
 	}
 
@@ -949,7 +934,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	return details, false
 }
 
-func handleReprovisioning(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter) (responded bool) {
+func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) (responded bool) {
 	if h.NeedsReprovision == host.ReprovisionNone {
 		return false
 	}
@@ -972,7 +957,7 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, settin
 		}))
 	}
 
-	if err := prepareForReprovision(ctx, env, settings, h, w); err != nil {
+	if err := prepareForReprovision(ctx, env, h); err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return true
 	}

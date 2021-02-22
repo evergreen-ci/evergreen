@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -86,11 +88,7 @@ func ModifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permis
 	return updated, httpStatus, catcher.Resolve()
 }
 
-func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, int, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
+func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue amboy.Queue, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, int, error) {
 	currentStatus := h.Status
 
 	if !utility.StringSliceContains(validUpdateToStatuses, newStatus) {
@@ -121,38 +119,67 @@ func ModifyHostStatus(queue amboy.Queue, h *host.Host, newStatus string, notes s
 		currentStatus == evergreen.HostQuarantined &&
 		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
 	if unquarantinedAndNeedsReprovision {
-		if err := h.SetNeedsReprovisionToNew(u.Username()); err != nil {
+		if _, err = GetReprovisionToNewCallback(ctx, env, u.Username())(h); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 		}
+
 		return HostReprovisionConfirm, http.StatusOK, nil
 	}
 
 	return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), http.StatusOK, nil
 }
 
-func GetRestartJasperCallback(username string) func(h *host.Host) (int, error) {
+func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
 		modifyErr := h.SetNeedsJasperRestart(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}
+
+		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+			return nil
+		}
+
+		// Enqueue the job immediately, if possible.
+		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "could not enqueue job to reprovision host",
+				"host_id":           h.Id,
+				"needs_reprovision": h.NeedsReprovision,
+			}))
+		}
+
 		return http.StatusOK, nil
 	}
 }
 
-func GetReprovisionToNewCallback(username string) func(h *host.Host) (int, error) {
+func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
 		modifyErr := h.SetNeedsReprovisionToNew(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}
+
+		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
+			return nil
+		}
+
+		// Enqueue the job immediately, if possible.
+		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "could not enqueue job to reprovision host",
+				"host_id":           h.Id,
+				"needs_reprovision": h.NeedsReprovision,
+			}))
+		}
+
 		return http.StatusOK, nil
 	}
 }
 
-func GetUpdateHostStatusCallback(rq amboy.Queue, status string, notes string, user *user.DBUser) func(h *host.Host) (httpStatus int, err error) {
+func GetUpdateHostStatusCallback(ctx context.Context, env evergreen.Environment, rq amboy.Queue, status string, notes string, user *user.DBUser) func(h *host.Host) (httpStatus int, err error) {
 	return func(h *host.Host) (httpStatus int, err error) {
-		_, httpStatus, modifyErr := ModifyHostStatus(rq, h, status, notes, user)
+		_, httpStatus, modifyErr := ModifyHostStatus(ctx, env, rq, h, status, notes, user)
 		return httpStatus, modifyErr
 	}
 }
