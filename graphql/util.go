@@ -66,6 +66,9 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
+	if t.Requester == evergreen.MergeTestRequester && isActive {
+		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+	}
 	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

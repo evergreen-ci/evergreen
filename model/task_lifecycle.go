@@ -43,9 +43,6 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if active {
-		if t.Requester == evergreen.MergeTestRequester {
-			return errors.New("commit queue tasks cannot be manually scheduled")
-		}
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
 		tasksToActivate := []task.Task{}
