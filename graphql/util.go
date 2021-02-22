@@ -66,6 +66,9 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
+	if t.Requester == evergreen.MergeTestRequester && isActive {
+		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+	}
 	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -503,6 +506,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:
+		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
+			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
+		}
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}

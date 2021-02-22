@@ -3,6 +3,11 @@
     {
       "_id": "5e4ff3abe3c3317e352062e4",
       "branch": "evergreen"
+    },
+    {
+      "_id": "commitqueue",
+      "branch": "evergreen",
+      "r": "merge_test"
     }
   ],
   "tasks": [

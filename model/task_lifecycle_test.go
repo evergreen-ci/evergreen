@@ -142,7 +142,6 @@ func TestSetActiveState(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
-
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {
