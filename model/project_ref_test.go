@@ -336,6 +336,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	doc1 := &ProjectRef{
 		Id:                    "id1",
 		Owner:                 "mongodb",
@@ -605,7 +606,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	}
 	repoDoc := &RepoRef{ProjectRef{Id: "my_repo"}}
 	assert.NoError(doc.Insert())
-	assert.NoError(repoDoc.Insert())
+	assert.NoError(repoDoc.Upsert())
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
 	assert.NoError(err)

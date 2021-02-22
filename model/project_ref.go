@@ -519,6 +519,9 @@ func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Valu
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
+	if len(projectRefs) == 0 {
+		return
+	}
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 	for i := 0; i < reflectedRepo.NumField(); i++ {
 		// for each field in the repo, look at each field in the project ref
@@ -540,8 +543,8 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 	}
 }
 
-func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (*RepoRef, error) {
-	repoRef := &RepoRef{ProjectRef{
+func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
+	repoRef = &RepoRef{ProjectRef{
 		Id:      mgobson.NewObjectId().Hex(),
 		Owner:   p.Owner,
 		Repo:    p.Repo,
