@@ -627,11 +627,21 @@ func getCommonAliases(projectIds []string) (ProjectAliases, error) {
 
 func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
 	for _, each := range slice {
-		if each.RemotePath == item.RemotePath && each.Alias == item.Alias && each.GitTag == item.GitTag &&
-			each.Variant == item.Variant && reflect.DeepEqual(each.VariantTags, item.VariantTags) &&
-			each.Task == item.Task && reflect.DeepEqual(each.TaskTags, item.TaskTags) {
-			return true
+		if each.RemotePath != item.RemotePath || each.Alias != item.Alias || each.GitTag != item.GitTag ||
+			each.Variant != item.Variant || each.Task != item.Task {
+			continue
 		}
+
+		if len(each.VariantTags) != len(item.VariantTags) || len(each.TaskTags) != len(item.TaskTags) {
+			continue
+		}
+		if len(each.VariantTags) != len(utility.StringSliceIntersection(each.VariantTags, item.VariantTags)) {
+			continue
+		}
+		if len(each.TaskTags) != len(utility.StringSliceIntersection(each.TaskTags, item.TaskTags)) {
+			continue
+		}
+		return true
 	}
 	return false
 }
