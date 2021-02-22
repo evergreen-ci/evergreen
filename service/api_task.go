@@ -398,7 +398,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "assignNextAvailableTask performance",
 		"step":        "distro.FindOne",
-		"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+		"duration_ns": time.Now().Sub(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -437,7 +437,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "RefreshFindNextTask",
-			"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -466,7 +466,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "find task",
-			"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -512,7 +512,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "FindMergedProjectRef",
-			"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -559,7 +559,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "UpdateRunningTask",
-			"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -622,7 +622,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "find task group",
-				"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+				"duration_ns": time.Now().Sub(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -639,7 +639,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "get host number",
-				"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+				"duration_ns": time.Now().Sub(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -675,7 +675,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "ClearRunningTask",
-				"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+				"duration_ns": time.Now().Sub(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -691,7 +691,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "DequeueTask",
-			"duration_ns": time.Now().Sub(stepStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(stepStart),
 			"run_id":      runId,
 		})
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
