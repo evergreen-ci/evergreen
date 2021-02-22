@@ -137,7 +137,7 @@ func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, us
 		}
 
 		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
-			return nil
+			return http.StatusOK, nil
 		}
 
 		// Enqueue the job immediately, if possible.
@@ -161,7 +161,7 @@ func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment,
 		}
 
 		if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
-			return nil
+			return http.StatusOK, nil
 		}
 
 		// Enqueue the job immediately, if possible.
