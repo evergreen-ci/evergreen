@@ -151,14 +151,14 @@ func ByUserPaginated(user string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
-// ByUserProjectAndGitspec produces a query that returns patches by the given
-// patch author, project, and gitspec.
-func ByUserProjectAndGitspec(user string, project string, gitspec string) db.Q {
+// MostRecentPatchByUserAndProject returns the latest patch made by the user for the project.
+func MostRecentPatchByUserAndProject(user, project string) db.Q {
 	return db.Query(bson.M{
-		AuthorKey:  user,
-		ProjectKey: project,
-		GithashKey: gitspec,
-	})
+		AuthorKey:    user,
+		ProjectKey:   project,
+		ActivatedKey: true,
+		AliasKey:     bson.M{"$nin": []string{evergreen.GithubPRAlias, evergreen.CommitQueueAlias}},
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(1)
 }
 
 // ByVersion produces a query that returns the patch for a given version.
