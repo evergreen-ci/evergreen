@@ -206,7 +206,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
 
 	existingCap := time.Duration(nHostsFree-distroQueueInfo.CountDurationOverThreshold) * distroQueueInfo.MaxDurationThreshold
-	spawnCap := time.Duration(len(hostsSpawned-distroQueueInfo.CountDurationOverThreshold)) * distroQueueInfo.MaxDurationThreshold
+	spawnCap := time.Duration(len(hostsSpawned)-distroQueueInfo.CountDurationOverThreshold) * distroQueueInfo.MaxDurationThreshold
 
 	makespan = scheduledDuration / (existingCap + spawnCap)
 
