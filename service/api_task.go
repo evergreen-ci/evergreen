@@ -485,7 +485,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
-		if !projectRef.IsEnabled() || projectRef.IsDispatchingDisabled() {
+		isDisabled := projectRef.IsDispatchingDisabled()
+		// hidden projects can only run PR tasks
+		if !projectRef.IsEnabled() && (queueItem.Requester != evergreen.GithubPRRequester || !projectRef.IsHidden()) {
+			isDisabled = true
+		}
+
+		if isDisabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
@@ -495,7 +501,6 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))
-
 			continue
 		}
 

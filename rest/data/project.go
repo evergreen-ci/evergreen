@@ -131,7 +131,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 }
 
 func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
-	conflictingRefs, err := model.FindMergedProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflictingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return errors.Wrap(err, "error finding project refs")
 	}

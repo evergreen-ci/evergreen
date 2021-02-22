@@ -127,6 +127,9 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting project vars")
 	}
+	if vars == nil {
+		return nil, errors.New("no variables for project")
+	}
 	return &AWSSSHKey{
 		Name:  vars.Vars[ProjectAWSSSHKeyName],
 		Value: vars.Vars[ProjectAWSSSHKeyValue],

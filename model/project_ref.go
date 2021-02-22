@@ -325,9 +325,29 @@ func (projectRef *ProjectRef) Insert() error {
 
 func (p *ProjectRef) Add(creator *user.DBUser) error {
 	p.Id = mgobson.NewObjectId().Hex()
+
+	// if a hidden project exists for this configuration, use that ID
+	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
+		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(p.Owner, p.Repo, p.Branch)
+		if err != nil {
+			return errors.Wrapf(err, "error querying for hidden project")
+		}
+		if hidden != nil {
+			p.Id = hidden.Id
+			err := p.Upsert()
+			if err != nil {
+				return errors.Wrapf(err, "error upserting project ref '%s'", hidden.Id)
+			}
+			if creator != nil {
+				return p.UpdateAdminRoles([]string{creator.Id}, nil)
+			}
+			return nil
+		}
+	}
+
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting distro")
+		return errors.Wrap(err, "Error inserting project ref")
 	}
 	return p.AddPermissions(creator)
 }
@@ -371,7 +391,7 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	} else {
 		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
 		repoRole := GetRepoAdminRole(p.RepoRefId)
-		if !utility.StringSliceContains(user.Roles(), repoRole) {
+		if user != nil && !utility.StringSliceContains(user.Roles(), repoRole) {
 			if err := user.AddRole(repoRole); err != nil {
 				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
 			}
@@ -614,12 +634,11 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 	return pRefs, nil
 }
 
-func FindAllMergedTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
+func FindAllMergedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefHiddenKey: bson.M{"$ne": true},
 			ProjectRefOwnerKey:  bson.M{"$exists": true, "$ne": ""},
 			ProjectRefRepoKey:   bson.M{"$exists": true, "$ne": ""},
 			ProjectRefBranchKey: bson.M{"$exists": true, "$ne": ""},
@@ -679,13 +698,29 @@ func byId(identifier string) db.Q {
 	})
 }
 
-// FindMergedProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
+// FindMergedEnabledProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
 // that are enabled, and merges repo information.
-func FindMergedProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch)}}
 	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
+	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
+	if err != nil {
+		return nil, err
+	}
+
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
+// FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch finds ProjectRef with matching repo/branch that
+// rely on the repo configuration, and merges that info.
+func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	q := byOwnerRepoAndBranch(owner, repoName, branch)
+	q[projectRefUseRepoSettingsKey] = true
+	pipeline := []bson.M{{"$match": q}}
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
@@ -730,10 +765,10 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-// FindOneProjectRefByRepoAndBranch finds a single ProjectRef with matching
+// FindOneProjectRefByRepoAndBranchWithPRTesting finds a single ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing.
 func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (*ProjectRef, error) {
-	projectRefs, err := FindMergedProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -744,14 +779,88 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 			return &p, nil
 		}
 	}
+	if len(projectRefs) > 0 {
+		grip.Debug(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "project ref enabled but pr testing not enabled",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, nil
+	}
 
-	grip.Debug(message.Fields{
-		"message": "no matching project ref with pr testing enabled",
-		"owner":   owner,
-		"repo":    repo,
-		"branch":  branch,
-	})
-	return nil, nil
+	// if no projects are enabled, check if the repo has PR testing enabled, in which case we can use a disabled/hidden project.
+	repoRef, err := FindRepoRefByOwnerAndRepo(owner, repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding merged repo refs for repo '%s/%s'", owner, repo)
+	}
+	if repoRef == nil || !repoRef.IsEnabled() || !repoRef.IsPRTestingEnabled() || repoRef.RemotePath == "" {
+		grip.Debug(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "repo ref not configured for PR testing untracked branches",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		return nil, nil
+	}
+
+	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding merged all project refs for repo '%s/%s' with branch '%s'",
+			owner, repo, branch)
+	}
+
+	// if a disabled project exists, then return early
+	var hiddenProject *ProjectRef
+	for i, p := range projectRefs {
+		if !p.IsEnabled() && !p.IsHidden() {
+			grip.Debug(message.Fields{
+				"source":  "find project ref for PR testing",
+				"message": "project ref is disabled, not PR testing",
+				"owner":   owner,
+				"repo":    repo,
+				"branch":  branch,
+			})
+			return nil, nil
+		}
+		if p.IsHidden() {
+			hiddenProject = &projectRefs[i]
+		}
+	}
+	if hiddenProject == nil {
+		grip.Debug(message.Fields{
+			"source":  "find project ref for PR testing",
+			"message": "creating hidden project because none exists",
+			"owner":   owner,
+			"repo":    repo,
+			"branch":  branch,
+		})
+		// if no project exists, create and return skeleton project
+		hiddenProject = &ProjectRef{
+			Id:              mgobson.NewObjectId().Hex(),
+			Owner:           owner,
+			Repo:            repo,
+			Branch:          branch,
+			RepoRefId:       repoRef.Id,
+			UseRepoSettings: true,
+			Enabled:         utility.FalsePtr(),
+			Hidden:          utility.TruePtr(),
+		}
+		if err = hiddenProject.Add(nil); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "find project ref for PR testing",
+				"message": "hidden project could not be added",
+				"owner":   owner,
+				"repo":    repo,
+				"branch":  branch,
+			}))
+			return nil, nil
+		}
+	}
+
+	return hiddenProject, nil
 }
 
 // FindOneProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
@@ -759,7 +868,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 // no other project ref with the same specification has it enabled.
 
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	projectRefs, err := FindMergedProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -778,6 +887,13 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		"branch":  branch,
 	})
 	return nil, nil
+}
+
+func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+	q := byOwnerRepoAndBranch(owner, repo, branch)
+	q[ProjectRefHiddenKey] = true
+
+	return findOneProjectRefQ(db.Query(q))
 }
 
 func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
