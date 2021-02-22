@@ -177,12 +177,12 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 	catcher := grip.NewBasicCatcher()
 	for _, param := range params {
 		pair := strings.Split(param, "=")
-		if len(pair) != 2 {
+		if len(pair) < 2 {
 			catcher.Add(errors.Errorf("problem parsing parameter '%s'", param))
-			continue
 		}
-
-		res = append(res, patch.Parameter{Key: pair[0], Value: pair[1]})
+		key := pair[0]
+		val := strings.Join(pair[1:], "=")
+		res = append(res, patch.Parameter{Key: key, Value: val})
 	}
 	return res, catcher.Resolve()
 }
