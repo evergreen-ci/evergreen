@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -204,8 +205,24 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// the scheduled tasks in the queue?
 	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
 
-	timeToEmpty := scheduledDuration / time.Duration((nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold))
-	timeToEmptyNoSpawns := scheduledDuration / time.Duration((nHostsFree - distroQueueInfo.CountDurationOverThreshold))
+	var timeToEmpty, timeToEmptyNoSpawns time.Duration
+	hostsAvail := nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold
+	if scheduledDuration <= 0 {
+		timeToEmpty = time.Duration(0)
+		timeToEmptyNoSpawns = time.Duration(0)
+	} else {
+		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
+		if hostsAvail == 0 {
+			timeToEmpty = time.Duration(math.Inf(0))
+			timeToEmptyNoSpawns = time.Duration(math.Inf(0))
+		} else if hostsAvailNoSpawns == 0 {
+			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
+			timeToEmptyNoSpawns = time.Duration(math.Inf(0))
+		} else {
+			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
+			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
+		}
+	}
 
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
