@@ -291,7 +291,9 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		j.AddError(task.MarkGeneratedTasksErr(j.TaskID, err))
 		return
 	}
-	j.AddError(task.MarkGeneratedTasks(j.TaskID))
+	if !shouldNoop {
+		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+	}
 }
 
 func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
