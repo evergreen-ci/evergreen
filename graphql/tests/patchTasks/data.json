@@ -189,8 +189,13 @@
       "r": "github_pull_request",
       "status": "success",
       "depends_on": [
-        { "_id": "random_thang", "status": "failed", "unattainable": true }
-      ]
+        {
+          "_id": "random_thang",
+          "status": "failed",
+          "unattainable": true
+        }
+      ],
+      "build_id": "ubuntu_build"
     },
     {
       "_id": "2",
@@ -201,7 +206,8 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "branch": "myProject",
-      "status": "failed"
+      "status": "failed",
+      "build_id": "ubuntu_build"
     },
     {
       "_id": "3",
@@ -211,7 +217,8 @@
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "windows_build"
     },
     {
       "_id": "4",
@@ -226,7 +233,8 @@
         "status": "failed",
         "timed_out": true,
         "type": "test"
-      }
+      },
+      "build_id": "windows_build"
     },
     {
       "_id": "4.5",
@@ -240,7 +248,8 @@
       "details": {
         "status": "failed",
         "type": "system"
-      }
+      },
+      "build_id": "windows_build"
     },
     {
       "_id": "1.5",
@@ -251,12 +260,15 @@
       "display_name": "compile",
       "r": "github_pull_request",
       "display_only": true,
-      "execution_tasks": ["et1"],
+      "execution_tasks": [
+        "et1"
+      ],
       "status": "failed",
       "details": {
         "status": "failed",
         "type": "system"
-      }
+      },
+      "build_id": "windows_build"
     },
     {
       "_id": "et1",
@@ -265,7 +277,8 @@
       "build_variant": "bv",
       "display_name": "this is an execution task",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "build_id": "bv_build"
     },
     {
       "_id": "base-task-1",
@@ -276,7 +289,8 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "branch": "myProject",
       "r": "gitter_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "ubuntu_build"
     },
     {
       "_id": "base-task-2",
@@ -287,7 +301,8 @@
       "display_name": "test-cloud",
       "branch": "myProject",
       "r": "gitter_request",
-      "status": "failed"
+      "status": "failed",
+      "build_id": "ubuntu_build"
     },
     {
       "_id": "base-task-3",
@@ -302,7 +317,8 @@
       "details": {
         "status": "failed",
         "type": "test"
-      }
+      },
+      "build_id": "windows_build"
     },
     {
       "_id": "base-task-4",
@@ -313,7 +329,22 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "branch": "myProject",
       "r": "gitter_request",
-      "status": "success"
+      "status": "success",
+      "build_id": "windows_build"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "ubuntu_build",
+      "displayName": "Ubuntu 16.04"
+    },
+    {
+      "_id": "windows_build",
+      "displayName": "Windows 97"
+    },
+    {
+      "_id": "bv_build",
+      "displayName": "Build variant"
     }
   ]
 }
