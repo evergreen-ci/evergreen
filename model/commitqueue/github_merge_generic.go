@@ -25,6 +25,7 @@ const (
 	GithubContext = "evergreen/commitqueue"
 )
 
+// TODO EVG-14087 delete this
 var validMergeMethods = []string{githubMergeMethodMerge, githubMergeMethodSquash, githubMergeMethodRebase}
 
 type GithubMergePR struct {

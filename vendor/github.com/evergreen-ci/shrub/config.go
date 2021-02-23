@@ -22,20 +22,20 @@ import (
 // Configuration is the top-level representation of the components of
 // an evergreen project configuration.
 type Configuration struct {
-	Functions map[string]*CommandSequence `json:"functions,omitempty"`
-	Tasks     []*Task                     `json:"tasks,omitempty"`
-	Groups    []*TaskGroup                `json:"task_groups,omitempty"`
-	Variants  []*Variant                  `json:"buildvariants,omitempty"`
-	Pre       *CommandSequence            `json:"pre,omitempty"`
-	Post      *CommandSequence            `json:"post,omitempty"`
-	Timeout   *CommandSequence            `json:"timeout,omitempty"`
+	Functions map[string]*CommandSequence `json:"functions,omitempty" yaml:"functions,omitempty"`
+	Tasks     []*Task                     `json:"tasks,omitempty" yaml:"tasks,omitempty"`
+	Groups    []*TaskGroup                `json:"task_groups,omitempty" yaml:"task_groups,omitempty"`
+	Variants  []*Variant                  `json:"buildvariants,omitempty" yaml:"buildvariants,omitempty"`
+	Pre       *CommandSequence            `json:"pre,omitempty" yaml:"pre,omitempty"`
+	Post      *CommandSequence            `json:"post,omitempty" yaml:"post,omitempty"`
+	Timeout   *CommandSequence            `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 
 	// Top Level Options
-	ExecTimeoutSecs int      `json:"exec_timeout_secs,omitempty"`
-	BatchTimeSecs   int      `json:"batchtime,omitempty"`
-	Stepback        bool     `json:"stepback,omitempty"`
-	CommandType     string   `json:"command_type,omitempty"`
-	IgnoreFIles     []string `json:"ignore,omitempty"`
+	ExecTimeoutSecs int      `json:"exec_timeout_secs,omitempty" yaml:"exec_timeout_secs,omitempty"`
+	BatchTimeSecs   int      `json:"batchtime,omitempty" yaml:"batchtime,omitempty"`
+	Stepback        bool     `json:"stepback,omitempty" yaml:"stepback,omitempty"`
+	CommandType     string   `json:"command_type,omitempty" yaml:"command_type,omitempty"`
+	IgnoreFiles     []string `json:"ignore,omitempty" yaml:"ignore,omitempty"`
 }
 
 // Task returns a task of the specified name. If the task already

@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -34,10 +36,11 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		if proj.TicketCreateProject == "" {
-			return fmt.Errorf("ticket_create_project cannot be blank")
+		webhookConfigured := proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != ""
+		if !webhookConfigured && proj.TicketCreateProject == "" {
+			return fmt.Errorf("ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank")
 		}
-		if len(proj.TicketSearchProjects) == 0 {
+		if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
 			return fmt.Errorf("ticket_search_projects cannot be empty")
 		}
 		if proj.BFSuggestionServer != "" {
@@ -59,9 +62,17 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		if proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != "" {
+		// the webhook cannot be used if the default build baron creation and search is configurd
+		if webhookConfigured {
+			if len(proj.TicketCreateProject) != 0 {
+				grip.Error(message.Fields{
+					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
+					"project_name": projName})
+			}
 			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
-				return errors.Wrapf(err, `Failed to parse webhook endpoint for project "%s"`, projName)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":      "Failed to parse webhook endpoint for project",
+					"project_name": projName}))
 			}
 		}
 	}

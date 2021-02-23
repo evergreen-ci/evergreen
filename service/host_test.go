@@ -26,7 +26,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := mock.Environment{}
+	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
 	require.NoError(db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing collections")
 
@@ -37,7 +37,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.NoError(h.Insert())
 		opts := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
-		result, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		result, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
@@ -63,7 +63,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		}
 		require.NoError(h.Insert())
 
-		_, httpStatus, err := api.ModifyHostStatus(env.LocalQueue(), &h, evergreen.HostRunning, "", &user)
+		_, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, evergreen.HostRunning, "", &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(h.Status, evergreen.HostProvisioning)
@@ -74,7 +74,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		h := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 		opts := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
-		_, _, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), api.DecommissionStaticHostError)
 	})
@@ -83,7 +83,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		h := host.Host{Id: "h4", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 		opts := uiParams{Action: "updateStatus", Status: "undefined"}
 
-		_, _, err := api.ModifyHostStatus(env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
 	})

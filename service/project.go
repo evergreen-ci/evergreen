@@ -125,7 +125,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matchingRefs, err := model.FindMergedProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+	matchingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -376,7 +376,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	var conflictingRefs []model.ProjectRef
 	if responseRef.Enabled {
 		if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
-			conflictingRefs, err = model.FindMergedProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+			conflictingRefs, err = model.FindMergedEnabledProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return

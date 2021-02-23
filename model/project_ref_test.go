@@ -270,7 +270,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRefs, err := FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -284,7 +284,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -292,7 +292,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRef.Enabled = utility.TruePtr()
 	assert.NoError(projectRef.Insert())
 
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.Len(projectRefs, 1)
 	assert.Equal("ident", projectRefs[0].Id)
@@ -300,7 +300,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	projectRef.Id = "ident2"
 	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 
@@ -316,19 +316,19 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	}}
 	assert.NoError(repoRef.Insert())
 
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 
 	repoRef.Enabled = utility.TruePtr()
 	assert.NoError(repoRef.Upsert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 3)
 
 	projectRef.Enabled = utility.FalsePtr()
 	assert.NoError(projectRef.Upsert())
-	projectRefs, err = FindMergedProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 }
@@ -338,7 +338,9 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
 
-	require.NoError(db.Clear(ProjectRefCollection))
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
@@ -385,6 +387,87 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
+
+	repoDoc := RepoRef{ProjectRef{
+		Id:    "my_repo",
+		Owner: "mongodb",
+		Repo:  "mci",
+	}}
+	assert.NoError(repoDoc.Insert())
+	doc = &ProjectRef{
+		Id:              "defaulting_project",
+		Owner:           "mongodb",
+		Repo:            "mci",
+		Branch:          "mine",
+		UseRepoSettings: true,
+		RepoRefId:       repoDoc.Id,
+	}
+	assert.NoError(doc.Insert())
+	doc2 := &ProjectRef{
+		Id:               "hidden_project",
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "mine",
+		UseRepoSettings:  true,
+		RepoRefId:        repoDoc.Id,
+		Enabled:          utility.FalsePtr(),
+		PRTestingEnabled: utility.FalsePtr(),
+		Hidden:           utility.TruePtr(),
+	}
+	assert.NoError(doc2.Insert())
+
+	// repo doesn't have PR testing enabled, so no project returned
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	repoDoc.Enabled = utility.TruePtr()
+	assert.NoError(repoDoc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	repoDoc.PRTestingEnabled = utility.TruePtr()
+	assert.NoError(repoDoc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	require.NotNil(projectRef)
+	assert.Equal("defaulting_project", projectRef.Id)
+
+	// project PR testing explicitly disabled
+	doc.PRTestingEnabled = utility.FalsePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// project explicitly disabled
+	doc.Enabled = utility.FalsePtr()
+	doc.PRTestingEnabled = utility.TruePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// branch with no project doesn't work if repo not configured right
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	repoDoc.RemotePath = "my_path"
+	assert.NoError(repoDoc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	assert.NoError(err)
+	assert.NotNil(projectRef)
+	assert.Equal("yours", projectRef.Branch)
+	assert.True(projectRef.IsHidden())
+	firstAttemptId := projectRef.Id
+
+	// verify we return the same hidden project
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	assert.NoError(err)
+	require.NotNil(projectRef)
+	assert.Equal(firstAttemptId, projectRef.Id)
 }
 
 func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
@@ -707,6 +790,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(u.Insert())
 	p := ProjectRef{
 		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		Branch:     "main",
+		Hidden:     utility.TruePtr(),
 	}
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
@@ -725,6 +812,32 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(role)
 	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(err)
+	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
+	projectId := p.Id
+
+	// check that an added project uses the hidden project's ID
+	u = user.DBUser{Id: "you"}
+	assert.NoError(u.Insert())
+	p.Identifier = "differentProject"
+	p.Id = ""
+	assert.NoError(p.Add(&u))
+	assert.NotEmpty(p.Id)
+	assert.True(mgobson.IsObjectIdHex(p.Id))
+	assert.Equal(projectId, p.Id)
+
+	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
+	assert.NoError(err)
+	assert.NotNil(scope)
+	role, err = rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	})
+	assert.NoError(err)
+	assert.NotNil(role)
+	dbUser, err = user.FindOneById(u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }

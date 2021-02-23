@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -188,20 +186,12 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		var patchFilePath string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
-			var reader io.ReadCloser
-			reader, err = db.GetGridFile(patch.GridFSPrefix, patchPart.PatchSet.PatchFileId)
+			var patchContents string
+			patchContents, err = patch.FetchPatchContents(patchPart.PatchSet.PatchFileId)
 			if err != nil {
-				return nil, errors.Wrap(err, "Can't fetch patch file from gridfs")
+				return nil, errors.Wrap(err, "can't fetch patch contents")
 			}
-			defer reader.Close()
-
-			var data []byte
-			data, err = ioutil.ReadAll(reader)
-			if err != nil {
-				return nil, errors.Wrap(err, "Can't read patch file contents from gridfs")
-			}
-
-			patchFilePath, err = util.WriteToTempFile(string(data))
+			patchFilePath, err = util.WriteToTempFile(patchContents)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not write temporary patch file")
 			}
@@ -563,7 +553,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
 	}
 
-	mergePatch, err := MakeMergePatchFromExisting(existingPatch)
+	mergePatch, err := MakeMergePatchFromExisting(existingPatch, "")
 	if err != nil {
 		return errors.Wrap(err, "problem making merge patch")
 	}
@@ -577,10 +567,9 @@ func (e *EnqueuePatch) Valid() bool {
 	return patch.IsValidId(e.PatchID)
 }
 
-func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error) {
-	// verify the patch and its modules are in mbox format
-	if !existingPatch.CanEnqueueToCommitQueue() {
-		return nil, errors.Errorf("can't enqueue non-mbox patch '%s'", existingPatch.Id.Hex())
+func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
+	if !existingPatch.HasValidGitInfo() {
+		return nil, errors.Errorf("can't enqueue patch '%s' without metadata", existingPatch.Id.Hex())
 	}
 
 	// verify the commit queue is on
@@ -599,16 +588,19 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch) (*patch.Patch, error
 
 	patchDoc := &patch.Patch{
 		Id:            mgobson.NewObjectId(),
-		Description:   MakeCommitQueueDescription(existingPatch.Patches, projectRef, project),
 		Author:        existingPatch.Author,
 		Project:       existingPatch.Project,
 		Githash:       existingPatch.Githash,
 		Status:        evergreen.PatchCreated,
 		Alias:         evergreen.CommitQueueAlias,
-		Patches:       existingPatch.Patches,
 		PatchedConfig: existingPatch.PatchedConfig,
 		CreateTime:    time.Now(),
 	}
+
+	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
+		return nil, errors.Wrap(err, "can't make merge patches from existing patch")
+	}
+	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project)
 
 	// verify the commit queue has tasks/variants enabled that match the project
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)

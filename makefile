@@ -3,9 +3,9 @@ name := evergreen
 buildDir := bin
 tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
-packages := $(name) agent agent-command agent-util agent-internal agent-internal-client apimodels operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core
-packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages := $(name) agent agent-command agent-util agent-internal agent-internal-client api apimodels operations cloud cloud-userdata
+packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service service-testutil repotracker cmd-codegen-core
+packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
@@ -456,7 +456,10 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(shell pwd) GOPATH=$(gopath)
+ifeq (,$(GOCONVEY_REPORTER))
+	testRunEnv += GOCONVEY_REPORTER=silent
+endif
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif

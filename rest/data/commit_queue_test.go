@@ -8,15 +8,18 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type CommitQueueSuite struct {
@@ -207,6 +210,10 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 	existingPatch := &patch.Patch{
 		Author:  "octocat",
 		Project: s.projectRef.Id,
+		GitInfo: &patch.GitMetadata{
+			Username: "octocat",
+			Email:    "octocat @github.com",
+		},
 		PatchedConfig: `
 tasks:
   - name: t0
@@ -221,13 +228,13 @@ buildvariants:
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
 
-	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex())
+	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
 	s.NoError(err)
 	s.NotNil(newPatch)
 
-	// newPatchDB, err := patch.findOneRepoRefQ(patch.ById(patch.NewId(utility.FromStringPtr(newPatch.Id))))
-	// s.NoError(err)
-	// s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
+	newPatchDB, err := patch.FindOneId(utility.FromStringPtr(newPatch.Id))
+	s.NoError(err)
+	s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
@@ -348,6 +355,68 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 	clearedCount, err := s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
+}
+
+func (s *CommitQueueSuite) TestAddMergeTaskAndVariant() {
+	config, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError((&distro.Distro{
+		Id: config.CommitQueue.MergeTaskDistro,
+	}).Insert())
+
+	project := &model.Project{}
+	patchDoc := &patch.Patch{}
+	ref := &model.ProjectRef{}
+
+	s.NoError(addMergeTaskAndVariant(patchDoc, project, ref, commitqueue.SourceDiff))
+
+	s.Require().Len(patchDoc.BuildVariants, 1)
+	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
+	s.Require().Len(patchDoc.Tasks, 1)
+	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
+
+	s.Require().Len(project.BuildVariants, 1)
+	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
+	s.Require().Len(project.BuildVariants[0].Tasks, 1)
+	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
+	s.Require().Len(project.Tasks, 1)
+	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
+	s.Require().Len(project.TaskGroups, 1)
+	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
+}
+
+func (s *CommitQueueSuite) TestWritePatchInfo() {
+	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
+
+	patchDoc := &patch.Patch{
+		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
+		Githash: "abcdef",
+	}
+
+	patchSummaries := []thirdparty.Summary{
+		thirdparty.Summary{
+			Name:      "myfile.go",
+			Additions: 1,
+			Deletions: 0,
+		},
+	}
+
+	patchContents := `diff --git a/myfile.go b/myfile.go
+	index abcdef..123456 100644
+	--- a/myfile.go
+	+++ b/myfile.go
+	@@ +2,1 @@ func myfunc {
+	+				fmt.Print(\"hello world\")
+			}
+	`
+
+	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContents))
+	s.Len(patchDoc.Patches, 1)
+	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
+	storedPatchContents, err := patch.FetchPatchContents(patchDoc.Patches[0].PatchSet.PatchFileId)
+	s.NoError(err)
+	s.Equal(patchContents, storedPatchContents)
 }
 
 func TestConcludeMerge(t *testing.T) {

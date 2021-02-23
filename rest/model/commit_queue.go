@@ -19,6 +19,7 @@ type APICommitQueue struct {
 
 type APICommitQueueItem struct {
 	Issue           *string     `json:"issue"`
+	PatchId         *string     `json:"patch_id"`
 	Version         *string     `json:"version"`
 	EnqueueTime     *time.Time  `json:"enqueueTime"`
 	Modules         []APIModule `json:"modules"`
@@ -72,6 +73,7 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	item.EnqueueTime = ToTimePtr(cqItemService.EnqueueTime)
 	item.MessageOverride = utility.ToStringPtr(cqItemService.MessageOverride)
 	item.Source = utility.ToStringPtr(cqItemService.Source)
+	item.PatchId = utility.ToStringPtr(cqItemService.PatchId)
 
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
@@ -89,6 +91,7 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 		Version:         utility.FromStringPtr(item.Version),
 		MessageOverride: utility.FromStringPtr(item.MessageOverride),
 		Source:          utility.FromStringPtr(item.Source),
+		PatchId:         utility.FromStringPtr(item.PatchId),
 	}
 	for _, module := range item.Modules {
 		serviceModule := commitqueue.Module{

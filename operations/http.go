@@ -524,6 +524,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		BackportInfo      patch.BackportInfo `json:"backport_info"`
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Parameters        []patch.Parameter  `json:"parameters"`
+		GitMetadata       patch.GitMetadata  `json:"git_metadata"`
+		ReuseDefinition   bool               `json:"reuse_definition"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectName,
@@ -540,6 +542,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		BackportInfo:      incomingPatch.backportOf,
 		TriggerAliases:    incomingPatch.triggerAliases,
 		Parameters:        incomingPatch.parameters,
+		GitMetadata:       incomingPatch.gitMetadata,
+		ReuseDefinition:   incomingPatch.reuseDefinition,
 	}
 
 	rPipe, wPipe := io.Pipe()

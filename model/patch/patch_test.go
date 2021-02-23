@@ -3,6 +3,7 @@ package patch
 import (
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -610,6 +611,85 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 			checkEqualVTs(t, testCase.expectedSyncVTs, dbPatch.SyncAtEndOpts.VariantsTasks)
 			checkEqualVTs(t, testCase.expectedSyncVTs, p.SyncAtEndOpts.VariantsTasks)
 		})
+	}
+}
+
+func TestMakeMergePatchPatches(t *testing.T) {
+	require.NoError(t, db.ClearGridCollections(GridFSPrefix))
+	patchDiff := "Lorem Ipsum"
+	patchFileID := bson.NewObjectId()
+	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
+
+	existingPatch := &Patch{
+		Patches: []ModulePatch{
+			{
+				ModuleName: "0",
+				PatchSet: PatchSet{
+					PatchFileId: patchFileID.Hex(),
+				},
+			},
+		},
+		GitInfo: &GitMetadata{
+			Email:    "octocat@github.com",
+			Username: "octocat",
+		},
+	}
+	newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
+	assert.NoError(t, err)
+	assert.Len(t, newPatches, 1)
+	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
+
+	patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
+	require.NoError(t, err)
+	assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
+	assert.Contains(t, patchContents, patchDiff)
+}
+
+func TestAddMetadataToDiff(t *testing.T) {
+	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
+	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+	tests := map[string]func(*testing.T){
+		"without git version": func(t *testing.T) {
+			metadata := GitMetadata{
+				Username: "octocat",
+				Email:    "octocat@github.com",
+			}
+			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+			assert.NoError(t, err)
+			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
+Date: Tue, 10 Nov 2009 23:00:00 +0000
+Subject: EVG-12345 diff to mbox
+
+---
++ func diffToMbox(diffData *localDiff, subject string) (string, error) {
+`, mboxDiff)
+		},
+		"with git version": func(t *testing.T) {
+			metadata := GitMetadata{
+				Username:   "octocat",
+				Email:      "octocat@github.com",
+				GitVersion: "2.19.1",
+			}
+			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
+			assert.NoError(t, err)
+			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
+From: octocat <octocat@github.com>
+Date: Tue, 10 Nov 2009 23:00:00 +0000
+Subject: EVG-12345 diff to mbox
+
+---
++ func diffToMbox(diffData *localDiff, subject string) (string, error) {
+--
+2.19.1
+
+`, mboxDiff)
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, test)
 	}
 }
 

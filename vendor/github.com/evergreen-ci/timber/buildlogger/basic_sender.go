@@ -2,6 +2,7 @@ package buildlogger
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -98,6 +99,9 @@ type LoggerOptions struct {
 
 	// Storage location type for this log.
 	Storage LogStorage `bson:"storage" json:"storage" yaml:"storage"`
+
+	// Prefix for log lines, if any.
+	Prefix string `bson:"prefix" jason:"prefix" yaml:"prefix"`
 
 	// Configure a local sender for "fallback" operations and to collect
 	// the location of the buildlogger output.
@@ -294,10 +298,14 @@ func (b *buildlogger) Send(m message.Composer) {
 		if line == "" {
 			continue
 		}
+		data := strings.TrimRightFunc(line, unicode.IsSpace)
+		if b.opts.Prefix != "" {
+			data = fmt.Sprintf("[%s] %s", b.opts.Prefix, data)
+		}
 		logLine := &gopb.LogLine{
 			Priority:  int32(m.Priority()),
 			Timestamp: &timestamp.Timestamp{Seconds: ts.Unix(), Nanos: int32(ts.Nanosecond())},
-			Data:      strings.TrimRightFunc(line, unicode.IsSpace),
+			Data:      []byte(data),
 		}
 
 		b.buffer = append(b.buffer, logLine)
