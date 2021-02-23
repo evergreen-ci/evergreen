@@ -65,16 +65,38 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
+		if !ref.IsEnabled() {
+			// PR tasks can still run for hidden projects
+			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
+				grip.Debug(message.Fields{
+					"runner":    RunnerName,
+					"message":   "project disabled but hidden",
+					"outcome":   "not skipping",
+					"task":      t.Id,
+					"requester": t.Requester,
+					"planner":   d.PlannerSettings.Version,
+					"project":   t.Project,
+				})
+			} else {
+				grip.Notice(message.Fields{
+					"runner":  RunnerName,
+					"message": "project disabled",
+					"outcome": "skipping",
+					"task":    t.Id,
+					"planner": d.PlannerSettings.Version,
+					"project": t.Project,
+				})
+				continue
+			}
+		}
+		if ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
-				"runner":               RunnerName,
-				"message":              "project disabled",
-				"outcome":              "skipping",
-				"task":                 t.Id,
-				"planner":              d.PlannerSettings.Version,
-				"project":              t.Project,
-				"enabled":              ref.Enabled,
-				"dispatching_disabled": ref.DispatchingDisabled,
+				"runner":  RunnerName,
+				"message": "project dispatching disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"planner": d.PlannerSettings.Version,
+				"project": t.Project,
 			})
 			continue
 		}
@@ -181,16 +203,38 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
+		if !ref.IsEnabled() {
+			// PR tasks can still run for hidden projects
+			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
+				grip.Debug(message.Fields{
+					"runner":    RunnerName,
+					"message":   "project disabled but hidden",
+					"outcome":   "not skipping",
+					"task":      t.Id,
+					"requester": t.Requester,
+					"planner":   d.PlannerSettings.Version,
+					"project":   t.Project,
+				})
+			} else {
+				grip.Notice(message.Fields{
+					"runner":  RunnerName,
+					"message": "project disabled",
+					"outcome": "skipping",
+					"task":    t.Id,
+					"planner": d.PlannerSettings.Version,
+					"project": t.Project,
+				})
+				continue
+			}
+		}
+		if ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
-				"runner":               RunnerName,
-				"message":              "project disabled",
-				"outcome":              "skipping",
-				"task":                 t.Id,
-				"planner":              d.PlannerSettings.Version,
-				"project":              t.Project,
-				"enabled":              ref.Enabled,
-				"dispatching_disabled": ref.DispatchingDisabled,
+				"runner":  RunnerName,
+				"message": "project dispatching disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"planner": d.PlannerSettings.Version,
+				"project": t.Project,
 			})
 			continue
 		}
@@ -304,15 +348,38 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() || ref.IsDispatchingDisabled() {
+		if !ref.IsEnabled() {
+			// PR tasks can still run for hidden projects
+			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
+				grip.Debug(message.Fields{
+					"runner":    RunnerName,
+					"message":   "project disabled but hidden",
+					"outcome":   "not skipping",
+					"task":      t.Id,
+					"requester": t.Requester,
+					"planner":   d.PlannerSettings.Version,
+					"project":   t.Project,
+				})
+			} else {
+				grip.Notice(message.Fields{
+					"runner":  RunnerName,
+					"message": "project disabled",
+					"outcome": "skipping",
+					"task":    t.Id,
+					"planner": d.PlannerSettings.Version,
+					"project": t.Project,
+				})
+				continue
+			}
+		}
+		if ref.IsDispatchingDisabled() {
 			grip.Notice(message.Fields{
-				"runner":               RunnerName,
-				"message":              "project disabled",
-				"outcome":              "skipping",
-				"task":                 t.Id,
-				"project":              t.Project,
-				"enabled":              ref.Enabled,
-				"dispatching_disabled": ref.DispatchingDisabled,
+				"runner":  RunnerName,
+				"message": "project dispatching disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"planner": d.PlannerSettings.Version,
+				"project": t.Project,
 			})
 			continue
 		}

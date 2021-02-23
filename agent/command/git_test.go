@@ -673,7 +673,7 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
 	applyCommand, err = c.getApplyCommand(patchPath)
 	s.NoError(err)
-	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
+	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {

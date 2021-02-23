@@ -1792,17 +1792,27 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
-func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
+func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
 	user := MustHaveUser(ctx)
-	hasPermission, err := r.hasEnqueuePatchPermission(user, patchID)
+
+	existingPatch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting permissions: %s", err.Error()))
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
-	if !hasPermission {
+
+	if !hasEnqueuePatchPermission(user, existingPatch) {
 		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
-	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID)
+	if commitMessage == nil {
+		commitMessage = existingPatch.Description
+	}
+
+	newPatch, err := r.sc.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -1813,38 +1823,6 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string) (*r
 	}
 
 	return newPatch, nil
-}
-
-func (r *mutationResolver) hasEnqueuePatchPermission(u *user.DBUser, patchID string) (bool, error) {
-	// patch owner
-	existingPatch, err := r.sc.FindPatchById(patchID)
-	if err != nil {
-		return false, err
-	}
-	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
-		return true, nil
-	}
-
-	// superuser
-	permissions := gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionAdminSettings,
-		RequiredLevel: evergreen.AdminSettingsEdit.Value,
-	}
-	if u == nil {
-		return false, nil
-	}
-	if u.HasPermission(permissions) {
-		return true, nil
-	}
-
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	}), nil
 }
 
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
@@ -2081,7 +2059,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(user.Username()))
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
 	}
@@ -2099,7 +2077,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 
 	rq := evergreen.GetEnvironment().RemoteQueue()
 
-	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(rq, status, *notes, user))
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), rq, status, *notes, user))
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -2412,18 +2390,13 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int)
 	execString := strconv.Itoa(exec)
 
 	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskID, execString)
-	if !bbConfig.ProjectFound || !bbConfig.SearchConfigured {
-		return &BuildBaron{
-			SearchReturnInfo:     searchReturnInfo,
-			BuildBaronConfigured: false,
-		}, nil
-	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+
 	return &BuildBaron{
 		SearchReturnInfo:     searchReturnInfo,
-		BuildBaronConfigured: true,
+		BuildBaronConfigured: bbConfig.ProjectFound && bbConfig.SearchConfigured,
 	}, nil
 }
 

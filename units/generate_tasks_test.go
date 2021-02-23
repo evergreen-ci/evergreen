@@ -302,7 +302,7 @@ buildvariants:
     tasks:
       - name: "patch_only_task"
 `
-	var sampleGeneratedProject = []string{`
+	var sampleGeneratedProject2 = []string{`
 {
   "buildvariants": [
     {
@@ -340,7 +340,7 @@ buildvariants:
 		BuildId:               "sample_build_id",
 		Project:               "mci",
 		DisplayName:           "generator",
-		GeneratedJSONAsString: sampleGeneratedProject,
+		GeneratedJSONAsString: sampleGeneratedProject2,
 		Status:                evergreen.TaskStarted,
 		Requester:             evergreen.RepotrackerVersionRequester,
 	}

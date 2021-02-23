@@ -530,7 +530,7 @@
         "restarts": 5,
         "execution": 0,
         "order": 5,
-        "r": "merge_test",
+        "r": "patch_request",
         "status": "started",
         "details": {
           "status": "status",
@@ -1943,7 +1943,7 @@
             "restarts": 5,
             "execution": 0,
             "patchNumber": 5,
-            "requester": "merge_test",
+            "requester": "patch_request",
             "status": "started",
             "details": {
               "status": "status",

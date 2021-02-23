@@ -57,7 +57,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	commitQueuePosition := 0
 	if projCtx.Patch.IsCommitQueuePatch() {
-		cq, err := commitqueue.FindOneId(variantsAndTasksFromProject.Project.Identifier)
+		cq, err := commitqueue.FindOneId(projCtx.ProjectRef.Id)
 		// still display patch page if problem finding commit queue
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))

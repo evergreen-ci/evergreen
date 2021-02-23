@@ -103,12 +103,6 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return err
 			}
-			if !preserveCommits {
-				diffData.fullPatch, err = diffToMbox(diffData, existingPatch.Description)
-				if err != nil {
-					return err
-				}
-			}
 
 			if err = validatePatchSize(diffData, large); err != nil {
 				return err
