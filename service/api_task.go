@@ -682,7 +682,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "total",
-			"duration_ns": time.Now().Sub(funcStart).Milliseconds(),
+			"duration_ns": time.Now().Sub(funcStart),
 			"run_id":      runId,
 		})
 
