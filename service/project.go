@@ -275,7 +275,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache,omitempty"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds,omitempty"`
-		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_configs"`
+		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
