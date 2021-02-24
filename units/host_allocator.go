@@ -152,7 +152,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	// nHosts is the number of additional hosts desired.
-	nHosts, err := hostAllocator(ctx, hostAllocatorData)
+	nHosts, nHostsFree, err := hostAllocator(ctx, hostAllocatorData)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Error calculating the number of new hosts required for distro id '%s'", j.DistroID))
 		return
@@ -198,27 +198,53 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"duration_secs": time.Since(hostSpawningBegins).Seconds(),
 	})
 
-	var makespan time.Duration
-	if len(hostsSpawned) != 0 {
-		makespan = distroQueueInfo.ExpectedDuration / time.Duration(len(hostsSpawned))
-	} else if distroQueueInfo.Length > 0 {
-		makespan = distroQueueInfo.ExpectedDuration
+	// ignoring all the tasks that will take longer than the threshold to run,
+	// and the hosts allocated for them,
+	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
+	// the scheduled tasks in the queue?
+	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
+
+	var timeToEmpty, timeToEmptyNoSpawns time.Duration
+	hostsAvail := nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold
+	if scheduledDuration <= 0 {
+		timeToEmpty = time.Duration(0)
+		timeToEmptyNoSpawns = time.Duration(0)
+	} else {
+		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
+		maxHours := 2532000
+		if hostsAvail <= 0 {
+			timeToEmpty = time.Duration(maxHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+		} else if hostsAvailNoSpawns <= 0 {
+			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
+			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+		} else {
+			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
+			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
+		}
 	}
 
+	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+
 	grip.Info(message.Fields{
-		"message":                 "distro-scheduler-report",
-		"job_type":                hostAllocatorJobName,
-		"distro":                  distro.Id,
-		"provider":                distro.Provider,
-		"max_hosts":               distro.HostAllocatorSettings.MaximumHosts,
-		"num_new_hosts":           len(hostsSpawned),
-		"pool_info":               existingHosts.Stats(),
-		"queue":                   eventInfo,
-		"total_runtime":           distroQueueInfo.ExpectedDuration.String(),
-		"runtime_secs":            distroQueueInfo.ExpectedDuration.Seconds(),
-		"predicted_makespan":      makespan.String(),
-		"predicted_makespan_secs": makespan.Seconds(),
-		"instance":                j.ID(),
-		"runner":                  scheduler.RunnerName,
+		"message":                      "distro-scheduler-report",
+		"job_type":                     hostAllocatorJobName,
+		"distro":                       distro.Id,
+		"provider":                     distro.Provider,
+		"max_hosts":                    distro.HostAllocatorSettings.MaximumHosts,
+		"num_new_hosts":                len(hostsSpawned),
+		"pool_info":                    existingHosts.Stats(),
+		"queue":                        eventInfo,
+		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),
+		"runtime_secs":                 distroQueueInfo.ExpectedDuration.Seconds(),
+		"time_to_empty":                timeToEmpty.String(),
+		"time_to_empty_mins":           timeToEmpty.Minutes(),
+		"time_to_empty_no_spawns":      timeToEmptyNoSpawns.String(),
+		"time_to_empty_no_spawns_mins": timeToEmptyNoSpawns.Minutes(),
+		"host_queue_ratio":             hostQueueRatio,
+		"host_queue_ratio_no_spawns":   noSpawnsRatio,
+		"instance":                     j.ID(),
+		"runner":                       scheduler.RunnerName,
 	})
 }
