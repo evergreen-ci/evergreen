@@ -213,11 +213,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
 		maxHours := 2532000
 		if hostsAvail <= 0 {
-			timeToEmpty = time.Duration(time.Duration(maxHours) * time.Hour)
-			timeToEmptyNoSpawns = time.Duration(time.Duration(maxHours) * time.Hour)
+			timeToEmpty = time.Duration(maxHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
 		} else if hostsAvailNoSpawns <= 0 {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
-			timeToEmptyNoSpawns = time.Duration(time.Duration(maxHours) * time.Hour)
+			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
 		} else {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
 			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
