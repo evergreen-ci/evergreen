@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/service"
+	"github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
@@ -106,14 +106,14 @@ func newCombinedDaemon(rest *restDaemon, rpc *rpcDaemon) *combinedDaemon {
 	}
 }
 
-func (d *combinedDaemon) Start(s service.Service) error {
+func (d *combinedDaemon) Start(s baobab.Service) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(errors.Wrap(d.rpcDaemon.Start(s), "error starting RPC service"))
 	catcher.Add(errors.Wrap(d.restDaemon.Start(s), "error starting REST service"))
 	return catcher.Resolve()
 }
 
-func (d *combinedDaemon) Stop(s service.Service) error {
+func (d *combinedDaemon) Stop(s baobab.Service) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(errors.Wrap(d.rpcDaemon.Stop(s), "error stopping RPC service"))
 	catcher.Add(errors.Wrap(d.restDaemon.Stop(s), "error stopping REST service"))

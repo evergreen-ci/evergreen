@@ -7,14 +7,15 @@ import (
 
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCleanTerminationSignalTrigger(t *testing.T) {
 	for procName, makeProc := range map[string]ProcessConstructor{
-		"Basic":    newBasicProcess,
-		"Blocking": newBlockingProcess,
+		"BasicProcess":    newBasicProcess,
+		"BlockingProcess": newBlockingProcess,
 	} {
 		t.Run(procName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(context.Context, *options.Create, ProcessConstructor){
@@ -43,7 +44,7 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 					assert.NoError(t, proc.Signal(ctx, syscall.SIGKILL))
 				},
 				"CleanTerminationFailsForExitedProcess": func(ctx context.Context, opts *options.Create, makep ProcessConstructor) {
-					opts = testutil.TrueCreateOpts()
+					opts = testoptions.TrueCreateOpts()
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 
@@ -59,7 +60,7 @@ func TestCleanTerminationSignalTrigger(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 					defer cancel()
 
-					testCase(ctx, testutil.SleepCreateOpts(1), makeProc)
+					testCase(ctx, testoptions.SleepCreateOpts(1), makeProc)
 				})
 			}
 		})

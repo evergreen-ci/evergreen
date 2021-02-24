@@ -15,7 +15,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func TestCLILoggingCache(t *testing.T) {
+func TestLoggingCache(t *testing.T) {
 	for remoteType, makeService := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) util.CloseFunc{
 		RESTService: makeTestRESTService,
 		RPCService:  makeTestRPCService,
@@ -100,6 +100,13 @@ func TestCLILoggingCache(t *testing.T) {
 					assert.False(t, getResp.Successful())
 					assert.Zero(t, getResp.Logger)
 				},
+				"CloseAndRemoveWithNonexistentIDFails": func(ctx context.Context, t *testing.T, c *cli.Context) {
+					input, err := json.Marshal(IDInput{ID: "foo"})
+					require.NoError(t, err)
+					resp := &OutcomeResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, loggingCacheCloseAndRemove(), input, resp))
+					assert.False(t, resp.Successful())
+				},
 				"ClearSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					_ = createCachedLoggerFromCLI(t, c, "id0")
 					_ = createCachedLoggerFromCLI(t, c, "id1")
@@ -108,19 +115,19 @@ func TestCLILoggingCache(t *testing.T) {
 					require.NoError(t, execCLICommandOutput(t, c, loggingCacheClear(), resp))
 					require.True(t, resp.Successful())
 
-					getResp := &LoggingCacheLenResponse{}
-					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), getResp))
-					assert.True(t, getResp.Successful())
-					assert.Zero(t, getResp.Length)
+					lenResp := &LoggingCacheLenResponse{}
+					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), lenResp))
+					assert.True(t, lenResp.Successful())
+					assert.Zero(t, lenResp.Len)
 				},
-				"RemoveWithNonexistentIDNoops": func(ctx context.Context, t *testing.T, c *cli.Context) {
+				"RemoveWithNonexistentIDFails": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					logger := createCachedLoggerFromCLI(t, c, "id")
 
 					input, err := json.Marshal(IDInput{ID: "foo"})
 					require.NoError(t, err)
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandInputOutput(t, c, loggingCacheRemove(), input, resp))
-					assert.True(t, resp.Successful())
+					assert.False(t, resp.Successful())
 
 					getResp := &CachedLoggerResponse{}
 					getInput, err := json.Marshal(IDInput{ID: logger.ID})
@@ -135,7 +142,7 @@ func TestCLILoggingCache(t *testing.T) {
 					resp := &LoggingCacheLenResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), resp))
 					require.True(t, resp.Successful())
-					assert.Equal(t, 1, resp.Length)
+					assert.Equal(t, 1, resp.Len)
 				},
 				"PruneSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					_ = createCachedLoggerFromCLI(t, c, "id")
@@ -143,7 +150,7 @@ func TestCLILoggingCache(t *testing.T) {
 					lenResp := &LoggingCacheLenResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), lenResp))
 					require.True(t, lenResp.Successful())
-					assert.Equal(t, 1, lenResp.Length)
+					assert.Equal(t, 1, lenResp.Len)
 
 					input, err := json.Marshal(LoggingCachePruneInput{LastAccessed: time.Now().Add(time.Hour)})
 					require.NoError(t, err)
@@ -154,7 +161,7 @@ func TestCLILoggingCache(t *testing.T) {
 					lenResp = &LoggingCacheLenResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, loggingCacheLen(), lenResp))
 					require.True(t, lenResp.Successful())
-					assert.Zero(t, lenResp.Length)
+					assert.Zero(t, lenResp.Len)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

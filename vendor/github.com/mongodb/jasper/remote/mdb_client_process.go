@@ -25,21 +25,33 @@ func (p *mdbProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	}
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, infoRequest{ID: p.ID()})
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process info for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process info",
+			"process": p.ID(),
+		}))
 		return jasper.ProcessInfo{}
 	}
 	msg, err := p.doRequest(ctx, req)
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process info for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process info",
+			"process": p.ID(),
+		}))
 		return jasper.ProcessInfo{}
 	}
 	var resp infoResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process info for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process info",
+			"process": p.ID(),
+		}))
 		return jasper.ProcessInfo{}
 	}
 	if err := resp.SuccessOrError(); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process info for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process info",
+			"process": p.ID(),
+		}))
 		return jasper.ProcessInfo{}
 	}
 	p.info = resp.Info
@@ -47,48 +59,66 @@ func (p *mdbProcess) Info(ctx context.Context) jasper.ProcessInfo {
 }
 
 func (p *mdbProcess) Running(ctx context.Context) bool {
-	if p.info.Complete {
-		return false
-	}
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, runningRequest{ID: p.ID()})
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process running status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process running status",
+			"process": p.ID(),
+		}))
 		return false
 	}
 	msg, err := p.doRequest(ctx, req)
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process running status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process running status",
+			"process": p.ID(),
+		}))
 		return false
 	}
 	var resp runningResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process running status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process running status",
+			"process": p.ID(),
+		}))
 		return false
 	}
-	grip.Warning(message.WrapErrorf(resp.SuccessOrError(), "failed to get process running status for process %s", p.ID()))
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "failed to get process running status",
+		"process": p.ID(),
+	}))
 	return resp.Running
 }
 
 func (p *mdbProcess) Complete(ctx context.Context) bool {
-	if p.info.Complete {
-		return true
-	}
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, completeRequest{ID: p.ID()})
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process completion status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process completion status",
+			"process": p.ID(),
+		}))
 		return false
 	}
 	msg, err := p.doRequest(ctx, req)
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process completion status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process completion status",
+			"process": p.ID(),
+		}))
 		return false
 	}
 	var resp completeResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get process completion status for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get process completion status",
+			"process": p.ID(),
+		}))
 		return false
 	}
-	grip.Warning(message.WrapErrorf(resp.SuccessOrError(), "failed to get process completion status for process %s", p.ID()))
+	grip.Warning(message.WrapError(resp.SuccessOrError(), message.Fields{
+		"message": "failed to get process completion status",
+		"process": p.ID(),
+	}))
 	return resp.Complete
 }
 
@@ -179,36 +209,65 @@ func (p *mdbProcess) Tag(tag string) {
 	r.Params.Tag = tag
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, r)
 	if err != nil {
-		grip.Warningf("failed to tag process %s with tag %s", p.ID(), tag)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to tag process",
+			"process": p.ID(),
+			"tag":     tag,
+		}))
 		return
 	}
 	msg, err := p.doRequest(context.Background(), req)
 	if err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to tag process %s with tag %s", p.ID(), tag))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to tag process",
+			"process": p.ID(),
+			"tag":     tag,
+		}))
 		return
 	}
 	var resp shell.ErrorResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get tags for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to tag process",
+			"process": p.ID(),
+			"tag":     tag,
+		}))
 		return
 	}
-	grip.Warning(message.WrapErrorf(resp.SuccessOrError(), "failed to tag process %s with tag %s", p.ID(), tag))
+	if err := resp.SuccessOrError(); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to tag process",
+			"process": p.ID(),
+			"tag":     tag,
+		}))
+		return
+	}
+	p.info.Options.Tags = append(p.info.Options.Tags, tag)
 }
 
 func (p *mdbProcess) GetTags() []string {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, getTagsRequest{p.ID()})
 	if err != nil {
-		grip.Warningf("failed to get tags for process %s", p.ID())
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get tags",
+			"process": p.ID(),
+		}))
 		return nil
 	}
 	msg, err := p.doRequest(context.Background(), req)
 	if err != nil {
-		grip.Warningf("failed to get tags for process %s", p.ID())
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get tags",
+			"process": p.ID(),
+		}))
 		return nil
 	}
 	var resp getTagsResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to get tags for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to get tags",
+			"process": p.ID(),
+		}))
 		return nil
 	}
 	return resp.Tags
@@ -217,20 +276,36 @@ func (p *mdbProcess) GetTags() []string {
 func (p *mdbProcess) ResetTags() {
 	req, err := shell.RequestToMessage(mongowire.OP_QUERY, resetTagsRequest{p.ID()})
 	if err != nil {
-		grip.Warningf("failed to reset tags for process %s", p.ID())
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to reset tags",
+			"process": p.ID(),
+		}))
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	msg, err := p.doRequest(ctx, req)
 	if err != nil {
-		grip.Warningf("failed to reset tags for process %s", p.ID())
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to reset tags",
+			"process": p.ID(),
+		}))
 		return
 	}
 	var resp shell.ErrorResponse
 	if err := shell.MessageToResponse(msg, &resp); err != nil {
-		grip.Warning(message.WrapErrorf(err, "failed to reset tags for process %s", p.ID()))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to reset tags",
+			"process": p.ID(),
+		}))
 		return
 	}
-	grip.Warning(message.WrapErrorf(resp.SuccessOrError(), "failed to reset tags for process %s", p.ID()))
+	if err := resp.SuccessOrError(); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to reset tags",
+			"process": p.ID(),
+		}))
+		return
+	}
+	p.info.Options.Tags = []string{}
 }

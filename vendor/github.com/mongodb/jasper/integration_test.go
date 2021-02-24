@@ -110,8 +110,8 @@ func TestMongod(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for name, makeProc := range map[string]ProcessConstructor{
-		"Basic":    newBasicProcess,
-		"Blocking": newBlockingProcess,
+		"BasicProcess":    newBasicProcess,
+		"BlockingProcess": newBlockingProcess,
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, test := range []struct {
@@ -122,21 +122,21 @@ func TestMongod(t *testing.T) {
 				expectError bool
 			}{
 				{
-					id:          "WithSingleMongod",
+					id:          "WithSingleMongodAndSIGKILL",
 					numProcs:    1,
 					signal:      syscall.SIGKILL,
 					sleep:       0,
 					expectError: true,
 				},
 				{
-					id:          "With10MongodsAndSigkill",
+					id:          "With10MongodsAndSIGKILL",
 					numProcs:    10,
 					signal:      syscall.SIGKILL,
 					sleep:       2 * time.Second,
 					expectError: true,
 				},
 				{
-					id:          "With30MongodsAndSigkill",
+					id:          "With30MongodsAndSIGKILL",
 					numProcs:    30,
 					signal:      syscall.SIGKILL,
 					sleep:       3 * time.Second,
@@ -161,32 +161,37 @@ func TestMongod(t *testing.T) {
 					for _, proc := range procs {
 						go func(proc Process) {
 							_, err := proc.Wait(ctx)
-							waitError <- err
+							select {
+							case waitError <- err:
+							case <-ctx.Done():
+							}
 						}(proc)
 					}
 
 					// Signal to stop mongods
 					time.Sleep(test.sleep)
 					for _, proc := range procs {
-						err := proc.Signal(ctx, test.signal)
-						require.NoError(t, err)
+						assert.NoError(t, proc.Signal(ctx, test.signal))
 					}
 
-					// Check that the processes all received signal
+					// Wait for all processes to exit after receiving the
+					// signal.
 					for i := 0; i < test.numProcs; i++ {
-						err := <-waitError
-						if test.expectError {
-							assert.Error(t, err)
-						} else {
-							assert.NoError(t, err)
+						select {
+						case err := <-waitError:
+							if test.expectError {
+								assert.Error(t, err)
+							} else {
+								assert.NoError(t, err)
+							}
+						case <-ctx.Done():
+							require.FailNow(t, "could not check process wait result", ctx.Err().Error())
 						}
 					}
 
 					// Check that the processes have all noted a unsuccessful run
 					for _, proc := range procs {
-						if test.expectError {
-							assert.False(t, proc.Info(ctx).Successful)
-						}
+						assert.Equal(t, !test.expectError, proc.Info(ctx).Successful)
 					}
 				})
 			}

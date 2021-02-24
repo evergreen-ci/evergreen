@@ -31,11 +31,11 @@ func (o *oomTrackerImpl) Check(ctx context.Context) error {
 		lineHasOOMKill: dmesgContainsOOMKill,
 		extractPID:     getPIDFromDmesg,
 	}
-	wasOOMKilled, pids, err := analyzer.analyzeKernelLog(ctx)
+	lines, pids, err := analyzer.analyzeKernelLog(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error searching log")
 	}
-	o.WasOOMKilled = wasOOMKilled
+	o.Lines = lines
 	o.PIDs = pids
 	return nil
 }

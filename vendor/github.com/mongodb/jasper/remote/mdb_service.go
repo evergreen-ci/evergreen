@@ -33,7 +33,7 @@ type mdbService struct {
 // StartMDBService wraps an existing Jasper manager in a MongoDB wire protocol
 // service and starts it. The caller is responsible for closing the connection
 // using the returned jasper.CloseFunc.
-func StartMDBService(ctx context.Context, m jasper.Manager, addr net.Addr) (util.CloseFunc, error) { //nolint: interfacer
+func StartMDBService(ctx context.Context, m jasper.Manager, addr net.Addr) (util.CloseFunc, error) {
 	host, p, err := net.SplitHostPort(addr.String())
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid address")
@@ -118,13 +118,13 @@ func (s *mdbService) registerHandlers() error {
 		ScriptingTestCommand:      s.scriptingTest,
 
 		// jasper.LoggingCache commands
-		LoggingCacheCreateCommand:         s.loggingCreate,
-		LoggingCacheGetCommand:            s.loggingGet,
-		LoggingCacheRemoveCommand:         s.loggingRemove,
-		LoggingCacheCloseAndRemoveCommand: s.loggingCloseAndRemove,
-		LoggingCacheClearCommand:          s.loggingClear,
-		LoggingCachePruneCommand:          s.loggingPrune,
-		LoggingCacheSizeCommand:           s.loggingSize,
+		LoggingCacheCreateCommand:         s.loggingCacheCreate,
+		LoggingCacheGetCommand:            s.loggingCacheGet,
+		LoggingCacheRemoveCommand:         s.loggingCacheRemove,
+		LoggingCacheCloseAndRemoveCommand: s.loggingCacheCloseAndRemove,
+		LoggingCacheClearCommand:          s.loggingCacheClear,
+		LoggingCachePruneCommand:          s.loggingCachePrune,
+		LoggingCacheLenCommand:            s.loggingCacheLen,
 	} {
 		if err := s.RegisterOperation(&mongowire.OpScope{
 			Type:    mongowire.OP_COMMAND,

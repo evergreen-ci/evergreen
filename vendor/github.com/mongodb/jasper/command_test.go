@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,11 +52,19 @@ type cmdRunFunc func(*Command, context.Context) error
 func TestCommandImplementation(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	for procType, makep := range map[string]ProcessConstructor{
-		"BlockingNoLock": newBasicProcess,
-		"BlockingLock":   makeLockingProcess(newBasicProcess),
-		"BasicNoLock":    newBasicProcess,
-		"BasicLock":      makeLockingProcess(newBasicProcess),
+	for procType, makeProc := range map[string]ProcessConstructor{
+		"BlockingProcess": newBlockingProcess,
+		"BlockingSynchronizedProcess": func(ctx context.Context, opts *options.Create) (Process, error) {
+			opts.Implementation = options.ProcessImplementationBlocking
+			opts.Synchronized = true
+			return NewProcess(ctx, opts)
+		},
+		"BasicProcess": newBasicProcess,
+		"BasicSynchronizedProcess": func(ctx context.Context, opts *options.Create) (Process, error) {
+			opts.Implementation = options.ProcessImplementationBasic
+			opts.Synchronized = true
+			return NewProcess(ctx, opts)
+		},
 	} {
 		t.Run(procType, func(t *testing.T) {
 			for runFuncType, runFunc := range map[string]cmdRunFunc{
@@ -179,7 +188,7 @@ func TestCommandImplementation(t *testing.T) {
 										},
 									} {
 										t.Run(subTestName, func(t *testing.T) {
-											cmd = *NewCommand().ProcConstructor(makep)
+											cmd = *NewCommand().ProcConstructor(makeProc)
 											if isRemote {
 												cmd.User(user).Host("localhost").Password("password")
 											}
@@ -227,7 +236,7 @@ func TestCommandImplementation(t *testing.T) {
 							for i := 0; i < numCombinations; i++ {
 								continueOnError, ignoreError, includeBadCmd := i&1 == 1, i&2 == 2, i&4 == 4
 
-								cmd := NewCommand().Add([]string{echo, arg1}).ProcConstructor(makep)
+								cmd := NewCommand().Add([]string{echo, arg1}).ProcConstructor(makeProc)
 								if includeBadCmd {
 									cmd.Add([]string{ls, arg3})
 								}
@@ -275,7 +284,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
-									cmd = *NewCommand().ProcConstructor(makep)
+									cmd = *NewCommand().ProcConstructor(makeProc)
 									subTestCase(ctx, t, cmd, runFunc)
 								})
 							}
@@ -301,7 +310,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
-									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
+									cmd = *NewCommand().ProcConstructor(makeProc).Extend([][]string{
 										{echo, arg1},
 										{echo, arg2},
 										{ls, arg3},
@@ -341,7 +350,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subName, func(t *testing.T) {
-									cmd = *NewCommand().ProcConstructor(makep).Extend([][]string{
+									cmd = *NewCommand().ProcConstructor(makeProc).Extend([][]string{
 										{echo, arg1},
 										{echo, arg2},
 										{ls, arg3},
@@ -461,7 +470,7 @@ func TestCommandImplementation(t *testing.T) {
 								},
 							} {
 								t.Run(subTestName, func(t *testing.T) {
-									cmd = *NewCommand().ProcConstructor(makep)
+									cmd = *NewCommand().ProcConstructor(makeProc)
 									subTestCase(ctx, t, cmd)
 								})
 							}
@@ -508,7 +517,7 @@ func TestCommandImplementation(t *testing.T) {
 							ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 							defer cancel()
 
-							cmd := NewCommand().ProcConstructor(makep)
+							cmd := NewCommand().ProcConstructor(makeProc)
 							testCase(ctx, t, *cmd)
 						})
 					}
@@ -519,11 +528,8 @@ func TestCommandImplementation(t *testing.T) {
 }
 
 func TestRunParallelRunsInParallel(t *testing.T) {
-	cmd := NewCommand().Extend([][]string{
-		{"sleep", "3"},
-		{"sleep", "3"},
-		{"sleep", "3"},
-	})
+	sleepCmd := testoptions.SleepCreateOpts(3).Args
+	cmd := NewCommand().Extend([][]string{sleepCmd, sleepCmd, sleepCmd})
 	threePointFiveSeconds := time.Second*3 + time.Millisecond*500
 	maxRunTimeAllowed := threePointFiveSeconds
 	cctx, cancel := context.WithTimeout(context.Background(), maxRunTimeAllowed)

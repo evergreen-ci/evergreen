@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -31,7 +30,7 @@ func (lc *sshLoggingCache) Create(id string, opts *options.Output) (*options.Cac
 		Output: *opts,
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "running command")
 	}
 
 	resp, err := ExtractCachedLoggerResponse(output)
@@ -46,32 +45,31 @@ func (lc *sshLoggingCache) Put(id string, cl *options.CachedLogger) error {
 	return errors.New("operation not supported for remote managers")
 }
 
-func (lc *sshLoggingCache) Get(id string) *options.CachedLogger {
+func (lc *sshLoggingCache) Get(id string) (*options.CachedLogger, error) {
 	output, err := lc.runCommand(lc.ctx, LoggingCacheGetCommand, IDInput{ID: id})
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "running command"))
-		return nil
+		return nil, errors.Wrap(err, "running command")
 	}
 
 	resp, err := ExtractCachedLoggerResponse(output)
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "reading cached logger response"))
-		return nil
+		return nil, errors.Wrap(err, "reading cached logger response")
 	}
 
-	return &resp.Logger
+	return &resp.Logger, nil
 }
 
-func (lc *sshLoggingCache) Remove(id string) {
+func (lc *sshLoggingCache) Remove(id string) error {
 	output, err := lc.runCommand(lc.ctx, LoggingCacheRemoveCommand, IDInput{ID: id})
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "running command"))
-		return
+		return errors.Wrap(err, "running command")
 	}
 
 	if _, err = ExtractOutcomeResponse(output); err != nil {
-		grip.Warning(errors.Wrap(err, "reading outcome response"))
+		return errors.Wrap(err, "reading outcome response")
 	}
+
+	return nil
 }
 
 func (lc *sshLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
@@ -80,12 +78,15 @@ func (lc *sshLoggingCache) CloseAndRemove(ctx context.Context, id string) error 
 		return errors.Wrap(err, "problem running command")
 	}
 
-	_, err = ExtractOutcomeResponse(output)
-	return err
+	if _, err = ExtractOutcomeResponse(output); err != nil {
+		return errors.Wrap(err, "reading outcome response")
+	}
+
+	return nil
 }
 
 func (lc *sshLoggingCache) Clear(ctx context.Context) error {
-	output, err := lc.runCommand(ctx, LoggingCacheCloseAndRemoveCommand, nil)
+	output, err := lc.runCommand(ctx, LoggingCacheClearCommand, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem running command")
 	}
@@ -94,32 +95,31 @@ func (lc *sshLoggingCache) Clear(ctx context.Context) error {
 	return err
 }
 
-func (lc *sshLoggingCache) Prune(ts time.Time) {
+func (lc *sshLoggingCache) Prune(ts time.Time) error {
 	output, err := lc.runCommand(lc.ctx, LoggingCachePruneCommand, LoggingCachePruneInput{LastAccessed: ts})
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "running command"))
-		return
+		return errors.Wrap(err, "running command")
 	}
 
 	if _, err = ExtractOutcomeResponse(output); err != nil {
-		grip.Warning(errors.Wrap(err, "reading outcome response"))
+		return errors.Wrap(err, "reading outcome response")
 	}
+
+	return nil
 }
 
-func (lc *sshLoggingCache) Len() int {
+func (lc *sshLoggingCache) Len() (int, error) {
 	output, err := lc.runCommand(lc.ctx, LoggingCacheLenCommand, nil)
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "running command"))
-		return -1
+		return -1, errors.Wrap(err, "running command")
 	}
 
 	resp, err := ExtractLoggingCacheLenResponse(output)
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "reading outcome response"))
-		return -1
+		return -1, errors.Wrap(err, "reading outcome response")
 	}
 
-	return resp.Length
+	return resp.Len, nil
 }
 
 func (lc *sshLoggingCache) runCommand(ctx context.Context, loggingCacheSubcommand string, subcommandInput interface{}) (json.RawMessage, error) {

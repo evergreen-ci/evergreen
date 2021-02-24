@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -393,7 +394,7 @@ func TestSSHClient(t *testing.T) {
 				&inputChecker,
 				makeOutcomeResponse(nil),
 			)
-			opts := testutil.ValidMongoDBDownloadOptions()
+			opts := testoptions.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			require.NoError(t, client.DownloadMongoDB(ctx, opts))
 
@@ -406,13 +407,13 @@ func TestSSHClient(t *testing.T) {
 				nil,
 				invalidResponse(),
 			)
-			opts := testutil.ValidMongoDBDownloadOptions()
+			opts := testoptions.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			assert.Error(t, client.DownloadMongoDB(ctx, opts))
 		},
 		"DownloadMongoDBFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			opts := testutil.ValidMongoDBDownloadOptions()
+			opts := testoptions.ValidMongoDBDownloadOptions()
 			opts.Path = "/foo"
 			assert.Error(t, client.DownloadMongoDB(ctx, opts))
 		},
@@ -518,13 +519,13 @@ func TestSSHClient(t *testing.T) {
 				&inputChecker,
 				resp,
 			)
-			sh, err := client.CreateScripting(ctx, testutil.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
+			sh, err := client.CreateScripting(ctx, testoptions.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
 			require.NoError(t, err)
 			assert.Equal(t, resp.ID, sh.ID())
 		},
 		"CreateScriptingFailsIfBaseManagerCreateFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *mock.Manager) {
 			baseManager.FailCreate = true
-			sh, err := client.CreateScripting(ctx, testutil.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
+			sh, err := client.CreateScripting(ctx, testoptions.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
 			assert.Error(t, err)
 			assert.Zero(t, sh)
 		},
@@ -535,7 +536,7 @@ func TestSSHClient(t *testing.T) {
 				nil,
 				invalidResponse(),
 			)
-			sh, err := client.CreateScripting(ctx, testutil.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
+			sh, err := client.CreateScripting(ctx, testoptions.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory()))
 			assert.Error(t, err)
 			assert.Zero(t, sh)
 		},
