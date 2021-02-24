@@ -2673,16 +2673,22 @@ type TasksSortOrder struct {
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variant string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
-	match := bson.M{
-		VersionKey: versionID,
-	}
+	var match bson.M = bson.M{}
+
+	// Allow searching by either variant name or variant display name
 	if variant != "" {
-		match[BuildVariantDisplayNameKey] = bson.M{"$regex": variant, "$options": "i"}
+		match = bson.M{
+			"$or": []bson.M{
+				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variant, "$options": "i"}},
+				bson.M{BuildVariantKey: bson.M{"$regex": variant, "$options": "i"}},
+			},
+		}
+
 	}
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
-
+	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
