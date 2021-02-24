@@ -595,22 +595,20 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 }
 
 func getCommonAliases(projectIds []string) (ProjectAliases, error) {
-	commonAliases := map[string]ProjectAlias{} // use map for easy removal of non-common aliases
+	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
 		aliases, err := FindAliasesForProject(id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding aliases for project")
 		}
 		if i == 0 {
-			for _, a := range aliases {
-				commonAliases[a.ID.Hex()] = a
-			}
+			commonAliases = aliases
 			continue
 		}
-		for _, commonAlias := range commonAliases {
+		for j := len(commonAliases) - 1; j >= 0; j-- {
 			// look to see if this alias exists in the each project and if not remove it
-			if !aliasSliceContains(aliases, commonAlias) {
-				delete(commonAliases, commonAlias.ID.Hex())
+			if !aliasSliceContains(aliases, commonAliases[j]) {
+				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
 			}
 		}
 		if len(commonAliases) == 0 {
@@ -618,11 +616,7 @@ func getCommonAliases(projectIds []string) (ProjectAliases, error) {
 		}
 	}
 
-	res := ProjectAliases{}
-	for _, a := range commonAliases {
-		res = append(res, a)
-	}
-	return res, nil
+	return commonAliases, nil
 }
 
 func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
@@ -671,9 +665,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			}
 			continue
 		}
-		for key := range commonProjectVariables {
+		for key, val := range commonProjectVariables {
 			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
-			if _, ok := vars.Vars[key]; ok {
+			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true
 				}

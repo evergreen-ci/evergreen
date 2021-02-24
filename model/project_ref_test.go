@@ -335,7 +335,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	doc1 := &ProjectRef{
 		Id:                    "id1",
@@ -381,10 +381,13 @@ func TestCreateNewRepoRef(t *testing.T) {
 		{
 			Id: doc1.Id,
 			Vars: map[string]string{
-				"hello": "world",
-				"sdc":   "buggy",
-				"roses": "red",
-				"ever":  "green",
+				"hello":        "world",
+				"sdc":          "buggy",
+				"violets":      "nah",
+				"roses":        "red",
+				"ever":         "green",
+				"also":         "this one",
+				"this is only": "in one doc",
 			},
 			PrivateVars: map[string]bool{
 				"sdc": true,
