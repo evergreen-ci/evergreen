@@ -877,7 +877,6 @@ type TaskResolver interface {
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
-	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
 	CanModifyAnnotation(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -17856,13 +17855,13 @@ func (ec *executionContext) _Task_buildVariantDisplayName(ctx context.Context, f
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().BuildVariantDisplayName(rctx, obj)
+		return obj.BuildVariantDisplayName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27746,16 +27745,7 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "buildVariantDisplayName":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_buildVariantDisplayName(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._Task_buildVariantDisplayName(ctx, field, obj)
 		case "canAbort":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

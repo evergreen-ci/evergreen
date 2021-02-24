@@ -79,14 +79,15 @@ var (
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
-	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
-	GeneratedJSONAsStringKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
-	GenerateTasksErrorKey    = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
-	ResetWhenFinishedKey     = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
-	LogsKey                  = bsonutil.MustHaveTag(Task{}, "Logs")
-	CommitQueueMergeKey      = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
-	DisplayStatusKey         = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
-	BaseTaskKey              = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	GeneratedJSONKey           = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
+	GeneratedJSONAsStringKey   = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
+	GenerateTasksErrorKey      = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
+	ResetWhenFinishedKey       = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
+	LogsKey                    = bsonutil.MustHaveTag(Task{}, "Logs")
+	CommitQueueMergeKey        = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
+	DisplayStatusKey           = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	BaseTaskKey                = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	BuildVariantDisplayNameKey = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")

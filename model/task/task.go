@@ -97,6 +97,7 @@ type Task struct {
 	BuildId                  string       `bson:"build_id" json:"build_id"`
 	DistroId                 string       `bson:"distro" json:"distro"`
 	BuildVariant             string       `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName  string       `bson:"build_variant_display_name" json:"-"`
 	DependsOn                []Dependency `bson:"depends_on" json:"depends_on"`
 	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
@@ -2787,13 +2788,35 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			"$project": fieldKeys,
 		})
 	}
-	// expand execution tasks in display tasks
-	pipeline = append(pipeline, bson.M{"$lookup": bson.M{
-		"from":         Collection,
-		"localField":   ExecutionTasksKey,
-		"foreignField": IdKey,
-		"as":           ExecutionTasksFullKey,
-	}})
+
+	// This is an expensive operation so lets only do it if the user is requesting a subset of the info
+	// If we request all the tasks we are likely performing a query where we dont care about this info
+	if limit > 0 {
+		// expand execution tasks in display tasks
+		pipeline = append(pipeline, bson.M{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   ExecutionTasksKey,
+			"foreignField": IdKey,
+			"as":           ExecutionTasksFullKey,
+		}})
+	}
+
+	// Populate build variant display name
+	pipeline = append(pipeline,
+		bson.M{"$lookup": bson.M{
+			"from":         "builds",
+			"localField":   BuildIdKey,
+			"foreignField": "_id",
+			"as":           BuildVariantDisplayNameKey,
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$" + BuildVariantDisplayNameKey,
+			"preserveNullAndEmptyArrays": true,
+		}},
+		bson.M{"$set": bson.M{
+			BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey + "." + "display_name",
+		}})
+
 	tasks := []Task{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
