@@ -236,6 +236,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"num_new_hosts":                len(hostsSpawned),
 		"pool_info":                    existingHosts.Stats(),
 		"queue":                        eventInfo,
+		"overdue_tasks":                distroQueueInfo.CountWaitOverThreshold,
 		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),
 		"runtime_secs":                 distroQueueInfo.ExpectedDuration.Seconds(),
 		"time_to_empty":                timeToEmpty.String(),
