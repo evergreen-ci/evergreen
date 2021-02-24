@@ -285,8 +285,8 @@ func (tc *taskContext) hadTimedOut() bool {
 }
 
 func (tc *taskContext) getOomTrackerInfo() *apimodels.OOMTrackerInfo {
-	detected, pids := tc.oomTracker.Report()
-	if !detected {
+	lines, pids := tc.oomTracker.Report()
+	if len(lines) == 0 {
 		return nil
 	}
 
