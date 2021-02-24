@@ -295,8 +295,18 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
-		nextTask.TaskGroup != tc.taskGroup ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
+		return true
+	}
+	if nextTask.TaskGroup != tc.taskGroup {
+		grip.DebugWhen(nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup, message.Fields{
+			"message":                 "task group in task context doesn't match task",
+			"task_config_task_group":  tc.taskConfig.Task.TaskGroup,
+			"task_context_task_group": tc.taskGroup,
+			"next_task_task_group":    nextTask.TaskGroup,
+			"task_id":                 tc.taskConfig.Task.Id,
+			"next_task_id":            nextTask.TaskId,
+		})
 		return true
 	}
 	return false
