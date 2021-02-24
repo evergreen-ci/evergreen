@@ -13,7 +13,7 @@ func TestGetOomTrackerInfo(t *testing.T) {
 	info := tc.getOomTrackerInfo()
 	assert.Nil(t, info)
 
-	tc.oomTracker = &mock.OOMTracker{WasOOMKilled: true, PIDs: []int{1, 2, 3}}
+	tc.oomTracker = &mock.OOMTracker{Lines: []string{"line1", "line2", "line3"}, PIDs: []int{1, 2, 3}}
 	info = tc.getOomTrackerInfo()
 	assert.NotNil(t, info)
 	assert.True(t, info.Detected)
