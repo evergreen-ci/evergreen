@@ -200,6 +200,22 @@ var (
 			"default": "$" + StatusKey,
 		},
 	}
+
+	AddBuildVariantDisplayName = []bson.M{
+		bson.M{"$lookup": bson.M{
+			"from":         "builds",
+			"localField":   BuildIdKey,
+			"foreignField": "_id",
+			"as":           BuildVariantDisplayNameKey,
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$" + BuildVariantDisplayNameKey,
+			"preserveNullAndEmptyArrays": true,
+		}},
+		bson.M{"$set": bson.M{
+			BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey + "." + "display_name",
+		}},
+	}
 )
 
 var StatusFields = []string{

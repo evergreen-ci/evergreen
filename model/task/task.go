@@ -2677,63 +2677,75 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		VersionKey: versionID,
 	}
 	if variant != "" {
-		match[BuildVariantKey] = bson.M{"$regex": variant, "$options": "i"}
+		match[BuildVariantDisplayNameKey] = bson.M{"$regex": variant, "$options": "i"}
 	}
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
 	}
 
 	const tempParentKey = "_parent"
-	pipeline := []bson.M{
-		{"$match": match},
-		// do a self join to filter off execution tasks
-		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   IdKey,
-			"foreignField": ExecutionTasksKey,
-			"as":           tempParentKey,
-		}},
-		{
-			"$match": bson.M{
-				tempParentKey: []interface{}{},
+	pipeline := []bson.M{}
+	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
+	// This is an expensive operation so we only want to do it if we have to
+	if variant != "" {
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	}
+	pipeline = append(pipeline,
+		[]bson.M{
+			{"$match": match},
+			// do a self join to filter off execution tasks
+			{"$lookup": bson.M{
+				"from":         Collection,
+				"localField":   IdKey,
+				"foreignField": ExecutionTasksKey,
+				"as":           tempParentKey,
+			}},
+			{
+				"$match": bson.M{
+					tempParentKey: []interface{}{},
+				},
 			},
-		},
 
-		// add a field for the display status of each task
-		addDisplayStatus,
-		// add data about the base task
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let": bson.M{
-				RevisionKey:     "$" + RevisionKey,
-				BuildVariantKey: "$" + BuildVariantKey,
-				DisplayNameKey:  "$" + DisplayNameKey,
-			},
-			"as": BaseTaskKey,
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					RequesterKey: evergreen.RepotrackerVersionRequester,
-					"$expr": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+			// add a field for the display status of each task
+			addDisplayStatus,
+			// add data about the base task
+			{"$lookup": bson.M{
+				"from": Collection,
+				"let": bson.M{
+					RevisionKey:     "$" + RevisionKey,
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"as": BaseTaskKey,
+				"pipeline": []bson.M{
+					{"$match": bson.M{
+						RequesterKey: evergreen.RepotrackerVersionRequester,
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+							},
 						},
-					},
-				}},
-				{"$project": bson.M{
-					IdKey:     1,
-					StatusKey: displayStatusExpression,
-				}},
-				{"$limit": 1},
+					}},
+					{"$project": bson.M{
+						IdKey:     1,
+						StatusKey: displayStatusExpression,
+					}},
+					{"$limit": 1},
+				},
+			}},
+			{
+				"$unwind": bson.M{
+					"path":                       "$" + BaseTaskKey,
+					"preserveNullAndEmptyArrays": true,
+				},
 			},
-		}},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + BaseTaskKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
+		}...,
+	)
+	// Add the build variant display name to the returned subset of results if it wasn't added earlier
+	if variant == "" {
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
@@ -2800,22 +2812,6 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			"as":           ExecutionTasksFullKey,
 		}})
 	}
-
-	// Populate build variant display name
-	pipeline = append(pipeline,
-		bson.M{"$lookup": bson.M{
-			"from":         "builds",
-			"localField":   BuildIdKey,
-			"foreignField": "_id",
-			"as":           BuildVariantDisplayNameKey,
-		}},
-		bson.M{"$unwind": bson.M{
-			"path":                       "$" + BuildVariantDisplayNameKey,
-			"preserveNullAndEmptyArrays": true,
-		}},
-		bson.M{"$set": bson.M{
-			BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey + "." + "display_name",
-		}})
 
 	tasks := []Task{}
 	env := evergreen.GetEnvironment()
