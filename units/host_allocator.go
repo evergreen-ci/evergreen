@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -212,12 +211,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
 		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
-		if hostsAvail == 0 {
-			timeToEmpty = time.Duration(math.Inf(0))
-			timeToEmptyNoSpawns = time.Duration(math.Inf(0))
-		} else if hostsAvailNoSpawns == 0 {
+		maxHours := 2532000
+		if hostsAvail <= 0 {
+			timeToEmpty = time.Duration(time.Duration(maxHours) * time.Hour)
+			timeToEmptyNoSpawns = time.Duration(time.Duration(maxHours) * time.Hour)
+		} else if hostsAvailNoSpawns <= 0 {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
-			timeToEmptyNoSpawns = time.Duration(math.Inf(0))
+			timeToEmptyNoSpawns = time.Duration(time.Duration(maxHours) * time.Hour)
 		} else {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
 			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
@@ -228,21 +228,23 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
 	grip.Info(message.Fields{
-		"message":                    "distro-scheduler-report",
-		"job_type":                   hostAllocatorJobName,
-		"distro":                     distro.Id,
-		"provider":                   distro.Provider,
-		"max_hosts":                  distro.HostAllocatorSettings.MaximumHosts,
-		"num_new_hosts":              len(hostsSpawned),
-		"pool_info":                  existingHosts.Stats(),
-		"queue":                      eventInfo,
-		"total_runtime":              distroQueueInfo.ExpectedDuration.String(),
-		"runtime_secs":               distroQueueInfo.ExpectedDuration.Seconds(),
-		"time_to_empty":              timeToEmpty.String(),
-		"time_to_empty_no_spawns":    timeToEmptyNoSpawns.String(),
-		"host_queue_ratio":           hostQueueRatio,
-		"host_queue_ratio_no_spawns": noSpawnsRatio,
-		"instance":                   j.ID(),
-		"runner":                     scheduler.RunnerName,
+		"message":                      "distro-scheduler-report",
+		"job_type":                     hostAllocatorJobName,
+		"distro":                       distro.Id,
+		"provider":                     distro.Provider,
+		"max_hosts":                    distro.HostAllocatorSettings.MaximumHosts,
+		"num_new_hosts":                len(hostsSpawned),
+		"pool_info":                    existingHosts.Stats(),
+		"queue":                        eventInfo,
+		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),
+		"runtime_secs":                 distroQueueInfo.ExpectedDuration.Seconds(),
+		"time_to_empty":                timeToEmpty.String(),
+		"time_to_empty_mins":           timeToEmpty.Minutes(),
+		"time_to_empty_no_spawns":      timeToEmptyNoSpawns.String(),
+		"time_to_empty_no_spawns_mins": timeToEmptyNoSpawns.Minutes(),
+		"host_queue_ratio":             hostQueueRatio,
+		"host_queue_ratio_no_spawns":   noSpawnsRatio,
+		"instance":                     j.ID(),
+		"runner":                       scheduler.RunnerName,
 	})
 }
