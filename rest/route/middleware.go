@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -758,4 +759,31 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 	}
 
 	next(rw, r)
+}
+
+func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(allowedOrigins) > 0 {
+			requester := r.Header.Get("Origin")
+
+			// Requests from a GQL client include this header, which must be added to the response to enable CORS
+			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
+
+			if utility.StringSliceContains(allowedOrigins, requester) {
+				w.Header().Add("Access-Control-Allow-Origin", requester)
+				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
+			}
+		}
+		next(w, r)
+	}
+}
+
+func allowCORS(next http.HandlerFunc) http.HandlerFunc {
+	origins := []string{}
+	settings := evergreen.GetEnvironment().Settings()
+	if settings != nil {
+		origins = settings.Ui.CORSOrigins
+	}
+	return AddCORSHeaders(origins, next)
 }
