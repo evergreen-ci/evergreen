@@ -299,13 +299,11 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 		return true
 	}
 	if nextTask.TaskGroup != tc.taskGroup {
-		grip.DebugWhen(nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup, message.Fields{
-			"message":                 "task group in task context doesn't match task",
+		tc.logger.Task().WarningWhen(nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup, message.Fields{
+			"message":                 "programmer error: task group in task context doesn't match task",
 			"task_config_task_group":  tc.taskConfig.Task.TaskGroup,
 			"task_context_task_group": tc.taskGroup,
 			"next_task_task_group":    nextTask.TaskGroup,
-			"task_id":                 tc.taskConfig.Task.Id,
-			"next_task_id":            nextTask.TaskId,
 		})
 		return true
 	}
