@@ -1459,7 +1459,6 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 			t.BaseStatus = &baseTask.Status
 		}
 		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
-		fmt.Println(fmt.Sprintf("ID: %s, Build Variant : %s, Display Name : %s", task.Id, task.BuildVariant, task.BuildVariantDisplayName))
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 
 	}
