@@ -38,7 +38,7 @@ type APITask struct {
 	BuildId                 *string             `json:"build_id"`
 	DistroId                *string             `json:"distro_id"`
 	BuildVariant            *string             `json:"build_variant"`
-	BuildVariantDisplayName *string             `json:"build_variant_display_name`
+	BuildVariantDisplayName *string             `json:"build_variant_display_name"`
 	DependsOn               []APIDependency     `json:"depends_on"`
 	DisplayName             *string             `json:"display_name"`
 	HostId                  *string             `json:"host_id"`
