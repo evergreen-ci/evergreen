@@ -571,7 +571,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Owner: "mongodb",
 		Repo:  "mci",
 	}}
-	assert.NoError(repoDoc.Insert())
+	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
 		Id:              "defaulting_project",
 		Owner:           "mongodb",
