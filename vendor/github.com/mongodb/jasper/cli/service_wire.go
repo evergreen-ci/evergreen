@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/evergreen-ci/service"
+	"github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
@@ -77,7 +77,7 @@ func newWireDaemon(opts daemonOptions) *wireDaemon {
 	return &wireDaemon{newBaseDaemon(opts)}
 }
 
-func (d *wireDaemon) Start(s service.Service) error {
+func (d *wireDaemon) Start(s baobab.Service) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := d.setup(ctx, cancel); err != nil {
 		return errors.Wrap(err, "setup")
@@ -91,7 +91,7 @@ func (d *wireDaemon) Start(s service.Service) error {
 	return nil
 }
 
-func (d *wireDaemon) Stop(s service.Service) error {
+func (d *wireDaemon) Stop(s baobab.Service) error {
 	close(d.exit)
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evergreen-ci/service"
+	"github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -240,8 +240,8 @@ func buildServiceRunCommand(c *cli.Context, serviceType string) []string {
 
 // serviceOptions returns all options specific to particular service management
 // systems.
-func serviceOptions(c *cli.Context) service.KeyValue {
-	opts := service.KeyValue{
+func serviceOptions(c *cli.Context) baobab.KeyValue {
+	opts := baobab.KeyValue{
 		// launchd-specific options
 		"RunAtLoad":     true,
 		"SessionCreate": true,
@@ -268,7 +268,7 @@ func serviceOptions(c *cli.Context) service.KeyValue {
 }
 
 func resourceLimit(limit int) string {
-	system := service.ChosenSystem()
+	system := baobab.ChosenSystem()
 	if system == nil {
 		return ""
 	}
@@ -292,8 +292,8 @@ func resourceLimit(limit int) string {
 }
 
 // serviceConfig returns the daemon service configuration.
-func serviceConfig(serviceType string, c *cli.Context, args []string) *service.Config {
-	return &service.Config{
+func serviceConfig(serviceType string, c *cli.Context, args []string) *baobab.Config {
+	return &baobab.Config{
 		Name:             fmt.Sprintf("%s_jasperd", serviceType),
 		DisplayName:      fmt.Sprintf("Jasper %s service", serviceType),
 		Description:      "Jasper is a service for process management",
@@ -321,7 +321,7 @@ func makeUserEnvironment(user string, vars []string) map[string]string { //nolin
 	if user == "" {
 		return env
 	}
-	system := service.ChosenSystem()
+	system := baobab.ChosenSystem()
 	if system == nil || (system.String() != "linux-upstart" && system.String() != "unix-systemv") {
 		return env
 	}
@@ -360,7 +360,7 @@ func makeUserEnvironment(user string, vars []string) map[string]string { //nolin
 	return env
 }
 
-type serviceOperation func(daemon service.Interface, config *service.Config) error
+type serviceOperation func(daemon baobab.Interface, config *baobab.Config) error
 
 // serviceCommand creates a cli.Command from a service operation supported by
 // REST, RPC, and combined services.
@@ -381,8 +381,8 @@ func serviceCommand(cmd string, operation serviceOperation) cli.Command {
 // with the new configuration, and starts the newly-configured service. It only
 // returns an error if there is an error while installing or starting the new
 // service.
-func serviceForceReinstall(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceForceReinstall(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		stopErr := message.WrapError(svc.Stop(), message.Fields{
 			"msg":    "error stopping service",
 			"cmd":    "force-reinstall",
@@ -407,50 +407,50 @@ func serviceForceReinstall(daemon service.Interface, config *service.Config) err
 
 // serviceInstall registers the service with the given configuration in the
 // service manager.
-func serviceInstall(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceInstall(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Install()
 	}), "error installing service")
 }
 
 // serviceUninstall removes the service from the service manager.
-func serviceUninstall(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceUninstall(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Uninstall()
 	}), "error uninstalling service")
 }
 
 // serviceStart begins the service if it has not already started.
-func serviceStart(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceStart(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Start()
 	}), "error starting service")
 }
 
 // serviceStop ends the running service.
-func serviceStop(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceStop(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Stop()
 	}), "error stopping service")
 }
 
 // serviceRestart stops the existing service and starts it again.
-func serviceRestart(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceRestart(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Restart()
 	}), "error restarting service")
 }
 
 // serviceRun runs the service in the foreground.
-func serviceRun(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceRun(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		return svc.Run()
 	}), "error running service")
 }
 
 // serviceStatus gets the current status of the running service.
-func serviceStatus(daemon service.Interface, config *service.Config) error {
-	return errors.Wrap(withService(daemon, config, func(svc service.Service) error {
+func serviceStatus(daemon baobab.Interface, config *baobab.Config) error {
+	return errors.Wrap(withService(daemon, config, func(svc baobab.Service) error {
 		status, err := svc.Status()
 		if err != nil {
 			return errors.Wrapf(writeOutput(os.Stdout, &ServiceStatusResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error getting status from service"))}), "error writing to standard output")
@@ -471,13 +471,13 @@ const (
 )
 
 // statusToString converts a service.Status code into a string ServiceStatus.
-func statusToString(status service.Status) ServiceStatus {
+func statusToString(status baobab.Status) ServiceStatus {
 	switch status {
-	case service.StatusUnknown:
+	case baobab.StatusUnknown:
 		return ServiceUnknown
-	case service.StatusRunning:
+	case baobab.StatusRunning:
 		return ServiceRunning
-	case service.StatusStopped:
+	case baobab.StatusStopped:
 		return ServiceStopped
 	default:
 		return ServiceInvalid

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"strconv"
 	"syscall"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/internal/executor"
 	"github.com/mongodb/jasper/options"
-	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,8 +26,8 @@ func TestBlockingProcess(t *testing.T) {
 	// we run the suite multiple times given that implementation
 	// is heavily threaded, there are timing concerns that require
 	// multiple executions.
-	for _, attempt := range []string{"First", "Second", "Third", "Fourth", "Fifth"} {
-		t.Run(attempt, func(t *testing.T) {
+	for n := 1; n < 6; n++ {
+		t.Run("Run#"+strconv.Itoa(n), func(t *testing.T) {
 			t.Parallel()
 			for name, testCase := range map[string]func(context.Context, *testing.T, *blockingProcess){
 				"VerifyTestCaseConfiguration": func(ctx context.Context, t *testing.T, proc *blockingProcess) {
@@ -190,7 +191,7 @@ func TestBlockingProcess(t *testing.T) {
 					<-signal
 				},
 				"WaitSomeBeforeCanceling": func(ctx context.Context, t *testing.T, proc *blockingProcess) {
-					proc.info.Options = *testutil.SleepCreateOpts(10)
+					proc.info.Options = *testoptions.SleepCreateOpts(10)
 					proc.complete = make(chan struct{})
 					cctx, cancel := context.WithTimeout(ctx, 600*time.Millisecond)
 					defer cancel()
@@ -392,7 +393,6 @@ func TestBlockingProcess(t *testing.T) {
 						assert.Fail(t, "context timed out waiting for op to return")
 					}
 				},
-				// "": func(ctx context.Context, t *testing.T, proc *blockingProcess) {},
 			} {
 				t.Run(name, func(t *testing.T) {
 					ctx, cancel := context.WithCancel(context.Background())

@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +59,7 @@ func TestCLIRemote(t *testing.T) {
 						assert.NoError(t, os.RemoveAll(tmpDir))
 					}()
 
-					opts := testutil.ValidMongoDBDownloadOptions()
+					opts := testoptions.ValidMongoDBDownloadOptions()
 					opts.Path = tmpDir
 					input, err := json.Marshal(opts)
 					require.NoError(t, err)
@@ -75,7 +76,7 @@ func TestCLIRemote(t *testing.T) {
 				"GetLogStreamSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
 					logger, err := jasper.NewInMemoryLogger(10)
 					require.NoError(t, err)
-					opts := testutil.TrueCreateOpts()
+					opts := testoptions.TrueCreateOpts()
 					opts.Output.Loggers = []*options.LoggerConfig{logger}
 					createInput, err := json.Marshal(opts)
 					require.NoError(t, err)
@@ -90,7 +91,7 @@ func TestCLIRemote(t *testing.T) {
 					assert.True(t, resp.Successful())
 				},
 				"CreateScriptingSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					opts := testutil.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory())
+					opts := testoptions.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory())
 					convertedOpts, err := BuildScriptingCreateInput(opts)
 					require.NoError(t, err)
 					input, err := json.Marshal(convertedOpts)
@@ -100,7 +101,7 @@ func TestCLIRemote(t *testing.T) {
 					assert.NotZero(t, resp.ID)
 				},
 				"GetScriptingSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context) {
-					opts := testutil.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory())
+					opts := testoptions.ValidPythonScriptingHarnessOptions(testutil.BuildDirectory())
 					convertedOpts, err := BuildScriptingCreateInput(opts)
 					require.NoError(t, err)
 					createInput, err := json.Marshal(convertedOpts)

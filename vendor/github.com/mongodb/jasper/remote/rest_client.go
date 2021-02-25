@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/bond"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
@@ -20,22 +20,38 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewRESTClient creates a REST client that connects to the given address
-// running the Jasper REST service.
+// NewRESTClient creates a REST client with a new HTTP client that connects to
+// the given address running the Jasper REST service. The HTTP client should be
+// cleaned up by calling CloseConnection.
 func NewRESTClient(addr net.Addr) Manager {
 	return &restClient{
+		prefix:    fmt.Sprintf("http://%s/jasper/v1", addr),
+		client:    utility.GetHTTPClient(),
+		ownClient: true,
+	}
+}
+
+// NewRESTClientWithExistingClient creates a REST client that uses an existing
+// HTTP client to connect to the given address running the Jasper REST service.
+// This does not take ownership of the HTTP client, so the HTTP client is not
+// cleaned up when CloseConnection is called.
+func NewRESTClientWithExistingClient(addr net.Addr, client *http.Client) Manager {
+	return &restClient{
 		prefix: fmt.Sprintf("http://%s/jasper/v1", addr),
-		client: bond.GetHTTPClient(),
+		client: client,
 	}
 }
 
 type restClient struct {
-	prefix string
-	client *http.Client
+	prefix    string
+	client    *http.Client
+	ownClient bool
 }
 
 func (c *restClient) CloseConnection() error {
-	bond.PutHTTPClient(c.client)
+	if c.ownClient {
+		utility.PutHTTPClient(c.client)
+	}
 	return nil
 }
 

@@ -18,8 +18,8 @@ import (
 func TestLoggingCache(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Run("OutputAndErrorSenders", func(t *testing.T) {
-			outputSender := NewMockSender("output")
-			errorSender := NewMockSender("error")
+			outputSender := send.NewMockSender("output")
+			errorSender := send.NewMockSender("error")
 
 			logger := &CachedLogger{
 				Output: outputSender,
@@ -30,21 +30,21 @@ func TestLoggingCache(t *testing.T) {
 			assert.True(t, errorSender.Closed)
 		})
 		t.Run("OutputSender", func(t *testing.T) {
-			outputSender := NewMockSender("output")
+			outputSender := send.NewMockSender("output")
 
 			logger := &CachedLogger{Output: outputSender}
 			require.NoError(t, logger.Close())
 			assert.True(t, outputSender.Closed)
 		})
 		t.Run("ErrorSender", func(t *testing.T) {
-			errorSender := NewMockSender("error")
+			errorSender := send.NewMockSender("error")
 
 			logger := &CachedLogger{Error: errorSender}
 			require.NoError(t, logger.Close())
 			assert.True(t, errorSender.Closed)
 		})
 		t.Run("SameSender", func(t *testing.T) {
-			outputSender := NewMockSender("output")
+			outputSender := send.NewMockSender("output")
 
 			logger := &CachedLogger{
 				Output: outputSender,
@@ -54,14 +54,14 @@ func TestLoggingCache(t *testing.T) {
 			assert.True(t, outputSender.Closed)
 		})
 		t.Run("OutputSenderCloseError", func(t *testing.T) {
-			outputSender := NewMockSender("output")
+			outputSender := send.NewMockSender("output")
 			outputSender.Closed = true
 
 			logger := &CachedLogger{Output: outputSender}
 			assert.Error(t, logger.Close())
 		})
 		t.Run("ErrorSenderCloseError", func(t *testing.T) {
-			errorSender := NewMockSender("output")
+			errorSender := send.NewMockSender("output")
 			errorSender.Closed = true
 
 			logger := &CachedLogger{Error: errorSender}

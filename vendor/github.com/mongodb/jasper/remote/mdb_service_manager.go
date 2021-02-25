@@ -354,8 +354,9 @@ func (s *mdbService) signalEvent(ctx context.Context, w io.Writer, msg mongowire
 
 func (s *mdbService) sendMessages(ctx context.Context, w io.Writer, msg mongowire.Message) {
 	req := &sendMessagesRequest{}
-	lc := s.loggingCacheRequest(ctx, w, msg, req, SendMessagesCommand)
-	if lc == nil {
+	lc, err := s.loggingCacheRequest(ctx, msg, req)
+	if err != nil {
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not read request"), SendMessagesCommand)
 		return
 	}
 
@@ -364,12 +365,12 @@ func (s *mdbService) sendMessages(ctx context.Context, w io.Writer, msg mongowir
 		return
 	}
 
-	cachedLogger := lc.Get(req.Payload.LoggerID)
-	if cachedLogger == nil {
-		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.New("named logger does not exist"), SendMessagesCommand)
+	logger, err := lc.Get(req.Payload.LoggerID)
+	if err != nil {
+		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "could not get logger"), SendMessagesCommand)
 		return
 	}
-	if err := cachedLogger.Send(&req.Payload); err != nil {
+	if err := logger.Send(&req.Payload); err != nil {
 		shell.WriteErrorResponse(ctx, w, mongowire.OP_REPLY, errors.Wrap(err, "problem sending message"), SendMessagesCommand)
 		return
 	}

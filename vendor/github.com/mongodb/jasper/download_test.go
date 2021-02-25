@@ -13,11 +13,13 @@ import (
 
 	"github.com/evergreen-ci/bond/recall"
 	"github.com/evergreen-ci/lru"
+	"github.com/evergreen-ci/utility"
 	"github.com/mholt/archiver"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +39,7 @@ func TestSetupDownloadMongoDBReleasesWithInvalidPath(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testutil.TestTimeout)
 	defer cancel()
 
-	opts := testutil.ValidMongoDBDownloadOptions()
+	opts := testoptions.ValidMongoDBDownloadOptions()
 	_, path, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	absPath, err := filepath.Abs(path)
@@ -57,7 +59,7 @@ func TestSetupDownloadMongoDBReleasesWithInvalidArtifactsFeed(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	opts := testutil.ValidMongoDBDownloadOptions()
+	opts := testoptions.ValidMongoDBDownloadOptions()
 	absDir, err := filepath.Abs(dir)
 	require.NoError(t, err)
 	opts.Path = filepath.Join(absDir, "full.json")
@@ -141,7 +143,9 @@ func TestProcessDownloadJobs(t *testing.T) {
 	}()
 
 	baseURL := fmt.Sprintf("http://%s", fileServerAddr)
-	require.NoError(t, testutil.WaitForRESTService(ctx, baseURL))
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	require.NoError(t, testutil.WaitForHTTPService(ctx, baseURL, httpClient))
 
 	job, err := recall.NewDownloadJob(fmt.Sprintf("%s/%s", baseURL, fileName), downloadDir, true)
 	require.NoError(t, err)

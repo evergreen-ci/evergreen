@@ -19,7 +19,10 @@ func IsDockerCase(testName string) bool {
 // SkipDockerIfUnsupported skips the test if the platform is not Linux or the
 // SKIP_DOCKER_TESTS environment variable is explicitly set.
 func SkipDockerIfUnsupported(t *testing.T) {
-	skip, _ := strconv.ParseBool(os.Getenv("SKIP_DOCKER_TESTS"))
+	skip, err := strconv.ParseBool(os.Getenv("SKIP_DOCKER_TESTS"))
+	if err == nil && !skip {
+		return
+	}
 	if runtime.GOOS != "linux" || skip {
 		t.Skip("skipping Docker tests on non-Linux platforms since testing CI infrastructure only supports Docker on Linux currently")
 	}

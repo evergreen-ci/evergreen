@@ -195,7 +195,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 
 	tracker := jasper.NewOOMTracker()
 	s.NoError(utility.ReadJSON(resp.Body, tracker))
-	wasOomKilled, pids := tracker.Report()
-	s.False(wasOomKilled)
+	lines, pids := tracker.Report()
+	s.Len(lines, 0)
 	s.Len(pids, 0)
 }

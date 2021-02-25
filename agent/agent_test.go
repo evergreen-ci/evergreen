@@ -446,9 +446,10 @@ func (s *AgentSuite) TestAbort() {
 
 func (s *AgentSuite) TestOOMTracker() {
 	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
 	s.tc.oomTracker = &mock.OOMTracker{
-		WasOOMKilled: true,
-		PIDs:         pids,
+		Lines: lines,
+		PIDs:  pids,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -57,11 +57,15 @@ tasks:
 
   - <<: *run-build
     tags: ["test"]
-    name: test-options
+    name: test-internal-executor
 
   - <<: *run-build
     tags: ["test"]
     name: test-mock
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test-options
 
   - <<: *run-build
     tags: ["test"]
@@ -123,34 +127,35 @@ tasks:
     name: lint-util
 
 task_groups:
-  - name: lintGroup
+  - name: lint_group
     tasks: [ ".report"]
-    max_hosts: 2
+    max_hosts: 3
+    share_processes: true
     setup_group:
       - func: get-project
-    setup_task:
-      - func: run-make
-        vars: { target: "clean-results" }
     teardown_task:
       - func: parse-results
-  - name: testGroup
+      - func: run-make
+        vars: { target: "clean-results" }
+  - name: test_group
     tasks: [ ".test"]
-    max_hosts: 2
+    max_hosts: 3
+    share_processes: true   # This ensure that the Docker image pulled in the setup_group is shared between tasks.
     setup_group:
       - func: get-project
       - func: run-make
         vars: { target: "docker-setup" }
         variants:
           - ubuntu1604
-    setup_task:
+    teardown_task:
+      - func: parse-results
       - func: run-make
         vars: { target: "clean-results" }
-    teardown_task:
+    teardown_group:
       - func: run-make
         vars: { target: "docker-cleanup" }
         variants:
           - ubuntu1604
-      - func: parse-results
 
 #######################################
 #           Buildvariants             #
@@ -169,7 +174,7 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     tasks:
-      - name: "testGroup"
+      - name: test_group
 
   - name: lint
     display_name: Lint (Arch Linux)
@@ -182,7 +187,7 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     tasks: 
-      - name: "lintGroup"
+      - name: lint_group
 
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -196,7 +201,7 @@ buildvariants:
       - ubuntu1604-test
       - ubuntu1604-build
     tasks:
-      - name: "testGroup"
+      - name: test_group
 
   - name: ubuntu1604-go1.9
     display_name: Ubuntu 16.04 (go1.9)
@@ -221,7 +226,7 @@ buildvariants:
     run_on:
       - macos-1014
     tasks:
-      - name: "testGroup"
+      - name: test_group
 
   - name: windows
     display_name: Windows
@@ -236,4 +241,4 @@ buildvariants:
       GO_BIN_PATH: /cygdrive/c/golang/go1.11/bin/go
       make_args: -k
     tasks:
-      - name: "testGroup"
+      - name: test_group

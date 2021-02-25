@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,127 +17,146 @@ func TestLoggingCacheImplementation(t *testing.T) {
 		Case func(*testing.T, LoggingCache)
 	}{
 		{
-			Name: "Fixture",
-			Case: func(t *testing.T, cache LoggingCache) {
-				assert.Equal(t, 0, cache.Len())
-			},
-		},
-		{
-			Name: "SafeOps",
-			Case: func(t *testing.T, cache LoggingCache) {
-				cache.Remove("")
-				cache.Remove("what")
-				assert.Nil(t, cache.Get("whatever"))
-				assert.Error(t, cache.Put("foo", nil))
-				assert.Equal(t, 0, cache.Len())
-			},
-		},
-		{
-			Name: "PutGet",
-			Case: func(t *testing.T, cache LoggingCache) {
-				assert.NoError(t, cache.Put("id", &options.CachedLogger{ID: "id"}))
-				assert.Equal(t, 1, cache.Len())
-				lg := cache.Get("id")
-				require.NotNil(t, lg)
-				assert.Equal(t, "id", lg.ID)
-			},
-		},
-		{
-			Name: "PutDuplicate",
-			Case: func(t *testing.T, cache LoggingCache) {
-				assert.NoError(t, cache.Put("id", &options.CachedLogger{ID: "id"}))
-				assert.Error(t, cache.Put("id", &options.CachedLogger{ID: "id"}))
-				assert.Equal(t, 1, cache.Len())
-			},
-		},
-		{
-			Name: "Prune",
-			Case: func(t *testing.T, cache LoggingCache) {
-				assert.NoError(t, cache.Put("id", &options.CachedLogger{ID: "id"}))
-				assert.Equal(t, 1, cache.Len())
-				cache.Prune(time.Now().Add(-time.Minute))
-				assert.Equal(t, 1, cache.Len())
-				cache.Prune(time.Now().Add(time.Minute))
-				assert.Equal(t, 0, cache.Len())
-			},
-		},
-		{
-			Name: "CreateDuplicateProtection",
-			Case: func(t *testing.T, cache LoggingCache) {
-				cl, err := cache.Create("id", &options.Output{})
+			Name: "LenSucceedsWithNoLoggers",
+			Case: func(t *testing.T, lc LoggingCache) {
+				length, err := lc.Len()
 				require.NoError(t, err)
-				require.NotNil(t, cl)
+				assert.Zero(t, length)
+			},
+		},
+		{
+			Name: "PutFollowedByGetSucceeds",
+			Case: func(t *testing.T, lc LoggingCache) {
+				assert.NoError(t, lc.Put("id", &options.CachedLogger{ID: "id"}))
 
-				cl, err = cache.Create("id", &options.Output{})
+				length, err := lc.Len()
+				require.NoError(t, err)
+				assert.Equal(t, 1, length)
+
+				logger, err := lc.Get("id")
+				require.NoError(t, err)
+				require.NotNil(t, logger)
+				assert.Equal(t, "id", logger.ID)
+			},
+		},
+		{
+			Name: "DuplicateCreateFails",
+			Case: func(t *testing.T, lc LoggingCache) {
+				logger, err := lc.Create("id", &options.Output{})
+				require.NoError(t, err)
+				require.NotNil(t, logger)
+
+				logger, err = lc.Create("id", &options.Output{})
 				require.Error(t, err)
-				require.Nil(t, cl)
+				require.Nil(t, logger)
 			},
 		},
 		{
-			Name: "CreateAccessTime",
-			Case: func(t *testing.T, cache LoggingCache) {
-				cl, err := cache.Create("id", &options.Output{})
+			Name: "DuplicatePutFails",
+			Case: func(t *testing.T, lc LoggingCache) {
+				assert.NoError(t, lc.Put("id", &options.CachedLogger{ID: "id"}))
+				assert.Error(t, lc.Put("id", &options.CachedLogger{ID: "id"}))
+				length, err := lc.Len()
+				require.NoError(t, err)
+				assert.Equal(t, 1, length)
+			},
+		},
+		{
+			Name: "PruneSucceeds",
+			Case: func(t *testing.T, lc LoggingCache) {
+				assert.NoError(t, lc.Put("id", &options.CachedLogger{ID: "id"}))
+
+				length, err := lc.Len()
+				require.NoError(t, err)
+				assert.Equal(t, 1, length)
+
+				require.NoError(t, lc.Prune(time.Now().Add(-time.Minute)))
+
+				length, err = lc.Len()
+				require.NoError(t, err)
+				assert.Equal(t, 1, length)
+
+				require.NoError(t, lc.Prune(time.Now().Add(time.Minute)))
+
+				length, err = lc.Len()
+				require.NoError(t, err)
+				assert.Equal(t, 0, length)
+			},
+		},
+		{
+			Name: "CreateAccessTimeIsSet",
+			Case: func(t *testing.T, lc LoggingCache) {
+				logger, err := lc.Create("id", &options.Output{})
 				require.NoError(t, err)
 
-				assert.True(t, time.Since(cl.Accessed) <= time.Millisecond)
+				assert.True(t, time.Since(logger.Accessed) <= time.Second)
 			},
 		},
 		{
-			Name: "CloseAndRemove",
-			Case: func(t *testing.T, cache LoggingCache) {
-				ctx := context.TODO()
-				sender := options.NewMockSender("output")
+			Name: "RemoveSucceeds",
+			Case: func(t *testing.T, lc LoggingCache) {
+				_, err := lc.Create("id", &options.Output{})
+				require.NoError(t, err)
 
-				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+				require.NoError(t, lc.Remove("id"))
+
+				_, err = lc.Get("id")
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "RemoveWithNonexistentLoggerFails",
+			Case: func(t *testing.T, lc LoggingCache) {
+				assert.Error(t, lc.Remove("foo"))
+			},
+		},
+		{
+			Name: "CloseAndRemoveSucceeds",
+			Case: func(t *testing.T, lc LoggingCache) {
+				ctx := context.Background()
+				sender := send.NewMockSender("output")
+
+				require.NoError(t, lc.Put("id0", &options.CachedLogger{
 					Output: sender,
 				}))
-				require.NoError(t, cache.Put("id1", &options.CachedLogger{}))
-				require.NotNil(t, cache.Get("id0"))
-				require.NoError(t, cache.CloseAndRemove(ctx, "id0"))
-				require.Nil(t, cache.Get("id0"))
-				assert.NotNil(t, cache.Get("id1"))
+				require.NoError(t, lc.Put("id1", &options.CachedLogger{}))
+
+				require.NoError(t, lc.CloseAndRemove(ctx, "id0"))
+
+				logger, err := lc.Get("id0")
+				require.Error(t, err)
+				require.Zero(t, logger)
 				require.True(t, sender.Closed)
 
-				require.NoError(t, cache.Put("id0", &options.CachedLogger{
-					Output: sender,
-				}))
-				require.NotNil(t, cache.Get("id0"))
-				assert.Error(t, cache.CloseAndRemove(ctx, "id0"))
-				require.Nil(t, cache.Get("id0"))
+				logger, err = lc.Get("id1")
+				require.NoError(t, err)
+				require.NotZero(t, logger)
 			},
 		},
 		{
-			Name: "Clear",
-			Case: func(t *testing.T, cache LoggingCache) {
-				ctx := context.TODO()
-				sender0 := options.NewMockSender("output")
-				sender1 := options.NewMockSender("output")
+			Name: "ClearSucceedsAndCloses",
+			Case: func(t *testing.T, lc LoggingCache) {
+				ctx := context.Background()
+				sender0 := send.NewMockSender("output")
+				sender1 := send.NewMockSender("output")
 
-				require.NoError(t, cache.Put("id0", &options.CachedLogger{
+				require.NoError(t, lc.Put("id0", &options.CachedLogger{
 					Output: sender0,
 				}))
-				require.NoError(t, cache.Put("id1", &options.CachedLogger{
+				require.NoError(t, lc.Put("id1", &options.CachedLogger{
 					Output: sender1,
 				}))
-				require.NotNil(t, cache.Get("id0"))
-				require.NotNil(t, cache.Get("id1"))
-				require.NoError(t, cache.Clear(ctx))
-				require.Nil(t, cache.Get("id0"))
-				require.Nil(t, cache.Get("id1"))
+
+				require.NoError(t, lc.Clear(ctx))
+
+				logger1, err := lc.Get("id0")
+				require.Error(t, err)
+				require.Zero(t, logger1)
+				logger2, err := lc.Get("id1")
+				require.Error(t, err)
+				require.Zero(t, logger2)
 				require.True(t, sender0.Closed)
 				require.True(t, sender1.Closed)
-
-				require.NoError(t, cache.Put("id0", &options.CachedLogger{
-					Output: sender0,
-				}))
-				require.NoError(t, cache.Put("id1", &options.CachedLogger{
-					Output: sender1,
-				}))
-				require.NotNil(t, cache.Get("id0"))
-				require.NotNil(t, cache.Get("id1"))
-				assert.Error(t, cache.Clear(ctx))
-				assert.Nil(t, cache.Get("id0"))
-				assert.Nil(t, cache.Get("id1"))
 			},
 		},
 	} {

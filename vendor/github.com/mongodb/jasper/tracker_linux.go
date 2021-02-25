@@ -137,16 +137,14 @@ func (t *linuxProcessTracker) doCleanupByEnvironmentVariable() error {
 	return catcher.Resolve()
 }
 
-// cleanupProcess terminates the process given by its PID. If the process has
-// already terminated, this will not return an error.
+// cleanupProcess kills the process given by its PID. If the process has already
+// killed, this will not return an error.
 func cleanupProcess(pid int) error {
-	catcher := grip.NewBasicCatcher()
 	// A process returns syscall.ESRCH if it already terminated.
-	if err := syscall.Kill(pid, syscall.SIGTERM); err != syscall.ESRCH {
-		catcher.Add(errors.Wrapf(err, "failed to send sigterm to process with pid '%d'", pid))
-		catcher.Add(errors.Wrapf(syscall.Kill(pid, syscall.SIGKILL), "failed to send sigkill to process with pid '%d'", pid))
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
+		return errors.Wrapf(err, "sending sigkill to process with PID '%d'", pid)
 	}
-	return catcher.Resolve()
+	return nil
 }
 
 // Cleanup kills all tracked processes. If cgroups is available, it kills all

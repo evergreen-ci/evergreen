@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,7 @@ func TestCLIScripting(t *testing.T) {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string){
 				"SetupSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 				},
 				"SetupWithEmptyIDFails": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
@@ -43,7 +44,7 @@ func TestCLIScripting(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"RunSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 					tmpFile := filepath.Join(tmpDir, "main.go")
 					require.NoError(t, ioutil.WriteFile(tmpFile, []byte(testutil.GolangMainSuccess()), 0755))
@@ -74,7 +75,7 @@ func TestCLIScripting(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"RunScriptSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 					input, err := json.Marshal(ScriptingRunScriptInput{
 						ID:     id,
@@ -103,7 +104,7 @@ func TestCLIScripting(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"BuildSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 					tmpFile := filepath.Join(tmpDir, "main.go")
 					require.NoError(t, ioutil.WriteFile(tmpFile, []byte(testutil.GolangMainSuccess()), 0755))
@@ -136,7 +137,7 @@ func TestCLIScripting(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"TestSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 					tmpFile := filepath.Join(tmpDir, "main.go")
 					require.NoError(t, ioutil.WriteFile(tmpFile, []byte(testutil.GolangTestSuccess()), 0755))
@@ -169,7 +170,7 @@ func TestCLIScripting(t *testing.T) {
 					assert.False(t, resp.Successful())
 				},
 				"CleanupSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, tmpDir string) {
-					id := createScriptingFromCLI(t, c, testutil.ValidGolangScriptingHarnessOptions(tmpDir))
+					id := createScriptingFromCLI(t, c, testoptions.ValidGolangScriptingHarnessOptions(tmpDir))
 					setupScriptingFromCLI(t, c, id)
 					input, err := json.Marshal(IDInput{ID: id})
 					require.NoError(t, err)
