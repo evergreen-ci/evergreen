@@ -2675,7 +2675,7 @@ type TasksSortOrder struct {
 func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variant string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	var match bson.M = bson.M{}
 
-	// Allow searching by either variant name or variant display name
+	// Allow searching by either variant name or variant display
 	if variant != "" {
 		match = bson.M{
 			"$or": []bson.M{

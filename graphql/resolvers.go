@@ -1451,12 +1451,15 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, task := range tasks {
 		baseTask := task.BaseTask
 		t := PatchBuildVariantTask{
-			ID:         task.Id,
-			Name:       task.DisplayName,
-			Status:     task.GetDisplayStatus(),
-			BaseStatus: &baseTask.Status,
+			ID:     task.Id,
+			Name:   task.DisplayName,
+			Status: task.GetDisplayStatus(),
+		}
+		if baseTask.Status != "" {
+			t.BaseStatus = &baseTask.Status
 		}
 		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
+		fmt.Println(fmt.Sprintf("ID: %s, Build Variant : %s, Display Name : %s", task.Id, task.BuildVariant, task.BuildVariantDisplayName))
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
 
 	}
@@ -2377,17 +2380,10 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	i, err := obj.ToService()
+	buildID := utility.FromStringPtr(obj.BuildId)
+	b, err := build.FindOneId(buildID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
-	}
-	b, err := build.FindOneId(t.BuildId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", t.BuildId, t.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
 	}
 	return &b.DisplayName, nil
 
