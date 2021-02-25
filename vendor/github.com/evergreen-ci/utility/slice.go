@@ -23,7 +23,7 @@ func StringSliceContains(slice []string, item string) bool {
 // StringSliceIntersection returns the intersecting elements of slices a and b.
 func StringSliceIntersection(a, b []string) []string {
 	inA := map[string]bool{}
-	out := []string{}
+	var out []string
 	for _, elem := range a {
 		inA[elem] = true
 	}
@@ -44,7 +44,7 @@ func StringSliceSymmetricDifference(a, b []string) ([]string, []string) {
 		mapA[elem] = true
 		mapAcopy[elem] = true
 	}
-	inB := []string{}
+	var inB []string
 	for _, elem := range b {
 		if mapAcopy[elem] { // need to delete from the copy in case B has duplicates of the same value in A
 			delete(mapA, elem)
@@ -52,7 +52,7 @@ func StringSliceSymmetricDifference(a, b []string) ([]string, []string) {
 			inB = append(inB, elem)
 		}
 	}
-	inA := []string{}
+	var inA []string
 	for elem := range mapA {
 		inA = append(inA, elem)
 	}
@@ -63,7 +63,7 @@ func StringSliceSymmetricDifference(a, b []string) ([]string, []string) {
 // Order is preserved.
 func UniqueStrings(slice []string) []string {
 	seen := map[string]bool{}
-	out := []string{}
+	var out []string
 	for _, s := range slice {
 		if seen[s] {
 			continue

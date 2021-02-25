@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -38,6 +39,7 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
 	s.sc = getMockProjectsConnector()
 
 	settings, err := evergreen.GetConfig()
@@ -50,50 +52,46 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
-	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	json := []byte(`{"id": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
-	h.project = "dimoxinil"
-	h.body = json
 	h.user = &user.DBUser{Id: "me"}
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
-
-	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.project))
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.Error(err)
+	s.Contains(err.Error(), "A project's id is immutable")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	json := []byte(`{"display_name": "This is a display name"}`)
-	h := s.rm.(*projectIDPatchHandler)
-	h.project = "non-existent"
-	h.body = json
-	h.user = &user.DBUser{Id: "me"}
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/non-existent", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "non-existent"})
+	err := s.rm.Parse(ctx, req)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "error finding original project")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
-	h := s.rm.(*projectIDPatchHandler)
-	h.project = "dimoxinil"
-	h.body = json
-	h.user = &user.DBUser{Id: "me"}
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
@@ -108,29 +106,77 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 
 func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	ctx := context.Background()
-	jsonBody := []byte(`{"enabled": true, "revision": "my_revision", "commit_queue": {"enabled": true}}`)
-	h := s.rm.(*projectIDPatchHandler)
-	h.project = "dimoxinil"
-	h.body = jsonBody
-	h.user = &user.DBUser{Id: "me"}
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "commit_queue": {"enabled": true}}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(http.StatusBadRequest, resp.Status())
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
+func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	h := s.rm.(*projectIDPatchHandler)
+	s.NotNil(h.user)
+
+	repoRef := serviceModel.RepoRef{ProjectRef: serviceModel.ProjectRef{
+		Id:                    mgobson.NewObjectId().Hex(),
+		Owner:                 h.originalProject.Owner,
+		Repo:                  h.originalProject.Repo,
+		GitTagAuthorizedUsers: []string{"special"},
+	}}
+	s.NoError(repoRef.Add(nil))
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal("must authorize users or teams to create git tag versions", errResp.Message)
+
+	jsonBody = []byte(`{"enabled": true, "use_repo_settings": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
+	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusOK, resp.Status())
+}
+
 func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
 	ctx := context.Background()
 	jsonBody := []byte(`{"use_repo_settings": true, "admins": ["me"]}`)
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	u := &user.DBUser{Id: "me"}
+	s.NoError(u.Insert())
+
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
 	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-	s.NoError(h.user.Insert())
-	h.project = "dimoxinil"
-	h.body = jsonBody
+	s.NotNil(h.user)
+	s.NotNil(h.originalProject)
+	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
+	s.NoError(err)
+	s.Nil(repoRef)
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
@@ -142,21 +188,29 @@ func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
 	s.NotEmpty(p.RepoRefId)
 	s.Contains(p.Admins, "me")
 
-	u, err := user.FindOneById("me")
+	u, err = user.FindOneById("me")
 	s.NoError(err)
 	s.NotNil(u)
 	s.Contains(u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
 	s.Contains(u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
+
+	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
+	s.NoError(err)
+	s.NotNil(repoRef)
 }
 
 func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
 	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
-	h.body = jsonBody
-	h.project = "dimoxinil"
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)

@@ -42,6 +42,13 @@ func FromBoolTPtr(in *bool) bool {
 	return *in
 }
 
+func BoolPtrCopy(in *bool) *bool {
+	if in == nil {
+		return nil
+	}
+	return ToBoolPtr(*in)
+}
+
 // ToIntPtr returns a pointer to an int value.
 func ToIntPtr(in int) *int {
 	return &in

@@ -128,7 +128,7 @@ type MockAliasConnector struct {
 
 // FindAllAliases is a mock implementation for testing.
 func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
-	return d.Aliases, nil
+	return append(d.Aliases, aliasesToAdd...), nil
 }
 
 func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string) error {
