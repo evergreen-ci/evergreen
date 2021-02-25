@@ -118,18 +118,22 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	conf := j.env.Settings()
-	batchSize := conf.CommitQueue.BatchSize
-	if batchSize < 1 {
-		batchSize = 1
-	}
-	nextItems := cq.NextUnprocessed(batchSize - cq.NumProcessing())
-
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
 		return
 	}
 	j.TryUnstick(ctx, cq, projectRef, githubToken)
+
+	if cq.Processing() {
+		return
+	}
+
+	batchSize := conf.CommitQueue.BatchSize
+	if batchSize < 1 {
+		batchSize = 1
+	}
+	nextItems := cq.NextUnprocessed(batchSize)
 	if len(nextItems) == 0 {
 		return
 	}

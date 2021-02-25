@@ -320,7 +320,7 @@ func TestNextUnprocessed(t *testing.T) {
 	assert.Len(t, next4, 3)
 }
 
-func TestNumProcessing(t *testing.T) {
+func TestProcessing(t *testing.T) {
 	q := CommitQueue{
 		Queue: []CommitQueueItem{
 			{Issue: "1", Version: "1"},
@@ -329,5 +329,20 @@ func TestNumProcessing(t *testing.T) {
 			{Issue: "4"},
 		},
 	}
-	assert.Equal(t, 3, q.NumProcessing())
+	assert.True(t, q.Processing())
+
+	q = CommitQueue{
+		Queue: []CommitQueueItem{
+			{Issue: "1"},
+			{Issue: "2"},
+			{Issue: "3"},
+			{Issue: "4"},
+		},
+	}
+	assert.False(t, q.Processing())
+
+	q = CommitQueue{
+		Queue: []CommitQueueItem{},
+	}
+	assert.False(t, q.Processing())
 }

@@ -28,8 +28,9 @@ func (m *Module) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
 func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m) }
 
 type CommitQueueItem struct {
-	Issue           string    `bson:"issue"`
-	PatchId         string    `bson:"patch_id,omitempty"`
+	Issue   string `bson:"issue"`
+	PatchId string `bson:"patch_id,omitempty"`
+	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
 	Version         string    `bson:"version,omitempty"`
 	EnqueueTime     time.Time `bson:"enqueue_time"`
 	Modules         []Module  `bson:"modules"`
@@ -124,17 +125,14 @@ func (q *CommitQueue) NextUnprocessed(n int) []CommitQueueItem {
 	return items
 }
 
-func (q *CommitQueue) NumProcessing() int {
-	num := 0
+func (q *CommitQueue) Processing() bool {
 	for _, item := range q.Queue {
 		if item.Version != "" {
-			num++
-		} else {
-			return num
+			return true
 		}
 	}
 
-	return num
+	return false
 }
 
 func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
