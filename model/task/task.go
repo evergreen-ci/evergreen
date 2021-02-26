@@ -1367,11 +1367,14 @@ func (t *Task) Reset() error {
 			ScheduledTimeKey:       utility.ZeroTime,
 			FinishTimeKey:          utility.ZeroTime,
 			DependenciesMetTimeKey: utility.ZeroTime,
+			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:           "",
 			ResetWhenFinishedKey: "",
 			HasCedarResultsKey:   "",
+			HostIdKey:            "",
+			AgentVersionKey:      "",
 		},
 	}
 
@@ -1394,16 +1397,21 @@ func ResetTasks(taskIds []string) error {
 			"$set": bson.M{
 				ActivatedKey:           true,
 				SecretKey:              utility.RandomString(),
+				HostIdKey:              "",
 				StatusKey:              evergreen.TaskUndispatched,
 				DispatchTimeKey:        utility.ZeroTime,
 				StartTimeKey:           utility.ZeroTime,
 				ScheduledTimeKey:       utility.ZeroTime,
 				FinishTimeKey:          utility.ZeroTime,
 				DependenciesMetTimeKey: utility.ZeroTime,
+				TimeTakenKey:           utility.ZeroTime,
 			},
 			"$unset": bson.M{
-				DetailsKey:         "",
-				HasCedarResultsKey: "",
+				DetailsKey:           "",
+				HasCedarResultsKey:   "",
+				ResetWhenFinishedKey: "",
+				CostKey:              "",
+				SpawnedHostCostKey:   "",
 			},
 		},
 	)

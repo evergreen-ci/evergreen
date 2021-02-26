@@ -624,6 +624,69 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 	})
 }
 
+func TestUpdateBuildStatusForTaskReset(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection),
+		"Error clearing task and build collections")
+	displayName := "testName"
+	b := &build.Build{
+		Id:        "buildtest",
+		Status:    evergreen.BuildStarted,
+		Version:   "abc",
+		Activated: true,
+	}
+	v := &Version{
+		Id:     b.Version,
+		Status: evergreen.VersionFailed,
+	}
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskUndispatched,
+		Version:     b.Version,
+	}
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskFailed,
+		StartTime:   time.Now().Add(-time.Hour),
+		Version:     b.Version,
+	}
+	b.Tasks = []build.TaskCache{
+		{
+			Id:        testTask.Id,
+			Status:    evergreen.TaskFailed,
+			Activated: true,
+		},
+		{
+			Id:        anotherTask.Id,
+			Status:    evergreen.TaskFailed,
+			Activated: true,
+		},
+	}
+
+	assert.NoError(t, b.Insert())
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, anotherTask.Insert())
+
+	updates := StatusChanges{}
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(testTask.Id, &updates))
+	dbVersion, err := VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
+	events, err := event.FindAllByResourceID(v.Id)
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+	data := events[0].Data.(*event.VersionEventData)
+	assert.Equal(t, evergreen.VersionStarted, data.Status)
+}
+
 func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"

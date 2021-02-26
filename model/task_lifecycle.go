@@ -776,6 +776,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	failedTask := false
 	finishedTasks := 0
 	blockedTasks := 0
+	unfinishedTasks := 0
 
 	cache := task.NewDisplayTaskCache()
 	// update the build's status based on tasks for this build
@@ -783,6 +784,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		if !t.IsFinished() {
 			if t.Blocked() {
 				blockedTasks++
+			} else if utility.StringSliceContains(evergreen.UncompletedStatuses, t.Status) {
+				unfinishedTasks++
 			}
 			continue
 		}
@@ -842,11 +845,17 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return err
 	}
 
-	if b.Status == evergreen.BuildCreated {
+	v, err := VersionFindOneId(b.Version)
+	if err != nil {
+		return errors.Wrap(err, "error finding version")
+	}
+
+	if b.Status == evergreen.BuildCreated || unfinishedTasks > 0 {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
-			err = errors.Wrap(err, "Error updating build status")
-			grip.Error(err)
-			return err
+			return errors.Wrap(err, "Error updating build status")
+		}
+		if err = v.ChangeStatus(evergreen.VersionStarted); err != nil {
+			return errors.Wrap(err, "unable to update version status")
 		}
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
@@ -902,10 +911,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
-		updates.BuildNewStatus = evergreen.BuildCreated
 		if err != nil {
 			return errors.Wrap(err, "error updating build status")
 		}
+		if err = v.ChangeStatus(evergreen.VersionCreated); err != nil {
+			return errors.Wrap(err, "unable to update version status")
+		}
+		updates.BuildNewStatus = evergreen.BuildCreated
 	}
 
 	return nil

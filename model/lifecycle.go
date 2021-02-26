@@ -196,7 +196,6 @@ func markVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	activeBuilds := 0
 	finished := true
 
-	startPhaseAt := time.Now()
 	tasks, err := task.Find(task.ByVersion(versionId).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
 	if err != nil {
 		return errors.Wrapf(err, "problem finding tasks for version %s", versionId)
@@ -248,16 +247,6 @@ func markVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 			status = evergreen.VersionFailed
 		}
 	}
-	grip.DebugWhen(time.Since(startPhaseAt) > time.Second, message.Fields{
-		"function":            "markVersionCompleted",
-		"operation":           "build loop",
-		"message":             "slow operation",
-		"duration_secs":       time.Since(startPhaseAt).Seconds(),
-		"version":             versionId,
-		"ticket":              "EVG-12549",
-		"num_builds":          len(builds),
-		"check_github_status": checkGithubStatus,
-	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
@@ -400,18 +389,10 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		startAbortAt := time.Now()
 		if err := task.AbortTasksForVersion(versionId, taskIds, caller); err != nil {
 			return errors.WithStack(err)
 		}
-		grip.Info(message.Fields{
-			"message":       "Abort tasks for version",
-			"version":       versionId,
-			"ticket":        "EVG-12549",
-			"duration_secs": time.Since(startAbortAt).Seconds(),
-		})
 	}
-	startPhaseAt := time.Now()
 	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
@@ -420,12 +401,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{
-		"message":       "Find completed tasks",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 	// remove execution tasks in case the caller passed both display and execution tasks
 	// the functions below are expected to work if just the display task is passed
 	for i := len(finishedTasks) - 1; i >= 0; i-- {
@@ -435,7 +410,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 	// archive all the finished tasks
-	startPhaseAt = time.Now()
 	toArchive := []task.Task{}
 	for _, t := range finishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
@@ -445,12 +419,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err = task.ArchiveMany(toArchive); err != nil {
 		return errors.Wrap(err, "unable to archive tasks")
 	}
-	grip.Info(message.Fields{
-		"message":       "Archive finished tasks",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	type taskGroupAndBuild struct {
 		Build     string
@@ -466,7 +434,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 	restartIds := []string{}
-	startPhaseAt = time.Now()
 	for _, t := range tasksToRestart {
 		if t.IsPartOfSingleHostTaskGroup() {
 			if err = t.SetResetWhenFinished(); err != nil {
@@ -485,61 +452,34 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	grip.Info(message.Fields{
-		"message":       "Mark tasks for restart when finished & build restart id array.",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
-	startPhaseAt = time.Now()
 	for tg, t := range taskGroupsToCheck {
 		if err = checkResetSingleHostTaskGroup(&t, caller); err != nil {
 			return errors.Wrapf(err, "error resetting task group '%s' for build '%s'", tg.TaskGroup, tg.Build)
 		}
 	}
-	grip.Info(message.Fields{
-		"message":       "Reset task group for builds",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// Set all the task fields to indicate restarted
-	startPhaseAt = time.Now()
 	if err = MarkTasksReset(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{
-		"message":       "Mark tasks reset",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
-	startPhaseAt = time.Now()
 	for _, t := range tasksToRestart {
 		if !t.IsPartOfSingleHostTaskGroup() { // this will be logged separately if task group is restarted
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
-	grip.Info(message.Fields{
-		"message":       "Log task event",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
 	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
 	// document.
-	startPhaseAt = time.Now()
 	err = build.SetBuildStartedForTasks(tasksToRestart, caller)
-	grip.Info(message.Fields{
-		"message":       "Set build started for tasks",
-		"version":       versionId,
-		"ticket":        "EVG-12549",
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
-	return errors.Wrapf(err, "error setting builds started")
+	if err != nil {
+		return errors.Wrapf(err, "error setting builds started")
+	}
+	version, err := VersionFindOneId(versionId)
+	if err != nil {
+		return errors.Wrap(err, "unable to find version")
+	}
+	return errors.Wrap(version.ChangeStatus(evergreen.VersionStarted), "unable to change version status")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.

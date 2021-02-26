@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -104,6 +105,24 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
 	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
+}
+
+func (v *Version) ChangeStatus(newStatus string) error {
+	if v.Status == newStatus {
+		return nil
+	}
+	update := bson.M{
+		"$set": bson.M{
+			VersionStatusKey: newStatus,
+		},
+	}
+	err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, update)
+	if err != nil {
+		return err
+	}
+	v.Status = newStatus
+	event.LogVersionStateChangeEvent(v.Id, newStatus)
+	return nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
