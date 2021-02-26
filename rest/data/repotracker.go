@@ -66,7 +66,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		return errors.New("owner from push event is invalid")
 	}
 
-	refs, err := model.FindMergedProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
+	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -99,7 +99,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	failed := []string{}
 	catcher := grip.NewSimpleCatcher()
 	for i := range refs {
-		if !refs[i].TracksPushEvents || !refs[i].Enabled || refs[i].RepotrackerDisabled {
+		if !refs[i].DoesTrackPushEvents() || !refs[i].IsEnabled() || refs[i].IsRepotrackerDisabled() {
 			unactionable = append(unactionable, refs[i].Id)
 			continue
 		}
@@ -167,7 +167,7 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 		return nil
 	}
 
-	_, err = model.FindMergedProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
+	_, err = model.FindMergedEnabledProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	return err
 }
 

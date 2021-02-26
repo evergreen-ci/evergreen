@@ -224,7 +224,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark task as finished
 	updates := model.StatusChanges{}
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.ShouldDeactivatePrevious(), &updates)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -322,33 +322,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // prepareForReprovision readies host for reprovisioning.
-func prepareForReprovision(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host, w http.ResponseWriter) error {
+func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
-	switch h.NeedsReprovision {
-	case host.ReprovisionToLegacy:
-		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to legacy"))
-		}
-	case host.ReprovisionToNew:
-		if err := env.RemoteQueue().Put(ctx, units.NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to reprovision host to new"))
-		}
-	case host.ReprovisionJasperRestart:
-		expiration, err := h.JasperCredentialsExpiration(ctx, env)
-		if err != nil {
-			grip.Warning(message.WrapError(err, "problem getting credentials expiration time"))
-		}
-		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
-		if err := env.RemoteQueue().Put(ctx, units.NewJasperRestartJob(env, *h, expiration, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
-			grip.Warning(message.WrapError(err, "problem enqueueing jobs to restart Jasper"))
-		}
+	// Enqueue the job immediately, if possible.
+	if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "could not enqueue job to reprovision host",
+			"host_id":           h.Id,
+			"needs_reprovision": h.NeedsReprovision,
+		}))
 	}
 
 	return nil
@@ -366,6 +351,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		})
 		return nil, false, errors.New("cannot assign a task to a host with a running task")
 	}
+	distroToMonitor := "rhel80-medium"
+	runId := utility.RandomString()
+	stepStart := time.Now()
+	funcStart := stepStart
 
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
@@ -391,6 +380,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		})
 		d = currentHost.Distro
 	}
+	grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+		"message":     "assignNextAvailableTask performance",
+		"step":        "distro.FindOne",
+		"duration_ns": time.Now().Sub(stepStart),
+		"run_id":      runId,
+	})
+	stepStart = time.Now()
 
 	// This loop does the following:
 	// 1. Find the next task in the queue.
@@ -423,6 +419,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		default:
 			queueItem = taskQueue.FindNextTask(spec)
 		}
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "RefreshFindNextTask",
+			"duration_ns": time.Now().Sub(stepStart),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 		if queueItem == nil {
 			return nil, false, nil
 		}
@@ -445,6 +448,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			}))
 			return nil, false, err
 		}
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "find task",
+			"duration_ns": time.Now().Sub(stepStart),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 
 		if nextTask == nil {
 			grip.DebugWhen(queueItem.Group != "", message.Fields{
@@ -484,8 +494,21 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			})
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "FindMergedProjectRef",
+			"duration_ns": time.Now().Sub(stepStart),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 
-		if !projectRef.Enabled || projectRef.DispatchingDisabled {
+		isDisabled := projectRef.IsDispatchingDisabled()
+		// hidden projects can only run PR tasks
+		if !projectRef.IsEnabled() && (queueItem.Requester != evergreen.GithubPRRequester || !projectRef.IsHidden()) {
+			isDisabled = true
+		}
+
+		if isDisabled {
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
@@ -495,7 +518,6 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))
-
 			continue
 		}
 
@@ -519,6 +541,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if err != nil {
 			return nil, false, errors.WithStack(err)
 		}
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "UpdateRunningTask",
+			"duration_ns": time.Now().Sub(stepStart),
+			"run_id":      runId,
+		})
+		stepStart = time.Now()
 
 		// It's possible for dispatchers on different app servers to race, assigning
 		// different tasks in a task group to more hosts than the task group's max hosts. We
@@ -544,6 +573,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_version":            nextTask.Version,
 			"task_project":            nextTask.Project,
 			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
+			"task_group_order":        nextTask.TaskGroupOrder,
 		})
 
 		if ok && isTaskGroupNewToHost(currentHost, nextTask) {
@@ -558,17 +588,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
-				}
-			}
-			// for multiple-host task groups and single-host task groups without order cached
-			if minTaskGroupOrderNum == 0 {
-				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-				if err != nil {
-					return nil, false, errors.WithStack(err)
-				}
-				if numHosts > nextTask.TaskGroupMaxHosts {
-					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
-				} else if nextTask.TaskGroupOrder > 1 && nextTask.TaskGroupMaxHosts == 1 {
+				} else if nextTask.TaskGroupOrder > 1 {
 					// if the previous task in the group has yet to run and should run, then wait for it
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
@@ -584,6 +604,30 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					}
 				}
 			}
+			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+				"message":     "assignNextAvailableTask performance",
+				"step":        "find task group",
+				"duration_ns": time.Now().Sub(stepStart),
+				"run_id":      runId,
+			})
+			stepStart = time.Now()
+			// for multiple-host task groups and single-host task groups without order cached
+			if minTaskGroupOrderNum == 0 && dispatchRace == "" {
+				numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
+				if err != nil {
+					return nil, false, errors.WithStack(err)
+				}
+				if numHosts > nextTask.TaskGroupMaxHosts {
+					dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
+				}
+			}
+			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+				"message":     "assignNextAvailableTask performance",
+				"step":        "get host number",
+				"duration_ns": time.Now().Sub(stepStart),
+				"run_id":      runId,
+			})
+			stepStart = time.Now()
 
 			if dispatchRace != "" {
 				grip.Debug(message.Fields{
@@ -613,6 +657,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				}))
 				ok = false // continue loop after dequeuing task
 			}
+			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+				"message":     "assignNextAvailableTask performance",
+				"step":        "ClearRunningTask",
+				"duration_ns": time.Now().Sub(stepStart),
+				"run_id":      runId,
+			})
+			stepStart = time.Now()
 		}
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
@@ -622,6 +673,18 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_id":   nextTask.Id,
 			"host_id":   currentHost.Id,
 		}))
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "DequeueTask",
+			"duration_ns": time.Now().Sub(stepStart),
+			"run_id":      runId,
+		})
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
+			"message":     "assignNextAvailableTask performance",
+			"step":        "total",
+			"duration_ns": time.Now().Sub(funcStart),
+			"run_id":      runId,
+		})
 
 		if !ok {
 			continue
@@ -687,7 +750,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	var response apimodels.NextTaskResponse
-	if responded := handleReprovisioning(ctx, as.env, as.env.Settings(), response, h, w); responded {
+	if responded := handleReprovisioning(ctx, as.env, h, response, w); responded {
 		return
 	}
 
@@ -709,7 +772,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteJSON(w, response)
 			return
 		}
-
 		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":       h.Id,
@@ -872,7 +934,7 @@ func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.Respon
 	return details, false
 }
 
-func handleReprovisioning(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter) (responded bool) {
+func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) (responded bool) {
 	if h.NeedsReprovision == host.ReprovisionNone {
 		return false
 	}
@@ -895,7 +957,7 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, settin
 		}))
 	}
 
-	if err := prepareForReprovision(ctx, env, settings, h, w); err != nil {
+	if err := prepareForReprovision(ctx, env, h); err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return true
 	}

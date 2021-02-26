@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/service"
+	service "github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/util"

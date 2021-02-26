@@ -5,11 +5,11 @@ index 21d976cc..cbc21d3d 100644
 @@ -316,6 +316,10 @@ modules:
    repo: git@github.com:evergreen-ci/render.git
    prefix: recursive/clone
-   branch: master
+   branch: main
 +- name: evgHome
 +  repo: git@github.com:evergreen-ci/evergreen.git
 +  prefix: evergreen
-+  branch: master
++  branch: main
  
  #######################################
  # Buildvariants

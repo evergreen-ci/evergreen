@@ -10,12 +10,17 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const gridFSFileID = "5e4ff3ab850e6136624eaf95"
 
 func getFiles(root string) ([]string, error) {
 	out := []string{}
@@ -82,6 +87,21 @@ func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db
 	grip.Infof("imported %d documents into %s", count, collName)
 }
 
+func writeDummyGridFSFile(ctx context.Context, catcher grip.Catcher, db *mongo.Database) {
+	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "problem creating GridFS bucket"))
+		return
+	}
+	_, err = bucket.UploadFromStream(gridFSFileID, strings.NewReader("sample_patch"), nil)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "problem writing GridFS file"))
+		return
+	}
+
+	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
+}
+
 func getFilesFromPathAndInsert(ctx context.Context, path string, catcher grip.Catcher, db *mongo.Database, logsDb *mongo.Database) {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
@@ -127,6 +147,7 @@ func main() {
 	catcher := grip.NewBasicCatcher()
 
 	getFilesFromPathAndInsert(ctx, path, catcher, db, logsDb)
+	writeDummyGridFSFile(ctx, catcher, db)
 
 	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())

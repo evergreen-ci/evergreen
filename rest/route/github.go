@@ -371,74 +371,82 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		})
 		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
 	}
+
+	foundVersion := map[string]bool{}
+
 	catcher := grip.NewBasicCatcher()
-	for _, pRef := range projectRefs {
-		var existingVersion *model.Version
-		err = util.Retry(
-			ctx,
-			func() (bool, error) {
+
+	// iterate through all projects before retrying. Only retry on errors related to finding the version.
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			retryCatcher := grip.NewBasicCatcher()
+			for _, pRef := range projectRefs {
+				if foundVersion[pRef.Id] {
+					continue
+				}
+				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
 				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
 				if err != nil {
-					return true, err
+					retryCatcher.Wrapf(err, "problem finding version for project '%s' with revision '%s'", pRef.Id, hash)
+					continue
 				}
 				if existingVersion == nil {
-					return true, errors.New("no existing version to add tag to")
+					retryCatcher.Errorf("no version for project '%s' with revision '%s' to add tag to", pRef.Id, hash)
+					continue
 				}
-				return false, nil
-			}, 5, time.Second, time.Second*10)
+				foundVersion[pRef.Id] = true
+				grip.Debug(message.Fields{
+					"source":  "github hook",
+					"message": "adding tag to version",
+					"version": existingVersion.Id,
+					"ref":     event.GetRef(),
+					"event":   gh.eventType,
+					"branch":  pRef.Branch,
+					"owner":   pRef.Owner,
+					"repo":    pRef.Repo,
+					"hash":    hash,
+					"tag":     tag,
+				})
 
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem finding version for project '%s' with revision '%s' to add tag '%s'",
-				pRef.Id, hash, tag.Tag))
-			continue
-		}
+				if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
+					catcher.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
+					continue
+				}
 
-		grip.Debug(message.Fields{
-			"source":  "github hook",
-			"message": "adding tag to version",
-			"version": existingVersion.Id,
-			"ref":     event.GetRef(),
-			"event":   gh.eventType,
-			"branch":  pRef.Branch,
-			"owner":   pRef.Owner,
-			"repo":    pRef.Repo,
-			"hash":    hash,
-			"tag":     tag,
-		})
+				revision := model.Revision{
+					Author:          existingVersion.Author,
+					AuthorID:        existingVersion.AuthorID,
+					AuthorEmail:     existingVersion.AuthorEmail,
+					Revision:        existingVersion.Revision,
+					RevisionMessage: existingVersion.Message,
+				}
+				var v *model.Version
+				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
+				if err != nil {
+					catcher.Wrapf(err, "error adding new version for tag '%s'", tag.Tag)
+					continue
+				}
+				if v != nil {
+					grip.Info(message.Fields{
+						"source":  "github hook",
+						"msg_id":  gh.msgID,
+						"event":   gh.eventType,
+						"ref":     event.GetRef(),
+						"owner":   ownerAndRepo[0],
+						"repo":    ownerAndRepo[1],
+						"tag":     tag,
+						"version": v.Id,
+						"message": "triggered version from git tag",
+					})
+				}
+			}
+			return retryCatcher.HasErrors(), retryCatcher.Resolve()
+		}, 5, 100*time.Millisecond, time.Second*3)
 
-		if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
-			catcher.Add(errors.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id))
-			continue
-		}
-
-		revision := model.Revision{
-			Author:          existingVersion.Author,
-			AuthorID:        existingVersion.AuthorID,
-			AuthorEmail:     existingVersion.AuthorEmail,
-			Revision:        existingVersion.Revision,
-			RevisionMessage: existingVersion.Message,
-		}
-		v, err := gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "error adding new version for tag '%s'", tag.Tag))
-			continue
-		}
-		if v != nil {
-			grip.Info(message.Fields{
-				"source":  "github hook",
-				"msg_id":  gh.msgID,
-				"event":   gh.eventType,
-				"ref":     event.GetRef(),
-				"owner":   ownerAndRepo[0],
-				"repo":    ownerAndRepo[1],
-				"tag":     tag,
-				"version": v.Id,
-				"message": "triggered version from git tag",
-			})
-		}
-	}
+	catcher.Add(err)
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
 		"msg_id":  gh.msgID,
@@ -458,7 +466,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	if err != nil {
 		return nil, errors.New("error getting github token")
 	}
-	if !pRef.GitTagVersionsEnabled {
+	if !pRef.IsGitTagVersionsEnabled() {
 		return nil, nil
 	}
 
@@ -546,8 +554,8 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("user '%s' is not authorized to merge", userRepo.Username)
 	}
 
-	PRNum := *event.Issue.Number
-	pr, err := gh.sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, PRNum)
+	prNum := *event.Issue.Number
+	pr, err := gh.sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "can't get PR from GitHub API")
 	}
@@ -565,11 +573,25 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if projectRef == nil {
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
+
+	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	if err != nil {
+		sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "failed to create patch", "")
+		grip.Error(message.WrapError(sendErr, message.Fields{
+			"message": "error sending patch creation failure to github",
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"pr":      prNum,
+		}))
+		return errors.Wrap(err, "error adding patch")
+	}
+
 	item := restModel.APICommitQueueItem{
-		Issue:           utility.ToStringPtr(strconv.Itoa(PRNum)),
+		Issue:           utility.ToStringPtr(strconv.Itoa(prNum)),
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
 		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
+		PatchId:         &patchId,
 	}
 	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
@@ -579,7 +601,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
 		return errors.New("PR contains no head branch SHA")
 	}
-	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, PRNum)
+	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, prNum, patchId)
 	q := evergreen.GetEnvironment().LocalQueue()
 	grip.Error(message.WrapError(q.Put(ctx, pushJob), message.Fields{
 		"source":  "github hook",
@@ -588,7 +610,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		"action":  event.Action,
 		"owner":   userRepo.Owner,
 		"repo":    userRepo.Repo,
-		"item":    PRNum,
+		"item":    prNum,
 		"message": "failed to queue notification for commit queue push",
 	}))
 

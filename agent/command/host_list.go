@@ -79,7 +79,7 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	var hosts []restmodel.CreateHost
+	var results restmodel.HostListResults
 	var err error
 	var timeout bool
 
@@ -102,15 +102,15 @@ waitForHosts:
 			timeout = true
 			break waitForHosts
 		case <-timer.C:
-			hosts, err = comm.ListHosts(ctx, td)
+			results, err = comm.ListHosts(ctx, td)
 
-			if c.Wait {
-				if err == nil && numHosts <= len(hosts) {
+			if c.Wait { // all hosts are up or failed to come up
+				if err == nil && numHosts <= (len(results.Hosts)+len(results.Details)) {
 					break waitForHosts
 				} else if err != nil {
 					// pass
 				} else {
-					err = errors.Errorf("%d hosts of %d are up, waiting", len(hosts), numHosts)
+					err = errors.Errorf("%d hosts of %d are up, waiting", len(results.Hosts), numHosts)
 				}
 			} else if err == nil {
 				break waitForHosts
@@ -119,23 +119,40 @@ waitForHosts:
 		}
 	}
 
-	if timeout {
-		if err != nil {
-			return errors.Wrap(err, "problem getting hosts list")
-		}
-		return errors.New("reached timeout waiting for hosts")
+	if err != nil {
+		return errors.Wrap(err, "problem getting hosts list")
 	}
 
 	if c.Path != "" {
-		if err = utility.WriteJSONFile(c.Path, hosts); err != nil {
-			return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
+		if len(results.Hosts) > 0 {
+			if err = utility.WriteJSONFile(c.Path, results.Hosts); err != nil {
+				return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
+			}
+		}
+		if len(results.Details) > 0 {
+			if err = utility.WriteJSONFile(c.Path, results.Details); err != nil {
+				return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
+			}
 		}
 	}
 
 	if !c.Silent {
-		jsonBytes, err := json.MarshalIndent(hosts, "  ", "   ")
-		logger.Task().Warning(errors.Wrap(err, "problem json formatting url"))
-		logger.Task().Info(string(jsonBytes))
+		if len(results.Hosts) > 0 {
+			jsonBytes, err := json.MarshalIndent(results.Hosts, "  ", "   ")
+			logger.Task().Warning(errors.Wrap(err, "problem json formatting host"))
+			logger.Task().Info(string(jsonBytes))
+		}
+		if len(results.Details) > 0 {
+			jsonBytes, err := json.MarshalIndent(results.Details, "  ", "   ")
+			logger.Task().Warning(errors.Wrap(err, "problem json formatting details"))
+			logger.Task().Info(string(jsonBytes))
+		}
+	}
+	if timeout {
+		return errors.New("reached timeout waiting for hosts")
+	}
+	if len(results.Details) > 0 {
+		return errors.Errorf("%d hosts of %d failed", len(results.Details), numHosts)
 	}
 
 	return nil

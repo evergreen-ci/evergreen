@@ -1,37 +1,37 @@
 package shrub
 
 type Variant struct {
-	BuildName        string                  `json:"name,omitempty"`
-	BuildDisplayName string                  `json:"display_name,omitempty"`
-	BatchTimeSecs    int                     `json:"batchtime,omitempty"`
-	TaskSpecs        []TaskSpec              `json:"tasks,omitmepty"`
-	DistroRunOn      []string                `json:"run_on,omitempty"`
-	Expanisons       map[string]interface{}  `json:"expansions,omitempty"`
-	DisplayTaskSpecs []DisplayTaskDefinition `json:"display_tasks,omitempty"`
+	BuildName        string                  `json:"name,omitempty" yaml:"name,omitempty"`
+	BuildDisplayName string                  `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	BatchTimeSecs    int                     `json:"batchtime,omitempty" yaml:"batchtime,omitempty"`
+	TaskSpecs        []TaskSpec              `json:"tasks,omitmepty" yaml:"tasks,omitempty"`
+	DistroRunOn      []string                `json:"run_on,omitempty" yaml:"run_on,omitempty"`
+	Expansions       map[string]interface{}  `json:"expansions,omitempty" yaml:"expansions,omitempty"`
+	DisplayTaskSpecs []DisplayTaskDefinition `json:"display_tasks,omitempty" yaml:"display_tasks,omitempty"`
 }
 
 type DisplayTaskDefinition struct {
-	Name       string   `json:"name"`
-	Components []string `json:"execution_tasks"`
+	Name       string   `json:"name" yaml:"name"`
+	Components []string `json:"execution_tasks" yaml:"execution_tasks"`
 }
 
 type TaskSpec struct {
-	Name     string   `json:"name"`
-	Stepback bool     `json:"stepback,omitempty"`
-	Distro   []string `json:"distros,omitempty"`
+	Name     string   `json:"name" yaml:"name"`
+	Stepback bool     `json:"stepback,omitempty" yaml:"stepback,omitempty"`
+	Distro   []string `json:"distros,omitempty" yaml:"distro,omitempty"`
 }
 
 func (v *Variant) Name(id string) *Variant                         { v.BuildName = id; return v }
 func (v *Variant) DisplayName(id string) *Variant                  { v.BuildDisplayName = id; return v }
 func (v *Variant) RunOn(distro string) *Variant                    { v.DistroRunOn = []string{distro}; return v }
 func (v *Variant) TaskSpec(spec TaskSpec) *Variant                 { v.TaskSpecs = append(v.TaskSpecs, spec); return v }
-func (v *Variant) SetExpansions(m map[string]interface{}) *Variant { v.Expanisons = m; return v }
+func (v *Variant) SetExpansions(m map[string]interface{}) *Variant { v.Expansions = m; return v }
 func (v *Variant) Expansion(k string, val interface{}) *Variant {
-	if v.Expanisons == nil {
-		v.Expanisons = make(map[string]interface{})
+	if v.Expansions == nil {
+		v.Expansions = make(map[string]interface{})
 	}
 
-	v.Expanisons[k] = val
+	v.Expansions[k] = val
 
 	return v
 }

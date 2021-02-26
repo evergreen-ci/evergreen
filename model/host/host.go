@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"time"
 
@@ -381,7 +382,8 @@ const (
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
 
-	ErrorParentNotFound = "Parent not found"
+	ErrorParentNotFound        = "Parent not found"
+	ErrorHostAlreadyTerminated = "not changing status of already terminated host"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -439,7 +441,7 @@ func IsIntentHostId(id string) bool {
 
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
-		msg := "not changing status of already terminated host"
+		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
 			"message": msg,
 			"host_id": h.Id,
@@ -467,7 +469,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 // status in the database matches currentStatus.
 func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
-		msg := "not changing status of already terminated host"
+		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
 			"message": msg,
 			"host_id": h.Id,
@@ -522,10 +524,12 @@ func (h *Host) SetDecommissioned(user string, logs string) error {
 		}))
 		for _, c := range containers {
 			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error decommissioning container",
-				"host_id": c.Id,
-			}))
+			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "error decommissioning container",
+					"host_id": c.Id,
+				}))
+			}
 		}
 	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
@@ -663,8 +667,36 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	if err := h.DeleteJasperCredentials(ctx, env); err != nil {
 		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
+	addToSet := func(set []string, val string) []string {
+		if utility.StringSliceContains(set, val) {
+			return set
+		}
+		return append(set, val)
+	}
 
-	creds, err := env.CertificateDepot().Generate(h.JasperCredentialsID)
+	domains := []string{h.JasperCredentialsID}
+	var ipAddrs []string
+	if net.ParseIP(h.JasperCredentialsID) != nil {
+		ipAddrs = addToSet(ipAddrs, h.JasperCredentialsID)
+	}
+	if h.Host != "" {
+		if net.ParseIP(h.Host) != nil {
+			ipAddrs = addToSet(ipAddrs, h.Host)
+		} else {
+			domains = addToSet(domains, h.Host)
+		}
+	}
+	if h.IP != "" && net.ParseIP(h.IP) != nil {
+		ipAddrs = addToSet(ipAddrs, h.IP)
+	}
+	opts := certdepot.CertificateOptions{
+		CommonName: h.JasperCredentialsID,
+		Host:       h.JasperCredentialsID,
+		Domain:     domains,
+		IP:         ipAddrs,
+		CA:         evergreen.CAName,
+	}
+	creds, err := env.CertificateDepot().GenerateWithOptions(opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
 	}
@@ -993,6 +1025,7 @@ func (h *Host) SetNeedsReprovisionToNew(user string) error {
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
+
 	return h.MarkAsReprovisioning()
 }
 

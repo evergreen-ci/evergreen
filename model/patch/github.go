@@ -205,6 +205,10 @@ func (g *githubIntent) ShouldFinalizePatch() bool {
 	return true
 }
 
+func (g *githubIntent) ReusePreviousPatchDefinition() bool {
+	return false
+}
+
 func (g *githubIntent) RequesterIdentity() string {
 	return evergreen.GithubPRRequester
 }

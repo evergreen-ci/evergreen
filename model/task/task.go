@@ -137,6 +137,9 @@ type Task struct {
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
+
+	// HostCreateDetails stores information about why host.create failed for this task
+	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
@@ -247,6 +250,11 @@ type DistroCost struct {
 type BaseTaskInfo struct {
 	Id     string `bson:"_id" json:"id"`
 	Status string `bson:"status" json:"status"`
+}
+
+type HostCreateDetail struct {
+	HostId string `bson:"host_id" json:"host_id"`
+	Error  string `bson:"error" json:"error"`
 }
 
 func (d *Dependency) UnmarshalBSON(in []byte) error {
@@ -731,26 +739,42 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string, errorToSet error) error {
-	if adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
-		return nil
-	}
+func MarkGeneratedTasks(taskID string) error {
 	query := bson.M{
 		IdKey:             taskID,
 		GeneratedTasksKey: bson.M{"$exists": false},
 	}
-	set := bson.M{GeneratedTasksKey: true}
-	if errorToSet != nil {
-		set[GenerateTasksErrorKey] = errorToSet.Error()
-	}
 	update := bson.M{
-		"$set": set,
+		"$set": bson.M{
+			GeneratedTasksKey: true,
+		},
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return errors.Wrap(err, "problem marking generate.tasks complete")
+}
+
+// MarkGeneratedTasksErr marks that the task hit errors generating tasks.
+func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
+	if errorToSet == nil || adb.ResultsNotFound(errorToSet) || db.IsDuplicateKey(errorToSet) {
+		return nil
+	}
+	query := bson.M{
+		IdKey:             taskID,
+		GeneratedTasksKey: bson.M{"$exists": false},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GenerateTasksErrorKey: errorToSet.Error(),
+		},
+	}
+	err := UpdateOne(query, update)
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+	return errors.Wrap(err, "problem setting generate.tasks error")
 }
 
 func GenerateNotRun() ([]Task, error) {
@@ -2673,13 +2697,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 				tempParentKey: []interface{}{},
 			},
 		},
-		// expand execution tasks in display tasks
-		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   ExecutionTasksKey,
-			"foreignField": IdKey,
-			"as":           ExecutionTasksFullKey,
-		}},
+
 		// add a field for the display status of each task
 		addDisplayStatus,
 		// add data about the base task
@@ -2742,7 +2760,6 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
@@ -2770,6 +2787,13 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			"$project": fieldKeys,
 		})
 	}
+	// expand execution tasks in display tasks
+	pipeline = append(pipeline, bson.M{"$lookup": bson.M{
+		"from":         Collection,
+		"localField":   ExecutionTasksKey,
+		"foreignField": IdKey,
+		"as":           ExecutionTasksFullKey,
+	}})
 	tasks := []Task{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()

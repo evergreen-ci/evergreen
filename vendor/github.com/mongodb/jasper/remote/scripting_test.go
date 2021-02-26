@@ -8,8 +8,10 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper/scripting"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,8 +20,8 @@ func TestScripting(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpClient := testutil.GetHTTPClient()
-	defer testutil.PutHTTPClient(httpClient)
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	for managerName, makeManager := range remoteManagerTestCases(httpClient) {
 		t.Run(managerName, func(t *testing.T) {
@@ -134,9 +136,6 @@ func TestScripting(t *testing.T) {
 					tctx, cancel := context.WithTimeout(ctx, testutil.RPCTestTimeout)
 					defer cancel()
 					client := makeManager(tctx, t)
-					defer func() {
-						assert.NoError(t, client.CloseConnection())
-					}()
 					tmpDir, err := ioutil.TempDir(testutil.BuildDirectory(), "scripting_tests")
 					require.NoError(t, err)
 					defer func() {
@@ -151,7 +150,7 @@ func TestScripting(t *testing.T) {
 }
 
 func createTestScriptingHarness(ctx context.Context, t *testing.T, client Manager, dir string) scripting.Harness {
-	opts := testutil.ValidGolangScriptingHarnessOptions(dir)
+	opts := testoptions.ValidGolangScriptingHarnessOptions(dir)
 	sh, err := client.CreateScripting(ctx, opts)
 	require.NoError(t, err)
 	return sh

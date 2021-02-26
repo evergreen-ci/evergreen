@@ -3,7 +3,6 @@ package remote
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -14,10 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,9 +31,9 @@ func (n *neverJSON) UnmarshalJSON(in []byte) error { return errors.New("always e
 func (n *neverJSON) Read(p []byte) (int, error)    { return 0, errors.New("always error") }
 func (n *neverJSON) Close() error                  { return errors.New("always error") }
 
-func TestRestService(t *testing.T) {
-	httpClient := testutil.GetHTTPClient()
-	defer testutil.PutHTTPClient(httpClient)
+func TestRESTService(t *testing.T) {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	tempDir, err := ioutil.TempDir(testutil.BuildDirectory(), filepath.Base(t.Name()))
 	require.NoError(t, err)
@@ -175,7 +176,6 @@ func TestRestService(t *testing.T) {
 			assert.Contains(t, err.Error(), "problem building request")
 		},
 		"ProcessRequestsFailWithBadURL": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-
 			client.prefix = strings.Replace(client.prefix, "http://", "http;//", 1)
 
 			proc := &restProcess{
@@ -202,7 +202,7 @@ func TestRestService(t *testing.T) {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "problem making request")
 		},
-		"CheckSafetyOfTagMethodsForBrokenTasks": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+		"CheckSafetyOfTagMethods": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			proc := &restProcess{
 				client: client,
 				id:     "foo",
@@ -253,7 +253,7 @@ func TestRestService(t *testing.T) {
 			assert.Error(t, proc.Signal(ctx, syscall.SIGTERM))
 		},
 		"SignalErrorsWithInvalidSyscall": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-			proc, err := client.CreateProcess(ctx, testutil.SleepCreateOpts(10))
+			proc, err := client.CreateProcess(ctx, testoptions.SleepCreateOpts(10))
 			require.NoError(t, err)
 
 			assert.Error(t, proc.Signal(ctx, syscall.Signal(-1)))
@@ -264,6 +264,7 @@ func TestRestService(t *testing.T) {
 			req = req.WithContext(ctx)
 			res, err := httpClient.Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			assert.Equal(t, http.StatusNotFound, res.StatusCode)
 		},
@@ -273,7 +274,7 @@ func TestRestService(t *testing.T) {
 		},
 		"CreateFailPropagatesErrors": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			srv.manager = &mock.Manager{FailCreate: true}
-			proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
+			proc, err := client.CreateProcess(ctx, testoptions.TrueCreateOpts())
 			assert.Error(t, err)
 			assert.Nil(t, proc)
 			assert.Contains(t, err.Error(), "problem submitting request")
@@ -282,7 +283,7 @@ func TestRestService(t *testing.T) {
 			srv.manager = &mock.Manager{
 				CreateConfig: mock.Process{FailRegisterTrigger: true},
 			}
-			proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
+			proc, err := client.CreateProcess(ctx, testoptions.TrueCreateOpts())
 			require.Error(t, err)
 			assert.Nil(t, proc)
 			assert.Contains(t, err.Error(), "problem registering trigger")
@@ -300,6 +301,7 @@ func TestRestService(t *testing.T) {
 			req = req.WithContext(ctx)
 			res, err := httpClient.Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 		},
@@ -316,6 +318,7 @@ func TestRestService(t *testing.T) {
 			req = req.WithContext(ctx)
 			res, err := httpClient.Do(req)
 			require.NoError(t, err)
+			defer res.Body.Close()
 
 			assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
@@ -334,7 +337,6 @@ func TestRestService(t *testing.T) {
 
 			err := proc.Signal(ctx, syscall.SIGTERM)
 			assert.NoError(t, err)
-
 		},
 		"SignalFailsToParsePID": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			req, err := http.NewRequest(http.MethodPatch, client.getURL("/process/%s/signal/f", "foo"), nil)
@@ -358,20 +360,6 @@ func TestRestService(t *testing.T) {
 			rw := httptest.NewRecorder()
 			srv.downloadFile(rw, req)
 			assert.Equal(t, http.StatusBadRequest, rw.Code)
-		},
-		"GetLogStreamFailsWithoutInMemoryLogger": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-			opts := &options.Create{Args: []string{"echo", "foo"}}
-
-			proc, err := client.CreateProcess(ctx, opts)
-			require.NoError(t, err)
-			require.NotNil(t, proc)
-
-			_, err = proc.Wait(ctx)
-			require.NoError(t, err)
-
-			stream, err := client.GetLogStream(ctx, proc.ID(), 1)
-			assert.Error(t, err)
-			assert.Zero(t, stream)
 		},
 		"InitialCacheOptionsMatchDefault": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			assert.Equal(t, jasper.DefaultMaxCacheSize, srv.cacheOpts.MaxSize)
@@ -435,7 +423,7 @@ func TestRestService(t *testing.T) {
 			absDir, err := filepath.Abs(dir)
 			require.NoError(t, err)
 
-			opts := testutil.ValidMongoDBDownloadOptions()
+			opts := testoptions.ValidMongoDBDownloadOptions()
 			opts.Path = absDir
 
 			err = client.DownloadMongoDB(ctx, opts)
@@ -545,17 +533,16 @@ func TestRestService(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), testutil.LongTestTimeout)
 			defer cancel()
 
-			srv, port, err := startRESTService(ctx, httpClient)
+			mngr, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
-			require.NotNil(t, srv)
 
+			srv, client, err := makeRESTServiceAndClient(ctx, mngr, httpClient)
 			require.NoError(t, err)
-			client := &restClient{
-				prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
-				client: httpClient,
-			}
 
-			test(ctx, t, srv, client)
+			restClient, ok := client.(*restClient)
+			require.True(t, ok)
+
+			test(ctx, t, srv, restClient)
 		})
 	}
 }

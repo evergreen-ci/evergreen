@@ -37,8 +37,8 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 	return model.ProjectSettingsEvent{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
-			Enabled: true,
-			Private: true,
+			Enabled: utility.TruePtr(),
+			Private: utility.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},
@@ -79,34 +79,34 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		projects := []*model.ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     false,
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Private:     utility.FalsePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "gimlet",
-				Branch:      "master",
+				Branch:      "main",
 			},
 			{
 				Id:          "projectB",
-				Private:     true,
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Private:     utility.TruePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
 				Repo:        "evergreen",
-				Branch:      "master",
+				Branch:      "main",
 			},
 			{
 				Id:          "projectC",
-				Private:     true,
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Private:     utility.TruePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
-				Branch:      "master",
+				Branch:      "main",
 			},
-			{Id: "projectD", Private: false},
-			{Id: "projectE", Private: false},
-			{Id: "projectF", Private: true},
+			{Id: "projectD", Private: utility.FalsePtr()},
+			{Id: "projectE", Private: utility.FalsePtr()},
+			{Id: "projectF", Private: utility.TruePtr()},
 		}
 
 		for _, p := range projects {
@@ -171,8 +171,8 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		beforeSettings := restModel.APIProjectSettings{
 			ProjectRef: restModel.APIProjectRef{
 				Owner:      utility.ToStringPtr("admin"),
-				Enabled:    true,
-				Private:    true,
+				Enabled:    utility.TruePtr(),
+				Private:    utility.TruePtr(),
 				Identifier: utility.ToStringPtr(projectId),
 				Admins:     []*string{},
 			},
@@ -200,7 +200,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 		}
 
 		afterSettings := beforeSettings
-		afterSettings.ProjectRef.Enabled = false
+		afterSettings.ProjectRef.Enabled = utility.FalsePtr()
 
 		projectEvents := []restModel.APIProjectEvent{}
 		for i := 0; i < projEventCount; i++ {
@@ -216,31 +216,31 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 			CachedProjects: []model.ProjectRef{
 				{
 					Id:          "projectA",
-					Private:     false,
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Private:     utility.FalsePtr(),
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "gimlet",
-					Branch:      "master",
+					Branch:      "main",
 				},
 				{
 					Id:          "projectB",
-					Private:     true,
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Private:     utility.TruePtr(),
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "evergreen",
-					Branch:      "master",
+					Branch:      "main",
 				},
 				{
 					Id:          "projectC",
-					Private:     true,
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Private:     utility.TruePtr(),
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 					Owner:       "evergreen-ci",
 					Repo:        "evergreen",
-					Branch:      "master",
+					Branch:      "main",
 				},
-				{Id: "projectD", Private: false},
-				{Id: "projectE", Private: false},
-				{Id: "projectF", Private: true},
+				{Id: "projectD", Private: utility.FalsePtr()},
+				{Id: "projectE", Private: utility.FalsePtr()},
+				{Id: "projectF", Private: utility.TruePtr()},
 			},
 			CachedEvents: projectEvents,
 			CachedVars: []*model.ProjectVars{
@@ -337,11 +337,11 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "master")
+	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
+	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }
@@ -349,8 +349,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
-		Enabled: true,
-		Private: true,
+		Enabled: utility.TruePtr(),
+		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 		Repo:    "SomeRepo",
@@ -363,8 +363,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
-		Enabled: true,
-		Private: true,
+		Enabled: utility.TruePtr(),
+		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 	}

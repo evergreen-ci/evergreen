@@ -14,8 +14,6 @@ type Query {
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
-    sortBy: TaskSortCategory = STATUS
-    sortDir: SortDirection = ASC
     sorts: [SortOrder!]
     page: Int = 0
     limit: Int = 0
@@ -80,7 +78,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
-  enqueuePatch(patchId: String!): Patch!
+  enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
@@ -325,6 +323,7 @@ type TaskQueueDistro {
 }
 
 type Host {
+  homeVolume: Volume
   id: ID!
   hostUrl: String!
   tag: String!
@@ -454,7 +453,7 @@ type Patch {
   tasks: [String!]!
   variantsTasks: [VariantTask]!
   activated: Boolean!
-  alias: String!
+  alias: String
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
@@ -611,16 +610,16 @@ type BaseTaskMetadata {
 }
 
 type AbortInfo {
-  user: String
-  taskID: String
-  taskDisplayName: String
-  buildVariantDisplayName: String
-  newVersion: String
-  prClosed: Boolean
+  user: String!
+  taskID: String!
+  taskDisplayName: String!
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
 }
 
 type Task {
-  aborted: Boolean
+  aborted: Boolean!
   abortInfo: AbortInfo
   activated: Boolean!
   activatedBy: String
@@ -942,7 +941,9 @@ type Annotation {
   note: Note
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
+  createdIssues: [IssueLink]
   userCanModify: Boolean
+  webhookConfigured: Boolean!
 }
 
 type Note {

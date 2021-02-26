@@ -91,7 +91,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
 
-	if !projectRef.Enabled || projectRef.RepotrackerDisabled {
+	if !projectRef.IsEnabled() || projectRef.IsRepotrackerDisabled() {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// projects.
@@ -319,7 +319,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		if ref.GithubChecksEnabled {
+		if ref.IsGithubChecksEnabled() {
 			if err = addGithubCheckSubscriptions(v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "error adding github check subscriptions",
@@ -531,7 +531,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	}
 
 	// Only send to admins if the admins have enabled build break notifications
-	if !projectRef.NotifyOnBuildFailure {
+	if !projectRef.ShouldNotifyOnBuildFailure() {
 		return nil
 	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
@@ -564,7 +564,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	}
 	var subscriber *event.Subscriber
 	preference := u.Settings.Notifications.BuildBreak
-	if preference != "" {
+	if preference != "" && preference != user.PreferenceNone {
 		subscriber = &event.Subscriber{
 			Type: string(preference),
 		}
@@ -792,7 +792,7 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 			v.RevisionOrderNumber = num
 		}
 	} else if metadata.GitTag.Tag != "" {
-		if !ref.GitTagVersionsEnabled {
+		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)
 		}
 		settings, err := evergreen.GetConfig()
@@ -929,7 +929,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	batchTimeCatcher := grip.NewBasicCatcher()
 	debuggingData := map[string]string{}
 	var githubCheckAliases model.ProjectAliases
-	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.GithubChecksEnabled {
+	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
 		githubCheckAliases, err = model.FindAliasInProject(v.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",

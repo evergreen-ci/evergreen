@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -451,11 +452,12 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		if err := tc.oomTracker.Check(oomCtx); err != nil {
 			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
 		}
-		durationString := fmt.Sprintf("found no OOM kill in %.3f seconds", time.Now().Sub(startTime).Seconds())
-		if found, _ := tc.oomTracker.Report(); found {
-			durationString = fmt.Sprintf("found an OOM kill in %.3f seconds", time.Now().Sub(startTime).Seconds())
+		if lines, _ := tc.oomTracker.Report(); len(lines) > 0 {
+			tc.logger.Execution().Debugf("found an OOM kill (in %.3f seconds)", time.Now().Sub(startTime).Seconds())
+			tc.logger.Execution().Debug(strings.Join(lines, "\n"))
+		} else {
+			tc.logger.Execution().Debugf("found no OOM kill (in %.3f seconds)", time.Now().Sub(startTime).Seconds())
 		}
-		tc.logger.Execution().Debug(durationString)
 	}
 
 	return status

@@ -165,7 +165,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.Project = utility.ToStringPtr(v.Project)
-	apiPatch.CanEnqueueToCommitQueue = v.CanEnqueueToCommitQueue()
+	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }

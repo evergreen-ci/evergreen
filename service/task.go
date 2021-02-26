@@ -558,7 +558,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(ctx, projCtx.Task.Id, logReader))
 		return
 	}
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Warning(message.WrapError(err, message.Fields{
 		"task_id": projCtx.Task.Id,
 		"message": "problem getting buildlogger logs",
 	}))
@@ -614,7 +614,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 			}))
 		}()
 	} else {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id": projCtx.Task.Id,
 			"message": "problem getting buildlogger logs",
 		}))
@@ -720,6 +720,10 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case "set_active":
 		active := putParams.Active
+		if active && projCtx.Task.Requester == evergreen.MergeTestRequester {
+			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
+			return
+		}
 		if err = model.SetActiveState(projCtx.Task, authUser.Username(), active); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)

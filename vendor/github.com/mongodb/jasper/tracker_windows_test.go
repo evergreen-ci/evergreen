@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,7 +123,7 @@ func TestWindowsProcessTracker(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, tracker)
 
-			testCase(ctx, t, tracker, testutil.SleepCreateOpts(1))
+			testCase(ctx, t, tracker, testoptions.SleepCreateOpts(1))
 		})
 	}
 }

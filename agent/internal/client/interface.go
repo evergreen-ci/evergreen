@@ -88,7 +88,7 @@ type Communicator interface {
 	// used by task commands.
 	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
-	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
+	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
 	// The following operations are used by
@@ -110,11 +110,16 @@ type Communicator interface {
 
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
-	ListHosts(context.Context, TaskData) ([]restmodel.CreateHost, error)
+	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
 
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
 	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
+
+	// ConcludeMerge reports the status of a commit queue merge back to the server
+	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
+
+	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error
 }
 
 type LoggerMetadata struct {

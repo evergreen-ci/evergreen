@@ -3,9 +3,9 @@ name := evergreen
 buildDir := bin
 tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
-packages := $(name) agent agent-command agent-util agent-internal agent-internal-client apimodels operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core
-packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages := $(name) agent agent-command agent-util agent-internal agent-internal-client api apimodels operations cloud cloud-userdata
+packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service service-testutil repotracker cmd-codegen-core
+packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
@@ -37,8 +37,8 @@ endif
 
 # start evergreen specific configuration
 
-unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy)
-windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
+unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_s390x linux_arm64 linux_ppc64le linux_amd64_legacy)
+windowsPlatforms := windows_amd64
 
 
 goos := $(shell $(gobin) env GOOS)
@@ -329,6 +329,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/aws/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/utility/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
@@ -455,7 +456,10 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(shell pwd) GOPATH=$(gopath)
+ifeq (,$(GOCONVEY_REPORTER))
+	testRunEnv += GOCONVEY_REPORTER=silent
+endif
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif

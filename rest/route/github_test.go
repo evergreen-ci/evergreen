@@ -72,11 +72,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 			CachedProjects: []model.ProjectRef{
 				model.ProjectRef{
 					Id:          "bth",
-					Enabled:     true,
+					Enabled:     utility.TruePtr(),
 					Owner:       "baxterthehacker",
 					Repo:        "public-repo",
-					Branch:      "master",
-					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Branch:      "main",
+					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				},
 			},
 		},
@@ -92,16 +92,16 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24743)
+	s.Len(s.prBody, 24731)
 	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
-	s.Len(s.pushBody, 7603)
+	s.Len(s.pushBody, 7597)
 	s.commitQueueCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
-	s.Len(s.commitQueueCommentBody, 11496)
+	s.Len(s.commitQueueCommentBody, 11494)
 	s.retryCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
 	s.NoError(err)
-	s.Len(s.retryCommentBody, 11470)
+	s.Len(s.retryCommentBody, 11468)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -204,7 +204,7 @@ func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Owner:   "baxterthehacker",
 		Repo:    "public-repo",
 		Branch:  "changes",
@@ -267,7 +267,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 
 	owner := "baxterthehacker"
 	repo := "public-repo"
-	branch := "master"
+	branch := "main"
 	number := 1
 
 	fillerString := "a"
@@ -335,7 +335,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	pRef := model.ProjectRef{
 		Id:                    "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
-		GitTagVersionsEnabled: true,
+		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

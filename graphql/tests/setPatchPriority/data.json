@@ -4,7 +4,7 @@
       "_id": "evergreen",
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "github",
       "enabled": true,
       "private": false,

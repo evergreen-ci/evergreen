@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	empty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper/options"
 	internal "github.com/mongodb/jasper/remote/internal"
 	"github.com/pkg/errors"
@@ -42,25 +40,33 @@ func (lc *rpcLoggingCache) Put(id string, opts *options.CachedLogger) error {
 	return errors.New("operation not supported for remote managers")
 }
 
-func (lc *rpcLoggingCache) Get(id string) *options.CachedLogger {
+func (lc *rpcLoggingCache) Get(id string) (*options.CachedLogger, error) {
 	resp, err := lc.client.LoggingCacheGet(lc.ctx, &internal.LoggingCacheArgs{Id: id})
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	if !resp.Outcome.Success {
-		return nil
+		return nil, errors.Errorf("failed to get logger: %s", resp.Outcome.Text)
 	}
 
 	out, err := resp.Export()
 	if err != nil {
-		return nil
+		return nil, errors.Wrap(err, "exporting response")
 	}
 
-	return out
+	return out, nil
 }
 
-func (lc *rpcLoggingCache) Remove(id string) {
-	_, _ = lc.client.LoggingCacheRemove(lc.ctx, &internal.LoggingCacheArgs{Id: id})
+func (lc *rpcLoggingCache) Remove(id string) error {
+	resp, err := lc.client.LoggingCacheRemove(lc.ctx, &internal.LoggingCacheArgs{Id: id})
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.Errorf("failed to remove: %s", resp.Text)
+	}
+
+	return nil
 }
 
 func (lc *rpcLoggingCache) CloseAndRemove(ctx context.Context, id string) error {
@@ -80,29 +86,38 @@ func (lc *rpcLoggingCache) Clear(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	if !resp.Success {
 		return errors.Errorf("failed to clear the logging cache: %s", resp.Text)
 	}
+
 	return nil
 }
 
-func (lc *rpcLoggingCache) Prune(ts time.Time) {
+func (lc *rpcLoggingCache) Prune(ts time.Time) error {
 	pbts, err := ptypes.TimestampProto(ts)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not convert prune timestamp to equivalent protobuf RPC timestamp",
-		}))
-		return
+		return errors.Wrap(err, "converting prune timestamp to protobuf timestamp")
 	}
-	_, _ = lc.client.LoggingCachePrune(lc.ctx, pbts)
+
+	resp, err := lc.client.LoggingCachePrune(lc.ctx, pbts)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.Errorf("failed to prune logging cache: %s", resp.Text)
+	}
+
+	return nil
 }
 
-func (lc *rpcLoggingCache) Len() int {
+func (lc *rpcLoggingCache) Len() (int, error) {
 	resp, err := lc.client.LoggingCacheLen(lc.ctx, &empty.Empty{})
 	if err != nil {
-		return -1
+		return -1, err
+	}
+	if !resp.Outcome.Success {
+		return -1, errors.Errorf("failed to get logging cache length: %s", resp.Outcome.Text)
 	}
 
-	return int(resp.Size)
+	return int(resp.Len), nil
 }

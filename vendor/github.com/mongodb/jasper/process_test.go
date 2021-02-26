@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,15 +27,21 @@ func TestProcessImplementations(t *testing.T) {
 	defer cancel()
 
 	for pname, makeProc := range map[string]ProcessConstructor{
-		"BlockingNoLock":   newBlockingProcess,
-		"BlockingWithLock": makeLockingProcess(newBlockingProcess),
-		"BasicNoLock":      newBasicProcess,
-		"BasicWithLock":    makeLockingProcess(newBasicProcess),
+		"BlockingProcess": newBlockingProcess,
+		"BlockingSynchronizedProcess": func(ctx context.Context, opts *options.Create) (Process, error) {
+			opts.Implementation = options.ProcessImplementationBlocking
+			return newSynchronizedProcess(ctx, opts)
+		},
+		"BasicProcess": newBasicProcess,
+		"BasicSynchronizedProcess": func(ctx context.Context, opts *options.Create) (Process, error) {
+			opts.Implementation = options.ProcessImplementationBasic
+			return newSynchronizedProcess(ctx, opts)
+		},
 	} {
 		t.Run(pname, func(t *testing.T) {
-			for optsTestName, modifyOpts := range map[string]func(*options.Create) *options.Create{
-				"Local": func(opts *options.Create) *options.Create { return opts },
-				"Docker": func(opts *options.Create) *options.Create {
+			for optsTestName, modifyOpts := range map[string]testoptions.ModifyOpts{
+				"LocalExecutor": func(opts *options.Create) *options.Create { return opts },
+				"DockerExecutor": func(opts *options.Create) *options.Create {
 					image := os.Getenv("DOCKER_IMAGE")
 					if image == "" {
 						image = testutil.DefaultDockerImage
@@ -60,32 +67,14 @@ func TestProcessImplementations(t *testing.T) {
 					}()
 				}
 
-				t.Run(optsTestName, func(t *testing.T) {
-					for testName, testCase := range map[string]func(context.Context, *testing.T, *options.Create, ProcessConstructor){
-						"WithPopulatedArgsCommandCreationPasses": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							assert.NotZero(t, opts.Args)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.NotNil(t, proc)
-						},
-						"ErrorToCreateWithInvalidArgs": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							opts.Args = []string{}
-							proc, err := makep(ctx, opts)
-							assert.Error(t, err)
-							assert.Nil(t, proc)
-						},
-						"WithCanceledContextProcessCreationFails": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							pctx, pcancel := context.WithCancel(ctx)
-							pcancel()
-							proc, err := makep(pctx, opts)
-							assert.Error(t, err)
-							assert.Nil(t, proc)
-						},
-						"CanceledContextTimesOutEarly": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
+				testCases := append(ProcessTests(), []ProcessTestCase{
+					{
+						Name: "CanceledContextTimesOutEarly",
+						Case: func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
 							pctx, pcancel := context.WithTimeout(ctx, 5*time.Second)
 							defer pcancel()
 							startAt := time.Now()
-							opts := testutil.SleepCreateOpts(20)
+							opts := testoptions.SleepCreateOpts(20)
 							proc, err := makep(pctx, opts)
 							require.NoError(t, err)
 							require.NotNil(t, proc)
@@ -94,121 +83,10 @@ func TestProcessImplementations(t *testing.T) {
 							assert.False(t, proc.Info(ctx).Successful)
 							assert.True(t, time.Since(startAt) < 20*time.Second)
 						},
-						"ProcessLacksTagsByDefault": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							tags := proc.GetTags()
-							assert.Empty(t, tags)
-						},
-						"ProcessTagsPersist": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							opts.Tags = []string{"foo"}
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							tags := proc.GetTags()
-							assert.Contains(t, tags, "foo")
-						},
-						"InfoTagsMatchGetTags": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							opts.Tags = []string{"foo"}
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							tags := proc.GetTags()
-							assert.Contains(t, tags, "foo")
-							assert.Equal(t, tags, proc.Info(ctx).Options.Tags)
-
-							proc.ResetTags()
-							tags = proc.GetTags()
-							assert.Empty(t, tags)
-							assert.Empty(t, proc.Info(ctx).Options.Tags)
-						},
-						"InfoHasMatchingID": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							_, err = proc.Wait(ctx)
-							require.NoError(t, err)
-							assert.Equal(t, proc.ID(), proc.Info(ctx).ID)
-						},
-						"ResetTags": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							proc.Tag("foo")
-							assert.Contains(t, proc.GetTags(), "foo")
-							proc.ResetTags()
-							assert.Len(t, proc.GetTags(), 0)
-						},
-						"TagsAreSetLike": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-
-							for i := 0; i < 10; i++ {
-								proc.Tag("foo")
-							}
-
-							assert.Len(t, proc.GetTags(), 1)
-							proc.Tag("bar")
-							assert.Len(t, proc.GetTags(), 2)
-						},
-						"CompleteIsTrueAfterWait": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							time.Sleep(10 * time.Millisecond) // give the process time to start background machinery
-							_, err = proc.Wait(ctx)
-							assert.NoError(t, err)
-							assert.True(t, proc.Complete(ctx))
-						},
-						"WaitReturnsWithCanceledContext": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							opts.Args = []string{"sleep", "20"}
-							pctx, pcancel := context.WithCancel(ctx)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.True(t, proc.Running(ctx))
-							assert.NoError(t, err)
-							pcancel()
-							_, err = proc.Wait(pctx)
-							assert.Error(t, err)
-						},
-						"RegisterTriggerErrorsForNil": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.Error(t, proc.RegisterTrigger(ctx, nil))
-						},
-						"RegisterSignalTriggerErrorsForNil": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.Error(t, proc.RegisterSignalTrigger(ctx, nil))
-						},
-						"RegisterSignalTriggerErrorsForExitedProcess": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							_, err = proc.Wait(ctx)
-							assert.NoError(t, err)
-							assert.Error(t, proc.RegisterSignalTrigger(ctx, func(_ ProcessInfo, _ syscall.Signal) bool { return false }))
-						},
-						"RegisterSignalTriggerIDErrorsForExitedProcess": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							_, err = proc.Wait(ctx)
-							assert.NoError(t, err)
-							assert.Error(t, proc.RegisterSignalTriggerID(ctx, CleanTerminationSignalTrigger))
-						},
-						"RegisterSignalTriggerIDFailsWithInvalidTriggerID": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(3)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.Error(t, proc.RegisterSignalTriggerID(ctx, SignalTriggerID("foo")))
-						},
-						"RegisterSignalTriggerIDPassesWithValidTriggerID": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(3)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.NoError(t, proc.RegisterSignalTriggerID(ctx, CleanTerminationSignalTrigger))
-						},
-						"DefaultTriggerSucceeds": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(3)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							assert.NoError(t, proc.RegisterTrigger(ctx, makeDefaultTrigger(ctx, nil, opts, "foo")))
-						},
-						"OptionsCloseTriggerRegisteredByDefault": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "OptionsCloseTriggerRegisteredByDefault",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
 							count := 0
 							countIncremented := make(chan bool, 1)
 							opts.RegisterCloser(func() (_ error) {
@@ -231,8 +109,28 @@ func TestProcessImplementations(t *testing.T) {
 								assert.Equal(t, 1, count)
 							}
 						},
-						"SignalTriggerRunsBeforeSignal": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.SleepCreateOpts(1))
+					},
+					{
+						Name: "WaitGivesProperExitCodeOnSignalAbort",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor) {
+							proc, err := makeProc(ctx, testoptions.SleepCreateOpts(5))
+							require.NoError(t, err)
+							require.NotNil(t, proc)
+							sig := syscall.SIGABRT
+							assert.NoError(t, proc.Signal(ctx, sig))
+							exitCode, err := proc.Wait(ctx)
+							assert.Error(t, err)
+							if runtime.GOOS == "windows" {
+								assert.Equal(t, 1, exitCode)
+							} else {
+								assert.Equal(t, int(sig), exitCode)
+							}
+						},
+					},
+					{
+						Name: "SignalTriggerRunsBeforeSignal",
+						Case: func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
+							proc, err := makep(ctx, testoptions.SleepCreateOpts(1))
 							require.NoError(t, err)
 
 							expectedSig := syscall.SIGKILL
@@ -255,8 +153,11 @@ func TestProcessImplementations(t *testing.T) {
 							assert.False(t, proc.Running(ctx))
 							assert.True(t, proc.Complete(ctx))
 						},
-						"SignalTriggerCanSkipSignal": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.SleepCreateOpts(1))
+					},
+					{
+						Name: "SignalTriggerCanSkipSignal",
+						Case: func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
+							proc, err := makep(ctx, testoptions.SleepCreateOpts(1))
 							require.NoError(t, err)
 
 							expectedSig := syscall.SIGKILL
@@ -285,7 +186,10 @@ func TestProcessImplementations(t *testing.T) {
 							assert.False(t, proc.Running(ctx))
 							assert.True(t, proc.Complete(ctx))
 						},
-						"ProcessLogDefault": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "ProcessLogDefault",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
 							file, err := ioutil.TempFile(testutil.BuildDirectory(), "out.txt")
 							require.NoError(t, err)
 							defer func() {
@@ -309,7 +213,10 @@ func TestProcessImplementations(t *testing.T) {
 							_, err = proc.Wait(ctx)
 							assert.NoError(t, err)
 						},
-						"ProcessWritesToLog": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "ProcessWritesToLogFile",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
 							file, err := ioutil.TempFile(testutil.BuildDirectory(), "out.txt")
 							require.NoError(t, err)
 							defer func() {
@@ -338,13 +245,15 @@ func TestProcessImplementations(t *testing.T) {
 							// so wait for file to be non-empty.
 							fileWrite := make(chan bool)
 							go func() {
-								done := false
-								for !done {
+								for {
 									info, err = file.Stat()
 									require.NoError(t, err)
 									if info.Size() > 0 {
-										done = true
-										fileWrite <- done
+										select {
+										case <-ctx.Done():
+										case fileWrite <- true:
+										}
+										return
 									}
 								}
 							}()
@@ -358,7 +267,10 @@ func TestProcessImplementations(t *testing.T) {
 								assert.NotZero(t, info.Size())
 							}
 						},
-						"ProcessWritesToBufferedLog": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "ProcessWritesToBufferedLog",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
 							file, err := ioutil.TempFile(testutil.BuildDirectory(), "out.txt")
 							require.NoError(t, err)
 							defer func() {
@@ -393,8 +305,11 @@ func TestProcessImplementations(t *testing.T) {
 									info, err = file.Stat()
 									require.NoError(t, err)
 									if info.Size() > 0 {
-										fileWrite <- info.Size()
-										break
+										select {
+										case <-ctx.Done():
+										case fileWrite <- info.Size():
+										}
+										return
 									}
 								}
 							}()
@@ -406,63 +321,12 @@ func TestProcessImplementations(t *testing.T) {
 								assert.NotZero(t, size)
 							}
 						},
-						"WaitOnRespawnedProcessDoesNotError": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							_, err = proc.Wait(ctx)
-							require.NoError(t, err)
-
-							newProc, err := proc.Respawn(ctx)
-							require.NoError(t, err)
-							_, err = newProc.Wait(ctx)
-							assert.NoError(t, err)
-						},
-						"RespawnedProcessGivesSameResult": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-
-							_, err = proc.Wait(ctx)
-							require.NoError(t, err)
-							procExitCode := proc.Info(ctx).ExitCode
-
-							newProc, err := proc.Respawn(ctx)
-							require.NoError(t, err)
-							_, err = newProc.Wait(ctx)
-							require.NoError(t, err)
-							assert.Equal(t, procExitCode, proc.Info(ctx).ExitCode)
-						},
-						"RespawningFinishedProcessIsOK": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							_, err = proc.Wait(ctx)
-							require.NoError(t, err)
-
-							newProc, err := proc.Respawn(ctx)
-							require.NoError(t, err)
-							require.NotNil(t, newProc)
-							_, err = newProc.Wait(ctx)
-							require.NoError(t, err)
-							assert.True(t, newProc.Info(ctx).Successful)
-						},
-						"RespawningRunningProcessIsOK": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(2)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-
-							newProc, err := proc.Respawn(ctx)
-							require.NoError(t, err)
-							require.NotNil(t, newProc)
-							_, err = newProc.Wait(ctx)
-							require.NoError(t, err)
-							assert.True(t, newProc.Info(ctx).Successful)
-						},
-						"TriggersFireOnRespawnedProcessExit": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "TriggersFireOnRespawnedProcessExit",
+						Case: func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
 							count := 0
-							opts := testutil.SleepCreateOpts(2)
+							opts := testoptions.SleepCreateOpts(2)
 							proc, err := makep(ctx, opts)
 							require.NoError(t, err)
 							require.NotNil(t, proc)
@@ -497,119 +361,15 @@ func TestProcessImplementations(t *testing.T) {
 								assert.Equal(t, 2, count)
 							}
 						},
-						"RespawnShowsConsistentStateValues": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(2)
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							_, err = proc.Wait(ctx)
-							require.NoError(t, err)
-
-							newProc, err := proc.Respawn(ctx)
-							require.NoError(t, err)
-							assert.True(t, newProc.Running(ctx))
-							_, err = newProc.Wait(ctx)
-							require.NoError(t, err)
-							assert.True(t, newProc.Complete(ctx))
-						},
-						"WaitGivesSuccessfulExitCode": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.TrueCreateOpts())
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							exitCode, err := proc.Wait(ctx)
-							assert.NoError(t, err)
-							assert.Equal(t, 0, exitCode)
-						},
-						"WaitGivesFailureExitCode": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.FalseCreateOpts())
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							exitCode, err := proc.Wait(ctx)
-							assert.Error(t, err)
-							assert.Equal(t, 1, exitCode)
-						},
-						"WaitGivesProperExitCodeOnSignalDeath": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.SleepCreateOpts(100))
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							sig := syscall.SIGTERM
-							assert.NoError(t, proc.Signal(ctx, sig))
-							exitCode, err := proc.Wait(ctx)
-							assert.Error(t, err)
-							if runtime.GOOS == "windows" {
-								assert.Equal(t, 1, exitCode)
-							} else {
-								assert.Equal(t, int(sig), exitCode)
-							}
-						},
-						"WaitGivesProperExitCodeOnSignalAbort": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.SleepCreateOpts(100))
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-							sig := syscall.SIGABRT
-							assert.NoError(t, proc.Signal(ctx, sig))
-							exitCode, err := proc.Wait(ctx)
-							assert.Error(t, err)
-							if runtime.GOOS == "windows" {
-								assert.Equal(t, 1, exitCode)
-							} else {
-								assert.Equal(t, int(sig), exitCode)
-							}
-						},
-						"WaitGivesNegativeOneOnAlternativeError": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, testutil.SleepCreateOpts(100))
-							require.NoError(t, err)
-							require.NotNil(t, proc)
-
-							var exitCode int
-							waitFinished := make(chan bool)
-							cctx, cancel := context.WithCancel(ctx)
-							cancel()
-							go func() {
-								exitCode, err = proc.Wait(cctx)
-								waitFinished <- true
-							}()
-							select {
-							case <-waitFinished:
-								assert.Error(t, err)
-								assert.Equal(t, -1, exitCode)
-							case <-ctx.Done():
-								assert.Fail(t, "call to Wait() took too long to finish")
-							}
-						},
-						"InfoHasTimeoutWhenProcessTimesOut": func(ctx context.Context, t *testing.T, _ *options.Create, makep ProcessConstructor) {
-							opts := testutil.SleepCreateOpts(100)
-							opts.Timeout = time.Second
-							opts.TimeoutSecs = 1
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-
-							exitCode, err := proc.Wait(ctx)
-							assert.Error(t, err)
-							if runtime.GOOS == "windows" {
-								assert.Equal(t, 1, exitCode)
-							} else {
-								assert.Equal(t, int(syscall.SIGKILL), exitCode)
-							}
-							assert.True(t, proc.Info(ctx).Timeout)
-						},
-						"CallingSignalOnDeadProcessDoesError": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
-							proc, err := makep(ctx, opts)
-							require.NoError(t, err)
-
-							_, err = proc.Wait(ctx)
-							assert.NoError(t, err)
-
-							err = proc.Signal(ctx, syscall.SIGTERM)
-							require.Error(t, err)
-							assert.True(t, strings.Contains(err.Error(), "cannot signal a process that has terminated"))
-						},
-						"StandardInput": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {
+					},
+					{
+						Name: "ProcessStandardInput",
+						Case: func(ctx context.Context, t *testing.T, opts *options.Create, makeProc ProcessConstructor) {
 							for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer){
-								"ReaderSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+								"ReaderIsSet": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
 									opts.StandardInput = bytes.NewBuffer(stdin)
 
-									proc, err := makep(ctx, opts)
+									proc, err := makeProc(ctx, opts)
 									require.NoError(t, err)
 
 									_, err = proc.Wait(ctx)
@@ -617,21 +377,10 @@ func TestProcessImplementations(t *testing.T) {
 
 									assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
 								},
-								"BytesSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
-									opts.StandardInputBytes = stdin
-
-									proc, err := makep(ctx, opts)
-									require.NoError(t, err)
-
-									_, err = proc.Wait(ctx)
-									require.NoError(t, err)
-
-									assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
-								},
-								"ReaderNotRereadByRespawn": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+								"ReaderNotRereadByRespawnedProcess": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
 									opts.StandardInput = bytes.NewBuffer(stdin)
 
-									proc, err := makep(ctx, opts)
+									proc, err := makeProc(ctx, opts)
 									require.NoError(t, err)
 
 									_, err = proc.Wait(ctx)
@@ -651,10 +400,21 @@ func TestProcessImplementations(t *testing.T) {
 
 									assert.Equal(t, proc.Info(ctx).Options.StandardInput, newProc.Info(ctx).Options.StandardInput)
 								},
-								"BytesCopiedByRespawn": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+								"BytesIsSet": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
 									opts.StandardInputBytes = stdin
 
-									proc, err := makep(ctx, opts)
+									proc, err := makeProc(ctx, opts)
+									require.NoError(t, err)
+
+									_, err = proc.Wait(ctx)
+									require.NoError(t, err)
+
+									assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+								},
+								"BytesCopiedByRespawnedProcess": func(ctx context.Context, t *testing.T, opts *options.Create, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+									opts.StandardInputBytes = stdin
+
+									proc, err := makeProc(ctx, opts)
 									require.NoError(t, err)
 
 									_, err = proc.Wait(ctx)
@@ -687,19 +447,22 @@ func TestProcessImplementations(t *testing.T) {
 								})
 							}
 						},
-						// "": func(ctx context.Context, t *testing.T, opts *options.Create, makep ProcessConstructor) {},
-					} {
-						t.Run(testName, func(t *testing.T) {
-							tctx, cancel := context.WithTimeout(ctx, testutil.ProcessTestTimeout)
-							defer cancel()
+					},
+				}...)
 
-							opts := &options.Create{Args: []string{"ls"}}
-							opts = modifyOpts(opts)
-							testCase(tctx, t, opts, makeProc)
+				t.Run(optsTestName, func(t *testing.T) {
+					for _, testCase := range testCases {
+						t.Run(testCase.Name, func(t *testing.T) {
+							tctx, tcancel := context.WithTimeout(ctx, testutil.ProcessTestTimeout)
+							defer tcancel()
+
+							opts := modifyOpts(&options.Create{Args: []string{"ls"}})
+							testCase.Case(tctx, t, opts, makeProc)
 						})
 					}
 				})
 			}
+
 		})
 	}
 }

@@ -65,10 +65,11 @@ type Mock struct {
 	TestLogCount     int
 
 	// data collected by mocked methods
-	logMessages     map[string][]apimodels.LogMessage
-	PatchFiles      map[string]string
-	keyVal          map[string]*serviceModel.KeyVal
-	LastMessageSent time.Time
+	logMessages      map[string][]apimodels.LogMessage
+	PatchFiles       map[string]string
+	keyVal           map[string]*serviceModel.KeyVal
+	LastMessageSent  time.Time
+	DownstreamParams []patchmodel.Parameter
 
 	mu sync.RWMutex
 }
@@ -346,7 +347,7 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	return out, nil
 }
 
-func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
+func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
 	if !ok {
 		return &patchmodel.Patch{}, nil
@@ -396,6 +397,11 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	grip.Info("attaching files")
 	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
 
+	return nil
+}
+
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+	c.DownstreamParams = downstreamParams
 	return nil
 }
 
@@ -468,7 +474,9 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 	return []string{"id"}, options.Validate()
 }
 
-func (c *Mock) ListHosts(_ context.Context, _ TaskData) ([]model.CreateHost, error) { return nil, nil }
+func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {
+	return model.HostListResults{}, nil
+}
 
 func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
 	return []byte("this is a log"), nil
@@ -476,4 +484,8 @@ func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool
 
 func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
 	return &cloud.ContainerStatus{HasStarted: true}, nil
+}
+
+func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
+	return nil
 }

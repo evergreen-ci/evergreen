@@ -448,15 +448,20 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
-// multiple times upon failure.
-func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) (*patchmodel.Patch, error) {
+// multiple times upon failure. If patchId is not specified, the task's
+// patch is returned
+func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch := patchmodel.Patch{}
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 		version:  apiVersion1,
 	}
-	info.setTaskPathSuffix("git/patch")
+	suffix := "git/patch"
+	if patchId != "" {
+		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
+	}
+	info.setTaskPathSuffix(suffix)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "failed to get patch for task %s: %s", taskData.ID, err.Error())
@@ -577,6 +582,25 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to post files for task %s: %s", taskData.ID, err.Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		taskData: &TaskData{
+			ID: taskId,
+		},
+		version: apiVersion2,
+	}
+
+	info.setTaskPathSuffix("downstreamParams")
+	resp, err := c.retryRequest(ctx, info, downstreamParams)
+	if err != nil {
+		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskId, err.Error())
 	}
 	defer resp.Body.Close()
 
@@ -761,7 +785,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	return ids, nil
 }
 
-func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {
+func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) (restmodel.HostListResults, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
@@ -769,17 +793,17 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		path:     fmt.Sprintf("hosts/%s/list", td.ID),
 	}
 
+	result := restmodel.HostListResults{}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
+		return result, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
-	hosts := []restmodel.CreateHost{}
-	if err := utility.ReadJSON(resp.Body, &hosts); err != nil {
-		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
+	if err := utility.ReadJSON(resp.Body, &result); err != nil {
+		return result, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
 	}
-	return hosts, nil
+	return result, nil
 }
 
 func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
@@ -864,4 +888,29 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	return body, nil
+}
+
+func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodGet,
+		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
+		version:  apiVersion2,
+		taskData: &td,
+	}
+	body := struct {
+		Status string `json:"status"`
+	}{
+		Status: status,
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error concluding merge")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return utility.RespErrorf(resp, "error concluding merge")
+	}
+
+	return nil
 }

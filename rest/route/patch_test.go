@@ -10,9 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
-
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -20,7 +17,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -623,7 +622,7 @@ modules:
 - name: render-module
   repo: git@github.com:evergreen-ci/render.git
   prefix: modules
-  branch: master
+  branch: main
 
 buildvariants:
 - name: osx-108
@@ -658,9 +657,9 @@ buildvariants:
 		Id:         "sample",
 		Owner:      "evergreen-ci",
 		Repo:       "sample",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "evergreen.yml",
-		Enabled:    true,
+		Enabled:    utility.TruePtr(),
 		BatchTime:  180,
 	}
 	require.NoError(t, projectRef.Insert())

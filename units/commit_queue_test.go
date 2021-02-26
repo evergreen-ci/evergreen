@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -13,12 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -50,14 +47,14 @@ func (s *commitQueueSuite) SetupSuite() {
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Require().Len(s.prBody, 24757)
+	s.Require().Len(s.prBody, 24745)
 
 	s.projectRef = &model.ProjectRef{
 		Id:    "mci",
 		Owner: "baxterthehacker",
 		Repo:  "public-repo",
 		CommitQueue: model.CommitQueueParams{
-			Enabled:     true,
+			Enabled:     utility.TruePtr(),
 			MergeMethod: "squash",
 		},
 	}
@@ -128,68 +125,6 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 	s.Equal("commit-queue:mci_job-1", job.ID())
 }
 
-func (s *commitQueueSuite) TestSubscribeMerge() {
-	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef", ""))
-
-	selectors := []event.Selector{
-		event.Selector{
-			Type: "id",
-			Data: "abcdef",
-		},
-	}
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, selectors)
-	s.NoError(err)
-	s.Require().Len(subscriptions, 1)
-
-	subscription := subscriptions[0]
-
-	s.Equal(event.GithubMergeSubscriberType, subscription.Subscriber.Type)
-	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
-	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
-	s.True(ok)
-	s.Require().Len(target.PRs, 1)
-	s.Equal(s.projectRef.Owner, target.PRs[0].Owner)
-	s.Equal(s.projectRef.Repo, target.PRs[0].Repo)
-	s.Equal(fmt.Sprintf("%s (#%d)", s.pr.GetTitle(), *s.pr.Number), target.PRs[0].CommitTitle)
-}
-
-func (s *commitQueueSuite) TestWritePatchInfo() {
-	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
-
-	patchDoc := &patch.Patch{
-		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
-		Githash: "abcdef",
-	}
-
-	patchSummaries := []thirdparty.Summary{
-		thirdparty.Summary{
-			Name:      "myfile.go",
-			Additions: 1,
-			Deletions: 0,
-		},
-	}
-
-	patchContent := `diff --git a/myfile.go b/myfile.go
-	index abcdef..123456 100644
-	--- a/myfile.go
-	+++ b/myfile.go
-	@@ +2,1 @@ func myfunc {
-	+				fmt.Print(\"hello world\")
-			}
-	`
-
-	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContent))
-	s.Len(patchDoc.Patches, 1)
-	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
-	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
-	s.NoError(err)
-	defer reader.Close()
-	bytes, err := ioutil.ReadAll(reader)
-	s.NoError(err)
-	s.Equal(patchContent, string(bytes))
-}
-
 func (s *commitQueueSuite) TestValidateBranch() {
 	var branch *github.Branch
 	s.Error(validateBranch(branch))
@@ -204,35 +139,6 @@ func (s *commitQueueSuite) TestValidateBranch() {
 	branch.Commit.SHA = &sha
 
 	s.NoError(validateBranch(branch))
-}
-
-func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
-	config, err := evergreen.GetConfig()
-	s.NoError(err)
-	s.NoError(db.ClearCollections(distro.Collection))
-	s.NoError((&distro.Distro{
-		Id: config.CommitQueue.MergeTaskDistro,
-	}).Insert())
-
-	project := &model.Project{}
-	patchDoc := &patch.Patch{}
-	ref := &model.ProjectRef{}
-
-	s.NoError(addMergeTaskAndVariant(patchDoc, project, ref))
-
-	s.Require().Len(patchDoc.BuildVariants, 1)
-	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
-	s.Require().Len(patchDoc.Tasks, 1)
-	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
-
-	s.Require().Len(project.BuildVariants, 1)
-	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
-	s.Require().Len(project.BuildVariants[0].Tasks, 1)
-	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
-	s.Require().Len(project.Tasks, 1)
-	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
-	s.Require().Len(project.TaskGroups, 1)
-	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {
@@ -280,7 +186,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		Id:         "evergreen",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
-		Branch:     "master",
+		Branch:     "main",
 		RemotePath: "self-tests.yml",
 	}
 	s.NoError(projectRef.Insert())

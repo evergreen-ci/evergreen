@@ -51,7 +51,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Wrap(err, "can't apply expansions")
 	}
 
-	p, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	p, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
 		return errors.Wrap(err, "Failed to get patch")
 	}

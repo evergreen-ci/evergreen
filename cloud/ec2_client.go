@@ -153,7 +153,7 @@ type generateDeviceNameOptions struct {
 }
 
 const (
-	awsClientImplRetries     = 10
+	awsClientImplRetries     = 9
 	awsClientImplStartPeriod = time.Second
 )
 

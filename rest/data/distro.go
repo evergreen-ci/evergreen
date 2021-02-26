@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"

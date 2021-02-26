@@ -35,14 +35,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 				Id:         "12345",
 				Identifier: "projectA",
 				Branch:     "abcd",
-				Enabled:    true,
+				Enabled:    utility.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 			{
 				Id:         "23456",
 				Identifier: "projectB",
 				Branch:     "bcde",
-				Enabled:    true,
+				Enabled:    utility.TruePtr(),
 				Admins:     []string{"my-user"},
 			},
 		},
@@ -98,7 +98,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
 	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
-	s.False(newProject.Enabled)
+	s.False(*newProject.Enabled)
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
@@ -132,13 +132,13 @@ func (s *copyVariablesSuite) SetupSuite() {
 			{
 				Id:      "projectA",
 				Branch:  "abcd",
-				Enabled: true,
+				Enabled: utility.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 			{
 				Id:      "projectB",
 				Branch:  "bcde",
-				Enabled: true,
+				Enabled: utility.TruePtr(),
 				Admins:  []string{"my-user"},
 			},
 		},

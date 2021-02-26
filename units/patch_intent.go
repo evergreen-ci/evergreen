@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -25,7 +24,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -213,21 +212,22 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "can't find patch project")
 	}
 
-	if !pref.Enabled {
+	// hidden projects can only run PR patches
+	if !pref.IsEnabled() && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
 		j.gitHubError = ProjectDisabled
 		return errors.New("project is disabled")
 	}
 
-	if pref.PatchingDisabled {
+	if pref.IsPatchingDisabled() {
 		j.gitHubError = PatchingDisabled
 		return errors.New("patching is disabled for project")
 	}
 
-	if patchDoc.IsBackport() && !pref.CommitQueue.Enabled {
+	if patchDoc.IsBackport() && !pref.CommitQueue.IsEnabled() {
 		return errors.New("commit queue is disabled for project")
 	}
 
-	if !pref.TaskSync.PatchEnabled && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
+	if !pref.TaskSync.IsPatchEnabled() && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
 		j.gitHubError = PatchTaskSyncDisabled
 		return errors.New("task sync at the end of a patched task is disabled by project settings")
 	}
@@ -259,7 +259,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
-	// TODO: add only user-defined parameters to patch/version
 	patchDoc.PatchedConfig = projectYaml
 
 	for _, modulePatch := range patchDoc.Patches {
@@ -273,6 +272,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			if module == nil {
 				return errors.Errorf("no module named '%s'", modulePatch.ModuleName)
 			}
+		}
+	}
+
+	if j.intent.ReusePreviousPatchDefinition() {
+		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -410,6 +416,40 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
+func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project) ([]patch.VariantTasks, error) {
+	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying for most recent patch")
+	}
+	if previousPatch == nil {
+		return nil, errors.Errorf("no previous patch available")
+	}
+
+	var res []patch.VariantTasks
+	for _, vt := range previousPatch.VariantsTasks {
+		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
+		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
+
+		// I want the subset of vt.tasks that exists in tasksForVariant
+		tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
+		var displayTasks []patch.DisplayTask
+		for _, dt := range vt.DisplayTasks {
+			if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
+				displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
+			}
+		}
+
+		if len(tasks)+len(displayTasks) > 0 {
+			res = append(res, patch.VariantTasks{
+				Variant:      vt.Variant,
+				Tasks:        tasks,
+				DisplayTasks: displayTasks,
+			})
+		}
+	}
+	return res, nil
+}
+
 func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef) error {
 	if len(p.Triggers.Aliases) == 0 {
 		return nil
@@ -516,32 +556,27 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 // getModulePatch reads the patch from GridFS, processes it, and
 // stores the resulting summaries in the returned ModulePatch
 func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
-	readCloser, err := db.GetGridFile(patch.GridFSPrefix, modulePatch.PatchSet.PatchFileId)
+	patchContents, err := patch.FetchPatchContents(modulePatch.PatchSet.PatchFileId)
 	if err != nil {
-		return modulePatch, errors.Wrap(err, "error getting patch file")
-	}
-	defer readCloser.Close()
-	patchBytes, err := ioutil.ReadAll(readCloser)
-	if err != nil {
-		return modulePatch, errors.Wrap(err, "error parsing patch")
+		return modulePatch, errors.Wrap(err, "can't fetch patch contents")
 	}
 
 	var summaries []thirdparty.Summary
-	if patch.IsMailboxDiff(string(patchBytes)) {
+	if patch.IsMailboxDiff(patchContents) {
 		var commitMessages []string
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(string(patchBytes))
+		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContents)
 		if err != nil {
 			return modulePatch, errors.Wrapf(err, "error getting summaries by commit")
 		}
 		modulePatch.PatchSet.CommitMessages = commitMessages
 	} else {
-		summaries, err = thirdparty.GetPatchSummaries(string(patchBytes))
+		summaries, err = thirdparty.GetPatchSummaries(patchContents)
 		if err != nil {
 			return modulePatch, errors.Wrap(err, "error getting patch summaries")
 		}
 	}
 
-	modulePatch.IsMbox = len(patchBytes) == 0 || patch.IsMailboxDiff(string(patchBytes))
+	modulePatch.IsMbox = len(patchContents) == 0 || patch.IsMailboxDiff(patchContents)
 	modulePatch.ModuleName = ""
 	modulePatch.PatchSet.Summary = summaries
 	return modulePatch, nil

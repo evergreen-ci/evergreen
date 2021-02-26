@@ -127,7 +127,7 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	owner, repo, ref := "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
 	prNum := 1
-	job := NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref, prNum).(*githubStatusUpdateJob)
+	job := NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref, prNum, "").(*githubStatusUpdateJob)
 	job.env = s.env
 	job.Run(context.Background())
 	s.False(job.HasErrors())

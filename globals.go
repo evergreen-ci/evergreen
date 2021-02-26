@@ -208,8 +208,9 @@ const (
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
 
-	HostAllocatorDeficit      = "deficit"
-	HostAllocatorUtilization  = "utilization"
+	HostAllocatorDeficit     = "deficit"
+	HostAllocatorUtilization = "utilization"
+
 	HostAllocatorRoundDown    = "round-down"
 	HostAllocatorRoundUp      = "round-up"
 	HostAllocatorRoundDefault = ""

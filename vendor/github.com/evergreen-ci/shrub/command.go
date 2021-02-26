@@ -31,6 +31,13 @@ func init() {
 		archiveExtractTarballFactory,
 		archiveExtractAutoFactory,
 		attachArtifactsFactory,
+		hostCreateFactory,
+		hostListFactory,
+		expansionsUpdateFactory,
+		expansionsWriteFactory,
+		jsonSendFactory,
+		perfSendFactory,
+		timeoutUpdateFactory,
 	}
 	registeredCommands.mu.Lock()
 	defer registeredCommands.mu.Unlock()
@@ -53,14 +60,14 @@ type commandRegistry struct {
 type commandFactory func() Command
 
 type CommandDefinition struct {
-	FunctionName  string                 `json:"func,omitempty"`
-	ExecutionType string                 `json:"type,omitempty"`
-	DisplayName   string                 `json:"display_name,omitempty"`
-	CommandName   string                 `json:"command,omitempty"`
-	RunVariants   []string               `json:"variants,omitempty"`
-	TimeoutSecs   int                    `json:"timeout_secs,omitempty"`
-	Params        map[string]interface{} `json:"params,omitempty"`
-	Vars          map[string]string      `json:"vars,omitempty"`
+	FunctionName  string                 `json:"func,omitempty" yaml:"function_name,omitempty"`
+	ExecutionType string                 `json:"type,omitempty" yaml:"type,omitempty"`
+	DisplayName   string                 `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	CommandName   string                 `json:"command,omitempty" yaml:"command,omitempty"`
+	RunVariants   []string               `json:"variants,omitempty" yaml:"variants,omitempty"`
+	TimeoutSecs   int                    `json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
+	Params        map[string]interface{} `json:"params,omitempty" yaml:"params,omitempty"`
+	Vars          map[string]string      `json:"vars,omitempty" yaml:"vars,omitempty"`
 }
 
 func (c *CommandDefinition) Validate() error                      { return nil }

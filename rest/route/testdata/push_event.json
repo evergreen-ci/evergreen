@@ -133,9 +133,9 @@
     "forks": 0,
     "open_issues": 0,
     "watchers": 0,
-    "default_branch": "master",
+    "default_branch": "main",
     "stargazers": 0,
-    "master_branch": "master"
+    "main_branch": "main"
   },
   "pusher": {
     "name": "baxterthehacker",

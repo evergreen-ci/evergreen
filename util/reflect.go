@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-// isFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
+// IsFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
 func IsFieldUndefined(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Bool:

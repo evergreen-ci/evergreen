@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -80,7 +81,7 @@ func (s *TaskFinderSuite) SetupTest() {
 
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 	}
 
 	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
@@ -183,7 +184,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: false,
+		Enabled: utility.FalsePtr(),
 	}
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
@@ -194,7 +195,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned() {
 	ref := &model.ProjectRef{
 		Id:                  "exists",
-		DispatchingDisabled: true,
+		DispatchingDisabled: utility.TruePtr(),
 	}
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
@@ -218,29 +219,29 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 	ref := &model.ProjectRef{
 		Id:      "exists",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 	}
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
 		Id:      "disabled",
-		Enabled: false,
+		Enabled: utility.FalsePtr(),
 	}
 
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
 		Id:               "patching-disabled",
-		PatchingDisabled: true,
-		Enabled:          true,
+		PatchingDisabled: utility.TruePtr(),
+		Enabled:          utility.TruePtr(),
 	}
 
 	s.NoError(ref.Insert())
 
 	ref = &model.ProjectRef{
 		Id:                  "dispatching-disabled",
-		DispatchingDisabled: true,
-		Enabled:             true,
+		DispatchingDisabled: utility.TruePtr(),
+		Enabled:             utility.TruePtr(),
 	}
 
 	s.NoError(ref.Insert())

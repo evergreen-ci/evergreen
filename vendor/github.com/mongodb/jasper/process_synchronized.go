@@ -5,12 +5,24 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
 
 type synchronizedProcess struct {
 	proc  Process
 	mutex sync.RWMutex
+}
+
+// makeSynchronizedProcess wraps the given process in a thread-safe Process.
+func makeSynchronizedProcess(proc Process) Process {
+	return &synchronizedProcess{proc: proc}
+}
+
+// newSynchronizedProcess is a constructor for a thread-safe Process.
+func newSynchronizedProcess(ctx context.Context, opts *options.Create) (Process, error) {
+	opts.Synchronized = true
+	return NewProcess(ctx, opts)
 }
 
 func (p *synchronizedProcess) ID() string {

@@ -152,7 +152,7 @@ func (q *limitedSizeLocal) Next(ctx context.Context) amboy.Job {
 
 				grip.Notice(message.Fields{
 					"state":    "stale",
-					"job":      job.ID(),
+					"job_id":   job.ID(),
 					"job_type": job.Type().Name,
 				})
 				misses++

@@ -2,11 +2,11 @@ package remote
 
 import (
 	"context"
-	"fmt"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/testutil"
 	"github.com/stretchr/testify/assert"
@@ -14,8 +14,8 @@ import (
 )
 
 func TestWindowsEvents(t *testing.T) {
-	httpClient := testutil.GetHTTPClient()
-	defer testutil.PutHTTPClient(httpClient)
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
 
 	for clientName, makeClient := range map[string]func(ctx context.Context, t *testing.T) Manager{
 		"RPC": func(ctx context.Context, t *testing.T) Manager {
@@ -26,13 +26,10 @@ func TestWindowsEvents(t *testing.T) {
 			return client
 		},
 		"REST": func(ctx context.Context, t *testing.T) Manager {
-			_, port, err := startRESTService(ctx, httpClient)
+			mngr, err := jasper.NewSynchronizedManager(false)
 			require.NoError(t, err)
-
-			client := &restClient{
-				prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
-				client: httpClient,
-			}
+			_, client, err := makeRESTServiceAndClient(ctx, mngr, httpClient)
+			require.NoError(t, err)
 			return client
 		},
 	} {

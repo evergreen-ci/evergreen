@@ -9,10 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/service"
+	service "github.com/evergreen-ci/baobab"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/mongodb/jasper/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -119,7 +120,7 @@ func TestCLICommon(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error{
 				"CreateProcessWithConnection": func(ctx context.Context, t *testing.T, c *cli.Context, client remote.Manager) error {
 					return withConnection(ctx, c, func(client remote.Manager) error {
-						proc, err := client.CreateProcess(ctx, testutil.TrueCreateOpts())
+						proc, err := client.CreateProcess(ctx, testoptions.TrueCreateOpts())
 						require.NoError(t, err)
 						require.NotNil(t, proc)
 						assert.NotZero(t, proc.Info(ctx).PID)

@@ -11,7 +11,7 @@
       "owner_name": "mongodb",
       "default_logger": "NOT BUILDLOGGER",
       "repo_name": "curator",
-      "branch_name": "master",
+      "branch_name": "main",
       "repo_kind": "github",
       "enabled": false,
       "private": false,

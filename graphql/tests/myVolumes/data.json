@@ -2,7 +2,6 @@
   "volumes": [
     {
       "no_expiration": false,
-      "display_name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "home_volume": true,
       "availability_zone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
       "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
@@ -11,11 +10,12 @@
       "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
       "_id": "1de2728dd9de82efc02dc21f6ca046eaa559462414d28e0b6bba6436436ac873",
       "type": "82e62e24ad48ffc0292b9c2846b98e567e634d5df4771977dbedf1ee44134762",
-      "size": 500
+      "size": 500,
+      "display_name": ""
     },
     {
       "no_expiration": false,
-      "display_name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "display_name": "a real display name",
       "home_volume": true,
       "availability_zone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
       "created_at": { "$date": "2020-06-05T15:43:18.814Z" },
@@ -28,7 +28,6 @@
     },
     {
       "no_expiration": false,
-      "display_name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "home_volume": true,
       "availability_zone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
       "created_at": { "$date": "2020-06-05T15:43:18.814Z" },

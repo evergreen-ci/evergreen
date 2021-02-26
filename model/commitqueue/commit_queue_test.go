@@ -3,14 +3,13 @@ package commitqueue
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -257,26 +256,7 @@ func (s *CommitQueueSuite) TestFindOneId() {
 	s.Nil(cq)
 }
 
-func TestPreventMergeForItemPR(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
-
-	patchID := "abcdef012345"
-	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
-	require.NoError(t, patchSub.Upsert())
-
-	item := CommitQueueItem{
-		Issue:   "1234",
-		Version: patchID,
-		Source:  SourcePullRequest,
-	}
-
-	assert.NoError(t, preventMergeForItem(false, item, "user"))
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
-	assert.NoError(t, err)
-	assert.Empty(t, subscriptions)
-}
-
-func TestPreventMergeForItemCLI(t *testing.T) {
+func TestPreventMergeForItem(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, build.Collection))
 
 	patchID := "abcdef012345"
@@ -284,8 +264,9 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
-		Issue:  patchID,
-		Source: SourceDiff,
+		Issue:   patchID,
+		Source:  SourceDiff,
+		Version: patchID,
 	}
 
 	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}
@@ -293,19 +274,9 @@ func TestPreventMergeForItemCLI(t *testing.T) {
 	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID, BuildId: "b1"}
 	require.NoError(t, mergeTask.Insert())
 
-	// Without a corresponding version
-	assert.NoError(t, preventMergeForItem(false, item, "user"))
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
-	assert.NoError(t, err)
-	assert.NotEmpty(t, subscriptions)
-
-	mergeTask, err = task.FindOneId("t1")
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), mergeTask.Priority)
-
 	// With a corresponding version
-	assert.NoError(t, preventMergeForItem(true, item, "user"))
-	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	assert.NoError(t, preventMergeForItem(item, "user"))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
 	assert.NoError(t, err)
 	assert.Empty(t, subscriptions)
 

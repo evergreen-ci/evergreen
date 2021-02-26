@@ -66,6 +66,9 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
+	if t.Requester == evergreen.MergeTestRequester && isActive {
+		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+	}
 	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -149,6 +152,35 @@ func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskS
 		baseTaskStatusesByDisplayNameByVariant[task.BuildVariant][task.DisplayName] = task.GetDisplayStatus()
 	}
 	return baseTaskStatusesByDisplayNameByVariant, nil
+}
+
+func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch) bool {
+	if u == nil || existingPatch == nil {
+		return false
+	}
+
+	// patch owner
+	if utility.FromStringPtr(existingPatch.Author) == u.Username() {
+		return true
+	}
+
+	// superuser
+	permissions := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	if u.HasPermission(permissions) {
+		return true
+	}
+
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      utility.FromStringPtr(existingPatch.ProjectId),
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
 }
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
@@ -474,6 +506,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:
+		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
+			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
+		}
 		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}

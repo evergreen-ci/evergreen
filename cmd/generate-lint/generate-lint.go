@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/shrub"
@@ -32,7 +31,7 @@ const (
 // directory. First, it tries diffing changed files against the merge base. If
 // there are no changes, this is not a patch build, so it diffs HEAD against HEAD~.
 func whatChanged() ([]string, error) {
-	mergeBaseCmd := exec.Command("git", "merge-base", "master@{upstream}", "HEAD")
+	mergeBaseCmd := exec.Command("git", "merge-base", "main@{upstream}", "HEAD")
 	base, err := mergeBaseCmd.Output()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting merge-base")
@@ -64,7 +63,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") || strings.HasPrefix(dir, filepath.Join("rest", "model", "testdata")) {
+			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
@@ -154,7 +153,7 @@ func generateTasks() (*shrub.Configuration, error) {
 	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
-		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
+		conf.Task(name).MustHaveTestResults(true).FunctionWithVars("run-make", map[string]string{"target": name})
 		lintTargets = append(lintTargets, name)
 	}
 

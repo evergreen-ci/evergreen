@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
@@ -320,15 +321,20 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	res := apimodels.ExpansionVars{
+		Vars:           map[string]string{},
+		RestrictedVars: map[string]string{},
+		PrivateVars:    map[string]bool{},
+	}
 	if projectVars == nil {
-		gimlet.WriteJSON(w, apimodels.ExpansionVars{})
+		gimlet.WriteJSON(w, res)
 		return
 	}
-
-	res := apimodels.ExpansionVars{}
 	res.Vars = projectVars.GetUnrestrictedVars()
 	res.RestrictedVars = projectVars.GetRestrictedVars()
-	res.PrivateVars = projectVars.PrivateVars
+	if projectVars.PrivateVars != nil {
+		res.PrivateVars = projectVars.PrivateVars
+	}
 
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
@@ -379,6 +385,57 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	gimlet.WriteJSON(w, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
+}
+
+// SetDownstreamParams updates file mappings for a task or build
+func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request) {
+	t := MustHaveTask(r)
+	grip.Infoln("Setting downstream expansions for task:", t.Id)
+
+	var downstreamParams []patch.Parameter
+	err := utility.ReadJSON(util.NewRequestReader(r), &downstreamParams)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
+		return
+	}
+	p, err := patch.FindOne(patch.ByVersion(t.Version))
+
+	if err != nil {
+		errorMessage := fmt.Sprintf("error loading patch: %v: ", err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
+		return
+	}
+
+	if p == nil {
+		errorMessage := "patch not found"
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONError(w, errorMessage)
+		return
+	}
+
+	if err = p.SetDownstreamParameters(downstreamParams); err != nil {
+		errorMessage := fmt.Sprintf("error setting patch parameters: %s", err)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		gimlet.WriteJSONInternalError(w, errorMessage)
+		return
+	}
+
+	gimlet.WriteJSON(w, fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
 }
 
 // AppendTaskLog appends the received logs to the task's internal logs.
@@ -601,6 +658,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(checkTask, checkHost).Handler(as.GetDistroView).Get()
+	app.Route().Version(2).Route("/task/{taskId}/downstreamParams").Wrap(checkTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -72,7 +73,7 @@ func (s *projectTriggerSuite) SetupTest() {
 func (s *projectTriggerSuite) TestSimpleTaskFile() {
 	simpleTaskFile := model.ProjectRef{
 		Id:      "simpleTaskFile",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
@@ -95,7 +96,7 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 	simpleTaskCommand := model.ProjectRef{
 		Id:      "simpleTaskCommand",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
@@ -118,7 +119,7 @@ func (s *projectTriggerSuite) TestSimpleTaskCommand() {
 func (s *projectTriggerSuite) TestMultipleProjects() {
 	proj1 := model.ProjectRef{
 		Id:      "proj1",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
@@ -126,7 +127,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
 		Id:      "proj2",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -134,7 +135,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	s.NoError(proj2.Insert())
 	proj3 := model.ProjectRef{
 		Id:      "proj3",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -154,7 +155,7 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 	date := 1
 	proj := model.ProjectRef{
 		Id:      "proj",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
 		},
@@ -173,7 +174,7 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 func (s *projectTriggerSuite) TestWrongEvent() {
 	simpleTaskCommand := model.ProjectRef{
 		Id:      "simpleTaskCommand",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
 		},
@@ -192,7 +193,7 @@ func (s *projectTriggerSuite) TestWrongEvent() {
 func (s *projectTriggerSuite) TestTaskRegex() {
 	proj1 := model.ProjectRef{
 		Id:      "proj1",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "task*", ConfigFile: "configFile1"},
 		},
@@ -200,7 +201,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 	s.NoError(proj1.Insert())
 	proj2 := model.ProjectRef{
 		Id:      "proj2",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "$wontmatch^", ConfigFile: "configFile2"},
 		},
@@ -221,7 +222,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 func (s *projectTriggerSuite) TestMultipleTriggers() {
 	duplicate := model.ProjectRef{
 		Id:      "duplicate",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile1"},
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile2"},
@@ -241,7 +242,7 @@ func (s *projectTriggerSuite) TestMultipleTriggers() {
 func (s *projectTriggerSuite) TestBuildFinish() {
 	ref := model.ProjectRef{
 		Id:      "ref",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
 			{Project: "notTrigger", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
@@ -300,10 +301,11 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(upstreamVersion.Insert())
 	downstreamProjectRef := model.ProjectRef{
 		Id:         "downstream",
-		Enabled:    true,
+		Enabled:    utility.TruePtr(),
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		RemotePath: "self-tests.yml",
+		Branch:     "main",
 		Triggers: []model.TriggerDefinition{
 			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
@@ -311,10 +313,10 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(downstreamProjectRef.Insert())
 	uptreamProjectRef := model.ProjectRef{
 		Id:      "upstream",
-		Enabled: true,
+		Enabled: utility.TruePtr(),
 		Owner:   "evergreen-ci",
 		Repo:    "sample",
-		Branch:  "master",
+		Branch:  "main",
 	}
 	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{
@@ -373,6 +375,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
+	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 

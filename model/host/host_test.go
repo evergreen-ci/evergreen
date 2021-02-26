@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -20,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1480,6 +1479,104 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 				},
 			}
 			testCase(t, &h)
+		})
+	}
+}
+
+func TestGenerateAndSaveJasperCredentials(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	checkCredentialsAreSet := func(t *testing.T, h *Host, creds *certdepot.Credentials) {
+		assert.NotZero(t, creds.CACert)
+		assert.NotZero(t, creds.Cert)
+		assert.NotZero(t, creds.Key)
+		assert.Equal(t, h.Id, h.JasperCredentialsID)
+		assert.Equal(t, h.JasperCredentialsID, creds.ServerName)
+	}
+	generateAndSaveCreds := func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) *certdepot.Credentials {
+		require.NoError(t, h.Insert())
+		creds, err := h.GenerateJasperCredentials(ctx, env)
+		require.NoError(t, err)
+		assert.NotZero(t, h.JasperCredentialsID)
+		checkCredentialsAreSet(t, h, creds)
+		require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+		return creds
+	}
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
+		"FailsWithoutHostInDB": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			assert.Error(t, err)
+			assert.Zero(t, creds)
+		},
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			generateAndSaveCreds(ctx, t, env, h)
+			cert, err := certdepot.GetCertificate(env.CertificateDepot(), h.JasperCredentialsID)
+			require.NoError(t, err)
+			rawCert, err := cert.GetRawCertificate()
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.Subject.CommonName)
+			assert.Equal(t, []string{h.JasperCredentialsID}, rawCert.DNSNames)
+		},
+		"SucceedsWithHostnameDifferentFromID": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			h.Host = "127.0.0.1"
+			generateAndSaveCreds(ctx, t, env, h)
+			cert, err := certdepot.GetCertificate(env.CertificateDepot(), h.JasperCredentialsID)
+			require.NoError(t, err)
+			rawCert, err := cert.GetRawCertificate()
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.Subject.CommonName)
+			assert.Equal(t, []string{h.JasperCredentialsID}, rawCert.DNSNames)
+			require.Len(t, rawCert.IPAddresses, 1)
+			assert.Equal(t, h.Host, rawCert.IPAddresses[0].String())
+		},
+		"SucceedsWithIDAsIPAddress": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			h.Id = "127.0.0.1"
+			generateAndSaveCreds(ctx, t, env, h)
+			cert, err := certdepot.GetCertificate(env.CertificateDepot(), h.JasperCredentialsID)
+			require.NoError(t, err)
+			rawCert, err := cert.GetRawCertificate()
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.Subject.CommonName)
+			assert.Equal(t, []string{h.JasperCredentialsID}, rawCert.DNSNames)
+			require.Len(t, rawCert.IPAddresses, 1)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.IPAddresses[0].String())
+		},
+		"SucceedsWithIPAddress": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			h.IP = "2600:1f18:ae9:dd00:d071:8752:6e2b:fc6a"
+			generateAndSaveCreds(ctx, t, env, h)
+			cert, err := certdepot.GetCertificate(env.CertificateDepot(), h.JasperCredentialsID)
+			require.NoError(t, err)
+			rawCert, err := cert.GetRawCertificate()
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.Subject.CommonName)
+			assert.Equal(t, []string{h.JasperCredentialsID}, rawCert.DNSNames)
+			require.Len(t, rawCert.IPAddresses, 1)
+			assert.Equal(t, h.IP, rawCert.IPAddresses[0].String())
+		},
+		"SucceedsWithDuplicateIDAndHostname": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			h.Id = "127.0.0.1"
+			h.Host = "127.0.0.1"
+			generateAndSaveCreds(ctx, t, env, h)
+			cert, err := certdepot.GetCertificate(env.CertificateDepot(), h.JasperCredentialsID)
+			require.NoError(t, err)
+			rawCert, err := cert.GetRawCertificate()
+			require.NoError(t, err)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.Subject.CommonName)
+			assert.Equal(t, []string{h.JasperCredentialsID}, rawCert.DNSNames)
+			require.Len(t, rawCert.IPAddresses, 1)
+			assert.Equal(t, h.JasperCredentialsID, rawCert.IPAddresses[0].String())
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+			require.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, Collection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, Collection))
+			}()
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx))
+			testCase(tctx, t, env, &Host{Id: "id"})
 		})
 	}
 }

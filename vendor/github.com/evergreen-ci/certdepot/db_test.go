@@ -74,7 +74,9 @@ func TestDB(t *testing.T) {
 
 					d, err := BootstrapDepot(ctx, conf)
 					require.NoError(t, err)
-					defer client.Database(databaseName).Drop(ctx)
+					defer func() {
+						assert.NoError(t, client.Database(databaseName).Drop(ctx))
+					}()
 
 					md, ok := d.(*mongoDepot)
 					require.True(t, ok)

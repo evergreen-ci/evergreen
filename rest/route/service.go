@@ -22,6 +22,8 @@ type HandlerOpts struct {
 // the api to the router.
 func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc := &data.DBConnector{}
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
 
 	sc.SetURL(opts.URL)
 
@@ -32,7 +34,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	checkHost := NewHostAuthMiddleware(sc)
 	addProject := NewProjectContextMiddleware(sc)
 	checkProjectAdmin := NewProjectAdminMiddleware(sc)
-	// checkRepoAdmin := NewRepoAdminMiddleware(sc)
+	checkRepoAdmin := NewRepoAdminMiddleware(sc)
 	checkCommitQueueItemOwner := NewCommitQueueItemOwnerMiddleware(sc)
 	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	createProject := RequiresSuperUserPermission(evergreen.PermissionProjectCreate, evergreen.ProjectCreate)
@@ -48,9 +50,10 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
+	cedarTestStats := checkCedarTestStats(settings)
+	allowCORS := gimlet.WrapperMiddleware(allowCORS)
 
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
+	app.AddMiddleware(allowCORS)
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -81,6 +84,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(sc, env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem(sc))
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(checkUser).RouteHandler(makecqMessageForPatch(sc))
+	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeCostByVersionHandler(sc))
@@ -151,13 +155,14 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTasksByProjectAndCommitHandler(sc))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskReliability(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTaskStats(sc))
-	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTestStats(sc))
+	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser, viewTasks, cedarTestStats).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(sc))
 	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectTasks(sc))
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases(sc))
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchParameters(sc))
 	app.AddRoute("/permissions").Version(2).Get().RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(checkUser, viewProjectSettings).RouteHandler(makeGetRepoByID(sc))
+	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(checkUser, checkRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(sc, env.Settings()))
 	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(checkUser).RouteHandler(makeCompareTasksRoute(sc))
@@ -172,6 +177,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(checkUser, addProject, editTasks).RouteHandler(makeModifyTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(checkUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByTask(sc))
 	app.AddRoute("/tasks/{task_id}/annotation").Version(2).Put().Wrap(checkUser, editAnnotations).RouteHandler(makePutAnnotationsByTask(sc))
+	app.AddRoute("/tasks/{task_id}/created_ticket").Version(2).Put().Wrap(checkUser, editAnnotations).RouteHandler(makeCreatedTicketByTask(sc))
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeTaskAbortHandler(sc))
 	app.AddRoute("/tasks/{task_id}/display_task").Version(2).Get().Wrap(checkTask).RouteHandler(makeGetDisplayTaskHandler(sc))
 	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().Wrap(checkTask).RouteHandler(makeGenerateTasksHandler(sc, opts.QueueGroup))

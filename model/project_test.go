@@ -307,7 +307,7 @@ buildvariants:
 	assert.NoError(projectRef.Insert())
 	v := &Version{
 		Id:                  "v1",
-		Branch:              "master",
+		Branch:              "main",
 		Author:              "somebody",
 		AuthorEmail:         "somebody@somewhere.com",
 		RevisionOrderNumber: 42,
@@ -336,7 +336,7 @@ buildvariants:
 	assert.NoError(err)
 	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 20)
+	assert.Len(map[string]string(expansions), 21)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -346,7 +346,7 @@ buildvariants:
 	assert.Equal("0ed7cbd33263043fa95aadb3f6068ef8d076854a", expansions.Get("revision"))
 	assert.Equal("mci", expansions.Get("project"))
 	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
-	assert.Equal("master", expansions.Get("branch_name"))
+	assert.Equal("main", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
@@ -356,6 +356,7 @@ buildvariants:
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
+	assert.Equal("github_tag", expansions.Get("requester"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
@@ -371,8 +372,9 @@ buildvariants:
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 21)
+	assert.Len(map[string]string(expansions), 22)
 	assert.Equal("true", expansions.Get("is_patch"))
+	assert.Equal("patch", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
@@ -390,7 +392,7 @@ buildvariants:
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
@@ -405,8 +407,9 @@ buildvariants:
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 24)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
+	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	assert.True(expansions.Exists("github_repo"))
@@ -427,7 +430,8 @@ buildvariants:
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 24)
+	assert.Len(map[string]string(expansions), 25)
+	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
@@ -450,7 +454,7 @@ buildvariants:
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 32)
+	assert.Len(map[string]string(expansions), 33)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -1148,14 +1152,14 @@ func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
 	projModules := ModuleList{
-		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "master"},
+		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "main"},
 		{Name: "wt", Repo: "git@github.com:else/wt.git", Branch: "develop"},
 	}
 
 	manifest1 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.True(projModules.IsIdentical(manifest1))
@@ -1163,7 +1167,7 @@ func TestModuleList(t *testing.T) {
 	manifest2 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "different branch", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest2))
@@ -1171,8 +1175,8 @@ func TestModuleList(t *testing.T) {
 	manifest3 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
 			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
-			"extra":      &manifest.Module{Branch: "master", Repo: "repo", Owner: "something", Revision: "abc"},
+			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"extra":      &manifest.Module{Branch: "main", Repo: "repo", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest3))

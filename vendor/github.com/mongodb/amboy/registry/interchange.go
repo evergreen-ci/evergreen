@@ -19,7 +19,7 @@ type JobInterchange struct {
 	Status               amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
 	Scopes               []string               `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
 	ApplyScopesOnEnqueue bool                   `bson:"apply_scopes_on_enqueue" json:"apply_scopes_on_enqueue,omitempty" yaml:"apply_scopes_on_enqueue,omitempty"`
-	RetryInfo            amboy.JobRetryInfo     `bson:"retry_info,omitempty" json:"retry_info,omitempty" yaml:"retry_info,omitempty"`
+	RetryInfo            amboy.JobRetryInfo     `bson:"retry_info" json:"retry_info,omitempty" yaml:"retry_info,omitempty"`
 	TimeInfo             amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
 	Job                  rawJob                 `json:"job" bson:"job" yaml:"job"`
 	Dependency           *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
@@ -94,7 +94,7 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	job.SetStatus(j.Status)
 	job.SetShouldApplyScopesOnEnqueue(j.ApplyScopesOnEnqueue)
 	job.UpdateTimeInfo(j.TimeInfo)
-	job.UpdateRetryInfo(j.RetryInfo)
+	job.UpdateRetryInfo(j.RetryInfo.Options())
 
 	return job, nil
 }

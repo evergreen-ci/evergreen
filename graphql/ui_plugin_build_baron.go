@@ -76,6 +76,12 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	return taskNotFound, nil
 }
 
+func IsWebhookConfigured(t *task.Task) bool {
+	buildBaronProjects := BbGetConfig(evergreen.GetEnvironment().Settings())
+	webHook := buildBaronProjects[t.Project].TaskAnnotationSettings.FileTicketWebHook
+	return webHook.Endpoint != ""
+}
+
 // fileTicketCustomHook uses a custom hook to create a ticket for a task with the given test failures.
 func fileTicketCustomHook(context context.Context, taskId string, execution int, webHook evergreen.WebHook) (*http.Response, error) {
 
@@ -172,7 +178,9 @@ func BbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error
 }
 
 type buildBaronConfig struct {
-	ProjectFound     bool
+	ProjectFound bool
+	// if search project is configured, then that's an
+	// indication that the build baron is configured
 	SearchConfigured bool
 }
 
@@ -187,16 +195,19 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	bbProj, ok := buildBaronProjects[t.Project]
 
 	if !ok {
-		return nil, bbConfig, errors.Errorf("Build Baron project for %s not found", t.Project)
+		// build baron project not found, meaning it's not configured for
+		// either regular build baron or for a custom ticket filing webhook
+		return nil, bbConfig, nil
 	}
 	bbConfig.ProjectFound = true
 
 	// the build baron is configured if the jira search is configured
 	if len(bbProj.TicketSearchProjects) <= 0 {
 		bbConfig.SearchConfigured = false
-		return nil, bbConfig, errors.Errorf("Build Baron ticket search projects for %s not found", t.Project)
+		return nil, bbConfig, nil
 	}
 	bbConfig.SearchConfigured = true
+
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}

@@ -1,6 +1,6 @@
 owner: mpobrien
 repo: sample
-branch: master
+branch: main
 repokind: github
 enabled: true
 batchtime: 120

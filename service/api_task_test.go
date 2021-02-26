@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/utility"
@@ -31,6 +32,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -116,6 +118,34 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 	return w
 }
 
+func getDownstreamParamsEndpoint(t *testing.T, as *APIServer, hostId, taskId string, details []patch.Parameter) *httptest.ResponseRecorder {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		t.Fatal("could not create client directory required to start the API server:", err.Error())
+	}
+
+	handler, err := as.GetServiceApp().Handler()
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
+	url := fmt.Sprintf("/api/2/task/%s/downstreamParams", taskId)
+
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
+	request.Header.Add(evergreen.HostHeader, hostId)
+	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
+	request.Header.Add(evergreen.TaskSecretHeader, taskSecret)
+
+	jsonBytes, err := json.Marshal(details)
+	require.NoError(t, err, "error marshalling json")
+	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, request)
+	return w
+}
+
 func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -180,7 +210,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -205,7 +235,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 
 		})
 		Convey("tasks with a disabled project should be removed from the queue", func() {
-			pref.Enabled = false
+			pref.Enabled = utility.FalsePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
@@ -218,7 +248,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(currentTq.Length(), ShouldEqual, 0)
 		})
 		Convey("tasks belonging to a project with dispatching disabled should be removed from the queue", func() {
-			pref.DispatchingDisabled = true
+			pref.DispatchingDisabled = utility.TruePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskDispatcherTTL), &theHostWhoCanBoastTheMostRoast, details)
@@ -528,7 +558,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
@@ -811,7 +841,7 @@ func TestNextTask(t *testing.T) {
 
 		pref := &model.ProjectRef{
 			Id:      "exists",
-			Enabled: true,
+			Enabled: utility.TruePtr(),
 		}
 
 		So(pref.Insert(), ShouldBeNil)
@@ -1218,7 +1248,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		sampleHost := host.Host{
 			Id: hostId,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 			},
 			Secret:                hostSecret,
 			RunningTask:           task1.Id,
@@ -1439,6 +1469,87 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				dbBuild, err := build.FindOne(build.ById(buildID))
 				So(err, ShouldBeNil)
 				So(dbBuild.Tasks[2].Status, ShouldEqual, evergreen.TaskFailed)
+			})
+		})
+	})
+}
+
+func TestDownstreamParams(t *testing.T) {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	Convey("With a patch with downstream params", t, func() {
+		if err := db.ClearCollections(patch.Collection, task.Collection, host.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
+		parameters := []patch.Parameter{
+			{Key: "key_1", Value: "value_1"},
+			{Key: "key_2", Value: "value_2"},
+		}
+		versionId := "myTestVersion"
+		parentPatchId := "5bedc62ee4055d31f0340b1d"
+		parentPatch := patch.Patch{
+			Id:      mgobson.ObjectIdHex(parentPatchId),
+			Version: versionId,
+		}
+		So(parentPatch.Insert(), ShouldBeNil)
+
+		hostId := "h1"
+		projectId := "proj"
+		buildID := "b1"
+
+		task1 := task.Task{
+			Id:        "task1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+			HostId:    hostId,
+			Secret:    taskSecret,
+			Project:   projectId,
+			BuildId:   buildID,
+			Version:   versionId,
+		}
+		So(task1.Insert(), ShouldBeNil)
+
+		sampleHost := host.Host{
+			Id: hostId,
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2Auto,
+			},
+			Secret:                hostSecret,
+			RunningTask:           task1.Id,
+			Provider:              evergreen.ProviderNameStatic,
+			Status:                evergreen.HostRunning,
+			AgentRevision:         evergreen.AgentVersion,
+			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
+		}
+		So(sampleHost.Insert(), ShouldBeNil)
+
+		q := queue.NewLocalLimitedSize(4, 2048)
+		if err := q.Start(ctx); err != nil {
+			t.Fatalf("failed to start queue %s", err)
+		}
+
+		as, err := NewAPIServer(env, q)
+		if err != nil {
+			t.Fatalf("creating test API server: %v", err)
+		}
+		So(as.queue, ShouldEqual, q)
+
+		Convey("with a patchId and parameters set in PatchData", func() {
+
+			resp := getDownstreamParamsEndpoint(t, as, hostId, task1.Id, parameters)
+			So(resp, ShouldNotBeNil)
+			Convey("should return http status ok", func() {
+				So(resp.Code, ShouldEqual, http.StatusOK)
+			})
+			Convey("the patches should appear in the parent patch", func() {
+				p, err := patch.FindOneId(parentPatchId)
+				So(err, ShouldBeNil)
+				So(p.Triggers.DownstreamParameters[0].Key, ShouldEqual, parameters[0].Key)
+				So(p.Triggers.DownstreamParameters[0].Value, ShouldEqual, parameters[0].Value)
+				So(p.Triggers.DownstreamParameters[1].Key, ShouldEqual, parameters[1].Key)
+				So(p.Triggers.DownstreamParameters[1].Value, ShouldEqual, parameters[1].Value)
 			})
 		})
 	})

@@ -245,9 +245,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
 
-	// erase contents so requestProjectRef will only be populated with new elements
-	requestProjectRef.Triggers = nil
-	// these fields in the request represent the admins/users to be added
+	// erase contents so requestProjectRef will only be populated with new elements for these fields
 	requestProjectRef.Admins = nil
 	requestProjectRef.GitTagAuthorizedUsers = nil
 	requestProjectRef.GitTagAuthorizedTeams = nil
@@ -308,14 +306,23 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(oldProject.GitTagAuthorizedTeams, newProjectRef.GitTagAuthorizedTeams...))
 	newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	if newProjectRef.Enabled {
+	if newProjectRef.IsEnabled() {
 		var hasHook bool
 		hasHook, err = h.sc.EnableWebhooks(ctx, newProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.project))
 		}
+
+		var allAliases []model.APIProjectAlias
+		if newProjectRef.AliasesNeeded() {
+			allAliases, err = h.sc.FindProjectAliases(utility.FromStringPtr(requestProjectRef.Id), utility.FromStringPtr(requestProjectRef.RepoRefId), requestProjectRef.Aliases)
+			if err != nil {
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error checking existing patch definitions"))
+			}
+		}
+
 		// verify enabling PR testing valid
-		if newProjectRef.PRTestingEnabled {
+		if newProjectRef.IsPRTestingEnabled() {
 			if !hasHook {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
@@ -323,12 +330,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			var ghAliasesDefined bool
-			ghAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubPRAlias)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
-			}
-			if !ghAliasesDefined {
+			if !hasAliasDefined(allAliases, evergreen.GithubPRAlias) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "cannot enable PR testing without a PR patch definition",
@@ -341,13 +343,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		// verify enabling github checks is valid
-		if newProjectRef.GithubChecksEnabled {
-			var githubChecksAliasesDefined bool
-			githubChecksAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GithubChecksAlias)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
-			}
-			if !githubChecksAliasesDefined {
+		if newProjectRef.IsGithubChecksEnabled() {
+			if !hasAliasDefined(allAliases, evergreen.GithubChecksAlias) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "cannot enable github checks without a version definition",
@@ -356,13 +353,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		// verify enabling git tag versions is valid
-		if newProjectRef.GitTagVersionsEnabled {
-			var gitTagAliasesDefined bool
-			gitTagAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.GitTagAlias)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
-			}
-			if !gitTagAliasesDefined {
+		if newProjectRef.IsGitTagVersionsEnabled() {
+			if !hasAliasDefined(allAliases, evergreen.GitTagAlias) {
+
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "cannot enable git tag versions without a version definition",
@@ -389,7 +382,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
 			})
 		}
-		if commitQueueParams.Enabled {
+		if commitQueueParams.IsEnabled() {
 			if !hasHook {
 				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
@@ -397,12 +390,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			var cqAliasesDefined bool
-			cqAliasesDefined, err = h.hasAliasDefined(requestProjectRef, evergreen.CommitQueueAlias)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't check for alias definitions"))
-			}
-			if !cqAliasesDefined {
+			if !hasAliasDefined(allAliases, evergreen.CommitQueueAlias) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "cannot enable commit queue without a commit queue patch definition",
@@ -422,7 +410,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
-	newProjectRef.Triggers = append(oldProject.Triggers, newProjectRef.Triggers...)
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
@@ -438,8 +425,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			MergeBaseRevision: "",
 		}
 	}
+	// TODO: check this logic
 	if oldProject.Restricted != newProjectRef.Restricted {
-		if newProjectRef.Restricted {
+		if newProjectRef.IsRestricted() {
 			err = newProjectRef.MakeRestricted(ctx)
 		} else {
 			err = oldProject.MakeUnrestricted(ctx)
@@ -520,27 +508,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // verify for a given alias that either the user has added a new definition or there is a pre-existing definition
-func (h *projectIDPatchHandler) hasAliasDefined(pRef *model.APIProjectRef, alias string) (bool, error) {
-	aliasesToDelete := map[string]bool{}
-	for _, a := range pRef.Aliases {
-		// return immediately if a new definition has been added
-		if utility.FromStringPtr(a.Alias) == alias && !a.Delete {
-			return true, nil
-		}
-		aliasesToDelete[utility.FromStringPtr(a.ID)] = a.Delete
-	}
-
-	// check if a definition exists and hasn't been deleted
-	aliases, err := h.sc.FindProjectAliases(utility.FromStringPtr(pRef.Id), utility.FromStringPtr(pRef.RepoRefId))
-	if err != nil {
-		return false, errors.Wrapf(err, "Error checking existing patch definitions")
-	}
+func hasAliasDefined(aliases []model.APIProjectAlias, alias string) bool {
 	for _, a := range aliases {
-		if utility.FromStringPtr(a.Alias) == alias && !aliasesToDelete[utility.FromStringPtr(a.ID)] {
-			return true, nil
+		if utility.FromStringPtr(a.Alias) == alias {
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -700,7 +674,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' does not exist", h.projectName))
 	}
 
-	if project.Hidden {
+	if project.IsHidden() {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
 	}
 
@@ -715,9 +689,9 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		Repo:            project.Repo,
 		Branch:          project.Branch,
 		RepoRefId:       project.RepoRefId,
-		Enabled:         false,
+		Enabled:         utility.FalsePtr(),
 		UseRepoSettings: true,
-		Hidden:          true,
+		Hidden:          utility.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
@@ -803,7 +777,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id, repoId); err != nil {
+	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id, repoId, nil); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {

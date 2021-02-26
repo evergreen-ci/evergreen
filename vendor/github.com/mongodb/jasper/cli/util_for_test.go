@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/remote"
 	"github.com/mongodb/jasper/testutil"
@@ -120,7 +121,9 @@ func execCLICommandOutput(t *testing.T, c *cli.Context, cmd cli.Command, output 
 func makeTestRESTService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) util.CloseFunc {
 	closeService, err := newRESTService(ctx, "localhost", port, manager)
 	require.NoError(t, err)
-	require.NoError(t, testutil.WaitForRESTService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", port)))
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	require.NoError(t, testutil.WaitForHTTPService(ctx, fmt.Sprintf("http://localhost:%d/jasper/v1", port), httpClient))
 	return closeService
 }
 
