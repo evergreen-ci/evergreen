@@ -78,11 +78,11 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/repos/{repo_id}
 
 type repoIDPatchHandler struct {
-	repoName       string
-	originalRepo   *dbModel.RepoRef
-	newRepoRef     *dbModel.RepoRef
-	requestRepoRef *model.APIProjectRef
-	user           *user.DBUser
+	repoName      string
+	originalRepo  *dbModel.RepoRef
+	newRepoRef    *dbModel.RepoRef
+	apiNewRepoRef *model.APIProjectRef
+	user          *user.DBUser
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -121,21 +121,21 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Errorf("repo '%s' doesn't exist", h.repoName)
 	}
 
-	h.requestRepoRef = &model.APIProjectRef{}
-	if err = h.requestRepoRef.BuildFromService(h.originalRepo.ProjectRef); err != nil {
+	h.apiNewRepoRef = &model.APIProjectRef{}
+	if err = h.apiNewRepoRef.BuildFromService(h.originalRepo.ProjectRef); err != nil {
 		return errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef")
 	}
 
-	// erase contents so requestRepoRef will only be populated with new elements for these fields
-	h.requestRepoRef.Admins = nil
-	h.requestRepoRef.GitTagAuthorizedUsers = nil
-	h.requestRepoRef.GitTagAuthorizedTeams = nil
-	if err = json.Unmarshal(b, h.requestRepoRef); err != nil {
+	// erase contents so apiNewRepoRef will only be populated with new elements for these fields
+	h.apiNewRepoRef.Admins = nil
+	h.apiNewRepoRef.GitTagAuthorizedUsers = nil
+	h.apiNewRepoRef.GitTagAuthorizedTeams = nil
+	if err = json.Unmarshal(b, h.apiNewRepoRef); err != nil {
 		return errors.Wrap(err, "API error while unmarshalling JSON")
 	}
 
 	// read the new changes onto it
-	i, err := h.requestRepoRef.ToService()
+	i, err := h.apiNewRepoRef.ToService()
 	if err != nil {
 		return errors.Wrap(err, "API error converting from model.APIProjectRef to model.ProjectRef")
 	}
@@ -169,19 +169,19 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// update admins
-	adminsToDelete := utility.FromStringPtrSlice(h.requestRepoRef.DeleteAdmins)
+	adminsToDelete := utility.FromStringPtrSlice(h.apiNewRepoRef.DeleteAdmins)
 	allAdmins := utility.UniqueStrings(append(h.originalRepo.Admins, h.newRepoRef.Admins...))  // get original and new admin
 	h.newRepoRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
 
-	usersToDelete := utility.FromStringPtrSlice(h.requestRepoRef.DeleteGitTagAuthorizedUsers)
+	usersToDelete := utility.FromStringPtrSlice(h.apiNewRepoRef.DeleteGitTagAuthorizedUsers)
 	allAuthorizedUsers := utility.UniqueStrings(append(h.originalRepo.GitTagAuthorizedUsers, h.newRepoRef.GitTagAuthorizedUsers...))
 	h.newRepoRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
-	teamsToDelete := utility.FromStringPtrSlice(h.requestRepoRef.DeleteGitTagAuthorizedTeams)
+	teamsToDelete := utility.FromStringPtrSlice(h.apiNewRepoRef.DeleteGitTagAuthorizedTeams)
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalRepo.GitTagAuthorizedTeams, h.newRepoRef.GitTagAuthorizedTeams...))
 	h.newRepoRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	repoAliases, err := h.sc.FindProjectAliases("", h.newRepoRef.Id, h.requestRepoRef.Aliases)
+	repoAliases, err := h.sc.FindProjectAliases("", h.newRepoRef.Id, h.apiNewRepoRef.Aliases)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -197,26 +197,26 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.sc.UpdateRepo(h.newRepoRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() for '%s'", h.repoName))
 	}
-	if err = h.sc.UpdateProjectVars(h.newRepoRef.Id, &h.requestRepoRef.Variables, false); err != nil { // destructively modifies h.requestRepoRef.Variables
+	if err = h.sc.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.repoName))
 	}
-	if err = h.sc.UpdateProjectAliases(h.newRepoRef.Id, h.requestRepoRef.Aliases); err != nil {
+	if err = h.sc.UpdateProjectAliases(h.newRepoRef.Id, h.apiNewRepoRef.Aliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.repoName))
 	}
 
 	if err = h.sc.UpdateAdminRoles(&h.newRepoRef.ProjectRef, h.newRepoRef.Admins, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.repoName))
 	}
-	for i := range h.requestRepoRef.Subscriptions {
-		h.requestRepoRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
-		h.requestRepoRef.Subscriptions[i].Owner = utility.ToStringPtr(h.repoName)
+	for i := range h.apiNewRepoRef.Subscriptions {
+		h.apiNewRepoRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
+		h.apiNewRepoRef.Subscriptions[i].Owner = utility.ToStringPtr(h.repoName)
 	}
-	if err = h.sc.SaveSubscriptions(h.newRepoRef.Id, h.requestRepoRef.Subscriptions); err != nil {
+	if err = h.sc.SaveSubscriptions(h.newRepoRef.Id, h.apiNewRepoRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.repoName))
 	}
 
 	toDelete := []string{}
-	for _, deleteSub := range h.requestRepoRef.DeleteSubscriptions {
+	for _, deleteSub := range h.apiNewRepoRef.DeleteSubscriptions {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
 	if err = h.sc.DeleteSubscriptions(h.newRepoRef.Id, toDelete); err != nil {

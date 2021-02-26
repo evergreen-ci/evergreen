@@ -196,11 +196,11 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
-	project           string
-	user              *user.DBUser
-	newProjectRef     *dbModel.ProjectRef
-	originalProject   *dbModel.ProjectRef
-	requestProjectRef *model.APIProjectRef
+	project          string
+	user             *user.DBUser
+	newProjectRef    *dbModel.ProjectRef
+	originalProject  *dbModel.ProjectRef
+	apiNewProjectRef *model.APIProjectRef
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -240,7 +240,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef")
 	}
 
-	// erase contents so requestProjectRef will only be populated with new elements for these fields
+	// erase contents so apiNewProjectRef will only be populated with new elements for these fields
 	requestProjectRef.Admins = nil
 	requestProjectRef.GitTagAuthorizedUsers = nil
 	requestProjectRef.GitTagAuthorizedTeams = nil
@@ -269,7 +269,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	h.newProjectRef = newProjectRef
 	h.originalProject = oldProject
-	h.requestProjectRef = requestProjectRef
+	h.apiNewProjectRef = requestProjectRef // needed for the delete fields
 	return nil
 }
 
@@ -295,15 +295,15 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.project))
 	}
 
-	adminsToDelete := utility.FromStringPtrSlice(h.requestProjectRef.DeleteAdmins)
+	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
 	allAdmins := utility.UniqueStrings(append(h.originalProject.Admins, h.newProjectRef.Admins...)) // get original and new admin
 	h.newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete)   // add users that are in allAdmins and not in adminsToDelete
 
-	usersToDelete := utility.FromStringPtrSlice(h.requestProjectRef.DeleteGitTagAuthorizedUsers)
+	usersToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedUsers)
 	allAuthorizedUsers := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedUsers, h.newProjectRef.GitTagAuthorizedUsers...))
 	h.newProjectRef.GitTagAuthorizedUsers, _ = utility.StringSliceSymmetricDifference(allAuthorizedUsers, usersToDelete)
 
-	teamsToDelete := utility.FromStringPtrSlice(h.requestProjectRef.DeleteGitTagAuthorizedTeams)
+	teamsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedTeams)
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams...))
 	h.newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
@@ -323,7 +323,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
-			allAliases, err = h.sc.FindProjectAliases(utility.FromStringPtr(h.requestProjectRef.Id), mergedProjectRef.RepoRefId, h.requestProjectRef.Aliases)
+			allAliases, err = h.sc.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases)
 			if err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error checking existing patch definitions"))
 			}
@@ -409,7 +409,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	newRevision := utility.FromStringPtr(h.requestProjectRef.Revision)
+	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -450,26 +450,26 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.sc.UpdateProject(h.newProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.project))
 	}
-	if err = h.sc.UpdateProjectVars(h.newProjectRef.Id, &h.requestProjectRef.Variables, false); err != nil { // destructively modifies h.requestProjectRef.Variables
+	if err = h.sc.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.project))
 	}
-	if err = h.sc.UpdateProjectAliases(h.newProjectRef.Id, h.requestProjectRef.Aliases); err != nil {
+	if err = h.sc.UpdateProjectAliases(h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.project))
 	}
 
 	if err = h.sc.UpdateAdminRoles(h.newProjectRef, h.newProjectRef.Admins, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
-	for i := range h.requestProjectRef.Subscriptions {
-		h.requestProjectRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
-		h.requestProjectRef.Subscriptions[i].Owner = utility.ToStringPtr(h.project)
+	for i := range h.apiNewProjectRef.Subscriptions {
+		h.apiNewProjectRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
+		h.apiNewProjectRef.Subscriptions[i].Owner = utility.ToStringPtr(h.project)
 	}
-	if err = h.sc.SaveSubscriptions(h.newProjectRef.Id, h.requestProjectRef.Subscriptions); err != nil {
+	if err = h.sc.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.project))
 	}
 
 	toDelete := []string{}
-	for _, deleteSub := range h.requestProjectRef.DeleteSubscriptions {
+	for _, deleteSub := range h.apiNewProjectRef.DeleteSubscriptions {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
 	if err = h.sc.DeleteSubscriptions(h.newProjectRef.Id, toDelete); err != nil {
