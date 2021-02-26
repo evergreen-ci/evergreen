@@ -12,8 +12,6 @@ tasks:
         params:
           directory: src
           token: ${github}
-          additional_patches:
-            - "555555555555555555555555"
 
 modules:
   - name: enterprise

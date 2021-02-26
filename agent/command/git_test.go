@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -135,6 +136,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.InlinePatch)
+	s.modelData6.Task.Requester = evergreen.MergeTestRequester
 	s.Require().NoError(err)
 	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
 	s.Require().NoError(err)
@@ -923,14 +925,14 @@ func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put("github", token)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = context.WithValue(ctx, "patch", &patch.Patch{
+	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
 		Id: "p",
 		Patches: []patch.ModulePatch{
 			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}},
 		},
 	})
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	comm.PatchFiles["patchfile1"] = `
 diff --git a/README.md b/README.md
@@ -954,7 +956,10 @@ index edc0c34..8e82862 100644
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
-			s.NoError(err)
+			// this command will error because it'll apply the same patch twice. We are just testing that
+			// there was an attempt to apply the patch the second time
+			grip.Debug(err)
+			s.Error(err)
 		}
 	}
 

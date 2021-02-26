@@ -28,8 +28,9 @@ func (m *Module) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
 func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m) }
 
 type CommitQueueItem struct {
-	Issue           string    `bson:"issue"`
-	PatchId         string    `bson:"patch_id,omitempty"`
+	Issue   string `bson:"issue"`
+	PatchId string `bson:"patch_id,omitempty"`
+	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
 	Version         string    `bson:"version,omitempty"`
 	EnqueueTime     time.Time `bson:"enqueue_time"`
 	Modules         []Module  `bson:"modules"`
@@ -41,10 +42,8 @@ func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marsha
 func (i *CommitQueueItem) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, i) }
 
 type CommitQueue struct {
-	ProjectID             string            `bson:"_id"`
-	Processing            bool              `bson:"processing"`
-	ProcessingUpdatedTime time.Time         `bson:"processing_updated_time"`
-	Queue                 []CommitQueueItem `bson:"queue,omitempty"`
+	ProjectID string            `bson:"_id"`
+	Queue     []CommitQueueItem `bson:"queue,omitempty"`
 }
 
 func (q *CommitQueue) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(q) }
@@ -111,6 +110,31 @@ func (q *CommitQueue) Next() (CommitQueueItem, bool) {
 	return q.Queue[0], true
 }
 
+func (q *CommitQueue) NextUnprocessed(n int) []CommitQueueItem {
+	items := []CommitQueueItem{}
+	for i, item := range q.Queue {
+		if i+1 > n {
+			return items
+		}
+		if item.Version != "" {
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items
+}
+
+func (q *CommitQueue) Processing() bool {
+	for _, item := range q.Queue {
+		if item.Version != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
@@ -124,12 +148,6 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
 
-	// clearing the front of the queue
-	if itemIndex == 0 {
-		if err := q.SetProcessing(false); err != nil {
-			return nil, errors.Wrap(err, "can't set processing to false")
-		}
-	}
 	return &item, nil
 }
 
@@ -144,15 +162,6 @@ func (q *CommitQueue) FindItem(issue string) int {
 		}
 	}
 	return -1
-}
-
-func (q *CommitQueue) SetProcessing(status bool) error {
-	q.Processing = status
-	if err := setProcessing(q.ProjectID, status); err != nil {
-		return errors.Wrapf(err, "can't set processing on queue id '%s'", q.ProjectID)
-	}
-
-	return nil
 }
 
 // EnsureCommitQueueExistsForProject inserts a skeleton commit queue if project doesn't have one

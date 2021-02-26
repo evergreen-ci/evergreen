@@ -297,3 +297,37 @@ func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
+
+type commitQueueAdditionalPatches struct {
+	patchId string
+
+	sc data.Connector
+}
+
+func makeCommitQueueAdditionalPatches(sc data.Connector) gimlet.RouteHandler {
+	return &commitQueueAdditionalPatches{
+		sc: sc,
+	}
+}
+
+func (p *commitQueueAdditionalPatches) Factory() gimlet.RouteHandler {
+	return &commitQueueAdditionalPatches{
+		sc: p.sc,
+	}
+}
+
+func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Request) error {
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+	if p.patchId == "" {
+		return errors.New("patch_id must be specified")
+	}
+	return nil
+}
+
+func (p *commitQueueAdditionalPatches) Run(ctx context.Context) gimlet.Responder {
+	additional, err := p.sc.GetAdditionalPatches(p.patchId)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	return gimlet.NewJSONResponse(additional)
+}

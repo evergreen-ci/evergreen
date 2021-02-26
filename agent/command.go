@@ -132,7 +132,9 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		case err = <-cmdChan:
 			if err != nil {
 				tc.logger.Task().Errorf("Command failed: %v", err)
-				if options.isTaskCommands || options.shouldSetupFail {
+				if options.isTaskCommands || options.shouldSetupFail ||
+					(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
+					// any git.get_project in the commit queue should fail
 					return errors.Wrap(err, "command failed")
 				}
 			}

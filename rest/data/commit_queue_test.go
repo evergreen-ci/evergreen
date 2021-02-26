@@ -103,8 +103,6 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	s.NoError(s.queue.SetProcessing(true))
-
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
 	s.Error(err)
 	s.Nil(found)
@@ -429,9 +427,8 @@ func TestConcludeMerge(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 	queue := &commitqueue.CommitQueue{
-		ProjectID:  projectID,
-		Queue:      []commitqueue.CommitQueueItem{{Issue: itemID.Hex(), Version: itemID.Hex()}},
-		Processing: true,
+		ProjectID: projectID,
+		Queue:     []commitqueue.CommitQueueItem{{Issue: itemID.Hex(), Version: itemID.Hex()}},
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
 	dc := &DBCommitQueueConnector{}
@@ -441,5 +438,4 @@ func TestConcludeMerge(t *testing.T) {
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)
 	assert.Len(t, queue.Queue, 0)
-	assert.False(t, queue.Processing)
 }

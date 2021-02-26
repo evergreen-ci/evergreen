@@ -1,4 +1,3 @@
-//nolint:shadow
 package units
 
 import (
@@ -68,74 +67,6 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	return job
 }
 
-func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
-	nextItem, valid := cq.Next()
-	if !valid {
-		return
-	}
-
-	// unstuck the queue if the patch is done.
-	version := ""
-	if nextItem.Source == commitqueue.SourceDiff {
-		version = nextItem.Issue
-	} else if nextItem.Source == commitqueue.SourcePullRequest {
-		version = nextItem.Version
-	} else {
-		grip.Error(message.Fields{
-			"message": "stuck commit queue entry has unknown source",
-			"entry":   nextItem,
-			"project": projectRef.Identifier,
-			"job_id":  j.ID(),
-		})
-	}
-	if version == "" || !patch.IsValidId(version) {
-		j.dequeue(cq, nextItem)
-		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
-		return
-	}
-
-	patchDoc, err := patch.FindOne(patch.ByStringId(version).WithFields(patch.FinishTimeKey, patch.StatusKey))
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
-		return
-	}
-	if patchDoc == nil {
-		j.dequeue(cq, nextItem)
-		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
-		if nextItem.Source == commitqueue.SourcePullRequest {
-			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
-			if err != nil {
-				j.AddError(err)
-				return
-			}
-			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
-		}
-		return
-	}
-
-	// patch is done
-	if !utility.IsZeroTime(patchDoc.FinishTime) {
-		j.dequeue(cq, nextItem)
-		status := evergreen.MergeTestSucceeded
-		if patchDoc.Status == evergreen.PatchFailed {
-			status = evergreen.MergeTestFailed
-		}
-		event.LogCommitQueueConcludeTest(version, status)
-		grip.Info(message.Fields{
-			"source":                "commit queue",
-			"patch status":          status,
-			"job_id":                j.ID(),
-			"item_id":               nextItem.Issue,
-			"project_id":            cq.ProjectID,
-			"processing_seconds":    time.Since(cq.ProcessingUpdatedTime).Seconds(),
-			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
-			"message":               "patch done and dequeued",
-		})
-	}
-
-	return
-}
-
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
@@ -177,7 +108,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	// pull the next item off the queue
 	cq, err := commitqueue.FindOneId(j.QueueID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
@@ -187,68 +117,129 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("no commit queue found for id %s", j.QueueID))
 		return
 	}
-	nextItem, valid := cq.Next()
-	if !valid {
-		return
-	}
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
 		return
 	}
+	j.TryUnstick(ctx, cq, projectRef, githubToken)
 
-	if cq.Processing {
+	if cq.Processing() {
+		return
+	}
+
+	batchSize := conf.CommitQueue.BatchSize
+	if batchSize < 1 {
+		batchSize = 1
+	}
+	nextItems := cq.NextUnprocessed(batchSize)
+	if len(nextItems) == 0 {
+		return
+	}
+
+	for _, nextItem := range nextItems {
+		// log time waiting in queue
+		timeWaiting := time.Now().Sub(nextItem.EnqueueTime)
 		grip.Info(message.Fields{
-			"source":             "commit queue",
-			"job_id":             j.ID(),
-			"item_id":            nextItem.Issue,
-			"project_id":         cq.ProjectID,
-			"processing_seconds": time.Since(cq.ProcessingUpdatedTime).Seconds(),
+			"source":       "commit queue",
+			"job_id":       j.ID(),
+			"item_id":      nextItem.Issue,
+			"project_id":   cq.ProjectID,
+			"time_waiting": timeWaiting.Seconds(),
+			"queue_length": len(cq.Queue),
+			"message":      "started testing commit queue item",
 		})
-		// check if the patch is done, and if it is, dequeue.
-		// It's okay if this gets to it before the notification does, since that will
-		// check if the item is still on the queue before removing it.
-		j.TryUnstick(ctx, cq, projectRef, githubToken)
-		return
-	}
-	if err = cq.SetProcessing(true); err != nil {
-		j.AddError(errors.Wrap(err, "can't set processing to true"))
-		return
-	}
 
-	// log time waiting in queue
-	timeWaiting := time.Now().Sub(nextItem.EnqueueTime)
-	grip.Info(message.Fields{
-		"source":       "commit queue",
-		"job_id":       j.ID(),
-		"item_id":      nextItem.Issue,
-		"project_id":   cq.ProjectID,
-		"time_waiting": timeWaiting.Seconds(),
-		"queue_length": len(cq.Queue),
-		"message":      "started testing commit queue item",
-	})
+		if nextItem.Version != "" {
+			grip.Error(message.Fields{
+				"message": "tried to process an item twice",
+				"queue":   cq.ProjectID,
+				"item":    nextItem.Version,
+			})
+			return
+		}
 
-	// create a version with the item and subscribe to its completion
-	if nextItem.Source == commitqueue.SourcePullRequest {
-		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
-	} else if nextItem.Source == commitqueue.SourceDiff {
-		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
-	} else {
-		grip.Error(message.Fields{
-			"message": "commit queue entry has unknown source",
-			"entry":   nextItem,
-			"project": projectRef.Identifier,
+		// create a version with the item and subscribe to its completion
+		if nextItem.Source == commitqueue.SourcePullRequest {
+			j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
+		} else if nextItem.Source == commitqueue.SourceDiff {
+			j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
+		} else {
+			grip.Error(message.Fields{
+				"message": "commit queue entry has unknown source",
+				"entry":   nextItem,
+				"project": projectRef.Identifier,
+				"job_id":  j.ID(),
+			})
+		}
+
+		grip.Info(message.Fields{
+			"source":  "commit queue",
 			"job_id":  j.ID(),
+			"item":    nextItem,
+			"message": "finished processing item",
+		})
+	}
+}
+
+func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
+	nextItem, valid := cq.Next()
+	if !valid {
+		return
+	}
+
+	if nextItem.Version == "" {
+		return
+	}
+
+	// unstick the queue if the patch is done.
+	if !patch.IsValidId(nextItem.Version) {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
+		return
+	}
+
+	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Version).WithFields(patch.FinishTimeKey, patch.StatusKey))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
+		return
+	}
+	if patchDoc == nil {
+		j.dequeue(cq, nextItem)
+		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
+		if nextItem.Source == commitqueue.SourcePullRequest {
+			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
+		}
+		return
+	}
+
+	// patch is done
+	if !utility.IsZeroTime(patchDoc.FinishTime) {
+		j.dequeue(cq, nextItem)
+		status := evergreen.MergeTestSucceeded
+		if patchDoc.Status == evergreen.PatchFailed {
+			status = evergreen.MergeTestFailed
+		}
+		event.LogCommitQueueConcludeTest(nextItem.Version, status)
+		grip.Info(message.Fields{
+			"source":                "commit queue",
+			"patch status":          status,
+			"job_id":                j.ID(),
+			"item_id":               nextItem.Issue,
+			"project_id":            cq.ProjectID,
+			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
+			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
+			"message":               "patch done and dequeued",
 		})
 	}
 
-	grip.Info(message.Fields{
-		"source":  "commit queue",
-		"job_id":  j.ID(),
-		"item":    nextItem,
-		"message": "finished processing item",
-	})
+	return
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
@@ -261,8 +252,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 				j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
 			}
 			j.dequeue(cq, nextItem)
-		} else {
-			j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
 		}
 		return
 	}
@@ -319,8 +308,6 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 			if dequeue {
 				j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
 				j.dequeue(cq, nextItem)
-			} else {
-				j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
 			}
 			return
 		}
@@ -425,6 +412,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, nextItem)
 		return
 	}
+	nextItem.Version = v.Id
 	if err = cq.UpdateVersion(nextItem); err != nil {
 		j.logError(err, "problem saving version", nextItem)
 		j.dequeue(cq, nextItem)

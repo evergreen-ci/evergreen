@@ -1458,9 +1458,8 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 		{Issue: "42"},
 	}
 	cq := &commitqueue.CommitQueue{
-		ProjectID:  "my-project",
-		Processing: true,
-		Queue:      q,
+		ProjectID: "my-project",
+		Queue:     q,
 	}
 	assert.NoError(t, v.Insert())
 	assert.NoError(t, p.Insert())
@@ -1475,7 +1474,6 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
 	assert.Len(t, cq.Queue, 1)
-	assert.False(t, cq.Processing)
 
 	mergeTask, err := task.FindMergeTaskForVersion(patchID)
 	assert.NoError(t, err)
@@ -1549,7 +1547,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 		{Issue: "12", Source: commitqueue.SourcePullRequest, Version: v.Id},
 		{Issue: "42", Source: commitqueue.SourcePullRequest},
 	}
-	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Processing: true, Queue: q}
+	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Queue: q}
 	assert.NoError(t, v.Insert())
 	assert.NoError(t, p.Insert())
 	assert.NoError(t, b.Insert())
@@ -1567,7 +1565,6 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
 	assert.Len(t, cq.Queue, 1)
-	assert.False(t, cq.Processing)
 
 	// check that all tasks are now in the correct state
 	tasks, err := task.FindAll(db.Q{})

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -192,4 +193,33 @@ func TestCqMessageForPatch(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
 	assert.Equal(t, project.CommitQueue.Message, resp.Data().(string))
+}
+
+func TestAdditionalPatches(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection))
+	patchId := bson.NewObjectId()
+	p := patch.Patch{
+		Id:      patchId,
+		Project: "proj",
+	}
+	assert.NoError(t, p.Insert())
+	cq := commitqueue.CommitQueue{
+		ProjectID: "proj",
+		Queue: []commitqueue.CommitQueueItem{
+			{Version: "a"},
+			{Version: "b"},
+			{Version: patchId.Hex()},
+		},
+	}
+	assert.NoError(t, commitqueue.InsertQueue(&cq))
+
+	handler := makeCommitQueueAdditionalPatches(&data.DBConnector{})
+	ctx := context.Background()
+
+	request, err := http.NewRequest(http.MethodGet, "", nil)
+	assert.NoError(t, err)
+	request = gimlet.SetURLVars(request, map[string]string{"patch_id": patchId.Hex()})
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.Equal(t, []string{"a", "b"}, resp.Data().([]string))
 }

@@ -48,10 +48,6 @@ func (d *DequeueItem) Send() error {
 	}
 	event.LogCommitQueueConcludeTest(version, status)
 
-	if err = queue.SetProcessing(false); err != nil {
-		return errors.Wrap(err, "can't set processing to false")
-	}
-
 	return nil
 }
 

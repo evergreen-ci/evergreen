@@ -530,6 +530,32 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	return nil
 }
 
+func (pc *DBCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
+	p, err := patch.FindOneId(patchId)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find patch")
+	}
+	if p == nil {
+		return nil, errors.Errorf("patch '%s' not found", patchId)
+	}
+	cq, err := commitqueue.FindOneId(p.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find commit queue")
+	}
+	if cq == nil {
+		return nil, errors.Errorf("no commit queue for project '%s' found", p.Project)
+	}
+	additionalPatches := []string{}
+	for _, item := range cq.Queue {
+		if item.Version == patchId {
+			return additionalPatches, nil
+		} else if item.Version != "" {
+			additionalPatches = append(additionalPatches, item.Version)
+		}
+	}
+	return nil, errors.Errorf("patch '%s' not found in queue", patchId)
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -628,4 +654,7 @@ func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, 
 
 func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	return nil
+}
+func (pc *MockCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
+	return nil, nil
 }

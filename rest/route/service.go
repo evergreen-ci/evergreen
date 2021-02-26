@@ -83,8 +83,10 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{project_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetCommitQueueItems(sc))
 	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(sc, env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem(sc))
+	app.AddRoute("/commit_queue/{patch_id}/additional").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueAdditionalPatches(sc))
+	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc)) // TODO EVG-14087 remove this
+	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(checkUser).RouteHandler(makecqMessageForPatch(sc))
-	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeCostByVersionHandler(sc))

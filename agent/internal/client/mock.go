@@ -489,3 +489,7 @@ func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus,
 func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
 	return nil
 }
+
+func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
+	return []string{"555555555555555555555555"}, nil
+}
