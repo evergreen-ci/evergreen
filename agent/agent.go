@@ -299,12 +299,14 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 		return true
 	}
 	if nextTask.TaskGroup != tc.taskGroup {
-		tc.logger.Task().WarningWhen(nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup, message.Fields{
-			"message":                 "programmer error: task group in task context doesn't match task",
-			"task_config_task_group":  tc.taskConfig.Task.TaskGroup,
-			"task_context_task_group": tc.taskGroup,
-			"next_task_task_group":    nextTask.TaskGroup,
-		})
+		if tc.logger != nil && nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup {
+			tc.logger.Task().Warning(message.Fields{
+				"message":                 "programmer error: task group in task context doesn't match task",
+				"task_config_task_group":  tc.taskConfig.Task.TaskGroup,
+				"task_context_task_group": tc.taskGroup,
+				"next_task_task_group":    nextTask.TaskGroup,
+			})
+		}
 		return true
 	}
 	return false
@@ -599,7 +601,9 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}()
 	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
+		if tc.logger != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
+		}
 		return
 	}
 	if taskGroup.TeardownGroup != nil {
