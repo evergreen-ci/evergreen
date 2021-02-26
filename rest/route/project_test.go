@@ -138,6 +138,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 		Owner:                 h.originalProject.Owner,
 		Repo:                  h.originalProject.Repo,
 		GitTagAuthorizedUsers: []string{"special"},
+		Restricted:            utility.FalsePtr(),
 	}}
 	s.NoError(repoRef.Add(nil))
 
@@ -158,6 +159,13 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
+
+	// verify that the repo fields weren't saved with the branch
+	p, err := s.sc.FindProjectById("dimoxinil", false)
+	s.NoError(err)
+	s.Require().NotNil(p)
+	s.Empty(p.GitTagAuthorizedUsers)
+	s.Nil(p.Restricted)
 }
 
 func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
