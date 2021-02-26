@@ -137,6 +137,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.InlinePatch)
 	s.modelData6.Task.Requester = evergreen.MergeTestRequester
+	s.modelData6.Task.CommitQueueMerge = true
 	s.Require().NoError(err)
 	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
 	s.Require().NoError(err)
@@ -956,10 +957,10 @@ index edc0c34..8e82862 100644
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
-			// the mock can't return multiple different patches in the above flow, and
-			// it's not too important that it does. Returning the same patch means we will
-			// apply the diff in this test twice, and the second time will fail
+			// this command will error because it'll apply the same patch twice. We are just testing that
+			// there was an attempt to apply the patch the second time
 			grip.Debug(err)
+			s.Error(err)
 		}
 	}
 

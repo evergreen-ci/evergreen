@@ -113,11 +113,11 @@ func (q *CommitQueue) Next() (CommitQueueItem, bool) {
 func (q *CommitQueue) NextUnprocessed(n int) []CommitQueueItem {
 	items := []CommitQueueItem{}
 	for i, item := range q.Queue {
-		if item.Version != "" {
-			continue
-		}
 		if i+1 > n {
 			return items
+		}
+		if item.Version != "" {
+			continue
 		}
 		items = append(items, item)
 	}

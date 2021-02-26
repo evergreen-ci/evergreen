@@ -134,8 +134,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 				tc.logger.Task().Errorf("Command failed: %v", err)
 				if options.isTaskCommands || options.shouldSetupFail ||
 					(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
-					// special exception for merge conflicts in commit queue merges, in case the project has
-					// git.get_project in their pre step - that should also cause the task to fail
+					// any git.get_project in the commit queue should fail
 					return errors.Wrap(err, "command failed")
 				}
 			}
