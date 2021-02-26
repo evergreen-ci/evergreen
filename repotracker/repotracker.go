@@ -564,7 +564,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	}
 	var subscriber *event.Subscriber
 	preference := u.Settings.Notifications.BuildBreak
-	if preference != "" {
+	if preference != "" && preference != user.PreferenceNone {
 		subscriber = &event.Subscriber{
 			Type: string(preference),
 		}

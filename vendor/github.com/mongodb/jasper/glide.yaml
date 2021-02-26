@@ -7,11 +7,11 @@ import:
   - package: github.com/mongodb/amboy
   - package: github.com/mongodb/ftdc
   - package: github.com/evergreen-ci/aviation
+  - package: github.com/evergreen-ci/baobab
   - package: github.com/evergreen-ci/birch
   - package: github.com/evergreen-ci/gimlet
   - package: github.com/evergreen-ci/mrpc
   - package: github.com/evergreen-ci/poplar
-  - package: github.com/evergreen-ci/service
   - package: github.com/evergreen-ci/shrub
   - package: github.com/evergreen-ci/utility
   - package: github.com/evergreen-ci/bond

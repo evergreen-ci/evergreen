@@ -10,6 +10,7 @@ import (
 
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 	defer cancel()
 
 	for managerName, makeManager := range map[string]func(ctx context.Context, t *testing.T) *basicProcessManager{
-		"Basic": func(ctx context.Context, t *testing.T) *basicProcessManager {
+		"BasicManager": func(ctx context.Context, t *testing.T) *basicProcessManager {
 			basicManager, err := newBasicProcessManager(map[string]Process{}, true, false)
 			require.NoError(t, err)
 			return basicManager.(*basicProcessManager)
@@ -94,7 +95,7 @@ func TestBasicManagerWithTrackedProcesses(t *testing.T) {
 					manager := makeManager(tctx, t)
 					tracker, ok := manager.tracker.(*windowsProcessTracker)
 					require.True(t, ok)
-					testCase(tctx, t, manager, tracker, testutil.SleepCreateOpts(1))
+					testCase(tctx, t, manager, tracker, testoptions.SleepCreateOpts(1))
 				})
 			}
 		})

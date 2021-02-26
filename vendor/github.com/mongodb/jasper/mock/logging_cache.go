@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
@@ -58,45 +59,75 @@ func (c *LoggingCache) Put(id string, logger *options.CachedLogger) error {
 	return nil
 }
 
-// Get returns an object from the in-memory logging cache.
-func (c *LoggingCache) Get(id string) *options.CachedLogger { return c.Cache[id] }
+// Get returns an object from the in-memory logging cache. It returns an error
+// if it does not exist in the cache.
+func (c *LoggingCache) Get(id string) (*options.CachedLogger, error) {
+	logger, ok := c.Cache[id]
+	if !ok {
+		return nil, jasper.ErrCachedLoggerNotFound
+	}
+	return logger, nil
+}
 
-// Remove removes an object from the in-memory logging cache.
-func (c *LoggingCache) Remove(id string) { delete(c.Cache, id) }
+// Remove removes an object from the in-memory logging cache. It returns an
+// error if it does not exist in the cache.
+func (c *LoggingCache) Remove(id string) error {
+	if _, ok := c.Cache[id]; !ok {
+		return jasper.ErrCachedLoggerNotFound
+	}
+
+	delete(c.Cache, id)
+
+	return nil
+}
 
 // CloseAndRemove closes the cached logger and removes it from the in-memory
 // logging cache.
 func (c *LoggingCache) CloseAndRemove(_ context.Context, id string) error {
-	var err error
 	logger, ok := c.Cache[id]
-	if ok {
-		err = logger.Close()
-		delete(c.Cache, id)
+	if !ok {
+		return jasper.ErrCachedLoggerNotFound
+	}
+	if err := logger.Close(); err != nil {
+		return errors.Wrapf(err, "closing logger")
 	}
 
-	return errors.Wrapf(err, "problem closing logger with id %s", id)
+	delete(c.Cache, id)
+
+	return nil
 }
 
 // Clear closes and removes all objects in the in-memory logging cache.
 func (c *LoggingCache) Clear(_ context.Context) error {
 	catcher := grip.NewBasicCatcher()
-	for _, logger := range c.Cache {
-		catcher.Add(logger.Close())
+	var closed []string
+	for id, logger := range c.Cache {
+		if err := logger.Close(); err != nil {
+			catcher.Wrapf(err, "closing logger with id '%s'", id)
+			continue
+		}
+		closed = append(closed, id)
 	}
-	c.Cache = map[string]*options.CachedLogger{}
+	for _, id := range closed {
+		delete(c.Cache, id)
+	}
 
 	return catcher.Resolve()
 }
 
 // Prune removes all items from the cache whose most recent access time is older
 // than lastAccessed.
-func (c *LoggingCache) Prune(lastAccessed time.Time) {
-	for k, v := range c.Cache {
-		if v.Accessed.Before(lastAccessed) {
-			delete(c.Cache, k)
+func (c *LoggingCache) Prune(lastAccessed time.Time) error {
+	catcher := grip.NewBasicCatcher()
+	for id, logger := range c.Cache {
+		if logger.Accessed.Before(lastAccessed) {
+			catcher.Wrapf(c.CloseAndRemove(context.Background(), id), "pruning logger with id '%s'", id)
 		}
 	}
+	return catcher.Resolve()
 }
 
 // Len returns the size of the in-memory logging cache.
-func (c *LoggingCache) Len() int { return len(c.Cache) }
+func (c *LoggingCache) Len() (int, error) {
+	return len(c.Cache), nil
+}

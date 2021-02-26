@@ -416,14 +416,14 @@ func TestExtractResponse(t *testing.T) {
 						"success": %t,
 						"message": "%s"
 					},
-					"length": %d
+					"len": %d
 					}`, outcome.Success, outcome.Message, 50),
 					extractAndCheck: func(t *testing.T, input json.RawMessage) {
 						resp, err := ExtractLoggingCacheLenResponse(input)
 						if outcome.Success {
 							require.NoError(t, err)
 							assert.True(t, resp.Successful())
-							assert.Equal(t, 50, resp.Length)
+							assert.Equal(t, 50, resp.Len)
 						} else {
 							require.Error(t, err)
 							assert.False(t, resp.Successful())

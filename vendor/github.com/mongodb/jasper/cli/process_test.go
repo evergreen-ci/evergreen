@@ -7,6 +7,7 @@ import (
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/testutil"
+	testoptions "github.com/mongodb/jasper/testutil/options"
 	"github.com/mongodb/jasper/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -183,7 +184,7 @@ func TestCLIProcess(t *testing.T) {
 					}()
 
 					resp := &InfoResponse{}
-					input, err := json.Marshal(testutil.SleepCreateOpts(1))
+					input, err := json.Marshal(testoptions.SleepCreateOpts(1))
 					require.NoError(t, err)
 					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, resp))
 					require.True(t, resp.Successful())

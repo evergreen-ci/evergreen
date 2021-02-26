@@ -9,8 +9,8 @@ import (
 )
 
 type oomTrackerImpl struct {
-	WasOOMKilled bool  `json:"was_oom_killed"`
-	PIDs         []int `json:"pids"`
+	Lines []string `json:"lines"`
+	PIDs  []int    `json:"pids"`
 }
 
 // OOMTracker provides a tool for detecting if there have been OOM
@@ -20,13 +20,13 @@ type oomTrackerImpl struct {
 type OOMTracker interface {
 	Check(context.Context) error
 	Clear(context.Context) error
-	Report() (bool, []int)
+	Report() ([]string, []int)
 }
 
 // NewOOMTracker returns an implementation of the OOMTracker interface
 // for the current platform.
-func NewOOMTracker() OOMTracker                 { return &oomTrackerImpl{} }
-func (o *oomTrackerImpl) Report() (bool, []int) { return o.WasOOMKilled, o.PIDs }
+func NewOOMTracker() OOMTracker                     { return &oomTrackerImpl{} }
+func (o *oomTrackerImpl) Report() ([]string, []int) { return o.Lines, o.PIDs }
 
 func isSudo(ctx context.Context) (bool, error) {
 	if err := exec.CommandContext(ctx, "sudo", "-n", "date").Run(); err != nil {
@@ -47,10 +47,10 @@ type logAnalyzer struct {
 	extractPID     func(string) (int, bool)
 }
 
-func (a *logAnalyzer) analyzeKernelLog(ctx context.Context) (bool, []int, error) {
+func (a *logAnalyzer) analyzeKernelLog(ctx context.Context) ([]string, []int, error) {
 	sudo, err := isSudo(ctx)
 	if err != nil {
-		return false, nil, errors.Wrap(err, "error checking sudo")
+		return nil, nil, errors.Wrap(err, "error checking sudo")
 	}
 
 	var cmd *exec.Cmd
@@ -61,19 +61,19 @@ func (a *logAnalyzer) analyzeKernelLog(ctx context.Context) (bool, []int, error)
 	}
 	logPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return false, nil, errors.Wrap(err, "error creating StdoutPipe for log command")
+		return nil, nil, errors.Wrap(err, "error creating StdoutPipe for log command")
 	}
 	scanner := bufio.NewScanner(logPipe)
 	if err := cmd.Start(); err != nil {
-		return false, nil, errors.Wrap(err, "Error starting log command")
+		return nil, nil, errors.Wrap(err, "Error starting log command")
 	}
 
-	wasOOMKilled := false
+	lines := []string{}
 	pids := []int{}
 	for scanner.Scan() {
 		line := scanner.Text()
 		if a.lineHasOOMKill(line) {
-			wasOOMKilled = true
+			lines = append(lines, line)
 			if pid, hasPID := a.extractPID(line); hasPID {
 				pids = append(pids, pid)
 			}
@@ -83,9 +83,9 @@ func (a *logAnalyzer) analyzeKernelLog(ctx context.Context) (bool, []int, error)
 	errs := make(chan error, 1)
 	select {
 	case <-ctx.Done():
-		return false, nil, errors.New("request cancelled")
+		return nil, nil, errors.New("request cancelled")
 	case errs <- cmd.Wait():
 		err = <-errs
-		return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for log command")
+		return lines, pids, errors.Wrap(err, "Error waiting for log command")
 	}
 }

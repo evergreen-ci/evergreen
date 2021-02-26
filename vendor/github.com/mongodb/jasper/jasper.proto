@@ -403,10 +403,9 @@ message LoggingCacheInstance {
   google.protobuf.Timestamp accessed = 4;
 }
 
-message LoggingCacheSize {
+message LoggingCacheLenResponse {
   OperationOutcome outcome = 1 ;
-  string id = 2;
-  int64 size = 3;
+  int64 len = 2;
 }
 
 enum LoggingPayloadFormat {
@@ -467,7 +466,7 @@ service JasperProcessManager {
   rpc LoggingCacheRemove(LoggingCacheArgs) returns (OperationOutcome);
   rpc LoggingCacheCloseAndRemove(LoggingCacheArgs) returns (OperationOutcome);
   rpc LoggingCacheClear(google.protobuf.Empty) returns (OperationOutcome);
-  rpc LoggingCacheLen(google.protobuf.Empty) returns (LoggingCacheSize);
+  rpc LoggingCacheLen(google.protobuf.Empty) returns (LoggingCacheLenResponse);
   rpc LoggingCachePrune(google.protobuf.Timestamp) returns (OperationOutcome);
 
   // Remote specific functions

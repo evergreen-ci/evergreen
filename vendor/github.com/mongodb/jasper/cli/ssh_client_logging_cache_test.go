@@ -70,7 +70,8 @@ func TestSSHLoggingCache(t *testing.T) {
 				resp,
 			)
 
-			logger := lc.Get(resp.Logger.ID)
+			logger, err := lc.Get(resp.Logger.ID)
+			require.NoError(t, err)
 			assert.Equal(t, resp.Logger.ID, logger.ID)
 			assert.Equal(t, resp.Logger.ManagerID, logger.ManagerID)
 		},
@@ -82,7 +83,8 @@ func TestSSHLoggingCache(t *testing.T) {
 				invalidResponse(),
 			)
 
-			logger := lc.Get("foo")
+			logger, err := lc.Get("foo")
+			assert.Error(t, err)
 			assert.Zero(t, logger)
 		},
 		"RemovePasses": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
@@ -94,7 +96,7 @@ func TestSSHLoggingCache(t *testing.T) {
 				makeOutcomeResponse(nil),
 			)
 
-			lc.Remove("foo")
+			assert.NoError(t, lc.Remove("foo"))
 		},
 		"CloseAndRemovePasses": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
 			inputChecker := &IDInput{}
@@ -122,7 +124,7 @@ func TestSSHLoggingCache(t *testing.T) {
 			inputChecker := &IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
-				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				[]string{LoggingCacheCommand, LoggingCacheClearCommand},
 				inputChecker,
 				makeOutcomeResponse(nil),
 			)
@@ -133,7 +135,7 @@ func TestSSHLoggingCache(t *testing.T) {
 			inputChecker := &IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, client,
-				[]string{LoggingCacheCommand, LoggingCacheCloseAndRemoveCommand},
+				[]string{LoggingCacheCommand, LoggingCacheClearCommand},
 				inputChecker,
 				invalidResponse(),
 			)
@@ -149,12 +151,12 @@ func TestSSHLoggingCache(t *testing.T) {
 				makeOutcomeResponse(nil),
 			)
 
-			lc.Prune(time.Now())
+			require.NoError(t, lc.Prune(time.Now()))
 		},
 		"LenPassesWithValidResponse": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
 			resp := &LoggingCacheLenResponse{
 				OutcomeResponse: *makeOutcomeResponse(nil),
-				Length:          50,
+				Len:             50,
 			}
 			baseManager.Create = makeCreateFunc(
 				t, client,
@@ -163,7 +165,9 @@ func TestSSHLoggingCache(t *testing.T) {
 				resp,
 			)
 
-			assert.Equal(t, resp.Length, lc.Len())
+			length, err := lc.Len()
+			require.NoError(t, err)
+			assert.Equal(t, resp.Len, length)
 		},
 		"LenFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, lc *sshLoggingCache, client *sshClient, baseManager *mock.Manager) {
 			baseManager.Create = makeCreateFunc(
@@ -173,7 +177,9 @@ func TestSSHLoggingCache(t *testing.T) {
 				invalidResponse(),
 			)
 
-			assert.Equal(t, -1, lc.Len())
+			length, err := lc.Len()
+			require.Error(t, err)
+			assert.Equal(t, -1, length)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

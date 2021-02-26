@@ -25,16 +25,12 @@ func makeInsecureRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (
 }
 
 func tryStartRPCService(ctx context.Context, startService func(context.Context, net.Addr) error) (net.Addr, error) {
-	var addr net.Addr
-	var err error
-tryPort:
 	for {
 		select {
 		case <-ctx.Done():
-			err = ctx.Err()
-			break tryPort
+			return nil, ctx.Err()
 		default:
-			addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
+			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", testutil.GetPortNumber()))
 			if err != nil {
 				continue
 			}
@@ -43,10 +39,9 @@ tryPort:
 				continue
 			}
 
-			break tryPort
+			return addr, err
 		}
 	}
-	return addr, err
 }
 
 func makeTLSRPCServiceAndClient(ctx context.Context, mngr jasper.Manager) (Manager, error) {
@@ -117,7 +112,7 @@ func startTestRPCService(ctx context.Context, mngr jasper.Manager, addr net.Addr
 	return nil
 }
 
-// newTestClient establishes a client for testing purposes that closes when
+// newTestRPCClient establishes a client for testing purposes that closes when
 // the context is done.
 func newTestRPCClient(ctx context.Context, addr net.Addr, creds *certdepot.Credentials) (Manager, error) {
 	client, err := NewRPCClient(ctx, addr, creds)

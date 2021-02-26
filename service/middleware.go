@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -127,21 +127,7 @@ func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.
 }
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.Settings.Ui.CORSOrigins) > 0 {
-			requester := r.Header.Get("Origin")
-
-			// Requests from a GQL client include this header, which must be added to the response to enable CORS
-			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-
-			if utility.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {
-				w.Header().Add("Access-Control-Allow-Origin", requester)
-				w.Header().Add("Access-Control-Allow-Credentials", "true")
-				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
-			}
-		}
-		next(w, r)
-	}
+	return route.AddCORSHeaders(uis.Settings.Ui.CORSOrigins, next)
 }
 
 // isAdmin returns true if the user id is located in ProjectRef's Admins field

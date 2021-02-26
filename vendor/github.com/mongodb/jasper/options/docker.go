@@ -12,13 +12,13 @@ import (
 
 // Docker encapsulates options related to connecting to a Docker daemon.
 type Docker struct {
-	Host       string
-	Port       int
-	APIVersion string
-	Image      string
+	Host       string `bson:"host,omitempty" json:"host,omitempty" yaml:"host,omitempty"`
+	Port       int    `bson:"port,omitempty" json:"port,omitempty" yaml:"port,omitempty"`
+	APIVersion string `bson:"api_version,omitempty" json:"api_version,omitempty" yaml:"api_version,omitempty"`
+	Image      string `bson:"image,omitempty" json:"image,omitempty" yaml:"image,omitempty"`
 	// Platform refers to the major operating system on which the Docker
 	// container runs.
-	Platform string
+	Platform string `bson:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
 }
 
 // Validate checks whether all the required fields are set and sets defaults if

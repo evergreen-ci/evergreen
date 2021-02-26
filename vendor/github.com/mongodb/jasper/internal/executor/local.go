@@ -77,7 +77,7 @@ func (e *local) SetStderr(stderr io.Writer) {
 }
 
 func (e *local) Stderr() io.Writer {
-	return e.cmd.Stdout
+	return e.cmd.Stderr
 }
 
 // Start begins running the process.
@@ -112,6 +112,8 @@ func (e *local) ExitCode() int {
 	if e.cmd.ProcessState == nil {
 		return -1
 	}
+	// TODO: this can be just replaced with ProcessState.ExitCode, but requires
+	// go1.12.
 	status := e.cmd.ProcessState.Sys().(syscall.WaitStatus)
 	return status.ExitStatus()
 }
