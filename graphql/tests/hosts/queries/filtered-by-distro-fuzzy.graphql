@@ -1,0 +1,16 @@
+{
+  hosts(distroId: "macos") {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      distroId
+      status
+      startedBy
+      hostUrl
+      totalIdleTime
+      uptime
+      elapsed
+    }
+  }
+}

@@ -133,6 +133,6 @@ type ProcessInfo struct {
 	Complete   bool           `json:"complete" bson:"complete"`
 	Timeout    bool           `json:"timeout" bson:"timeout"`
 	Options    options.Create `json:"options" bson:"options"`
-	StartAt    time.Time      `json:"start_at" bson:"start_at"`
-	EndAt      time.Time      `json:"end_at" bson:"end_at"`
+	StartAt    time.Time      `json:"start_at,omitempty" bson:"start_at,omitempty"`
+	EndAt      time.Time      `json:"end_at,omitempty" bson:"end_at,omitempty"`
 }

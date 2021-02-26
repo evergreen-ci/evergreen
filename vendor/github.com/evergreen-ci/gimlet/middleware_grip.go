@@ -138,6 +138,9 @@ func finishLogger(logger grip.Journaler, r *http.Request, res negroni.ResponseWr
 		"outcome":     http.StatusText(res.Status()),
 		"length":      r.ContentLength,
 	}
+	if u := GetUser(ctx); u != nil {
+		m["user"] = u.Username()
+	}
 
 	if a != nil {
 		m[a.key] = a.value

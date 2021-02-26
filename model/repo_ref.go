@@ -60,15 +60,16 @@ var (
 )
 
 func (r *RepoRef) Add(creator *user.DBUser) error {
-	err := db.Insert(RepoRefCollection, r)
+	err := r.Upsert()
 	if err != nil {
-		return errors.Wrap(err, "Error inserting repo ref")
+		return errors.Wrap(err, "Error upserting repo ref")
 	}
 	return r.AddPermissions(creator)
 }
 
+// Insert is included here so ProjectRef.Insert() isn't mistakenly used.
 func (r *RepoRef) Insert() error {
-	return db.Insert(RepoRefCollection, r)
+	return errors.New("insert not supported for repoRef")
 }
 
 // Upsert updates the project ref in the db if an entry already exists,

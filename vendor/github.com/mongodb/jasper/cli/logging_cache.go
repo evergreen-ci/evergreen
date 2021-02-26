@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/mongodb/jasper/remote"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -48,7 +47,7 @@ func loggingCacheCreate() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(errors.New("logging cache not supported"))}
+					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)}
 				}
 				logger, err := lc.Create(input.ID, &input.Output)
 				if err != nil {
@@ -70,11 +69,11 @@ func loggingCacheGet() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(errors.New("logging cache not supported"))}
+					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)}
 				}
-				logger := lc.Get(input.ID)
-				if logger == nil {
-					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(errors.Errorf("logger with id '%s' not found", input.ID))}
+				logger, err := lc.Get(input.ID)
+				if err != nil {
+					return &CachedLoggerResponse{OutcomeResponse: *makeOutcomeResponse(err)}
 				}
 				return &CachedLoggerResponse{Logger: *logger, OutcomeResponse: *makeOutcomeResponse(nil)}
 			})
@@ -92,10 +91,10 @@ func loggingCacheRemove() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return makeOutcomeResponse(errors.New("logging cache not supported"))
+					return makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)
 				}
-				lc.Remove(input.ID)
-				return makeOutcomeResponse(nil)
+				err := lc.Remove(input.ID)
+				return makeOutcomeResponse(err)
 			})
 		},
 	}
@@ -111,7 +110,7 @@ func loggingCacheCloseAndRemove() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return makeOutcomeResponse(errors.New("logging cache not supported"))
+					return makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)
 				}
 				err := lc.CloseAndRemove(ctx, input.ID)
 				return makeOutcomeResponse(err)
@@ -129,7 +128,7 @@ func loggingCacheClear() cli.Command {
 			return doPassthroughOutput(c, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return makeOutcomeResponse(errors.New("logging cache not supported"))
+					return makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)
 				}
 				err := lc.Clear(ctx)
 				return makeOutcomeResponse(err)
@@ -148,10 +147,10 @@ func loggingCachePrune() cli.Command {
 			return doPassthroughInputOutput(c, &input, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return makeOutcomeResponse(errors.New("logging cache not supported"))
+					return makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)
 				}
-				lc.Prune(input.LastAccessed)
-				return makeOutcomeResponse(nil)
+				err := lc.Prune(input.LastAccessed)
+				return makeOutcomeResponse(err)
 			})
 		},
 	}
@@ -166,9 +165,10 @@ func loggingCacheLen() cli.Command {
 			return doPassthroughOutput(c, func(ctx context.Context, client remote.Manager) interface{} {
 				lc := client.LoggingCache(ctx)
 				if lc == nil {
-					return &LoggingCacheLenResponse{OutcomeResponse: *makeOutcomeResponse(errors.New("logging cache not supported"))}
+					return &LoggingCacheLenResponse{OutcomeResponse: *makeOutcomeResponse(remote.ErrLoggingCacheNotSupported)}
 				}
-				return &LoggingCacheLenResponse{Length: lc.Len(), OutcomeResponse: *makeOutcomeResponse(nil)}
+				length, err := lc.Len()
+				return &LoggingCacheLenResponse{Len: length, OutcomeResponse: *makeOutcomeResponse(err)}
 			})
 		},
 	}

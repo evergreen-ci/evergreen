@@ -8,9 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// MakeSynchronizedManager wraps the given manager in a thread-safe Manager.
-func MakeSynchronizedManager(manager Manager) Manager {
-	return &synchronizedProcessManager{manager: manager}
+// MakeSynchronizedManager wraps the given manager in a thread-safe Manager,
+// which also uses thread-safe processes.
+func MakeSynchronizedManager(mngr Manager) Manager {
+	return &synchronizedProcessManager{manager: mngr}
 }
 
 // NewSynchronizedManager is a constructor for a thread-safe basic Manager.
@@ -51,7 +52,7 @@ func (m *synchronizedProcessManager) CreateProcess(ctx context.Context, opts *op
 		return nil, errors.WithStack(err)
 	}
 
-	return &synchronizedProcess{proc: proc}, nil
+	return makeSynchronizedProcess(proc), nil
 }
 
 func (m *synchronizedProcessManager) CreateCommand(ctx context.Context) *Command {
@@ -65,7 +66,11 @@ func (m *synchronizedProcessManager) Register(ctx context.Context, proc Process)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return errors.WithStack(m.manager.Register(ctx, proc))
+	if proc == nil {
+		return errors.New("process cannot be nil")
+	}
+
+	return errors.WithStack(m.manager.Register(ctx, makeSynchronizedProcess(proc)))
 }
 
 func (m *synchronizedProcessManager) List(ctx context.Context, f options.Filter) ([]Process, error) {

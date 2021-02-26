@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/service"
+	"github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
@@ -76,7 +76,7 @@ func newRESTDaemon(opts daemonOptions) *restDaemon {
 	return &restDaemon{newBaseDaemon(opts)}
 }
 
-func (d *restDaemon) Start(s service.Service) error {
+func (d *restDaemon) Start(s baobab.Service) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := d.setup(ctx, cancel); err != nil {
 		return errors.Wrap(err, "setup")
@@ -90,7 +90,7 @@ func (d *restDaemon) Start(s service.Service) error {
 	return nil
 }
 
-func (d *restDaemon) Stop(s service.Service) error {
+func (d *restDaemon) Stop(s baobab.Service) error {
 	close(d.exit)
 	return nil
 }
@@ -110,8 +110,8 @@ func (d *restDaemon) newService(ctx context.Context) (util.CloseFunc, error) {
 // newRESTService creates a REST service around the manager serving requests on
 // the host and port.
 func newRESTService(ctx context.Context, host string, port int, manager jasper.Manager) (util.CloseFunc, error) {
-	service := remote.NewRESTService(manager)
-	app := service.App(ctx)
+	srv := remote.NewRESTService(manager)
+	app := srv.App(ctx)
 	app.SetPrefix("jasper")
 	if err := app.SetHost(host); err != nil {
 		return nil, errors.Wrap(err, "error setting REST host")

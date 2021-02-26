@@ -99,7 +99,7 @@ func (m *basicProcessManager) Register(ctx context.Context, proc Process) error 
 	}
 
 	if proc == nil {
-		return errors.New("process is not defined")
+		return errors.New("process cannot be nil")
 	}
 
 	id := proc.ID()
@@ -176,7 +176,11 @@ func (m *basicProcessManager) Clear(ctx context.Context) {
 	for procID, proc := range m.procs {
 		if proc.Complete(ctx) {
 			delete(m.procs, procID)
-			m.loggers.Remove(procID)
+			grip.Warning(message.WrapError(m.loggers.Remove(procID), message.Fields{
+				"message": "problem clearing caching logger for process",
+				"process": proc.ID(),
+				"manager": m.ID(),
+			}))
 		}
 	}
 }

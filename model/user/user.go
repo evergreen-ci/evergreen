@@ -91,6 +91,7 @@ type UserSubscriptionPreference string
 const (
 	PreferenceEmail UserSubscriptionPreference = event.EmailSubscriberType
 	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
+	PreferenceNone  UserSubscriptionPreference = event.SubscriberTypeNone
 )
 
 func (u *DBUser) Username() string        { return u.Id }

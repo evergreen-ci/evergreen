@@ -558,7 +558,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, apimodels.ReadBuildloggerToSlice(ctx, projCtx.Task.Id, logReader))
 		return
 	}
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Warning(message.WrapError(err, message.Fields{
 		"task_id": projCtx.Task.Id,
 		"message": "problem getting buildlogger logs",
 	}))
@@ -614,7 +614,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 			}))
 		}()
 	} else {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id": projCtx.Task.Id,
 			"message": "problem getting buildlogger logs",
 		}))

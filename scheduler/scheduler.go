@@ -122,7 +122,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 
 // Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
-	var distroExpectedDuration time.Duration
+	var distroExpectedDuration, distroDurationOverThreshold time.Duration
 	var distroCountDurationOverThreshold, distroCountWaitOverThreshold int
 	var isAliasQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
@@ -174,6 +174,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 					info.DurationOverThreshold += duration
 				}
 				distroCountDurationOverThreshold++
+				distroDurationOverThreshold += duration
 			}
 			if dependenciesMet {
 				startTime := task.ScheduledTime
@@ -207,6 +208,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		ExpectedDuration:           distroExpectedDuration,
 		MaxDurationThreshold:       maxDurationThreshold,
 		CountDurationOverThreshold: distroCountDurationOverThreshold,
+		DurationOverThreshold:      distroDurationOverThreshold,
 		CountWaitOverThreshold:     distroCountWaitOverThreshold,
 		TaskGroupInfos:             taskGroupInfos,
 		AliasQueue:                 isAliasQueue,

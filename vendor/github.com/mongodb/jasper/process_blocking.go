@@ -2,7 +2,6 @@ package jasper
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"os"
 	"runtime"
@@ -121,7 +120,10 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, exec 
 	signal := make(chan error)
 	go func() {
 		defer close(signal)
-		signal <- exec.Wait()
+		select {
+		case signal <- exec.Wait():
+		case <-ctx.Done():
+		}
 	}()
 	defer close(p.complete)
 
@@ -287,7 +289,6 @@ func (p *blockingProcess) Signal(ctx context.Context, sig syscall.Signal) error 
 			return
 		}
 
-		fmt.Println("processed signal for process", p.ID())
 		if skipSignal := p.signalTriggers.Run(p.getInfo(), sig); !skipSignal {
 			sig = makeCompatible(sig)
 			out <- errors.Wrapf(exec.Signal(sig), "problem sending signal '%s' to '%s'",

@@ -382,7 +382,8 @@ const (
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
 
-	ErrorParentNotFound = "Parent not found"
+	ErrorParentNotFound        = "Parent not found"
+	ErrorHostAlreadyTerminated = "not changing status of already terminated host"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -440,7 +441,7 @@ func IsIntentHostId(id string) bool {
 
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
-		msg := "not changing status of already terminated host"
+		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
 			"message": msg,
 			"host_id": h.Id,
@@ -468,7 +469,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 // status in the database matches currentStatus.
 func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
-		msg := "not changing status of already terminated host"
+		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
 			"message": msg,
 			"host_id": h.Id,
@@ -523,10 +524,12 @@ func (h *Host) SetDecommissioned(user string, logs string) error {
 		}))
 		for _, c := range containers {
 			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error decommissioning container",
-				"host_id": c.Id,
-			}))
+			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "error decommissioning container",
+					"host_id": c.Id,
+				}))
+			}
 		}
 	}
 	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
@@ -1022,6 +1025,7 @@ func (h *Host) SetNeedsReprovisionToNew(user string) error {
 	if h.StartedBy == evergreen.User && !h.NeedsNewAgentMonitor {
 		return nil
 	}
+
 	return h.MarkAsReprovisioning()
 }
 
@@ -2749,7 +2753,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				"distro._id": distroID,
+				"distro._id": bson.M{"$regex": distroID, "$options": "i"},
 			},
 		})
 	}

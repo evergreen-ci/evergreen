@@ -245,9 +245,9 @@ type sendMessagesRequest struct {
 	Payload options.LoggingPayload `bson:"send_messages"`
 }
 
-type loggingCacheSizeResponse struct {
+type loggingCacheLenResponse struct {
 	shell.ErrorResponse `bson:"error_response,inline"`
-	Size                int `bson:"size"`
+	Len                 int `bson:"len"`
 }
 
 type loggingCacheCreateRequest struct {
@@ -273,24 +273,17 @@ type loggingCacheClearRequest struct {
 	Clear int `bson:"logging_cache_clear"`
 }
 
-type loggingCacheCreateAndGetResponse struct {
+type loggingCacheLoggerResponse struct {
 	shell.ErrorResponse `bson:"error_response,inline"`
 	CachedLogger        options.CachedLogger `bson:"cached_logger"`
 }
 
-func makeLoggingCacheCreateAndGetResponse(l options.CachedLogger) loggingCacheCreateAndGetResponse {
-	return loggingCacheCreateAndGetResponse{
-		ErrorResponse: shell.MakeSuccessResponse(),
-		CachedLogger:  l,
-	}
+type loggingCacheLenRequest struct {
+	Len int `bson:"logging_cache_len"`
 }
 
 type loggingCachePruneRequest struct {
 	LastAccessed time.Time `bson:"logging_cache_prune"`
-}
-
-type loggingCacheLenRequest struct {
-	Len bool `bson:"logging_cache_size"`
 }
 
 type scriptingCreateRequest struct {

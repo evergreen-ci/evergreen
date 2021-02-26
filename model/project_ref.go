@@ -370,21 +370,9 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 			return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
 		}
 		if repoRef == nil {
-			repoRef = &RepoRef{ProjectRef{
-				Id:      mgobson.NewObjectId().Hex(),
-				Admins:  []string{user.Username()},
-				Owner:   p.Owner,
-				Repo:    p.Repo,
-				Enabled: utility.TruePtr(),
-			}}
-			// creates scope and give user admin access to repo
-			if err = repoRef.Add(user); err != nil {
-				return errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
-			}
-			newProjectVars := ProjectVars{Id: repoRef.Id}
-
-			if err = newProjectVars.Insert(); err != nil {
-				return errors.Wrap(err, "error inserting blank project variables for repo")
+			repoRef, err = p.createNewRepoRef(user)
+			if err != nil {
+				return errors.Wrapf(err, "error creating new repo ref")
 			}
 		}
 		p.RepoRefId = repoRef.Id
@@ -548,6 +536,175 @@ func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Valu
 			recursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
 		}
 	}
+}
+
+func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
+	if len(projectRefs) == 0 {
+		return
+	}
+	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
+	for i := 0; i < reflectedRepo.NumField(); i++ {
+		// for each field in the repo, look at each field in the project ref
+		var firstVal reflect.Value
+		allEqual := true
+		for j, pRef := range projectRefs {
+			reflectedBranchField := reflect.ValueOf(pRef).Field(i)
+			if j == 0 {
+				firstVal = reflectedBranchField
+			} else if !reflect.DeepEqual(firstVal.Interface(), reflectedBranchField.Interface()) {
+				allEqual = false
+				break
+			}
+		}
+		// if we got to the end of the loop, then all values are the same, so we can assign it to reflectedRepo
+		if allEqual {
+			reflectedRepo.Field(i).Set(firstVal)
+		}
+	}
+}
+
+func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
+	repoRef = &RepoRef{ProjectRef{
+		Id:      mgobson.NewObjectId().Hex(),
+		Owner:   p.Owner,
+		Repo:    p.Repo,
+		Enabled: utility.TruePtr(),
+		Admins:  []string{},
+	}}
+
+	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding all enabled projects")
+	}
+	// for every setting in the project ref, if all enabled projects have the same setting, then use that
+	defer func() {
+		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
+	}()
+	setRepoFieldsFromProjects(repoRef, allEnabledProjects)
+	repoRef.Admins = append(repoRef.Admins, u.Username())
+
+	// creates scope and give user admin access to repo
+	if err = repoRef.Add(u); err != nil {
+		return nil, errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
+	}
+	enabledProjectIds := []string{}
+	for _, p := range allEnabledProjects {
+		enabledProjectIds = append(enabledProjectIds, p.Id)
+	}
+	commonProjectVars, err := getCommonProjectVariables(enabledProjectIds)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting common project variables")
+	}
+	commonProjectVars.Id = repoRef.Id
+	if err = commonProjectVars.Insert(); err != nil {
+		return nil, errors.Wrap(err, "error inserting project variables for repo")
+	}
+
+	commonAliases, err := getCommonAliases(enabledProjectIds)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting common project aliases")
+	}
+	for _, a := range commonAliases {
+		a.ProjectID = repoRef.Id
+		if err = a.Upsert(); err != nil {
+			return nil, errors.Wrapf(err, "error upserting alias for repo")
+		}
+	}
+
+	return repoRef, nil
+}
+
+func getCommonAliases(projectIds []string) (ProjectAliases, error) {
+	commonAliases := []ProjectAlias{}
+	for i, id := range projectIds {
+		aliases, err := FindAliasesForProject(id)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding aliases for project")
+		}
+		if i == 0 {
+			commonAliases = aliases
+			continue
+		}
+		for j := len(commonAliases) - 1; j >= 0; j-- {
+			// look to see if this alias exists in the each project and if not remove it
+			if !aliasSliceContains(aliases, commonAliases[j]) {
+				commonAliases = append(commonAliases[:j], commonAliases[j+1:]...)
+			}
+		}
+		if len(commonAliases) == 0 {
+			return nil, nil
+		}
+	}
+
+	return commonAliases, nil
+}
+
+func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
+	for _, each := range slice {
+		if each.RemotePath != item.RemotePath || each.Alias != item.Alias || each.GitTag != item.GitTag ||
+			each.Variant != item.Variant || each.Task != item.Task {
+			continue
+		}
+
+		if len(each.VariantTags) != len(item.VariantTags) || len(each.TaskTags) != len(item.TaskTags) {
+			continue
+		}
+		if len(each.VariantTags) != len(utility.StringSliceIntersection(each.VariantTags, item.VariantTags)) {
+			continue
+		}
+		if len(each.TaskTags) != len(utility.StringSliceIntersection(each.TaskTags, item.TaskTags)) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
+	// add in project variables and aliases here
+	commonProjectVariables := map[string]string{}
+	commonPrivate := map[string]bool{}
+	commonRestricted := map[string]bool{}
+	for i, id := range projectIds {
+		vars, err := FindOneProjectVars(id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding variables for project '%s'", id)
+		}
+		if vars == nil {
+			continue
+		}
+		if i == 0 {
+			if vars.Vars != nil {
+				commonProjectVariables = vars.Vars
+			}
+			if vars.PrivateVars != nil {
+				commonPrivate = vars.PrivateVars
+			}
+			if vars.RestrictedVars != nil {
+				commonRestricted = vars.RestrictedVars
+			}
+			continue
+		}
+		for key, val := range commonProjectVariables {
+			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
+			if vars.Vars[key] == val {
+				if vars.PrivateVars[key] {
+					commonPrivate[key] = true
+				}
+				if vars.RestrictedVars[key] {
+					commonRestricted[key] = true
+				}
+			} else {
+				// remove any variables from the common set that aren't in all the project refs
+				delete(commonProjectVariables, key)
+			}
+		}
+	}
+	return &ProjectVars{
+		Vars:           commonProjectVariables,
+		PrivateVars:    commonPrivate,
+		RestrictedVars: commonRestricted,
+	}, nil
 }
 
 func FindIdForProject(identifier string) (string, error) {

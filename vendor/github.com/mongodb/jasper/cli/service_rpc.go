@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/evergreen-ci/service"
+	"github.com/evergreen-ci/baobab"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
@@ -85,7 +85,7 @@ func newRPCDaemon(opts daemonOptions, credsFilePath string) *rpcDaemon {
 	}
 }
 
-func (d *rpcDaemon) Start(s service.Service) error {
+func (d *rpcDaemon) Start(s baobab.Service) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := d.setup(ctx, cancel); err != nil {
 		return errors.Wrap(err, "setup")
@@ -99,7 +99,7 @@ func (d *rpcDaemon) Start(s service.Service) error {
 	return nil
 }
 
-func (d *rpcDaemon) Stop(s service.Service) error {
+func (d *rpcDaemon) Stop(s baobab.Service) error {
 	close(d.exit)
 	return nil
 }

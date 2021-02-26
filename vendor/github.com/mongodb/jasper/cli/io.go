@@ -552,7 +552,7 @@ func (in *LoggingCachePruneInput) Validate() error { return nil }
 // number of cached loggers.
 type LoggingCacheLenResponse struct {
 	OutcomeResponse `json:"outcome"`
-	Length          int `json:"length"`
+	Len             int `json:"len"`
 }
 
 // ExtractLoggingCacheLenResponse unmarshals the input bytes into a
