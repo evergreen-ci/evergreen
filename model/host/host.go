@@ -2753,7 +2753,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				"distro._id": distroID,
+				"distro._id": bson.M{"$regex": distroID, "$options": "i"},
 			},
 		})
 	}
