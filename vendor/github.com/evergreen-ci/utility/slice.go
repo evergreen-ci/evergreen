@@ -106,7 +106,7 @@ func GetSetDifference(a, b []string) []string {
 	return d
 }
 
-// IndexOf returns the first occurence of a string in a sorted array
+// IndexOf returns the first occurrence of a string in a sorted array
 func IndexOf(a []string, toFind string) int {
 	i := sort.Search(len(a), func(index int) bool {
 		return strings.Compare(a[index], toFind) >= 0

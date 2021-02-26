@@ -42,6 +42,7 @@ func FromBoolTPtr(in *bool) bool {
 	return *in
 }
 
+// BoolPtrCopy creates a new pointer with the same value as in.
 func BoolPtrCopy(in *bool) *bool {
 	if in == nil {
 		return nil

@@ -296,7 +296,7 @@ func IsTemporaryError(err error) bool {
 // error message with the HTTP status and raw response body.
 func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
 	if resp == nil {
-		return errors.Errorf(format, args)
+		return errors.Errorf(format, args...)
 	}
 	wrapError := func(err error) error {
 		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
@@ -348,7 +348,7 @@ func RetryRequest(ctx context.Context, r *http.Request, maxAttempts int, minBack
 			} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				return resp, nil
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				return resp, errors.Errorf("server returned status %f", resp.StatusCode)
+				return resp, errors.Errorf("server returned status %d", resp.StatusCode)
 			}
 
 			// if we get here it should most likely be a 5xx status code
