@@ -445,7 +445,8 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func ConvertDBTasksToGqlTasks(ctx context.Context, sc data.Connector, tasks []task.Task) ([]*TaskResult, error) {
+// ConvertDBTasksToGqlTasks converts tasks to task result objects
+func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, t := range tasks {
 		baseStatus := t.BaseTask.Status
@@ -481,7 +482,7 @@ func ConvertDBTasksToGqlTasks(ctx context.Context, sc data.Connector, tasks []ta
 
 		taskResults = append(taskResults, &result)
 	}
-	return taskResults, nil
+	return taskResults
 }
 
 type VersionModificationAction string

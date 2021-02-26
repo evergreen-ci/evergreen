@@ -1142,7 +1142,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
-	taskResults, err := ConvertDBTasksToGqlTasks(ctx, r.sc, tasks)
+	taskResults := ConvertDBTasksToGqlTasks(tasks)
 
 	patchTasks := PatchTasks{
 		Count: count,
