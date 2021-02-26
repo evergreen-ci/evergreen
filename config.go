@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -706,12 +707,37 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
-	User                 string       `yaml:"user"`
-	Pwd                  string       `yaml:"pwd"`
+	AuthFile             string       `yaml:"auth_file"`
 }
 
 func (dbs *DBSettings) HasAuth() bool {
-	return dbs.User != ""
+	return dbs.AuthFile != ""
+}
+
+type dbCreds struct {
+	DBUser string `yaml:"mdb_database_username"`
+	DBPwd  string `yaml:"mdb_database_password"`
+}
+
+func (dbs *DBSettings) GetAuthFromYAML() (string, string, error) {
+	var user, pwd string
+	creds := &dbCreds{}
+
+	file, err := os.Open(dbs.AuthFile)
+	if err != nil {
+		return user, pwd, err
+	}
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+
+	if err := decoder.Decode(&creds); err != nil {
+		return user, pwd, err
+	}
+
+	user = creds.DBUser
+	pwd = creds.DBPwd
+	return user, pwd, nil
 }
 
 // supported banner themes in Evergreen
