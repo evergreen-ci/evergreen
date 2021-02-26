@@ -2807,17 +2807,13 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		})
 	}
 
-	// This is an expensive operation so lets only do it if the user is requesting a subset of the info
-	// If we request all the tasks we are likely performing a query where we dont care about this info
-	if limit > 0 {
-		// expand execution tasks in display tasks
-		pipeline = append(pipeline, bson.M{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   ExecutionTasksKey,
-			"foreignField": IdKey,
-			"as":           ExecutionTasksFullKey,
-		}})
-	}
+	// expand execution tasks in display tasks
+	pipeline = append(pipeline, bson.M{"$lookup": bson.M{
+		"from":         Collection,
+		"localField":   ExecutionTasksKey,
+		"foreignField": IdKey,
+		"as":           ExecutionTasksFullKey,
+	}})
 
 	tasks := []Task{}
 	env := evergreen.GetEnvironment()
