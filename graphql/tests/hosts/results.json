@@ -207,6 +207,29 @@
       }
     },
     {
+      "query_file": "filtered-by-distro-fuzzy.graphql",
+      "result": {
+        "data": {
+          "hosts": {
+            "filteredHostsCount": 1,
+            "totalHostsCount": 9,
+            "hosts": [
+              {
+                "id": "macos-1014-68.macstadium.build.10gen.cc",
+                "distroId": "macos-1014",
+                "status": "quarantined",
+                "startedBy": "mci",
+                "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
+                "totalIdleTime": 0,
+                "uptime": "2019-09-16T11:49:05-04:00",
+                "elapsed": null
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "filtered-by-current-task-id.graphql",
       "result": {
         "data": {
