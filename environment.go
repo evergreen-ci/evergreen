@@ -294,6 +294,10 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		if err != nil {
 			return errors.Wrap(err, "problem getting auth from yaml authfile")
 		}
+		grip.Debug(message.Fields{
+			"message": "creds got",
+			"user":    ymlUser,
+			"pwd":     ymlPwd})
 		credential := options.Credential{
 			Username: ymlUser,
 			Password: ymlPwd,
