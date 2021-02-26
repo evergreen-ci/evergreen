@@ -212,8 +212,8 @@ var (
 			"path":                       "$" + BuildVariantDisplayNameKey,
 			"preserveNullAndEmptyArrays": true,
 		}},
-		bson.M{"$set": bson.M{
-			BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey + "." + "display_name",
+		bson.M{"$addFields": bson.M{
+			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
 		}},
 	}
 )
