@@ -137,7 +137,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.InlinePatch)
 	s.modelData6.Task.Requester = evergreen.MergeTestRequester
-	s.modelData6.Task.CommitQueueMerge = true
 	s.Require().NoError(err)
 	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
 	s.Require().NoError(err)

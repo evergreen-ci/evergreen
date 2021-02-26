@@ -545,28 +545,28 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		}
 	}
 
+	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
+		for _, patchId := range additionalPatches {
+			logger.Task().Infof("attempting to apply additional changes from patch '%s'", patchId)
+			newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
+			if err != nil {
+				return errors.Wrap(err, "unable to get additional patch")
+			}
+			if newPatch == nil {
+				return errors.New("additional patch not found")
+			}
+			if err = c.getPatchContents(ctx, comm, logger, conf, newPatch); err != nil {
+				return errors.Wrap(err, "Failed to get patch contents")
+			}
+			if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
+				return errors.Wrapf(err, "error applying patch '%s'", newPatch.Id.Hex())
+			}
+			logger.Task().Infof("applied additional changes from patch '%s'", patchId)
+		}
+	}
+
 	//Apply patches if this is a patch and we haven't already gotten the changes from a PR
 	if evergreen.IsPatchRequester(conf.Task.Requester) && conf.GithubPatchData.PRNumber == 0 {
-		if conf.Task.CommitQueueMerge {
-			for _, patchId := range additionalPatches {
-				logger.Task().Infof("attempting to apply additional changes from patch '%s'", patchId)
-				newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
-				if err != nil {
-					return errors.Wrap(err, "unable to get additional patch")
-				}
-				if newPatch == nil {
-					return errors.New("additional patch not found")
-				}
-				if err = c.getPatchContents(ctx, comm, logger, conf, newPatch); err != nil {
-					return errors.Wrap(err, "Failed to get patch contents")
-				}
-				if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
-					return errors.Wrapf(err, "error applying patch '%s'", newPatch.Id.Hex())
-				}
-				logger.Task().Infof("applied additional changes from patch '%s'", patchId)
-			}
-		}
-
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "Failed to get patch contents")
 			logger.Execution().Error(err.Error())
