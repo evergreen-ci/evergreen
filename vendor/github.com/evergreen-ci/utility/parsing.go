@@ -44,7 +44,7 @@ func ReadJSON(r io.ReadCloser, target interface{}) error {
 }
 
 // ReadYAMLFile parses yaml into the target argument from the file
-// located at the specifed path.
+// located at the specified path.
 func ReadYAMLFile(path string, target interface{}) error {
 	if !FileExists(path) {
 		return errors.Errorf("file '%s' does not exist", path)
@@ -73,7 +73,7 @@ func ReadYAMLFileStrict(path string, target interface{}) error {
 }
 
 // ReadJSONFile parses json into the target argument from the file
-// located at the specifed path.
+// located at the specified path.
 func ReadJSONFile(path string, target interface{}) error {
 	if !FileExists(path) {
 		return errors.Errorf("file '%s' does not exist", path)

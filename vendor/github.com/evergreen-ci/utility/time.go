@@ -32,9 +32,16 @@ func FromNanoseconds(duration time.Duration) int64 {
 	return int64(duration) / 1000000
 }
 
-// fromNanoSeconds returns milliseconds of a duration for queries in the database.
+// ToNanoSeconds returns milliseconds of a duration for queries in the database.
 func ToNanoseconds(duration time.Duration) time.Duration {
 	return duration * 1000000
+}
+
+// BSONTime converts a timestamp to how it would be represented in BSON such
+// that, if the resulting timestamp is roundtripped to BSON and back, the
+// timestamps would be identical.
+func BSONTime(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Millisecond)
 }
 
 // FromPythonTime returns a time.Time that corresponds to the float style

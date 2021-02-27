@@ -506,6 +506,33 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 	return pRef, nil
 }
 
+// GetProjectRefMergedWithRepo merges the project with the repo that matches it, if one exists.
+// Otherwise, it will return the project as given.
+func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
+	if !pRef.UseRepoSettings {
+		return &pRef, nil
+	}
+	if pRef.RepoRefId != "" {
+		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding repo ref '%s'", pRef.RepoRefId)
+		}
+		if repoRef == nil {
+			return nil, errors.Errorf("repo ref '%s' does not exist", pRef.RepoRefId)
+		}
+		return mergeBranchAndRepoSettings(&pRef, repoRef)
+	}
+	repoRef, err := FindRepoRefByOwnerAndRepo(pRef.Owner, pRef.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding repo ref for repo '%s/%s'", pRef.Owner, pRef.Repo)
+	}
+	if repoRef == nil {
+		return &pRef, nil
+	}
+	pRef.RepoRefId = repoRef.Id
+	return mergeBranchAndRepoSettings(&pRef, repoRef)
+}
+
 // If the setting is not defined in the project, default to the repo settings.
 func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef, error) {
 	var err error

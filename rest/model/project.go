@@ -47,7 +47,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 		return errors.Errorf("Invalid commit queue params of type '%T'", h)
 	}
 
-	cqParams.Enabled = params.Enabled
+	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 
@@ -56,7 +56,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 
 func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
-	serviceParams.Enabled = cqParams.Enabled
+	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
@@ -71,8 +71,8 @@ type APITaskSyncOptions struct {
 func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case model.TaskSyncOptions:
-		opts.ConfigEnabled = v.ConfigEnabled
-		opts.PatchEnabled = v.PatchEnabled
+		opts.ConfigEnabled = utility.BoolPtrCopy(v.ConfigEnabled)
+		opts.PatchEnabled = utility.BoolPtrCopy(v.PatchEnabled)
 		return nil
 	default:
 		return errors.Errorf("invalid type '%T' for API S3 task sync options", v)
@@ -81,8 +81,8 @@ func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
 
 func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 	return model.TaskSyncOptions{
-		ConfigEnabled: opts.ConfigEnabled,
-		PatchEnabled:  opts.PatchEnabled,
+		ConfigEnabled: utility.BoolPtrCopy(opts.ConfigEnabled),
+		PatchEnabled:  utility.BoolPtrCopy(opts.PatchEnabled),
 	}, nil
 }
 
@@ -231,31 +231,31 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Owner:                 utility.FromStringPtr(p.Owner),
 		Repo:                  utility.FromStringPtr(p.Repo),
 		Branch:                utility.FromStringPtr(p.Branch),
-		Enabled:               p.Enabled,
-		Private:               p.Private,
+		Enabled:               utility.BoolPtrCopy(p.Enabled),
+		Private:               utility.BoolPtrCopy(p.Private),
 		BatchTime:             p.BatchTime,
 		RemotePath:            utility.FromStringPtr(p.RemotePath),
 		Id:                    utility.FromStringPtr(p.Id),
 		Identifier:            utility.FromStringPtr(p.Identifier),
 		DisplayName:           utility.FromStringPtr(p.DisplayName),
-		DeactivatePrevious:    p.DeactivatePrevious,
-		TracksPushEvents:      p.TracksPushEvents,
+		DeactivatePrevious:    utility.BoolPtrCopy(p.DeactivatePrevious),
+		TracksPushEvents:      utility.BoolPtrCopy(p.TracksPushEvents),
 		DefaultLogger:         utility.FromStringPtr(p.DefaultLogger),
-		PRTestingEnabled:      p.PRTestingEnabled,
-		GitTagVersionsEnabled: p.GitTagVersionsEnabled,
-		GithubChecksEnabled:   p.GithubChecksEnabled,
+		PRTestingEnabled:      utility.BoolPtrCopy(p.PRTestingEnabled),
+		GitTagVersionsEnabled: utility.BoolPtrCopy(p.GitTagVersionsEnabled),
+		GithubChecksEnabled:   utility.BoolPtrCopy(p.GithubChecksEnabled),
 		UseRepoSettings:       p.UseRepoSettings,
 		RepoRefId:             utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:           commitQueue.(model.CommitQueueParams),
 		TaskSync:              taskSync,
 		WorkstationConfig:     workstationConfig,
-		Hidden:                p.Hidden,
-		PatchingDisabled:      p.PatchingDisabled,
-		RepotrackerDisabled:   p.RepotrackerDisabled,
-		DispatchingDisabled:   p.DispatchingDisabled,
-		DisabledStatsCache:    p.DisabledStatsCache,
+		Hidden:                utility.BoolPtrCopy(p.Hidden),
+		PatchingDisabled:      utility.BoolPtrCopy(p.PatchingDisabled),
+		RepotrackerDisabled:   utility.BoolPtrCopy(p.RepotrackerDisabled),
+		DispatchingDisabled:   utility.BoolPtrCopy(p.DispatchingDisabled),
+		DisabledStatsCache:    utility.BoolPtrCopy(p.DisabledStatsCache),
 		FilesIgnoredFromCache: utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
-		NotifyOnBuildFailure:  p.NotifyOnBuildFailure,
+		NotifyOnBuildFailure:  utility.BoolPtrCopy(p.NotifyOnBuildFailure),
 		SpawnHostScriptPath:   utility.FromStringPtr(p.SpawnHostScriptPath),
 		Admins:                utility.FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
@@ -314,31 +314,31 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
-	p.Enabled = projectRef.Enabled
-	p.Private = projectRef.Private
+	p.Enabled = utility.BoolPtrCopy(projectRef.Enabled)
+	p.Private = utility.BoolPtrCopy(projectRef.Private)
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
 	p.Id = utility.ToStringPtr(projectRef.Id)
 	p.Identifier = utility.ToStringPtr(projectRef.Identifier)
 	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
-	p.TracksPushEvents = projectRef.TracksPushEvents
+	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
-	p.PRTestingEnabled = projectRef.PRTestingEnabled
-	p.GitTagVersionsEnabled = projectRef.GitTagVersionsEnabled
-	p.GithubChecksEnabled = projectRef.GithubChecksEnabled
+	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
+	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
+	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.UseRepoSettings = projectRef.UseRepoSettings
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.CommitQueue = cq
 	p.TaskSync = taskSync
 	p.WorkstationConfig = workstationConfig
-	p.Hidden = projectRef.Hidden
-	p.PatchingDisabled = projectRef.PatchingDisabled
-	p.RepotrackerDisabled = projectRef.RepotrackerDisabled
-	p.DispatchingDisabled = projectRef.DispatchingDisabled
-	p.DisabledStatsCache = projectRef.DisabledStatsCache
+	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)
+	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
+	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
+	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
+	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.FilesIgnoredFromCache = utility.ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
-	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
+	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)

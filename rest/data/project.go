@@ -143,7 +143,7 @@ func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) erro
 	return nil
 }
 
-func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {
+func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef) error {
 	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
 		return errors.Wrap(err, "error enabling commit queue")
 	} else if !ok {
@@ -618,7 +618,7 @@ func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *
 	return true, nil
 }
 
-func (pc *MockProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {
+func (pc *MockProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef) error {
 	return nil
 }
 

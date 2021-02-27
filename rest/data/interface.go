@@ -338,7 +338,7 @@ type Connector interface {
 	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
 	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)
 	FindCommitQueueForProject(string) (*restModel.APICommitQueue, error)
-	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
+	EnableCommitQueue(*model.ProjectRef) error
 	CommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
 	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
