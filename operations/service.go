@@ -50,6 +50,7 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 		url = envUrl
 	}
 	envAuth := os.Getenv(evergreen.MongodbAuthFile)
+	grip.Warning(message.Fields{"message": "authfile", "authfile": envAuth})
 	return &evergreen.DBSettings{
 		Url: url,
 		DB:  c.String(dbNameFlagName),

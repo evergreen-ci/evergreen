@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
@@ -137,7 +138,21 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5 * time.Second)
+	envAuth := os.Getenv(evergreen.MongodbAuthFile)
+	if envAuth != "" {
+		ymlUser, ymlPwd, err := evergreen.GetAuthFromYAML(envAuth)
+		if err != nil {
+			grip.EmergencyFatal(errors.Wrapf(err, "problem getting auth info from %s", envAuth))
+		}
+
+		credential := options.Credential{
+			Username: ymlUser,
+			Password: ymlPwd,
+		}
+		clientOptions.SetAuth(credential)
+	}
+	client, err := mongo.Connect(ctx, clientOptions)
 	grip.EmergencyFatal(err)
 
 	db := client.Database(dbName)

@@ -290,7 +290,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
 	if settings.HasAuth() {
-		ymlUser, ymlPwd, err := settings.GetAuthFromYAML()
+		ymlUser, ymlPwd, err := settings.GetAuth()
 		if err != nil {
 			return errors.Wrap(err, "problem getting auth from yaml authfile")
 		}

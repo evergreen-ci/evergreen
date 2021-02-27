@@ -719,11 +719,15 @@ type dbCreds struct {
 	DBPwd  string `yaml:"mdb_database_password"`
 }
 
-func (dbs *DBSettings) GetAuthFromYAML() (string, string, error) {
+func (dbs *DBSettings) GetAuth() (string, string, error) {
+	return GetAuthFromYAML(dbs.AuthFile)
+}
+
+func GetAuthFromYAML(authFile string) (string, string, error) {
 	var user, pwd string
 	creds := &dbCreds{}
 
-	file, err := os.Open(dbs.AuthFile)
+	file, err := os.Open(authFile)
 	if err != nil {
 		return user, pwd, err
 	}
