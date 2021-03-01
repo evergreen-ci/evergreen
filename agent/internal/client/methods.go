@@ -934,7 +934,7 @@ func (c *communicatorImpl) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
-		return nil, errors.Wrap(err, "problem parsing reponse")
+		return nil, errors.Wrap(err, "problem parsing response")
 	}
 
 	return patches, nil
