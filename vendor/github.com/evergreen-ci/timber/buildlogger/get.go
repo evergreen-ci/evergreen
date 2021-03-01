@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/timber"
+	"github.com/mongodb/grip"
 	"github.com/peterhellberg/link"
 	"github.com/pkg/errors"
 )
@@ -20,7 +21,11 @@ type BuildloggerGetOptions struct {
 	// Request information. See cedar's REST documentation for more
 	// information:
 	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
+	ID            string
+	TaskID        string
+	TestName      string
 	GroupID       string
+	Execution     int
 	Start         time.Time
 	End           time.Time
 	ProcessName   string
@@ -30,6 +35,18 @@ type BuildloggerGetOptions struct {
 	Tail          int
 	Limit         int
 	Meta          bool
+}
+
+// Validate ensures BuildloggerGetOptions is configured correctly.
+func (opts *BuildloggerGetOptions) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(opts.CedarOpts.Validate())
+	catcher.AddWhen(opts.ID == "" && opts.TaskID == "", errors.New("must provide an id or task id"))
+	catcher.AddWhen(opts.ID != "" && opts.TaskID != "", errors.New("cannot provide both id and task id"))
+	catcher.AddWhen(opts.TestName != "" && opts.TaskID == "", errors.New("must provide a task id when a test name is specified"))
+
+	return catcher.Resolve()
 }
 
 // GetLogs returns a ReadCloser with the logs or log metadata requested via
@@ -56,13 +73,13 @@ func GetLogs(ctx context.Context, opts BuildloggerGetOptions) (io.ReadCloser, er
 }
 
 func (opts *BuildloggerGetOptions) parse() (string, error) {
-	if err := opts.CedarOpts.Validate(); err != nil {
+	if err := opts.Validate(); err != nil {
 		return "", errors.WithStack(err)
 	}
 
 	params := fmt.Sprintf(
 		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&paginate=true",
-		opts.CedarOpts.Execution,
+		opts.Execution,
 		opts.ProcessName,
 		opts.PrintTime,
 		opts.PrintPriority,
@@ -80,15 +97,15 @@ func (opts *BuildloggerGetOptions) parse() (string, error) {
 	}
 
 	url := fmt.Sprintf("%s/rest/v1/buildlogger", opts.CedarOpts.BaseURL)
-	if opts.CedarOpts.ID != "" {
-		url += fmt.Sprintf("/%s", opts.CedarOpts.ID)
-	} else if opts.CedarOpts.TestName != "" {
-		url += fmt.Sprintf("/test_name/%s/%s", opts.CedarOpts.TaskID, opts.CedarOpts.TestName)
+	if opts.ID != "" {
+		url += fmt.Sprintf("/%s", opts.ID)
+	} else if opts.TestName != "" {
+		url += fmt.Sprintf("/test_name/%s/%s", opts.TaskID, opts.TestName)
 		if opts.GroupID != "" {
 			url += fmt.Sprintf("/group/%s", opts.GroupID)
 		}
 	} else {
-		url += fmt.Sprintf("/task_id/%s", opts.CedarOpts.TaskID)
+		url += fmt.Sprintf("/task_id/%s", opts.TaskID)
 	}
 
 	if opts.Meta {
