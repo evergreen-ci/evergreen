@@ -135,13 +135,13 @@ func fetch() cli.Command {
 
 			opts := buildlogger.BuildloggerGetOptions{
 				CedarOpts: timber.GetOptions{
-					BaseURL:   c.String(cedarBaseURLFlagName),
-					UserKey:   conf.APIKey,
-					UserName:  conf.User,
-					TaskID:    c.String(taskIDFlagName),
-					TestName:  c.String(testNameFlagName),
-					Execution: c.Int(executionFlagName),
+					BaseURL:  c.String(cedarBaseURLFlagName),
+					UserKey:  conf.APIKey,
+					UserName: conf.User,
 				},
+				TaskID:        c.String(taskIDFlagName),
+				TestName:      c.String(testNameFlagName),
+				Execution:     c.Int(executionFlagName),
 				GroupID:       c.String(groupIDFlagName),
 				Start:         start,
 				End:           end,
