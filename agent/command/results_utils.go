@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/timber/buildlogger"
@@ -91,12 +92,12 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskDat
 	if err != nil {
 		return errors.Wrap(err, "creating test results client")
 	}
-	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(ctx, td)
+	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
 	if err != nil {
-		return errors.Wrap(err, "getting this task's display task")
+		return errors.Wrap(err, "getting this task's display task info")
 	}
 
-	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t, displayTaskName))
+	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t, displayTaskInfo))
 	if err != nil {
 		return errors.Wrap(err, "creating test results record")
 	}
@@ -148,14 +149,15 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 	return nil
 }
 
-func makeCedarTestResultsRecord(t *task.Task, displayTaskName string) testresults.CreateOptions {
+func makeCedarTestResultsRecord(t *task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
 	return testresults.CreateOptions{
 		Project:         t.Project,
 		Version:         t.Version,
 		Variant:         t.BuildVariant,
 		TaskID:          t.Id,
 		TaskName:        t.DisplayName,
-		DisplayTaskName: displayTaskName,
+		DisplayTaskID:   displayTaskInfo.ID,
+		DisplayTaskName: displayTaskInfo.Name,
 		Execution:       int32(t.Execution),
 		RequestType:     t.Requester,
 		Mainline:        !t.IsPatchRequest(),
@@ -168,6 +170,7 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 		rs.Results = append(rs.Results, testresults.Result{
 			Name:        r.TestFile,
 			Status:      r.Status,
+			LogURL:      r.URL,
 			LineNum:     int32(r.LineNum),
 			TaskCreated: t.CreateTime,
 			TestStarted: time.Unix(int64(r.StartTime), 0),

@@ -156,8 +156,11 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 	}, nil
 }
 
-func (c *Mock) GetDisplayTaskNameFromExecution(ctx context.Context, td TaskData) (string, error) {
-	return "display_task_name", nil
+func (c *Mock) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
+	return &apimodels.DisplayTaskInfo{
+		ID:   "mock_display_task_id",
+		Name: "display_task_name",
+	}, nil
 }
 
 // GetProjectRef returns a mock ProjectRef.

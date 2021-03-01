@@ -50,7 +50,7 @@ func TestSendTestResults(t *testing.T) {
 	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	comm := client.NewMock("url")
-	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(ctx, td)
+	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
 	require.NoError(t, err)
 	logger, err := comm.GetLoggerProducer(ctx, td, nil)
 	require.NoError(t, err)
@@ -69,7 +69,8 @@ func TestSendTestResults(t *testing.T) {
 			assert.EqualValues(t, conf.Task.Execution, srv.Create.Execution)
 			assert.Equal(t, conf.Task.Requester, srv.Create.RequestType)
 			assert.Equal(t, conf.Task.DisplayName, srv.Create.TaskName)
-			assert.Equal(t, displayTaskName, srv.Create.DisplayTaskName)
+			assert.Equal(t, displayTaskInfo.ID, srv.Create.DisplayTaskId)
+			assert.Equal(t, displayTaskInfo.Name, srv.Create.DisplayTaskName)
 			assert.False(t, srv.Create.Mainline)
 		}
 		checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -203,11 +204,12 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 	s.Equal(time.Time{}, s.h.finishedBefore)
 }
 
-func TestGetDisplayTaskName(t *testing.T) {
+func TestGetDisplayTask(t *testing.T) {
 	for testName, testCase := range map[string]func(context.Context, *testing.T){
 		"SucceedsWithTaskInDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
 			displayTask := task.Task{
+				Id:             "id",
 				DisplayName:    "display_task_name",
 				ExecutionTasks: []string{tsk.Id},
 			}
@@ -224,9 +226,11 @@ func TestGetDisplayTaskName(t *testing.T) {
 
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
-			name, ok := resp.Data().(string)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			info, ok := resp.Data().(*apimodels.DisplayTaskInfo)
 			require.True(t, ok)
-			assert.Equal(t, displayTask.DisplayName, name)
+			assert.Equal(t, displayTask.Id, info.ID)
+			assert.Equal(t, displayTask.DisplayName, info.Name)
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T) {
 			h := makeGetDisplayTaskHandler(&data.MockConnector{})
@@ -252,6 +256,9 @@ func TestGetDisplayTaskName(t *testing.T) {
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
+			info, ok := resp.Data().(*apimodels.DisplayTaskInfo)
+			require.True(t, ok)
+			assert.Zero(t, *info)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
