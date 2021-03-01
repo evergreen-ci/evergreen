@@ -27,14 +27,12 @@ func (n *APIEventStats) ToService() (interface{}, error) {
 }
 
 type apiNotificationStats struct {
-	GithubPullRequest  int `json:"github_pull_request"`
-	JIRAIssue          int `json:"jira_issue"`
-	JIRAComment        int `json:"jira_comment"`
-	EvergreenWebhook   int `json:"evergreen_webhook"`
-	Email              int `json:"email"`
-	Slack              int `json:"slack"`
-	GithubMerge        int `json:"github_merge"`
-	CommitQueueDequeue int `json:"commit_queue_dequeue"`
+	GithubPullRequest int `json:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue"`
+	JIRAComment       int `json:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook"`
+	Email             int `json:"email"`
+	Slack             int `json:"slack"`
 }
 
 func (n *apiNotificationStats) BuildFromService(h interface{}) error {
@@ -52,8 +50,6 @@ func (n *apiNotificationStats) BuildFromService(h interface{}) error {
 	n.EvergreenWebhook = data.EvergreenWebhook
 	n.Email = data.Email
 	n.Slack = data.Slack
-	n.GithubMerge = data.GithubMerge
-	n.CommitQueueDequeue = data.CommitQueueDequeue
 
 	return nil
 }

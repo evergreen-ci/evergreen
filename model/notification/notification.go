@@ -282,16 +282,14 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 type NotificationStats struct {
-	GithubPullRequest  int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
-	JIRAIssue          int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
-	JIRAComment        int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
-	EvergreenWebhook   int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
-	Email              int `json:"email" bson:"email" yaml:"email"`
-	Slack              int `json:"slack" bson:"slack" yaml:"slack"`
-	GithubMerge        int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
-	GithubCheck        int `json:"github_check" bson:"github_check" yaml:"github_check"`
-	CommitQueueDequeue int `json:"commit_queue_dequeue" bson:"commit_queue_dequeue" yaml:"commit_queue_dequeue"`
-	EnqueuePatch       int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
+	GithubPullRequest int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
+	JIRAComment       int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
+	Email             int `json:"email" bson:"email" yaml:"email"`
+	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
+	GithubCheck       int `json:"github_check" bson:"github_check" yaml:"github_check"`
+	EnqueuePatch      int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
