@@ -1436,7 +1436,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
 	}
-
+	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*PatchBuildVariantTask = map[string][]*PatchBuildVariantTask{}
 	for _, variant := range patch.Variants {
 		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
@@ -1448,26 +1448,18 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
-	baseTaskStatuses, _ := GetBaseTaskStatusesFromPatchID(r.sc, patchID)
-	variantDisplayName := make(map[string]string)
 	for _, task := range tasks {
+		baseTask := task.BaseTask
 		t := PatchBuildVariantTask{
 			ID:     task.Id,
 			Name:   task.DisplayName,
 			Status: task.GetDisplayStatus(),
 		}
-		if baseTaskStatuses != nil && baseTaskStatuses[task.BuildVariant] != nil {
-			s := baseTaskStatuses[task.BuildVariant][task.DisplayName]
-			t.BaseStatus = &s
+		if baseTask.Status != "" {
+			t.BaseStatus = &baseTask.Status
 		}
+		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
 		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
-		if _, ok := variantDisplayName[task.BuildVariant]; !ok {
-			build, err := r.sc.FindBuildById(task.BuildId)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting build for task `%s`: %s", task.BuildId, err))
-			}
-			variantDisplayName[task.BuildVariant] = build.DisplayName
-		}
 
 	}
 
@@ -2384,6 +2376,16 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 
 	return executionTasks, nil
+}
+
+func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	buildID := utility.FromStringPtr(obj.BuildId)
+	b, err := build.FindOneId(buildID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
+	}
+	return &b.DisplayName, nil
+
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {

@@ -20,7 +20,11 @@
       "finish_time": {
         "$date": "2020-02-21T15:29:54.869Z"
       },
-      "build_variants": ["ubuntu1604", "osx", "windows"],
+      "build_variants": [
+        "ubuntu1604",
+        "osx",
+        "windows"
+      ],
       "tasks": [
         "test-thirdparty-docker",
         "test-cloud",
@@ -131,7 +135,7 @@
         }
       ],
       "time_taken": 0,
-      "display_name": "X",
+      "display_name": "OSX",
       "predicted_makespan": 0,
       "actual_makespan": 0,
       "r": "ad_hoc"
@@ -308,7 +312,7 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "branch": "mci",
       "gitspec": "",
-      "build_variant": "osx",
+      "build_variant": "ubuntu1604",
       "build_number": "1798",
       "status": "failed",
       "activated": false,
@@ -336,7 +340,7 @@
         }
       ],
       "time_taken": 0,
-      "display_name": "OSX",
+      "display_name": "Ubuntu 16.04",
       "predicted_makespan": 0,
       "actual_makespan": 0,
       "r": "ad_hoc"

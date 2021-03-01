@@ -445,6 +445,7 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
+// ConvertDBTasksToGqlTasks converts tasks to task result objects
 func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 	var taskResults []*TaskResult
 	for _, t := range tasks {
@@ -462,6 +463,7 @@ func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
 				ID:     t.BaseTask.Id,
 				Status: t.BaseTask.Status,
 			},
+			BuildVariantDisplayName: t.BuildVariantDisplayName,
 		}
 		if len(t.ExecutionTasksFull) > 0 {
 			ets := []*restModel.APITask{}

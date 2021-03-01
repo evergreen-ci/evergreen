@@ -79,14 +79,15 @@ var (
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
-	GeneratedJSONKey         = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
-	GeneratedJSONAsStringKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
-	GenerateTasksErrorKey    = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
-	ResetWhenFinishedKey     = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
-	LogsKey                  = bsonutil.MustHaveTag(Task{}, "Logs")
-	CommitQueueMergeKey      = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
-	DisplayStatusKey         = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
-	BaseTaskKey              = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	GeneratedJSONKey           = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
+	GeneratedJSONAsStringKey   = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
+	GenerateTasksErrorKey      = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
+	ResetWhenFinishedKey       = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
+	LogsKey                    = bsonutil.MustHaveTag(Task{}, "Logs")
+	CommitQueueMergeKey        = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
+	DisplayStatusKey           = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	BaseTaskKey                = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	BuildVariantDisplayNameKey = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -198,6 +199,22 @@ var (
 			},
 			"default": "$" + StatusKey,
 		},
+	}
+
+	AddBuildVariantDisplayName = []bson.M{
+		bson.M{"$lookup": bson.M{
+			"from":         "builds",
+			"localField":   BuildIdKey,
+			"foreignField": "_id",
+			"as":           BuildVariantDisplayNameKey,
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$" + BuildVariantDisplayNameKey,
+			"preserveNullAndEmptyArrays": true,
+		}},
+		bson.M{"$addFields": bson.M{
+			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
+		}},
 	}
 )
 
