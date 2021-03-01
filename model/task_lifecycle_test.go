@@ -2523,7 +2523,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates := StatusChanges{}
 	assert.NoError(MarkEnd(testTask, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2537,7 +2536,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(anotherTask, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2551,7 +2549,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(exeTask0, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2581,7 +2578,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
-	assert.Len(e, 7)
+	assert.Len(e, 10)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
@@ -2762,7 +2759,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -2787,8 +2784,13 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 				Id: "t",
 			},
 		},
+		Version: "version",
 	}
 	assert.NoError(b.Insert())
+	v := Version{
+		Id: b.Version,
+	}
+	assert.NoError(v.Insert())
 
 	assert.NoError(ClearAndResetStrandedTask(h))
 	runningTask, err := task.FindOne(task.ById("t"))

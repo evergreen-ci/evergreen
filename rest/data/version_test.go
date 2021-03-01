@@ -115,6 +115,7 @@ func (s *VersionConnectorSuite) SetupTest() {
 	versions := []*model.Version{
 		{Id: "version1"},
 		{Id: "version2"},
+		{Id: "version3"},
 	}
 
 	tasks := []*task.Task{
@@ -236,6 +237,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	if s.isMock { // mock method not implemented
 		return
 	}
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 
 	projRef := model.ProjectRef{
 		Id: "proj",

@@ -108,6 +108,9 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 }
 
 func (v *Version) ChangeStatus(newStatus string) error {
+	if v == nil {
+		return errors.New("version is nil")
+	}
 	if v.Status == newStatus {
 		return nil
 	}
