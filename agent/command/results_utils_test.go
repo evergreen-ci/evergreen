@@ -28,6 +28,7 @@ func TestSendTestResults(t *testing.T) {
 			{
 				TestFile:  "test",
 				Status:    "status",
+				URL:       "https://url.com",
 				LineNum:   123,
 				StartTime: float64(time.Now().Add(-time.Hour).Unix()),
 				EndTime:   float64(time.Now().Unix()),
@@ -81,6 +82,7 @@ func TestSendTestResults(t *testing.T) {
 				require.Len(t, res[0].Results, 1)
 				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
+				assert.Equal(t, results.Results[0].URL, res[0].Results[0].LogUrl)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
