@@ -82,7 +82,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
+	case event.GithubMergeSubscriberType, event.EnqueuePatchSubscriberType:
 		return evergreen.SenderGeneric, nil
 
 	default:
@@ -210,14 +210,6 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 
 		if err := payload.Initialize(env); err != nil {
 			return nil, errors.Wrap(err, "problem initializing GithubMergePR")
-		}
-
-		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		payload, ok := n.Payload.(*commitqueue.DequeueItem)
-		if !ok || payload == nil {
-			return nil, errors.New("commit-queue-dequeue payload is invalid")
 		}
 
 		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
@@ -355,9 +347,6 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
-
-		case event.CommitQueueDequeueSubscriberType:
-			nStats.CommitQueueDequeue = data.Count
 
 		case event.EnqueuePatchSubscriberType:
 			nStats.EnqueuePatch = data.Count

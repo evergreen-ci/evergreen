@@ -250,8 +250,6 @@ func TestPreventMergeForItem(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, task.Collection, build.Collection))
 
 	patchID := "abcdef012345"
-	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
-	require.NoError(t, patchSub.Upsert())
 
 	item := CommitQueueItem{
 		Issue:   patchID,
@@ -277,19 +275,6 @@ func TestPreventMergeForItem(t *testing.T) {
 	mergeBuild, err = build.FindOneId("b1")
 	assert.NoError(t, err)
 	assert.False(t, mergeBuild.Tasks[0].Activated)
-}
-
-func TestClearVersionPatchSubscriber(t *testing.T) {
-	require.NoError(t, db.Clear(event.SubscriptionsCollection))
-
-	patchID := "abcdef012345"
-	patchSub := event.NewExpiringPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
-	assert.NoError(t, patchSub.Upsert())
-
-	assert.NoError(t, clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))
-	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
-	assert.NoError(t, err)
-	assert.Empty(t, subs)
 }
 
 func TestNextUnprocessed(t *testing.T) {

@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -400,13 +399,6 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 			msg.Context = data.githubContext
 		}
 		return msg, nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		return &commitqueue.DequeueItem{
-			Status:    data.PastTenseStatus,
-			ProjectID: data.Project,
-			Item:      data.ID,
-		}, nil
 
 	case event.EnqueuePatchSubscriberType:
 		return &model.EnqueuePatch{

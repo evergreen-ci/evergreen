@@ -11,17 +11,16 @@ import (
 )
 
 const (
-	GithubPullRequestSubscriberType  = "github_pull_request"
-	GithubCheckSubscriberType        = "github_check"
-	JIRAIssueSubscriberType          = "jira-issue"
-	JIRACommentSubscriberType        = "jira-comment"
-	EvergreenWebhookSubscriberType   = "evergreen-webhook"
-	EmailSubscriberType              = "email"
-	SlackSubscriberType              = "slack"
-	GithubMergeSubscriberType        = "github-merge" //TODO: remove this once deployed
-	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
-	EnqueuePatchSubscriberType       = "enqueue-patch"
-	SubscriberTypeNone               = "none"
+	GithubPullRequestSubscriberType = "github_pull_request"
+	GithubCheckSubscriberType       = "github_check"
+	JIRAIssueSubscriberType         = "jira-issue"
+	JIRACommentSubscriberType       = "jira-comment"
+	EvergreenWebhookSubscriberType  = "evergreen-webhook"
+	EmailSubscriberType             = "email"
+	SlackSubscriberType             = "slack"
+	GithubMergeSubscriberType       = "github-merge" //TODO: remove this once deployed
+	EnqueuePatchSubscriberType      = "enqueue-patch"
+	SubscriberTypeNone              = "none"
 )
 
 var SubscriberTypes = []string{
@@ -33,7 +32,6 @@ var SubscriberTypes = []string{
 	EmailSubscriberType,
 	SlackSubscriberType,
 	GithubMergeSubscriberType,
-	CommitQueueDequeueSubscriberType,
 	EnqueuePatchSubscriberType,
 }
 
@@ -81,7 +79,7 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &str
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
-	case CommitQueueDequeueSubscriberType, EnqueuePatchSubscriberType:
+	case EnqueuePatchSubscriberType:
 		s.Target = nil
 		return nil
 	default:
@@ -190,13 +188,6 @@ func (s *GithubMergeSubscriber) String() string {
 		s.MergeMethod,
 		s.Item,
 	)
-}
-
-func NewCommitQueueDequeueSubscriber() Subscriber {
-	return Subscriber{
-		Type:   CommitQueueDequeueSubscriberType,
-		Target: nil,
-	}
 }
 
 func NewEnqueuePatchSubscriber() Subscriber {
