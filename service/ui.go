@@ -293,13 +293,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	// Lobster
-	app.PrefixRoute("/lobster").Route("/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/{*}/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/{*}/{*}/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/{*}/{*}/{*}/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/{*}/{*}/{*}/{*}/").Handler(uis.lobsterPage).Get()
-	app.PrefixRoute("/lobster").Route("/{*}/{*}/{*}/{*}/{*}/{*}/").Handler(uis.lobsterPage).Get()
+	app.AddPrefixRoute("/lobster").Handler(uis.lobsterPage).Get()
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.Handler("GraphQL playground", "/graphql/query")).Get()
