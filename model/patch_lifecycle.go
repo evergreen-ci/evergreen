@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -301,6 +302,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = p.SetParametersFromParent(); err != nil {
 			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
 		}
+		parentStatus, err := p.GetParentStatus()
+		if err != nil {
+			return nil, errors.Wrap(err, "problem getting patch intent")
+		}
+		if err = SubscribeOnParentOutcome(parentStatus, p, requester); err != nil {
+			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
+		}
+
 	}
 
 	patchVersion := &Version{
@@ -482,6 +491,29 @@ func finalizeChildPatch(ctx context.Context, childPatchId string, requester stri
 			}))
 			return err
 		}
+	}
+	return nil
+}
+
+func SubscribeOnParentOutcome(parentStatus string, p *patch.Patch, requester string) error {
+	parentPatch, err := patch.FindOneId(p.Triggers.ParentPatch)
+	if err != nil {
+		return errors.Wrapf(err, "error finding parent patch '%s'", p.Triggers.ParentPatch)
+	}
+	if parentPatch != nil {
+		return errors.Wrapf(err, "parent patch not found '%s'", p.Triggers.ParentPatch)
+	}
+	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
+		ParentStatus: parentStatus,
+		ChildPatchId: p.Id.String(),
+		Requester:    requester,
+	})
+	patchSub, err := event.NewParentPatchSubscription(string(parentPatch.Id), subscriber)
+	if err != nil {
+		return errors.Wrapf(err, "error created subscription for child patch '%s'", string(p.Id))
+	}
+	if err = patchSub.Upsert(); err != nil {
+		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", string(p.Id))
 	}
 	return nil
 }

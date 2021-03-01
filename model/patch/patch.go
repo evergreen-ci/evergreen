@@ -198,8 +198,9 @@ type PatchTriggerDefinition struct {
 	Alias          string          `bson:"alias" json:"alias"`
 	ChildProject   string          `bson:"child_project" json:"child_project"`
 	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
-	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	// the parent status that the child patch should run on: failure, success, or *
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
 }
 
 type TaskSpecifier struct {
@@ -665,6 +666,22 @@ func (p *Patch) IsChild() bool {
 
 func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
+}
+
+func (p *Patch) GetParentStatus() (string, error) {
+	intent, err := FindIntent(p.Id.String(), TriggerIntentType)
+	if err != nil {
+		return "", errors.Errorf("error fetching child patch intent: %s", err)
+	}
+	if intent == nil {
+		return "", errors.New("childpatch intent not found")
+	}
+	triggerIntent, ok := intent.(*TriggerIntent)
+	if !ok {
+		return "", errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
+	}
+
+	return triggerIntent.ParentStatus, nil
 }
 
 func (p *Patch) SetParametersFromParent() error {

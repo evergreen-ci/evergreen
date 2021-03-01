@@ -39,6 +39,8 @@ func (s *patchSuite) SetupTest() {
 
 	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 
+	childPatchId := "5aab4514f27e4f9984646d97"
+
 	s.patch = patch.Patch{
 		Id:         patchID,
 		Project:    "test",
@@ -53,9 +55,29 @@ func (s *patchSuite) SetupTest() {
 			PRNumber:  448,
 			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		},
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId},
+		},
 	}
 	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
+
+	childPatch := patch.Patch{
+		Id:         mgobson.ObjectIdHex(childPatchId),
+		Project:    "test",
+		Author:     "someone",
+		StartTime:  startTime,
+		FinishTime: startTime.Add(10 * time.Minute),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "tychoish",
+			HeadRepo:  "evergreen",
+			PRNumber:  448,
+			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+		},
+	}
+	s.NoError(childPatch.Insert())
 
 	s.data = &event.PatchEventData{
 		Status: evergreen.PatchCreated,
@@ -75,10 +97,22 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 
+	childPatchSub := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "succeeded",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+
 	s.subs = []event.Subscription{
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, childPatchSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, childPatchSub),
 	}
 
 	for i := range s.subs {
@@ -145,6 +179,11 @@ func (s *patchSuite) TestPatchSuccess() {
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err = s.t.patchSuccess(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
@@ -162,6 +201,11 @@ func (s *patchSuite) TestPatchFailure() {
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
+
+	s.data.Status = evergreen.PatchFailed
+	n, err = s.t.patchFailure(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
@@ -179,6 +223,16 @@ func (s *patchSuite) TestPatchOutcome() {
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err = s.t.patchOutcome(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchFailed
+	n, err = s.t.patchOutcome(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
 }
 
 func (s *patchSuite) TestPatchStarted() {

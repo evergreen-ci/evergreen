@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -90,6 +92,24 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
+	if sub.Subscriber.Type == event.RunChildPatchSubscriberType {
+		target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
+		if !ok {
+			return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
+		}
+		childPatch, err := patch.FindOneId(target.ChildPatchId)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to fetch child patch")
+		}
+		if childPatch != nil {
+			return nil, errors.Wrap(err, "child patch not found")
+		}
+		err = finalizeChildPatch(childPatch, target.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to finalize child patch")
+		}
+		return nil, nil
+	}
 
 	return t.generate(sub)
 }
@@ -98,12 +118,74 @@ func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Not
 	if t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
+	if sub.Subscriber.Type == event.RunChildPatchSubscriberType {
+		target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
+		if !ok {
+			return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
+		}
+		childPatch, err := patch.FindOneId(target.ChildPatchId)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to fetch child patch")
+		}
+		if childPatch != nil {
+			return nil, errors.Wrap(err, "child patch not found")
+		}
+		err = finalizeChildPatch(childPatch, target.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to finalize child patch")
+		}
+		return nil, nil
+	}
 
 	return t.generate(sub)
 }
 
+func finalizeChildPatch(p *patch.Patch, requester string) error {
+	conf, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "can't get evergreen configuration")
+	}
+	ghToken, err := conf.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "can't get Github OAuth token from configuration")
+	}
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	if _, err := model.FinalizePatch(ctx, p, requester, ghToken); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "Failed to finalize patch document",
+			"source":        requester,
+			"patch_id":      p.Id,
+			"variants":      p.BuildVariants,
+			"tasks":         p.Tasks,
+			"variant_tasks": p.VariantsTasks,
+			"alias":         p.Alias,
+		}))
+		return err
+	}
+	return nil
+}
+
 func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.PatchSucceeded {
+		return nil, nil
+	}
+	if sub.Subscriber.Type == event.RunChildPatchSubscriberType {
+		target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
+		if !ok {
+			return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
+		}
+		childPatch, err := patch.FindOneId(target.ChildPatchId)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to fetch child patch")
+		}
+		if childPatch != nil {
+			return nil, errors.Wrap(err, "child patch not found")
+		}
+		err = finalizeChildPatch(childPatch, target.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to finalize child patch")
+		}
 		return nil, nil
 	}
 

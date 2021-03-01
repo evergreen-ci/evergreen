@@ -102,6 +102,9 @@ func TestSubscribersStringerWithMissingAttributes(t *testing.T) {
 			Type: JIRAIssueSubscriberType,
 		},
 		{
+			Type: RunChildPatchSubscriberType,
+		},
+		{
 			Type: JIRACommentSubscriberType,
 		},
 	}

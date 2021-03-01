@@ -109,6 +109,8 @@ const (
 	PatchStarted   = "started"
 	PatchSucceeded = "succeeded"
 	PatchFailed    = "failed"
+	//model.AllStatuses can't be used in some package due to import cycles
+	AllStatuses = "*"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
