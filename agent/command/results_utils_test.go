@@ -28,6 +28,7 @@ func TestSendTestResults(t *testing.T) {
 			{
 				TestFile:  "test",
 				Status:    "status",
+				URL:       "https://url.com",
 				LineNum:   123,
 				StartTime: float64(time.Now().Add(-time.Hour).Unix()),
 				EndTime:   float64(time.Now().Unix()),
@@ -50,7 +51,7 @@ func TestSendTestResults(t *testing.T) {
 	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	comm := client.NewMock("url")
-	displayTaskName, err := comm.GetDisplayTaskNameFromExecution(ctx, td)
+	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
 	require.NoError(t, err)
 	logger, err := comm.GetLoggerProducer(ctx, td, nil)
 	require.NoError(t, err)
@@ -69,7 +70,8 @@ func TestSendTestResults(t *testing.T) {
 			assert.EqualValues(t, conf.Task.Execution, srv.Create.Execution)
 			assert.Equal(t, conf.Task.Requester, srv.Create.RequestType)
 			assert.Equal(t, conf.Task.DisplayName, srv.Create.TaskName)
-			assert.Equal(t, displayTaskName, srv.Create.DisplayTaskName)
+			assert.Equal(t, displayTaskInfo.ID, srv.Create.DisplayTaskId)
+			assert.Equal(t, displayTaskInfo.Name, srv.Create.DisplayTaskName)
 			assert.False(t, srv.Create.Mainline)
 		}
 		checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
@@ -80,6 +82,7 @@ func TestSendTestResults(t *testing.T) {
 				require.Len(t, res[0].Results, 1)
 				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
+				assert.Equal(t, results.Results[0].URL, res[0].Results[0].LogUrl)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)

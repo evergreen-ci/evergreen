@@ -18,25 +18,12 @@ type GetOptions struct {
 	// User API key and name for request header.
 	UserKey  string
 	UserName string
-	// Request information. See cedar's REST documentation for more
-	// information:
-	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
-	ID        string
-	TaskID    string
-	TestName  string
-	Execution int
 }
 
 // Validate ensures GetOptions is configured correctly.
 func (opts *GetOptions) Validate() error {
 	if opts.BaseURL == "" {
 		return errors.New("must provide a base URL")
-	}
-	if opts.ID != "" && opts.TaskID != "" {
-		return errors.New("cannot provide both ID and TaskID")
-	}
-	if opts.ID == "" && opts.TaskID == "" {
-		return errors.New("must provide either ID or TaskID")
 	}
 
 	return nil

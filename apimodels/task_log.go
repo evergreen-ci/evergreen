@@ -87,13 +87,13 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 	}
 	getOpts := buildlogger.BuildloggerGetOptions{
 		CedarOpts: timber.GetOptions{
-			BaseURL:   fmt.Sprintf("https://%s", opts.BaseURL),
-			UserKey:   usr.GetAPIKey(),
-			UserName:  usr.Username(),
-			TaskID:    opts.TaskID,
-			TestName:  opts.TestName,
-			Execution: opts.Execution,
+			BaseURL:  fmt.Sprintf("https://%s", opts.BaseURL),
+			UserKey:  usr.GetAPIKey(),
+			UserName: usr.Username(),
 		},
+		TaskID:        opts.TaskID,
+		TestName:      opts.TestName,
+		Execution:     opts.Execution,
 		PrintTime:     true,
 		PrintPriority: opts.PrintPriority,
 		Tail:          opts.Tail,

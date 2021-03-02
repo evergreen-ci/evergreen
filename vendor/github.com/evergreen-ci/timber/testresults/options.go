@@ -17,6 +17,7 @@ type CreateOptions struct {
 	TaskID          string `bson:"task_id" json:"task_id" yaml:"task_id"`
 	TaskName        string `bson:"task_name" json:"task_name" yaml:"task_name"`
 	DisplayTaskName string `bson:"display_task_name" json:"display_task_name" yaml:"display_task_name"`
+	DisplayTaskID   string `bson:"display_task_id" json:"display_task_id" yaml:"display_task_id"`
 	Execution       int32  `bson:"execution" json:"execution" yaml:"execution"`
 	RequestType     string `bson:"request_type" json:"request_type" yaml:"request_type"`
 	Mainline        bool   `bson:"mainline" json:"mainline" yaml:"mainline"`
@@ -28,8 +29,9 @@ func (opts CreateOptions) export() *gopb.TestResultsInfo {
 		Version:         opts.Version,
 		Variant:         opts.Variant,
 		TaskName:        opts.TaskName,
-		DisplayTaskName: opts.DisplayTaskName,
 		TaskId:          opts.TaskID,
+		DisplayTaskName: opts.DisplayTaskName,
+		DisplayTaskId:   opts.DisplayTaskID,
 		Execution:       opts.Execution,
 		RequestType:     opts.RequestType,
 		Mainline:        opts.Mainline,
@@ -69,6 +71,7 @@ type Result struct {
 	Name        string
 	Trial       int32
 	Status      string
+	LogURL      string
 	LineNum     int32
 	TaskCreated time.Time
 	TestStarted time.Time
@@ -93,6 +96,7 @@ func (r Result) export() (*gopb.TestResult, error) {
 		TestName:       r.Name,
 		Trial:          r.Trial,
 		Status:         r.Status,
+		LogUrl:         r.LogURL,
 		LineNum:        r.LineNum,
 		TaskCreateTime: created,
 		TestStartTime:  started,

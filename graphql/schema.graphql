@@ -399,6 +399,8 @@ type PatchBuildVariant {
 
 type PatchBuildVariantTask {
   id: ID!
+  execution: Int!
+  displayName: String!
   name: String!
   status: String!
   baseStatus: String
@@ -514,6 +516,7 @@ input ParameterInput {
 
 type TaskResult {
   id: ID!
+  execution: Int!
   aborted: Boolean!
   displayName: String!
   version: String!

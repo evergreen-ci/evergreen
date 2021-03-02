@@ -129,9 +129,9 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 	return task, nil
 }
 
-// GetDisplayTaskNameFromExecution returns the name of the display task
-// associated with the execution task.
-func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, td TaskData) (string, error) {
+// GetDisplayTaskInfoFromExecution returns the display task info associated
+// with the execution task.
+func (c *communicatorImpl) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
@@ -140,16 +140,17 @@ func (c *communicatorImpl) GetDisplayTaskNameFromExecution(ctx context.Context, 
 	info.setTaskPathSuffix("display_task")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", utility.RespErrorf(resp, "failed to get display task of task %s: %s", td.ID, err.Error())
+		return nil, utility.RespErrorf(resp, "failed to get display task of task %s: %s", td.ID, err.Error())
 	}
 	defer resp.Body.Close()
 
-	name, err := ioutil.ReadAll(resp.Body)
+	displayTaskInfo := &apimodels.DisplayTaskInfo{}
+	err = utility.ReadJSON(resp.Body, &displayTaskInfo)
 	if err != nil {
-		return "", errors.Wrapf(err, "reading display task name of task %s", td.ID)
+		return nil, errors.Wrapf(err, "reading display task info of task %s", td.ID)
 	}
 
-	return string(name), nil
+	return displayTaskInfo, nil
 }
 
 // GetProjectRef loads the task's project.
@@ -933,7 +934,7 @@ func (c *communicatorImpl) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
-		return nil, errors.Wrap(err, "problem parsing reponse")
+		return nil, errors.Wrap(err, "problem parsing response")
 	}
 
 	return patches, nil

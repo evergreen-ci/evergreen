@@ -407,10 +407,12 @@ type ComplexityRoot struct {
 	}
 
 	PatchBuildVariantTask struct {
-		BaseStatus func(childComplexity int) int
-		ID         func(childComplexity int) int
-		Name       func(childComplexity int) int
-		Status     func(childComplexity int) int
+		BaseStatus  func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		Execution   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Status      func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -676,6 +678,7 @@ type ComplexityRoot struct {
 		BuildVariant            func(childComplexity int) int
 		BuildVariantDisplayName func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
+		Execution               func(childComplexity int) int
 		ExecutionTasksFull      func(childComplexity int) int
 		ID                      func(childComplexity int) int
 		Status                  func(childComplexity int) int
@@ -2713,6 +2716,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchBuildVariantTask.BaseStatus(childComplexity), true
 
+	case "PatchBuildVariantTask.displayName":
+		if e.complexity.PatchBuildVariantTask.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.PatchBuildVariantTask.DisplayName(childComplexity), true
+
+	case "PatchBuildVariantTask.execution":
+		if e.complexity.PatchBuildVariantTask.Execution == nil {
+			break
+		}
+
+		return e.complexity.PatchBuildVariantTask.Execution(childComplexity), true
+
 	case "PatchBuildVariantTask.id":
 		if e.complexity.PatchBuildVariantTask.ID == nil {
 			break
@@ -4143,6 +4160,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskResult.DisplayName(childComplexity), true
 
+	case "TaskResult.execution":
+		if e.complexity.TaskResult.Execution == nil {
+			break
+		}
+
+		return e.complexity.TaskResult.Execution(childComplexity), true
+
 	case "TaskResult.executionTasksFull":
 		if e.complexity.TaskResult.ExecutionTasksFull == nil {
 			break
@@ -5026,6 +5050,8 @@ type PatchBuildVariant {
 
 type PatchBuildVariantTask {
   id: ID!
+  execution: Int!
+  displayName: String!
   name: String!
   status: String!
   baseStatus: String
@@ -5141,6 +5167,7 @@ input ParameterInput {
 
 type TaskResult {
   id: ID!
+  execution: Int!
   aborted: Boolean!
   displayName: String!
   version: String!
@@ -14611,6 +14638,74 @@ func (ec *executionContext) _PatchBuildVariantTask_id(ctx context.Context, field
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _PatchBuildVariantTask_execution(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariantTask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchBuildVariantTask",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchBuildVariantTask_displayName(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariantTask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchBuildVariantTask",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PatchBuildVariantTask_name(ctx context.Context, field graphql.CollectedField, obj *PatchBuildVariantTask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20866,6 +20961,40 @@ func (ec *executionContext) _TaskResult_id(ctx context.Context, field graphql.Co
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskResult_execution(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskResult_aborted(ctx context.Context, field graphql.CollectedField, obj *TaskResult) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26797,6 +26926,16 @@ func (ec *executionContext) _PatchBuildVariantTask(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "execution":
+			out.Values[i] = ec._PatchBuildVariantTask_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._PatchBuildVariantTask_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "name":
 			out.Values[i] = ec._PatchBuildVariantTask_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28606,6 +28745,11 @@ func (ec *executionContext) _TaskResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("TaskResult")
 		case "id":
 			out.Values[i] = ec._TaskResult_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "execution":
+			out.Values[i] = ec._TaskResult_execution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

@@ -180,9 +180,10 @@ func validCreateOptions() CreateOptions {
 		Project:         "project",
 		Version:         "version",
 		Variant:         "variant",
-		TaskID:          "task",
-		TaskName:        "name",
+		TaskID:          "task_id",
+		TaskName:        "task_name",
 		DisplayTaskName: "display_task_name",
+		DisplayTaskID:   "display_task_id",
 		RequestType:     "request_type",
 	}
 }
@@ -194,6 +195,7 @@ func validResults(id string) Results {
 			{
 				Name:        "name",
 				Status:      "status",
+				LogURL:      "https://url.com",
 				TaskCreated: time.Now().Add(-time.Hour),
 				TestStarted: time.Now().Add(-time.Minute),
 				TestEnded:   time.Now(),
