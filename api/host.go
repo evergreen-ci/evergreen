@@ -1,3 +1,4 @@
+// Package api provides common functions used by the service and graphql packages.
 package api
 
 import (
