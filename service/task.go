@@ -811,6 +811,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        taskID,
 		TestName:      testName,
+		GroupID:       r.URL.Query().Get("group_id"),
 		Execution:     taskExec,
 		PrintPriority: !raw,
 	}
