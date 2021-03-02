@@ -1,3 +1,4 @@
+// Package mock provides a mock environment for testing.
 package mock
 
 import (
