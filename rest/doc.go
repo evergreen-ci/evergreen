@@ -1,4 +1,5 @@
-/*Package rest provides an API for Evergreen users.
+/*
+Package rest provides an API for Evergreen users.
 
 The REST API V2 has a series of central types that are useful to understand when
 adding new endpoints or increasing its functionality.
@@ -12,9 +13,9 @@ define how to transform to and from an API model.
 Connector
 
 Connector is a very large interface that defines interaction with the backing
-database and service layer. It has two main sets of implementations: one that
-communicate with the database and one that mocks the same functionality. Development
-does not require the creation of new Connector's, only addition to extant ones.
+database and service layer. It has two main implementations: one that
+communicates with the database and one that mocks the same functionality. Development
+does not require the creation of new Connectors, only addition to extant ones.
 
 RequestHandler
 
@@ -25,9 +26,9 @@ the bulk of the request against the database.
 
 MethodHandler
 
-MethodHandler is an struct that contains all of the data necessary for
+MethodHandler is a struct that contains all of the data necessary for
 completing an API request. It contains an Authenticator to handle access control.
-Authenticator is an interface type with many implementations that permit user's
+Authenticator is an interface type with many implementations that permit users'
 access based on different sets of criteria. MethodHandlers also contain functions
 for attaching data to a request and a RequestHandler to execute the request.
 

@@ -1,2 +1,2 @@
-// Package operations defines the entry points for the application and CLI.
+// Package operations provides commands for the CLI, which is also the binary for the server and agent.
 package operations
