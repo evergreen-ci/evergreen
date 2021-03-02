@@ -279,13 +279,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	repo, err := model.FindRepository(project.Identifier)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	stepTime := time.Now()
-
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, nil,
 		project.Identifier)
 
