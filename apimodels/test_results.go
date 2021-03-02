@@ -27,11 +27,11 @@ type CedarTestResult struct {
 // GetCedarTestResultsOptions represents the arguments passed into the
 // GetCedarTestResults function.
 type GetCedarTestResultsOptions struct {
-	BaseURL       string
-	TaskID        string
-	DisplayTaskID string
-	TestName      string
-	Execution     int
+	BaseURL       string `json:"-"`
+	TaskID        string `json:"-"`
+	DisplayTaskID string `json:"-"`
+	TestName      string `json:"-"`
+	Execution     int    `json:"-"`
 }
 
 // GetCedarTestResults makes request to cedar for a task's test results.
