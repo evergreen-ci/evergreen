@@ -2270,7 +2270,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	return runnableTasks, nil
 }
 
-// FindVariantsWithTask returns a list of build variants between specified commmits that contain a specific task name
+// FindVariantsWithTask returns a list of build variants between specified commits that contain a specific task name
 func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
 	pipeline := []bson.M{
 		{

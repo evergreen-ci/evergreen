@@ -364,8 +364,9 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 		[]bson.M{
 			{
 				"$match": bson.M{
-					task.BuildVariantKey: bson.M{"$in": self.BuildVariants},
-					task.DisplayNameKey:  self.TaskName,
+					task.ProjectKey:     self.ProjectName,
+					task.DisplayNameKey: self.TaskName,
+					task.RequesterKey:   evergreen.RepotrackerVersionRequester,
 				},
 			},
 			{"$sort": bson.D{{Key: task.RevisionOrderNumberKey, Value: -1}}},
