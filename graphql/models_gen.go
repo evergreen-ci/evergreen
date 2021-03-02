@@ -85,9 +85,9 @@ type HostsResponse struct {
 }
 
 type PatchBuildVariant struct {
-	Variant     string                   `json:"variant"`
-	DisplayName string                   `json:"displayName"`
-	Tasks       []*PatchBuildVariantTask `json:"tasks"`
+	Variant     string           `json:"variant"`
+	DisplayName string           `json:"displayName"`
+	Tasks       []*model.APITask `json:"tasks"`
 }
 
 type PatchBuildVariantTask struct {

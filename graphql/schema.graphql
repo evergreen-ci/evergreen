@@ -394,7 +394,7 @@ type PatchTasks {
 type PatchBuildVariant {
   variant: String!
   displayName: String!
-  tasks: [PatchBuildVariantTask]
+  tasks: [Task]
 }
 
 type PatchBuildVariantTask {
@@ -627,7 +627,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
-  baseTask: BaseTaskInfo
+  baseTask: Task
   baseStatus: String
   baseTaskMetadata: BaseTaskMetadata
   blocked: Boolean!

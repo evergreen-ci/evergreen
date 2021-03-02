@@ -81,6 +81,8 @@ models:
         resolver: true
       buildVariantDisplayName:
         resolver: true
+      baseTask:
+        resolver: true
   BaseTaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBaseTaskInfo
   TaskLogLinks:

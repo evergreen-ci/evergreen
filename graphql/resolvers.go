@@ -1445,9 +1445,9 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
 	}
 	var variantDisplayName map[string]string = map[string]string{}
-	var tasksByVariant map[string][]*PatchBuildVariantTask = map[string][]*PatchBuildVariantTask{}
+	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	for _, variant := range patch.Variants {
-		tasksByVariant[*variant] = []*PatchBuildVariantTask{}
+		tasksByVariant[*variant] = []*restModel.APITask{}
 	}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -1457,17 +1457,13 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
 	}
 	for _, task := range tasks {
-		baseTask := task.BaseTask
-		t := PatchBuildVariantTask{
-			ID:     task.Id,
-			Name:   task.DisplayName,
-			Status: task.GetDisplayStatus(),
-		}
-		if baseTask.Status != "" {
-			t.BaseStatus = &baseTask.Status
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&task)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
 		}
 		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
-		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &t)
+		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
 
 	}
 
@@ -2357,6 +2353,29 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 	return &baseTask.Status, nil
 }
 
+func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	baseTask, err := t.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
+	}
+	if baseTask == nil {
+		return nil, nil
+	}
+	apiTask := restModel.APITask{}
+	err = apiTask.BuildFromService(baseTask)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
+	}
+	return &apiTask, nil
+}
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	i, err := obj.ToService()
 	if err != nil {
