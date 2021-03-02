@@ -18,7 +18,7 @@ const (
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
-	GithubMergeSubscriberType       = "github-merge" //TODO: remove this once deployed
+	GithubMergeSubscriberType       = "github-merge" //TODO EVG-14087: remove
 	EnqueuePatchSubscriberType      = "enqueue-patch"
 	SubscriberTypeNone              = "none"
 )
