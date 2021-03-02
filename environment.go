@@ -294,12 +294,14 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		if err != nil {
 			return errors.Wrap(err, "problem getting auth from yaml authfile")
 		}
-		credential := options.Credential{
-			Username: ymlUser,
-			Password: ymlPwd,
-		}
+		if ymlUser != "" {
+			credential := options.Credential{
+				Username: ymlUser,
+				Password: ymlPwd,
+			}
 
-		opts.SetAuth(credential)
+			opts.SetAuth(credential)
+		}
 	}
 
 	var err error

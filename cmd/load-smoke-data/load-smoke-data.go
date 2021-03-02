@@ -145,12 +145,13 @@ func main() {
 		if err != nil {
 			grip.EmergencyFatal(errors.Wrapf(err, "problem getting auth info from %s", envAuth))
 		}
-
-		credential := options.Credential{
-			Username: ymlUser,
-			Password: ymlPwd,
+		if ymlUser != "" {
+			credential := options.Credential{
+				Username: ymlUser,
+				Password: ymlPwd,
+			}
+			clientOptions.SetAuth(credential)
 		}
-		clientOptions.SetAuth(credential)
 	}
 	client, err := mongo.Connect(ctx, clientOptions)
 	grip.EmergencyFatal(err)
