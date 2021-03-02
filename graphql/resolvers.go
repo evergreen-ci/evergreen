@@ -1142,11 +1142,19 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
-	taskResults := ConvertDBTasksToGqlTasks(tasks)
 
+	var apiTasks []*restModel.APITask
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task item db model to api model: %v", err.Error()))
+		}
+		apiTasks = append(apiTasks, &apiTask)
+	}
 	patchTasks := PatchTasks{
 		Count: count,
-		Tasks: taskResults,
+		Tasks: apiTasks,
 	}
 	return &patchTasks, nil
 }
@@ -2379,12 +2387,16 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if obj.BuildId == nil {
+		return nil, nil
+	}
 	buildID := utility.FromStringPtr(obj.BuildId)
 	b, err := build.FindOneId(buildID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
 	}
-	return &b.DisplayName, nil
+	displayName := b.DisplayName
+	return &displayName, nil
 
 }
 

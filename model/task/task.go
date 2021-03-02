@@ -2807,14 +2807,6 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		})
 	}
 
-	// expand execution tasks in display tasks
-	pipeline = append(pipeline, bson.M{"$lookup": bson.M{
-		"from":         Collection,
-		"localField":   ExecutionTasksKey,
-		"foreignField": IdKey,
-		"as":           ExecutionTasksFullKey,
-	}})
-
 	tasks := []Task{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()

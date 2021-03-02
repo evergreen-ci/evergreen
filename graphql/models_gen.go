@@ -120,8 +120,8 @@ type PatchProject struct {
 }
 
 type PatchTasks struct {
-	Tasks []*TaskResult `json:"tasks"`
-	Count int           `json:"count"`
+	Tasks []*model.APITask `json:"tasks"`
+	Count int              `json:"count"`
 }
 
 type PatchTime struct {
