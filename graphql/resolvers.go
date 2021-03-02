@@ -1451,9 +1451,10 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	for _, task := range tasks {
 		baseTask := task.BaseTask
 		t := PatchBuildVariantTask{
-			ID:     task.Id,
-			Name:   task.DisplayName,
-			Status: task.GetDisplayStatus(),
+			ID:          task.Id,
+			Name:        task.DisplayName,
+			DisplayName: task.DisplayName,
+			Status:      task.GetDisplayStatus(),
 		}
 		if baseTask.Status != "" {
 			t.BaseStatus = &baseTask.Status

@@ -91,10 +91,12 @@ type PatchBuildVariant struct {
 }
 
 type PatchBuildVariantTask struct {
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	Status     string  `json:"status"`
-	BaseStatus *string `json:"baseStatus"`
+	ID          string  `json:"id"`
+	Execution   int     `json:"execution"`
+	DisplayName string  `json:"displayName"`
+	Name        string  `json:"name"`
+	Status      string  `json:"status"`
+	BaseStatus  *string `json:"baseStatus"`
 }
 
 type PatchConfigure struct {
@@ -211,6 +213,7 @@ type TaskQueueDistro struct {
 
 type TaskResult struct {
 	ID                      string           `json:"id"`
+	Execution               int              `json:"execution"`
 	Aborted                 bool             `json:"aborted"`
 	DisplayName             string           `json:"displayName"`
 	Version                 string           `json:"version"`
