@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -337,11 +338,13 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task %s", rh.taskID))
 	}
-	if dt == nil {
-		return gimlet.NewTextResponse("")
-	}
 
-	return gimlet.NewTextResponse(dt.DisplayName)
+	info := &apimodels.DisplayTaskInfo{}
+	if dt != nil {
+		info.ID = dt.Id
+		info.Name = dt.DisplayName
+	}
+	return gimlet.NewJSONResponse(info)
 }
 
 // GET /tasks/{task_id}/sync_path

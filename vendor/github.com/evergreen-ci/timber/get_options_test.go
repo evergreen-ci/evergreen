@@ -13,40 +13,14 @@ func TestGetOptionsValidate(t *testing.T) {
 		hasErr bool
 	}{
 		{
-			name: "BaseURLMissing",
-			opts: GetOptions{
-				ID: "id",
-			},
+			name:   "BaseURLMissing",
+			opts:   GetOptions{},
 			hasErr: true,
 		},
 		{
-			name: "IDandTaskIDMissing",
+			name: "BaseURLPopulated",
 			opts: GetOptions{
-				BaseURL: "https://cedar.mongodb.com",
-			},
-			hasErr: true,
-		},
-		{
-			name: "IDandTaskIDPopulated",
-			opts: GetOptions{
-				BaseURL: "https://cedar.mongodb.com",
-				ID:      "id",
-				TaskID:  "task_id",
-			},
-			hasErr: true,
-		},
-		{
-			name: "IDPopualted",
-			opts: GetOptions{
-				BaseURL: "https://cedar.mongodb.com",
-				ID:      "id",
-			},
-		},
-		{
-			name: "TaskIDPopualted",
-			opts: GetOptions{
-				BaseURL: "https://cedar.mongodb.com",
-				TaskID:  "task_id",
+				BaseURL: "https://url.com",
 			},
 		},
 	} {

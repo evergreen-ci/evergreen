@@ -13,9 +13,10 @@ message TestResultsInfo {
   string task_name = 4;
   string display_task_name = 5;
   string task_id = 6;
-  int32 execution = 7;
-  string request_type = 8;
-  bool mainline = 9;
+  string display_task_id = 7;
+  int32 execution = 8;
+  string request_type = 9;
+  bool mainline = 10;
 }
 
 message TestResults {
@@ -27,10 +28,11 @@ message TestResult {
   string test_name = 1;
   int32 trial = 2;
   string status = 3;
-  int32 line_num = 4;
-  google.protobuf.Timestamp task_create_time = 5;
-  google.protobuf.Timestamp test_start_time = 6;
-  google.protobuf.Timestamp test_end_time = 7;
+  string log_url = 4;
+  int32 line_num = 5;
+  google.protobuf.Timestamp task_create_time = 6;
+  google.protobuf.Timestamp test_start_time = 7;
+  google.protobuf.Timestamp test_end_time = 8;
 }
 
 message TestResultsEndInfo {
