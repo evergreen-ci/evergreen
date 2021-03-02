@@ -1,2 +1,2 @@
-// Package util conatins utility functions depended on by many other packages.
+// Package util contains utility functions depended on by many other packages.
 package util
