@@ -107,7 +107,7 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
 }
 
-func (v *Version) ChangeStatus(newStatus string) error {
+func (v *Version) UpdateStatus(newStatus string) error {
 	if v == nil {
 		return errors.New("version is nil")
 	}

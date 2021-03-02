@@ -857,7 +857,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
 			return errors.Wrap(err, "Error updating build status")
 		}
-		if err = v.ChangeStatus(evergreen.VersionStarted); err != nil {
+		if err = v.UpdateStatus(evergreen.VersionStarted); err != nil {
 			return errors.Wrap(err, "unable to update version status")
 		}
 		updates.BuildNewStatus = evergreen.BuildStarted
@@ -917,7 +917,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		if err != nil {
 			return errors.Wrap(err, "error updating build status")
 		}
-		if err = v.ChangeStatus(evergreen.VersionCreated); err != nil {
+		if err = v.UpdateStatus(evergreen.VersionCreated); err != nil {
 			return errors.Wrap(err, "unable to update version status")
 		}
 		updates.BuildNewStatus = evergreen.BuildCreated

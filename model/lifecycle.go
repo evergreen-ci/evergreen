@@ -471,15 +471,14 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	// only need to do one update per-build instead of one per-task here.
 	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
 	// document.
-	err = build.SetBuildStartedForTasks(tasksToRestart, caller)
-	if err != nil {
+	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrapf(err, "error setting builds started")
 	}
 	version, err := VersionFindOneId(versionId)
 	if err != nil {
 		return errors.Wrap(err, "unable to find version")
 	}
-	return errors.Wrap(version.ChangeStatus(evergreen.VersionStarted), "unable to change version status")
+	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "unable to change version status")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.
