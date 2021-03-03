@@ -663,6 +663,10 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
+func (p *Patch) IsParent() bool {
+	return len(p.Triggers.ChildPatches) > 0
+}
+
 func (p *Patch) SetParametersFromParent() error {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)

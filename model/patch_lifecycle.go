@@ -438,7 +438,53 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.WithStack(err)
 	}
 
+	if p.IsParent() {
+		//finalize all child patches that have a parentStatus = ""
+		for _, childPatch := range p.Triggers.ChildPatches {
+			err = finalizeChildPatch(ctx, childPatch, requester, githubOauthToken)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to finalize child patch")
+			}
+			return nil, err
+		}
+	}
+
 	return patchVersion, nil
+}
+
+func finalizeChildPatch(ctx context.Context, childPatchId string, requester string, githubOauthToken string) error {
+	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
+	if err != nil {
+		return errors.Errorf("error fetching child patch intent: %s", err)
+	}
+	if intent == nil {
+		return errors.New("childpatch intent not found")
+	}
+	triggerIntent, ok := intent.(*patch.TriggerIntent)
+	if !ok {
+		return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
+	}
+	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
+	if triggerIntent.ParentStatus == "" {
+		childPatchDoc, err := patch.FindOneId(childPatchId)
+		if err != nil {
+			return errors.Errorf("error fetching child patch: %s", err)
+		}
+		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "Failed to finalize child patch document",
+				"source":        requester,
+				"patch_id":      childPatchId,
+				"variants":      childPatchDoc.BuildVariants,
+				"tasks":         childPatchDoc.Tasks,
+				"variant_tasks": childPatchDoc.VariantsTasks,
+				"alias":         childPatchDoc.Alias,
+				"parentPatch":   childPatchDoc.Triggers.ParentPatch,
+			}))
+			return err
+		}
+	}
+	return nil
 }
 
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
