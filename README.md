@@ -2,6 +2,13 @@
 Evergreen is a distributed continuous integration system built by MongoDB.
 It dynamically allocates hosts to run tasks in parallel across many machines.
 
+See [the documentation](https://github.com/evergreen-ci/evergreen/wiki) for
+user-facing documentation.
+
+See [the API docs](pkg.go.dev/github.com/evergreen-ci/evergreen) for developer
+documentation. For an overview of the architecture, see the list of directories
+and their descriptions at the bottom of that page.
+
 # Features
 
 #### Elastic Host Allocation
@@ -21,11 +28,6 @@ See test results for your code changes before committing.
 
 #### Stepback on Failure
 Automatically run past commits to pinpoint the origin of a test failure.
-
-See [the documentation](https://github.com/evergreen-ci/evergreen/wiki) for a full feature list!
-
-## System Requirements
-The Evergreen agent, server, and CLI are supported on Linux, macOS, and Windows.
 
 ## Go Requirements
 * [Install Go 1.9 or later](https://golang.org/dl/).
