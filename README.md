@@ -5,7 +5,7 @@ It dynamically allocates hosts to run tasks in parallel across many machines.
 See [the wiki](https://github.com/evergreen-ci/evergreen/wiki) for
 user-facing documentation.
 
-See [the API docs](pkg.go.dev/github.com/evergreen-ci/evergreen) for developer
+See [the API docs](https://pkg.go.dev/github.com/evergreen-ci/evergreen) for developer
 documentation. For an overview of the architecture, see the list of directories
 and their descriptions at the bottom of that page.
 
