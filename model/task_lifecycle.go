@@ -853,7 +853,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.Errorf("version '%s' not found", b.Version)
 	}
 
-	if b.Status == evergreen.BuildCreated || unfinishedTasks > 0 {
+	if b.Status == evergreen.BuildCreated || (unfinishedTasks > 0 && finishedTasks > 0) {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
 			return errors.Wrap(err, "Error updating build status")
 		}
@@ -911,7 +911,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
 		if err != nil {
