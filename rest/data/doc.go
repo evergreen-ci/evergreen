@@ -1,5 +1,5 @@
 /*
-Package data provides database access for the rest package
+Package data provides database access for API requests to the server.
 
 Adding to the Connector
 
