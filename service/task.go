@@ -28,7 +28,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var NumTestsToSearchForTestNames = 100
+var NumTasksToSearchForTestNames = 10
 
 type uiTaskData struct {
 	Id                   string                  `json:"id"`
