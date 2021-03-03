@@ -1,5 +1,5 @@
 /*
-Package rest provides an API for Evergreen users.
+Package rest provides an API for Evergreen users, as well as the GraphQL interface.
 
 The REST API V2 has a series of central types that are useful to understand when
 adding new endpoints or increasing its functionality.
