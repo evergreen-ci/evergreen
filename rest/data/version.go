@@ -100,6 +100,22 @@ func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId 
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
+func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	versions, err := model.GetVersionsWithOptions(projectId, opts)
+	if err != nil {
+		return nil, err
+	}
+	res := []restModel.APIVersion{}
+	for _, v := range versions {
+		apiVersion := restModel.APIVersion{}
+		if err = apiVersion.BuildFromService(&v); err != nil {
+			return nil, errors.Wrap(err, "error building API versions")
+		}
+		res = append(res, apiVersion)
+	}
+	return res, nil
+}
+
 // Fetch versions until 'numVersionElements' elements are created, including
 // elements consisting of multiple versions rolled-up into one.
 // The skip value indicates how many versions back in time should be skipped
@@ -434,4 +450,8 @@ func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, project
 		return p, pp, err
 	}
 	return nil, nil, errors.New("no project for version")
+}
+
+func (mvc *MockVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	return nil, nil
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -69,10 +70,22 @@ type Version struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	// this is only used for aggregations, and is not stored in the DB
+	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
+
+type GetVersionsOptions struct {
+	VersionToStartAt string `json:"start_at"`
+	Limit            int    `json:"limit"`
+	Skip             int    `json:"skip"`
+	IncludeBuilds    bool   `json:"include_builds"`
+	IncludeTasks     bool   `json:"include_tasks"`
+	ByBuildVariant   string `json:"by_build_variant"`
+}
 
 func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(

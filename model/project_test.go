@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -1738,4 +1738,110 @@ func TestSkipOnNonGitTagBuild(t *testing.T) {
 	bvt.GitTagOnly = nil
 	assert.False(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
 	assert.False(t, bvt.SkipOnRequester(r))
+}
+
+func TestGetVersionsWithOptions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	start := time.Now()
+	v := Version{
+		Id:         "my_version",
+		Identifier: "my_project",
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId:      "bv1",
+				BuildVariant: "my_bv",
+			},
+			{
+				BuildId:      "bv2",
+				BuildVariant: "your_bv",
+			},
+		},
+		CreateTime: start,
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:         "your_version",
+		Identifier: "my_project",
+		CreateTime: start.Add(-1 * time.Minute),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:         "another_version",
+		Identifier: "my_project",
+		CreateTime: start.Add(-2 * time.Minute),
+	}
+	assert.NoError(t, v.Insert())
+
+	bv := build.Build{
+		Id:           "bv1",
+		BuildVariant: "my_bv",
+		Tasks: []build.TaskCache{
+			{Id: "t1"},
+		},
+		Status: evergreen.BuildFailed,
+	}
+	assert.NoError(t, bv.Insert())
+	bv = build.Build{
+		Id:           "bv2",
+		BuildVariant: "your_bv",
+		Tasks: []build.TaskCache{
+			{Id: "t2"},
+		},
+		Status: evergreen.BuildSucceeded,
+	}
+	assert.NoError(t, bv.Insert())
+
+	t1 := task.Task{
+		Id:          "t1",
+		DisplayName: "my_task",
+		Status:      evergreen.TaskSucceeded,
+		BuildId:     "bv1",
+	}
+	assert.NoError(t, t1.Insert())
+	t2 := task.Task{
+		Id:          "t2",
+		DisplayName: "your_task",
+		Status:      evergreen.TaskFailed,
+		BuildId:     "bv2",
+	}
+	assert.NoError(t, t2.Insert())
+	opts := GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true}
+	versions, err := GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 3)
+	assert.Equal(t, "my_version", versions[0].Id)
+	require.Len(t, versions[0].Builds, 2)
+	require.Len(t, versions[0].Builds[0].Tasks, 1)
+	require.Len(t, versions[0].Builds[1].Tasks, 1)
+
+	opts.ByBuildVariant = "my_bv"
+	versions, err = GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 1)
+	require.Len(t, versions[0].Builds, 1)
+	assert.Equal(t, versions[0].Builds[0].Id, "bv1")
+	assert.Equal(t, versions[0].Builds[0].Status, evergreen.BuildFailed)
+	require.Len(t, versions[0].Builds[0].Tasks, 1)
+
+	opts = GetVersionsOptions{Limit: 1}
+	versions, err = GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, versions[0].Id, "my_version")
+	assert.Len(t, versions[0].Builds, 0)
+	assert.Len(t, versions[0].BuildVariants, 2)
+
+	opts = GetVersionsOptions{Skip: 1}
+	versions, err = GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, versions[0].Id, "your_version")
+	assert.Equal(t, versions[1].Id, "another_version")
+
+	opts = GetVersionsOptions{VersionToStartAt: "your_version"}
+	versions, err = GetVersionsWithOptions("my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, versions[0].Id, "your_version")
+	assert.Equal(t, versions[1].Id, "another_version")
 }
