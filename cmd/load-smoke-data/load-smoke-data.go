@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -140,12 +141,13 @@ func main() {
 
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5 * time.Second)
 	envAuth := os.Getenv(evergreen.MongodbAuthFile)
+	grip.Debug(message.Fields{"envAuth": envAuth, "authfile": evergreen.MongodbAuthFile})
 	if envAuth != "" {
 		ymlUser, ymlPwd, err := evergreen.GetAuthFromYAML(envAuth)
 		if err != nil {
-			grip.EmergencyFatal(errors.Wrapf(err, "problem getting auth info from %s", envAuth))
+			grip.Error(errors.Wrapf(err, "problem getting auth info from %s, trying to connect to db without auth", envAuth))
 		}
-		if ymlUser != "" {
+		if err == nil && ymlUser != "" {
 			credential := options.Credential{
 				Username: ymlUser,
 				Password: ymlPwd,

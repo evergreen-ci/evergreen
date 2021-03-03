@@ -724,24 +724,21 @@ func (dbs *DBSettings) GetAuth() (string, string, error) {
 }
 
 func GetAuthFromYAML(authFile string) (string, string, error) {
-	var user, pwd string
 	creds := &dbCreds{}
 
 	file, err := os.Open(authFile)
 	if err != nil {
-		return user, pwd, err
+		return "", "", err
 	}
 	defer file.Close()
 
 	decoder := yaml.NewDecoder(file)
 
 	if err := decoder.Decode(&creds); err != nil {
-		return user, pwd, err
+		return "", "", err
 	}
 
-	user = creds.DBUser
-	pwd = creds.DBPwd
-	return user, pwd, nil
+	return creds.DBUser, creds.DBPwd, nil
 }
 
 // supported banner themes in Evergreen

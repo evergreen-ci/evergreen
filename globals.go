@@ -136,7 +136,7 @@ const (
 
 	EvergreenHome   = "EVGHOME"
 	MongodbUrl      = "MONGO_URL"
-	MongodbAuthFile = "MONGO_DB_CREDS_FILE"
+	MongodbAuthFile = "MONGO_CREDS_FILE"
 
 	// Special logging output targets
 	LocalLoggingOverride          = "LOCAL"
