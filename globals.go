@@ -581,8 +581,9 @@ var (
 	}
 
 	// constant arrays for db update logic
-	AbortableStatuses = []string{TaskStarted, TaskDispatched}
-	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+	AbortableStatuses   = []string{TaskStarted, TaskDispatched}
+	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
+	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 

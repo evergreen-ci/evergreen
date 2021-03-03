@@ -624,6 +624,69 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 	})
 }
 
+func TestUpdateBuildStatusForTaskReset(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection),
+		"Error clearing task and build collections")
+	displayName := "testName"
+	b := &build.Build{
+		Id:        "buildtest",
+		Status:    evergreen.BuildStarted,
+		Version:   "abc",
+		Activated: true,
+	}
+	v := &Version{
+		Id:     b.Version,
+		Status: evergreen.VersionFailed,
+	}
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskUndispatched,
+		Version:     b.Version,
+	}
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskFailed,
+		StartTime:   time.Now().Add(-time.Hour),
+		Version:     b.Version,
+	}
+	b.Tasks = []build.TaskCache{
+		{
+			Id:        testTask.Id,
+			Status:    evergreen.TaskFailed,
+			Activated: true,
+		},
+		{
+			Id:        anotherTask.Id,
+			Status:    evergreen.TaskFailed,
+			Activated: true,
+		},
+	}
+
+	assert.NoError(t, b.Insert())
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, anotherTask.Insert())
+
+	updates := StatusChanges{}
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(testTask.Id, &updates))
+	dbVersion, err := VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
+	events, err := event.FindAllByResourceID(v.Id)
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+	data := events[0].Data.(*event.VersionEventData)
+	assert.Equal(t, evergreen.VersionStarted, data.Status)
+}
+
 func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
@@ -2457,7 +2520,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates := StatusChanges{}
 	assert.NoError(MarkEnd(testTask, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2471,7 +2533,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(anotherTask, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2485,7 +2546,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(exeTask0, "", time.Now(), details, false, &updates))
-	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
 	assert.False(updates.VersionComplete)
@@ -2515,7 +2575,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
-	assert.Len(e, 7)
+	assert.Len(e, 10)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
@@ -2696,7 +2756,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -2721,8 +2781,13 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 				Id: "t",
 			},
 		},
+		Version: "version",
 	}
 	assert.NoError(b.Insert())
+	v := Version{
+		Id: b.Version,
+	}
+	assert.NoError(v.Insert())
 
 	assert.NoError(ClearAndResetStrandedTask(h))
 	runningTask, err := task.FindOne(task.ById("t"))
@@ -2835,11 +2900,12 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 }
 
 func TestClearAndResetExecTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection))
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 
 	dispTask := &task.Task{
 		Id:             "dt",
 		Status:         evergreen.TaskStarted,
+		Version:        "version",
 		Activated:      true,
 		ActivatedTime:  time.Now(),
 		BuildId:        "b",
@@ -2850,6 +2916,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	execTask := &task.Task{
 		Id:            "et",
 		Status:        evergreen.TaskStarted,
+		Version:       "version",
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		BuildId:       "b",
@@ -2868,8 +2935,13 @@ func TestClearAndResetExecTask(t *testing.T) {
 		Tasks: []build.TaskCache{
 			build.TaskCache{Id: "dt"},
 		},
+		Version: "version",
 	}
 	assert.NoError(t, b.Insert())
+	v := Version{
+		Id: "version",
+	}
+	assert.NoError(t, v.Insert())
 
 	assert.NoError(t, ClearAndResetStrandedTask(h))
 	restartedDisplayTask, err := task.FindOne(task.ById("dt"))
@@ -3088,7 +3160,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 }
 
 func TestDisplayTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), "error clearing collection")
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3096,6 +3168,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		Activated:   true,
 		BuildId:     "b",
+		Version:     "version",
 		ExecutionTasks: []string{
 			"task1",
 			"task2",
@@ -3105,12 +3178,14 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	task1 := task.Task{
 		Id:      "task1",
 		BuildId: "b",
+		Version: "version",
 		Status:  evergreen.TaskSucceeded,
 	}
 	assert.NoError(task1.Insert())
 	task2 := task.Task{
 		Id:      "task2",
 		BuildId: "b",
+		Version: "version",
 		Status:  evergreen.TaskSucceeded,
 	}
 	assert.NoError(task2.Insert())
@@ -3119,8 +3194,13 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 		Tasks: []build.TaskCache{
 			{Id: "dt", Status: evergreen.TaskStarted, Activated: true},
 		},
+		Version: "version",
 	}
 	assert.NoError(b.Insert())
+	v := Version{
+		Id: "version",
+	}
+	assert.NoError(v.Insert())
 
 	// request that the task restarts when it's done
 	assert.NoError(dt.SetResetWhenFinished())
