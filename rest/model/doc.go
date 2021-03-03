@@ -1,17 +1,17 @@
 /*
-Package model maps database models to API models for the rest package.
+Package model maps database models to API models for REST requests to the server.
 
 Adding Models
 
 Each model is kept in the model package of the REST v2 API in its own file.
 To create a new model, define a struct containing all of the fields that it will return
 and implement its two main interface methods BuildFromService and ToService.
-Be sure to include struct tags to the define the names the fields will have when
+Be sure to include struct tags to define the names the fields will have when
 serialized to JSON.
 
 Guidelines for Creating Models
 
-include as much data as a user is likely to want when inspecting this resource.
+Include as much data as a user is likely to want when inspecting this resource.
 This is likely to be more information than seems directly needed, but there is
 little penalty to its inclusion.
 

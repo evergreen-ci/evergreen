@@ -1,2 +1,2 @@
-// Package route handles incoming REST requests for the rest package.
+// Package route handles incoming REST requests to the server.
 package route
