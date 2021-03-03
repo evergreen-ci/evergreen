@@ -21,9 +21,10 @@ import (
 
 // for the different types of remote logging
 const (
-	SystemLogPrefix = "S"
-	AgentLogPrefix  = "E"
-	TaskLogPrefix   = "T"
+	SystemLogPrefix  = "S"
+	AgentLogPrefix   = "E"
+	TaskLogPrefix    = "T"
+	AllTaskLevelLogs = "ALL"
 
 	LogErrorPrefix = "E"
 	LogWarnPrefix  = "W"
@@ -70,13 +71,14 @@ func GetSeverityMapping(s int) string {
 // GetBuildloggerLogsOptions represents the arguments passed into
 // GetBuildloggerLogs function.
 type GetBuildloggerLogsOptions struct {
-	BaseURL       string
-	TaskID        string
-	TestName      string
-	Execution     int
-	PrintPriority bool
-	Tail          int
-	LogType       string
+	BaseURL       string `json:"_"`
+	TaskID        string `json:"-"`
+	TestName      string `json:"-"`
+	GroupID       string `json:"-"`
+	Execution     int    `json:"-"`
+	PrintPriority bool   `json:"-"`
+	Tail          int    `json:"-"`
+	LogType       string `json:"-"`
 }
 
 // GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
@@ -93,6 +95,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		},
 		TaskID:        opts.TaskID,
 		TestName:      opts.TestName,
+		GroupID:       opts.GroupID,
 		Execution:     opts.Execution,
 		PrintTime:     true,
 		PrintPriority: opts.PrintPriority,
@@ -121,7 +124,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		getOpts.Tags = []string{evergreen.LogTypeSystem}
 	case AgentLogPrefix:
 		getOpts.Tags = []string{evergreen.LogTypeAgent}
-	default:
+	case AllTaskLevelLogs:
 		getOpts.Tags = []string{
 			evergreen.LogTypeTask,
 			evergreen.LogTypeSystem,
