@@ -74,7 +74,7 @@ func TestVersionBuildFromService(t *testing.T) {
 	assert.Equal(apiVersion.Branch, utility.ToStringPtr(branch))
 	assert.Equal(apiVersion.Errors, utility.ToStringPtrSlice(errors))
 
-	bvs := apiVersion.BuildVariants
+	bvs := apiVersion.BuildVariantStatus
 	assert.Equal(bvs[0].BuildVariant, utility.ToStringPtr(bv1))
 	assert.Equal(bvs[0].BuildId, utility.ToStringPtr(bi1))
 	assert.Equal(bvs[1].BuildVariant, utility.ToStringPtr(bv2))
