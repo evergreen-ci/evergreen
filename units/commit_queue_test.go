@@ -13,10 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -213,4 +215,56 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.BuildVariants)
+}
+
+func TestAddMergeTaskDependencies(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+	j := commitQueueJob{}
+	mergeTask1 := task.Task{
+		Id:           "1",
+		Requester:    evergreen.MergeTestRequester,
+		DisplayName:  evergreen.MergeTaskName,
+		BuildVariant: evergreen.MergeTaskVariant,
+		Version:      "v1",
+	}
+	assert.NoError(t, mergeTask1.Insert())
+	mergeTask2 := task.Task{
+		Id:           "2",
+		Requester:    evergreen.MergeTestRequester,
+		DisplayName:  evergreen.MergeTaskName,
+		BuildVariant: evergreen.MergeTaskVariant,
+		Version:      "v2",
+	}
+	assert.NoError(t, mergeTask2.Insert())
+	mergeTask3 := task.Task{
+		Id:           "3",
+		Requester:    evergreen.MergeTestRequester,
+		DisplayName:  evergreen.MergeTaskName,
+		BuildVariant: evergreen.MergeTaskVariant,
+		Version:      "v3",
+	}
+	assert.NoError(t, mergeTask3.Insert())
+	cq := commitqueue.CommitQueue{
+		Queue: []commitqueue.CommitQueueItem{
+			{Version: mergeTask1.Version},
+			{Version: mergeTask2.Version},
+			{Version: mergeTask3.Version},
+		},
+	}
+
+	assert.NoError(t, j.addMergeTaskDependencies(cq))
+	dbTask1, err := task.FindOneId(mergeTask1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, dbTask1.NumDependents)
+	assert.Empty(t, dbTask1.DependsOn)
+	dbTask2, err := task.FindOneId(mergeTask2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, dbTask2.NumDependents)
+	assert.Len(t, dbTask2.DependsOn, 1)
+	assert.Equal(t, dbTask1.Id, dbTask2.DependsOn[0].TaskId)
+	dbTask3, err := task.FindOneId(mergeTask3.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask3.NumDependents)
+	assert.Len(t, dbTask3.DependsOn, 1)
+	assert.Equal(t, dbTask2.Id, dbTask3.DependsOn[0].TaskId)
 }

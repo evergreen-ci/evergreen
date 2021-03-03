@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1005,6 +1006,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	return tasks, nil
 }
 
+// makeDeps takes dependency definitions in the project and sets them in the task struct.
+// dependencies between commit queue merges are set outside this function
 func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) []task.Dependency {
 	dependencySet := make(map[task.Dependency]bool)
 	for _, dep := range t.DependsOn {
@@ -1080,8 +1083,12 @@ func setNumDeps(tasks []*task.Task) {
 	for i, task := range tasks {
 		idToTask[task.Id] = tasks[i]
 	}
-
-	for _, task := range tasks {
+	deduplicatedTasks := []*task.Task{}
+	for _, task := range idToTask {
+		task.NumDependents = 0
+		deduplicatedTasks = append(deduplicatedTasks, task)
+	}
+	for _, task := range deduplicatedTasks {
 		// Recursively find all tasks that task depends on and increments their NumDependents field
 		setNumDepsRec(task, idToTask, make(map[string]bool))
 	}
@@ -1089,16 +1096,118 @@ func setNumDeps(tasks []*task.Task) {
 
 // setNumDepsRec recursively finds all tasks that task depends on and increments their NumDependents field.
 // tasks not in idToTasks are not affected.
-func setNumDepsRec(task *task.Task, idToTasks map[string]*task.Task, seen map[string]bool) {
-	for _, dep := range task.DependsOn {
+func setNumDepsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[string]bool) {
+	for _, dep := range t.DependsOn {
 		// Check whether this dependency is included in the tasks we're currently creating
-		if depTask, ok := idToTasks[dep.TaskId]; ok {
-			if !seen[depTask.Id] {
-				seen[depTask.Id] = true
-				depTask.NumDependents = depTask.NumDependents + 1
-				setNumDepsRec(depTask, idToTasks, seen)
-			}
+		depTask, ok := idToTasks[dep.TaskId]
+		if !ok {
+			// it's possible to get in to this block if tasks depend on others outside of the task's
+			// version, such as with commit queue merges. This scenario is currently not handled here
+			// because commit queue merges are all linked lists, and this block would do nothing
+			continue
 		}
+		if !seen[depTask.Id] {
+			seen[depTask.Id] = true
+			depTask.NumDependents = depTask.NumDependents + 1
+			setNumDepsRec(depTask, idToTasks, seen)
+		}
+	}
+}
+
+func RecomputeNumDependents(t task.Task) error {
+	pipelineDown := getAllNodesInDepGraph(t.Id, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), task.IdKey)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipelineDown)
+	if err != nil {
+		return err
+	}
+	depTasks := []task.Task{}
+	err = cursor.All(ctx, &depTasks)
+	if err != nil {
+		return err
+	}
+	taskPtrs := []*task.Task{}
+	for i := range depTasks {
+		taskPtrs = append(taskPtrs, &depTasks[i])
+	}
+
+	pipelineUp := getAllNodesInDepGraph(t.Id, task.IdKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey))
+	cursor, err = env.DB().Collection(task.Collection).Aggregate(ctx, pipelineUp)
+	if err != nil {
+		return err
+	}
+	depTasks = []task.Task{}
+	err = cursor.All(ctx, &depTasks)
+	if err != nil {
+		return err
+	}
+	for i := range depTasks {
+		taskPtrs = append(taskPtrs, &depTasks[i])
+	}
+
+	versionTasks, err := task.FindAll(task.ByVersion(t.Version))
+	if err != nil {
+		return err
+	}
+	for i := range versionTasks {
+		taskPtrs = append(taskPtrs, &versionTasks[i])
+	}
+
+	setNumDeps(taskPtrs)
+	errs := grip.NewBasicCatcher()
+	for _, t := range taskPtrs {
+		dereferenced := *t
+		errs.Add(dereferenced.SetNumDependents())
+	}
+
+	return errors.Wrap(errs.Resolve(), "error setting num dependents")
+}
+
+func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				task.IdKey: startTaskId,
+			},
+		},
+		{
+			"$graphLookup": bson.M{
+				"from":             task.Collection,
+				"startWith":        "$" + startKey,
+				"connectFromField": startKey,
+				"connectToField":   linkKey,
+				"as":               "dep_graph",
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"dep_graph": bson.M{
+					"$concatArrays": []interface{}{"$dep_graph", []string{"$$ROOT"}},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":     0,
+				"results": "$dep_graph",
+			},
+		},
+		{
+			"$unwind": "$results",
+		},
+		{
+			"$replaceRoot": bson.M{
+				"newRoot": "$results",
+			},
+		},
+		{
+			"$project": bson.M{
+				task.IdKey:        1,
+				task.DependsOnKey: 1,
+			},
+		},
 	}
 }
 

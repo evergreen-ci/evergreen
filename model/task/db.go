@@ -293,6 +293,15 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+func ByCommitQueueMergeInVersion(version string) db.Q {
+	return db.Query(bson.M{
+		VersionKey:      version,
+		RequesterKey:    evergreen.MergeTestRequester,
+		BuildVariantKey: evergreen.MergeTaskVariant,
+		DisplayNameKey:  evergreen.MergeTaskName,
+	})
+}
+
 // ByVersion produces a query that returns tasks for the given version.
 func ByVersions(versions []string) db.Q {
 	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
