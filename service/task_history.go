@@ -271,7 +271,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	taskName := gimlet.GetVars(r)["task_name"]
 
 	projCtx := MustHaveProjectContext(r)
-	u := MustHaveUser(r)
+	u := gimlet.GetUser(r.Context())
 
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
@@ -299,18 +299,12 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	results, err := taskHistoryIterator.GetDistinctTestNames(NumTestsToSearchForTestNames)
 	testNamesQueryDuration := time.Now().Sub(stepTime)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":                   "error getting test names",
-			"user":                      u.Id,
-			"variants_duration":         variantsQueryDuration,
-			"test_names_query_duration": testNamesQueryDuration,
-		}))
 		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	grip.Debug(message.Fields{
+	grip.DebugWhen(u != nil, message.Fields{
 		"message":                   "got test names",
-		"user":                      u.Id,
+		"user":                      u.Username(),
 		"variants_duration":         variantsQueryDuration,
 		"test_names_query_duration": testNamesQueryDuration,
 		"num_test_names":            len(results),
