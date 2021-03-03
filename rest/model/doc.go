@@ -1,35 +1,37 @@
 /*
-	Adding Models
+Package model maps database models to API models for the rest package.
 
-	Each model is kept in the model package of the REST v2 API in its own file.
-	To create a new model, define a struct containing all of the fields that it will return
-	and implement its two main interface methods BuildFromService and ToService.
-	Be sure to include struct tags to the define the names the fields will have when
-	serialized to JSON.
+Adding Models
 
-	Guidelines for Creating Models
+Each model is kept in the model package of the REST v2 API in its own file.
+To create a new model, define a struct containing all of the fields that it will return
+and implement its two main interface methods BuildFromService and ToService.
+Be sure to include struct tags to the define the names the fields will have when
+serialized to JSON.
 
-	include as much data as a user is likely to want when inspecting this resource.
-	This is likely to be more information than seems directly needed, but there is
-	little penalty to its inclusion.
+Guidelines for Creating Models
 
-	Return an error when type casting fails.
+include as much data as a user is likely to want when inspecting this resource.
+This is likely to be more information than seems directly needed, but there is
+little penalty to its inclusion.
 
-	Model Methods
+Return an error when type casting fails.
 
-	The Model type is an interface with two methods.
+Model Methods
 
-					BuildFromService(in interface{}) error
+The Model type is an interface with two methods.
 
-	BuildFromService fetches all needed data from the passed in object and sets them
-	on the model. BuildFromService may sometimes be called multiple times with different
-	types that all contain data to build up the model object. In this case, a type switch
-	is likely necessary to determine what has been passed in.
+				BuildFromService(in interface{}) error
 
-					ToService()(interface{}, error)
+BuildFromService fetches all needed data from the passed in object and sets them
+on the model. BuildFromService may sometimes be called multiple times with different
+types that all contain data to build up the model object. In this case, a type switch
+is likely necessary to determine what has been passed in.
 
-	ToService creates an as-complete-as-possible version of the service layer's version
-	of this model. For example, if this is is a REST v2 Task model, the ToService method
-	creates a service layer Task and sets all of the fields it is able to and returns it.
+				ToService()(interface{}, error)
+
+ToService creates an as-complete-as-possible version of the service layer's version
+of this model. For example, if this is is a REST v2 Task model, the ToService method
+creates a service layer Task and sets all of the fields it is able to and returns it.
 */
 package model
