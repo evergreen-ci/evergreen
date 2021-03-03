@@ -239,10 +239,6 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists boo
 }
 
 func preventMergeForItem(item CommitQueueItem, user string) error {
-	if err := clearVersionPatchSubscriber(item.Version, event.CommitQueueDequeueSubscriberType); err != nil {
-		return errors.Wrap(err, "can't clear subscriptions")
-	}
-
 	// Disable the merge task
 	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
 	if err != nil {
@@ -257,23 +253,6 @@ func preventMergeForItem(item CommitQueueItem, user string) error {
 	}
 	if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
 		return errors.Wrapf(err, "error updating task cache for build %s", mergeTask.BuildId)
-	}
-
-	return nil
-}
-
-func clearVersionPatchSubscriber(versionID, subscriberType string) error {
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: versionID}})
-	if err != nil {
-		return errors.Wrapf(err, "can't find subscription to patch '%s'", versionID)
-	}
-	for _, subscription := range subscriptions {
-		if subscription.Subscriber.Type == subscriberType {
-			err = event.RemoveSubscription(subscription.ID)
-			if err != nil {
-				return errors.Wrapf(err, "can't remove subscription for '%s', type '%s'", versionID, subscriberType)
-			}
-		}
 	}
 
 	return nil

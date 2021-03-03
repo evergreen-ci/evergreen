@@ -419,14 +419,6 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	subscriber := event.NewCommitQueueDequeueSubscriber()
-
-	patchSub := event.NewExpiringPatchOutcomeSubscription(nextItem.Issue, subscriber)
-	if err = patchSub.Upsert(); err != nil {
-		j.logError(err, "failed to insert patch subscription", nextItem)
-		j.dequeue(cq, nextItem)
-	}
-
 	if err = setDefaultNotification(patchDoc.Author); err != nil {
 		j.logError(err, "failed to set default notification", nextItem)
 	}

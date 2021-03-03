@@ -11,9 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -47,11 +49,24 @@ func (c *gitPush) ParseParams(params map[string]interface{}) error {
 
 // Execute gets the source code required by the project
 func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	var err error
+	defer func() {
+		pErr := recovery.HandlePanicWithError(recover(), nil, "unexpected error in git.push")
+		status := evergreen.MergeTestSucceeded
+		if err != nil || pErr != nil {
+			status = evergreen.MergeTestFailed
+		}
+		logger.Task().Error(err)
+		logger.Task().Critical(pErr)
+		td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
+	}()
+	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "can't apply expansions")
 	}
 
-	p, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
+	var p *patch.Patch
+	p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
 		return errors.Wrap(err, "Failed to get patch")
 	}
@@ -68,7 +83,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	// fail the merge if HEAD has moved
 	ref := conf.ProjectRef.Branch + "@{upstream}"
 	logger.Execution().Info("Checking " + ref)
-	headSHA, err := c.revParse(ctx, conf, logger, ref)
+	var headSHA string
+	headSHA, err = c.revParse(ctx, conf, logger, ref)
 	if err != nil {
 		return errors.Wrapf(err, "can't get SHA for %s", ref)
 	}
@@ -77,7 +93,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// get commit information
-	_, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	var projectToken string
+	_, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get token")
 	}

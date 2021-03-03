@@ -163,9 +163,6 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	case event.EmailSubscriberType:
 		return checkFlag(j.flags.EmailNotificationsDisabled)
 
-	case event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
-		return checkFlag(j.flags.CommitQueueDisabled)
-
 	default:
 		return errors.Errorf("unknown subscriber type: %s", n.Subscriber.Type)
 	}

@@ -82,7 +82,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType, event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType:
+	case event.GithubMergeSubscriberType, event.EnqueuePatchSubscriberType:
 		return evergreen.SenderGeneric, nil
 
 	default:
@@ -214,14 +214,6 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 
 		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
-	case event.CommitQueueDequeueSubscriberType:
-		payload, ok := n.Payload.(*commitqueue.DequeueItem)
-		if !ok || payload == nil {
-			return nil, errors.New("commit-queue-dequeue payload is invalid")
-		}
-
-		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
-
 	case event.EnqueuePatchSubscriberType:
 		payload, ok := n.Payload.(*model.EnqueuePatch)
 		if !ok || payload == nil {
@@ -290,16 +282,14 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 type NotificationStats struct {
-	GithubPullRequest  int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
-	JIRAIssue          int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
-	JIRAComment        int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
-	EvergreenWebhook   int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
-	Email              int `json:"email" bson:"email" yaml:"email"`
-	Slack              int `json:"slack" bson:"slack" yaml:"slack"`
-	GithubMerge        int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
-	GithubCheck        int `json:"github_check" bson:"github_check" yaml:"github_check"`
-	CommitQueueDequeue int `json:"commit_queue_dequeue" bson:"commit_queue_dequeue" yaml:"commit_queue_dequeue"`
-	EnqueuePatch       int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
+	GithubPullRequest int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
+	JIRAComment       int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
+	Email             int `json:"email" bson:"email" yaml:"email"`
+	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
+	GithubCheck       int `json:"github_check" bson:"github_check" yaml:"github_check"`
+	EnqueuePatch      int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -355,9 +345,6 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
-
-		case event.CommitQueueDequeueSubscriberType:
-			nStats.CommitQueueDequeue = data.Count
 
 		case event.EnqueuePatchSubscriberType:
 			nStats.EnqueuePatch = data.Count

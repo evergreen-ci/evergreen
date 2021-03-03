@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -66,7 +67,8 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "can't apply expansions")
 	}
 
-	patchDoc, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
+	var patchDoc *patch.Patch
+	patchDoc, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
 		return errors.Wrap(err, "unable to get patch")
 	}
@@ -114,7 +116,8 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	// do the merge
-	res, _, err := githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+	var res *github.PullRequestMergeResult
+	res, _, err = githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitTitle, mergeOpts)
 	if err != nil {
 		c.sendMergeFailedStatus(fmt.Sprintf("Github Error: %s", err.Error()), patchDoc.GithubPatchData, conf)

@@ -396,8 +396,7 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
 		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType,
-		event.CommitQueueDequeueSubscriberType, event.EnqueuePatchSubscriberType,
-		event.GithubCheckSubscriberType}
+		event.EnqueuePatchSubscriberType, event.GithubCheckSubscriberType}
 
 	n := []Notification{}
 	// add one of every notification, unsent
@@ -420,9 +419,6 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	// we should count 1 of each type
 	v := reflect.ValueOf(stats).Elem()
 	for i := 0; i < v.NumField(); i++ {
-		if i == 6 {
-			continue // TODO: temporary until GithubMerge is removed as a notification type
-		}
 		f := v.Field(i)
 		s.Equal(1, int(f.Int()))
 	}

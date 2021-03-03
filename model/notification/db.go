@@ -72,8 +72,6 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 		n.Payload = &message.GithubStatus{}
 	case event.GithubMergeSubscriberType:
 		n.Payload = &commitqueue.GithubMergePR{}
-	case event.CommitQueueDequeueSubscriberType:
-		n.Payload = &commitqueue.DequeueItem{}
 
 	case event.EnqueuePatchSubscriberType:
 		n.Payload = &model.EnqueuePatch{}
