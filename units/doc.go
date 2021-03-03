@@ -1,4 +1,4 @@
-// Package units contains amboy.Job definiteness for Evergreen tasks.
+// Package units contains amboy.Job definitions.
 //
 // Loading the units package registers all jobs in the amboy Job
 // Registry.
@@ -12,5 +12,3 @@
 // marshiling to either JSON/BSON/YAML (depending on the
 // amoby.JobType format.)
 package units
-
-// This file is intentionally documentation only.
