@@ -77,9 +77,9 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	hostname, err := os.Hostname()
 	if err != nil {
-		tc.logger.Task().Infof("Unable to get hostname: %s", err)
+		tc.logger.Execution().Infof("Unable to get hostname: %s", err)
 	} else {
-		tc.logger.Task().Infof("Hostname is %s", hostname)
+		tc.logger.Execution().Infof("Hostname is %s", hostname)
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
