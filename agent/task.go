@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -74,6 +75,12 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		grip.Info("task canceled")
 		return
 	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		tc.logger.Task().Infof("Unable to get hostname: %s", err)
+	} else {
+		tc.logger.Task().Infof("Hostname is %s", hostname)
+	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	innerCtx, innerCancel := context.WithCancel(ctx)
@@ -100,7 +107,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	var err error
 	if tc.runGroupSetup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
