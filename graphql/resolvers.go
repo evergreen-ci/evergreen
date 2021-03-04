@@ -2343,14 +2343,14 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTask, err := t.FindTaskOnBaseCommit()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
 	}
-	if baseTask == nil {
+	baseStatus := t.BaseTask.Status
+	if baseStatus == "" {
 		return nil, nil
 	}
-	return &baseTask.Status, nil
+	return &baseStatus, nil
 }
 
 func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
@@ -2362,19 +2362,23 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTask, err := t.FindTaskOnBaseCommit()
+	baseTaskID := t.BaseTask.Id
+	if baseTaskID == "" {
+		return nil, nil
+	}
+	baseTask, err := r.sc.FindTaskById(baseTaskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
 	}
 	if baseTask == nil {
 		return nil, nil
 	}
-	apiTask := restModel.APITask{}
+	apiTask := &restModel.APITask{}
 	err = apiTask.BuildFromService(baseTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
-	return &apiTask, nil
+	return apiTask, nil
 }
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	i, err := obj.ToService()
@@ -2389,10 +2393,10 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 		return nil, nil
 	}
 	executionTasks := []*restModel.APITask{}
-	for _, execTask := range t.ExecutionTasks {
-		execT, err := task.FindByIdExecution(execTask, &t.Execution)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTask, err.Error()))
+	for _, execTaskID := range t.ExecutionTasks {
+		execT, err := task.FindByIdExecution(execTaskID, &t.Execution)
+		if err != nil || execT == nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 		}
 		apiTask := &restModel.APITask{}
 		err = apiTask.BuildFromService(execT)
