@@ -288,21 +288,6 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetConnectTimeout(5 * time.Second).SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
-	if settings.HasAuth() {
-		ymlUser, ymlPwd, err := settings.GetAuth()
-		if err != nil {
-			grip.Error(errors.Wrap(err, "problem getting auth from yaml authfile, attempting to connect without auth"))
-		}
-		if err == nil && ymlUser != "" {
-			credential := options.Credential{
-				Username: ymlUser,
-				Password: ymlPwd,
-			}
-
-			opts.SetAuth(credential)
-		}
-	}
-
 	var err error
 	e.client, err = mongo.NewClient(opts)
 	if err != nil {

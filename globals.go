@@ -134,9 +134,8 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome   = "EVGHOME"
-	MongodbUrl      = "MONGO_URL"
-	MongodbAuthFile = "MONGO_CREDS_FILE"
+	EvergreenHome = "EVGHOME"
+	MongodbUrl    = "MONGO_URL"
 
 	// Special logging output targets
 	LocalLoggingOverride          = "LOCAL"
