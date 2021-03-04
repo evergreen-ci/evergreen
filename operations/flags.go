@@ -50,11 +50,12 @@ const (
 	anserPeriodFlagName      = "period"
 	anserMigrationIDFlagName = "id"
 
-	dbUrlFlagName      = "url"
-	dbNameFlagName     = "db"
-	dbWriteNumFlagName = "w"
-	dbWmodeFlagName    = "wmode"
-	dbRmodeFlagName    = "rmode"
+	dbUrlFlagName       = "url"
+	dbCredsFileFlagName = "auth-file"
+	dbNameFlagName      = "db"
+	dbWriteNumFlagName  = "w"
+	dbWmodeFlagName     = "wmode"
+	dbRmodeFlagName     = "rmode"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -254,6 +255,11 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  dbUrlFlagName,
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
 			Value: evergreen.DefaultDatabaseUrl,
+		},
+		cli.StringFlag{
+			Name:   dbCredsFileFlagName,
+			Usage:  "specify a DB credential file location",
+			EnvVar: evergreen.MongodbAuthFile,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlagName,
