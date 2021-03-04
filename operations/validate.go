@@ -82,10 +82,24 @@ func validateFile(path string, ac *legacyClient, quiet bool) error {
 
 	if len(projErrors) != 0 {
 		grip.Info(projErrors)
-		return errors.Errorf("%s is an invalid configuration", path)
+	}
+	hasErrs := false
+	hasWarnings := false
+	for _, projErr := range projErrors {
+		if projErr.Level == validator.Error {
+			hasErrs = true
+		} else if projErr.Level == validator.Warning {
+			hasWarnings = true
+		}
 	}
 
-	grip.Infof("%s is valid", path)
+	if hasErrs {
+		return errors.Errorf("%s is an invalid configuration", path)
+	} else if hasWarnings {
+		grip.Infof("%s is valid with warnings", path)
+	} else {
+		grip.Infof("%s is valid", path)
+	}
 
 	return nil
 }
