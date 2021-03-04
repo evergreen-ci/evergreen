@@ -11,7 +11,7 @@
               "tasks": [
                 {
                   "id": "9",
-                  "name": "lint-graphql",
+                  "displayName": "lint-graphql",
                   "status": "started",
                   "baseStatus": null
                 }
@@ -23,19 +23,19 @@
               "tasks": [
                 {
                   "id": "2",
-                  "name": "test-cloud",
+                  "displayName": "test-cloud",
                   "status": "failed",
                   "baseStatus": null
                 },
                 {
                   "id": "5",
-                  "name": "test-docker",
+                  "displayName": "test-docker",
                   "status": "success",
                   "baseStatus": null
                 },
                 {
                   "id": "1",
-                  "name": "test-thirdparty-docker",
+                  "displayName": "test-thirdparty-docker",
                   "status": "success",
                   "baseStatus": null
                 }
@@ -47,13 +47,13 @@
               "tasks": [
                 {
                   "id": "4",
-                  "name": "compile",
+                  "displayName": "compile",
                   "status": "failed",
                   "baseStatus": null
                 },
                 {
                   "id": "7",
-                  "name": "lint",
+                  "displayName": "lint",
                   "status": "success",
                   "baseStatus": null
                 }
