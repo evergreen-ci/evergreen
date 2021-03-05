@@ -11,7 +11,7 @@ if [ -n "$LOBSTER_TEMP_DIR" ] && [ -n "$LOBSTER_TEMP_DIR" ]; then
   LOBSTER_REPO=https://github.com/evergreen-ci/lobster.git
   LOBSTER_TEMP_ASSETS_DIR="$LOBSTER_TEMP_DIR/build"
   LOBSTER_STATIC_DIR="$LOBSTER_TEMP_ASSETS_DIR/static"
-  LOBSTER_HTML=index.html
+  LOBSTER_HTML="$LOBSTER_TEMP_ASSETS_DIR/index.html"
   EVG_LOB_MANIFEST_DIR="$EVGHOME/public/static/lobster"
   EVG_LOB_STATIC_DIR="$EVG_LOB_MANIFEST_DIR/static"
   EVERGREEN_TEMPLATES_DIR="$EVGHOME/service/templates"
@@ -38,7 +38,7 @@ if [ -n "$LOBSTER_TEMP_DIR" ] && [ -n "$LOBSTER_TEMP_DIR" ]; then
 
   # copy files from lobster to evergreen
   cp -R $LOBSTER_STATIC_DIR/ $EVG_LOB_STATIC_DIR/
-  cp "$LOBSTER_TEMP_ASSETS_DIR/$LOBSTER_HTML" "$LOBSTER_TEMP_DIR/temp.html"
+  cp $LOBSTER_HTML "$LOBSTER_TEMP_DIR/temp.html"
   cp "$LOBSTER_TEMP_ASSETS_DIR/manifest.json" $EVG_LOB_MANIFEST_DIR
   # surround the html with go template tags
   cd $EVERGREEN_TEMPLATES_DIR
