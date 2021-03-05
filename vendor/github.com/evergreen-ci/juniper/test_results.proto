@@ -26,9 +26,9 @@ message TestResults {
 
 message TestResult {
   string test_name = 1;
-  int32 trial = 2;
-  string status = 3;
-  string log_url = 4;
+  string group_id = 2;
+  int32 trial = 3;
+  string status = 4;
   int32 line_num = 5;
   google.protobuf.Timestamp task_create_time = 6;
   google.protobuf.Timestamp test_start_time = 7;
