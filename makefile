@@ -11,6 +11,7 @@ packages += rest-client rest-data rest-route rest-model migrations trigger model
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
+lobsterTempDir := $(shell pwd)/$(buildDir)/.lobster-temp
 # end project configuration
 
 
@@ -233,7 +234,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 # end main build
 
 update-lobster: 
-	EVGHOME=$(shell pwd) ./buildscripts/update-lobster.sh
+	EVGHOME=$(shell pwd) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(shell pwd)/scripts/update-lobster.sh
 
 # userfacing targets for basic build and development operations
 build:cli
@@ -518,9 +519,9 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 # clean and other utility targets
 clean:
+	rm -rf $(lobsterTempDir)
 	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
-	rm -rf $(EVGHOME)/bin/.lobster-temp
 phony += clean
 
 gqlgen:
