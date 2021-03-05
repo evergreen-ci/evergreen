@@ -30,8 +30,6 @@ if [ -n "$LOBSTER_TEMP_DIR" ] && [ -n "$LOBSTER_TEMP_DIR" ]; then
   #
   npm run build 
 
-
-
   # delete lobster static files in evergreen repo
   rm -rf $EVG_LOB_STATIC_DIR
   mkdir -p $EVG_LOB_STATIC_DIR
