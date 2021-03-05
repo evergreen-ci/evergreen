@@ -784,7 +784,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(r.Context())
 	data := logData{User: usr}
 	vars := gimlet.GetVars(r)
-	raw := (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
+	vals := r.URL.Query()
+	raw := (vals.Get("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 
 	logId := vars["log_id"]
 	taskID := vars["task_id"]
@@ -811,7 +812,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        taskID,
 		TestName:      testName,
-		GroupID:       r.URL.Query().Get("group_id"),
+		GroupID:       vals.Get("group_id"),
 		Execution:     taskExec,
 		PrintPriority: !raw,
 	}
@@ -825,7 +826,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			}))
 		}()
 		data.Buildlogger = make(chan apimodels.LogMessage, 1024)
-		go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
 	} else {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id":   taskID,
@@ -875,13 +875,17 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	template := "task_log.html"
 	if raw {
-		template = "task_log_raw.html"
-		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
-	} else {
-		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
+		if logReader != nil {
+			gimlet.WriteText(w, logReader)
+		} else {
+			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
+		}
+		return
 	}
+
+	go apimodels.ReadBuildloggerToChan(r.Context(), taskID, logReader, data.Buildlogger)
+	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
 func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string, execution int) {
