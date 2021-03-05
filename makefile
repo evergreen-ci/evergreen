@@ -232,6 +232,8 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
+update-lobster: 
+	EVGHOME=$(shell pwd) ./buildscripts/update-lobster.sh
 
 # userfacing targets for basic build and development operations
 build:cli
