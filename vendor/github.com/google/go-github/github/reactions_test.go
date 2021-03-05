@@ -43,6 +43,8 @@ func TestReactions_Marshal(t *testing.T) {
 		Confused:   Int(1),
 		Heart:      Int(1),
 		Hooray:     Int(1),
+		Rocket:     Int(1),
+		Eyes:       Int(1),
 		URL:        String("u"),
 	}
 
@@ -54,6 +56,8 @@ func TestReactions_Marshal(t *testing.T) {
 		"confused": 1,
 		"heart": 1,
 		"hooray": 1,
+		"rocket": 1,
+		"eyes": 1,		
 		"url": "u"
 	}`
 
@@ -73,7 +77,8 @@ func TestReactionsService_ListCommentReactions(t *testing.T) {
 	})
 
 	opt := &ListCommentReactionOptions{Content: "+1"}
-	reactions, _, err := client.Reactions.ListCommentReactions(context.Background(), "o", "r", 1, opt)
+	ctx := context.Background()
+	reactions, _, err := client.Reactions.ListCommentReactions(ctx, "o", "r", 1, opt)
 	if err != nil {
 		t.Errorf("ListCommentReactions returned error: %v", err)
 	}
@@ -81,6 +86,20 @@ func TestReactionsService_ListCommentReactions(t *testing.T) {
 	if !reflect.DeepEqual(reactions, want) {
 		t.Errorf("ListCommentReactions = %+v, want %+v", reactions, want)
 	}
+
+	const methodName = "ListCommentReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListCommentReactions(ctx, "\n", "\n", -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListCommentReactions(ctx, "o", "r", 1, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_CreateCommentReaction(t *testing.T) {
@@ -95,7 +114,8 @@ func TestReactionsService_CreateCommentReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreateCommentReaction(context.Background(), "o", "r", 1, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreateCommentReaction(ctx, "o", "r", 1, "+1")
 	if err != nil {
 		t.Errorf("CreateCommentReaction returned error: %v", err)
 	}
@@ -103,6 +123,20 @@ func TestReactionsService_CreateCommentReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateCommentReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreateCommentReaction(ctx, "\n", "\n", -1, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreateCommentReaction(ctx, "o", "r", 1, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_ListIssueReactions(t *testing.T) {
@@ -117,7 +151,8 @@ func TestReactionsService_ListIssueReactions(t *testing.T) {
 		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
 	})
 
-	got, _, err := client.Reactions.ListIssueReactions(context.Background(), "o", "r", 1, nil)
+	ctx := context.Background()
+	got, _, err := client.Reactions.ListIssueReactions(ctx, "o", "r", 1, nil)
 	if err != nil {
 		t.Errorf("ListIssueReactions returned error: %v", err)
 	}
@@ -125,6 +160,27 @@ func TestReactionsService_ListIssueReactions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ListIssueReactions = %+v, want %+v", got, want)
 	}
+}
+
+func TestReactionsService_ListIssueReactions_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "ListIssueReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListIssueReactions(ctx, "\n", "\n", -1, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListIssueReactions(ctx, "o", "r", 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_CreateIssueReaction(t *testing.T) {
@@ -139,7 +195,8 @@ func TestReactionsService_CreateIssueReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreateIssueReaction(context.Background(), "o", "r", 1, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreateIssueReaction(ctx, "o", "r", 1, "+1")
 	if err != nil {
 		t.Errorf("CreateIssueReaction returned error: %v", err)
 	}
@@ -147,6 +204,20 @@ func TestReactionsService_CreateIssueReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateIssueReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateIssueReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreateIssueReaction(ctx, "\n", "\n", -1, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreateIssueReaction(ctx, "o", "r", 1, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_ListIssueCommentReactions(t *testing.T) {
@@ -161,7 +232,8 @@ func TestReactionsService_ListIssueCommentReactions(t *testing.T) {
 		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
 	})
 
-	got, _, err := client.Reactions.ListIssueCommentReactions(context.Background(), "o", "r", 1, nil)
+	ctx := context.Background()
+	got, _, err := client.Reactions.ListIssueCommentReactions(ctx, "o", "r", 1, nil)
 	if err != nil {
 		t.Errorf("ListIssueCommentReactions returned error: %v", err)
 	}
@@ -169,6 +241,27 @@ func TestReactionsService_ListIssueCommentReactions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ListIssueCommentReactions = %+v, want %+v", got, want)
 	}
+}
+
+func TestReactionsService_ListIssueCommentReactions_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "ListIssueCommentReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListIssueCommentReactions(ctx, "\n", "\n", -1, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListIssueCommentReactions(ctx, "o", "r", 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_CreateIssueCommentReaction(t *testing.T) {
@@ -183,7 +276,8 @@ func TestReactionsService_CreateIssueCommentReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreateIssueCommentReaction(context.Background(), "o", "r", 1, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreateIssueCommentReaction(ctx, "o", "r", 1, "+1")
 	if err != nil {
 		t.Errorf("CreateIssueCommentReaction returned error: %v", err)
 	}
@@ -191,6 +285,20 @@ func TestReactionsService_CreateIssueCommentReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateIssueCommentReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateIssueCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreateIssueCommentReaction(ctx, "\n", "\n", -1, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreateIssueCommentReaction(ctx, "o", "r", 1, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_ListPullRequestCommentReactions(t *testing.T) {
@@ -205,7 +313,8 @@ func TestReactionsService_ListPullRequestCommentReactions(t *testing.T) {
 		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
 	})
 
-	got, _, err := client.Reactions.ListPullRequestCommentReactions(context.Background(), "o", "r", 1, nil)
+	ctx := context.Background()
+	got, _, err := client.Reactions.ListPullRequestCommentReactions(ctx, "o", "r", 1, nil)
 	if err != nil {
 		t.Errorf("ListPullRequestCommentReactions returned error: %v", err)
 	}
@@ -213,6 +322,27 @@ func TestReactionsService_ListPullRequestCommentReactions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ListPullRequestCommentReactions = %+v, want %+v", got, want)
 	}
+}
+
+func TestReactionsService_ListPullRequestCommentReactions_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "ListPullRequestCommentReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListPullRequestCommentReactions(ctx, "\n", "\n", -1, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListPullRequestCommentReactions(ctx, "o", "r", 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_CreatePullRequestCommentReaction(t *testing.T) {
@@ -227,7 +357,8 @@ func TestReactionsService_CreatePullRequestCommentReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreatePullRequestCommentReaction(context.Background(), "o", "r", 1, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreatePullRequestCommentReaction(ctx, "o", "r", 1, "+1")
 	if err != nil {
 		t.Errorf("CreatePullRequestCommentReaction returned error: %v", err)
 	}
@@ -235,6 +366,20 @@ func TestReactionsService_CreatePullRequestCommentReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreatePullRequestCommentReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreatePullRequestCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreatePullRequestCommentReaction(ctx, "\n", "\n", -1, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreatePullRequestCommentReaction(ctx, "o", "r", 1, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_ListTeamDiscussionReactions(t *testing.T) {
@@ -249,7 +394,8 @@ func TestReactionsService_ListTeamDiscussionReactions(t *testing.T) {
 		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
 	})
 
-	got, _, err := client.Reactions.ListTeamDiscussionReactions(context.Background(), 1, 2, nil)
+	ctx := context.Background()
+	got, _, err := client.Reactions.ListTeamDiscussionReactions(ctx, 1, 2, nil)
 	if err != nil {
 		t.Errorf("ListTeamDiscussionReactions returned error: %v", err)
 	}
@@ -257,6 +403,27 @@ func TestReactionsService_ListTeamDiscussionReactions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ListTeamDiscussionReactions = %+v, want %+v", got, want)
 	}
+}
+
+func TestReactionsService_ListTeamDiscussionReactions_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "ListTeamDiscussionReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListTeamDiscussionReactions(ctx, -1, -2, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListTeamDiscussionReactions(ctx, 1, 2, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_CreateTeamDiscussionReaction(t *testing.T) {
@@ -271,7 +438,8 @@ func TestReactionsService_CreateTeamDiscussionReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreateTeamDiscussionReaction(context.Background(), 1, 2, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreateTeamDiscussionReaction(ctx, 1, 2, "+1")
 	if err != nil {
 		t.Errorf("CreateTeamDiscussionReaction returned error: %v", err)
 	}
@@ -279,6 +447,20 @@ func TestReactionsService_CreateTeamDiscussionReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateTeamDiscussionReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateTeamDiscussionReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreateTeamDiscussionReaction(ctx, -1, -2, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreateTeamDiscussionReaction(ctx, 1, 2, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionService_ListTeamDiscussionCommentReactions(t *testing.T) {
@@ -293,7 +475,8 @@ func TestReactionService_ListTeamDiscussionCommentReactions(t *testing.T) {
 		w.Write([]byte(`[{"id":1,"user":{"login":"l","id":2},"content":"+1"}]`))
 	})
 
-	got, _, err := client.Reactions.ListTeamDiscussionCommentReactions(context.Background(), 1, 2, 3, nil)
+	ctx := context.Background()
+	got, _, err := client.Reactions.ListTeamDiscussionCommentReactions(ctx, 1, 2, 3, nil)
 	if err != nil {
 		t.Errorf("ListTeamDiscussionCommentReactions returned error: %v", err)
 	}
@@ -301,6 +484,27 @@ func TestReactionService_ListTeamDiscussionCommentReactions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ListTeamDiscussionCommentReactions = %+v, want %+v", got, want)
 	}
+}
+
+func TestReactionService_ListTeamDiscussionCommentReactions_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "ListTeamDiscussionCommentReactions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.ListTeamDiscussionCommentReactions(ctx, -1, -2, -3, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.ListTeamDiscussionCommentReactions(ctx, 1, 2, 3, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionService_CreateTeamDiscussionCommentReaction(t *testing.T) {
@@ -315,7 +519,8 @@ func TestReactionService_CreateTeamDiscussionCommentReaction(t *testing.T) {
 		w.Write([]byte(`{"id":1,"user":{"login":"l","id":2},"content":"+1"}`))
 	})
 
-	got, _, err := client.Reactions.CreateTeamDiscussionCommentReaction(context.Background(), 1, 2, 3, "+1")
+	ctx := context.Background()
+	got, _, err := client.Reactions.CreateTeamDiscussionCommentReaction(ctx, 1, 2, 3, "+1")
 	if err != nil {
 		t.Errorf("CreateTeamDiscussionCommentReaction returned error: %v", err)
 	}
@@ -323,6 +528,20 @@ func TestReactionService_CreateTeamDiscussionCommentReaction(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateTeamDiscussionCommentReaction = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateTeamDiscussionCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Reactions.CreateTeamDiscussionCommentReaction(ctx, -1, -2, -3, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Reactions.CreateTeamDiscussionCommentReaction(ctx, 1, 2, 3, "+1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestReactionsService_DeleteCommitCommentReaction(t *testing.T) {
@@ -336,9 +555,20 @@ func TestReactionsService_DeleteCommitCommentReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteCommentReaction(context.Background(), "o", "r", 1, 2); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteCommentReaction(ctx, "o", "r", 1, 2); err != nil {
 		t.Errorf("DeleteCommentReaction returned error: %v", err)
 	}
+
+	const methodName = "DeleteCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteCommentReaction(ctx, "\n", "\n", -1, -2)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteCommentReaction(ctx, "o", "r", 1, 2)
+	})
 }
 
 func TestReactionsService_DeleteCommitCommentReactionByRepoID(t *testing.T) {
@@ -352,9 +582,20 @@ func TestReactionsService_DeleteCommitCommentReactionByRepoID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteCommentReactionByID(context.Background(), 1, 2, 3); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteCommentReactionByID(ctx, 1, 2, 3); err != nil {
 		t.Errorf("DeleteCommentReactionByRepoID returned error: %v", err)
 	}
+
+	const methodName = "DeleteCommentReactionByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteCommentReactionByID(ctx, -1, -2, -3)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteCommentReactionByID(ctx, 1, 2, 3)
+	})
 }
 
 func TestReactionsService_DeleteIssueReaction(t *testing.T) {
@@ -368,9 +609,20 @@ func TestReactionsService_DeleteIssueReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteIssueReaction(context.Background(), "o", "r", 1, 2); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteIssueReaction(ctx, "o", "r", 1, 2); err != nil {
 		t.Errorf("DeleteIssueReaction returned error: %v", err)
 	}
+
+	const methodName = "DeleteIssueReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteIssueReaction(ctx, "\n", "\n", -1, -2)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteIssueReaction(ctx, "o", "r", 1, 2)
+	})
 }
 
 func TestReactionsService_DeleteIssueReactionByRepoID(t *testing.T) {
@@ -384,9 +636,20 @@ func TestReactionsService_DeleteIssueReactionByRepoID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteIssueReactionByID(context.Background(), 1, 2, 3); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteIssueReactionByID(ctx, 1, 2, 3); err != nil {
 		t.Errorf("DeleteIssueReactionByRepoID returned error: %v", err)
 	}
+
+	const methodName = "DeleteIssueReactionByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteIssueReactionByID(ctx, -1, -2, -3)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteIssueReactionByID(ctx, 1, 2, 3)
+	})
 }
 
 func TestReactionsService_DeleteIssueCommentReaction(t *testing.T) {
@@ -400,9 +663,20 @@ func TestReactionsService_DeleteIssueCommentReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteIssueCommentReaction(context.Background(), "o", "r", 1, 2); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteIssueCommentReaction(ctx, "o", "r", 1, 2); err != nil {
 		t.Errorf("DeleteIssueCommentReaction returned error: %v", err)
 	}
+
+	const methodName = "DeleteIssueCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteIssueCommentReaction(ctx, "\n", "\n", -1, -2)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteIssueCommentReaction(ctx, "o", "r", 1, 2)
+	})
 }
 
 func TestReactionsService_DeleteIssueCommentReactionByRepoID(t *testing.T) {
@@ -416,9 +690,20 @@ func TestReactionsService_DeleteIssueCommentReactionByRepoID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteIssueCommentReactionByID(context.Background(), 1, 2, 3); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteIssueCommentReactionByID(ctx, 1, 2, 3); err != nil {
 		t.Errorf("DeleteIssueCommentReactionByRepoID returned error: %v", err)
 	}
+
+	const methodName = "DeleteIssueCommentReactionByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteIssueCommentReactionByID(ctx, -1, -2, -3)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteIssueCommentReactionByID(ctx, 1, 2, 3)
+	})
 }
 
 func TestReactionsService_DeletePullRequestCommentReaction(t *testing.T) {
@@ -432,9 +717,20 @@ func TestReactionsService_DeletePullRequestCommentReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeletePullRequestCommentReaction(context.Background(), "o", "r", 1, 2); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeletePullRequestCommentReaction(ctx, "o", "r", 1, 2); err != nil {
 		t.Errorf("DeletePullRequestCommentReaction returned error: %v", err)
 	}
+
+	const methodName = "DeletePullRequestCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeletePullRequestCommentReaction(ctx, "\n", "\n", -1, -2)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeletePullRequestCommentReaction(ctx, "o", "r", 1, 2)
+	})
 }
 
 func TestReactionsService_DeletePullRequestCommentReactionByRepoID(t *testing.T) {
@@ -448,9 +744,20 @@ func TestReactionsService_DeletePullRequestCommentReactionByRepoID(t *testing.T)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeletePullRequestCommentReactionByID(context.Background(), 1, 2, 3); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeletePullRequestCommentReactionByID(ctx, 1, 2, 3); err != nil {
 		t.Errorf("DeletePullRequestCommentReactionByRepoID returned error: %v", err)
 	}
+
+	const methodName = "DeletePullRequestCommentReactionByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeletePullRequestCommentReactionByID(ctx, -1, -2, -3)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeletePullRequestCommentReactionByID(ctx, 1, 2, 3)
+	})
 }
 
 func TestReactionsService_DeleteTeamDiscussionReaction(t *testing.T) {
@@ -464,9 +771,20 @@ func TestReactionsService_DeleteTeamDiscussionReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteTeamDiscussionReaction(context.Background(), "o", "s", 1, 2); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteTeamDiscussionReaction(ctx, "o", "s", 1, 2); err != nil {
 		t.Errorf("DeleteTeamDiscussionReaction returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamDiscussionReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteTeamDiscussionReaction(ctx, "\n", "\n", -1, -2)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteTeamDiscussionReaction(ctx, "o", "s", 1, 2)
+	})
 }
 
 func TestReactionsService_DeleteTeamDiscussionReactionByTeamIDAndOrgID(t *testing.T) {
@@ -480,9 +798,20 @@ func TestReactionsService_DeleteTeamDiscussionReactionByTeamIDAndOrgID(t *testin
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteTeamDiscussionReactionByOrgIDAndTeamID(context.Background(), 1, 2, 3, 4); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteTeamDiscussionReactionByOrgIDAndTeamID(ctx, 1, 2, 3, 4); err != nil {
 		t.Errorf("DeleteTeamDiscussionReactionByTeamIDAndOrgID returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamDiscussionReactionByOrgIDAndTeamID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteTeamDiscussionReactionByOrgIDAndTeamID(ctx, -1, -2, -3, -4)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteTeamDiscussionReactionByOrgIDAndTeamID(ctx, 1, 2, 3, 4)
+	})
 }
 
 func TestReactionsService_DeleteTeamDiscussionCommentReaction(t *testing.T) {
@@ -496,9 +825,20 @@ func TestReactionsService_DeleteTeamDiscussionCommentReaction(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteTeamDiscussionCommentReaction(context.Background(), "o", "s", 1, 2, 3); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteTeamDiscussionCommentReaction(ctx, "o", "s", 1, 2, 3); err != nil {
 		t.Errorf("DeleteTeamDiscussionCommentReaction returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamDiscussionCommentReaction"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteTeamDiscussionCommentReaction(ctx, "\n", "\n", -1, -2, -3)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteTeamDiscussionCommentReaction(ctx, "o", "s", 1, 2, 3)
+	})
 }
 
 func TestReactionsService_DeleteTeamDiscussionCommentReactionByTeamIDAndOrgID(t *testing.T) {
@@ -512,7 +852,18 @@ func TestReactionsService_DeleteTeamDiscussionCommentReactionByTeamIDAndOrgID(t 
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Reactions.DeleteTeamDiscussionCommentReactionByOrgIDAndTeamID(context.Background(), 1, 2, 3, 4, 5); err != nil {
+	ctx := context.Background()
+	if _, err := client.Reactions.DeleteTeamDiscussionCommentReactionByOrgIDAndTeamID(ctx, 1, 2, 3, 4, 5); err != nil {
 		t.Errorf("DeleteTeamDiscussionCommentReactionByTeamIDAndOrgID returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamDiscussionCommentReactionByOrgIDAndTeamID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Reactions.DeleteTeamDiscussionCommentReactionByOrgIDAndTeamID(ctx, -1, -2, -3, -4, -5)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Reactions.DeleteTeamDiscussionCommentReactionByOrgIDAndTeamID(ctx, 1, 2, 3, 4, 5)
+	})
 }

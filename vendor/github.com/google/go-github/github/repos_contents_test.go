@@ -92,7 +92,8 @@ func TestRepositoriesService_GetReadme(t *testing.T) {
 		  "path": "README.md"
 		}`)
 	})
-	readme, _, err := client.Repositories.GetReadme(context.Background(), "o", "r", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	readme, _, err := client.Repositories.GetReadme(ctx, "o", "r", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Errorf("Repositories.GetReadme returned error: %v", err)
 	}
@@ -100,6 +101,20 @@ func TestRepositoriesService_GetReadme(t *testing.T) {
 	if !reflect.DeepEqual(readme, want) {
 		t.Errorf("Repositories.GetReadme returned %+v, want %+v", readme, want)
 	}
+
+	const methodName = "GetReadme"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetReadme(ctx, "\n", "\n", &RepositoryContentGetOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetReadme(ctx, "o", "r", &RepositoryContentGetOptions{})
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_DownloadContents_Success(t *testing.T) {
@@ -118,9 +133,14 @@ func TestRepositoriesService_DownloadContents_Success(t *testing.T) {
 		fmt.Fprint(w, "foo")
 	})
 
-	r, err := client.Repositories.DownloadContents(context.Background(), "o", "r", "d/f", nil)
+	ctx := context.Background()
+	r, resp, err := client.Repositories.DownloadContents(ctx, "o", "r", "d/f", nil)
 	if err != nil {
 		t.Errorf("Repositories.DownloadContents returned error: %v", err)
+	}
+
+	if got, want := resp.Response.StatusCode, http.StatusOK; got != want {
+		t.Errorf("Repositories.DownloadContents returned status code %v, want %v", got, want)
 	}
 
 	bytes, err := ioutil.ReadAll(r)
@@ -130,6 +150,58 @@ func TestRepositoriesService_DownloadContents_Success(t *testing.T) {
 	r.Close()
 
 	if got, want := string(bytes), "foo"; got != want {
+		t.Errorf("Repositories.DownloadContents returned %v, want %v", got, want)
+	}
+
+	const methodName = "DownloadContents"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.DownloadContents(ctx, "\n", "\n", "\n", nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.DownloadContents(ctx, "o", "r", "d/f", nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
+}
+
+func TestRepositoriesService_DownloadContents_FailedResponse(t *testing.T) {
+	client, mux, serverURL, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/d", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[{
+			"type": "file",
+			"name": "f",
+			"download_url": "`+serverURL+baseURLPath+`/download/f"
+		  }]`)
+	})
+	mux.HandleFunc("/download/f", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "foo error")
+	})
+
+	ctx := context.Background()
+	r, resp, err := client.Repositories.DownloadContents(ctx, "o", "r", "d/f", nil)
+	if err != nil {
+		t.Errorf("Repositories.DownloadContents returned error: %v", err)
+	}
+
+	if got, want := resp.Response.StatusCode, http.StatusInternalServerError; got != want {
+		t.Errorf("Repositories.DownloadContents returned status code %v, want %v", got, want)
+	}
+
+	bytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+	}
+	r.Close()
+
+	if got, want := string(bytes), "foo error"; got != want {
 		t.Errorf("Repositories.DownloadContents returned %v, want %v", got, want)
 	}
 }
@@ -145,9 +217,14 @@ func TestRepositoriesService_DownloadContents_NoDownloadURL(t *testing.T) {
 		}]`)
 	})
 
-	_, err := client.Repositories.DownloadContents(context.Background(), "o", "r", "d/f", nil)
+	ctx := context.Background()
+	_, resp, err := client.Repositories.DownloadContents(ctx, "o", "r", "d/f", nil)
 	if err == nil {
 		t.Errorf("Repositories.DownloadContents did not return expected error")
+	}
+
+	if resp == nil {
+		t.Errorf("Repositories.DownloadContents did not return expected response")
 	}
 }
 
@@ -159,9 +236,163 @@ func TestRepositoriesService_DownloadContents_NoFile(t *testing.T) {
 		fmt.Fprint(w, `[]`)
 	})
 
-	_, err := client.Repositories.DownloadContents(context.Background(), "o", "r", "d/f", nil)
+	ctx := context.Background()
+	_, resp, err := client.Repositories.DownloadContents(ctx, "o", "r", "d/f", nil)
 	if err == nil {
 		t.Errorf("Repositories.DownloadContents did not return expected error")
+	}
+
+	if resp == nil {
+		t.Errorf("Repositories.DownloadContents did not return expected response")
+	}
+}
+
+func TestRepositoriesService_DownloadContentsWithMeta_Success(t *testing.T) {
+	client, mux, serverURL, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/d", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[{
+		  "type": "file",
+		  "name": "f",
+		  "download_url": "`+serverURL+baseURLPath+`/download/f"
+		}]`)
+	})
+	mux.HandleFunc("/download/f", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, "foo")
+	})
+
+	ctx := context.Background()
+	r, c, resp, err := client.Repositories.DownloadContentsWithMeta(ctx, "o", "r", "d/f", nil)
+	if err != nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned error: %v", err)
+	}
+
+	if got, want := resp.Response.StatusCode, http.StatusOK; got != want {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned status code %v, want %v", got, want)
+	}
+
+	bytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+	}
+	r.Close()
+
+	if got, want := string(bytes), "foo"; got != want {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned %v, want %v", got, want)
+	}
+
+	if c != nil && c.Name != nil {
+		if got, want := *c.Name, "f"; got != want {
+			t.Errorf("Repositories.DownloadContentsWithMeta returned content name %v, want %v", got, want)
+		}
+	} else {
+		t.Errorf("Returned RepositoryContent is null")
+	}
+
+	const methodName = "DownloadContentsWithMeta"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, _, err = client.Repositories.DownloadContentsWithMeta(ctx, "\n", "\n", "\n", nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, cot, resp, err := client.Repositories.DownloadContentsWithMeta(ctx, "o", "r", "d/f", nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		if cot != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, cot)
+		}
+		return resp, err
+	})
+}
+
+func TestRepositoriesService_DownloadContentsWithMeta_FailedResponse(t *testing.T) {
+	client, mux, serverURL, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/d", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[{
+			"type": "file",
+			"name": "f",
+			"download_url": "`+serverURL+baseURLPath+`/download/f"
+		  }]`)
+	})
+	mux.HandleFunc("/download/f", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "foo error")
+	})
+
+	ctx := context.Background()
+	r, c, resp, err := client.Repositories.DownloadContentsWithMeta(ctx, "o", "r", "d/f", nil)
+	if err != nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned error: %v", err)
+	}
+
+	if got, want := resp.Response.StatusCode, http.StatusInternalServerError; got != want {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned status code %v, want %v", got, want)
+	}
+
+	bytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Errorf("Error reading response body: %v", err)
+	}
+	r.Close()
+
+	if got, want := string(bytes), "foo error"; got != want {
+		t.Errorf("Repositories.DownloadContentsWithMeta returned %v, want %v", got, want)
+	}
+
+	if c != nil && c.Name != nil {
+		if got, want := *c.Name, "f"; got != want {
+			t.Errorf("Repositories.DownloadContentsWithMeta returned content name %v, want %v", got, want)
+		}
+	} else {
+		t.Errorf("Returned RepositoryContent is null")
+	}
+}
+
+func TestRepositoriesService_DownloadContentsWithMeta_NoDownloadURL(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/d", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[{
+		  "type": "file",
+		  "name": "f",
+		}]`)
+	})
+
+	ctx := context.Background()
+	_, _, resp, err := client.Repositories.DownloadContentsWithMeta(ctx, "o", "r", "d/f", nil)
+	if err == nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta did not return expected error")
+	}
+
+	if resp == nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta did not return expected response")
+	}
+}
+
+func TestRepositoriesService_DownloadContentsWithMeta_NoFile(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/d", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+
+	ctx := context.Background()
+	_, _, resp, err := client.Repositories.DownloadContentsWithMeta(ctx, "o", "r", "d/f", nil)
+	if err == nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta did not return expected error")
+	}
+
+	if resp == nil {
+		t.Errorf("Repositories.DownloadContentsWithMeta did not return expected response")
 	}
 }
 
@@ -178,7 +409,8 @@ func TestRepositoriesService_GetContents_File(t *testing.T) {
 		  "path": "LICENSE"
 		}`)
 	})
-	fileContents, _, _, err := client.Repositories.GetContents(context.Background(), "o", "r", "p", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	fileContents, _, _, err := client.Repositories.GetContents(ctx, "o", "r", "p", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Errorf("Repositories.GetContents returned error: %v", err)
 	}
@@ -186,6 +418,20 @@ func TestRepositoriesService_GetContents_File(t *testing.T) {
 	if !reflect.DeepEqual(fileContents, want) {
 		t.Errorf("Repositories.GetContents returned %+v, want %+v", fileContents, want)
 	}
+
+	const methodName = "GetContents"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, _, err = client.Repositories.GetContents(ctx, "\n", "\n", "\n", &RepositoryContentGetOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, _, resp, err := client.Repositories.GetContents(ctx, "o", "r", "p", &RepositoryContentGetOptions{})
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetContents_FilenameNeedsEscape(t *testing.T) {
@@ -195,7 +441,8 @@ func TestRepositoriesService_GetContents_FilenameNeedsEscape(t *testing.T) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `{}`)
 	})
-	_, _, _, err := client.Repositories.GetContents(context.Background(), "o", "r", "p#?%/中.go", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	_, _, _, err := client.Repositories.GetContents(ctx, "o", "r", "p#?%/中.go", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Fatalf("Repositories.GetContents returned error: %v", err)
 	}
@@ -208,7 +455,8 @@ func TestRepositoriesService_GetContents_DirectoryWithSpaces(t *testing.T) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `{}`)
 	})
-	_, _, _, err := client.Repositories.GetContents(context.Background(), "o", "r", "some directory/file.go", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	_, _, _, err := client.Repositories.GetContents(ctx, "o", "r", "some directory/file.go", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Fatalf("Repositories.GetContents returned error: %v", err)
 	}
@@ -221,7 +469,8 @@ func TestRepositoriesService_GetContents_DirectoryWithPlusChars(t *testing.T) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `{}`)
 	})
-	_, _, _, err := client.Repositories.GetContents(context.Background(), "o", "r", "some directory+name/file.go", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	_, _, _, err := client.Repositories.GetContents(ctx, "o", "r", "some directory+name/file.go", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Fatalf("Repositories.GetContents returned error: %v", err)
 	}
@@ -244,7 +493,8 @@ func TestRepositoriesService_GetContents_Directory(t *testing.T) {
 		  "path": "LICENSE"
 		}]`)
 	})
-	_, directoryContents, _, err := client.Repositories.GetContents(context.Background(), "o", "r", "p", &RepositoryContentGetOptions{})
+	ctx := context.Background()
+	_, directoryContents, _, err := client.Repositories.GetContents(ctx, "o", "r", "p", &RepositoryContentGetOptions{})
 	if err != nil {
 		t.Errorf("Repositories.GetContents returned error: %v", err)
 	}
@@ -277,7 +527,8 @@ func TestRepositoriesService_CreateFile(t *testing.T) {
 		Content:   content,
 		Committer: &CommitAuthor{Name: String("n"), Email: String("e")},
 	}
-	createResponse, _, err := client.Repositories.CreateFile(context.Background(), "o", "r", "p", repositoryContentsOptions)
+	ctx := context.Background()
+	createResponse, _, err := client.Repositories.CreateFile(ctx, "o", "r", "p", repositoryContentsOptions)
 	if err != nil {
 		t.Errorf("Repositories.CreateFile returned error: %v", err)
 	}
@@ -291,6 +542,20 @@ func TestRepositoriesService_CreateFile(t *testing.T) {
 	if !reflect.DeepEqual(createResponse, want) {
 		t.Errorf("Repositories.CreateFile returned %+v, want %+v", createResponse, want)
 	}
+
+	const methodName = "CreateFile"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.CreateFile(ctx, "\n", "\n", "\n", repositoryContentsOptions)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.CreateFile(ctx, "o", "r", "p", repositoryContentsOptions)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_UpdateFile(t *testing.T) {
@@ -317,7 +582,8 @@ func TestRepositoriesService_UpdateFile(t *testing.T) {
 		SHA:       &sha,
 		Committer: &CommitAuthor{Name: String("n"), Email: String("e")},
 	}
-	updateResponse, _, err := client.Repositories.UpdateFile(context.Background(), "o", "r", "p", repositoryContentsOptions)
+	ctx := context.Background()
+	updateResponse, _, err := client.Repositories.UpdateFile(ctx, "o", "r", "p", repositoryContentsOptions)
 	if err != nil {
 		t.Errorf("Repositories.UpdateFile returned error: %v", err)
 	}
@@ -331,6 +597,20 @@ func TestRepositoriesService_UpdateFile(t *testing.T) {
 	if !reflect.DeepEqual(updateResponse, want) {
 		t.Errorf("Repositories.UpdateFile returned %+v, want %+v", updateResponse, want)
 	}
+
+	const methodName = "UpdateFile"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.UpdateFile(ctx, "\n", "\n", "\n", repositoryContentsOptions)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.UpdateFile(ctx, "o", "r", "p", repositoryContentsOptions)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_DeleteFile(t *testing.T) {
@@ -353,7 +633,8 @@ func TestRepositoriesService_DeleteFile(t *testing.T) {
 		SHA:       &sha,
 		Committer: &CommitAuthor{Name: String("n"), Email: String("e")},
 	}
-	deleteResponse, _, err := client.Repositories.DeleteFile(context.Background(), "o", "r", "p", repositoryContentsOptions)
+	ctx := context.Background()
+	deleteResponse, _, err := client.Repositories.DeleteFile(ctx, "o", "r", "p", repositoryContentsOptions)
 	if err != nil {
 		t.Errorf("Repositories.DeleteFile returned error: %v", err)
 	}
@@ -367,6 +648,20 @@ func TestRepositoriesService_DeleteFile(t *testing.T) {
 	if !reflect.DeepEqual(deleteResponse, want) {
 		t.Errorf("Repositories.DeleteFile returned %+v, want %+v", deleteResponse, want)
 	}
+
+	const methodName = "DeleteFile"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.DeleteFile(ctx, "\n", "\n", "\n", repositoryContentsOptions)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.DeleteFile(ctx, "o", "r", "p", repositoryContentsOptions)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetArchiveLink(t *testing.T) {
@@ -376,7 +671,8 @@ func TestRepositoriesService_GetArchiveLink(t *testing.T) {
 		testMethod(t, r, "GET")
 		http.Redirect(w, r, "http://github.com/a", http.StatusFound)
 	})
-	url, resp, err := client.Repositories.GetArchiveLink(context.Background(), "o", "r", Tarball, &RepositoryContentGetOptions{}, true)
+	ctx := context.Background()
+	url, resp, err := client.Repositories.GetArchiveLink(ctx, "o", "r", Tarball, &RepositoryContentGetOptions{}, true)
 	if err != nil {
 		t.Errorf("Repositories.GetArchiveLink returned error: %v", err)
 	}
@@ -387,6 +683,12 @@ func TestRepositoriesService_GetArchiveLink(t *testing.T) {
 	if url.String() != want {
 		t.Errorf("Repositories.GetArchiveLink returned %+v, want %+v", url.String(), want)
 	}
+
+	const methodName = "GetArchiveLink"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetArchiveLink(ctx, "\n", "\n", Tarball, &RepositoryContentGetOptions{}, true)
+		return err
+	})
 }
 
 func TestRepositoriesService_GetArchiveLink_StatusMovedPermanently_dontFollowRedirects(t *testing.T) {
@@ -396,7 +698,8 @@ func TestRepositoriesService_GetArchiveLink_StatusMovedPermanently_dontFollowRed
 		testMethod(t, r, "GET")
 		http.Redirect(w, r, "http://github.com/a", http.StatusMovedPermanently)
 	})
-	_, resp, _ := client.Repositories.GetArchiveLink(context.Background(), "o", "r", Tarball, &RepositoryContentGetOptions{}, false)
+	ctx := context.Background()
+	_, resp, _ := client.Repositories.GetArchiveLink(ctx, "o", "r", Tarball, &RepositoryContentGetOptions{}, false)
 	if resp.StatusCode != http.StatusMovedPermanently {
 		t.Errorf("Repositories.GetArchiveLink returned status: %d, want %d", resp.StatusCode, http.StatusMovedPermanently)
 	}
@@ -415,7 +718,8 @@ func TestRepositoriesService_GetArchiveLink_StatusMovedPermanently_followRedirec
 		testMethod(t, r, "GET")
 		http.Redirect(w, r, "http://github.com/a", http.StatusFound)
 	})
-	url, resp, err := client.Repositories.GetArchiveLink(context.Background(), "o", "r", Tarball, &RepositoryContentGetOptions{}, true)
+	ctx := context.Background()
+	url, resp, err := client.Repositories.GetArchiveLink(ctx, "o", "r", Tarball, &RepositoryContentGetOptions{}, true)
 	if err != nil {
 		t.Errorf("Repositories.GetArchiveLink returned error: %v", err)
 	}
@@ -425,5 +729,25 @@ func TestRepositoriesService_GetArchiveLink_StatusMovedPermanently_followRedirec
 	want := "http://github.com/a"
 	if url.String() != want {
 		t.Errorf("Repositories.GetArchiveLink returned %+v, want %+v", url.String(), want)
+	}
+}
+
+func TestRepositoriesService_GetContents_NoTrailingSlashInDirectoryApiPath(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	mux.HandleFunc("/repos/o/r/contents/.github", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		query := r.URL.Query()
+		if query.Get("ref") != "mybranch" {
+			t.Errorf("Repositories.GetContents returned %+v, want %+v", query.Get("ref"), "mybranch")
+		}
+		fmt.Fprint(w, `{}`)
+	})
+	ctx := context.Background()
+	_, _, _, err := client.Repositories.GetContents(ctx, "o", "r", ".github/", &RepositoryContentGetOptions{
+		Ref: "mybranch",
+	})
+	if err != nil {
+		t.Fatalf("Repositories.GetContents returned error: %v", err)
 	}
 }

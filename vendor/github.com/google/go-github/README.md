@@ -1,6 +1,7 @@
 # go-github #
 
-[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/google/go-github/v32/github)
+[![go-github release (latest SemVer)](https://img.shields.io/github/v/release/google/go-github?sort=semver)](https://github.com/google/go-github/releases)
+[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/github.com/google/go-github/v33/github)
 [![Test Status](https://github.com/google/go-github/workflows/tests/badge.svg)](https://github.com/google/go-github/actions?query=workflow%3Atests)
 [![Test Coverage](https://codecov.io/gh/google/go-github/branch/master/graph/badge.svg)](https://codecov.io/gh/google/go-github)
 [![Discuss at go-github@googlegroups.com](https://img.shields.io/badge/discuss-go--github%40googlegroups.com-blue.svg)](https://groups.google.com/group/go-github)
@@ -18,10 +19,34 @@ don't always test older versions.
 If you're interested in using the [GraphQL API v4][], the recommended library is
 [shurcooL/githubv4][].
 
+## Installation ##
+
+go-github is compatible with modern Go releases in module mode, with Go installed:
+
+```bash
+go get github.com/google/go-github/v33
+```
+
+will resolve and add the package to the current development module, along with its dependencies.
+
+Alternatively the same can be achieved if you use import in a package:
+
+```go
+import "github.com/google/go-github/v33/github"
+```
+
+and run `go get` without paramters.
+
+Finally, to use the top-of-trunk version of this repo, use the following command:
+
+```bash
+go get github.com/google/go-github/v33@master
+```
+
 ## Usage ##
 
 ```go
-import "github.com/google/go-github/v32/github"	// with go modules enabled (GO111MODULE=on or outside GOPATH)
+import "github.com/google/go-github/v33/github"	// with go modules enabled (GO111MODULE=on or outside GOPATH)
 import "github.com/google/go-github/github" // with go modules disabled
 ```
 
@@ -47,7 +72,7 @@ repos, _, err := client.Repositories.ListByOrg(context.Background(), "github", o
 
 The services of a client divide the API into logical chunks and correspond to
 the structure of the GitHub API documentation at
-https://developer.github.com/v3/.
+https://docs.github.com/en/free-pro-team@latest/rest/reference/.
 
 NOTE: Using the [context](https://godoc.org/context) package, one can easily
 pass cancelation signals and deadlines to various services of the client for
@@ -137,7 +162,7 @@ if _, ok := err.(*github.RateLimitError); ok {
 ```
 
 Learn more about GitHub rate limiting at
-https://developer.github.com/v3/#rate-limiting.
+https://docs.github.com/en/free-pro-team@latest/rest/reference/rate-limit.
 
 ### Accepted Status ###
 
@@ -165,7 +190,7 @@ instead designed to work with a caching `http.Transport`. We recommend using
 https://github.com/gregjones/httpcache for that.
 
 Learn more about GitHub conditional requests at
-https://developer.github.com/v3/#conditional-requests.
+https://docs.github.com/en/free-pro-team@latest/rest/overview/resources-in-the-rest-api#conditional-requests.
 
 ### Creating and Updating Resources ###
 
@@ -217,11 +242,11 @@ for {
 
 For complete usage of go-github, see the full [package docs][].
 
-[GitHub API v3]: https://developer.github.com/v3/
+[GitHub API v3]: https://docs.github.com/en/rest
 [oauth2]: https://github.com/golang/oauth2
 [oauth2 docs]: https://godoc.org/golang.org/x/oauth2
 [personal API token]: https://github.com/blog/1509-personal-api-tokens
-[package docs]: https://pkg.go.dev/github.com/google/go-github/v32/github
+[package docs]: https://pkg.go.dev/github.com/google/go-github/v33/github
 [GraphQL API v4]: https://developer.github.com/v4/
 [shurcooL/githubv4]: https://github.com/shurcooL/githubv4
 

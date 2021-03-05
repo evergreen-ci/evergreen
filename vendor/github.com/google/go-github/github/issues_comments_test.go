@@ -23,22 +23,19 @@ func TestIssuesService_ListComments_allIssues(t *testing.T) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		testFormValues(t, r, values{
-			"sort":      "updated",
-			"direction": "desc",
-			"since":     "2002-02-10T15:30:00Z",
-			"page":      "2",
+			"since": "2002-02-10T15:30:00Z",
+			"page":  "2",
 		})
 		fmt.Fprint(w, `[{"id":1}]`)
 	})
 
 	since := time.Date(2002, time.February, 10, 15, 30, 0, 0, time.UTC)
 	opt := &IssueListCommentsOptions{
-		Sort:        String("updated"),
-		Direction:   String("desc"),
 		Since:       &since,
 		ListOptions: ListOptions{Page: 2},
 	}
-	comments, _, err := client.Issues.ListComments(context.Background(), "o", "r", 0, opt)
+	ctx := context.Background()
+	comments, _, err := client.Issues.ListComments(ctx, "o", "r", 0, opt)
 	if err != nil {
 		t.Errorf("Issues.ListComments returned error: %v", err)
 	}
@@ -47,6 +44,20 @@ func TestIssuesService_ListComments_allIssues(t *testing.T) {
 	if !reflect.DeepEqual(comments, want) {
 		t.Errorf("Issues.ListComments returned %+v, want %+v", comments, want)
 	}
+
+	const methodName = "ListComments"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListComments(ctx, "\n", "\n", -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListComments(ctx, "o", "r", 0, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_ListComments_specificIssue(t *testing.T) {
@@ -59,7 +70,8 @@ func TestIssuesService_ListComments_specificIssue(t *testing.T) {
 		fmt.Fprint(w, `[{"id":1}]`)
 	})
 
-	comments, _, err := client.Issues.ListComments(context.Background(), "o", "r", 1, nil)
+	ctx := context.Background()
+	comments, _, err := client.Issues.ListComments(ctx, "o", "r", 1, nil)
 	if err != nil {
 		t.Errorf("Issues.ListComments returned error: %v", err)
 	}
@@ -68,13 +80,28 @@ func TestIssuesService_ListComments_specificIssue(t *testing.T) {
 	if !reflect.DeepEqual(comments, want) {
 		t.Errorf("Issues.ListComments returned %+v, want %+v", comments, want)
 	}
+
+	const methodName = "ListComments"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListComments(ctx, "\n", "\n", -1, nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListComments(ctx, "o", "r", 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_ListComments_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.ListComments(context.Background(), "%", "r", 1, nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.ListComments(ctx, "%", "r", 1, nil)
 	testURLParseError(t, err)
 }
 
@@ -88,7 +115,8 @@ func TestIssuesService_GetComment(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	comment, _, err := client.Issues.GetComment(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	comment, _, err := client.Issues.GetComment(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Issues.GetComment returned error: %v", err)
 	}
@@ -97,13 +125,28 @@ func TestIssuesService_GetComment(t *testing.T) {
 	if !reflect.DeepEqual(comment, want) {
 		t.Errorf("Issues.GetComment returned %+v, want %+v", comment, want)
 	}
+
+	const methodName = "GetComment"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.GetComment(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.GetComment(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_GetComment_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.GetComment(context.Background(), "%", "r", 1)
+	ctx := context.Background()
+	_, _, err := client.Issues.GetComment(ctx, "%", "r", 1)
 	testURLParseError(t, err)
 }
 
@@ -125,7 +168,8 @@ func TestIssuesService_CreateComment(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	comment, _, err := client.Issues.CreateComment(context.Background(), "o", "r", 1, input)
+	ctx := context.Background()
+	comment, _, err := client.Issues.CreateComment(ctx, "o", "r", 1, input)
 	if err != nil {
 		t.Errorf("Issues.CreateComment returned error: %v", err)
 	}
@@ -134,13 +178,28 @@ func TestIssuesService_CreateComment(t *testing.T) {
 	if !reflect.DeepEqual(comment, want) {
 		t.Errorf("Issues.CreateComment returned %+v, want %+v", comment, want)
 	}
+
+	const methodName = "CreateComment"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.CreateComment(ctx, "\n", "\n", -1, input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.CreateComment(ctx, "o", "r", 1, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_CreateComment_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.CreateComment(context.Background(), "%", "r", 1, nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.CreateComment(ctx, "%", "r", 1, nil)
 	testURLParseError(t, err)
 }
 
@@ -162,7 +221,8 @@ func TestIssuesService_EditComment(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	comment, _, err := client.Issues.EditComment(context.Background(), "o", "r", 1, input)
+	ctx := context.Background()
+	comment, _, err := client.Issues.EditComment(ctx, "o", "r", 1, input)
 	if err != nil {
 		t.Errorf("Issues.EditComment returned error: %v", err)
 	}
@@ -171,13 +231,28 @@ func TestIssuesService_EditComment(t *testing.T) {
 	if !reflect.DeepEqual(comment, want) {
 		t.Errorf("Issues.EditComment returned %+v, want %+v", comment, want)
 	}
+
+	const methodName = "EditComment"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.EditComment(ctx, "\n", "\n", -1, input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.EditComment(ctx, "o", "r", 1, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_EditComment_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.EditComment(context.Background(), "%", "r", 1, nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.EditComment(ctx, "%", "r", 1, nil)
 	testURLParseError(t, err)
 }
 
@@ -189,16 +264,28 @@ func TestIssuesService_DeleteComment(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Issues.DeleteComment(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	_, err := client.Issues.DeleteComment(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Issues.DeleteComments returned error: %v", err)
 	}
+
+	const methodName = "DeleteComment"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Issues.DeleteComment(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Issues.DeleteComment(ctx, "o", "r", 1)
+	})
 }
 
 func TestIssuesService_DeleteComment_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Issues.DeleteComment(context.Background(), "%", "r", 1)
+	ctx := context.Background()
+	_, err := client.Issues.DeleteComment(ctx, "%", "r", 1)
 	testURLParseError(t, err)
 }

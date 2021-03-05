@@ -127,7 +127,8 @@ func TestGitService_GetCommit(t *testing.T) {
 		fmt.Fprint(w, `{"sha":"s","message":"Commit Message.","author":{"name":"n"}}`)
 	})
 
-	commit, _, err := client.Git.GetCommit(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	commit, _, err := client.Git.GetCommit(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Git.GetCommit returned error: %v", err)
 	}
@@ -136,13 +137,28 @@ func TestGitService_GetCommit(t *testing.T) {
 	if !reflect.DeepEqual(commit, want) {
 		t.Errorf("Git.GetCommit returned %+v, want %+v", commit, want)
 	}
+
+	const methodName = "GetCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.GetCommit(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Git.GetCommit(ctx, "o", "r", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestGitService_GetCommit_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Git.GetCommit(context.Background(), "%", "%", "%")
+	ctx := context.Background()
+	_, _, err := client.Git.GetCommit(ctx, "%", "%", "%")
 	testURLParseError(t, err)
 }
 
@@ -173,7 +189,8 @@ func TestGitService_CreateCommit(t *testing.T) {
 		fmt.Fprint(w, `{"sha":"s"}`)
 	})
 
-	commit, _, err := client.Git.CreateCommit(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	commit, _, err := client.Git.CreateCommit(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Git.CreateCommit returned error: %v", err)
 	}
@@ -182,6 +199,20 @@ func TestGitService_CreateCommit(t *testing.T) {
 	if !reflect.DeepEqual(commit, want) {
 		t.Errorf("Git.CreateCommit returned %+v, want %+v", commit, want)
 	}
+
+	const methodName = "CreateCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.CreateCommit(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Git.CreateCommit(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestGitService_CreateSignedCommit(t *testing.T) {
@@ -217,7 +248,8 @@ func TestGitService_CreateSignedCommit(t *testing.T) {
 		fmt.Fprint(w, `{"sha":"commitSha"}`)
 	})
 
-	commit, _, err := client.Git.CreateCommit(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	commit, _, err := client.Git.CreateCommit(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Git.CreateCommit returned error: %v", err)
 	}
@@ -226,7 +258,22 @@ func TestGitService_CreateSignedCommit(t *testing.T) {
 	if !reflect.DeepEqual(commit, want) {
 		t.Errorf("Git.CreateCommit returned %+v, want %+v", commit, want)
 	}
+
+	const methodName = "CreateCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.CreateCommit(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Git.CreateCommit(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
+
 func TestGitService_CreateSignedCommitWithInvalidParams(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
@@ -235,7 +282,8 @@ func TestGitService_CreateSignedCommitWithInvalidParams(t *testing.T) {
 		SigningKey: &openpgp.Entity{},
 	}
 
-	_, _, err := client.Git.CreateCommit(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	_, _, err := client.Git.CreateCommit(ctx, "o", "r", input)
 	if err == nil {
 		t.Errorf("Expected error to be returned because invalid params was passed")
 	}
@@ -300,7 +348,8 @@ Commit Message.`)
 		fmt.Fprint(w, `{"sha":"commitSha"}`)
 	})
 
-	commit, _, err := client.Git.CreateCommit(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	commit, _, err := client.Git.CreateCommit(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Git.CreateCommit returned error: %v", err)
 	}
@@ -471,7 +520,8 @@ func TestGitService_CreateCommit_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Git.CreateCommit(context.Background(), "%", "%", &Commit{})
+	ctx := context.Background()
+	_, _, err := client.Git.CreateCommit(ctx, "%", "%", &Commit{})
 	testURLParseError(t, err)
 }
 

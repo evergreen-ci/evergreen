@@ -34,7 +34,8 @@ func TestMarkdown(t *testing.T) {
 		fmt.Fprint(w, `<h1>text</h1>`)
 	})
 
-	md, _, err := client.Markdown(context.Background(), "# text #", &MarkdownOptions{
+	ctx := context.Background()
+	md, _, err := client.Markdown(ctx, "# text #", &MarkdownOptions{
 		Mode:    "gfm",
 		Context: "google/go-github",
 	})
@@ -45,6 +46,18 @@ func TestMarkdown(t *testing.T) {
 	if want := "<h1>text</h1>"; want != md {
 		t.Errorf("Markdown returned %+v, want %+v", md, want)
 	}
+
+	const methodName = "Markdown"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Markdown(ctx, "# text #", &MarkdownOptions{
+			Mode:    "gfm",
+			Context: "google/go-github",
+		})
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestListEmojis(t *testing.T) {
@@ -56,7 +69,8 @@ func TestListEmojis(t *testing.T) {
 		fmt.Fprint(w, `{"+1": "+1.png"}`)
 	})
 
-	emoji, _, err := client.ListEmojis(context.Background())
+	ctx := context.Background()
+	emoji, _, err := client.ListEmojis(ctx)
 	if err != nil {
 		t.Errorf("ListEmojis returned error: %v", err)
 	}
@@ -65,6 +79,15 @@ func TestListEmojis(t *testing.T) {
 	if !reflect.DeepEqual(want, emoji) {
 		t.Errorf("ListEmojis returned %+v, want %+v", emoji, want)
 	}
+
+	const methodName = "ListEmojis"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.ListEmojis(ctx)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestListCodesOfConduct(t *testing.T) {
@@ -81,7 +104,8 @@ func TestListCodesOfConduct(t *testing.T) {
 						]`)
 	})
 
-	cs, _, err := client.ListCodesOfConduct(context.Background())
+	ctx := context.Background()
+	cs, _, err := client.ListCodesOfConduct(ctx)
 	if err != nil {
 		t.Errorf("ListCodesOfConduct returned error: %v", err)
 	}
@@ -95,6 +119,15 @@ func TestListCodesOfConduct(t *testing.T) {
 	if !reflect.DeepEqual(want, cs) {
 		t.Errorf("ListCodesOfConduct returned %+v, want %+v", cs, want)
 	}
+
+	const methodName = "ListCodesOfConduct"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.ListCodesOfConduct(ctx)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestGetCodeOfConduct(t *testing.T) {
@@ -112,7 +145,8 @@ func TestGetCodeOfConduct(t *testing.T) {
 		)
 	})
 
-	coc, _, err := client.GetCodeOfConduct(context.Background(), "k")
+	ctx := context.Background()
+	coc, _, err := client.GetCodeOfConduct(ctx, "k")
 	if err != nil {
 		t.Errorf("ListCodesOfConduct returned error: %v", err)
 	}
@@ -126,6 +160,20 @@ func TestGetCodeOfConduct(t *testing.T) {
 	if !reflect.DeepEqual(want, coc) {
 		t.Errorf("GetCodeOfConductByKey returned %+v, want %+v", coc, want)
 	}
+
+	const methodName = "GetCodeOfConduct"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.GetCodeOfConduct(ctx, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.GetCodeOfConduct(ctx, "k")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAPIMeta_marshal(t *testing.T) {
@@ -137,12 +185,17 @@ func TestAPIMeta_marshal(t *testing.T) {
 		VerifiablePasswordAuthentication: Bool(true),
 		Pages:                            []string{"p"},
 		Importer:                         []string{"i"},
+		Actions:                          []string{"a"},
+		Dependabot:                       []string{"d"},
 	}
 	want := `{
 		"hooks":["h"],
 		"git":["g"],
 		"verifiable_password_authentication":true,
-		"pages":["p"],"importer":["i"]
+		"pages":["p"],
+		"importer":["i"],
+		"actions":["a"],
+		"dependabot":["d"]
 	}`
 
 	testJSONMarshal(t, a, want)
@@ -154,25 +207,37 @@ func TestAPIMeta(t *testing.T) {
 
 	mux.HandleFunc("/meta", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{"hooks":["h"], "git":["g"], "pages":["p"], "importer":["i"], "verifiable_password_authentication": true}`)
+		fmt.Fprint(w, `{"hooks":["h"], "git":["g"], "pages":["p"], "importer":["i"], "actions":["a"], "dependabot":["d"], "verifiable_password_authentication": true}`)
 	})
 
-	meta, _, err := client.APIMeta(context.Background())
+	ctx := context.Background()
+	meta, _, err := client.APIMeta(ctx)
 	if err != nil {
 		t.Errorf("APIMeta returned error: %v", err)
 	}
 
 	want := &APIMeta{
-		Hooks:    []string{"h"},
-		Git:      []string{"g"},
-		Pages:    []string{"p"},
-		Importer: []string{"i"},
+		Hooks:      []string{"h"},
+		Git:        []string{"g"},
+		Pages:      []string{"p"},
+		Importer:   []string{"i"},
+		Actions:    []string{"a"},
+		Dependabot: []string{"d"},
 
 		VerifiablePasswordAuthentication: Bool(true),
 	}
 	if !reflect.DeepEqual(want, meta) {
 		t.Errorf("APIMeta returned %+v, want %+v", meta, want)
 	}
+
+	const methodName = "APIMeta"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.APIMeta(ctx)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestOctocat(t *testing.T) {
@@ -189,7 +254,8 @@ func TestOctocat(t *testing.T) {
 		fmt.Fprint(w, output)
 	})
 
-	got, _, err := client.Octocat(context.Background(), input)
+	ctx := context.Background()
+	got, _, err := client.Octocat(ctx, input)
 	if err != nil {
 		t.Errorf("Octocat returned error: %v", err)
 	}
@@ -197,6 +263,15 @@ func TestOctocat(t *testing.T) {
 	if want := output; got != want {
 		t.Errorf("Octocat returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "Octocat"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Octocat(ctx, input)
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestZen(t *testing.T) {
@@ -211,7 +286,8 @@ func TestZen(t *testing.T) {
 		fmt.Fprint(w, output)
 	})
 
-	got, _, err := client.Zen(context.Background())
+	ctx := context.Background()
+	got, _, err := client.Zen(ctx)
 	if err != nil {
 		t.Errorf("Zen returned error: %v", err)
 	}
@@ -219,6 +295,15 @@ func TestZen(t *testing.T) {
 	if want := output; got != want {
 		t.Errorf("Zen returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "Zen"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Zen(ctx)
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestListServiceHooks(t *testing.T) {
@@ -237,7 +322,8 @@ func TestListServiceHooks(t *testing.T) {
 		}]`)
 	})
 
-	hooks, _, err := client.ListServiceHooks(context.Background())
+	ctx := context.Background()
+	hooks, _, err := client.ListServiceHooks(ctx)
 	if err != nil {
 		t.Errorf("ListServiceHooks returned error: %v", err)
 	}
@@ -251,4 +337,13 @@ func TestListServiceHooks(t *testing.T) {
 	if !reflect.DeepEqual(hooks, want) {
 		t.Errorf("ListServiceHooks returned %+v, want %+v", hooks, want)
 	}
+
+	const methodName = "ListServiceHooks"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.ListServiceHooks(ctx)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

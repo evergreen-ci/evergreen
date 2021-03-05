@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 )
 
@@ -123,7 +124,7 @@ type BranchCommit struct {
 
 // ListCommits lists the commits of a repository.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-commits
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#list-commits
 func (s *RepositoriesService) ListCommits(ctx context.Context, owner, repo string, opts *CommitsListOptions) ([]*RepositoryCommit, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits", owner, repo)
 	u, err := addOptions(u, opts)
@@ -147,8 +148,8 @@ func (s *RepositoriesService) ListCommits(ctx context.Context, owner, repo strin
 
 // GetCommit fetches the specified commit, including all details about it.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#get-a-single-commit
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#get-a-commit
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-a-single-commit
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-a-commit
 func (s *RepositoriesService) GetCommit(ctx context.Context, owner, repo, sha string) (*RepositoryCommit, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v", owner, repo, sha)
 
@@ -168,7 +169,7 @@ func (s *RepositoriesService) GetCommit(ctx context.Context, owner, repo, sha st
 
 // GetCommitRaw fetches the specified commit in raw (diff or patch) format.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#get-a-commit
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-a-commit
 func (s *RepositoriesService) GetCommitRaw(ctx context.Context, owner string, repo string, sha string, opts RawOptions) (string, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v", owner, repo, sha)
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -197,7 +198,7 @@ func (s *RepositoriesService) GetCommitRaw(ctx context.Context, owner string, re
 // GetCommitSHA1 gets the SHA-1 of a commit reference. If a last-known SHA1 is
 // supplied and no new commits have occurred, a 304 Unmodified response is returned.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#get-a-commit
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-a-commit
 func (s *RepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v", owner, repo, refURLEscape(ref))
 
@@ -221,11 +222,13 @@ func (s *RepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, re
 }
 
 // CompareCommits compares a range of commits with each other.
-// todo: support media formats - https://github.com/google/go-github/issues/6
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#compare-two-commits
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#compare-two-commits
 func (s *RepositoriesService) CompareCommits(ctx context.Context, owner, repo string, base, head string) (*CommitsComparison, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/compare/%v...%v", owner, repo, base, head)
+	escapedBase := url.QueryEscape(base)
+	escapedHead := url.QueryEscape(head)
+
+	u := fmt.Sprintf("repos/%v/%v/compare/%v...%v", owner, repo, escapedBase, escapedHead)
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -241,10 +244,46 @@ func (s *RepositoriesService) CompareCommits(ctx context.Context, owner, repo st
 	return comp, resp, nil
 }
 
+// CompareCommitsRaw compares a range of commits with each other in raw (diff or patch) format.
+//
+// Both "base" and "head" must be branch names in "repo".
+// To compare branches across other repositories in the same network as "repo",
+// use the format "<USERNAME>:branch".
+//
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#compare-two-commits
+func (s *RepositoriesService) CompareCommitsRaw(ctx context.Context, owner, repo, base, head string, opts RawOptions) (string, *Response, error) {
+	escapedBase := url.QueryEscape(base)
+	escapedHead := url.QueryEscape(head)
+
+	u := fmt.Sprintf("repos/%v/%v/compare/%v...%v", owner, repo, escapedBase, escapedHead)
+
+	req, err := s.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return "", nil, err
+	}
+
+	switch opts.Type {
+	case Diff:
+		req.Header.Set("Accept", mediaTypeV3Diff)
+	case Patch:
+		req.Header.Set("Accept", mediaTypeV3Patch)
+	default:
+		return "", nil, fmt.Errorf("unsupported raw type %d", opts.Type)
+	}
+
+	var buf bytes.Buffer
+	resp, err := s.client.Do(ctx, req, &buf)
+	if err != nil {
+		return "", resp, err
+	}
+
+	return buf.String(), resp, nil
+}
+
 // ListBranchesHeadCommit gets all branches where the given commit SHA is the HEAD,
 // or latest commit for the branch.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-branches-for-head-commit
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#list-branches-for-head-commit
 func (s *RepositoriesService) ListBranchesHeadCommit(ctx context.Context, owner, repo, sha string) ([]*BranchCommit, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/commits/%v/branches-where-head", owner, repo, sha)
 

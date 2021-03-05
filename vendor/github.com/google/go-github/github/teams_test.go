@@ -28,7 +28,8 @@ func TestTeamsService_ListTeams(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	teams, _, err := client.Teams.ListTeams(context.Background(), "o", opt)
+	ctx := context.Background()
+	teams, _, err := client.Teams.ListTeams(ctx, "o", opt)
 	if err != nil {
 		t.Errorf("Teams.ListTeams returned error: %v", err)
 	}
@@ -37,13 +38,28 @@ func TestTeamsService_ListTeams(t *testing.T) {
 	if !reflect.DeepEqual(teams, want) {
 		t.Errorf("Teams.ListTeams returned %+v, want %+v", teams, want)
 	}
+
+	const methodName = "ListTeams"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListTeams(ctx, "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListTeams(ctx, "o", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListTeams_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Teams.ListTeams(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Teams.ListTeams(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -56,7 +72,8 @@ func TestTeamsService_GetTeamByID(t *testing.T) {
 		fmt.Fprint(w, `{"id":1, "name":"n", "description": "d", "url":"u", "slug": "s", "permission":"p", "ldap_dn":"cn=n,ou=groups,dc=example,dc=com", "parent":null}`)
 	})
 
-	team, _, err := client.Teams.GetTeamByID(context.Background(), 1, 1)
+	ctx := context.Background()
+	team, _, err := client.Teams.GetTeamByID(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.GetTeamByID returned error: %v", err)
 	}
@@ -65,6 +82,20 @@ func TestTeamsService_GetTeamByID(t *testing.T) {
 	if !reflect.DeepEqual(team, want) {
 		t.Errorf("Teams.GetTeamByID returned %+v, want %+v", team, want)
 	}
+
+	const methodName = "GetTeamByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.GetTeamByID(ctx, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.GetTeamByID(ctx, 1, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_GetTeamByID_notFound(t *testing.T) {
@@ -76,7 +107,8 @@ func TestTeamsService_GetTeamByID_notFound(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	team, resp, err := client.Teams.GetTeamByID(context.Background(), 1, 2)
+	ctx := context.Background()
+	team, resp, err := client.Teams.GetTeamByID(ctx, 1, 2)
 	if err == nil {
 		t.Errorf("Expected HTTP 404 response")
 	}
@@ -97,7 +129,8 @@ func TestTeamsService_GetTeamBySlug(t *testing.T) {
 		fmt.Fprint(w, `{"id":1, "name":"n", "description": "d", "url":"u", "slug": "s", "permission":"p", "ldap_dn":"cn=n,ou=groups,dc=example,dc=com", "parent":null}`)
 	})
 
-	team, _, err := client.Teams.GetTeamBySlug(context.Background(), "o", "s")
+	ctx := context.Background()
+	team, _, err := client.Teams.GetTeamBySlug(ctx, "o", "s")
 	if err != nil {
 		t.Errorf("Teams.GetTeamBySlug returned error: %v", err)
 	}
@@ -106,13 +139,28 @@ func TestTeamsService_GetTeamBySlug(t *testing.T) {
 	if !reflect.DeepEqual(team, want) {
 		t.Errorf("Teams.GetTeamBySlug returned %+v, want %+v", team, want)
 	}
+
+	const methodName = "GetTeamBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.GetTeamBySlug(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.GetTeamBySlug(ctx, "o", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_GetTeamBySlug_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Teams.GetTeamBySlug(context.Background(), "%", "s")
+	ctx := context.Background()
+	_, _, err := client.Teams.GetTeamBySlug(ctx, "%", "s")
 	testURLParseError(t, err)
 }
 
@@ -125,7 +173,8 @@ func TestTeamsService_GetTeamBySlug_notFound(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	team, resp, err := client.Teams.GetTeamBySlug(context.Background(), "o", "s")
+	ctx := context.Background()
+	team, resp, err := client.Teams.GetTeamBySlug(ctx, "o", "s")
 	if err == nil {
 		t.Errorf("Expected HTTP 404 response")
 	}
@@ -155,7 +204,8 @@ func TestTeamsService_CreateTeam(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	team, _, err := client.Teams.CreateTeam(context.Background(), "o", input)
+	ctx := context.Background()
+	team, _, err := client.Teams.CreateTeam(ctx, "o", input)
 	if err != nil {
 		t.Errorf("Teams.CreateTeam returned error: %v", err)
 	}
@@ -164,13 +214,28 @@ func TestTeamsService_CreateTeam(t *testing.T) {
 	if !reflect.DeepEqual(team, want) {
 		t.Errorf("Teams.CreateTeam returned %+v, want %+v", team, want)
 	}
+
+	const methodName = "CreateTeam"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.CreateTeam(ctx, "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.CreateTeam(ctx, "o", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_CreateTeam_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Teams.CreateTeam(context.Background(), "%", NewTeam{})
+	ctx := context.Background()
+	_, _, err := client.Teams.CreateTeam(ctx, "%", NewTeam{})
 	testURLParseError(t, err)
 }
 
@@ -192,7 +257,8 @@ func TestTeamsService_EditTeamByID(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	team, _, err := client.Teams.EditTeamByID(context.Background(), 1, 1, input, false)
+	ctx := context.Background()
+	team, _, err := client.Teams.EditTeamByID(ctx, 1, 1, input, false)
 	if err != nil {
 		t.Errorf("Teams.EditTeamByID returned error: %v", err)
 	}
@@ -201,6 +267,20 @@ func TestTeamsService_EditTeamByID(t *testing.T) {
 	if !reflect.DeepEqual(team, want) {
 		t.Errorf("Teams.EditTeamByID returned %+v, want %+v", team, want)
 	}
+
+	const methodName = "EditTeamByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.EditTeamByID(ctx, -1, -1, input, false)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.EditTeamByID(ctx, 1, 1, input, false)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_EditTeamByID_RemoveParent(t *testing.T) {
@@ -227,7 +307,8 @@ func TestTeamsService_EditTeamByID_RemoveParent(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	team, _, err := client.Teams.EditTeamByID(context.Background(), 1, 1, input, true)
+	ctx := context.Background()
+	team, _, err := client.Teams.EditTeamByID(ctx, 1, 1, input, true)
 	if err != nil {
 		t.Errorf("Teams.EditTeamByID returned error: %v", err)
 	}
@@ -260,7 +341,8 @@ func TestTeamsService_EditTeamBySlug(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	team, _, err := client.Teams.EditTeamBySlug(context.Background(), "o", "s", input, false)
+	ctx := context.Background()
+	team, _, err := client.Teams.EditTeamBySlug(ctx, "o", "s", input, false)
 	if err != nil {
 		t.Errorf("Teams.EditTeamBySlug returned error: %v", err)
 	}
@@ -269,6 +351,20 @@ func TestTeamsService_EditTeamBySlug(t *testing.T) {
 	if !reflect.DeepEqual(team, want) {
 		t.Errorf("Teams.EditTeamBySlug returned %+v, want %+v", team, want)
 	}
+
+	const methodName = "EditTeamBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.EditTeamBySlug(ctx, "\n", "\n", input, false)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.EditTeamBySlug(ctx, "o", "s", input, false)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_EditTeamBySlug_RemoveParent(t *testing.T) {
@@ -295,7 +391,8 @@ func TestTeamsService_EditTeamBySlug_RemoveParent(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	team, _, err := client.Teams.EditTeamBySlug(context.Background(), "o", "s", input, true)
+	ctx := context.Background()
+	team, _, err := client.Teams.EditTeamBySlug(ctx, "o", "s", input, true)
 	if err != nil {
 		t.Errorf("Teams.EditTeam returned error: %v", err)
 	}
@@ -318,10 +415,21 @@ func TestTeamsService_DeleteTeamByID(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Teams.DeleteTeamByID(context.Background(), 1, 1)
+	ctx := context.Background()
+	_, err := client.Teams.DeleteTeamByID(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.DeleteTeamByID returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.DeleteTeamByID(ctx, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.DeleteTeamByID(ctx, 1, 1)
+	})
 }
 
 func TestTeamsService_DeleteTeamBySlug(t *testing.T) {
@@ -332,10 +440,21 @@ func TestTeamsService_DeleteTeamBySlug(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Teams.DeleteTeamBySlug(context.Background(), "o", "s")
+	ctx := context.Background()
+	_, err := client.Teams.DeleteTeamBySlug(ctx, "o", "s")
 	if err != nil {
 		t.Errorf("Teams.DeleteTeamBySlug returned error: %v", err)
 	}
+
+	const methodName = "DeleteTeamBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.DeleteTeamBySlug(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.DeleteTeamBySlug(ctx, "o", "s")
+	})
 }
 
 func TestTeamsService_ListChildTeamsByParentID(t *testing.T) {
@@ -349,7 +468,8 @@ func TestTeamsService_ListChildTeamsByParentID(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	teams, _, err := client.Teams.ListChildTeamsByParentID(context.Background(), 1, 2, opt)
+	ctx := context.Background()
+	teams, _, err := client.Teams.ListChildTeamsByParentID(ctx, 1, 2, opt)
 	if err != nil {
 		t.Errorf("Teams.ListChildTeamsByParentID returned error: %v", err)
 	}
@@ -358,6 +478,20 @@ func TestTeamsService_ListChildTeamsByParentID(t *testing.T) {
 	if !reflect.DeepEqual(teams, want) {
 		t.Errorf("Teams.ListChildTeamsByParentID returned %+v, want %+v", teams, want)
 	}
+
+	const methodName = "ListChildTeamsByParentID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListChildTeamsByParentID(ctx, -1, -2, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListChildTeamsByParentID(ctx, 1, 2, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListChildTeamsByParentSlug(t *testing.T) {
@@ -371,7 +505,8 @@ func TestTeamsService_ListChildTeamsByParentSlug(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	teams, _, err := client.Teams.ListChildTeamsByParentSlug(context.Background(), "o", "s", opt)
+	ctx := context.Background()
+	teams, _, err := client.Teams.ListChildTeamsByParentSlug(ctx, "o", "s", opt)
 	if err != nil {
 		t.Errorf("Teams.ListChildTeamsByParentSlug returned error: %v", err)
 	}
@@ -380,6 +515,20 @@ func TestTeamsService_ListChildTeamsByParentSlug(t *testing.T) {
 	if !reflect.DeepEqual(teams, want) {
 		t.Errorf("Teams.ListChildTeamsByParentSlug returned %+v, want %+v", teams, want)
 	}
+
+	const methodName = "ListChildTeamsByParentSlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListChildTeamsByParentSlug(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListChildTeamsByParentSlug(ctx, "o", "s", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListTeamReposByID(t *testing.T) {
@@ -395,7 +544,8 @@ func TestTeamsService_ListTeamReposByID(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	members, _, err := client.Teams.ListTeamReposByID(context.Background(), 1, 1, opt)
+	ctx := context.Background()
+	members, _, err := client.Teams.ListTeamReposByID(ctx, 1, 1, opt)
 	if err != nil {
 		t.Errorf("Teams.ListTeamReposByID returned error: %v", err)
 	}
@@ -404,6 +554,20 @@ func TestTeamsService_ListTeamReposByID(t *testing.T) {
 	if !reflect.DeepEqual(members, want) {
 		t.Errorf("Teams.ListTeamReposByID returned %+v, want %+v", members, want)
 	}
+
+	const methodName = "ListTeamReposByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListTeamReposByID(ctx, -1, -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListTeamReposByID(ctx, 1, 1, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListTeamReposBySlug(t *testing.T) {
@@ -419,7 +583,8 @@ func TestTeamsService_ListTeamReposBySlug(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	members, _, err := client.Teams.ListTeamReposBySlug(context.Background(), "o", "s", opt)
+	ctx := context.Background()
+	members, _, err := client.Teams.ListTeamReposBySlug(ctx, "o", "s", opt)
 	if err != nil {
 		t.Errorf("Teams.ListTeamReposBySlug returned error: %v", err)
 	}
@@ -428,6 +593,20 @@ func TestTeamsService_ListTeamReposBySlug(t *testing.T) {
 	if !reflect.DeepEqual(members, want) {
 		t.Errorf("Teams.ListTeamReposBySlug returned %+v, want %+v", members, want)
 	}
+
+	const methodName = "ListTeamReposBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListTeamReposBySlug(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListTeamReposBySlug(ctx, "o", "s", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_IsTeamRepoByID_true(t *testing.T) {
@@ -441,7 +620,8 @@ func TestTeamsService_IsTeamRepoByID_true(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	repo, _, err := client.Teams.IsTeamRepoByID(context.Background(), 1, 1, "owner", "repo")
+	ctx := context.Background()
+	repo, _, err := client.Teams.IsTeamRepoByID(ctx, 1, 1, "owner", "repo")
 	if err != nil {
 		t.Errorf("Teams.IsTeamRepoByID returned error: %v", err)
 	}
@@ -450,6 +630,20 @@ func TestTeamsService_IsTeamRepoByID_true(t *testing.T) {
 	if !reflect.DeepEqual(repo, want) {
 		t.Errorf("Teams.IsTeamRepoByID returned %+v, want %+v", repo, want)
 	}
+
+	const methodName = "IsTeamRepoByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.IsTeamRepoByID(ctx, -1, -1, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.IsTeamRepoByID(ctx, 1, 1, "owner", "repo")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_IsTeamRepoBySlug_true(t *testing.T) {
@@ -463,7 +657,8 @@ func TestTeamsService_IsTeamRepoBySlug_true(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	repo, _, err := client.Teams.IsTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo")
+	ctx := context.Background()
+	repo, _, err := client.Teams.IsTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
 	if err != nil {
 		t.Errorf("Teams.IsTeamRepoBySlug returned error: %v", err)
 	}
@@ -472,6 +667,20 @@ func TestTeamsService_IsTeamRepoBySlug_true(t *testing.T) {
 	if !reflect.DeepEqual(repo, want) {
 		t.Errorf("Teams.IsTeamRepoBySlug returned %+v, want %+v", repo, want)
 	}
+
+	const methodName = "IsTeamRepoBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.IsTeamRepoBySlug(ctx, "\n", "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.IsTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_IsTeamRepoByID_false(t *testing.T) {
@@ -483,7 +692,8 @@ func TestTeamsService_IsTeamRepoByID_false(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	repo, resp, err := client.Teams.IsTeamRepoByID(context.Background(), 1, 1, "owner", "repo")
+	ctx := context.Background()
+	repo, resp, err := client.Teams.IsTeamRepoByID(ctx, 1, 1, "owner", "repo")
 	if err == nil {
 		t.Errorf("Expected HTTP 404 response")
 	}
@@ -504,7 +714,8 @@ func TestTeamsService_IsTeamRepoBySlug_false(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	repo, resp, err := client.Teams.IsTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo")
+	ctx := context.Background()
+	repo, resp, err := client.Teams.IsTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
 	if err == nil {
 		t.Errorf("Expected HTTP 404 response")
 	}
@@ -525,7 +736,8 @@ func TestTeamsService_IsTeamRepoByID_error(t *testing.T) {
 		http.Error(w, "BadRequest", http.StatusBadRequest)
 	})
 
-	repo, resp, err := client.Teams.IsTeamRepoByID(context.Background(), 1, 1, "owner", "repo")
+	ctx := context.Background()
+	repo, resp, err := client.Teams.IsTeamRepoByID(ctx, 1, 1, "owner", "repo")
 	if err == nil {
 		t.Errorf("Expected HTTP 400 response")
 	}
@@ -546,7 +758,8 @@ func TestTeamsService_IsTeamRepoBySlug_error(t *testing.T) {
 		http.Error(w, "BadRequest", http.StatusBadRequest)
 	})
 
-	repo, resp, err := client.Teams.IsTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo")
+	ctx := context.Background()
+	repo, resp, err := client.Teams.IsTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
 	if err == nil {
 		t.Errorf("Expected HTTP 400 response")
 	}
@@ -562,7 +775,8 @@ func TestTeamsService_IsTeamRepoByID_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Teams.IsTeamRepoByID(context.Background(), 1, 1, "%", "r")
+	ctx := context.Background()
+	_, _, err := client.Teams.IsTeamRepoByID(ctx, 1, 1, "%", "r")
 	testURLParseError(t, err)
 }
 
@@ -570,7 +784,8 @@ func TestTeamsService_IsTeamRepoBySlug_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Teams.IsTeamRepoBySlug(context.Background(), "o", "s", "%", "r")
+	ctx := context.Background()
+	_, _, err := client.Teams.IsTeamRepoBySlug(ctx, "o", "s", "%", "r")
 	testURLParseError(t, err)
 }
 
@@ -592,10 +807,21 @@ func TestTeamsService_AddTeamRepoByID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.AddTeamRepoByID(context.Background(), 1, 1, "owner", "repo", opt)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoByID(ctx, 1, 1, "owner", "repo", opt)
 	if err != nil {
 		t.Errorf("Teams.AddTeamRepoByID returned error: %v", err)
 	}
+
+	const methodName = "AddTeamRepoByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.AddTeamRepoByID(ctx, 1, 1, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.AddTeamRepoByID(ctx, 1, 1, "owner", "repo", opt)
+	})
 }
 
 func TestTeamsService_AddTeamRepoBySlug(t *testing.T) {
@@ -616,10 +842,21 @@ func TestTeamsService_AddTeamRepoBySlug(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.AddTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo", opt)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoBySlug(ctx, "org", "slug", "owner", "repo", opt)
 	if err != nil {
 		t.Errorf("Teams.AddTeamRepoBySlug returned error: %v", err)
 	}
+
+	const methodName = "AddTeamRepoBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.AddTeamRepoBySlug(ctx, "\n", "\n", "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.AddTeamRepoBySlug(ctx, "org", "slug", "owner", "repo", opt)
+	})
 }
 
 func TestTeamsService_AddTeamRepoByID_noAccess(t *testing.T) {
@@ -631,7 +868,8 @@ func TestTeamsService_AddTeamRepoByID_noAccess(t *testing.T) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	})
 
-	_, err := client.Teams.AddTeamRepoByID(context.Background(), 1, 1, "owner", "repo", nil)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoByID(ctx, 1, 1, "owner", "repo", nil)
 	if err == nil {
 		t.Errorf("Expcted error to be returned")
 	}
@@ -646,7 +884,8 @@ func TestTeamsService_AddTeamRepoBySlug_noAccess(t *testing.T) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	})
 
-	_, err := client.Teams.AddTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo", nil)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoBySlug(ctx, "org", "slug", "owner", "repo", nil)
 	if err == nil {
 		t.Errorf("Expcted error to be returned")
 	}
@@ -656,7 +895,8 @@ func TestTeamsService_AddTeamRepoByID_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Teams.AddTeamRepoByID(context.Background(), 1, 1, "%", "r", nil)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoByID(ctx, 1, 1, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -664,7 +904,8 @@ func TestTeamsService_AddTeamRepoBySlug_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Teams.AddTeamRepoBySlug(context.Background(), "o", "s", "%", "r", nil)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamRepoBySlug(ctx, "o", "s", "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -677,10 +918,21 @@ func TestTeamsService_RemoveTeamRepoByID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.RemoveTeamRepoByID(context.Background(), 1, 1, "owner", "repo")
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamRepoByID(ctx, 1, 1, "owner", "repo")
 	if err != nil {
 		t.Errorf("Teams.RemoveTeamRepoByID returned error: %v", err)
 	}
+
+	const methodName = "RemoveTeamRepoByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.RemoveTeamRepoByID(ctx, -1, -1, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.RemoveTeamRepoByID(ctx, 1, 1, "owner", "repo")
+	})
 }
 
 func TestTeamsService_RemoveTeamRepoBySlug(t *testing.T) {
@@ -692,17 +944,29 @@ func TestTeamsService_RemoveTeamRepoBySlug(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.RemoveTeamRepoBySlug(context.Background(), "org", "slug", "owner", "repo")
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
 	if err != nil {
 		t.Errorf("Teams.RemoveTeamRepoBySlug returned error: %v", err)
 	}
+
+	const methodName = "RemoveTeamRepoBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.RemoveTeamRepoBySlug(ctx, "\n", "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.RemoveTeamRepoBySlug(ctx, "org", "slug", "owner", "repo")
+	})
 }
 
 func TestTeamsService_RemoveTeamRepoByID_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Teams.RemoveTeamRepoByID(context.Background(), 1, 1, "%", "r")
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamRepoByID(ctx, 1, 1, "%", "r")
 	testURLParseError(t, err)
 }
 
@@ -710,7 +974,8 @@ func TestTeamsService_RemoveTeamRepoBySlug_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Teams.RemoveTeamRepoBySlug(context.Background(), "o", "s", "%", "r")
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamRepoBySlug(ctx, "o", "s", "%", "r")
 	testURLParseError(t, err)
 }
 
@@ -725,7 +990,8 @@ func TestTeamsService_ListUserTeams(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 1}
-	teams, _, err := client.Teams.ListUserTeams(context.Background(), opt)
+	ctx := context.Background()
+	teams, _, err := client.Teams.ListUserTeams(ctx, opt)
 	if err != nil {
 		t.Errorf("Teams.ListUserTeams returned error: %v", err)
 	}
@@ -734,6 +1000,15 @@ func TestTeamsService_ListUserTeams(t *testing.T) {
 	if !reflect.DeepEqual(teams, want) {
 		t.Errorf("Teams.ListUserTeams returned %+v, want %+v", teams, want)
 	}
+
+	const methodName = "ListUserTeams"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListUserTeams(ctx, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListProjectsByID(t *testing.T) {
@@ -747,7 +1022,8 @@ func TestTeamsService_ListProjectsByID(t *testing.T) {
 		fmt.Fprint(w, `[{"id":1}]`)
 	})
 
-	projects, _, err := client.Teams.ListTeamProjectsByID(context.Background(), 1, 1)
+	ctx := context.Background()
+	projects, _, err := client.Teams.ListTeamProjectsByID(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.ListTeamProjectsByID returned error: %v", err)
 	}
@@ -756,6 +1032,20 @@ func TestTeamsService_ListProjectsByID(t *testing.T) {
 	if !reflect.DeepEqual(projects, want) {
 		t.Errorf("Teams.ListTeamProjectsByID returned %+v, want %+v", projects, want)
 	}
+
+	const methodName = "ListTeamProjectsByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListTeamProjectsByID(ctx, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListTeamProjectsByID(ctx, 1, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListProjectsBySlug(t *testing.T) {
@@ -769,7 +1059,8 @@ func TestTeamsService_ListProjectsBySlug(t *testing.T) {
 		fmt.Fprint(w, `[{"id":1}]`)
 	})
 
-	projects, _, err := client.Teams.ListTeamProjectsBySlug(context.Background(), "o", "s")
+	ctx := context.Background()
+	projects, _, err := client.Teams.ListTeamProjectsBySlug(ctx, "o", "s")
 	if err != nil {
 		t.Errorf("Teams.ListTeamProjectsBySlug returned error: %v", err)
 	}
@@ -778,6 +1069,20 @@ func TestTeamsService_ListProjectsBySlug(t *testing.T) {
 	if !reflect.DeepEqual(projects, want) {
 		t.Errorf("Teams.ListTeamProjectsBySlug returned %+v, want %+v", projects, want)
 	}
+
+	const methodName = "ListTeamProjectsBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListTeamProjectsBySlug(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListTeamProjectsBySlug(ctx, "o", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ReviewProjectsByID(t *testing.T) {
@@ -791,7 +1096,8 @@ func TestTeamsService_ReviewProjectsByID(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	project, _, err := client.Teams.ReviewTeamProjectsByID(context.Background(), 1, 1, 1)
+	ctx := context.Background()
+	project, _, err := client.Teams.ReviewTeamProjectsByID(ctx, 1, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.ReviewTeamProjectsByID returned error: %v", err)
 	}
@@ -800,6 +1106,20 @@ func TestTeamsService_ReviewProjectsByID(t *testing.T) {
 	if !reflect.DeepEqual(project, want) {
 		t.Errorf("Teams.ReviewTeamProjectsByID returned %+v, want %+v", project, want)
 	}
+
+	const methodName = "ReviewTeamProjectsByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ReviewTeamProjectsByID(ctx, -1, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ReviewTeamProjectsByID(ctx, 1, 1, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ReviewProjectsBySlug(t *testing.T) {
@@ -813,7 +1133,8 @@ func TestTeamsService_ReviewProjectsBySlug(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	project, _, err := client.Teams.ReviewTeamProjectsBySlug(context.Background(), "o", "s", 1)
+	ctx := context.Background()
+	project, _, err := client.Teams.ReviewTeamProjectsBySlug(ctx, "o", "s", 1)
 	if err != nil {
 		t.Errorf("Teams.ReviewTeamProjectsBySlug returned error: %v", err)
 	}
@@ -822,6 +1143,20 @@ func TestTeamsService_ReviewProjectsBySlug(t *testing.T) {
 	if !reflect.DeepEqual(project, want) {
 		t.Errorf("Teams.ReviewTeamProjectsBySlug returned %+v, want %+v", project, want)
 	}
+
+	const methodName = "ReviewTeamProjectsBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ReviewTeamProjectsBySlug(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ReviewTeamProjectsBySlug(ctx, "o", "s", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_AddTeamProjectByID(t *testing.T) {
@@ -846,10 +1181,21 @@ func TestTeamsService_AddTeamProjectByID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.AddTeamProjectByID(context.Background(), 1, 1, 1, opt)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamProjectByID(ctx, 1, 1, 1, opt)
 	if err != nil {
 		t.Errorf("Teams.AddTeamProjectByID returned error: %v", err)
 	}
+
+	const methodName = "AddTeamProjectByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.AddTeamProjectByID(ctx, -1, -1, -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.AddTeamProjectByID(ctx, 1, 1, 1, opt)
+	})
 }
 
 func TestTeamsService_AddTeamProjectBySlug(t *testing.T) {
@@ -874,10 +1220,21 @@ func TestTeamsService_AddTeamProjectBySlug(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.AddTeamProjectBySlug(context.Background(), "o", "s", 1, opt)
+	ctx := context.Background()
+	_, err := client.Teams.AddTeamProjectBySlug(ctx, "o", "s", 1, opt)
 	if err != nil {
 		t.Errorf("Teams.AddTeamProjectBySlug returned error: %v", err)
 	}
+
+	const methodName = "AddTeamProjectBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.AddTeamProjectBySlug(ctx, "\n", "\n", -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.AddTeamProjectBySlug(ctx, "o", "s", 1, opt)
+	})
 }
 
 func TestTeamsService_RemoveTeamProjectByID(t *testing.T) {
@@ -891,10 +1248,21 @@ func TestTeamsService_RemoveTeamProjectByID(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.RemoveTeamProjectByID(context.Background(), 1, 1, 1)
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamProjectByID(ctx, 1, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.RemoveTeamProjectByID returned error: %v", err)
 	}
+
+	const methodName = "RemoveTeamProjectByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.RemoveTeamProjectByID(ctx, -1, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.RemoveTeamProjectByID(ctx, 1, 1, 1)
+	})
 }
 
 func TestTeamsService_RemoveTeamProjectBySlug(t *testing.T) {
@@ -908,10 +1276,21 @@ func TestTeamsService_RemoveTeamProjectBySlug(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Teams.RemoveTeamProjectBySlug(context.Background(), "o", "s", 1)
+	ctx := context.Background()
+	_, err := client.Teams.RemoveTeamProjectBySlug(ctx, "o", "s", 1)
 	if err != nil {
 		t.Errorf("Teams.RemoveTeamProjectBySlug returned error: %v", err)
 	}
+
+	const methodName = "RemoveTeamProjectBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Teams.RemoveTeamProjectBySlug(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Teams.RemoveTeamProjectBySlug(ctx, "o", "s", 1)
+	})
 }
 
 func TestTeamsService_ListIDPGroupsInOrganization(t *testing.T) {
@@ -927,7 +1306,8 @@ func TestTeamsService_ListIDPGroupsInOrganization(t *testing.T) {
 	})
 
 	opt := &ListCursorOptions{Page: "url-encoded-next-page-token"}
-	groups, _, err := client.Teams.ListIDPGroupsInOrganization(context.Background(), "o", opt)
+	ctx := context.Background()
+	groups, _, err := client.Teams.ListIDPGroupsInOrganization(ctx, "o", opt)
 	if err != nil {
 		t.Errorf("Teams.ListIDPGroupsInOrganization returned error: %v", err)
 	}
@@ -944,6 +1324,20 @@ func TestTeamsService_ListIDPGroupsInOrganization(t *testing.T) {
 	if !reflect.DeepEqual(groups, want) {
 		t.Errorf("Teams.ListIDPGroupsInOrganization returned %+v. want %+v", groups, want)
 	}
+
+	const methodName = "ListIDPGroupsInOrganization"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListIDPGroupsInOrganization(ctx, "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListIDPGroupsInOrganization(ctx, "o", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListIDPGroupsForTeamByID(t *testing.T) {
@@ -955,7 +1349,8 @@ func TestTeamsService_ListIDPGroupsForTeamByID(t *testing.T) {
 		fmt.Fprint(w, `{"groups": [{"group_id": "1",  "group_name": "n", "group_description": "d"}]}`)
 	})
 
-	groups, _, err := client.Teams.ListIDPGroupsForTeamByID(context.Background(), 1, 1)
+	ctx := context.Background()
+	groups, _, err := client.Teams.ListIDPGroupsForTeamByID(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Teams.ListIDPGroupsForTeamByID returned error: %v", err)
 	}
@@ -972,6 +1367,20 @@ func TestTeamsService_ListIDPGroupsForTeamByID(t *testing.T) {
 	if !reflect.DeepEqual(groups, want) {
 		t.Errorf("Teams.ListIDPGroupsForTeamByID returned %+v. want %+v", groups, want)
 	}
+
+	const methodName = "ListIDPGroupsForTeamByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListIDPGroupsForTeamByID(ctx, -1, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListIDPGroupsForTeamByID(ctx, 1, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_ListIDPGroupsForTeamBySlug(t *testing.T) {
@@ -983,7 +1392,8 @@ func TestTeamsService_ListIDPGroupsForTeamBySlug(t *testing.T) {
 		fmt.Fprint(w, `{"groups": [{"group_id": "1",  "group_name": "n", "group_description": "d"}]}`)
 	})
 
-	groups, _, err := client.Teams.ListIDPGroupsForTeamBySlug(context.Background(), "o", "slug")
+	ctx := context.Background()
+	groups, _, err := client.Teams.ListIDPGroupsForTeamBySlug(ctx, "o", "slug")
 	if err != nil {
 		t.Errorf("Teams.ListIDPGroupsForTeamBySlug returned error: %v", err)
 	}
@@ -1000,6 +1410,20 @@ func TestTeamsService_ListIDPGroupsForTeamBySlug(t *testing.T) {
 	if !reflect.DeepEqual(groups, want) {
 		t.Errorf("Teams.ListIDPGroupsForTeamBySlug returned %+v. want %+v", groups, want)
 	}
+
+	const methodName = "ListIDPGroupsForTeamBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.ListIDPGroupsForTeamBySlug(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.ListIDPGroupsForTeamBySlug(ctx, "o", "slug")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_CreateOrUpdateIDPGroupConnectionsByID(t *testing.T) {
@@ -1021,7 +1445,8 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsByID(t *testing.T) {
 		},
 	}
 
-	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsByID(context.Background(), 1, 1, input)
+	ctx := context.Background()
+	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsByID(ctx, 1, 1, input)
 	if err != nil {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsByID returned error: %v", err)
 	}
@@ -1038,6 +1463,20 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsByID(t *testing.T) {
 	if !reflect.DeepEqual(groups, want) {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsByID returned %+v. want %+v", groups, want)
 	}
+
+	const methodName = "CreateOrUpdateIDPGroupConnectionsByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.CreateOrUpdateIDPGroupConnectionsByID(ctx, -1, -1, input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.CreateOrUpdateIDPGroupConnectionsByID(ctx, 1, 1, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestTeamsService_CreateOrUpdateIDPGroupConnectionsBySlug(t *testing.T) {
@@ -1059,7 +1498,8 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsBySlug(t *testing.T) {
 		},
 	}
 
-	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(context.Background(), "o", "slug", input)
+	ctx := context.Background()
+	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(ctx, "o", "slug", input)
 	if err != nil {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsBySlug returned error: %v", err)
 	}
@@ -1076,6 +1516,20 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsBySlug(t *testing.T) {
 	if !reflect.DeepEqual(groups, want) {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsBySlug returned %+v. want %+v", groups, want)
 	}
+
+	const methodName = "CreateOrUpdateIDPGroupConnectionsBySlug"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(ctx, "o", "slug", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 func TestTeamsService_CreateOrUpdateIDPGroupConnectionsByID_empty(t *testing.T) {
 	client, mux, _, teardown := setup()
@@ -1090,7 +1544,8 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsByID_empty(t *testing.T) 
 		Groups: []*IDPGroup{},
 	}
 
-	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsByID(context.Background(), 1, 1, input)
+	ctx := context.Background()
+	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsByID(ctx, 1, 1, input)
 	if err != nil {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsByID returned error: %v", err)
 	}
@@ -1116,7 +1571,8 @@ func TestTeamsService_CreateOrUpdateIDPGroupConnectionsBySlug_empty(t *testing.T
 		Groups: []*IDPGroup{},
 	}
 
-	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(context.Background(), "o", "slug", input)
+	ctx := context.Background()
+	groups, _, err := client.Teams.CreateOrUpdateIDPGroupConnectionsBySlug(ctx, "o", "slug", input)
 	if err != nil {
 		t.Errorf("Teams.CreateOrUpdateIDPGroupConnectionsBySlug returned error: %v", err)
 	}

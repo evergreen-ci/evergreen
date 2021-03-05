@@ -18,7 +18,7 @@ type RequestedAction struct {
 // CheckRunEvent is triggered when a check run is "created", "updated", or "rerequested".
 // The Webhook event name is "check_run".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#checkrunevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#checkrunevent
 type CheckRunEvent struct {
 	CheckRun *CheckRun `json:"check_run,omitempty"`
 	// The action performed. Possible values are: "created", "updated", "rerequested" or "requested_action".
@@ -37,7 +37,7 @@ type CheckRunEvent struct {
 // CheckSuiteEvent is triggered when a check suite is "completed", "requested", or "rerequested".
 // The Webhook event name is "check_suite".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#checksuiteevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#checksuiteevent
 type CheckSuiteEvent struct {
 	CheckSuite *CheckSuite `json:"check_suite,omitempty"`
 	// The action performed. Possible values are: "completed", "requested" or "rerequested".
@@ -53,7 +53,7 @@ type CheckSuiteEvent struct {
 // CommitCommentEvent is triggered when a commit comment is created.
 // The Webhook event name is "commit_comment".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#commitcommentevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#commitcommentevent
 type CommitCommentEvent struct {
 	Comment *RepositoryComment `json:"comment,omitempty"`
 
@@ -64,6 +64,20 @@ type CommitCommentEvent struct {
 	Installation *Installation `json:"installation,omitempty"`
 }
 
+// ContentReferenceEvent is triggered when the body or comment of an issue or
+// pull request includes a URL that matches a configured content reference
+// domain.
+// The Webhook event name is "content_reference".
+//
+// GitHub API docs: https://developer.github.com/webhooks/event-payloads/#content_reference
+type ContentReferenceEvent struct {
+	Action           *string           `json:"action,omitempty"`
+	ContentReference *ContentReference `json:"content_reference,omitempty"`
+	Repo             *Repository       `json:"repository,omitempty"`
+	Sender           *User             `json:"sender,omitempty"`
+	Installation     *Installation     `json:"installation,omitempty"`
+}
+
 // CreateEvent represents a created repository, branch, or tag.
 // The Webhook event name is "create".
 //
@@ -71,7 +85,7 @@ type CommitCommentEvent struct {
 // Additionally, webhooks will not receive this event for tags if more
 // than three tags are pushed at once.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#createevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#createevent
 type CreateEvent struct {
 	Ref *string `json:"ref,omitempty"`
 	// RefType is the object that was created. Possible values are: "repository", "branch", "tag".
@@ -92,7 +106,7 @@ type CreateEvent struct {
 // Note: webhooks will not receive this event for tags if more than three tags
 // are deleted at once.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#deleteevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#deleteevent
 type DeleteEvent struct {
 	Ref *string `json:"ref,omitempty"`
 	// RefType is the object that was deleted. Possible values are: "branch", "tag".
@@ -108,7 +122,7 @@ type DeleteEvent struct {
 // DeployKeyEvent is triggered when a deploy key is added or removed from a repository.
 // The Webhook event name is "deploy_key".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#deploykeyevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#deploykeyevent
 type DeployKeyEvent struct {
 	// Action is the action that was performed. Possible values are:
 	// "created" or "deleted".
@@ -123,7 +137,7 @@ type DeployKeyEvent struct {
 //
 // Events of this type are not visible in timelines, they are only used to trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#deploymentevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#deploymentevent
 type DeploymentEvent struct {
 	Deployment *Deployment `json:"deployment,omitempty"`
 	Repo       *Repository `json:"repository,omitempty"`
@@ -138,7 +152,7 @@ type DeploymentEvent struct {
 //
 // Events of this type are not visible in timelines, they are only used to trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#deploymentstatusevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#deploymentstatusevent
 type DeploymentStatusEvent struct {
 	Deployment       *Deployment       `json:"deployment,omitempty"`
 	DeploymentStatus *DeploymentStatus `json:"deployment_status,omitempty"`
@@ -152,7 +166,7 @@ type DeploymentStatusEvent struct {
 // ForkEvent is triggered when a user forks a repository.
 // The Webhook event name is "fork".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#forkevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#forkevent
 type ForkEvent struct {
 	// Forkee is the created repository.
 	Forkee *Repository `json:"forkee,omitempty"`
@@ -166,7 +180,7 @@ type ForkEvent struct {
 // GitHubAppAuthorizationEvent is triggered when a user's authorization for a
 // GitHub Application is revoked.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#githubappauthorizationevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#githubappauthorizationevent
 type GitHubAppAuthorizationEvent struct {
 	// The action performed. Possible value is: "revoked".
 	Action *string `json:"action,omitempty"`
@@ -188,7 +202,7 @@ type Page struct {
 // GollumEvent is triggered when a Wiki page is created or updated.
 // The Webhook event name is "gollum".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#gollumevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#gollumevent
 type GollumEvent struct {
 	Pages []*Page `json:"pages,omitempty"`
 
@@ -207,6 +221,14 @@ type EditChange struct {
 	Body *struct {
 		From *string `json:"from,omitempty"`
 	} `json:"body,omitempty"`
+	Base *struct {
+		Ref *struct {
+			From *string `json:"from,omitempty"`
+		} `json:"ref,omitempty"`
+		SHA *struct {
+			From *string `json:"from,omitempty"`
+		} `json:"sha,omitempty"`
+	} `json:"base,omitempty"`
 }
 
 // ProjectChange represents the changes when a project has been edited.
@@ -255,22 +277,24 @@ type TeamChange struct {
 	} `json:"repository,omitempty"`
 }
 
-// InstallationEvent is triggered when a GitHub App has been installed or uninstalled.
+// InstallationEvent is triggered when a GitHub App has been installed, uninstalled, suspend, unsuspended
+// or new permissions have been accepted.
 // The Webhook event name is "installation".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#installationevent
+// GitHub API docs: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#installation
 type InstallationEvent struct {
-	// The action that was performed. Can be either "created" or "deleted".
+	// The action that was performed. Can be either "created", "deleted", "suspend", "unsuspend" or "new_permissions_accepted".
 	Action       *string       `json:"action,omitempty"`
 	Repositories []*Repository `json:"repositories,omitempty"`
 	Sender       *User         `json:"sender,omitempty"`
 	Installation *Installation `json:"installation,omitempty"`
+	// TODO key "requester" is not covered
 }
 
 // InstallationRepositoriesEvent is triggered when a repository is added or
 // removed from an installation. The Webhook event name is "installation_repositories".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#installationrepositoriesevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#installationrepositoriesevent
 type InstallationRepositoriesEvent struct {
 	// The action that was performed. Can be either "added" or "removed".
 	Action              *string       `json:"action,omitempty"`
@@ -285,7 +309,7 @@ type InstallationRepositoriesEvent struct {
 // or pull request.
 // The Webhook event name is "issue_comment".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#issuecommentevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#issuecommentevent
 type IssueCommentEvent struct {
 	// Action is the action that was performed on the comment.
 	// Possible values are: "created", "edited", "deleted".
@@ -305,7 +329,7 @@ type IssueCommentEvent struct {
 // locked, unlocked, milestoned, or demilestoned.
 // The Webhook event name is "issues".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#issuesevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#issuesevent
 type IssuesEvent struct {
 	// Action is the action that was performed. Possible values are: "opened",
 	// "edited", "deleted", "transferred", "pinned", "unpinned", "closed", "reopened",
@@ -326,7 +350,7 @@ type IssuesEvent struct {
 // LabelEvent is triggered when a repository's label is created, edited, or deleted.
 // The Webhook event name is "label"
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#labelevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#labelevent
 type LabelEvent struct {
 	// Action is the action that was performed. Possible values are:
 	// "created", "edited", "deleted"
@@ -344,7 +368,7 @@ type LabelEvent struct {
 // their GitHub Marketplace plan.
 // Webhook event name "marketplace_purchase".
 //
-// Github API docs: https://developer.github.com/v3/activity/events/types/#marketplacepurchaseevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#marketplacepurchaseevent
 type MarketplacePurchaseEvent struct {
 	// Action is the action that was performed. Possible values are:
 	// "purchased", "cancelled", "pending_change", "pending_change_cancelled", "changed".
@@ -361,7 +385,7 @@ type MarketplacePurchaseEvent struct {
 // MemberEvent is triggered when a user is added as a collaborator to a repository.
 // The Webhook event name is "member".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#memberevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#memberevent
 type MemberEvent struct {
 	// Action is the action that was performed. Possible value is: "added".
 	Action *string `json:"action,omitempty"`
@@ -379,7 +403,7 @@ type MemberEvent struct {
 // Events of this type are not visible in timelines, they are only used to
 // trigger organization webhooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#membershipevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#membershipevent
 type MembershipEvent struct {
 	// Action is the action that was performed. Possible values are: "added", "removed".
 	Action *string `json:"action,omitempty"`
@@ -399,7 +423,7 @@ type MembershipEvent struct {
 // Therefore, it must be selected for each hook that you'd like to receive meta events for.
 // The Webhook event name is "meta".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#metaevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#metaevent
 type MetaEvent struct {
 	// Action is the action that was performed. Possible value is: "deleted".
 	Action *string `json:"action,omitempty"`
@@ -414,7 +438,7 @@ type MetaEvent struct {
 // MilestoneEvent is triggered when a milestone is created, closed, opened, edited, or deleted.
 // The Webhook event name is "milestone".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#milestoneevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#milestoneevent
 type MilestoneEvent struct {
 	// Action is the action that was performed. Possible values are:
 	// "created", "closed", "opened", "edited", "deleted"
@@ -434,7 +458,7 @@ type MilestoneEvent struct {
 // Events of this type are not visible in timelines. These events are only used to trigger organization hooks.
 // Webhook event name is "organization".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#organizationevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#organizationevent
 type OrganizationEvent struct {
 	// Action is the action that was performed.
 	// Possible values are: "deleted", "renamed", "member_added", "member_removed", or "member_invited".
@@ -455,7 +479,7 @@ type OrganizationEvent struct {
 // OrgBlockEvent is triggered when an organization blocks or unblocks a user.
 // The Webhook event name is "org_block".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#orgblockevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#orgblockevent
 type OrgBlockEvent struct {
 	// Action is the action that was performed.
 	// Can be "blocked" or "unblocked".
@@ -493,7 +517,7 @@ type PackageEvent struct {
 //
 // Events of this type are not visible in timelines, they are only used to trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#pagebuildevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#pagebuildevent
 type PageBuildEvent struct {
 	Build *PagesBuild `json:"build,omitempty"`
 
@@ -520,7 +544,7 @@ type PingEvent struct {
 // ProjectEvent is triggered when project is created, modified or deleted.
 // The webhook event name is "project".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#projectevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#projectevent
 type ProjectEvent struct {
 	Action  *string        `json:"action,omitempty"`
 	Changes *ProjectChange `json:"changes,omitempty"`
@@ -536,7 +560,7 @@ type ProjectEvent struct {
 // ProjectCardEvent is triggered when a project card is created, updated, moved, converted to an issue, or deleted.
 // The webhook event name is "project_card".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#projectcardevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#projectcardevent
 type ProjectCardEvent struct {
 	Action      *string            `json:"action,omitempty"`
 	Changes     *ProjectCardChange `json:"changes,omitempty"`
@@ -553,7 +577,7 @@ type ProjectCardEvent struct {
 // ProjectColumnEvent is triggered when a project column is created, updated, moved, or deleted.
 // The webhook event name is "project_column".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#projectcolumnevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#projectcolumnevent
 type ProjectColumnEvent struct {
 	Action        *string              `json:"action,omitempty"`
 	Changes       *ProjectColumnChange `json:"changes,omitempty"`
@@ -571,7 +595,7 @@ type ProjectColumnEvent struct {
 // According to GitHub: "Without a doubt: the best GitHub event."
 // The Webhook event name is "public".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#publicevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#publicevent
 type PublicEvent struct {
 	// The following fields are only populated by Webhook events.
 	Repo         *Repository   `json:"repository,omitempty"`
@@ -584,7 +608,7 @@ type PublicEvent struct {
 // locked, unlocked, a pull request review is requested, or a review request is removed.
 // The Webhook event name is "pull_request".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#pullrequestevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#pullrequestevent
 type PullRequestEvent struct {
 	// Action is the action that was performed. Possible values are:
 	// "assigned", "unassigned", "review_requested", "review_request_removed", "labeled", "unlabeled",
@@ -625,7 +649,7 @@ type PullRequestEvent struct {
 // request.
 // The Webhook event name is "pull_request_review".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#pullrequestreviewevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#pullrequestreviewevent
 type PullRequestReviewEvent struct {
 	// Action is always "submitted".
 	Action      *string            `json:"action,omitempty"`
@@ -646,7 +670,7 @@ type PullRequestReviewEvent struct {
 // portion of the unified diff of a pull request.
 // The Webhook event name is "pull_request_review_comment".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#pullrequestreviewcommentevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#pullrequestreviewcommentevent
 type PullRequestReviewCommentEvent struct {
 	// Action is the action that was performed on the comment.
 	// Possible values are: "created", "edited", "deleted".
@@ -663,7 +687,7 @@ type PullRequestReviewCommentEvent struct {
 
 // PushEvent represents a git push to a GitHub repository.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#pushevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#pushevent
 type PushEvent struct {
 	PushID       *int64        `json:"push_id,omitempty"`
 	Head         *string       `json:"head,omitempty"`
@@ -765,7 +789,7 @@ type PushEventRepoOwner struct {
 // edited, deleted, or prereleased.
 // The Webhook event name is "release".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#releaseevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#releaseevent
 type ReleaseEvent struct {
 	// Action is the action that was performed. Possible values are: "published", "unpublished",
 	// "created", "edited", "deleted", or "prereleased".
@@ -786,7 +810,7 @@ type ReleaseEvent struct {
 // Events of this type are not visible in timelines, they are only used to
 // trigger organization webhooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#repositoryevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#repositoryevent
 type RepositoryEvent struct {
 	// Action is the action that was performed. Possible values are: "created",
 	// "deleted" (organization hooks only), "archived", "unarchived", "edited", "renamed",
@@ -802,7 +826,7 @@ type RepositoryEvent struct {
 
 // RepositoryDispatchEvent is triggered when a client sends a POST request to the repository dispatch event endpoint.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#repositorydispatchevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#repositorydispatchevent
 type RepositoryDispatchEvent struct {
 	// Action is the event_type that submitted with the repository dispatch payload. Value can be any string.
 	Action        *string         `json:"action,omitempty"`
@@ -818,7 +842,7 @@ type RepositoryDispatchEvent struct {
 
 // RepositoryVulnerabilityAlertEvent is triggered when a security alert is created, dismissed, or resolved.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#repositoryvulnerabilityalertevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#repositoryvulnerabilityalertevent
 type RepositoryVulnerabilityAlertEvent struct {
 	// Action is the action that was performed. Possible values are: "create", "dismiss", "resolve".
 	Action *string `json:"action,omitempty"`
@@ -843,7 +867,7 @@ type RepositoryVulnerabilityAlertEvent struct {
 // StarEvent is triggered when a star is added or removed from a repository.
 // The Webhook event name is "star".
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#starevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#starevent
 type StarEvent struct {
 	// Action is the action that was performed. Possible values are: "created" or "deleted".
 	Action *string `json:"action,omitempty"`
@@ -858,7 +882,7 @@ type StarEvent struct {
 // Events of this type are not visible in timelines, they are only used to
 // trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#statusevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#statusevent
 type StatusEvent struct {
 	SHA *string `json:"sha,omitempty"`
 	// State is the new state. Possible values are: "pending", "success", "failure", "error".
@@ -885,7 +909,7 @@ type StatusEvent struct {
 // Events of this type are not visible in timelines. These events are only used
 // to trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#teamevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#teamevent
 type TeamEvent struct {
 	Action  *string     `json:"action,omitempty"`
 	Team    *Team       `json:"team,omitempty"`
@@ -904,7 +928,7 @@ type TeamEvent struct {
 // Events of this type are not visible in timelines. These events are only used
 // to trigger hooks.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#teamaddevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#teamaddevent
 type TeamAddEvent struct {
 	Team *Team       `json:"team,omitempty"`
 	Repo *Repository `json:"repository,omitempty"`
@@ -935,7 +959,7 @@ type UserEvent struct {
 // The event’s actor is the user who starred a repository, and the event’s
 // repository is the repository that was starred.
 //
-// GitHub API docs: https://developer.github.com/v3/activity/events/types/#watchevent
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/activity/events/types/#watchevent
 type WatchEvent struct {
 	// Action is the action that was performed. Possible value is: "started".
 	Action *string `json:"action,omitempty"`
@@ -944,4 +968,31 @@ type WatchEvent struct {
 	Repo         *Repository   `json:"repository,omitempty"`
 	Sender       *User         `json:"sender,omitempty"`
 	Installation *Installation `json:"installation,omitempty"`
+}
+
+// WorkflowDispatchEvent is triggered when someone triggers a workflow run on GitHub or
+// sends a POST request to the create a workflow dispatch event endpoint.
+//
+// GitHub API docs: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#workflow_dispatch
+type WorkflowDispatchEvent struct {
+	Inputs   json.RawMessage `json:"inputs,omitempty"`
+	Ref      *string         `json:"ref,omitempty"`
+	Workflow *string         `json:"workflow,omitempty"`
+
+	// The following fields are only populated by Webhook events.
+	Repo   *Repository   `json:"repository,omitempty"`
+	Org    *Organization `json:"organization,omitempty"`
+	Sender *User         `json:"sender,omitempty"`
+}
+
+// WorkflowRunEvent is triggered when a GitHub Actions workflow run is requested or completed.
+//
+// GitHub API docs: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#workflow_run
+type WorkflowRunEvent struct {
+	Action *string `json:"action,omitempty"`
+
+	// The following fields are only populated by Webhook events.
+	Org    *Organization `json:"organization,omitempty"`
+	Repo   *Repository   `json:"repository,omitempty"`
+	Sender *User         `json:"sender,omitempty"`
 }

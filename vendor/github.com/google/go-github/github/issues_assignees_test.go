@@ -25,7 +25,8 @@ func TestIssuesService_ListAssignees(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	assignees, _, err := client.Issues.ListAssignees(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	assignees, _, err := client.Issues.ListAssignees(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Issues.ListAssignees returned error: %v", err)
 	}
@@ -34,13 +35,28 @@ func TestIssuesService_ListAssignees(t *testing.T) {
 	if !reflect.DeepEqual(assignees, want) {
 		t.Errorf("Issues.ListAssignees returned %+v, want %+v", assignees, want)
 	}
+
+	const methodName = "ListAssignees"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListAssignees(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListAssignees(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_ListAssignees_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.ListAssignees(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.ListAssignees(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -52,13 +68,28 @@ func TestIssuesService_IsAssignee_true(t *testing.T) {
 		testMethod(t, r, "GET")
 	})
 
-	assignee, _, err := client.Issues.IsAssignee(context.Background(), "o", "r", "u")
+	ctx := context.Background()
+	assignee, _, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
 	if err != nil {
 		t.Errorf("Issues.IsAssignee returned error: %v", err)
 	}
 	if want := true; assignee != want {
 		t.Errorf("Issues.IsAssignee returned %+v, want %+v", assignee, want)
 	}
+
+	const methodName = "IsAssignee"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.IsAssignee(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_IsAssignee_false(t *testing.T) {
@@ -70,13 +101,28 @@ func TestIssuesService_IsAssignee_false(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	assignee, _, err := client.Issues.IsAssignee(context.Background(), "o", "r", "u")
+	ctx := context.Background()
+	assignee, _, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
 	if err != nil {
 		t.Errorf("Issues.IsAssignee returned error: %v", err)
 	}
 	if want := false; assignee != want {
 		t.Errorf("Issues.IsAssignee returned %+v, want %+v", assignee, want)
 	}
+
+	const methodName = "IsAssignee"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.IsAssignee(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_IsAssignee_error(t *testing.T) {
@@ -88,20 +134,36 @@ func TestIssuesService_IsAssignee_error(t *testing.T) {
 		http.Error(w, "BadRequest", http.StatusBadRequest)
 	})
 
-	assignee, _, err := client.Issues.IsAssignee(context.Background(), "o", "r", "u")
+	ctx := context.Background()
+	assignee, _, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
 	if err == nil {
 		t.Errorf("Expected HTTP 400 response")
 	}
 	if want := false; assignee != want {
 		t.Errorf("Issues.IsAssignee returned %+v, want %+v", assignee, want)
 	}
+
+	const methodName = "IsAssignee"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.IsAssignee(ctx, "o", "r", "u")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.IsAssignee(ctx, "o", "r", "u")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_IsAssignee_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.IsAssignee(context.Background(), "%", "r", "u")
+	ctx := context.Background()
+	_, _, err := client.Issues.IsAssignee(ctx, "%", "r", "u")
 	testURLParseError(t, err)
 }
 
@@ -123,7 +185,8 @@ func TestIssuesService_AddAssignees(t *testing.T) {
 		fmt.Fprint(w, `{"number":1,"assignees":[{"login":"user1"},{"login":"user2"}]}`)
 	})
 
-	got, _, err := client.Issues.AddAssignees(context.Background(), "o", "r", 1, []string{"user1", "user2"})
+	ctx := context.Background()
+	got, _, err := client.Issues.AddAssignees(ctx, "o", "r", 1, []string{"user1", "user2"})
 	if err != nil {
 		t.Errorf("Issues.AddAssignees returned error: %v", err)
 	}
@@ -132,6 +195,12 @@ func TestIssuesService_AddAssignees(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Issues.AddAssignees = %+v, want %+v", got, want)
 	}
+
+	const methodName = "AddAssignees"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.AddAssignees(ctx, "\n", "\n", -1, []string{"\n", "\n"})
+		return err
+	})
 }
 
 func TestIssuesService_RemoveAssignees(t *testing.T) {
@@ -152,7 +221,8 @@ func TestIssuesService_RemoveAssignees(t *testing.T) {
 		fmt.Fprint(w, `{"number":1,"assignees":[]}`)
 	})
 
-	got, _, err := client.Issues.RemoveAssignees(context.Background(), "o", "r", 1, []string{"user1", "user2"})
+	ctx := context.Background()
+	got, _, err := client.Issues.RemoveAssignees(ctx, "o", "r", 1, []string{"user1", "user2"})
 	if err != nil {
 		t.Errorf("Issues.RemoveAssignees returned error: %v", err)
 	}
@@ -161,4 +231,10 @@ func TestIssuesService_RemoveAssignees(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Issues.RemoveAssignees = %+v, want %+v", got, want)
 	}
+
+	const methodName = "RemoveAssignees"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.RemoveAssignees(ctx, "\n", "\n", -1, []string{"\n", "\n"})
+		return err
+	})
 }

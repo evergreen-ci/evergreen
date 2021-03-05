@@ -13,14 +13,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestRepositoriesService_List_authenticatedUser(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeTopicsPreview}
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/user/repos", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -38,32 +37,26 @@ func TestRepositoriesService_List_authenticatedUser(t *testing.T) {
 		t.Errorf("Repositories.List returned %+v, want %+v", got, want)
 	}
 
-	// Test addOptions failure
-	_, _, err = client.Repositories.List(ctx, "\n", &RepositoryListOptions{})
-	if err == nil {
-		t.Error("bad options List err = nil, want error")
-	}
+	const methodName = "List"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.List(ctx, "\n", &RepositoryListOptions{})
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err := client.Repositories.List(ctx, "", nil)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now List = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now List resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now List err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.List(ctx, "", nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_List_specifiedUser(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeTopicsPreview}
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/users/u/repos", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -84,7 +77,8 @@ func TestRepositoriesService_List_specifiedUser(t *testing.T) {
 		Direction:   "asc",
 		ListOptions: ListOptions{Page: 2},
 	}
-	repos, _, err := client.Repositories.List(context.Background(), "u", opt)
+	ctx := context.Background()
+	repos, _, err := client.Repositories.List(ctx, "u", opt)
 	if err != nil {
 		t.Errorf("Repositories.List returned error: %v", err)
 	}
@@ -99,7 +93,7 @@ func TestRepositoriesService_List_specifiedUser_type(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeTopicsPreview}
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/users/u/repos", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -112,7 +106,8 @@ func TestRepositoriesService_List_specifiedUser_type(t *testing.T) {
 	opt := &RepositoryListOptions{
 		Type: "owner",
 	}
-	repos, _, err := client.Repositories.List(context.Background(), "u", opt)
+	ctx := context.Background()
+	repos, _, err := client.Repositories.List(ctx, "u", opt)
 	if err != nil {
 		t.Errorf("Repositories.List returned error: %v", err)
 	}
@@ -127,7 +122,8 @@ func TestRepositoriesService_List_invalidUser(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.List(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.List(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -135,7 +131,7 @@ func TestRepositoriesService_ListByOrg(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeTopicsPreview}
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/orgs/o/repos", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
@@ -161,32 +157,27 @@ func TestRepositoriesService_ListByOrg(t *testing.T) {
 		t.Errorf("Repositories.ListByOrg returned %+v, want %+v", got, want)
 	}
 
-	// Test addOptions failure
-	_, _, err = client.Repositories.ListByOrg(ctx, "\n", opt)
-	if err == nil {
-		t.Error("bad options ListByOrg err = nil, want error")
-	}
+	const methodName = "ListByOrg"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListByOrg(ctx, "\n", opt)
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err := client.Repositories.ListByOrg(ctx, "o", opt)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now ListByOrg = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now ListByOrg resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now ListByOrg err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListByOrg(ctx, "o", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListByOrg_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.ListByOrg(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.ListByOrg(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -214,32 +205,14 @@ func TestRepositoriesService_ListAll(t *testing.T) {
 		t.Errorf("Repositories.ListAll returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.ListAll(ctx, &RepositoryListAllOptions{1})
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' ListAll = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' ListAll resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' ListAll err = nil, want error")
-	}
-
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.ListAll(ctx, &RepositoryListAllOptions{1})
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now ListAll = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now ListAll resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now ListAll err = nil, want error")
-	}
+	const methodName = "ListAll"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListAll(ctx, &RepositoryListAllOptions{1})
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Create_user(t *testing.T) {
@@ -277,32 +250,19 @@ func TestRepositoriesService_Create_user(t *testing.T) {
 		t.Errorf("Repositories.Create returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.Create(ctx, "", input)
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' Create = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' Create resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' Create err = nil, want error")
-	}
+	const methodName = "Create"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.Create(ctx, "\n", input)
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.Create(ctx, "", input)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now Create = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now Create resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now Create err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.Create(ctx, "", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Create_org(t *testing.T) {
@@ -329,7 +289,8 @@ func TestRepositoriesService_Create_org(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	repo, _, err := client.Repositories.Create(context.Background(), "o", input)
+	ctx := context.Background()
+	repo, _, err := client.Repositories.Create(ctx, "o", input)
 	if err != nil {
 		t.Errorf("Repositories.Create returned error: %v", err)
 	}
@@ -373,32 +334,19 @@ func TestRepositoriesService_CreateFromTemplate(t *testing.T) {
 		t.Errorf("Repositories.CreateFromTemplate returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.CreateFromTemplate(ctx, "to", "tr", templateRepoReq)
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' CreateFromTemplate = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' CreateFromTemplate resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' CreateFromTemplate err = nil, want error")
-	}
+	const methodName = "CreateFromTemplate"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.CreateFromTemplate(ctx, "\n", "\n", templateRepoReq)
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.CreateFromTemplate(ctx, "to", "tr", templateRepoReq)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now CreateFromTemplate = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now CreateFromTemplate resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now CreateFromTemplate err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.CreateFromTemplate(ctx, "to", "tr", templateRepoReq)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Get(t *testing.T) {
@@ -423,19 +371,19 @@ func TestRepositoriesService_Get(t *testing.T) {
 		t.Errorf("Repositories.Get returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err := client.Repositories.Get(ctx, "o", "r")
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now Get = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now Get resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now Get err = nil, want error")
-	}
+	const methodName = "Get"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.Get(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.Get(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetCodeOfConduct(t *testing.T) {
@@ -470,32 +418,19 @@ func TestRepositoriesService_GetCodeOfConduct(t *testing.T) {
 		t.Errorf("Repositories.GetCodeOfConduct returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.GetCodeOfConduct(ctx, "o", "r")
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' GetCodeOfConduct = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' GetCodeOfConduct resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' GetCodeOfConduct err = nil, want error")
-	}
+	const methodName = "GetCodeOfConduct"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetCodeOfConduct(ctx, "\n", "\n")
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.GetCodeOfConduct(ctx, "o", "r")
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now GetCodeOfConduct = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now GetCodeOfConduct resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now GetCodeOfConduct err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetCodeOfConduct(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetByID(t *testing.T) {
@@ -518,32 +453,14 @@ func TestRepositoriesService_GetByID(t *testing.T) {
 		t.Errorf("Repositories.GetByID returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.GetByID(ctx, 1)
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' GetByID = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' GetByID resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' GetByID err = nil, want error")
-	}
-
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.GetByID(ctx, 1)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now GetByID = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now GetByID resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now GetByID err = nil, want error")
-	}
+	const methodName = "GetByID"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetByID(ctx, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Edit(t *testing.T) {
@@ -577,19 +494,19 @@ func TestRepositoriesService_Edit(t *testing.T) {
 		t.Errorf("Repositories.Edit returned %+v, want %+v", got, want)
 	}
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err := client.Repositories.Edit(ctx, "o", "r", input)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now Edit = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now Edit resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now Edit err = nil, want error")
-	}
+	const methodName = "Edit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.Edit(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.Edit(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Delete(t *testing.T) {
@@ -606,22 +523,23 @@ func TestRepositoriesService_Delete(t *testing.T) {
 		t.Errorf("Repositories.Delete returned error: %v", err)
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	resp, err := client.Repositories.Delete(ctx, "o", "r")
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' Delete resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' Delete err = nil, want error")
-	}
+	const methodName = "Delete"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.Delete(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.Delete(ctx, "o", "r")
+	})
 }
 
 func TestRepositoriesService_Get_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.Get(context.Background(), "%", "r")
+	ctx := context.Background()
+	_, _, err := client.Repositories.Get(ctx, "%", "r")
 	testURLParseError(t, err)
 }
 
@@ -629,7 +547,8 @@ func TestRepositoriesService_Edit_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.Edit(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.Edit(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -644,7 +563,8 @@ func TestRepositoriesService_GetVulnerabilityAlerts(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	vulnerabilityAlertsEnabled, _, err := client.Repositories.GetVulnerabilityAlerts(context.Background(), "o", "r")
+	ctx := context.Background()
+	vulnerabilityAlertsEnabled, _, err := client.Repositories.GetVulnerabilityAlerts(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Repositories.GetVulnerabilityAlerts returned error: %v", err)
 	}
@@ -652,6 +572,20 @@ func TestRepositoriesService_GetVulnerabilityAlerts(t *testing.T) {
 	if want := true; vulnerabilityAlertsEnabled != want {
 		t.Errorf("Repositories.GetVulnerabilityAlerts returned %+v, want %+v", vulnerabilityAlertsEnabled, want)
 	}
+
+	const methodName = "GetVulnerabilityAlerts"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetVulnerabilityAlerts(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetVulnerabilityAlerts(ctx, "o", "r")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_EnableVulnerabilityAlerts(t *testing.T) {
@@ -665,9 +599,20 @@ func TestRepositoriesService_EnableVulnerabilityAlerts(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Repositories.EnableVulnerabilityAlerts(context.Background(), "o", "r"); err != nil {
+	ctx := context.Background()
+	if _, err := client.Repositories.EnableVulnerabilityAlerts(ctx, "o", "r"); err != nil {
 		t.Errorf("Repositories.EnableVulnerabilityAlerts returned error: %v", err)
 	}
+
+	const methodName = "EnableVulnerabilityAlerts"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.EnableVulnerabilityAlerts(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.EnableVulnerabilityAlerts(ctx, "o", "r")
+	})
 }
 
 func TestRepositoriesService_DisableVulnerabilityAlerts(t *testing.T) {
@@ -681,9 +626,20 @@ func TestRepositoriesService_DisableVulnerabilityAlerts(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Repositories.DisableVulnerabilityAlerts(context.Background(), "o", "r"); err != nil {
+	ctx := context.Background()
+	if _, err := client.Repositories.DisableVulnerabilityAlerts(ctx, "o", "r"); err != nil {
 		t.Errorf("Repositories.DisableVulnerabilityAlerts returned error: %v", err)
 	}
+
+	const methodName = "DisableVulnerabilityAlerts"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.DisableVulnerabilityAlerts(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.DisableVulnerabilityAlerts(ctx, "o", "r")
+	})
 }
 
 func TestRepositoriesService_EnableAutomatedSecurityFixes(t *testing.T) {
@@ -697,7 +653,8 @@ func TestRepositoriesService_EnableAutomatedSecurityFixes(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Repositories.EnableAutomatedSecurityFixes(context.Background(), "o", "r"); err != nil {
+	ctx := context.Background()
+	if _, err := client.Repositories.EnableAutomatedSecurityFixes(ctx, "o", "r"); err != nil {
 		t.Errorf("Repositories.EnableAutomatedSecurityFixes returned error: %v", err)
 	}
 }
@@ -713,7 +670,8 @@ func TestRepositoriesService_DisableAutomatedSecurityFixes(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Repositories.DisableAutomatedSecurityFixes(context.Background(), "o", "r"); err != nil {
+	ctx := context.Background()
+	if _, err := client.Repositories.DisableAutomatedSecurityFixes(ctx, "o", "r"); err != nil {
 		t.Errorf("Repositories.DisableAutomatedSecurityFixes returned error: %v", err)
 	}
 }
@@ -732,7 +690,8 @@ func TestRepositoriesService_ListContributors(t *testing.T) {
 	})
 
 	opts := &ListContributorsOptions{Anon: "true", ListOptions: ListOptions{Page: 2}}
-	contributors, _, err := client.Repositories.ListContributors(context.Background(), "o", "r", opts)
+	ctx := context.Background()
+	contributors, _, err := client.Repositories.ListContributors(ctx, "o", "r", opts)
 	if err != nil {
 		t.Errorf("Repositories.ListContributors returned error: %v", err)
 	}
@@ -741,6 +700,20 @@ func TestRepositoriesService_ListContributors(t *testing.T) {
 	if !reflect.DeepEqual(contributors, want) {
 		t.Errorf("Repositories.ListContributors returned %+v, want %+v", contributors, want)
 	}
+
+	const methodName = "ListContributors"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListContributors(ctx, "\n", "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListContributors(ctx, "o", "r", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListLanguages(t *testing.T) {
@@ -752,7 +725,8 @@ func TestRepositoriesService_ListLanguages(t *testing.T) {
 		fmt.Fprint(w, `{"go":1}`)
 	})
 
-	languages, _, err := client.Repositories.ListLanguages(context.Background(), "o", "r")
+	ctx := context.Background()
+	languages, _, err := client.Repositories.ListLanguages(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Repositories.ListLanguages returned error: %v", err)
 	}
@@ -761,6 +735,20 @@ func TestRepositoriesService_ListLanguages(t *testing.T) {
 	if !reflect.DeepEqual(languages, want) {
 		t.Errorf("Repositories.ListLanguages returned %+v, want %+v", languages, want)
 	}
+
+	const methodName = "ListLanguages"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListLanguages(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListLanguages(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListTeams(t *testing.T) {
@@ -774,7 +762,8 @@ func TestRepositoriesService_ListTeams(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	teams, _, err := client.Repositories.ListTeams(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	teams, _, err := client.Repositories.ListTeams(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListTeams returned error: %v", err)
 	}
@@ -783,6 +772,20 @@ func TestRepositoriesService_ListTeams(t *testing.T) {
 	if !reflect.DeepEqual(teams, want) {
 		t.Errorf("Repositories.ListTeams returned %+v, want %+v", teams, want)
 	}
+
+	const methodName = "ListTeams"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListTeams(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListTeams(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListTags(t *testing.T) {
@@ -796,7 +799,8 @@ func TestRepositoriesService_ListTags(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	tags, _, err := client.Repositories.ListTags(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	tags, _, err := client.Repositories.ListTags(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListTags returned error: %v", err)
 	}
@@ -815,6 +819,20 @@ func TestRepositoriesService_ListTags(t *testing.T) {
 	if !reflect.DeepEqual(tags, want) {
 		t.Errorf("Repositories.ListTags returned %+v, want %+v", tags, want)
 	}
+
+	const methodName = "ListTags"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListTags(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListTags(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListBranches(t *testing.T) {
@@ -823,8 +841,6 @@ func TestRepositoriesService_ListBranches(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		// TODO: remove custom Accept header when this API fully launches
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		testFormValues(t, r, values{"page": "2"})
 		fmt.Fprint(w, `[{"name":"master", "commit" : {"sha" : "a57781", "url" : "https://api.github.com/repos/o/r/commits/a57781"}}]`)
 	})
@@ -833,7 +849,8 @@ func TestRepositoriesService_ListBranches(t *testing.T) {
 		Protected:   nil,
 		ListOptions: ListOptions{Page: 2},
 	}
-	branches, _, err := client.Repositories.ListBranches(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	branches, _, err := client.Repositories.ListBranches(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListBranches returned error: %v", err)
 	}
@@ -842,6 +859,20 @@ func TestRepositoriesService_ListBranches(t *testing.T) {
 	if !reflect.DeepEqual(branches, want) {
 		t.Errorf("Repositories.ListBranches returned %+v, want %+v", branches, want)
 	}
+
+	const methodName = "ListBranches"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListBranches(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListBranches(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetBranch(t *testing.T) {
@@ -850,12 +881,11 @@ func TestRepositoriesService_GetBranch(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		// TODO: remove custom Accept header when this API fully launches
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		fmt.Fprint(w, `{"name":"n", "commit":{"sha":"s","commit":{"message":"m"}}, "protected":true}`)
 	})
 
-	branch, _, err := client.Repositories.GetBranch(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	branch, _, err := client.Repositories.GetBranch(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetBranch returned error: %v", err)
 	}
@@ -874,6 +904,20 @@ func TestRepositoriesService_GetBranch(t *testing.T) {
 	if !reflect.DeepEqual(branch, want) {
 		t.Errorf("Repositories.GetBranch returned %+v, want %+v", branch, want)
 	}
+
+	const methodName = "GetBranch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetBranch(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetBranch(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetBranchProtection(t *testing.T) {
@@ -918,7 +962,8 @@ func TestRepositoriesService_GetBranchProtection(t *testing.T) {
 				}`)
 	})
 
-	protection, _, err := client.Repositories.GetBranchProtection(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	protection, _, err := client.Repositories.GetBranchProtection(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetBranchProtection returned error: %v", err)
 	}
@@ -957,6 +1002,20 @@ func TestRepositoriesService_GetBranchProtection(t *testing.T) {
 	if !reflect.DeepEqual(protection, want) {
 		t.Errorf("Repositories.GetBranchProtection returned %+v, want %+v", protection, want)
 	}
+
+	const methodName = "GetBranchProtection"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetBranchProtection(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetBranchProtection(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetBranchProtection_noDismissalRestrictions(t *testing.T) {
@@ -989,7 +1048,8 @@ func TestRepositoriesService_GetBranchProtection_noDismissalRestrictions(t *test
 				}`)
 	})
 
-	protection, _, err := client.Repositories.GetBranchProtection(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	protection, _, err := client.Repositories.GetBranchProtection(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetBranchProtection returned error: %v", err)
 	}
@@ -1084,7 +1144,8 @@ func TestRepositoriesService_UpdateBranchProtection(t *testing.T) {
 		}`)
 	})
 
-	protection, _, err := client.Repositories.UpdateBranchProtection(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	protection, _, err := client.Repositories.UpdateBranchProtection(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.UpdateBranchProtection returned error: %v", err)
 	}
@@ -1121,6 +1182,20 @@ func TestRepositoriesService_UpdateBranchProtection(t *testing.T) {
 	if !reflect.DeepEqual(protection, want) {
 		t.Errorf("Repositories.UpdateBranchProtection returned %+v, want %+v", protection, want)
 	}
+
+	const methodName = "UpdateBranchProtection"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.UpdateBranchProtection(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.UpdateBranchProtection(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_RemoveBranchProtection(t *testing.T) {
@@ -1129,22 +1204,32 @@ func TestRepositoriesService_RemoveBranchProtection(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b/protection", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		// TODO: remove custom Accept header when this API fully launches
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Repositories.RemoveBranchProtection(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	_, err := client.Repositories.RemoveBranchProtection(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.RemoveBranchProtection returned error: %v", err)
 	}
+
+	const methodName = "RemoveBranchProtection"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.RemoveBranchProtection(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.RemoveBranchProtection(ctx, "o", "r", "b")
+	})
 }
 
 func TestRepositoriesService_ListLanguages_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.ListLanguages(context.Background(), "%", "%")
+	ctx := context.Background()
+	_, _, err := client.Repositories.ListLanguages(ctx, "%", "%")
 	testURLParseError(t, err)
 }
 
@@ -1157,7 +1242,8 @@ func TestRepositoriesService_License(t *testing.T) {
 		fmt.Fprint(w, `{"name": "LICENSE", "path": "LICENSE", "license":{"key":"mit","name":"MIT License","spdx_id":"MIT","url":"https://api.github.com/licenses/mit","featured":true}}`)
 	})
 
-	got, _, err := client.Repositories.License(context.Background(), "o", "r")
+	ctx := context.Background()
+	got, _, err := client.Repositories.License(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Repositories.License returned error: %v", err)
 	}
@@ -1177,6 +1263,20 @@ func TestRepositoriesService_License(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.License returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "License"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.License(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.License(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetRequiredStatusChecks(t *testing.T) {
@@ -1188,12 +1288,11 @@ func TestRepositoriesService_GetRequiredStatusChecks(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(v)
 
 		testMethod(t, r, "GET")
-		// TODO: remove custom Accept header when this API fully launches
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		fmt.Fprint(w, `{"strict": true,"contexts": ["x","y","z"]}`)
 	})
 
-	checks, _, err := client.Repositories.GetRequiredStatusChecks(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	checks, _, err := client.Repositories.GetRequiredStatusChecks(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetRequiredStatusChecks returned error: %v", err)
 	}
@@ -1205,6 +1304,20 @@ func TestRepositoriesService_GetRequiredStatusChecks(t *testing.T) {
 	if !reflect.DeepEqual(checks, want) {
 		t.Errorf("Repositories.GetRequiredStatusChecks returned %+v, want %+v", checks, want)
 	}
+
+	const methodName = "GetRequiredStatusChecks"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetRequiredStatusChecks(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetRequiredStatusChecks(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_UpdateRequiredStatusChecks(t *testing.T) {
@@ -1228,7 +1341,8 @@ func TestRepositoriesService_UpdateRequiredStatusChecks(t *testing.T) {
 		fmt.Fprintf(w, `{"strict":true,"contexts":["continuous-integration"]}`)
 	})
 
-	statusChecks, _, err := client.Repositories.UpdateRequiredStatusChecks(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	statusChecks, _, err := client.Repositories.UpdateRequiredStatusChecks(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.UpdateRequiredStatusChecks returned error: %v", err)
 	}
@@ -1240,6 +1354,47 @@ func TestRepositoriesService_UpdateRequiredStatusChecks(t *testing.T) {
 	if !reflect.DeepEqual(statusChecks, want) {
 		t.Errorf("Repositories.UpdateRequiredStatusChecks returned %+v, want %+v", statusChecks, want)
 	}
+
+	const methodName = "UpdateRequiredStatusChecks"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.UpdateRequiredStatusChecks(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.UpdateRequiredStatusChecks(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
+}
+
+func TestRepositoriesService_RemoveRequiredStatusChecks(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/branches/b/protection/required_status_checks", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		testHeader(t, r, "Accept", mediaTypeV3)
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	ctx := context.Background()
+	_, err := client.Repositories.RemoveRequiredStatusChecks(ctx, "o", "r", "b")
+	if err != nil {
+		t.Errorf("Repositories.RemoveRequiredStatusChecks returned error: %v", err)
+	}
+
+	const methodName = "RemoveRequiredStatusChecks"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.RemoveRequiredStatusChecks(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.RemoveRequiredStatusChecks(ctx, "o", "r", "b")
+	})
 }
 
 func TestRepositoriesService_ListRequiredStatusChecksContexts(t *testing.T) {
@@ -1251,12 +1406,11 @@ func TestRepositoriesService_ListRequiredStatusChecksContexts(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(v)
 
 		testMethod(t, r, "GET")
-		// TODO: remove custom Accept header when this API fully launches
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		fmt.Fprint(w, `["x", "y", "z"]`)
 	})
 
-	contexts, _, err := client.Repositories.ListRequiredStatusChecksContexts(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	contexts, _, err := client.Repositories.ListRequiredStatusChecksContexts(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.ListRequiredStatusChecksContexts returned error: %v", err)
 	}
@@ -1265,6 +1419,20 @@ func TestRepositoriesService_ListRequiredStatusChecksContexts(t *testing.T) {
 	if !reflect.DeepEqual(contexts, want) {
 		t.Errorf("Repositories.ListRequiredStatusChecksContexts returned %+v, want %+v", contexts, want)
 	}
+
+	const methodName = "ListRequiredStatusChecksContexts"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListRequiredStatusChecksContexts(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListRequiredStatusChecksContexts(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetPullRequestReviewEnforcement(t *testing.T) {
@@ -1286,7 +1454,8 @@ func TestRepositoriesService_GetPullRequestReviewEnforcement(t *testing.T) {
 		}`)
 	})
 
-	enforcement, _, err := client.Repositories.GetPullRequestReviewEnforcement(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	enforcement, _, err := client.Repositories.GetPullRequestReviewEnforcement(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetPullRequestReviewEnforcement returned error: %v", err)
 	}
@@ -1308,6 +1477,20 @@ func TestRepositoriesService_GetPullRequestReviewEnforcement(t *testing.T) {
 	if !reflect.DeepEqual(enforcement, want) {
 		t.Errorf("Repositories.GetPullRequestReviewEnforcement returned %+v, want %+v", enforcement, want)
 	}
+
+	const methodName = "GetPullRequestReviewEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetPullRequestReviewEnforcement(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetPullRequestReviewEnforcement(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_UpdatePullRequestReviewEnforcement(t *testing.T) {
@@ -1342,7 +1525,8 @@ func TestRepositoriesService_UpdatePullRequestReviewEnforcement(t *testing.T) {
 		}`)
 	})
 
-	enforcement, _, err := client.Repositories.UpdatePullRequestReviewEnforcement(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	enforcement, _, err := client.Repositories.UpdatePullRequestReviewEnforcement(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.UpdatePullRequestReviewEnforcement returned error: %v", err)
 	}
@@ -1363,6 +1547,20 @@ func TestRepositoriesService_UpdatePullRequestReviewEnforcement(t *testing.T) {
 	if !reflect.DeepEqual(enforcement, want) {
 		t.Errorf("Repositories.UpdatePullRequestReviewEnforcement returned %+v, want %+v", enforcement, want)
 	}
+
+	const methodName = "UpdatePullRequestReviewEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.UpdatePullRequestReviewEnforcement(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.UpdatePullRequestReviewEnforcement(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_DisableDismissalRestrictions(t *testing.T) {
@@ -1377,7 +1575,8 @@ func TestRepositoriesService_DisableDismissalRestrictions(t *testing.T) {
 		fmt.Fprintf(w, `{"dismiss_stale_reviews":true,"require_code_owner_reviews":true,"required_approving_review_count":1}`)
 	})
 
-	enforcement, _, err := client.Repositories.DisableDismissalRestrictions(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	enforcement, _, err := client.Repositories.DisableDismissalRestrictions(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.DisableDismissalRestrictions returned error: %v", err)
 	}
@@ -1391,6 +1590,20 @@ func TestRepositoriesService_DisableDismissalRestrictions(t *testing.T) {
 	if !reflect.DeepEqual(enforcement, want) {
 		t.Errorf("Repositories.DisableDismissalRestrictions returned %+v, want %+v", enforcement, want)
 	}
+
+	const methodName = "DisableDismissalRestrictions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.DisableDismissalRestrictions(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.DisableDismissalRestrictions(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_RemovePullRequestReviewEnforcement(t *testing.T) {
@@ -1399,14 +1612,24 @@ func TestRepositoriesService_RemovePullRequestReviewEnforcement(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b/protection/required_pull_request_reviews", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Repositories.RemovePullRequestReviewEnforcement(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	_, err := client.Repositories.RemovePullRequestReviewEnforcement(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.RemovePullRequestReviewEnforcement returned error: %v", err)
 	}
+
+	const methodName = "RemovePullRequestReviewEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.RemovePullRequestReviewEnforcement(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.RemovePullRequestReviewEnforcement(ctx, "o", "r", "b")
+	})
 }
 
 func TestRepositoriesService_GetAdminEnforcement(t *testing.T) {
@@ -1415,11 +1638,11 @@ func TestRepositoriesService_GetAdminEnforcement(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b/protection/enforce_admins", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		fmt.Fprintf(w, `{"url":"/repos/o/r/branches/b/protection/enforce_admins","enabled":true}`)
 	})
 
-	enforcement, _, err := client.Repositories.GetAdminEnforcement(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	enforcement, _, err := client.Repositories.GetAdminEnforcement(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetAdminEnforcement returned error: %v", err)
 	}
@@ -1432,6 +1655,20 @@ func TestRepositoriesService_GetAdminEnforcement(t *testing.T) {
 	if !reflect.DeepEqual(enforcement, want) {
 		t.Errorf("Repositories.GetAdminEnforcement returned %+v, want %+v", enforcement, want)
 	}
+
+	const methodName = "GetAdminEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetAdminEnforcement(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetAdminEnforcement(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_AddAdminEnforcement(t *testing.T) {
@@ -1440,11 +1677,11 @@ func TestRepositoriesService_AddAdminEnforcement(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b/protection/enforce_admins", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		fmt.Fprintf(w, `{"url":"/repos/o/r/branches/b/protection/enforce_admins","enabled":true}`)
 	})
 
-	enforcement, _, err := client.Repositories.AddAdminEnforcement(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	enforcement, _, err := client.Repositories.AddAdminEnforcement(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.AddAdminEnforcement returned error: %v", err)
 	}
@@ -1456,6 +1693,20 @@ func TestRepositoriesService_AddAdminEnforcement(t *testing.T) {
 	if !reflect.DeepEqual(enforcement, want) {
 		t.Errorf("Repositories.AddAdminEnforcement returned %+v, want %+v", enforcement, want)
 	}
+
+	const methodName = "AddAdminEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.AddAdminEnforcement(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.AddAdminEnforcement(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_RemoveAdminEnforcement(t *testing.T) {
@@ -1464,14 +1715,24 @@ func TestRepositoriesService_RemoveAdminEnforcement(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/branches/b/protection/enforce_admins", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		testHeader(t, r, "Accept", mediaTypeRequiredApprovingReviewsPreview)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Repositories.RemoveAdminEnforcement(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	_, err := client.Repositories.RemoveAdminEnforcement(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.RemoveAdminEnforcement returned error: %v", err)
 	}
+
+	const methodName = "RemoveAdminEnforcement"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.RemoveAdminEnforcement(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.RemoveAdminEnforcement(ctx, "o", "r", "b")
+	})
 }
 
 func TestRepositoriesService_GetSignaturesProtectedBranch(t *testing.T) {
@@ -1484,7 +1745,8 @@ func TestRepositoriesService_GetSignaturesProtectedBranch(t *testing.T) {
 		fmt.Fprintf(w, `{"url":"/repos/o/r/branches/b/protection/required_signatures","enabled":false}`)
 	})
 
-	signature, _, err := client.Repositories.GetSignaturesProtectedBranch(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	signature, _, err := client.Repositories.GetSignaturesProtectedBranch(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.GetSignaturesProtectedBranch returned error: %v", err)
 	}
@@ -1497,6 +1759,20 @@ func TestRepositoriesService_GetSignaturesProtectedBranch(t *testing.T) {
 	if !reflect.DeepEqual(signature, want) {
 		t.Errorf("Repositories.GetSignaturesProtectedBranch returned %+v, want %+v", signature, want)
 	}
+
+	const methodName = "GetSignaturesProtectedBranch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetSignaturesProtectedBranch(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetSignaturesProtectedBranch(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_RequireSignaturesOnProtectedBranch(t *testing.T) {
@@ -1509,7 +1785,8 @@ func TestRepositoriesService_RequireSignaturesOnProtectedBranch(t *testing.T) {
 		fmt.Fprintf(w, `{"url":"/repos/o/r/branches/b/protection/required_signatures","enabled":true}`)
 	})
 
-	signature, _, err := client.Repositories.RequireSignaturesOnProtectedBranch(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	signature, _, err := client.Repositories.RequireSignaturesOnProtectedBranch(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.RequireSignaturesOnProtectedBranch returned error: %v", err)
 	}
@@ -1522,6 +1799,20 @@ func TestRepositoriesService_RequireSignaturesOnProtectedBranch(t *testing.T) {
 	if !reflect.DeepEqual(signature, want) {
 		t.Errorf("Repositories.RequireSignaturesOnProtectedBranch returned %+v, want %+v", signature, want)
 	}
+
+	const methodName = "RequireSignaturesOnProtectedBranch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.RequireSignaturesOnProtectedBranch(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.RequireSignaturesOnProtectedBranch(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_OptionalSignaturesOnProtectedBranch(t *testing.T) {
@@ -1534,10 +1825,21 @@ func TestRepositoriesService_OptionalSignaturesOnProtectedBranch(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Repositories.OptionalSignaturesOnProtectedBranch(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	_, err := client.Repositories.OptionalSignaturesOnProtectedBranch(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.OptionalSignaturesOnProtectedBranch returned error: %v", err)
 	}
+
+	const methodName = "OptionalSignaturesOnProtectedBranch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.OptionalSignaturesOnProtectedBranch(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.OptionalSignaturesOnProtectedBranch(ctx, "o", "r", "b")
+	})
 }
 
 func TestPullRequestReviewsEnforcementRequest_MarshalJSON_nilDismissalRestirctions(t *testing.T) {
@@ -1595,7 +1897,8 @@ func TestRepositoriesService_ListAllTopics(t *testing.T) {
 		fmt.Fprint(w, `{"names":["go", "go-github", "github"]}`)
 	})
 
-	got, _, err := client.Repositories.ListAllTopics(context.Background(), "o", "r")
+	ctx := context.Background()
+	got, _, err := client.Repositories.ListAllTopics(ctx, "o", "r")
 	if err != nil {
 		t.Fatalf("Repositories.ListAllTopics returned error: %v", err)
 	}
@@ -1604,6 +1907,20 @@ func TestRepositoriesService_ListAllTopics(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.ListAllTopics returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "ListAllTopics"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListAllTopics(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListAllTopics(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListAllTopics_emptyTopics(t *testing.T) {
@@ -1616,7 +1933,8 @@ func TestRepositoriesService_ListAllTopics_emptyTopics(t *testing.T) {
 		fmt.Fprint(w, `{"names":[]}`)
 	})
 
-	got, _, err := client.Repositories.ListAllTopics(context.Background(), "o", "r")
+	ctx := context.Background()
+	got, _, err := client.Repositories.ListAllTopics(ctx, "o", "r")
 	if err != nil {
 		t.Fatalf("Repositories.ListAllTopics returned error: %v", err)
 	}
@@ -1637,7 +1955,8 @@ func TestRepositoriesService_ReplaceAllTopics(t *testing.T) {
 		fmt.Fprint(w, `{"names":["go", "go-github", "github"]}`)
 	})
 
-	got, _, err := client.Repositories.ReplaceAllTopics(context.Background(), "o", "r", []string{"go", "go-github", "github"})
+	ctx := context.Background()
+	got, _, err := client.Repositories.ReplaceAllTopics(ctx, "o", "r", []string{"go", "go-github", "github"})
 	if err != nil {
 		t.Fatalf("Repositories.ReplaceAllTopics returned error: %v", err)
 	}
@@ -1646,6 +1965,20 @@ func TestRepositoriesService_ReplaceAllTopics(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.ReplaceAllTopics returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "ReplaceAllTopics"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ReplaceAllTopics(ctx, "\n", "\n", []string{"\n", "\n", "\n"})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ReplaceAllTopics(ctx, "o", "r", []string{"go", "go-github", "github"})
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ReplaceAllTopics_nilSlice(t *testing.T) {
@@ -1659,7 +1992,8 @@ func TestRepositoriesService_ReplaceAllTopics_nilSlice(t *testing.T) {
 		fmt.Fprint(w, `{"names":[]}`)
 	})
 
-	got, _, err := client.Repositories.ReplaceAllTopics(context.Background(), "o", "r", nil)
+	ctx := context.Background()
+	got, _, err := client.Repositories.ReplaceAllTopics(ctx, "o", "r", nil)
 	if err != nil {
 		t.Fatalf("Repositories.ReplaceAllTopics returned error: %v", err)
 	}
@@ -1681,7 +2015,8 @@ func TestRepositoriesService_ReplaceAllTopics_emptySlice(t *testing.T) {
 		fmt.Fprint(w, `{"names":[]}`)
 	})
 
-	got, _, err := client.Repositories.ReplaceAllTopics(context.Background(), "o", "r", []string{})
+	ctx := context.Background()
+	got, _, err := client.Repositories.ReplaceAllTopics(ctx, "o", "r", []string{})
 	if err != nil {
 		t.Fatalf("Repositories.ReplaceAllTopics returned error: %v", err)
 	}
@@ -1700,10 +2035,25 @@ func TestRepositoriesService_ListApps(t *testing.T) {
 		testMethod(t, r, "GET")
 	})
 
-	_, _, err := client.Repositories.ListApps(context.Background(), "o", "r", "b")
+	ctx := context.Background()
+	_, _, err := client.Repositories.ListApps(ctx, "o", "r", "b")
 	if err != nil {
 		t.Errorf("Repositories.ListApps returned error: %v", err)
 	}
+
+	const methodName = "ListApps"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListApps(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListApps(ctx, "o", "r", "b")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ReplaceAppRestrictions(t *testing.T) {
@@ -1717,7 +2067,8 @@ func TestRepositoriesService_ReplaceAppRestrictions(t *testing.T) {
 			}]`)
 	})
 	input := []string{"octocat"}
-	got, _, err := client.Repositories.ReplaceAppRestrictions(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	got, _, err := client.Repositories.ReplaceAppRestrictions(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.ReplaceAppRestrictions returned error: %v", err)
 	}
@@ -1727,6 +2078,20 @@ func TestRepositoriesService_ReplaceAppRestrictions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.ReplaceAppRestrictions returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "ReplaceAppRestrictions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ReplaceAppRestrictions(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ReplaceAppRestrictions(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_AddAppRestrictions(t *testing.T) {
@@ -1740,7 +2105,8 @@ func TestRepositoriesService_AddAppRestrictions(t *testing.T) {
 			}]`)
 	})
 	input := []string{"octocat"}
-	got, _, err := client.Repositories.AddAppRestrictions(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	got, _, err := client.Repositories.AddAppRestrictions(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.AddAppRestrictions returned error: %v", err)
 	}
@@ -1750,6 +2116,20 @@ func TestRepositoriesService_AddAppRestrictions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.AddAppRestrictions returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "AddAppRestrictions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.AddAppRestrictions(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.AddAppRestrictions(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_RemoveAppRestrictions(t *testing.T) {
@@ -1761,7 +2141,8 @@ func TestRepositoriesService_RemoveAppRestrictions(t *testing.T) {
 		fmt.Fprint(w, `[]`)
 	})
 	input := []string{"octocat"}
-	got, _, err := client.Repositories.RemoveAppRestrictions(context.Background(), "o", "r", "b", input)
+	ctx := context.Background()
+	got, _, err := client.Repositories.RemoveAppRestrictions(ctx, "o", "r", "b", input)
 	if err != nil {
 		t.Errorf("Repositories.RemoveAppRestrictions returned error: %v", err)
 	}
@@ -1769,6 +2150,20 @@ func TestRepositoriesService_RemoveAppRestrictions(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.RemoveAppRestrictions returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "RemoveAppRestrictions"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.RemoveAppRestrictions(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.RemoveAppRestrictions(ctx, "o", "r", "b", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Transfer(t *testing.T) {
@@ -1789,7 +2184,8 @@ func TestRepositoriesService_Transfer(t *testing.T) {
 		fmt.Fprint(w, `{"owner":{"login":"a"}}`)
 	})
 
-	got, _, err := client.Repositories.Transfer(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	got, _, err := client.Repositories.Transfer(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Repositories.Transfer returned error: %v", err)
 	}
@@ -1798,6 +2194,20 @@ func TestRepositoriesService_Transfer(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Repositories.Transfer returned %+v, want %+v", got, want)
 	}
+
+	const methodName = "Transfer"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.Transfer(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.Transfer(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_Dispatch(t *testing.T) {
@@ -1863,30 +2273,17 @@ func TestRepositoriesService_Dispatch(t *testing.T) {
 		}
 	}
 
-	// Test s.client.NewRequest failure
-	client.BaseURL.Path = ""
-	got, resp, err := client.Repositories.Dispatch(ctx, "o", "r", input)
-	if got != nil {
-		t.Errorf("client.BaseURL.Path='' Dispatch = %#v, want nil", got)
-	}
-	if resp != nil {
-		t.Errorf("client.BaseURL.Path='' Dispatch resp = %#v, want nil", resp)
-	}
-	if err == nil {
-		t.Error("client.BaseURL.Path='' Dispatch err = nil, want error")
-	}
+	const methodName = "Dispatch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.Dispatch(ctx, "\n", "\n", input)
+		return err
+	})
 
-	// Test s.client.Do failure
-	client.BaseURL.Path = "/api-v3/"
-	client.rateLimits[0].Reset.Time = time.Now().Add(10 * time.Minute)
-	got, resp, err = client.Repositories.Dispatch(ctx, "o", "r", input)
-	if got != nil {
-		t.Errorf("rate.Reset.Time > now Dispatch = %#v, want nil", got)
-	}
-	if want := http.StatusForbidden; resp == nil || resp.Response.StatusCode != want {
-		t.Errorf("rate.Reset.Time > now Dispatch resp = %#v, want StatusCode=%v", resp.Response, want)
-	}
-	if err == nil {
-		t.Error("rate.Reset.Time > now Dispatch err = nil, want error")
-	}
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.Dispatch(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

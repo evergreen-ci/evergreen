@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -17,52 +18,79 @@ func TestAppsService_ListRepos(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/installation/repositories", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		testFormValues(t, r, values{
 			"page":     "1",
 			"per_page": "2",
 		})
-		fmt.Fprint(w, `{"repositories": [{"id":1}]}`)
+		fmt.Fprint(w, `{"total_count": 1,"repositories": [{"id": 1}]}`)
 	})
 
 	opt := &ListOptions{Page: 1, PerPage: 2}
-	repositories, _, err := client.Apps.ListRepos(context.Background(), opt)
+	ctx := context.Background()
+	repositories, _, err := client.Apps.ListRepos(ctx, opt)
 	if err != nil {
 		t.Errorf("Apps.ListRepos returned error: %v", err)
 	}
 
-	want := []*Repository{{ID: Int64(1)}}
+	want := &ListRepositories{TotalCount: Int(1), Repositories: []*Repository{{ID: Int64(1)}}}
 	if !reflect.DeepEqual(repositories, want) {
 		t.Errorf("Apps.ListRepos returned %+v, want %+v", repositories, want)
 	}
+
+	const methodName = "ListRepos"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.ListRepos(ctx, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_ListUserRepos(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
+	wantAcceptHeaders := []string{mediaTypeTopicsPreview, mediaTypeRepositoryVisibilityPreview}
 	mux.HandleFunc("/user/installations/1/repositories", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
+		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		testFormValues(t, r, values{
 			"page":     "1",
 			"per_page": "2",
 		})
-		fmt.Fprint(w, `{"repositories": [{"id":1}]}`)
+		fmt.Fprint(w, `{"total_count":1,"repositories": [{"id":1}]}`)
 	})
 
 	opt := &ListOptions{Page: 1, PerPage: 2}
-	repositories, _, err := client.Apps.ListUserRepos(context.Background(), 1, opt)
+	ctx := context.Background()
+	repositories, _, err := client.Apps.ListUserRepos(ctx, 1, opt)
 	if err != nil {
 		t.Errorf("Apps.ListUserRepos returned error: %v", err)
 	}
 
-	want := []*Repository{{ID: Int64(1)}}
+	want := &ListRepositories{TotalCount: Int(1), Repositories: []*Repository{{ID: Int64(1)}}}
 	if !reflect.DeepEqual(repositories, want) {
 		t.Errorf("Apps.ListUserRepos returned %+v, want %+v", repositories, want)
 	}
+
+	const methodName = "ListUserRepos"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.ListUserRepos(ctx, -1, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.ListUserRepos(ctx, 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_AddRepository(t *testing.T) {
@@ -71,11 +99,11 @@ func TestAppsService_AddRepository(t *testing.T) {
 
 	mux.HandleFunc("/user/installations/1/repositories/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "PUT")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1,"name":"n","description":"d","owner":{"login":"l"},"license":{"key":"mit"}}`)
 	})
 
-	repo, _, err := client.Apps.AddRepository(context.Background(), 1, 1)
+	ctx := context.Background()
+	repo, _, err := client.Apps.AddRepository(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Apps.AddRepository returned error: %v", err)
 	}
@@ -84,6 +112,15 @@ func TestAppsService_AddRepository(t *testing.T) {
 	if !reflect.DeepEqual(repo, want) {
 		t.Errorf("AddRepository returned %+v, want %+v", repo, want)
 	}
+
+	const methodName = "AddRepository"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.AddRepository(ctx, 1, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_RemoveRepository(t *testing.T) {
@@ -92,14 +129,19 @@ func TestAppsService_RemoveRepository(t *testing.T) {
 
 	mux.HandleFunc("/user/installations/1/repositories/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Apps.RemoveRepository(context.Background(), 1, 1)
+	ctx := context.Background()
+	_, err := client.Apps.RemoveRepository(ctx, 1, 1)
 	if err != nil {
 		t.Errorf("Apps.RemoveRepository returned error: %v", err)
 	}
+
+	const methodName = "RemoveRepository"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Apps.RemoveRepository(ctx, 1, 1)
+	})
 }
 
 func TestAppsService_RevokeInstallationToken(t *testing.T) {
@@ -111,8 +153,14 @@ func TestAppsService_RevokeInstallationToken(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	_, err := client.Apps.RevokeInstallationToken(context.Background())
+	ctx := context.Background()
+	_, err := client.Apps.RevokeInstallationToken(ctx)
 	if err != nil {
 		t.Errorf("Apps.RevokeInstallationToken returned error: %v", err)
 	}
+
+	const methodName = "RevokeInstallationToken"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Apps.RevokeInstallationToken(ctx)
+	})
 }
