@@ -47,6 +47,7 @@ func (s *TestResultSuite) SetupTest() {
 			ID:        mgobson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
+			GroupID:   fmt.Sprintf("group-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
 			URLRaw:    fmt.Sprintf("urlraw-%d", i),
 			LogID:     fmt.Sprintf("logid-%d", i),
@@ -70,6 +71,7 @@ func (s *TestResultSuite) SetupTest() {
 			ID:        mgobson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
+			GroupID:   fmt.Sprintf("group-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
 			URLRaw:    fmt.Sprintf("urlraw-%d", i),
 			LogID:     fmt.Sprintf("logid-%d", i),
@@ -97,6 +99,7 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 		TaskID:    taskID,
 		Execution: execution,
 		Status:    "pass",
+		GroupID:   fmt.Sprintf("group-%d", i),
 		TestFile:  fmt.Sprintf("file-%d", i),
 		URL:       fmt.Sprintf("url-%d", i),
 		URLRaw:    fmt.Sprintf("urlraw-%d", i),
@@ -141,6 +144,7 @@ func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 		Execution: execution,
 		Status:    "pass",
 		TestFile:  fmt.Sprintf("file-%d", i),
+		GroupID:   fmt.Sprintf("group-%d", i),
 		URL:       fmt.Sprintf("url-%d", i),
 		URLRaw:    fmt.Sprintf("urlraw-%d", i),
 		LogID:     fmt.Sprintf("logid-%d", i),
@@ -164,6 +168,7 @@ func (s *TestResultSuite) TestInsert() {
 		s.NoError(err)
 		s.Equal("pass", test.Status)
 		s.Equal(fmt.Sprintf("file-%d", i), test.TestFile)
+		s.Equal(fmt.Sprintf("group-%d", i), test.GroupID)
 		s.Equal(fmt.Sprintf("url-%d", i), test.URL)
 		s.Equal(fmt.Sprintf("urlraw-%d", i), test.URLRaw)
 		s.Equal(fmt.Sprintf("logid-%d", i), test.LogID)
@@ -189,6 +194,7 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	for i, test := range tests {
 		s.Equal("pass", test.Status)
 		s.Equal(fmt.Sprintf("file-%d", i+5), test.TestFile)
+		s.Equal(fmt.Sprintf("group-%d", i+5), test.GroupID)
 		s.Equal(fmt.Sprintf("url-%d", i+5), test.URL)
 		s.Equal(fmt.Sprintf("logid-%d", i+5), test.LogID)
 	}

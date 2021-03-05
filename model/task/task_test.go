@@ -817,6 +817,7 @@ func TestTaskSetResultsFields(t *testing.T) {
 		{
 			Status:    "pass",
 			TestFile:  "job0_fixture_setup",
+			GroupID:   "group",
 			URL:       "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
 			URLRaw:    "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
 			ExitCode:  0,

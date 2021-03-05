@@ -300,6 +300,7 @@ type LocalTestResults struct {
 type TestResult struct {
 	Status    string  `json:"status" bson:"status"`
 	TestFile  string  `json:"test_file" bson:"test_file"`
+	GroupID   string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
 	URL       string  `json:"url" bson:"url,omitempty"`
 	URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
 	LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
@@ -1613,6 +1614,7 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 		// copy fields from local test result.
 		Status:    t.Status,
 		TestFile:  t.TestFile,
+		GroupID:   t.GroupID,
 		URL:       t.URL,
 		URLRaw:    t.URLRaw,
 		LogID:     t.LogId,
@@ -1641,6 +1643,7 @@ func ConvertToOld(in *testresult.TestResult) TestResult {
 	return TestResult{
 		Status:    in.Status,
 		TestFile:  in.TestFile,
+		GroupID:   in.GroupID,
 		URL:       in.URL,
 		URLRaw:    in.URLRaw,
 		LogId:     in.LogID,
@@ -1981,6 +1984,7 @@ func (t *Task) MergeNewTestResults() error {
 		t.LocalTestResults = append(t.LocalTestResults, TestResult{
 			Status:    result.Status,
 			TestFile:  result.TestFile,
+			GroupID:   result.GroupID,
 			URL:       result.URL,
 			URLRaw:    result.URLRaw,
 			LogId:     result.LogID,
@@ -2960,6 +2964,7 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		TaskID:    result.TaskID,
 		Execution: result.Execution,
 		TestFile:  result.TestName,
+		GroupID:   result.GroupID,
 		LineNum:   result.LineNum,
 		StartTime: float64(result.Start.Unix()),
 		EndTime:   float64(result.End.Unix()),
