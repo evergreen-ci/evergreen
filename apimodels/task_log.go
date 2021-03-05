@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -142,6 +143,15 @@ func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 		line string
 		err  error
 	)
+
+	defer func() {
+		if err := recovery.HandlePanicWithError(recover(), nil, "read buildlogger to chan"); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task_id": taskID,
+				"message": "reading buildlogger log lines to LogMessage channel",
+			}))
+		}
+	}()
 
 	defer close(lines)
 	if r == nil {

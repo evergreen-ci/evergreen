@@ -782,7 +782,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(r.Context())
-	data := logData{User: usr}
+	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
 	vars := gimlet.GetVars(r)
 	vals := r.URL.Query()
 	raw := (vals.Get("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
@@ -825,7 +825,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				"message":   "failed to close buildlogger log ReadCloser",
 			}))
 		}()
-		data.Buildlogger = make(chan apimodels.LogMessage, 1024)
 	} else {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id":   taskID,
