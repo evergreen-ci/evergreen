@@ -169,16 +169,6 @@ func TestDependenciesMet(t *testing.T) {
 
 		})
 
-		Convey("new task resolver should error if cache is empty, but there are deps", func() {
-			updateTestDepTasks(t)
-			dependencyCache := make(map[string]Task)
-			taskDoc.DependsOn = depTaskIds
-			met, err := taskDoc.AllDependenciesSatisfied(dependencyCache)
-			So(err, ShouldNotBeNil)
-			So(met, ShouldBeFalse)
-			taskDoc.DependenciesMetTime = utility.ZeroTime
-		})
-
 		Convey("extraneous tasks in the dependency cache should be ignored",
 			func() {
 				So(UpdateOne(
