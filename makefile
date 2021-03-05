@@ -520,6 +520,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 clean:
 	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
+	rm -rf $(EVGHOME)/bin/.lobster-temp
 phony += clean
 
 gqlgen:
