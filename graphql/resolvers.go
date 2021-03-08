@@ -1166,7 +1166,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		Execution: *execution,
 	}
 	cedarTestResults, _ := apimodels.GetCedarTestResults(ctx, opts)
-
+	fmt.Println("Cedar Test results")
+	fmt.Println(cedarTestResults)
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1266,7 +1267,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 		}
 	} else {
-		for _, t := range cedarTestResults {
+		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
+		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
 			buildErr := apiTest.BuildFromService(&t)
 			if buildErr != nil {
@@ -1276,8 +1278,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			testPointers = append(testPointers, &apiTest)
 		}
 
-		totalTestCount = len(testPointers)
-		filteredTestCount = len(testPointers)
+		totalTestCount = len(cedarTestResults)
+		filteredTestCount = testCount
 	}
 
 	taskTestResult := TaskTestResult{

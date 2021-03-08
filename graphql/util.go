@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -20,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -32,6 +34,74 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
+
+// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult's and returns a filtered sorted and paginated version of that array
+func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
+	var filteredAndSortedTestResults []apimodels.CedarTestResult
+	for _, testResult := range testResults {
+		match := true
+		if len(testName) > 0 {
+			if !strings.Contains(testResult.TestName, testName) {
+				match = false
+			}
+		}
+		if len(statuses) > 0 {
+			if !utility.StringSliceContains(statuses, testResult.Status) {
+				match = false
+			}
+		}
+		if match {
+			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
+		}
+	}
+	if sortBy != "" {
+		switch sortBy {
+		case "duration":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+				iDuration := testResultI.End.Sub(testResultI.Start)
+				jDuration := testResultJ.End.Sub(testResultJ.Start)
+				if sortDir == 1 {
+					return iDuration < jDuration
+
+				}
+				return iDuration > jDuration
+			})
+			break
+		case testresult.TestFileKey:
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+				if sortDir == 1 {
+					return testResultI.TestName < testResultJ.TestName
+
+				}
+				return testResultI.TestName > testResultJ.TestName
+			})
+			break
+		case testresult.StatusKey:
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+				if sortDir == 1 {
+					return testResultI.Status < testResultJ.Status
+
+				}
+				return testResultI.Status > testResultJ.Status
+			})
+			break
+		}
+	}
+	// Get filtered test count before applying any limits on it
+	filteredTestCount := len(filteredAndSortedTestResults)
+	if limitParam != 0 {
+		offset := pageParam * limitParam
+		filteredAndSortedTestResults = filteredAndSortedTestResults[offset : offset+limitParam]
+	}
+
+	return filteredAndSortedTestResults, filteredTestCount
+}
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
 func GetGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
