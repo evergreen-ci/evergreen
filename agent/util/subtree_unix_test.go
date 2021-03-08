@@ -1,3 +1,5 @@
+// +build darwin linux
+
 package util
 
 import (
@@ -13,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetPidsToKill(t *testing.T) {
+func TestGetPIDsToKill(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -29,7 +31,7 @@ func TestGetPidsToKill(t *testing.T) {
 	require.NoError(t, inWorkingDirCmd.Start())
 	inWorkingDirPid := inWorkingDirCmd.Process.Pid
 
-	pids, err := processesToKill("", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+	pids, err := getPIDsToKill("", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
 	assert.NoError(t, err)
 	assert.Contains(t, pids, inEvergreenPid)
 	assert.Contains(t, pids, inWorkingDirPid)

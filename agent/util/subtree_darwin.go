@@ -16,7 +16,7 @@ import (
 func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
 func cleanup(key, workingDir string, logger grip.Journaler) error {
-	pidsToKill, err := getPidsToKill(key, workingDir, logger)
+	pidsToKill, err := getPIDsToKill(key, workingDir, logger)
 	if err != nil {
 		return errors.Wrap(err, "problem getting list of PIDs to kill")
 	}
@@ -35,7 +35,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 
 }
 
-func getPidsToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
+func getPIDsToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
 	/*
 		Usage of ps on OSX for extracting environment variables:
 		-E: print the environment of the process (VAR1=FOO VAR2=BAR ...)
