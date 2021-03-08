@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -77,6 +79,20 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
+	case *apimodels.CedarTestResult:
+		at.Status = utility.ToStringPtr(v.Status)
+		at.TestFile = utility.ToStringPtr(v.TestName)
+		at.StartTime = utility.ToTimePtr(v.Start)
+		at.EndTime = utility.ToTimePtr(v.End)
+		duration := v.End.Sub(v.Start)
+		at.Duration = float64(duration)
+		at.Logs = TestLogs{
+			URL:     utility.ToStringPtr(v.LogURL),
+			LineNum: v.LineNum,
+		}
+		// Need to generate a consistent id for test results
+		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.LogURL)
+		at.Id = utility.ToStringPtr(testResultID)
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:
