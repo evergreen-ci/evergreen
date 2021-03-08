@@ -27,6 +27,7 @@ func TestSendTestResults(t *testing.T) {
 		Results: []task.TestResult{
 			{
 				TestFile:  "test",
+				GroupID:   "group",
 				Status:    "status",
 				URL:       "https://url.com",
 				LineNum:   123,
@@ -82,7 +83,7 @@ func TestSendTestResults(t *testing.T) {
 				require.Len(t, res[0].Results, 1)
 				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
-				assert.Equal(t, results.Results[0].URL, res[0].Results[0].LogUrl)
+				assert.Equal(t, results.Results[0].GroupID, res[0].Results[0].GroupId)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)

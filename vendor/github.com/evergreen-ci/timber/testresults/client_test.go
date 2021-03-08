@@ -193,9 +193,9 @@ func validResults(id string) Results {
 		ID: id,
 		Results: []Result{
 			{
-				Name:        "name",
+				TestName:    "name",
+				GroupID:     "group",
 				Status:      "status",
-				LogURL:      "https://url.com",
 				TaskCreated: time.Now().Add(-time.Hour),
 				TestStarted: time.Now().Add(-time.Minute),
 				TestEnded:   time.Now(),
