@@ -234,9 +234,6 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
-update-lobster: 
-	EVGHOME=$(EVGHOME) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(shell pwd)/scripts/update-lobster.sh
-
 # userfacing targets for basic build and development operations
 build:cli
 build-alltests:$(testBin)
@@ -517,10 +514,14 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
+clean-lobster:
+	rm -rf $(lobsterTempDir)
+
+update-lobster: clean-lobster
+	EVGHOME=$(EVGHOME) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(shell pwd)/scripts/update-lobster.sh
 
 # clean and other utility targets
-clean:
-	rm -rf $(lobsterTempDir)
+clean: clean-lobster
 	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
