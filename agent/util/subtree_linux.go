@@ -49,9 +49,9 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
-// getPIDstoKill returns a list of pids that should be killed.
+// getPIDsToKill returns a list of pids that should be killed.
 // Only usable on systems with a /proc filesystem.
-func getPIDstoKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
+func getPIDsToKill(key, workingDir string, logger grip.Journaler) ([]int, error) {
 	d, err := os.Open("/proc")
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func getPIDstoKill(key, workingDir string, logger grip.Journaler) ([]int, error)
 }
 
 func cleanup(key, workingDir string, logger grip.Journaler) error {
-	pids, err := getPIDstoKill(key, workingDir, logger)
+	pids, err := getPIDsToKill(key, workingDir, logger)
 	if err != nil {
 		return errors.Wrap(err, "can't get list of processes to kill")
 	}
@@ -120,7 +120,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
-			pids, err = getPIDstoKill(key, workingDir, logger)
+			pids, err = getPIDsToKill(key, workingDir, logger)
 			if err != nil {
 				return false, errors.Wrap(err, "can't get list of processes to kill")
 			}
