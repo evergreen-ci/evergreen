@@ -145,7 +145,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["cost"] = cost
 	}
 
-	if cloud.IsEc2Provider(j.host.Distro.Provider) {
+	if len(j.host.Distro.ProviderSettingsList) > 0 && cloud.IsEc2Provider(j.host.Distro.Provider) {
 		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
 		if ok {
 			msg["instance_type"] = instanceType
