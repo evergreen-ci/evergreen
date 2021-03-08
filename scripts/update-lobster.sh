@@ -9,7 +9,6 @@
 set -o errexit
 set -o xtrace
 
-echo $LOBSTER_TEMP_DIR
 LOBSTER_REPO=https://github.com/evergreen-ci/lobster.git
 LOBSTER_TEMP_ASSETS_DIR="$LOBSTER_TEMP_DIR/build"
 LOBSTER_STATIC_DIR="$LOBSTER_TEMP_ASSETS_DIR/static"
