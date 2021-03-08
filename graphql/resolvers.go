@@ -1166,8 +1166,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		Execution: *execution,
 	}
 	cedarTestResults, _ := apimodels.GetCedarTestResults(ctx, opts)
-	fmt.Println("Cedar Test results")
-	fmt.Println(cedarTestResults)
+
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
