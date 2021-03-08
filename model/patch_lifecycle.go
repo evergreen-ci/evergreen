@@ -445,7 +445,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to finalize child patch")
 			}
-			return nil, err
 		}
 	}
 
