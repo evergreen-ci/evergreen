@@ -11,7 +11,7 @@ packages += rest-client rest-data rest-route rest-model migrations trigger model
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
-lobsterTempDir := $(shell pwd)/$(buildDir)/.lobster-temp
+lobsterTempDir := $(shell pwd)/$(buildDir)/lobster-temp
 # end project configuration
 
 
