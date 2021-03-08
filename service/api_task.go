@@ -232,7 +232,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded {
-		if err = model.TryDequeueAndAbortCommitQueueVersion(projectRef, t, APIServerLockTitle); err != nil {
+		if err = model.DequeueAndRestart(t, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

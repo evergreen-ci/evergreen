@@ -22,6 +22,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1532,7 +1533,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 
 	pRef := &ProjectRef{Id: cq.ProjectID}
 
-	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(&task.Task{Id: "t1", Version: v.Id, Project: pRef.Id}, *cq, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
@@ -1623,7 +1624,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 
 	pRef := &ProjectRef{Id: cq.ProjectID}
 
-	assert.NoError(t, TryDequeueAndAbortCommitQueueVersion(pRef, &task.Task{Id: "t1", Version: v.Id}, evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(&task.Task{Id: "t1", Version: v.Id, Project: pRef.Id}, *cq, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
@@ -1650,6 +1651,120 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	p, err = patch.FindOne(patch.ByVersion("my-version"))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
+}
+
+func TestDequeueAndRestart(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
+	v1 := bson.NewObjectId()
+	v2 := bson.NewObjectId()
+	v3 := bson.NewObjectId()
+	t1 := task.Task{
+		Id:        "1",
+		Version:   v1.Hex(),
+		BuildId:   "1",
+		Project:   "p",
+		Status:    evergreen.TaskSucceeded,
+		Requester: evergreen.MergeTestRequester,
+	}
+	assert.NoError(t, t1.Insert())
+	t2 := task.Task{
+		Id:        "2",
+		Version:   v2.Hex(),
+		BuildId:   "2",
+		Project:   "p",
+		Status:    evergreen.TaskFailed,
+		Requester: evergreen.MergeTestRequester,
+	}
+	assert.NoError(t, t2.Insert())
+	t3 := task.Task{
+		Id:        "3",
+		Version:   v3.Hex(),
+		BuildId:   "3",
+		Project:   "p",
+		Status:    evergreen.TaskSucceeded,
+		Requester: evergreen.MergeTestRequester,
+	}
+	assert.NoError(t, t3.Insert())
+	b1 := build.Build{
+		Id:      "1",
+		Version: v1.Hex(),
+		Tasks: []build.TaskCache{
+			{Id: t1.Id},
+		},
+	}
+	assert.NoError(t, b1.Insert())
+	b2 := build.Build{
+		Id:      "2",
+		Version: v2.Hex(),
+		Tasks: []build.TaskCache{
+			{Id: t2.Id},
+		},
+	}
+	assert.NoError(t, b2.Insert())
+	b3 := build.Build{
+		Id:      "3",
+		Version: v3.Hex(),
+		Tasks: []build.TaskCache{
+			{Id: t3.Id},
+		},
+	}
+	assert.NoError(t, b3.Insert())
+	p1 := patch.Patch{
+		Id:      v1,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v1.Hex(),
+	}
+	assert.NoError(t, p1.Insert())
+	p2 := patch.Patch{
+		Id:      v2,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v2.Hex(),
+	}
+	assert.NoError(t, p2.Insert())
+	p3 := patch.Patch{
+		Id:      v3,
+		Alias:   evergreen.CommitQueueAlias,
+		Version: v3.Hex(),
+	}
+	assert.NoError(t, p3.Insert())
+	version1 := Version{
+		Id: v1.Hex(),
+	}
+	assert.NoError(t, version1.Insert())
+	version2 := Version{
+		Id: v2.Hex(),
+	}
+	assert.NoError(t, version2.Insert())
+	version3 := Version{
+		Id: v3.Hex(),
+	}
+	assert.NoError(t, version3.Insert())
+	cq := commitqueue.CommitQueue{
+		ProjectID: "p",
+		Queue: []commitqueue.CommitQueueItem{
+			{Issue: v1.Hex(), Version: v1.Hex()},
+			{Issue: v2.Hex(), Version: v2.Hex()},
+			{Issue: v3.Hex(), Version: v3.Hex()},
+		},
+	}
+	assert.NoError(t, commitqueue.InsertQueue(&cq))
+
+	assert.NoError(t, DequeueAndRestart(&t2, ""))
+	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
+	assert.NoError(t, err)
+	assert.Len(t, dbCq.Queue, 2)
+	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
+	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
+	dbTask1, err := task.FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask1.Execution)
+	dbTask2, err := task.FindOneId(t2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, dbTask2.Execution)
+	dbTask3, err := task.FindOneId(t3.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, dbTask3.Execution)
+	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
 }
 
 func TestMarkStart(t *testing.T) {

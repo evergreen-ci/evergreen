@@ -547,7 +547,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 
 	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
 		for _, patchId := range additionalPatches {
-			logger.Task().Infof("attempting to apply additional changes from patch '%s'", patchId)
+			logger.Task().Infof("applying changes from previous commit queue patch '%s'", patchId)
 			newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
 			if err != nil {
 				return errors.Wrap(err, "unable to get additional patch")
@@ -561,7 +561,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 			if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
 				return errors.Wrapf(err, "error applying patch '%s'", newPatch.Id.Hex())
 			}
-			logger.Task().Infof("applied additional changes from patch '%s'", patchId)
+			logger.Task().Infof("applied changes from previous commit queue patch '%s'", patchId)
 		}
 	}
 

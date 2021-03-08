@@ -218,21 +218,16 @@ func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*C
 }
 
 func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists bool, user string) (*CommitQueueItem, error) {
-
-	head, valid := cq.Next()
-	if !valid {
-		return nil, nil
-	}
 	removed, err := cq.Remove(issue)
 	if err != nil {
 		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", issue, cq.ProjectID)
 	}
 
-	if removed == nil || head.Issue != issue {
+	if removed == nil {
 		return nil, nil
 	}
 	if versionExists {
-		err = preventMergeForItem(head, user)
+		err = preventMergeForItem(*removed, user)
 	}
 
 	return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)

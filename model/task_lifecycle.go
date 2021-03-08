@@ -100,6 +100,10 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return err
 			}
+			err = RestartItemsAfterVersion(nil, t.Project, t.Version, caller)
+			if err != nil {
+				return errors.Wrap(err, "error restarting later commit queue items")
+			}
 		}
 	} else {
 		return nil
@@ -632,7 +636,54 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	return nil
 }
 
-func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, caller string) error {
+func DequeueAndRestart(t *task.Task, caller string) error {
+	cq, err := commitqueue.FindOneId(t.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", t.Project)
+	}
+
+	// this must be done before dequeuing so that we know which entries to restart
+	err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller)
+	if err != nil {
+		return errors.Wrap(err, "unable to restart versions")
+	}
+
+	return tryDequeueAndAbortCommitQueueVersion(t, *cq, caller)
+}
+
+func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
+	if cq == nil {
+		var err error
+		cq, err = commitqueue.FindOneId(project)
+		if err != nil {
+			return errors.Wrapf(err, "can't get commit queue for id '%s'", project)
+		}
+		if cq == nil {
+			return errors.Errorf("no commit queue found for '%s'", project)
+		}
+	}
+
+	foundItem := false
+	errs := grip.NewBasicCatcher()
+	for _, item := range cq.Queue {
+		if item.Version == "" {
+			return nil
+		}
+		if item.Version == version {
+			foundItem = true
+		} else if foundItem {
+			// this block executes on all items after the given task
+			errs.Add(RestartTasksInVersion(item.Version, true, caller))
+		}
+	}
+
+	return errs.Resolve()
+}
+
+func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQueue, caller string) error {
 	p, err := patch.FindOne(patch.ByVersion(t.Version))
 	if err != nil {
 		return errors.Wrapf(err, "error finding patch")
@@ -645,14 +696,6 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 		return nil
 	}
 
-	// if task is part of a commit queue, dequeue and abort version
-	cq, err := commitqueue.FindOneId(projectRef.Id)
-	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", projectRef.Id)
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", projectRef.Id)
-	}
 	issue := p.Id.Hex()
 	if p.IsPRMergePatch() {
 		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
@@ -660,7 +703,7 @@ func TryDequeueAndAbortCommitQueueVersion(projectRef *ProjectRef, t *task.Task, 
 
 	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
 	if err != nil {
-		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, projectRef.Id)
+		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, t.Project)
 	}
 	if removed == nil {
 		return nil
