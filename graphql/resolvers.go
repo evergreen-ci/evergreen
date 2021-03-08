@@ -1160,13 +1160,21 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
+	dbTask, err := task.FindByIdExecution(taskID, execution)
+	if dbTask == nil || err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		TaskID:    taskID,
 		Execution: *execution,
 	}
-	cedarTestResults, _ := apimodels.GetCedarTestResults(ctx, opts)
+	if len(dbTask.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = taskID
+	} else {
+		opts.TaskID = taskID
+	}
 
+	cedarTestResults, _ := apimodels.GetCedarTestResults(ctx, opts)
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1216,10 +1224,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var filteredTestCount int
 
 	if cedarTestResults == nil {
-		dbTask, err := task.FindByIdExecution(taskID, execution)
-		if dbTask == nil || err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-		}
 		baseTask, err := dbTask.FindTaskOnBaseCommit()
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
