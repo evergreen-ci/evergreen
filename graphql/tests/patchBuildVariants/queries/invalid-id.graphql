@@ -3,7 +3,7 @@
     variant
     tasks {
       id
-      name
+      displayName
       status
     }
   }

@@ -1858,6 +1858,9 @@ func TestVersionRestart(t *testing.T) {
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
 		assert.True(t.Activated)
 	}
+	dbVersion, err := VersionFindOneId("version")
+	assert.NoError(err)
+	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 
 	// test that aborting in-progress tasks works correctly
 	assert.NoError(resetTaskData())
@@ -1870,6 +1873,9 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal("test", dbTask.AbortInfo.User)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 	assert.True(dbTask.Activated)
+	dbVersion, err = VersionFindOneId("version")
+	assert.NoError(err)
+	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 
 	// test that not aborting in-progress tasks does not reset them
 	assert.NoError(resetTaskData())
@@ -1880,6 +1886,9 @@ func TestVersionRestart(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
+	dbVersion, err = VersionFindOneId("version")
+	assert.NoError(err)
+	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 }
 
 func TestDisplayTaskRestart(t *testing.T) {

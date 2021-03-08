@@ -387,14 +387,14 @@ type HostsResponse {
 }
 
 type PatchTasks {
-  tasks: [TaskResult!]!
+  tasks: [Task!]!
   count: Int!
 }
 
 type PatchBuildVariant {
   variant: String!
   displayName: String!
-  tasks: [PatchBuildVariantTask]
+  tasks: [Task]
 }
 
 type PatchBuildVariantTask {
@@ -630,6 +630,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  baseTask: Task
   baseStatus: String
   baseTaskMetadata: BaseTaskMetadata
   blocked: Boolean!
@@ -684,6 +685,11 @@ type Task {
   timeTaken: Duration
   totalTestCount: Int!
   version: String!
+}
+
+type BaseTaskInfo {
+  id: String
+  status: String
 }
 
 type Projects {

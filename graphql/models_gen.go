@@ -85,9 +85,9 @@ type HostsResponse struct {
 }
 
 type PatchBuildVariant struct {
-	Variant     string                   `json:"variant"`
-	DisplayName string                   `json:"displayName"`
-	Tasks       []*PatchBuildVariantTask `json:"tasks"`
+	Variant     string           `json:"variant"`
+	DisplayName string           `json:"displayName"`
+	Tasks       []*model.APITask `json:"tasks"`
 }
 
 type PatchBuildVariantTask struct {
@@ -122,8 +122,8 @@ type PatchProject struct {
 }
 
 type PatchTasks struct {
-	Tasks []*TaskResult `json:"tasks"`
-	Count int           `json:"count"`
+	Tasks []*model.APITask `json:"tasks"`
+	Count int              `json:"count"`
 }
 
 type PatchTime struct {

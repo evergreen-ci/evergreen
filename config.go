@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -31,10 +32,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2021-02-22"
+	ClientVersion = "2021-03-05"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2021-03-02"
+	AgentVersion = "2021-03-04"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -706,6 +707,38 @@ type DBSettings struct {
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
+	AuthFile             string       `yaml:"auth_file"`
+}
+
+func (dbs *DBSettings) HasAuth() bool {
+	return dbs.AuthFile != ""
+}
+
+type dbCreds struct {
+	DBUser string `yaml:"mdb_database_username"`
+	DBPwd  string `yaml:"mdb_database_password"`
+}
+
+func (dbs *DBSettings) GetAuth() (string, string, error) {
+	return GetAuthFromYAML(dbs.AuthFile)
+}
+
+func GetAuthFromYAML(authFile string) (string, string, error) {
+	creds := &dbCreds{}
+
+	file, err := os.Open(authFile)
+	if err != nil {
+		return "", "", err
+	}
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+
+	if err := decoder.Decode(&creds); err != nil {
+		return "", "", err
+	}
+
+	return creds.DBUser, creds.DBPwd, nil
 }
 
 // supported banner themes in Evergreen

@@ -134,8 +134,9 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome = "EVGHOME"
-	MongodbUrl    = "MONGO_URL"
+	EvergreenHome   = "EVGHOME"
+	MongodbUrl      = "MONGO_URL"
+	MongodbAuthFile = "MONGO_CREDS_FILE"
 
 	// Special logging output targets
 	LocalLoggingOverride          = "LOCAL"
@@ -581,8 +582,9 @@ var (
 	}
 
 	// constant arrays for db update logic
-	AbortableStatuses = []string{TaskStarted, TaskDispatched}
-	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+	AbortableStatuses   = []string{TaskStarted, TaskDispatched}
+	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
+	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
