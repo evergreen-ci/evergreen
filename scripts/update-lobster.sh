@@ -45,6 +45,3 @@ cd $EVG_TEMPLATES_DIR
 echo -e "{{define \"base\"}}\n$(cat $LOBSTER_TEMP_DIR/temp.html)" > lobster.html
 echo "{{end}}" >> lobster.html
 echo "finished updating lobster"
-else
-echo "FAILURE: EVGHOME or LOBSTER_TEMP_DIR not set"
-fi
