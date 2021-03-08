@@ -12,6 +12,7 @@ lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 lobsterTempDir := $(shell pwd)/$(buildDir)/lobster-temp
+EVGHOME := $(shell pwd)
 # end project configuration
 
 
@@ -234,7 +235,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 # end main build
 
 update-lobster: 
-	EVGHOME=$(shell pwd) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(shell pwd)/scripts/update-lobster.sh
+	EVGHOME=$(EVGHOME) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(shell pwd)/scripts/update-lobster.sh
 
 # userfacing targets for basic build and development operations
 build:cli
@@ -459,7 +460,7 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(EVGHOME) GOPATH=$(gopath)
 ifeq (,$(GOCONVEY_REPORTER))
 	testRunEnv += GOCONVEY_REPORTER=silent
 endif
