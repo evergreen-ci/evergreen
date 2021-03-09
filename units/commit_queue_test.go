@@ -221,27 +221,30 @@ func TestAddMergeTaskDependencies(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	j := commitQueueJob{}
 	mergeTask1 := task.Task{
-		Id:           "1",
-		Requester:    evergreen.MergeTestRequester,
-		DisplayName:  evergreen.MergeTaskName,
-		BuildVariant: evergreen.MergeTaskVariant,
-		Version:      "v1",
+		Id:               "1",
+		Requester:        evergreen.MergeTestRequester,
+		DisplayName:      evergreen.MergeTaskName,
+		BuildVariant:     evergreen.MergeTaskVariant,
+		Version:          "v1",
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, mergeTask1.Insert())
 	mergeTask2 := task.Task{
-		Id:           "2",
-		Requester:    evergreen.MergeTestRequester,
-		DisplayName:  evergreen.MergeTaskName,
-		BuildVariant: evergreen.MergeTaskVariant,
-		Version:      "v2",
+		Id:               "2",
+		Requester:        evergreen.MergeTestRequester,
+		DisplayName:      evergreen.MergeTaskName,
+		BuildVariant:     evergreen.MergeTaskVariant,
+		Version:          "v2",
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, mergeTask2.Insert())
 	mergeTask3 := task.Task{
-		Id:           "3",
-		Requester:    evergreen.MergeTestRequester,
-		DisplayName:  evergreen.MergeTaskName,
-		BuildVariant: evergreen.MergeTaskVariant,
-		Version:      "v3",
+		Id:               "3",
+		Requester:        evergreen.MergeTestRequester,
+		DisplayName:      evergreen.MergeTaskName,
+		BuildVariant:     evergreen.MergeTaskVariant,
+		Version:          "v3",
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, mergeTask3.Insert())
 	cq := commitqueue.CommitQueue{
