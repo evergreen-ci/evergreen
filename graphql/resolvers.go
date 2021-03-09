@@ -302,7 +302,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(fmt.Sprintf("Error removing project : %s : %s", identifier, err)
+		return nil, InternalServerError.Send(fmt.Sprintf("Error removing project : %s : %s", identifier, err))
 
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(p)
