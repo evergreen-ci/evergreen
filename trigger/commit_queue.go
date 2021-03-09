@@ -88,6 +88,10 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	if t.data.Error != "" {
 		text = t.data.Error
 	}
+	url := ""
+	if t.patch.Version != "" {
+		url = fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version)
+	}
 	data := commonTemplateData{
 		ID:              t.patch.Id.Hex(),
 		EventID:         t.event.ID,
@@ -96,7 +100,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		Description:     text,
 		Object:          "merge",
 		Project:         t.patch.Project,
-		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
+		URL:             url,
 		PastTenseStatus: t.data.Status,
 	}
 
