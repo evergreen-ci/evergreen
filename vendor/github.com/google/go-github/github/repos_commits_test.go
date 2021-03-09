@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -40,7 +41,8 @@ func TestRepositoriesService_ListCommits(t *testing.T) {
 		Since:  time.Date(2013, time.August, 1, 0, 0, 0, 0, time.UTC),
 		Until:  time.Date(2013, time.September, 3, 0, 0, 0, 0, time.UTC),
 	}
-	commits, _, err := client.Repositories.ListCommits(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	commits, _, err := client.Repositories.ListCommits(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListCommits returned error: %v", err)
 	}
@@ -49,6 +51,20 @@ func TestRepositoriesService_ListCommits(t *testing.T) {
 	if !reflect.DeepEqual(commits, want) {
 		t.Errorf("Repositories.ListCommits returned %+v, want %+v", commits, want)
 	}
+
+	const methodName = "ListCommits"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListCommits(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListCommits(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetCommit(t *testing.T) {
@@ -80,7 +96,8 @@ func TestRepositoriesService_GetCommit(t *testing.T) {
 		}`)
 	})
 
-	commit, _, err := client.Repositories.GetCommit(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	commit, _, err := client.Repositories.GetCommit(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Repositories.GetCommit returned error: %v", err)
 	}
@@ -123,6 +140,20 @@ func TestRepositoriesService_GetCommit(t *testing.T) {
 	if !reflect.DeepEqual(commit, want) {
 		t.Errorf("Repositories.GetCommit returned \n%+v, want \n%+v", commit, want)
 	}
+
+	const methodName = "GetCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetCommit(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetCommit(ctx, "o", "r", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetCommitRaw_diff(t *testing.T) {
@@ -137,7 +168,8 @@ func TestRepositoriesService_GetCommitRaw_diff(t *testing.T) {
 		fmt.Fprint(w, rawStr)
 	})
 
-	got, _, err := client.Repositories.GetCommitRaw(context.Background(), "o", "r", "s", RawOptions{Type: Diff})
+	ctx := context.Background()
+	got, _, err := client.Repositories.GetCommitRaw(ctx, "o", "r", "s", RawOptions{Type: Diff})
 	if err != nil {
 		t.Fatalf("Repositories.GetCommitRaw returned error: %v", err)
 	}
@@ -145,6 +177,20 @@ func TestRepositoriesService_GetCommitRaw_diff(t *testing.T) {
 	if got != want {
 		t.Errorf("Repositories.GetCommitRaw returned %s want %s", got, want)
 	}
+
+	const methodName = "GetCommitRaw"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetCommitRaw(ctx, "\n", "\n", "\n", RawOptions{Type: Diff})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetCommitRaw(ctx, "o", "r", "s", RawOptions{Type: Diff})
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want ''", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetCommitRaw_patch(t *testing.T) {
@@ -159,7 +205,8 @@ func TestRepositoriesService_GetCommitRaw_patch(t *testing.T) {
 		fmt.Fprint(w, rawStr)
 	})
 
-	got, _, err := client.Repositories.GetCommitRaw(context.Background(), "o", "r", "s", RawOptions{Type: Patch})
+	ctx := context.Background()
+	got, _, err := client.Repositories.GetCommitRaw(ctx, "o", "r", "s", RawOptions{Type: Patch})
 	if err != nil {
 		t.Fatalf("Repositories.GetCommitRaw returned error: %v", err)
 	}
@@ -173,7 +220,8 @@ func TestRepositoriesService_GetCommitRaw_invalid(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.GetCommitRaw(context.Background(), "o", "r", "s", RawOptions{100})
+	ctx := context.Background()
+	_, _, err := client.Repositories.GetCommitRaw(ctx, "o", "r", "s", RawOptions{100})
 	if err == nil {
 		t.Fatal("Repositories.GetCommitRaw should return error")
 	}
@@ -194,7 +242,8 @@ func TestRepositoriesService_GetCommitSHA1(t *testing.T) {
 		fmt.Fprintf(w, sha1)
 	})
 
-	got, _, err := client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "master", "")
+	ctx := context.Background()
+	got, _, err := client.Repositories.GetCommitSHA1(ctx, "o", "r", "master", "")
 	if err != nil {
 		t.Errorf("Repositories.GetCommitSHA1 returned error: %v", err)
 	}
@@ -212,7 +261,7 @@ func TestRepositoriesService_GetCommitSHA1(t *testing.T) {
 		w.WriteHeader(http.StatusNotModified)
 	})
 
-	got, _, err = client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "tag", sha1)
+	got, _, err = client.Repositories.GetCommitSHA1(ctx, "o", "r", "tag", sha1)
 	if err == nil {
 		t.Errorf("Expected HTTP 304 response")
 	}
@@ -221,6 +270,20 @@ func TestRepositoriesService_GetCommitSHA1(t *testing.T) {
 	if got != want {
 		t.Errorf("Repositories.GetCommitSHA1 = %v, want %v", got, want)
 	}
+
+	const methodName = "GetCommitSHA1"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetCommitSHA1(ctx, "\n", "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetCommitSHA1(ctx, "o", "r", "master", "")
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want ''", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_NonAlphabetCharacter_GetCommitSHA1(t *testing.T) {
@@ -235,7 +298,8 @@ func TestRepositoriesService_NonAlphabetCharacter_GetCommitSHA1(t *testing.T) {
 		fmt.Fprintf(w, sha1)
 	})
 
-	got, _, err := client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "master%20hash", "")
+	ctx := context.Background()
+	got, _, err := client.Repositories.GetCommitSHA1(ctx, "o", "r", "master%20hash", "")
 	if err != nil {
 		t.Errorf("Repositories.GetCommitSHA1 returned error: %v", err)
 	}
@@ -252,7 +316,7 @@ func TestRepositoriesService_NonAlphabetCharacter_GetCommitSHA1(t *testing.T) {
 		w.WriteHeader(http.StatusNotModified)
 	})
 
-	got, _, err = client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "tag", sha1)
+	got, _, err = client.Repositories.GetCommitSHA1(ctx, "o", "r", "tag", sha1)
 	if err == nil {
 		t.Errorf("Expected HTTP 304 response")
 	}
@@ -274,7 +338,8 @@ func TestRepositoriesService_TrailingPercent_GetCommitSHA1(t *testing.T) {
 		fmt.Fprintf(w, sha1)
 	})
 
-	got, _, err := client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "comm%", "")
+	ctx := context.Background()
+	got, _, err := client.Repositories.GetCommitSHA1(ctx, "o", "r", "comm%", "")
 	if err != nil {
 		t.Errorf("Repositories.GetCommitSHA1 returned error: %v", err)
 	}
@@ -291,7 +356,7 @@ func TestRepositoriesService_TrailingPercent_GetCommitSHA1(t *testing.T) {
 		w.WriteHeader(http.StatusNotModified)
 	})
 
-	got, _, err = client.Repositories.GetCommitSHA1(context.Background(), "o", "r", "tag", sha1)
+	got, _, err = client.Repositories.GetCommitSHA1(ctx, "o", "r", "tag", sha1)
 	if err == nil {
 		t.Errorf("Expected HTTP 304 response")
 	}
@@ -302,12 +367,28 @@ func TestRepositoriesService_TrailingPercent_GetCommitSHA1(t *testing.T) {
 }
 
 func TestRepositoriesService_CompareCommits(t *testing.T) {
-	client, mux, _, teardown := setup()
-	defer teardown()
+	testCases := []struct {
+		base string
+		head string
+	}{
+		{base: "b", head: "h"},
+		{base: "123base", head: "head123"},
+		{base: "`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+123base", head: "head123`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+"},
+	}
 
-	mux.HandleFunc("/repos/o/r/compare/b...h", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "GET")
-		fmt.Fprintf(w, `{
+	for _, sample := range testCases {
+		client, mux, _, teardown := setup()
+
+		base := sample.base
+		head := sample.head
+		escapedBase := url.QueryEscape(base)
+		escapedHead := url.QueryEscape(head)
+
+		pattern := fmt.Sprintf("/repos/o/r/compare/%v...%v", base, head)
+
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			testMethod(t, r, "GET")
+			fmt.Fprintf(w, `{
 		  "base_commit": {
 		    "sha": "s",
 		    "commit": {
@@ -334,45 +415,28 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 		    }
 		  ],
 		  "files": [ { "filename": "f" } ],
-		  "html_url":      "https://github.com/o/r/compare/b...h",
+		  "html_url":      "https://github.com/o/r/compare/%[1]v...%[2]v",
 		  "permalink_url": "https://github.com/o/r/compare/o:bbcd538c8e72b8c175046e27cc8f907076331401...o:0328041d1152db8ae77652d1618a02e57f745f17",
-		  "diff_url":      "https://github.com/o/r/compare/b...h.diff",
-		  "patch_url":     "https://github.com/o/r/compare/b...h.patch",
-		  "url":           "https://api.github.com/repos/o/r/compare/b...h"
-		}`)
-	})
+		  "diff_url":      "https://github.com/o/r/compare/%[1]v...%[2]v.diff",
+		  "patch_url":     "https://github.com/o/r/compare/%[1]v...%[2]v.patch",
+		  "url":           "https://api.github.com/repos/o/r/compare/%[1]v...%[2]v"
+		}`, escapedBase, escapedHead)
+		})
 
-	got, _, err := client.Repositories.CompareCommits(context.Background(), "o", "r", "b", "h")
-	if err != nil {
-		t.Errorf("Repositories.CompareCommits returned error: %v", err)
-	}
+		ctx := context.Background()
+		got, _, err := client.Repositories.CompareCommits(ctx, "o", "r", base, head)
+		if err != nil {
+			t.Errorf("Repositories.CompareCommits returned error: %v", err)
+		}
 
-	want := &CommitsComparison{
-		BaseCommit: &RepositoryCommit{
-			SHA: String("s"),
-			Commit: &Commit{
-				Author:    &CommitAuthor{Name: String("n")},
-				Committer: &CommitAuthor{Name: String("n")},
-				Message:   String("m"),
-				Tree:      &Tree{SHA: String("t")},
-			},
-			Author:    &User{Login: String("l")},
-			Committer: &User{Login: String("l")},
-			Parents: []*Commit{
-				{
-					SHA: String("s"),
-				},
-			},
-		},
-		Status:       String("s"),
-		AheadBy:      Int(1),
-		BehindBy:     Int(2),
-		TotalCommits: Int(1),
-		Commits: []*RepositoryCommit{
-			{
+		want := &CommitsComparison{
+			BaseCommit: &RepositoryCommit{
 				SHA: String("s"),
 				Commit: &Commit{
-					Author: &CommitAuthor{Name: String("n")},
+					Author:    &CommitAuthor{Name: String("n")},
+					Committer: &CommitAuthor{Name: String("n")},
+					Message:   String("m"),
+					Tree:      &Tree{SHA: String("t")},
 				},
 				Author:    &User{Login: String("l")},
 				Committer: &User{Login: String("l")},
@@ -382,21 +446,171 @@ func TestRepositoriesService_CompareCommits(t *testing.T) {
 					},
 				},
 			},
-		},
-		Files: []*CommitFile{
-			{
-				Filename: String("f"),
+			Status:       String("s"),
+			AheadBy:      Int(1),
+			BehindBy:     Int(2),
+			TotalCommits: Int(1),
+			Commits: []*RepositoryCommit{
+				{
+					SHA: String("s"),
+					Commit: &Commit{
+						Author: &CommitAuthor{Name: String("n")},
+					},
+					Author:    &User{Login: String("l")},
+					Committer: &User{Login: String("l")},
+					Parents: []*Commit{
+						{
+							SHA: String("s"),
+						},
+					},
+				},
 			},
-		},
-		HTMLURL:      String("https://github.com/o/r/compare/b...h"),
-		PermalinkURL: String("https://github.com/o/r/compare/o:bbcd538c8e72b8c175046e27cc8f907076331401...o:0328041d1152db8ae77652d1618a02e57f745f17"),
-		DiffURL:      String("https://github.com/o/r/compare/b...h.diff"),
-		PatchURL:     String("https://github.com/o/r/compare/b...h.patch"),
-		URL:          String("https://api.github.com/repos/o/r/compare/b...h"),
+			Files: []*CommitFile{
+				{
+					Filename: String("f"),
+				},
+			},
+			HTMLURL:      String(fmt.Sprintf("https://github.com/o/r/compare/%v...%v", escapedBase, escapedHead)),
+			PermalinkURL: String("https://github.com/o/r/compare/o:bbcd538c8e72b8c175046e27cc8f907076331401...o:0328041d1152db8ae77652d1618a02e57f745f17"),
+			DiffURL:      String(fmt.Sprintf("https://github.com/o/r/compare/%v...%v.diff", escapedBase, escapedHead)),
+			PatchURL:     String(fmt.Sprintf("https://github.com/o/r/compare/%v...%v.patch", escapedBase, escapedHead)),
+			URL:          String(fmt.Sprintf("https://api.github.com/repos/o/r/compare/%v...%v", escapedBase, escapedHead)),
+		}
+
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Repositories.CompareCommits returned \n%+v, want \n%+v", got, want)
+		}
+
+		const methodName = "CompareCommits"
+		testBadOptions(t, methodName, func() (err error) {
+			_, _, err = client.Repositories.CompareCommits(ctx, "\n", "\n", "\n", "\n")
+			return err
+		})
+
+		testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+			got, resp, err := client.Repositories.CompareCommits(ctx, "o", "r", base, head)
+			if got != nil {
+				t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+			}
+			return resp, err
+		})
+
+		teardown()
+	}
+}
+
+func TestRepositoriesService_CompareCommitsRaw_diff(t *testing.T) {
+	testCases := []struct {
+		base string
+		head string
+	}{
+		{base: "b", head: "h"},
+		{base: "123base", head: "head123"},
+		{base: "`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+123base", head: "head123`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+"},
 	}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("Repositories.CompareCommits returned \n%+v, want \n%+v", got, want)
+	for _, sample := range testCases {
+		client, mux, _, teardown := setup()
+
+		base := sample.base
+		head := sample.head
+		pattern := fmt.Sprintf("/repos/o/r/compare/%v...%v", base, head)
+		const rawStr = "@@diff content"
+
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			testMethod(t, r, "GET")
+			testHeader(t, r, "Accept", mediaTypeV3Diff)
+			fmt.Fprint(w, rawStr)
+		})
+
+		ctx := context.Background()
+		got, _, err := client.Repositories.CompareCommitsRaw(ctx, "o", "r", base, head, RawOptions{Type: Diff})
+		if err != nil {
+			t.Fatalf("Repositories.GetCommitRaw returned error: %v", err)
+		}
+		want := rawStr
+		if got != want {
+			t.Errorf("Repositories.GetCommitRaw returned %s want %s", got, want)
+		}
+
+		const methodName = "CompareCommitsRaw"
+		testBadOptions(t, methodName, func() (err error) {
+			_, _, err = client.Repositories.CompareCommitsRaw(ctx, "\n", "\n", "\n", "\n", RawOptions{Type: Diff})
+			return err
+		})
+
+		testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+			got, resp, err := client.Repositories.CompareCommitsRaw(ctx, "o", "r", base, head, RawOptions{Type: Diff})
+			if got != "" {
+				t.Errorf("testNewRequestAndDoFailure %v = %#v, want ''", methodName, got)
+			}
+			return resp, err
+		})
+
+		teardown()
+	}
+}
+
+func TestRepositoriesService_CompareCommitsRaw_patch(t *testing.T) {
+	testCases := []struct {
+		base string
+		head string
+	}{
+		{base: "b", head: "h"},
+		{base: "123base", head: "head123"},
+		{base: "`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+123base", head: "head123`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+"},
+	}
+
+	for _, sample := range testCases {
+		client, mux, _, teardown := setup()
+
+		base := sample.base
+		head := sample.head
+		pattern := fmt.Sprintf("/repos/o/r/compare/%v...%v", base, head)
+		const rawStr = "@@patch content"
+
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			testMethod(t, r, "GET")
+			testHeader(t, r, "Accept", mediaTypeV3Patch)
+			fmt.Fprint(w, rawStr)
+		})
+
+		ctx := context.Background()
+		got, _, err := client.Repositories.CompareCommitsRaw(ctx, "o", "r", base, head, RawOptions{Type: Patch})
+		if err != nil {
+			t.Fatalf("Repositories.GetCommitRaw returned error: %v", err)
+		}
+		want := rawStr
+		if got != want {
+			t.Errorf("Repositories.GetCommitRaw returned %s want %s", got, want)
+		}
+
+		teardown()
+	}
+}
+
+func TestRepositoriesService_CompareCommitsRaw_invalid(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		base string
+		head string
+	}{
+		{base: "b", head: "h"},
+		{base: "123base", head: "head123"},
+		{base: "`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+123base", head: "head123`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?/*-+"},
+	}
+
+	for _, sample := range testCases {
+		client, _, _, teardown := setup()
+		_, _, err := client.Repositories.CompareCommitsRaw(ctx, "o", "r", sample.base, sample.head, RawOptions{100})
+		if err == nil {
+			t.Fatal("Repositories.GetCommitRaw should return error")
+		}
+		if !strings.Contains(err.Error(), "unsupported raw type") {
+			t.Error("Repositories.GetCommitRaw should return unsupported raw type error")
+		}
+		teardown()
 	}
 }
 
@@ -409,7 +623,8 @@ func TestRepositoriesService_ListBranchesHeadCommit(t *testing.T) {
 		fmt.Fprintf(w, `[{"name": "b","commit":{"sha":"2e90302801c870f17b6152327d9b9a03c8eca0e2","url":"https://api.github.com/repos/google/go-github/commits/2e90302801c870f17b6152327d9b9a03c8eca0e2"},"protected":true}]`)
 	})
 
-	branches, _, err := client.Repositories.ListBranchesHeadCommit(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	branches, _, err := client.Repositories.ListBranchesHeadCommit(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Repositories.ListBranchesHeadCommit returned error: %v", err)
 	}
@@ -427,4 +642,18 @@ func TestRepositoriesService_ListBranchesHeadCommit(t *testing.T) {
 	if !reflect.DeepEqual(branches, want) {
 		t.Errorf("Repositories.ListBranchesHeadCommit returned %+v, want %+v", branches, want)
 	}
+
+	const methodName = "ListBranchesHeadCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListBranchesHeadCommit(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListBranchesHeadCommit(ctx, "o", "r", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

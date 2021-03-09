@@ -43,6 +43,7 @@ const (
 	mediaTypeV3Diff            = "application/vnd.github.v3.diff"
 	mediaTypeV3Patch           = "application/vnd.github.v3.patch"
 	mediaTypeOrgPermissionRepo = "application/vnd.github.v3.repository+json"
+	mediaTypeIssueImportAPI    = "application/vnd.github.golden-comet-preview+json"
 
 	// Media Type values to access preview APIs
 
@@ -67,9 +68,6 @@ const (
 	// https://developer.github.com/changes/2016-09-14-projects-api/
 	mediaTypeProjectsPreview = "application/vnd.github.inertia-preview+json"
 
-	// https://developer.github.com/changes/2016-09-14-Integrations-Early-Access/
-	mediaTypeIntegrationPreview = "application/vnd.github.machine-man-preview+json"
-
 	// https://developer.github.com/changes/2017-01-05-commit-search-api/
 	mediaTypeCommitSearchPreview = "application/vnd.github.cloak-preview+json"
 
@@ -87,12 +85,6 @@ const (
 
 	// https://developer.github.com/changes/2018-03-16-protected-branches-required-approving-reviews/
 	mediaTypeRequiredApprovingReviewsPreview = "application/vnd.github.luke-cage-preview+json"
-
-	// https://developer.github.com/changes/2018-01-10-lock-reason-api-preview/
-	mediaTypeLockReasonPreview = "application/vnd.github.sailor-v-preview+json"
-
-	// https://developer.github.com/changes/2018-05-07-new-checks-api-public-beta/
-	mediaTypeCheckRunsPreview = "application/vnd.github.antiope-preview+json"
 
 	// https://developer.github.com/enterprise/2.13/v3/repos/pre_receive_hooks/
 	mediaTypePreReceiveHooksPreview = "application/vnd.github.eye-scream-preview"
@@ -121,10 +113,10 @@ const (
 	// https://developer.github.com/changes/2019-04-11-pulls-branches-for-commit/
 	mediaTypeListPullsOrBranchesForCommitPreview = "application/vnd.github.groot-preview+json"
 
-	// https://developer.github.com/v3/previews/#repository-creation-permissions
+	// https://docs.github.com/en/free-pro-team@latest/rest/reference/previews/#repository-creation-permissions
 	mediaTypeMemberAllowedRepoCreationTypePreview = "application/vnd.github.surtur-preview+json"
 
-	// https://developer.github.com/v3/previews/#create-and-use-repository-templates
+	// https://docs.github.com/en/free-pro-team@latest/rest/reference/previews/#create-and-use-repository-templates
 	mediaTypeRepositoryTemplatePreview = "application/vnd.github.baptiste-preview+json"
 
 	// https://developer.github.com/changes/2019-10-03-multi-line-comments/
@@ -135,6 +127,9 @@ const (
 
 	// https://developer.github.com/changes/2019-12-03-internal-visibility-changes/
 	mediaTypeRepositoryVisibilityPreview = "application/vnd.github.nebula-preview+json"
+
+	// https://developer.github.com/changes/2018-12-10-content-attachments-api/
+	mediaTypeContentAttachmentsPreview = "application/vnd.github.corsair-preview+json"
 )
 
 // A Client manages communication with the GitHub API.
@@ -164,12 +159,15 @@ type Client struct {
 	Admin          *AdminService
 	Apps           *AppsService
 	Authorizations *AuthorizationsService
+	Billing        *BillingService
 	Checks         *ChecksService
 	CodeScanning   *CodeScanningService
+	Enterprise     *EnterpriseService
 	Gists          *GistsService
 	Git            *GitService
 	Gitignores     *GitignoresService
 	Interactions   *InteractionsService
+	IssueImport    *IssueImportService
 	Issues         *IssuesService
 	Licenses       *LicensesService
 	Marketplace    *MarketplaceService
@@ -271,12 +269,15 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Admin = (*AdminService)(&c.common)
 	c.Apps = (*AppsService)(&c.common)
 	c.Authorizations = (*AuthorizationsService)(&c.common)
+	c.Billing = (*BillingService)(&c.common)
 	c.Checks = (*ChecksService)(&c.common)
 	c.CodeScanning = (*CodeScanningService)(&c.common)
+	c.Enterprise = (*EnterpriseService)(&c.common)
 	c.Gists = (*GistsService)(&c.common)
 	c.Git = (*GitService)(&c.common)
 	c.Gitignores = (*GitignoresService)(&c.common)
 	c.Interactions = (*InteractionsService)(&c.common)
+	c.IssueImport = (*IssueImportService)(&c.common)
 	c.Issues = (*IssuesService)(&c.common)
 	c.Licenses = (*LicensesService)(&c.common)
 	c.Marketplace = &MarketplaceService{client: c}
@@ -313,7 +314,9 @@ func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*C
 	if !strings.HasSuffix(baseEndpoint.Path, "/") {
 		baseEndpoint.Path += "/"
 	}
-	if !strings.HasSuffix(baseEndpoint.Path, "/api/v3/") {
+	if !strings.HasSuffix(baseEndpoint.Path, "/api/v3/") &&
+		!strings.HasPrefix(baseEndpoint.Host, "api.") &&
+		!strings.Contains(baseEndpoint.Host, ".api.") {
 		baseEndpoint.Path += "api/v3/"
 	}
 
@@ -324,7 +327,9 @@ func NewEnterpriseClient(baseURL, uploadURL string, httpClient *http.Client) (*C
 	if !strings.HasSuffix(uploadEndpoint.Path, "/") {
 		uploadEndpoint.Path += "/"
 	}
-	if !strings.HasSuffix(uploadEndpoint.Path, "/api/uploads/") {
+	if !strings.HasSuffix(uploadEndpoint.Path, "/api/uploads/") &&
+		!strings.HasPrefix(uploadEndpoint.Host, "api.") &&
+		!strings.Contains(uploadEndpoint.Host, ".api.") {
 		uploadEndpoint.Path += "api/uploads/"
 	}
 
@@ -509,16 +514,15 @@ func parseRate(r *http.Response) Rate {
 	return rate
 }
 
-// Do sends an API request and returns the API response. The API response is
-// JSON decoded and stored in the value pointed to by v, or returned as an
-// error if an API error has occurred. If v implements the io.Writer
-// interface, the raw response body will be written to v, without attempting to
-// first decode it. If rate limit is exceeded and reset time is in the future,
-// Do returns *RateLimitError immediately without making a network API call.
+// BareDo sends an API request and lets you handle the api response. If an error
+// or API Error occurs, the error will contain more information. Otherwise you
+// are supposed to read and close the response's Body. If rate limit is exceeded
+// and reset time is in the future, BareDo returns *RateLimitError immediately
+// without making a network API call.
 //
-// The provided ctx must be non-nil, if it is nil an error is returned. If it is canceled or times out,
-// ctx.Err() will be returned.
-func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+// The provided ctx must be non-nil, if it is nil an error is returned. If it is
+// canceled or times out, ctx.Err() will be returned.
+func (c *Client) BareDo(ctx context.Context, req *http.Request) (*Response, error) {
 	if ctx == nil {
 		return nil, errors.New("context must be non-nil")
 	}
@@ -554,7 +558,6 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	response := newResponse(resp)
 
@@ -564,6 +567,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 
 	err = CheckResponse(resp)
 	if err != nil {
+		defer resp.Body.Close()
 		// Special case for AcceptedErrors. If an AcceptedError
 		// has been encountered, the response's payload will be
 		// added to the AcceptedError and returned.
@@ -577,27 +581,43 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 			}
 
 			aerr.Raw = b
-			return response, aerr
-		}
-
-		return response, err
-	}
-
-	if v != nil {
-		if w, ok := v.(io.Writer); ok {
-			io.Copy(w, resp.Body)
-		} else {
-			decErr := json.NewDecoder(resp.Body).Decode(v)
-			if decErr == io.EOF {
-				decErr = nil // ignore EOF errors caused by empty response body
-			}
-			if decErr != nil {
-				err = decErr
-			}
+			err = aerr
 		}
 	}
-
 	return response, err
+}
+
+// Do sends an API request and returns the API response. The API response is
+// JSON decoded and stored in the value pointed to by v, or returned as an
+// error if an API error has occurred. If v implements the io.Writer interface,
+// the raw response body will be written to v, without attempting to first
+// decode it. If v is nil, and no error hapens, the response is returned as is.
+// If rate limit is exceeded and reset time is in the future, Do returns
+// *RateLimitError immediately without making a network API call.
+//
+// The provided ctx must be non-nil, if it is nil an error is returned. If it
+// is canceled or times out, ctx.Err() will be returned.
+func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+	resp, err := c.BareDo(ctx, req)
+	if err != nil {
+		return resp, err
+	}
+	defer resp.Body.Close()
+
+	switch v := v.(type) {
+	case nil:
+	case io.Writer:
+		_, err = io.Copy(v, resp.Body)
+	default:
+		decErr := json.NewDecoder(resp.Body).Decode(v)
+		if decErr == io.EOF {
+			decErr = nil // ignore EOF errors caused by empty response body
+		}
+		if decErr != nil {
+			err = decErr
+		}
+	}
+	return resp, err
 }
 
 // checkRateLimitBeforeDo does not make any network calls, but uses existing knowledge from
@@ -630,7 +650,7 @@ func (c *Client) checkRateLimitBeforeDo(req *http.Request, rateLimitCategory rat
 /*
 An ErrorResponse reports one or more errors caused by an API request.
 
-GitHub API docs: https://developer.github.com/v3/#client-errors
+GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/#client-errors
 */
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error
@@ -645,7 +665,7 @@ type ErrorResponse struct {
 	} `json:"block,omitempty"`
 	// Most errors will also include a documentation_url field pointing
 	// to some content that might help you resolve the error, see
-	// https://developer.github.com/v3/#client-errors
+	// https://docs.github.com/en/free-pro-team@latest/rest/reference/#client-errors
 	DocumentationURL string `json:"documentation_url,omitempty"`
 }
 
@@ -692,7 +712,7 @@ func (*AcceptedError) Error() string {
 }
 
 // AbuseRateLimitError occurs when GitHub returns 403 Forbidden response with the
-// "documentation_url" field value equal to "https://developer.github.com/v3/#abuse-rate-limits".
+// "documentation_url" field value equal to "https://docs.github.com/en/free-pro-team@latest/rest/reference/#abuse-rate-limits".
 type AbuseRateLimitError struct {
 	Response *http.Response // HTTP response that caused this error
 	Message  string         `json:"message"` // error message
@@ -743,7 +763,7 @@ GitHub error responses structure are often undocumented and inconsistent.
 Sometimes error is just a simple string (Issue #540).
 In such cases, Message represents an error message as a workaround.
 
-GitHub API docs: https://developer.github.com/v3/#client-errors
+GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/#client-errors
 */
 type Error struct {
 	Resource string `json:"resource"` // resource on which the error occurred
@@ -799,7 +819,7 @@ func CheckResponse(r *http.Response) error {
 			Response: errorResponse.Response,
 			Message:  errorResponse.Message,
 		}
-	case r.StatusCode == http.StatusForbidden && strings.HasSuffix(errorResponse.DocumentationURL, "/v3/#abuse-rate-limits"):
+	case r.StatusCode == http.StatusForbidden && strings.HasSuffix(errorResponse.DocumentationURL, "#abuse-rate-limits"):
 		abuseRateLimitError := &AbuseRateLimitError{
 			Response: errorResponse.Response,
 			Message:  errorResponse.Message,
@@ -859,14 +879,14 @@ type RateLimits struct {
 	// requests are limited to 60 per hour. Authenticated requests are
 	// limited to 5,000 per hour.
 	//
-	// GitHub API docs: https://developer.github.com/v3/#rate-limiting
+	// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/#rate-limiting
 	Core *Rate `json:"core"`
 
 	// The rate limit for search API requests. Unauthenticated requests
 	// are limited to 10 requests per minutes. Authenticated requests are
 	// limited to 30 per minute.
 	//
-	// GitHub API docs: https://developer.github.com/v3/search/#rate-limit
+	// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/search/#rate-limit
 	Search *Rate `json:"search"`
 }
 
@@ -905,7 +925,7 @@ func (c *Client) RateLimits(ctx context.Context) (*RateLimits, *Response, error)
 	})
 	resp, err := c.Do(ctx, req, response)
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
 
 	if response.Resources != nil {
@@ -953,7 +973,7 @@ that need to use a higher rate limit associated with your OAuth application.
 This will add the client id and secret as a base64-encoded string in the format
 ClientID:ClientSecret and apply it as an "Authorization": "Basic" header.
 
-See https://developer.github.com/v3/#unauthenticated-rate-limited-requests for
+See https://docs.github.com/en/free-pro-team@latest/rest/reference/#unauthenticated-rate-limited-requests for
 more information.
 */
 type UnauthenticatedRateLimitedTransport struct {

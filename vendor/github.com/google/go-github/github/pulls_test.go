@@ -20,10 +20,8 @@ func TestPullRequestsService_List(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		testFormValues(t, r, values{
 			"state":     "closed",
 			"head":      "h",
@@ -36,7 +34,8 @@ func TestPullRequestsService_List(t *testing.T) {
 	})
 
 	opts := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
-	pulls, _, err := client.PullRequests.List(context.Background(), "o", "r", opts)
+	ctx := context.Background()
+	pulls, _, err := client.PullRequests.List(ctx, "o", "r", opts)
 	if err != nil {
 		t.Errorf("PullRequests.List returned error: %v", err)
 	}
@@ -45,16 +44,29 @@ func TestPullRequestsService_List(t *testing.T) {
 	if !reflect.DeepEqual(pulls, want) {
 		t.Errorf("PullRequests.List returned %+v, want %+v", pulls, want)
 	}
+
+	const methodName = "List"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.List(ctx, "\n", "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.List(ctx, "o", "r", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeListPullsOrBranchesForCommitPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/commits/sha/pulls", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeListPullsOrBranchesForCommitPreview)
 		testFormValues(t, r, values{
 			"state":     "closed",
 			"head":      "h",
@@ -67,7 +79,8 @@ func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
 	})
 
 	opts := &PullRequestListOptions{"closed", "h", "b", "created", "desc", ListOptions{Page: 2}}
-	pulls, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), "o", "r", "sha", opts)
+	ctx := context.Background()
+	pulls, _, err := client.PullRequests.ListPullRequestsWithCommit(ctx, "o", "r", "sha", opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListPullRequestsWithCommit returned error: %v", err)
 	}
@@ -76,13 +89,28 @@ func TestPullRequestsService_ListPullRequestsWithCommit(t *testing.T) {
 	if !reflect.DeepEqual(pulls, want) {
 		t.Errorf("PullRequests.ListPullRequestsWithCommit returned %+v, want %+v", pulls, want)
 	}
+
+	const methodName = "ListPullRequestsWithCommit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.ListPullRequestsWithCommit(ctx, "\n", "\n", "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.ListPullRequestsWithCommit(ctx, "o", "r", "sha", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_List_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.PullRequests.List(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.PullRequests.List(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -90,14 +118,13 @@ func TestPullRequestsService_Get(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/pulls/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 		fmt.Fprint(w, `{"number":1}`)
 	})
 
-	pull, _, err := client.PullRequests.Get(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.Get(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("PullRequests.Get returned error: %v", err)
 	}
@@ -106,6 +133,20 @@ func TestPullRequestsService_Get(t *testing.T) {
 	if !reflect.DeepEqual(pull, want) {
 		t.Errorf("PullRequests.Get returned %+v, want %+v", pull, want)
 	}
+
+	const methodName = "Get"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.Get(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.Get(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_GetRaw_diff(t *testing.T) {
@@ -120,7 +161,8 @@ func TestPullRequestsService_GetRaw_diff(t *testing.T) {
 		fmt.Fprint(w, rawStr)
 	})
 
-	got, _, err := client.PullRequests.GetRaw(context.Background(), "o", "r", 1, RawOptions{Diff})
+	ctx := context.Background()
+	got, _, err := client.PullRequests.GetRaw(ctx, "o", "r", 1, RawOptions{Diff})
 	if err != nil {
 		t.Fatalf("PullRequests.GetRaw returned error: %v", err)
 	}
@@ -128,6 +170,20 @@ func TestPullRequestsService_GetRaw_diff(t *testing.T) {
 	if got != want {
 		t.Errorf("PullRequests.GetRaw returned %s want %s", got, want)
 	}
+
+	const methodName = "GetRaw"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.GetRaw(ctx, "\n", "\n", -1, RawOptions{Diff})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.GetRaw(ctx, "o", "r", 1, RawOptions{Diff})
+		if got != "" {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_GetRaw_patch(t *testing.T) {
@@ -142,7 +198,8 @@ func TestPullRequestsService_GetRaw_patch(t *testing.T) {
 		fmt.Fprint(w, rawStr)
 	})
 
-	got, _, err := client.PullRequests.GetRaw(context.Background(), "o", "r", 1, RawOptions{Patch})
+	ctx := context.Background()
+	got, _, err := client.PullRequests.GetRaw(ctx, "o", "r", 1, RawOptions{Patch})
 	if err != nil {
 		t.Fatalf("PullRequests.GetRaw returned error: %v", err)
 	}
@@ -156,7 +213,8 @@ func TestPullRequestsService_GetRaw_invalid(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.PullRequests.GetRaw(context.Background(), "o", "r", 1, RawOptions{100})
+	ctx := context.Background()
+	_, _, err := client.PullRequests.GetRaw(ctx, "o", "r", 1, RawOptions{100})
 	if err == nil {
 		t.Fatal("PullRequests.GetRaw should return error")
 	}
@@ -186,7 +244,8 @@ func TestPullRequestsService_Get_links(t *testing.T) {
 			}`)
 	})
 
-	pull, _, err := client.PullRequests.Get(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.Get(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("PullRequests.Get returned error: %v", err)
 	}
@@ -227,7 +286,8 @@ func TestPullRequestsService_Get_headAndBase(t *testing.T) {
 		fmt.Fprint(w, `{"number":1,"head":{"ref":"r2","repo":{"id":2}},"base":{"ref":"r1","repo":{"id":1}}}`)
 	})
 
-	pull, _, err := client.PullRequests.Get(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.Get(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("PullRequests.Get returned error: %v", err)
 	}
@@ -265,7 +325,8 @@ func TestPullRequestsService_Get_urlFields(t *testing.T) {
 			"review_comment_url": "https://api.github.com/repos/octocat/Hello-World/pulls/comments{/number}"}`)
 	})
 
-	pull, _, err := client.PullRequests.Get(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.Get(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("PullRequests.Get returned error: %v", err)
 	}
@@ -291,7 +352,8 @@ func TestPullRequestsService_Get_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.PullRequests.Get(context.Background(), "%", "r", 1)
+	ctx := context.Background()
+	_, _, err := client.PullRequests.Get(ctx, "%", "r", 1)
 	testURLParseError(t, err)
 }
 
@@ -313,7 +375,8 @@ func TestPullRequestsService_Create(t *testing.T) {
 		fmt.Fprint(w, `{"number":1}`)
 	})
 
-	pull, _, err := client.PullRequests.Create(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.Create(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("PullRequests.Create returned error: %v", err)
 	}
@@ -322,13 +385,28 @@ func TestPullRequestsService_Create(t *testing.T) {
 	if !reflect.DeepEqual(pull, want) {
 		t.Errorf("PullRequests.Create returned %+v, want %+v", pull, want)
 	}
+
+	const methodName = "Create"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.Create(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.Create(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_Create_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.PullRequests.Create(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.PullRequests.Create(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -350,7 +428,8 @@ func TestPullRequestsService_UpdateBranch(t *testing.T) {
 		ExpectedHeadSHA: String("s"),
 	}
 
-	pull, _, err := client.PullRequests.UpdateBranch(context.Background(), "o", "r", 1, opts)
+	ctx := context.Background()
+	pull, _, err := client.PullRequests.UpdateBranch(ctx, "o", "r", 1, opts)
 	if err != nil {
 		t.Errorf("PullRequests.UpdateBranch returned error: %v", err)
 	}
@@ -363,6 +442,20 @@ func TestPullRequestsService_UpdateBranch(t *testing.T) {
 	if !reflect.DeepEqual(pull, want) {
 		t.Errorf("PullRequests.UpdateBranch returned %+v, want %+v", pull, want)
 	}
+
+	const methodName = "UpdateBranch"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.UpdateBranch(ctx, "\n", "\n", -1, opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.UpdateBranch(ctx, "o", "r", 1, opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_Edit(t *testing.T) {
@@ -396,16 +489,15 @@ func TestPullRequestsService_Edit(t *testing.T) {
 
 	for i, tt := range tests {
 		madeRequest := false
-		wantAcceptHeaders := []string{mediaTypeLockReasonPreview}
 		mux.HandleFunc(fmt.Sprintf("/repos/o/r/pulls/%v", i), func(w http.ResponseWriter, r *http.Request) {
 			testMethod(t, r, "PATCH")
-			testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
 			testBody(t, r, tt.wantUpdate+"\n")
 			io.WriteString(w, tt.sendResponse)
 			madeRequest = true
 		})
 
-		pull, _, err := client.PullRequests.Edit(context.Background(), "o", "r", i, tt.input)
+		ctx := context.Background()
+		pull, _, err := client.PullRequests.Edit(ctx, "o", "r", i, tt.input)
 		if err != nil {
 			t.Errorf("%d: PullRequests.Edit returned error: %v", i, err)
 		}
@@ -417,6 +509,12 @@ func TestPullRequestsService_Edit(t *testing.T) {
 		if !madeRequest {
 			t.Errorf("%d: PullRequest.Edit did not make the expected request", i)
 		}
+
+		const methodName = "Edit"
+		testBadOptions(t, methodName, func() (err error) {
+			_, _, err = client.PullRequests.Edit(ctx, "\n", "\n", -i, tt.input)
+			return err
+		})
 	}
 }
 
@@ -424,7 +522,8 @@ func TestPullRequestsService_Edit_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.PullRequests.Edit(context.Background(), "%", "r", 1, &PullRequest{})
+	ctx := context.Background()
+	_, _, err := client.PullRequests.Edit(ctx, "%", "r", 1, &PullRequest{})
 	testURLParseError(t, err)
 }
 
@@ -457,7 +556,8 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 	})
 
 	opts := &ListOptions{Page: 2}
-	commits, _, err := client.PullRequests.ListCommits(context.Background(), "o", "r", 1, opts)
+	ctx := context.Background()
+	commits, _, err := client.PullRequests.ListCommits(ctx, "o", "r", 1, opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListCommits returned error: %v", err)
 	}
@@ -483,6 +583,20 @@ func TestPullRequestsService_ListCommits(t *testing.T) {
 	if !reflect.DeepEqual(commits, want) {
 		t.Errorf("PullRequests.ListCommits returned %+v, want %+v", commits, want)
 	}
+
+	const methodName = "ListCommits"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.ListCommits(ctx, "\n", "\n", -1, opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.ListCommits(ctx, "o", "r", 1, opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_ListFiles(t *testing.T) {
@@ -516,7 +630,8 @@ func TestPullRequestsService_ListFiles(t *testing.T) {
 	})
 
 	opts := &ListOptions{Page: 2}
-	commitFiles, _, err := client.PullRequests.ListFiles(context.Background(), "o", "r", 1, opts)
+	ctx := context.Background()
+	commitFiles, _, err := client.PullRequests.ListFiles(ctx, "o", "r", 1, opts)
 	if err != nil {
 		t.Errorf("PullRequests.ListFiles returned error: %v", err)
 	}
@@ -545,6 +660,20 @@ func TestPullRequestsService_ListFiles(t *testing.T) {
 	if !reflect.DeepEqual(commitFiles, want) {
 		t.Errorf("PullRequests.ListFiles returned %+v, want %+v", commitFiles, want)
 	}
+
+	const methodName = "ListFiles"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.ListFiles(ctx, "\n", "\n", -1, opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.ListFiles(ctx, "o", "r", 1, opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_IsMerged(t *testing.T) {
@@ -556,7 +685,8 @@ func TestPullRequestsService_IsMerged(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	isMerged, _, err := client.PullRequests.IsMerged(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	isMerged, _, err := client.PullRequests.IsMerged(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("PullRequests.IsMerged returned error: %v", err)
 	}
@@ -565,6 +695,20 @@ func TestPullRequestsService_IsMerged(t *testing.T) {
 	if !reflect.DeepEqual(isMerged, want) {
 		t.Errorf("PullRequests.IsMerged returned %+v, want %+v", isMerged, want)
 	}
+
+	const methodName = "IsMerged"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.IsMerged(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.IsMerged(ctx, "o", "r", 1)
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestPullRequestsService_Merge(t *testing.T) {
@@ -582,7 +726,8 @@ func TestPullRequestsService_Merge(t *testing.T) {
 	})
 
 	options := &PullRequestOptions{MergeMethod: "rebase"}
-	merge, _, err := client.PullRequests.Merge(context.Background(), "o", "r", 1, "merging pull request", options)
+	ctx := context.Background()
+	merge, _, err := client.PullRequests.Merge(ctx, "o", "r", 1, "merging pull request", options)
 	if err != nil {
 		t.Errorf("PullRequests.Merge returned error: %v", err)
 	}
@@ -595,6 +740,20 @@ func TestPullRequestsService_Merge(t *testing.T) {
 	if !reflect.DeepEqual(merge, want) {
 		t.Errorf("PullRequests.Merge returned %+v, want %+v", merge, want)
 	}
+
+	const methodName = "Merge"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.PullRequests.Merge(ctx, "\n", "\n", -1, "\n", options)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.PullRequests.Merge(ctx, "o", "r", 1, "merging pull request", options)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 // Test that different merge options produce expected PUT requests. See issue https://github.com/google/go-github/issues/500.
@@ -630,6 +789,12 @@ func TestPullRequestsService_Merge_options(t *testing.T) {
 			},
 			wantBody: `{"commit_message":"merging pull request","commit_title":"Extra detail","merge_method":"squash","sha":"6dcb09b5b57875f334f61aebed695e2e4193db5e"}`,
 		},
+		{
+			options: &PullRequestOptions{
+				DontDefaultIfBlank: true,
+			},
+			wantBody: `{"commit_message":"merging pull request"}`,
+		},
 	}
 
 	for i, test := range tests {
@@ -639,9 +804,39 @@ func TestPullRequestsService_Merge_options(t *testing.T) {
 			testBody(t, r, test.wantBody+"\n")
 			madeRequest = true
 		})
-		_, _, _ = client.PullRequests.Merge(context.Background(), "o", "r", i, "merging pull request", test.options)
+		ctx := context.Background()
+		_, _, _ = client.PullRequests.Merge(ctx, "o", "r", i, "merging pull request", test.options)
 		if !madeRequest {
 			t.Errorf("%d: PullRequests.Merge(%#v): expected request was not made", i, test.options)
 		}
+	}
+}
+
+func TestPullRequestsService_Merge_Blank_Message(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+	madeRequest := false
+	expectedBody := ""
+	mux.HandleFunc("/repos/o/r/pulls/1/merge", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+		testBody(t, r, expectedBody+"\n")
+		madeRequest = true
+	})
+
+	ctx := context.Background()
+	expectedBody = `{}`
+	_, _, _ = client.PullRequests.Merge(ctx, "o", "r", 1, "", nil)
+	if !madeRequest {
+		t.Error("TestPullRequestsService_Merge_Blank_Message #1 did not make request")
+	}
+
+	madeRequest = false
+	opts := PullRequestOptions{
+		DontDefaultIfBlank: true,
+	}
+	expectedBody = `{"commit_message":""}`
+	_, _, _ = client.PullRequests.Merge(ctx, "o", "r", 1, "", &opts)
+	if !madeRequest {
+		t.Error("TestPullRequestsService_Merge_Blank_Message #2 did not make request")
 	}
 }

@@ -23,7 +23,8 @@ func TestGitService_GetTag(t *testing.T) {
 		fmt.Fprint(w, `{"tag": "t"}`)
 	})
 
-	tag, _, err := client.Git.GetTag(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	tag, _, err := client.Git.GetTag(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Git.GetTag returned error: %v", err)
 	}
@@ -32,6 +33,12 @@ func TestGitService_GetTag(t *testing.T) {
 	if !reflect.DeepEqual(tag, want) {
 		t.Errorf("Git.GetTag returned %+v, want %+v", tag, want)
 	}
+
+	const methodName = "GetTag"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.GetTag(ctx, "\n", "\n", "\n")
+		return err
+	})
 }
 
 func TestGitService_CreateTag(t *testing.T) {
@@ -52,7 +59,8 @@ func TestGitService_CreateTag(t *testing.T) {
 		fmt.Fprint(w, `{"tag": "t"}`)
 	})
 
-	tag, _, err := client.Git.CreateTag(context.Background(), "o", "r", &Tag{
+	ctx := context.Background()
+	tag, _, err := client.Git.CreateTag(ctx, "o", "r", &Tag{
 		Tag:    input.Tag,
 		Object: &GitObject{SHA: input.Object},
 	})
@@ -64,4 +72,13 @@ func TestGitService_CreateTag(t *testing.T) {
 	if !reflect.DeepEqual(tag, want) {
 		t.Errorf("Git.GetTag returned %+v, want %+v", tag, want)
 	}
+
+	const methodName = "CreateTag"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.CreateTag(ctx, "\n", "\n", &Tag{
+			Tag:    input.Tag,
+			Object: &GitObject{SHA: input.Object},
+		})
+		return err
+	})
 }

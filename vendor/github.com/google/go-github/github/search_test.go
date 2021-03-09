@@ -31,7 +31,8 @@ func TestSearchService_Repositories(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Repositories(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Repositories(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Repositories returned error: %v", err)
 	}
@@ -44,6 +45,19 @@ func TestSearchService_Repositories(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Repositories returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Repositories_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Repositories"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Repositories(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_Topics(t *testing.T) {
@@ -62,7 +76,8 @@ func TestSearchService_Topics(t *testing.T) {
 	})
 
 	opts := &SearchOptions{ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Topics(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Topics(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Topics returned error: %v", err)
 	}
@@ -75,6 +90,19 @@ func TestSearchService_Topics(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Topics returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Topics_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Topics"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Topics(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_Commits(t *testing.T) {
@@ -93,7 +121,8 @@ func TestSearchService_Commits(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "author-date", Order: "desc"}
-	result, _, err := client.Search.Commits(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Commits(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Commits returned error: %v", err)
 	}
@@ -106,6 +135,19 @@ func TestSearchService_Commits(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Commits returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Commits_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Commits"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Commits(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_Issues(t *testing.T) {
@@ -126,7 +168,8 @@ func TestSearchService_Issues(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Issues(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Issues(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Issues returned error: %v", err)
 	}
@@ -139,6 +182,19 @@ func TestSearchService_Issues(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Issues returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Issues_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Issues"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Issues(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_Issues_withQualifiersNoOpts(t *testing.T) {
@@ -159,7 +215,8 @@ func TestSearchService_Issues_withQualifiersNoOpts(t *testing.T) {
 	})
 
 	opts := &SearchOptions{}
-	result, _, err := client.Search.Issues(context.Background(), q, opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Issues(ctx, q, opts)
 	if err != nil {
 		t.Errorf("Search.Issues returned error: %v", err)
 	}
@@ -197,7 +254,8 @@ func TestSearchService_Issues_withQualifiersAndOpts(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks"}
-	result, _, err := client.Search.Issues(context.Background(), q, opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Issues(ctx, q, opts)
 	if err != nil {
 		t.Errorf("Search.Issues returned error: %v", err)
 	}
@@ -234,7 +292,8 @@ func TestSearchService_Users(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Users(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Users(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Issues returned error: %v", err)
 	}
@@ -247,6 +306,19 @@ func TestSearchService_Users(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Users returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Users_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Users"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Users(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_Code(t *testing.T) {
@@ -267,7 +339,8 @@ func TestSearchService_Code(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Code(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Code(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Code returned error: %v", err)
 	}
@@ -280,6 +353,19 @@ func TestSearchService_Code(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Code returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Code_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Code"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Code(ctx, "\n", nil)
+		return err
+	})
 }
 
 func TestSearchService_CodeTextMatch(t *testing.T) {
@@ -319,7 +405,8 @@ func TestSearchService_CodeTextMatch(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "forks", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}, TextMatch: true}
-	result, _, err := client.Search.Code(context.Background(), "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Code(ctx, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Code returned error: %v", err)
 	}
@@ -362,7 +449,8 @@ func TestSearchService_Labels(t *testing.T) {
 	})
 
 	opts := &SearchOptions{Sort: "updated", Order: "desc", ListOptions: ListOptions{Page: 2, PerPage: 2}}
-	result, _, err := client.Search.Labels(context.Background(), 1234, "blah", opts)
+	ctx := context.Background()
+	result, _, err := client.Search.Labels(ctx, 1234, "blah", opts)
 	if err != nil {
 		t.Errorf("Search.Code returned error: %v", err)
 	}
@@ -378,4 +466,17 @@ func TestSearchService_Labels(t *testing.T) {
 	if !reflect.DeepEqual(result, want) {
 		t.Errorf("Search.Labels returned %+v, want %+v", result, want)
 	}
+}
+
+func TestSearchService_Labels_coverage(t *testing.T) {
+	client, _, _, teardown := setup()
+	defer teardown()
+
+	ctx := context.Background()
+
+	const methodName = "Labels"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Search.Labels(ctx, -1234, "\n", nil)
+		return err
+	})
 }

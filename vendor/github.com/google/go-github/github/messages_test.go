@@ -8,6 +8,8 @@ package github
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -15,17 +17,25 @@ import (
 	"testing"
 )
 
+func TestMessageMAC_BadHashTypePrefix(t *testing.T) {
+	const signature = "bogus1=1234567"
+	if _, _, err := messageMAC(signature); err == nil {
+		t.Fatal("messageMAC returned nil; wanted error")
+	}
+}
+
 func TestValidatePayload(t *testing.T) {
 	const defaultBody = `{"yo":true}` // All tests below use the default request body and signature.
 	const defaultSignature = "sha1=126f2c800419c60137ce748d7672e77b65cf16d6"
 	secretKey := []byte("0123456789abcdef")
 	tests := []struct {
-		signature   string
-		eventID     string
-		event       string
-		wantEventID string
-		wantEvent   string
-		wantPayload string
+		signature       string
+		signatureHeader string
+		eventID         string
+		event           string
+		wantEventID     string
+		wantEvent       string
+		wantPayload     string
 	}{
 		// The following tests generate expected errors:
 		{},                         // Missing signature
@@ -54,6 +64,13 @@ func TestValidatePayload(t *testing.T) {
 			wantPayload: defaultBody,
 		},
 		{
+			signature:       "sha256=b1f8020f5b4cd42042f807dd939015c4a418bc1ff7f604dd55b0a19b5d953d9b",
+			signatureHeader: sha256SignatureHeader,
+			event:           "ping",
+			wantEvent:       "ping",
+			wantPayload:     defaultBody,
+		},
+		{
 			signature:   "sha512=8456767023c1195682e182a23b3f5d19150ecea598fde8cb85918f7281b16079471b1329f92b912c4d8bd7455cb159777db8f29608b20c7c87323ba65ae62e1f",
 			event:       "ping",
 			wantEvent:   "ping",
@@ -68,7 +85,11 @@ func TestValidatePayload(t *testing.T) {
 			t.Fatalf("NewRequest: %v", err)
 		}
 		if test.signature != "" {
-			req.Header.Set(signatureHeader, test.signature)
+			if test.signatureHeader != "" {
+				req.Header.Set(test.signatureHeader, test.signature)
+			} else {
+				req.Header.Set(sha1SignatureHeader, test.signature)
+			}
 		}
 		req.Header.Set("Content-Type", "application/json")
 
@@ -98,7 +119,7 @@ func TestValidatePayload_FormGet(t *testing.T) {
 	}
 	req.PostForm = form
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set(signatureHeader, signature)
+	req.Header.Set(sha1SignatureHeader, signature)
 
 	got, err := ValidatePayload(req, secretKey)
 	if err != nil {
@@ -109,7 +130,7 @@ func TestValidatePayload_FormGet(t *testing.T) {
 	}
 
 	// check that if payload is invalid we get error
-	req.Header.Set(signatureHeader, "invalid signature")
+	req.Header.Set(sha1SignatureHeader, "invalid signature")
 	if _, err = ValidatePayload(req, []byte{0}); err == nil {
 		t.Error("ValidatePayload = nil, want err")
 	}
@@ -128,7 +149,7 @@ func TestValidatePayload_FormPost(t *testing.T) {
 		t.Fatalf("NewRequest: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set(signatureHeader, signature)
+	req.Header.Set(sha1SignatureHeader, signature)
 
 	got, err := ValidatePayload(req, secretKey)
 	if err != nil {
@@ -139,7 +160,7 @@ func TestValidatePayload_FormPost(t *testing.T) {
 	}
 
 	// check that if payload is invalid we get error
-	req.Header.Set(signatureHeader, "invalid signature")
+	req.Header.Set(sha1SignatureHeader, "invalid signature")
 	if _, err = ValidatePayload(req, []byte{0}); err == nil {
 		t.Error("ValidatePayload = nil, want err")
 	}
@@ -177,6 +198,36 @@ func TestValidatePayload_NoSecretKey(t *testing.T) {
 	}
 }
 
+// badReader satisfies io.Reader but always returns an error.
+type badReader struct{}
+
+func (b *badReader) Read(p []byte) (int, error) {
+	return 0, errors.New("bad reader")
+}
+
+func (b *badReader) Close() error { return errors.New("bad reader") }
+
+func TestValidatePayload_BadRequestBody(t *testing.T) {
+	tests := []struct {
+		contentType string
+	}{
+		{contentType: "application/json"},
+		{contentType: "application/x-www-form-urlencoded"},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test #%v", i), func(t *testing.T) {
+			req := &http.Request{
+				Header: http.Header{"Content-Type": []string{tt.contentType}},
+				Body:   &badReader{},
+			}
+			if _, err := ValidatePayload(req, nil); err == nil {
+				t.Fatal("ValidatePayload returned nil; want error")
+			}
+		})
+	}
+}
+
 func TestParseWebHook(t *testing.T) {
 	tests := []struct {
 		payload     interface{}
@@ -193,6 +244,10 @@ func TestParseWebHook(t *testing.T) {
 		{
 			payload:     &CommitCommentEvent{},
 			messageType: "commit_comment",
+		},
+		{
+			payload:     &ContentReferenceEvent{},
+			messageType: "content_reference",
 		},
 		{
 			payload:     &CreateEvent{},
@@ -359,6 +414,14 @@ func TestParseWebHook(t *testing.T) {
 			payload:     &RepositoryDispatchEvent{},
 			messageType: "repository_dispatch",
 		},
+		{
+			payload:     &WorkflowDispatchEvent{},
+			messageType: "workflow_dispatch",
+		},
+		{
+			payload:     &WorkflowRunEvent{},
+			messageType: "workflow_run",
+		},
 	}
 
 	for _, test := range tests {
@@ -376,6 +439,12 @@ func TestParseWebHook(t *testing.T) {
 	}
 }
 
+func TestParseWebHook_BadMessageType(t *testing.T) {
+	if _, err := ParseWebHook("bogus message type", []byte("{}")); err == nil {
+		t.Fatal("ParseWebHook returned nil; wanted error")
+	}
+}
+
 func TestDeliveryID(t *testing.T) {
 	id := "8970a780-244e-11e7-91ca-da3aabcb9793"
 	req, err := http.NewRequest("POST", "http://localhost", nil)
@@ -387,5 +456,15 @@ func TestDeliveryID(t *testing.T) {
 	got := DeliveryID(req)
 	if got != id {
 		t.Errorf("DeliveryID(%#v) = %q, want %q", req, got, id)
+	}
+}
+
+func TestWebHookType(t *testing.T) {
+	want := "yo"
+	req := &http.Request{
+		Header: http.Header{eventTypeHeader: []string{want}},
+	}
+	if got := WebHookType(req); got != want {
+		t.Errorf("WebHookType = %q, want %q", got, want)
 	}
 }

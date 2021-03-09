@@ -11,6 +11,8 @@ packages += rest-client rest-data rest-route rest-model migrations trigger model
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
+EVGHOME := $(shell pwd)
+lobsterTempDir := $(EVGHOME)/$(buildDir)/lobster-temp
 # end project configuration
 
 
@@ -231,7 +233,6 @@ dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
-
 
 # userfacing targets for basic build and development operations
 build:cli
@@ -456,7 +457,7 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(EVGHOME) GOPATH=$(gopath)
 ifeq (,$(GOCONVEY_REPORTER))
 	testRunEnv += GOCONVEY_REPORTER=silent
 endif
@@ -513,9 +514,14 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
+clean-lobster:
+	rm -rf $(lobsterTempDir)
+
+update-lobster: clean-lobster
+	EVGHOME=$(EVGHOME) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(EVGHOME)/scripts/update-lobster.sh
 
 # clean and other utility targets
-clean:
+clean: clean-lobster
 	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean

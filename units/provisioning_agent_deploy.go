@@ -151,13 +151,11 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 				return
 			}
 
-			// set needs new agent and log if there's a
-			// failure.
 			grip.Info(message.WrapError(j.host.SetNeedsNewAgent(true), message.Fields{
+				"message": "problem setting needs agent flag to true",
 				"distro":  j.host.Distro,
 				"host_id": j.host.Id,
 				"job":     j.ID(),
-				"message": "problem setting needs agent flag to true",
 			}))
 		}
 	}()
@@ -168,7 +166,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 func (j *agentDeployJob) getHostMessage() message.Fields {
 	m := message.Fields{
 		"message":  "starting agent on host",
-		"runner":   "taskrunner",
 		"host_id":  j.host.Host,
 		"distro":   j.host.Distro.Id,
 		"provider": j.host.Distro.Provider,
@@ -202,7 +199,11 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "could not prep remote host")
 	}
 
-	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host_id": j.host.Id})
+	grip.Info(message.Fields{
+		"message": "prepping host finished successfully",
+		"host_id": j.host.Id,
+		"job":     j.ID(),
+	})
 
 	// generate the host secret if none exists
 	if j.host.Secret == "" {
@@ -223,7 +224,11 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		}))
 		return errors.Wrap(err, "could not start agent on remote")
 	}
-	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host_id": j.host.Id})
+	grip.Info(message.Fields{
+		"message": "agent successfully started for host",
+		"host_id": j.host.Id,
+		"job":     j.ID(),
+	})
 
 	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", j.host.Id)
@@ -265,7 +270,6 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error running setup script",
-			"runner":  "taskrunner",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"logs":    output,
@@ -287,7 +291,6 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		"message": "starting agent on host",
 		"host_id": j.host.Id,
 		"command": remoteCmd,
-		"runner":  "taskrunner",
 	})
 
 	ctx, cancel := context.WithTimeout(ctx, startAgentTimeout)

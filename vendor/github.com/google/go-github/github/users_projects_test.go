@@ -26,7 +26,8 @@ func TestUsersService_ListProjects(t *testing.T) {
 	})
 
 	opt := &ProjectListOptions{State: "open", ListOptions: ListOptions{Page: 2}}
-	projects, _, err := client.Users.ListProjects(context.Background(), "u", opt)
+	ctx := context.Background()
+	projects, _, err := client.Users.ListProjects(ctx, "u", opt)
 	if err != nil {
 		t.Errorf("Users.ListProjects returned error: %v", err)
 	}
@@ -35,6 +36,20 @@ func TestUsersService_ListProjects(t *testing.T) {
 	if !reflect.DeepEqual(projects, want) {
 		t.Errorf("Users.ListProjects returned %+v, want %+v", projects, want)
 	}
+
+	const methodName = "ListProjects"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Users.ListProjects(ctx, "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.ListProjects(ctx, "u", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_CreateProject(t *testing.T) {
@@ -56,7 +71,8 @@ func TestUsersService_CreateProject(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	project, _, err := client.Users.CreateProject(context.Background(), input)
+	ctx := context.Background()
+	project, _, err := client.Users.CreateProject(ctx, input)
 	if err != nil {
 		t.Errorf("Users.CreateProject returned error: %v", err)
 	}
@@ -65,4 +81,13 @@ func TestUsersService_CreateProject(t *testing.T) {
 	if !reflect.DeepEqual(project, want) {
 		t.Errorf("Users.CreateProject returned %+v, want %+v", project, want)
 	}
+
+	const methodName = "CreateProject"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.CreateProject(ctx, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

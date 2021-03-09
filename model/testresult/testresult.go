@@ -26,6 +26,7 @@ type TestResult struct {
 	ID        mgobson.ObjectId `bson:"_id,omitempty" json:"id"`
 	Status    string           `json:"status" bson:"status"`
 	TestFile  string           `json:"test_file" bson:"test_file"`
+	GroupID   string           `json:"group_id,omitempty" bson:"group_id,omitempty"`
 	URL       string           `json:"url" bson:"url,omitempty"`
 	URLRaw    string           `json:"url_raw" bson:"url_raw,omitempty"`
 	LogID     string           `json:"log_id,omitempty" bson:"log_id,omitempty"`

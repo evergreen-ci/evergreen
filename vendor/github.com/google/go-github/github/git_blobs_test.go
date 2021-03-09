@@ -28,7 +28,8 @@ func TestGitService_GetBlob(t *testing.T) {
 			}`)
 	})
 
-	blob, _, err := client.Git.GetBlob(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	blob, _, err := client.Git.GetBlob(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Git.GetBlob returned error: %v", err)
 	}
@@ -41,13 +42,20 @@ func TestGitService_GetBlob(t *testing.T) {
 	if !reflect.DeepEqual(*blob, want) {
 		t.Errorf("Blob.Get returned %+v, want %+v", *blob, want)
 	}
+
+	const methodName = "GetBlob"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.GetBlob(ctx, "\n", "\n", "\n")
+		return err
+	})
 }
 
 func TestGitService_GetBlob_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Git.GetBlob(context.Background(), "%", "%", "%")
+	ctx := context.Background()
+	_, _, err := client.Git.GetBlob(ctx, "%", "%", "%")
 	testURLParseError(t, err)
 }
 
@@ -62,7 +70,8 @@ func TestGitService_GetBlobRaw(t *testing.T) {
 		fmt.Fprint(w, `raw contents here`)
 	})
 
-	blob, _, err := client.Git.GetBlobRaw(context.Background(), "o", "r", "s")
+	ctx := context.Background()
+	blob, _, err := client.Git.GetBlobRaw(ctx, "o", "r", "s")
 	if err != nil {
 		t.Errorf("Git.GetBlobRaw returned error: %v", err)
 	}
@@ -71,6 +80,20 @@ func TestGitService_GetBlobRaw(t *testing.T) {
 	if !bytes.Equal(blob, want) {
 		t.Errorf("GetBlobRaw returned %q, want %q", blob, want)
 	}
+
+	const methodName = "GetBlobRaw"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.GetBlobRaw(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Git.GetBlobRaw(ctx, "o", "r", "s")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestGitService_CreateBlob(t *testing.T) {
@@ -103,7 +126,8 @@ func TestGitService_CreateBlob(t *testing.T) {
 		}`)
 	})
 
-	blob, _, err := client.Git.CreateBlob(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	blob, _, err := client.Git.CreateBlob(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Git.CreateBlob returned error: %v", err)
 	}
@@ -113,12 +137,19 @@ func TestGitService_CreateBlob(t *testing.T) {
 	if !reflect.DeepEqual(*blob, *want) {
 		t.Errorf("Git.CreateBlob returned %+v, want %+v", *blob, *want)
 	}
+
+	const methodName = "CreateBlob"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Git.CreateBlob(ctx, "\n", "\n", input)
+		return err
+	})
 }
 
 func TestGitService_CreateBlob_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Git.CreateBlob(context.Background(), "%", "%", &Blob{})
+	ctx := context.Background()
+	_, _, err := client.Git.CreateBlob(ctx, "%", "%", &Blob{})
 	testURLParseError(t, err)
 }

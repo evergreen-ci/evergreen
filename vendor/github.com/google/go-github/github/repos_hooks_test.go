@@ -33,7 +33,8 @@ func TestRepositoriesService_CreateHook(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	hook, _, err := client.Repositories.CreateHook(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	hook, _, err := client.Repositories.CreateHook(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Repositories.CreateHook returned error: %v", err)
 	}
@@ -42,6 +43,20 @@ func TestRepositoriesService_CreateHook(t *testing.T) {
 	if !reflect.DeepEqual(hook, want) {
 		t.Errorf("Repositories.CreateHook returned %+v, want %+v", hook, want)
 	}
+
+	const methodName = "CreateHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.CreateHook(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.CreateHook(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListHooks(t *testing.T) {
@@ -56,7 +71,8 @@ func TestRepositoriesService_ListHooks(t *testing.T) {
 
 	opt := &ListOptions{Page: 2}
 
-	hooks, _, err := client.Repositories.ListHooks(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	hooks, _, err := client.Repositories.ListHooks(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListHooks returned error: %v", err)
 	}
@@ -65,13 +81,28 @@ func TestRepositoriesService_ListHooks(t *testing.T) {
 	if !reflect.DeepEqual(hooks, want) {
 		t.Errorf("Repositories.ListHooks returned %+v, want %+v", hooks, want)
 	}
+
+	const methodName = "ListHooks"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListHooks(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListHooks(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListHooks_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.ListHooks(context.Background(), "%", "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.ListHooks(ctx, "%", "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -84,7 +115,8 @@ func TestRepositoriesService_GetHook(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	hook, _, err := client.Repositories.GetHook(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	hook, _, err := client.Repositories.GetHook(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Repositories.GetHook returned error: %v", err)
 	}
@@ -93,13 +125,28 @@ func TestRepositoriesService_GetHook(t *testing.T) {
 	if !reflect.DeepEqual(hook, want) {
 		t.Errorf("Repositories.GetHook returned %+v, want %+v", hook, want)
 	}
+
+	const methodName = "GetHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetHook(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetHook(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_GetHook_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.GetHook(context.Background(), "%", "%", 1)
+	ctx := context.Background()
+	_, _, err := client.Repositories.GetHook(ctx, "%", "%", 1)
 	testURLParseError(t, err)
 }
 
@@ -121,7 +168,8 @@ func TestRepositoriesService_EditHook(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	hook, _, err := client.Repositories.EditHook(context.Background(), "o", "r", 1, input)
+	ctx := context.Background()
+	hook, _, err := client.Repositories.EditHook(ctx, "o", "r", 1, input)
 	if err != nil {
 		t.Errorf("Repositories.EditHook returned error: %v", err)
 	}
@@ -130,13 +178,28 @@ func TestRepositoriesService_EditHook(t *testing.T) {
 	if !reflect.DeepEqual(hook, want) {
 		t.Errorf("Repositories.EditHook returned %+v, want %+v", hook, want)
 	}
+
+	const methodName = "EditHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.EditHook(ctx, "\n", "\n", -1, input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.EditHook(ctx, "o", "r", 1, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_EditHook_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.EditHook(context.Background(), "%", "%", 1, nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.EditHook(ctx, "%", "%", 1, nil)
 	testURLParseError(t, err)
 }
 
@@ -148,17 +211,29 @@ func TestRepositoriesService_DeleteHook(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Repositories.DeleteHook(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	_, err := client.Repositories.DeleteHook(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Repositories.DeleteHook returned error: %v", err)
 	}
+
+	const methodName = "DeleteHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.DeleteHook(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.DeleteHook(ctx, "o", "r", 1)
+	})
 }
 
 func TestRepositoriesService_DeleteHook_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Repositories.DeleteHook(context.Background(), "%", "%", 1)
+	ctx := context.Background()
+	_, err := client.Repositories.DeleteHook(ctx, "%", "%", 1)
 	testURLParseError(t, err)
 }
 
@@ -170,10 +245,21 @@ func TestRepositoriesService_PingHook(t *testing.T) {
 		testMethod(t, r, "POST")
 	})
 
-	_, err := client.Repositories.PingHook(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	_, err := client.Repositories.PingHook(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Repositories.PingHook returned error: %v", err)
 	}
+
+	const methodName = "PingHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.PingHook(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.PingHook(ctx, "o", "r", 1)
+	})
 }
 
 func TestRepositoriesService_TestHook(t *testing.T) {
@@ -184,16 +270,28 @@ func TestRepositoriesService_TestHook(t *testing.T) {
 		testMethod(t, r, "POST")
 	})
 
-	_, err := client.Repositories.TestHook(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	_, err := client.Repositories.TestHook(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Repositories.TestHook returned error: %v", err)
 	}
+
+	const methodName = "TestHook"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Repositories.TestHook(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Repositories.TestHook(ctx, "o", "r", 1)
+	})
 }
 
 func TestRepositoriesService_TestHook_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Repositories.TestHook(context.Background(), "%", "%", 1)
+	ctx := context.Background()
+	_, err := client.Repositories.TestHook(ctx, "%", "%", 1)
 	testURLParseError(t, err)
 }
