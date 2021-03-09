@@ -622,6 +622,7 @@ buildvariants:
       nodebin: /opt/node/bin
     tasks:
       - name: "dist"
+      - name: "dist-staging"
       - name: ".smoke"
       - name: ".test"
 

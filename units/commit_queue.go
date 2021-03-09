@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -157,6 +158,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 				"queue":   cq.ProjectID,
 				"item":    nextItem.Version,
 			})
+			j.AddError(j.addMergeTaskDependencies(*cq))
 			return
 		}
 
@@ -181,6 +183,45 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"message": "finished processing item",
 		})
 	}
+	j.AddError(j.addMergeTaskDependencies(*cq))
+}
+
+func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) error {
+	var prevMergeTask string
+	for i, currentItem := range cq.Queue {
+		if currentItem.Version == "" {
+			return nil
+		}
+		mergeTask, err := task.FindMergeTaskForVersion(currentItem.Version)
+		if err != nil {
+			return errors.Wrap(err, "unable to find merge task")
+		}
+		if mergeTask == nil {
+			return errors.Errorf("no merge task found for version '%s'", currentItem.Version)
+		}
+		dependency := task.Dependency{
+			TaskId: prevMergeTask,
+			Status: task.AllStatuses,
+		}
+		prevMergeTask = mergeTask.Id
+		if i == 0 {
+			continue
+		}
+		err = mergeTask.AddDependency(dependency)
+		if err != nil {
+			return errors.Wrap(err, "unable to add dependency")
+		}
+		err = mergeTask.UpdateDependsOn(dependency.Status, []string{dependency.TaskId})
+		if err != nil {
+			return errors.Wrap(err, "unable to update task dependencies")
+		}
+		err = model.RecomputeNumDependents(*mergeTask)
+		if err != nil {
+			return errors.Wrap(err, "unable to recompute number of dependencies")
+		}
+	}
+
+	return nil
 }
 
 func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {

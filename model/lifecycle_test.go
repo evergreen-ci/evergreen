@@ -2376,3 +2376,101 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 		assert.False(t, task.Activated)
 	}
 }
+
+func TestRecomputeNumDependents(t *testing.T) {
+	assert.NoError(t, db.Clear(task.Collection))
+	t1 := task.Task{
+		Id: "1",
+		DependsOn: []task.Dependency{
+			{TaskId: "2"},
+		},
+		Version: "v1",
+	}
+	assert.NoError(t, t1.Insert())
+	t2 := task.Task{
+		Id: "2",
+		DependsOn: []task.Dependency{
+			{TaskId: "3"},
+		},
+		Version: "v1",
+	}
+	assert.NoError(t, t2.Insert())
+	t3 := task.Task{
+		Id: "3",
+		DependsOn: []task.Dependency{
+			{TaskId: "4"},
+		},
+		Version: "v1",
+	}
+	assert.NoError(t, t3.Insert())
+	t4 := task.Task{
+		Id: "4",
+		DependsOn: []task.Dependency{
+			{TaskId: "5"},
+		},
+		Version: "v1",
+	}
+	assert.NoError(t, t4.Insert())
+	t5 := task.Task{
+		Id:      "5",
+		Version: "v1",
+	}
+	assert.NoError(t, t5.Insert())
+
+	assert.NoError(t, RecomputeNumDependents(t3))
+	tasks, err := task.Find(task.ByVersion(t1.Version))
+	assert.NoError(t, err)
+	for i, dbTask := range tasks {
+		assert.Equal(t, i, dbTask.NumDependents)
+	}
+
+	assert.NoError(t, RecomputeNumDependents(t5))
+	tasks, err = task.Find(task.ByVersion(t1.Version))
+	assert.NoError(t, err)
+	for i, dbTask := range tasks {
+		assert.Equal(t, i, dbTask.NumDependents)
+	}
+
+	t6 := task.Task{
+		Id: "6",
+		DependsOn: []task.Dependency{
+			{TaskId: "8"},
+		},
+		Version: "v2",
+	}
+	assert.NoError(t, t6.Insert())
+	t7 := task.Task{
+		Id: "7",
+		DependsOn: []task.Dependency{
+			{TaskId: "8"},
+		},
+		Version: "v2",
+	}
+	assert.NoError(t, t7.Insert())
+	t8 := task.Task{
+		Id: "8",
+		DependsOn: []task.Dependency{
+			{TaskId: "9"},
+		},
+		Version: "v2",
+	}
+	assert.NoError(t, t8.Insert())
+	t9 := task.Task{
+		Id:      "9",
+		Version: "v2",
+	}
+	assert.NoError(t, t9.Insert())
+
+	assert.NoError(t, RecomputeNumDependents(t8))
+	tasks, err = task.Find(task.ByVersion(t6.Version))
+	assert.NoError(t, err)
+	expected := map[string]int{
+		"6": 0,
+		"7": 0,
+		"8": 2,
+		"9": 3,
+	}
+	for _, dbTask := range tasks {
+		assert.Equal(t, expected[dbTask.Id], dbTask.NumDependents)
+	}
+}

@@ -152,6 +152,11 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 }
 
 func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
+	for i, currentEntry := range q.Queue {
+		if currentEntry.Issue == item.Issue {
+			q.Queue[i].Version = item.Version
+		}
+	}
 	return errors.Wrapf(addVersionID(q.ProjectID, item), "error updating version")
 }
 

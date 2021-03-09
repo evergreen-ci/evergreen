@@ -495,6 +495,8 @@ func getMaxDependencyPath(tasks []task.Task, depPath dependencyPath) dependencyP
 }
 
 // FindPredictedMakespan, given a list of tasks that have been completed, finds the optimal makespan of that build.
+// While it's possible for tasks to depend on tasks outside its build, this function does not take that
+// into account because it is meant to compute the optimal makespan for a single build
 func FindPredictedMakespan(tasks []task.Task) dependencyPath {
 	maxTime := time.Duration(0)
 	var maxDepPath dependencyPath

@@ -460,15 +460,17 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, dependency := range t.DependsOn {
-		depTask, ok := depCaches[dependency.TaskId]
-		// ignore non-existent dependencies
-		if !ok {
-			grip.Warning(message.Fields{
-				"message":       "task has non-existent dependencies",
-				"task_id":       t.Id,
-				"dependency_id": dependency.TaskId,
-			})
-			continue
+		depTask, exists := depCaches[dependency.TaskId]
+		if !exists {
+			foundTask, err := FindOneId(dependency.TaskId)
+			if err != nil {
+				return false, errors.Wrap(err, "error finding dependency")
+			}
+			if foundTask == nil {
+				return false, errors.Errorf("dependency '%s' not found", depTask.Id)
+			}
+			depTask = *foundTask
+			depCaches[depTask.Id] = depTask
 		}
 		if !t.SatisfiesDependency(&depTask) {
 			return false, nil
@@ -557,9 +559,17 @@ func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]strin
 
 	blockingDeps := []string{}
 	for _, dep := range t.DependsOn {
-		depTask, ok := depCache[dep.TaskId]
-		if !ok {
-			return nil, errors.Errorf("task '%s' is not in the cache", dep.TaskId)
+		depTask, exists := depCache[dep.TaskId]
+		if !exists {
+			foundTask, err := FindOneId(dep.TaskId)
+			if err != nil {
+				return nil, errors.Wrap(err, "error finding dependency")
+			}
+			if foundTask == nil {
+				return nil, errors.Errorf("dependency '%s' not found", depTask.Id)
+			}
+			depTask = *foundTask
+			depCache[depTask.Id] = depTask
 		}
 		if !depTask.IsFinished() && !depTask.Activated {
 			blockingDeps = append(blockingDeps, depTask.Id)
@@ -583,12 +593,19 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	catcher := grip.NewBasicCatcher()
 	deps := []Task{}
 	for _, dep := range t.DependsOn {
-		if cachedDep, ok := cache[dep.TaskId]; !ok {
-			catcher.Add(errors.Errorf("cannot resolve task %s", dep.TaskId))
-			continue
-		} else {
-			deps = append(deps, cachedDep)
+		cachedDep, ok := cache[dep.TaskId]
+		if !ok {
+			foundTask, err := FindOneId(dep.TaskId)
+			if err != nil {
+				return false, errors.Wrap(err, "error finding dependency")
+			}
+			if foundTask == nil {
+				return false, errors.Errorf("dependency '%s' not found", dep.TaskId)
+			}
+			cachedDep = *foundTask
+			cache[dep.TaskId] = cachedDep
 		}
+		deps = append(deps, cachedDep)
 	}
 
 	if catcher.HasErrors() {
@@ -2563,6 +2580,8 @@ func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
 	return "", nil
 }
 
+// CircularDependencies detects if any tasks in this version are part of a dependency cycle
+// Note that it does not check inter-version dependencies, because only evergreen can add those
 func (t *Task) CircularDependencies() error {
 	var err error
 	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
@@ -2955,6 +2974,22 @@ func (t *Task) SetTaskGroupInfo() error {
 			TaskGroupOrderKey:    t.TaskGroupOrder,
 			TaskGroupMaxHostsKey: t.TaskGroupMaxHosts,
 		}}))
+}
+
+func (t *Task) SetNumDependents() error {
+	update := bson.M{
+		"$set": bson.M{
+			NumDepsKey: t.NumDependents,
+		},
+	}
+	if t.NumDependents == 0 {
+		update = bson.M{"$unset": bson.M{
+			NumDepsKey: "",
+		}}
+	}
+	return UpdateOne(bson.M{
+		IdKey: t.Id,
+	}, update)
 }
 
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
