@@ -97,10 +97,27 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 
-	childPatchSub := event.Subscriber{
+	childPatchSubSuccess := event.Subscriber{
 		Type: event.RunChildPatchSubscriberType,
 		Target: &event.ChildPatchSubscriber{
 			ParentStatus: "succeeded",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+	childPatchSubFailure := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "failed",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+
+	childPatchSubAny := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "*",
 			ChildPatchId: childPatchId,
 			Requester:    evergreen.TriggerRequester,
 		},
@@ -110,9 +127,9 @@ func (s *patchSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, childPatchSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, childPatchSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubSuccess),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubFailure),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubAny),
 	}
 
 	for i := range s.subs {
@@ -179,11 +196,6 @@ func (s *patchSuite) TestPatchSuccess() {
 	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
-
-	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchSuccess(&s.subs[4])
-	s.NoError(err)
-	s.Nil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
@@ -201,11 +213,6 @@ func (s *patchSuite) TestPatchFailure() {
 	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
-
-	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchFailure(&s.subs[5])
-	s.NoError(err)
-	s.Nil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
@@ -230,9 +237,20 @@ func (s *patchSuite) TestPatchOutcome() {
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchOutcome(&s.subs[3])
+	n, err = s.t.patchOutcome(&s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err = s.t.patchOutcome(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchFailed
+	n, err = s.t.patchOutcome(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
+
 }
 
 func (s *patchSuite) TestPatchStarted() {

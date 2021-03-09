@@ -669,7 +669,7 @@ func (p *Patch) IsParent() bool {
 }
 
 func (p *Patch) GetParentStatus() (string, error) {
-	intent, err := FindIntent(p.Id.String(), TriggerIntentType)
+	intent, err := FindIntent(p.Id.Hex(), TriggerIntentType)
 	if err != nil {
 		return "", errors.Errorf("error fetching child patch intent: %s", err)
 	}

@@ -105,12 +105,11 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	PatchCreated   = "created"
-	PatchStarted   = "started"
-	PatchSucceeded = "succeeded"
-	PatchFailed    = "failed"
-	//model.AllStatuses can't be used in some package due to import cycles
-	AllStatuses = "*"
+	PatchCreated     = "created"
+	PatchStarted     = "started"
+	PatchSucceeded   = "succeeded"
+	PatchFailed      = "failed"
+	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"

@@ -761,29 +761,6 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 			}
 		}
 	}
-
-	if patchDoc.IsChild() && !intent.ShouldFinalizePatch() {
-		parentStatus := intent.ParentStatus
-		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
-		if err != nil {
-			return errors.Wrapf(err, "error finding parent patch '%s'", patchDoc.Triggers.ParentPatch)
-		}
-		if parentPatch != nil {
-			return errors.Wrapf(err, "parent patch not found '%s'", patchDoc.Triggers.ParentPatch)
-		}
-		subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
-			ParentStatus: parentStatus,
-			ChildPatchId: patchDoc.Id.String(),
-		})
-		patchSub, err := event.NewParentPatchSubscription(string(parentPatch.Id), subscriber)
-		if err != nil {
-			return errors.Wrapf(err, "error created subscription for child patch '%s'", string(patchDoc.Id))
-		}
-		if err = patchSub.Upsert(); err != nil {
-			return errors.Wrapf(err, "failed to insert child patch subscription '%s'", string(patchDoc.Id))
-		}
-	}
-
 	return nil
 }
 

@@ -528,27 +528,10 @@ func NewExpiringPatchSuccessSubscription(id string, sub Subscriber) Subscription
 	return subscription
 }
 
-func NewParentPatchSubscription(id string, sub Subscriber) (Subscription, error) {
-	target, ok := sub.Target.(ChildPatchSubscriber)
-	if !ok {
-		return Subscription{}, errors.Errorf("Type assertion failed: subscriber is not of type ChildPatchSubscriber")
-	}
-	var subscription Subscription
-	switch target.ParentStatus {
-	case evergreen.PatchSucceeded:
-		subscription = NewSubscriptionByID(ResourceTypePatch, TriggerSuccess, id, sub)
-		subscription.LastUpdated = time.Now()
-	case evergreen.PatchFailed:
-		subscription = NewSubscriptionByID(ResourceTypePatch, TriggerFailure, id, sub)
-		subscription.LastUpdated = time.Now()
-	case evergreen.AllStatuses:
-		subscription = NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
-		subscription.LastUpdated = time.Now()
-	default:
-		return Subscription{}, errors.Errorf("'%s' is not a valid parent status", target.ParentStatus)
-
-	}
-	return subscription, nil
+func NewParentPatchSubscription(id string, sub Subscriber) Subscription {
+	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
+	subscription.LastUpdated = time.Now()
+	return subscription
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {

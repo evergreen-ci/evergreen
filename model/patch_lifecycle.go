@@ -505,13 +505,10 @@ func SubscribeOnParentOutcome(parentStatus string, p *patch.Patch, requester str
 	}
 	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
 		ParentStatus: parentStatus,
-		ChildPatchId: p.Id.String(),
+		ChildPatchId: p.Id.Hex(),
 		Requester:    requester,
 	})
-	patchSub, err := event.NewParentPatchSubscription(string(parentPatch.Id), subscriber)
-	if err != nil {
-		return errors.Wrapf(err, "error created subscription for child patch '%s'", string(p.Id))
-	}
+	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
 	if err = patchSub.Upsert(); err != nil {
 		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", string(p.Id))
 	}
