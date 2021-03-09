@@ -20,7 +20,7 @@ func TestChecksService_GetCheckRun(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-runs/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		fmt.Fprint(w, `{
 			"id": 1,
                         "name":"testCheckRun",
@@ -29,7 +29,8 @@ func TestChecksService_GetCheckRun(t *testing.T) {
 			"started_at": "2018-05-04T01:14:52Z",
 			"completed_at": "2018-05-04T01:14:52Z"}`)
 	})
-	checkRun, _, err := client.Checks.GetCheckRun(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	checkRun, _, err := client.Checks.GetCheckRun(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Checks.GetCheckRun return error: %v", err)
 	}
@@ -47,6 +48,20 @@ func TestChecksService_GetCheckRun(t *testing.T) {
 	if !reflect.DeepEqual(checkRun, want) {
 		t.Errorf("Checks.GetCheckRun return %+v, want %+v", checkRun, want)
 	}
+
+	const methodName = "GetCheckRun"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.GetCheckRun(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.GetCheckRun(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_GetCheckSuite(t *testing.T) {
@@ -55,7 +70,7 @@ func TestChecksService_GetCheckSuite(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-suites/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		fmt.Fprint(w, `{
 			"id": 1,
                         "head_branch":"master",
@@ -65,7 +80,8 @@ func TestChecksService_GetCheckSuite(t *testing.T) {
                         "after": "deadbeefa",
 			"status": "completed"}`)
 	})
-	checkSuite, _, err := client.Checks.GetCheckSuite(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	checkSuite, _, err := client.Checks.GetCheckSuite(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Checks.GetCheckSuite return error: %v", err)
 	}
@@ -81,6 +97,20 @@ func TestChecksService_GetCheckSuite(t *testing.T) {
 	if !reflect.DeepEqual(checkSuite, want) {
 		t.Errorf("Checks.GetCheckSuite return %+v, want %+v", checkSuite, want)
 	}
+
+	const methodName = "GetCheckSuite"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.GetCheckSuite(ctx, "\n", "\n", -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.GetCheckSuite(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_CreateCheckRun(t *testing.T) {
@@ -89,7 +119,7 @@ func TestChecksService_CreateCheckRun(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-runs", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		fmt.Fprint(w, `{
 			"id": 1,
                         "name":"testCreateCheckRun",
@@ -113,7 +143,8 @@ func TestChecksService_CreateCheckRun(t *testing.T) {
 		},
 	}
 
-	checkRun, _, err := client.Checks.CreateCheckRun(context.Background(), "o", "r", checkRunOpt)
+	ctx := context.Background()
+	checkRun, _, err := client.Checks.CreateCheckRun(ctx, "o", "r", checkRunOpt)
 	if err != nil {
 		t.Errorf("Checks.CreateCheckRun return error: %v", err)
 	}
@@ -133,6 +164,20 @@ func TestChecksService_CreateCheckRun(t *testing.T) {
 	if !reflect.DeepEqual(checkRun, want) {
 		t.Errorf("Checks.CreateCheckRun return %+v, want %+v", checkRun, want)
 	}
+
+	const methodName = "CreateCheckRun"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.CreateCheckRun(ctx, "\n", "\n", CreateCheckRunOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.CreateCheckRun(ctx, "o", "r", checkRunOpt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
@@ -141,7 +186,7 @@ func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-runs/1/annotations", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		testFormValues(t, r, values{
 			"page": "1",
 		})
@@ -158,7 +203,8 @@ func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
 		)
 	})
 
-	checkRunAnnotations, _, err := client.Checks.ListCheckRunAnnotations(context.Background(), "o", "r", 1, &ListOptions{Page: 1})
+	ctx := context.Background()
+	checkRunAnnotations, _, err := client.Checks.ListCheckRunAnnotations(ctx, "o", "r", 1, &ListOptions{Page: 1})
 	if err != nil {
 		t.Errorf("Checks.ListCheckRunAnnotations return error: %v", err)
 	}
@@ -178,6 +224,20 @@ func TestChecksService_ListCheckRunAnnotations(t *testing.T) {
 	if !reflect.DeepEqual(checkRunAnnotations, want) {
 		t.Errorf("Checks.ListCheckRunAnnotations returned %+v, want %+v", checkRunAnnotations, want)
 	}
+
+	const methodName = "ListCheckRunAnnotations"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.ListCheckRunAnnotations(ctx, "\n", "\n", -1, &ListOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.ListCheckRunAnnotations(ctx, "o", "r", 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_UpdateCheckRun(t *testing.T) {
@@ -186,12 +246,11 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-runs/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "PATCH")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		fmt.Fprint(w, `{
 			"id": 1,
                         "name":"testUpdateCheckRun",
-                        "head_sha":"deadbeef",
-			"status": "completed",
+			"status": "completed",            
 			"conclusion": "neutral",
 			"started_at": "2018-05-04T01:14:52Z",
 			"completed_at": "2018-05-04T01:14:52Z",
@@ -200,7 +259,6 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 	startedAt, _ := time.Parse(time.RFC3339, "2018-05-04T01:14:52Z")
 	updateCheckRunOpt := UpdateCheckRunOptions{
 		Name:        "testUpdateCheckRun",
-		HeadSHA:     String("deadbeef"),
 		Status:      String("completed"),
 		CompletedAt: &Timestamp{startedAt},
 		Output: &CheckRunOutput{
@@ -210,7 +268,8 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 		},
 	}
 
-	checkRun, _, err := client.Checks.UpdateCheckRun(context.Background(), "o", "r", 1, updateCheckRunOpt)
+	ctx := context.Background()
+	checkRun, _, err := client.Checks.UpdateCheckRun(ctx, "o", "r", 1, updateCheckRunOpt)
 	if err != nil {
 		t.Errorf("Checks.UpdateCheckRun return error: %v", err)
 	}
@@ -221,7 +280,6 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 		StartedAt:   &Timestamp{startedAt},
 		CompletedAt: &Timestamp{startedAt},
 		Conclusion:  String("neutral"),
-		HeadSHA:     String("deadbeef"),
 		Name:        String("testUpdateCheckRun"),
 		Output: &CheckRunOutput{
 			Title:   String("Mighty test report"),
@@ -232,6 +290,20 @@ func TestChecksService_UpdateCheckRun(t *testing.T) {
 	if !reflect.DeepEqual(checkRun, want) {
 		t.Errorf("Checks.UpdateCheckRun return %+v, want %+v", checkRun, want)
 	}
+
+	const methodName = "UpdateCheckRun"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.UpdateCheckRun(ctx, "\n", "\n", -1, UpdateCheckRunOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.UpdateCheckRun(ctx, "o", "r", 1, updateCheckRunOpt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_ListCheckRunsForRef(t *testing.T) {
@@ -240,7 +312,7 @@ func TestChecksService_ListCheckRunsForRef(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/commits/master/check-runs", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		testFormValues(t, r, values{
 			"check_name": "testing",
 			"page":       "1",
@@ -264,7 +336,8 @@ func TestChecksService_ListCheckRunsForRef(t *testing.T) {
 		Filter:      String("all"),
 		ListOptions: ListOptions{Page: 1},
 	}
-	checkRuns, _, err := client.Checks.ListCheckRunsForRef(context.Background(), "o", "r", "master", opt)
+	ctx := context.Background()
+	checkRuns, _, err := client.Checks.ListCheckRunsForRef(ctx, "o", "r", "master", opt)
 	if err != nil {
 		t.Errorf("Checks.ListCheckRunsForRef return error: %v", err)
 	}
@@ -284,6 +357,20 @@ func TestChecksService_ListCheckRunsForRef(t *testing.T) {
 	if !reflect.DeepEqual(checkRuns, want) {
 		t.Errorf("Checks.ListCheckRunsForRef returned %+v, want %+v", checkRuns, want)
 	}
+
+	const methodName = "ListCheckRunsForRef"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.ListCheckRunsForRef(ctx, "\n", "\n", "\n", &ListCheckRunsOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.ListCheckRunsForRef(ctx, "o", "r", "master", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_ListCheckRunsCheckSuite(t *testing.T) {
@@ -292,7 +379,7 @@ func TestChecksService_ListCheckRunsCheckSuite(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-suites/1/check-runs", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		testFormValues(t, r, values{
 			"check_name": "testing",
 			"page":       "1",
@@ -316,7 +403,8 @@ func TestChecksService_ListCheckRunsCheckSuite(t *testing.T) {
 		Filter:      String("all"),
 		ListOptions: ListOptions{Page: 1},
 	}
-	checkRuns, _, err := client.Checks.ListCheckRunsCheckSuite(context.Background(), "o", "r", 1, opt)
+	ctx := context.Background()
+	checkRuns, _, err := client.Checks.ListCheckRunsCheckSuite(ctx, "o", "r", 1, opt)
 	if err != nil {
 		t.Errorf("Checks.ListCheckRunsCheckSuite return error: %v", err)
 	}
@@ -336,6 +424,20 @@ func TestChecksService_ListCheckRunsCheckSuite(t *testing.T) {
 	if !reflect.DeepEqual(checkRuns, want) {
 		t.Errorf("Checks.ListCheckRunsCheckSuite returned %+v, want %+v", checkRuns, want)
 	}
+
+	const methodName = "ListCheckRunsCheckSuite"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.ListCheckRunsCheckSuite(ctx, "\n", "\n", -1, &ListCheckRunsOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.ListCheckRunsCheckSuite(ctx, "o", "r", 1, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_ListCheckSuiteForRef(t *testing.T) {
@@ -344,7 +446,7 @@ func TestChecksService_ListCheckSuiteForRef(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/commits/master/check-suites", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		testFormValues(t, r, values{
 			"check_name": "testing",
 			"page":       "1",
@@ -367,7 +469,8 @@ func TestChecksService_ListCheckSuiteForRef(t *testing.T) {
 		AppID:       Int(2),
 		ListOptions: ListOptions{Page: 1},
 	}
-	checkSuites, _, err := client.Checks.ListCheckSuitesForRef(context.Background(), "o", "r", "master", opt)
+	ctx := context.Background()
+	checkSuites, _, err := client.Checks.ListCheckSuitesForRef(ctx, "o", "r", "master", opt)
 	if err != nil {
 		t.Errorf("Checks.ListCheckSuitesForRef return error: %v", err)
 	}
@@ -387,6 +490,20 @@ func TestChecksService_ListCheckSuiteForRef(t *testing.T) {
 	if !reflect.DeepEqual(checkSuites, want) {
 		t.Errorf("Checks.ListCheckSuitesForRef returned %+v, want %+v", checkSuites, want)
 	}
+
+	const methodName = "ListCheckSuitesForRef"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.ListCheckSuitesForRef(ctx, "\n", "\n", "\n", &ListCheckSuiteOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.ListCheckSuitesForRef(ctx, "o", "r", "master", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_SetCheckSuitePreferences(t *testing.T) {
@@ -395,7 +512,7 @@ func TestChecksService_SetCheckSuitePreferences(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-suites/preferences", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "PATCH")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		testBody(t, r, `{"auto_trigger_checks":[{"app_id":2,"setting":false}]}`+"\n")
 		fmt.Fprint(w, `{"preferences":{"auto_trigger_checks":[{"app_id": 2,"setting": false}]}}`)
 	})
@@ -404,7 +521,8 @@ func TestChecksService_SetCheckSuitePreferences(t *testing.T) {
 		Setting: Bool(false),
 	}}
 	opt := CheckSuitePreferenceOptions{AutoTriggerChecks: a}
-	prefResults, _, err := client.Checks.SetCheckSuitePreferences(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	prefResults, _, err := client.Checks.SetCheckSuitePreferences(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Checks.SetCheckSuitePreferences return error: %v", err)
 	}
@@ -419,6 +537,20 @@ func TestChecksService_SetCheckSuitePreferences(t *testing.T) {
 	if !reflect.DeepEqual(prefResults, want) {
 		t.Errorf("Checks.SetCheckSuitePreferences return %+v, want %+v", prefResults, want)
 	}
+
+	const methodName = "SetCheckSuitePreferences"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.SetCheckSuitePreferences(ctx, "\n", "\n", CheckSuitePreferenceOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.SetCheckSuitePreferences(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_CreateCheckSuite(t *testing.T) {
@@ -427,7 +559,7 @@ func TestChecksService_CreateCheckSuite(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-suites", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		fmt.Fprint(w, `{
 			"id": 2,
                         "head_branch":"master",
@@ -443,7 +575,8 @@ func TestChecksService_CreateCheckSuite(t *testing.T) {
 		HeadBranch: String("master"),
 	}
 
-	checkSuite, _, err := client.Checks.CreateCheckSuite(context.Background(), "o", "r", checkSuiteOpt)
+	ctx := context.Background()
+	checkSuite, _, err := client.Checks.CreateCheckSuite(ctx, "o", "r", checkSuiteOpt)
 	if err != nil {
 		t.Errorf("Checks.CreateCheckSuite return error: %v", err)
 	}
@@ -460,6 +593,20 @@ func TestChecksService_CreateCheckSuite(t *testing.T) {
 	if !reflect.DeepEqual(checkSuite, want) {
 		t.Errorf("Checks.CreateCheckSuite return %+v, want %+v", checkSuite, want)
 	}
+
+	const methodName = "CreateCheckSuite"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Checks.CreateCheckSuite(ctx, "\n", "\n", CreateCheckSuiteOptions{})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Checks.CreateCheckSuite(ctx, "o", "r", checkSuiteOpt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestChecksService_ReRequestCheckSuite(t *testing.T) {
@@ -468,16 +615,23 @@ func TestChecksService_ReRequestCheckSuite(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/check-suites/1/rerequest", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeCheckRunsPreview)
+
 		w.WriteHeader(http.StatusCreated)
 	})
-	resp, err := client.Checks.ReRequestCheckSuite(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	resp, err := client.Checks.ReRequestCheckSuite(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Checks.ReRequestCheckSuite return error: %v", err)
 	}
 	if got, want := resp.StatusCode, http.StatusCreated; got != want {
 		t.Errorf("Checks.ReRequestCheckSuite = %v, want %v", got, want)
 	}
+
+	const methodName = "ReRequestCheckSuite"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Checks.ReRequestCheckSuite(ctx, "\n", "\n", 1)
+		return err
+	})
 }
 
 func Test_CheckRunMarshal(t *testing.T) {

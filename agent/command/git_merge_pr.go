@@ -102,17 +102,10 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 
 	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	mergeMethod := conf.ProjectRef.CommitQueue.MergeMethod
-	title := patchDoc.GithubPatchData.CommitTitle
-	if mergeMethod == githubMergeMethodMerge {
-		// if the merge method is to add a merge commit, send no title to the github API so that they use the default merge commit title
-		title = ""
-	}
 
 	mergeOpts := &github.PullRequestOptions{
-		MergeMethod: mergeMethod,
-		CommitTitle: title,
-		SHA:         patchDoc.GithubPatchData.HeadHash,
+		MergeMethod:        conf.ProjectRef.CommitQueue.MergeMethod,
+		DontDefaultIfBlank: true, // note this means that we will never merge with the default message (concatenated commit messages)
 	}
 
 	// do the merge

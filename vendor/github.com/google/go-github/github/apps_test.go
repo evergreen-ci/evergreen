@@ -24,11 +24,11 @@ func TestAppsService_Get_authenticatedApp(t *testing.T) {
 
 	mux.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	app, _, err := client.Apps.Get(context.Background(), "")
+	ctx := context.Background()
+	app, _, err := client.Apps.Get(ctx, "")
 	if err != nil {
 		t.Errorf("Apps.Get returned error: %v", err)
 	}
@@ -37,6 +37,20 @@ func TestAppsService_Get_authenticatedApp(t *testing.T) {
 	if !reflect.DeepEqual(app, want) {
 		t.Errorf("Apps.Get returned %+v, want %+v", app, want)
 	}
+
+	const methodName = "Get"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.Get(ctx, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.Get(ctx, "")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_Get_specifiedApp(t *testing.T) {
@@ -45,11 +59,11 @@ func TestAppsService_Get_specifiedApp(t *testing.T) {
 
 	mux.HandleFunc("/apps/a", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"html_url":"https://github.com/apps/a"}`)
 	})
 
-	app, _, err := client.Apps.Get(context.Background(), "a")
+	ctx := context.Background()
+	app, _, err := client.Apps.Get(ctx, "a")
 	if err != nil {
 		t.Errorf("Apps.Get returned error: %v", err)
 	}
@@ -66,7 +80,6 @@ func TestAppsService_ListInstallations(t *testing.T) {
 
 	mux.HandleFunc("/app/installations", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		testFormValues(t, r, values{
 			"page":     "1",
 			"per_page": "2",
@@ -77,6 +90,7 @@ func TestAppsService_ListInstallations(t *testing.T) {
                                    "target_id":1,
                                    "target_type": "Organization",
                                    "permissions": {
+                                       "actions": "read",
                                        "administration": "read",
                                        "checks": "read",
                                        "contents": "read",
@@ -114,7 +128,8 @@ func TestAppsService_ListInstallations(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 1, PerPage: 2}
-	installations, _, err := client.Apps.ListInstallations(context.Background(), opt)
+	ctx := context.Background()
+	installations, _, err := client.Apps.ListInstallations(ctx, opt)
 	if err != nil {
 		t.Errorf("Apps.ListInstallations returned error: %v", err)
 	}
@@ -128,6 +143,7 @@ func TestAppsService_ListInstallations(t *testing.T) {
 		SingleFileName:      String("config.yml"),
 		RepositorySelection: String("selected"),
 		Permissions: &InstallationPermissions{
+			Actions:                     String("read"),
 			Administration:              String("read"),
 			Checks:                      String("read"),
 			Contents:                    String("read"),
@@ -159,6 +175,15 @@ func TestAppsService_ListInstallations(t *testing.T) {
 	if !reflect.DeepEqual(installations, want) {
 		t.Errorf("Apps.ListInstallations returned %+v, want %+v", installations, want)
 	}
+
+	const methodName = "ListInstallations"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.ListInstallations(ctx, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_GetInstallation(t *testing.T) {
@@ -167,11 +192,11 @@ func TestAppsService_GetInstallation(t *testing.T) {
 
 	mux.HandleFunc("/app/installations/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1, "app_id":1, "target_id":1, "target_type": "Organization"}`)
 	})
 
-	installation, _, err := client.Apps.GetInstallation(context.Background(), 1)
+	ctx := context.Background()
+	installation, _, err := client.Apps.GetInstallation(ctx, 1)
 	if err != nil {
 		t.Errorf("Apps.GetInstallation returned error: %v", err)
 	}
@@ -180,6 +205,20 @@ func TestAppsService_GetInstallation(t *testing.T) {
 	if !reflect.DeepEqual(installation, want) {
 		t.Errorf("Apps.GetInstallation returned %+v, want %+v", installation, want)
 	}
+
+	const methodName = "GetInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.GetInstallation(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.GetInstallation(ctx, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_ListUserInstallations(t *testing.T) {
@@ -188,7 +227,6 @@ func TestAppsService_ListUserInstallations(t *testing.T) {
 
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		testFormValues(t, r, values{
 			"page":     "1",
 			"per_page": "2",
@@ -197,7 +235,8 @@ func TestAppsService_ListUserInstallations(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 1, PerPage: 2}
-	installations, _, err := client.Apps.ListUserInstallations(context.Background(), opt)
+	ctx := context.Background()
+	installations, _, err := client.Apps.ListUserInstallations(ctx, opt)
 	if err != nil {
 		t.Errorf("Apps.ListUserInstallations returned error: %v", err)
 	}
@@ -206,6 +245,15 @@ func TestAppsService_ListUserInstallations(t *testing.T) {
 	if !reflect.DeepEqual(installations, want) {
 		t.Errorf("Apps.ListUserInstallations returned %+v, want %+v", installations, want)
 	}
+
+	const methodName = "ListUserInstallations"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.ListUserInstallations(ctx, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_SuspendInstallation(t *testing.T) {
@@ -218,9 +266,20 @@ func TestAppsService_SuspendInstallation(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Apps.SuspendInstallation(context.Background(), 1); err != nil {
+	ctx := context.Background()
+	if _, err := client.Apps.SuspendInstallation(ctx, 1); err != nil {
 		t.Errorf("Apps.SuspendInstallation returned error: %v", err)
 	}
+
+	const methodName = "SuspendInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Apps.SuspendInstallation(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Apps.SuspendInstallation(ctx, 1)
+	})
 }
 
 func TestAppsService_UnsuspendInstallation(t *testing.T) {
@@ -233,9 +292,20 @@ func TestAppsService_UnsuspendInstallation(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Apps.UnsuspendInstallation(context.Background(), 1); err != nil {
+	ctx := context.Background()
+	if _, err := client.Apps.UnsuspendInstallation(ctx, 1); err != nil {
 		t.Errorf("Apps.UnsuspendInstallation returned error: %v", err)
 	}
+
+	const methodName = "UnsuspendInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Apps.UnsuspendInstallation(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Apps.UnsuspendInstallation(ctx, 1)
+	})
 }
 
 func TestAppsService_DeleteInstallation(t *testing.T) {
@@ -245,13 +315,23 @@ func TestAppsService_DeleteInstallation(t *testing.T) {
 	mux.HandleFunc("/app/installations/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		w.WriteHeader(http.StatusNoContent)
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 	})
 
-	_, err := client.Apps.DeleteInstallation(context.Background(), 1)
+	ctx := context.Background()
+	_, err := client.Apps.DeleteInstallation(ctx, 1)
 	if err != nil {
 		t.Errorf("Apps.DeleteInstallation returned error: %v", err)
 	}
+
+	const methodName = "DeleteInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Apps.DeleteInstallation(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Apps.DeleteInstallation(ctx, 1)
+	})
 }
 
 func TestAppsService_CreateInstallationToken(t *testing.T) {
@@ -260,11 +340,11 @@ func TestAppsService_CreateInstallationToken(t *testing.T) {
 
 	mux.HandleFunc("/app/installations/1/access_tokens", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"token":"t"}`)
 	})
 
-	token, _, err := client.Apps.CreateInstallationToken(context.Background(), 1, nil)
+	ctx := context.Background()
+	token, _, err := client.Apps.CreateInstallationToken(ctx, 1, nil)
 	if err != nil {
 		t.Errorf("Apps.CreateInstallationToken returned error: %v", err)
 	}
@@ -273,6 +353,20 @@ func TestAppsService_CreateInstallationToken(t *testing.T) {
 	if !reflect.DeepEqual(token, want) {
 		t.Errorf("Apps.CreateInstallationToken returned %+v, want %+v", token, want)
 	}
+
+	const methodName = "CreateInstallationToken"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.CreateInstallationToken(ctx, -1, nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.CreateInstallationToken(ctx, 1, nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_CreateInstallationTokenWithOptions(t *testing.T) {
@@ -307,11 +401,11 @@ func TestAppsService_CreateInstallationTokenWithOptions(t *testing.T) {
 		}
 
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"token":"t"}`)
 	})
 
-	token, _, err := client.Apps.CreateInstallationToken(context.Background(), 1, installationTokenOptions)
+	ctx := context.Background()
+	token, _, err := client.Apps.CreateInstallationToken(ctx, 1, installationTokenOptions)
 	if err != nil {
 		t.Errorf("Apps.CreateInstallationToken returned error: %v", err)
 	}
@@ -328,13 +422,14 @@ func TestAppsService_CreateAttachement(t *testing.T) {
 
 	mux.HandleFunc("/content_references/11/attachments", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
-		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
+		testHeader(t, r, "Accept", mediaTypeContentAttachmentsPreview)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"id":1,"title":"title1","body":"body1"}`))
 	})
 
-	got, _, err := client.Apps.CreateAttachment(context.Background(), 11, "title1", "body1")
+	ctx := context.Background()
+	got, _, err := client.Apps.CreateAttachment(ctx, 11, "title1", "body1")
 	if err != nil {
 		t.Errorf("CreateAttachment returned error: %v", err)
 	}
@@ -343,6 +438,20 @@ func TestAppsService_CreateAttachement(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("CreateAttachment = %+v, want %+v", got, want)
 	}
+
+	const methodName = "CreateAttachment"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.CreateAttachment(ctx, -11, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.CreateAttachment(ctx, 11, "title1", "body1")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_FindOrganizationInstallation(t *testing.T) {
@@ -351,11 +460,11 @@ func TestAppsService_FindOrganizationInstallation(t *testing.T) {
 
 	mux.HandleFunc("/orgs/o/installation", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1, "app_id":1, "target_id":1, "target_type": "Organization"}`)
 	})
 
-	installation, _, err := client.Apps.FindOrganizationInstallation(context.Background(), "o")
+	ctx := context.Background()
+	installation, _, err := client.Apps.FindOrganizationInstallation(ctx, "o")
 	if err != nil {
 		t.Errorf("Apps.FindOrganizationInstallation returned error: %v", err)
 	}
@@ -364,6 +473,20 @@ func TestAppsService_FindOrganizationInstallation(t *testing.T) {
 	if !reflect.DeepEqual(installation, want) {
 		t.Errorf("Apps.FindOrganizationInstallation returned %+v, want %+v", installation, want)
 	}
+
+	const methodName = "FindOrganizationInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.FindOrganizationInstallation(ctx, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.FindOrganizationInstallation(ctx, "o")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_FindRepositoryInstallation(t *testing.T) {
@@ -372,11 +495,11 @@ func TestAppsService_FindRepositoryInstallation(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/installation", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1, "app_id":1, "target_id":1, "target_type": "Organization"}`)
 	})
 
-	installation, _, err := client.Apps.FindRepositoryInstallation(context.Background(), "o", "r")
+	ctx := context.Background()
+	installation, _, err := client.Apps.FindRepositoryInstallation(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Apps.FindRepositoryInstallation returned error: %v", err)
 	}
@@ -385,6 +508,20 @@ func TestAppsService_FindRepositoryInstallation(t *testing.T) {
 	if !reflect.DeepEqual(installation, want) {
 		t.Errorf("Apps.FindRepositoryInstallation returned %+v, want %+v", installation, want)
 	}
+
+	const methodName = "FindRepositoryInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.FindRepositoryInstallation(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.FindRepositoryInstallation(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_FindRepositoryInstallationByID(t *testing.T) {
@@ -393,11 +530,11 @@ func TestAppsService_FindRepositoryInstallationByID(t *testing.T) {
 
 	mux.HandleFunc("/repositories/1/installation", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1, "app_id":1, "target_id":1, "target_type": "Organization"}`)
 	})
 
-	installation, _, err := client.Apps.FindRepositoryInstallationByID(context.Background(), 1)
+	ctx := context.Background()
+	installation, _, err := client.Apps.FindRepositoryInstallationByID(ctx, 1)
 	if err != nil {
 		t.Errorf("Apps.FindRepositoryInstallationByID returned error: %v", err)
 	}
@@ -406,6 +543,20 @@ func TestAppsService_FindRepositoryInstallationByID(t *testing.T) {
 	if !reflect.DeepEqual(installation, want) {
 		t.Errorf("Apps.FindRepositoryInstallationByID returned %+v, want %+v", installation, want)
 	}
+
+	const methodName = "FindRepositoryInstallationByID"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.FindRepositoryInstallationByID(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.FindRepositoryInstallationByID(ctx, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestAppsService_FindUserInstallation(t *testing.T) {
@@ -414,11 +565,11 @@ func TestAppsService_FindUserInstallation(t *testing.T) {
 
 	mux.HandleFunc("/users/u/installation", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", mediaTypeIntegrationPreview)
 		fmt.Fprint(w, `{"id":1, "app_id":1, "target_id":1, "target_type": "User"}`)
 	})
 
-	installation, _, err := client.Apps.FindUserInstallation(context.Background(), "u")
+	ctx := context.Background()
+	installation, _, err := client.Apps.FindUserInstallation(ctx, "u")
 	if err != nil {
 		t.Errorf("Apps.FindUserInstallation returned error: %v", err)
 	}
@@ -427,6 +578,20 @@ func TestAppsService_FindUserInstallation(t *testing.T) {
 	if !reflect.DeepEqual(installation, want) {
 		t.Errorf("Apps.FindUserInstallation returned %+v, want %+v", installation, want)
 	}
+
+	const methodName = "FindUserInstallation"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Apps.FindUserInstallation(ctx, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Apps.FindUserInstallation(ctx, "u")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 // GetReadWriter converts a body interface into an io.ReadWriter object.

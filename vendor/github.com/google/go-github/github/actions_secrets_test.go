@@ -23,7 +23,8 @@ func TestActionsService_GetRepoPublicKey(t *testing.T) {
 		fmt.Fprint(w, `{"key_id":"1234","key":"2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234"}`)
 	})
 
-	key, _, err := client.Actions.GetRepoPublicKey(context.Background(), "o", "r")
+	ctx := context.Background()
+	key, _, err := client.Actions.GetRepoPublicKey(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Actions.GetRepoPublicKey returned error: %v", err)
 	}
@@ -32,6 +33,20 @@ func TestActionsService_GetRepoPublicKey(t *testing.T) {
 	if !reflect.DeepEqual(key, want) {
 		t.Errorf("Actions.GetRepoPublicKey returned %+v, want %+v", key, want)
 	}
+
+	const methodName = "GetRepoPublicKey"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.GetRepoPublicKey(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.GetRepoPublicKey(ctx, "o", "r")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_ListRepoSecrets(t *testing.T) {
@@ -45,7 +60,8 @@ func TestActionsService_ListRepoSecrets(t *testing.T) {
 	})
 
 	opts := &ListOptions{Page: 2, PerPage: 2}
-	secrets, _, err := client.Actions.ListRepoSecrets(context.Background(), "o", "r", opts)
+	ctx := context.Background()
+	secrets, _, err := client.Actions.ListRepoSecrets(ctx, "o", "r", opts)
 	if err != nil {
 		t.Errorf("Actions.ListRepoSecrets returned error: %v", err)
 	}
@@ -60,6 +76,20 @@ func TestActionsService_ListRepoSecrets(t *testing.T) {
 	if !reflect.DeepEqual(secrets, want) {
 		t.Errorf("Actions.ListRepoSecrets returned %+v, want %+v", secrets, want)
 	}
+
+	const methodName = "ListRepoSecrets"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.ListRepoSecrets(ctx, "\n", "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.ListRepoSecrets(ctx, "o", "r", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_GetRepoSecret(t *testing.T) {
@@ -71,7 +101,8 @@ func TestActionsService_GetRepoSecret(t *testing.T) {
 		fmt.Fprint(w, `{"name":"NAME","created_at":"2019-01-02T15:04:05Z","updated_at":"2020-01-02T15:04:05Z"}`)
 	})
 
-	secret, _, err := client.Actions.GetRepoSecret(context.Background(), "o", "r", "NAME")
+	ctx := context.Background()
+	secret, _, err := client.Actions.GetRepoSecret(ctx, "o", "r", "NAME")
 	if err != nil {
 		t.Errorf("Actions.GetRepoSecret returned error: %v", err)
 	}
@@ -84,6 +115,20 @@ func TestActionsService_GetRepoSecret(t *testing.T) {
 	if !reflect.DeepEqual(secret, want) {
 		t.Errorf("Actions.GetRepoSecret returned %+v, want %+v", secret, want)
 	}
+
+	const methodName = "GetRepoSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.GetRepoSecret(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.GetRepoSecret(ctx, "o", "r", "NAME")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_CreateOrUpdateRepoSecret(t *testing.T) {
@@ -102,10 +147,21 @@ func TestActionsService_CreateOrUpdateRepoSecret(t *testing.T) {
 		EncryptedValue: "QIv=",
 		KeyID:          "1234",
 	}
-	_, err := client.Actions.CreateOrUpdateRepoSecret(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	_, err := client.Actions.CreateOrUpdateRepoSecret(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Actions.CreateOrUpdateRepoSecret returned error: %v", err)
 	}
+
+	const methodName = "CreateOrUpdateRepoSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.CreateOrUpdateRepoSecret(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.CreateOrUpdateRepoSecret(ctx, "o", "r", input)
+	})
 }
 
 func TestActionsService_DeleteRepoSecret(t *testing.T) {
@@ -116,10 +172,21 @@ func TestActionsService_DeleteRepoSecret(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Actions.DeleteRepoSecret(context.Background(), "o", "r", "NAME")
+	ctx := context.Background()
+	_, err := client.Actions.DeleteRepoSecret(ctx, "o", "r", "NAME")
 	if err != nil {
 		t.Errorf("Actions.DeleteRepoSecret returned error: %v", err)
 	}
+
+	const methodName = "DeleteRepoSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.DeleteRepoSecret(ctx, "\n", "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.DeleteRepoSecret(ctx, "o", "r", "NAME")
+	})
 }
 
 func TestActionsService_GetOrgPublicKey(t *testing.T) {
@@ -131,7 +198,8 @@ func TestActionsService_GetOrgPublicKey(t *testing.T) {
 		fmt.Fprint(w, `{"key_id":"012345678","key":"2Sg8iYjAxxmI2LvUXpJjkYrMxURPc8r+dB7TJyvv1234"}`)
 	})
 
-	key, _, err := client.Actions.GetOrgPublicKey(context.Background(), "o")
+	ctx := context.Background()
+	key, _, err := client.Actions.GetOrgPublicKey(ctx, "o")
 	if err != nil {
 		t.Errorf("Actions.GetOrgPublicKey returned error: %v", err)
 	}
@@ -140,6 +208,20 @@ func TestActionsService_GetOrgPublicKey(t *testing.T) {
 	if !reflect.DeepEqual(key, want) {
 		t.Errorf("Actions.GetOrgPublicKey returned %+v, want %+v", key, want)
 	}
+
+	const methodName = "GetOrgPublicKey"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.GetOrgPublicKey(ctx, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.GetOrgPublicKey(ctx, "o")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_ListOrgSecrets(t *testing.T) {
@@ -153,7 +235,8 @@ func TestActionsService_ListOrgSecrets(t *testing.T) {
 	})
 
 	opts := &ListOptions{Page: 2, PerPage: 2}
-	secrets, _, err := client.Actions.ListOrgSecrets(context.Background(), "o", opts)
+	ctx := context.Background()
+	secrets, _, err := client.Actions.ListOrgSecrets(ctx, "o", opts)
 	if err != nil {
 		t.Errorf("Actions.ListOrgSecrets returned error: %v", err)
 	}
@@ -169,6 +252,20 @@ func TestActionsService_ListOrgSecrets(t *testing.T) {
 	if !reflect.DeepEqual(secrets, want) {
 		t.Errorf("Actions.ListOrgSecrets returned %+v, want %+v", secrets, want)
 	}
+
+	const methodName = "ListOrgSecrets"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.ListOrgSecrets(ctx, "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.ListOrgSecrets(ctx, "o", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_GetOrgSecret(t *testing.T) {
@@ -180,7 +277,8 @@ func TestActionsService_GetOrgSecret(t *testing.T) {
 		fmt.Fprint(w, `{"name":"NAME","created_at":"2019-01-02T15:04:05Z","updated_at":"2020-01-02T15:04:05Z","visibility":"selected","selected_repositories_url":"https://api.github.com/orgs/octo-org/actions/secrets/SUPER_SECRET/repositories"}`)
 	})
 
-	secret, _, err := client.Actions.GetOrgSecret(context.Background(), "o", "NAME")
+	ctx := context.Background()
+	secret, _, err := client.Actions.GetOrgSecret(ctx, "o", "NAME")
 	if err != nil {
 		t.Errorf("Actions.GetOrgSecret returned error: %v", err)
 	}
@@ -195,6 +293,20 @@ func TestActionsService_GetOrgSecret(t *testing.T) {
 	if !reflect.DeepEqual(secret, want) {
 		t.Errorf("Actions.GetOrgSecret returned %+v, want %+v", secret, want)
 	}
+
+	const methodName = "GetOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.GetOrgSecret(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.GetOrgSecret(ctx, "o", "NAME")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_CreateOrUpdateOrgSecret(t *testing.T) {
@@ -215,10 +327,21 @@ func TestActionsService_CreateOrUpdateOrgSecret(t *testing.T) {
 		Visibility:            "selected",
 		SelectedRepositoryIDs: SelectedRepoIDs{1296269, 1269280},
 	}
-	_, err := client.Actions.CreateOrUpdateOrgSecret(context.Background(), "o", input)
+	ctx := context.Background()
+	_, err := client.Actions.CreateOrUpdateOrgSecret(ctx, "o", input)
 	if err != nil {
 		t.Errorf("Actions.CreateOrUpdateOrgSecret returned error: %v", err)
 	}
+
+	const methodName = "CreateOrUpdateOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.CreateOrUpdateOrgSecret(ctx, "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.CreateOrUpdateOrgSecret(ctx, "o", input)
+	})
 }
 
 func TestActionsService_ListSelectedReposForOrgSecret(t *testing.T) {
@@ -230,7 +353,8 @@ func TestActionsService_ListSelectedReposForOrgSecret(t *testing.T) {
 		fmt.Fprintf(w, `{"total_count":1,"repositories":[{"id":1}]}`)
 	})
 
-	repos, _, err := client.Actions.ListSelectedReposForOrgSecret(context.Background(), "o", "NAME")
+	ctx := context.Background()
+	repos, _, err := client.Actions.ListSelectedReposForOrgSecret(ctx, "o", "NAME")
 	if err != nil {
 		t.Errorf("Actions.ListSelectedReposForOrgSecret returned error: %v", err)
 	}
@@ -244,6 +368,20 @@ func TestActionsService_ListSelectedReposForOrgSecret(t *testing.T) {
 	if !reflect.DeepEqual(repos, want) {
 		t.Errorf("Actions.ListSelectedReposForOrgSecret returned %+v, want %+v", repos, want)
 	}
+
+	const methodName = "ListSelectedReposForOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Actions.ListSelectedReposForOrgSecret(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Actions.ListSelectedReposForOrgSecret(ctx, "o", "NAME")
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_SetSelectedReposForOrgSecret(t *testing.T) {
@@ -256,10 +394,21 @@ func TestActionsService_SetSelectedReposForOrgSecret(t *testing.T) {
 		testBody(t, r, `{"selected_repository_ids":[64780797]}`+"\n")
 	})
 
-	_, err := client.Actions.SetSelectedReposForOrgSecret(context.Background(), "o", "NAME", SelectedRepoIDs{64780797})
+	ctx := context.Background()
+	_, err := client.Actions.SetSelectedReposForOrgSecret(ctx, "o", "NAME", SelectedRepoIDs{64780797})
 	if err != nil {
 		t.Errorf("Actions.SetSelectedReposForOrgSecret returned error: %v", err)
 	}
+
+	const methodName = "SetSelectedReposForOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.SetSelectedReposForOrgSecret(ctx, "\n", "\n", SelectedRepoIDs{64780797})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.SetSelectedReposForOrgSecret(ctx, "o", "NAME", SelectedRepoIDs{64780797})
+	})
 }
 
 func TestActionsService_AddSelectedRepoToOrgSecret(t *testing.T) {
@@ -271,10 +420,21 @@ func TestActionsService_AddSelectedRepoToOrgSecret(t *testing.T) {
 	})
 
 	repo := &Repository{ID: Int64(1234)}
-	_, err := client.Actions.AddSelectedRepoToOrgSecret(context.Background(), "o", "NAME", repo)
+	ctx := context.Background()
+	_, err := client.Actions.AddSelectedRepoToOrgSecret(ctx, "o", "NAME", repo)
 	if err != nil {
 		t.Errorf("Actions.AddSelectedRepoToOrgSecret returned error: %v", err)
 	}
+
+	const methodName = "AddSelectedRepoToOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.AddSelectedRepoToOrgSecret(ctx, "\n", "\n", repo)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.AddSelectedRepoToOrgSecret(ctx, "o", "NAME", repo)
+	})
 }
 
 func TestActionsService_RemoveSelectedRepoFromOrgSecret(t *testing.T) {
@@ -286,10 +446,21 @@ func TestActionsService_RemoveSelectedRepoFromOrgSecret(t *testing.T) {
 	})
 
 	repo := &Repository{ID: Int64(1234)}
-	_, err := client.Actions.RemoveSelectedRepoFromOrgSecret(context.Background(), "o", "NAME", repo)
+	ctx := context.Background()
+	_, err := client.Actions.RemoveSelectedRepoFromOrgSecret(ctx, "o", "NAME", repo)
 	if err != nil {
 		t.Errorf("Actions.RemoveSelectedRepoFromOrgSecret returned error: %v", err)
 	}
+
+	const methodName = "RemoveSelectedRepoFromOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.RemoveSelectedRepoFromOrgSecret(ctx, "\n", "\n", repo)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.RemoveSelectedRepoFromOrgSecret(ctx, "o", "NAME", repo)
+	})
 }
 
 func TestActionsService_DeleteOrgSecret(t *testing.T) {
@@ -300,8 +471,19 @@ func TestActionsService_DeleteOrgSecret(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Actions.DeleteOrgSecret(context.Background(), "o", "NAME")
+	ctx := context.Background()
+	_, err := client.Actions.DeleteOrgSecret(ctx, "o", "NAME")
 	if err != nil {
 		t.Errorf("Actions.DeleteOrgSecret returned error: %v", err)
 	}
+
+	const methodName = "DeleteOrgSecret"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Actions.DeleteOrgSecret(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Actions.DeleteOrgSecret(ctx, "o", "NAME")
+	})
 }

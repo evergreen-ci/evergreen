@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
@@ -20,10 +19,9 @@ func TestIssuesService_List_all(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/issues", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		testFormValues(t, r, values{
 			"filter":    "all",
 			"state":     "closed",
@@ -42,7 +40,8 @@ func TestIssuesService_List_all(t *testing.T) {
 		time.Date(2002, time.February, 10, 15, 30, 0, 0, time.UTC),
 		ListOptions{Page: 1, PerPage: 2},
 	}
-	issues, _, err := client.Issues.List(context.Background(), true, opt)
+	ctx := context.Background()
+	issues, _, err := client.Issues.List(ctx, true, opt)
 	if err != nil {
 		t.Errorf("Issues.List returned error: %v", err)
 	}
@@ -51,20 +50,29 @@ func TestIssuesService_List_all(t *testing.T) {
 	if !reflect.DeepEqual(issues, want) {
 		t.Errorf("Issues.List returned %+v, want %+v", issues, want)
 	}
+
+	const methodName = "List"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.List(ctx, true, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_List_owned(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/user/issues", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		fmt.Fprint(w, `[{"number":1}]`)
 	})
 
-	issues, _, err := client.Issues.List(context.Background(), false, nil)
+	ctx := context.Background()
+	issues, _, err := client.Issues.List(ctx, false, nil)
 	if err != nil {
 		t.Errorf("Issues.List returned error: %v", err)
 	}
@@ -79,14 +87,14 @@ func TestIssuesService_ListByOrg(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/orgs/o/issues", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		fmt.Fprint(w, `[{"number":1}]`)
 	})
 
-	issues, _, err := client.Issues.ListByOrg(context.Background(), "o", nil)
+	ctx := context.Background()
+	issues, _, err := client.Issues.ListByOrg(ctx, "o", nil)
 	if err != nil {
 		t.Errorf("Issues.ListByOrg returned error: %v", err)
 	}
@@ -95,13 +103,28 @@ func TestIssuesService_ListByOrg(t *testing.T) {
 	if !reflect.DeepEqual(issues, want) {
 		t.Errorf("Issues.List returned %+v, want %+v", issues, want)
 	}
+
+	const methodName = "ListByOrg"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListByOrg(ctx, "\n", nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListByOrg(ctx, "o", nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_ListByOrg_invalidOrg(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.ListByOrg(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.ListByOrg(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -109,10 +132,9 @@ func TestIssuesService_ListByRepo(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeIntegrationPreview}
 	mux.HandleFunc("/repos/o/r/issues", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		testFormValues(t, r, values{
 			"milestone": "*",
 			"state":     "closed",
@@ -132,7 +154,8 @@ func TestIssuesService_ListByRepo(t *testing.T) {
 		time.Date(2002, time.February, 10, 15, 30, 0, 0, time.UTC),
 		ListOptions{0, 0},
 	}
-	issues, _, err := client.Issues.ListByRepo(context.Background(), "o", "r", opt)
+	ctx := context.Background()
+	issues, _, err := client.Issues.ListByRepo(ctx, "o", "r", opt)
 	if err != nil {
 		t.Errorf("Issues.ListByOrg returned error: %v", err)
 	}
@@ -141,13 +164,28 @@ func TestIssuesService_ListByRepo(t *testing.T) {
 	if !reflect.DeepEqual(issues, want) {
 		t.Errorf("Issues.List returned %+v, want %+v", issues, want)
 	}
+
+	const methodName = "ListByRepo"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListByRepo(ctx, "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListByRepo(ctx, "o", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_ListByRepo_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.ListByRepo(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.ListByRepo(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -155,14 +193,14 @@ func TestIssuesService_Get(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	wantAcceptHeaders := []string{mediaTypeReactionsPreview, mediaTypeLockReasonPreview}
 	mux.HandleFunc("/repos/o/r/issues/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		testHeader(t, r, "Accept", strings.Join(wantAcceptHeaders, ", "))
+		testHeader(t, r, "Accept", mediaTypeReactionsPreview)
 		fmt.Fprint(w, `{"number":1, "author_association": "MEMBER","labels": [{"url": "u", "name": "n", "color": "c"}]}`)
 	})
 
-	issue, _, err := client.Issues.Get(context.Background(), "o", "r", 1)
+	ctx := context.Background()
+	issue, _, err := client.Issues.Get(ctx, "o", "r", 1)
 	if err != nil {
 		t.Errorf("Issues.Get returned error: %v", err)
 	}
@@ -179,13 +217,28 @@ func TestIssuesService_Get(t *testing.T) {
 	if !reflect.DeepEqual(issue, want) {
 		t.Errorf("Issues.Get returned %+v, want %+v", issue, want)
 	}
+
+	const methodName = "Get"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.Get(ctx, "\n", "\n", 1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.Get(ctx, "o", "r", 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_Get_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.Get(context.Background(), "%", "r", 1)
+	ctx := context.Background()
+	_, _, err := client.Issues.Get(ctx, "%", "r", 1)
 	testURLParseError(t, err)
 }
 
@@ -212,7 +265,8 @@ func TestIssuesService_Create(t *testing.T) {
 		fmt.Fprint(w, `{"number":1}`)
 	})
 
-	issue, _, err := client.Issues.Create(context.Background(), "o", "r", input)
+	ctx := context.Background()
+	issue, _, err := client.Issues.Create(ctx, "o", "r", input)
 	if err != nil {
 		t.Errorf("Issues.Create returned error: %v", err)
 	}
@@ -221,13 +275,28 @@ func TestIssuesService_Create(t *testing.T) {
 	if !reflect.DeepEqual(issue, want) {
 		t.Errorf("Issues.Create returned %+v, want %+v", issue, want)
 	}
+
+	const methodName = "Create"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.Create(ctx, "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.Create(ctx, "o", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_Create_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.Create(context.Background(), "%", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.Create(ctx, "%", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -249,7 +318,8 @@ func TestIssuesService_Edit(t *testing.T) {
 		fmt.Fprint(w, `{"number":1}`)
 	})
 
-	issue, _, err := client.Issues.Edit(context.Background(), "o", "r", 1, input)
+	ctx := context.Background()
+	issue, _, err := client.Issues.Edit(ctx, "o", "r", 1, input)
 	if err != nil {
 		t.Errorf("Issues.Edit returned error: %v", err)
 	}
@@ -258,13 +328,28 @@ func TestIssuesService_Edit(t *testing.T) {
 	if !reflect.DeepEqual(issue, want) {
 		t.Errorf("Issues.Edit returned %+v, want %+v", issue, want)
 	}
+
+	const methodName = "Edit"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.Edit(ctx, "\n", "\n", -1, input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.Edit(ctx, "o", "r", 1, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestIssuesService_Edit_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Issues.Edit(context.Background(), "%", "r", 1, nil)
+	ctx := context.Background()
+	_, _, err := client.Issues.Edit(ctx, "%", "r", 1, nil)
 	testURLParseError(t, err)
 }
 
@@ -278,9 +363,20 @@ func TestIssuesService_Lock(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Issues.Lock(context.Background(), "o", "r", 1, nil); err != nil {
+	ctx := context.Background()
+	if _, err := client.Issues.Lock(ctx, "o", "r", 1, nil); err != nil {
 		t.Errorf("Issues.Lock returned error: %v", err)
 	}
+
+	const methodName = "Lock"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Issues.Lock(ctx, "\n", "\n", -1, nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Issues.Lock(ctx, "o", "r", 1, nil)
+	})
 }
 
 func TestIssuesService_LockWithReason(t *testing.T) {
@@ -289,13 +385,13 @@ func TestIssuesService_LockWithReason(t *testing.T) {
 
 	mux.HandleFunc("/repos/o/r/issues/1/lock", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "PUT")
-		testHeader(t, r, "Accept", mediaTypeLockReasonPreview)
 		w.WriteHeader(http.StatusNoContent)
 	})
 
 	opt := &LockIssueOptions{LockReason: "off-topic"}
 
-	if _, err := client.Issues.Lock(context.Background(), "o", "r", 1, opt); err != nil {
+	ctx := context.Background()
+	if _, err := client.Issues.Lock(ctx, "o", "r", 1, opt); err != nil {
 		t.Errorf("Issues.Lock returned error: %v", err)
 	}
 }
@@ -310,9 +406,20 @@ func TestIssuesService_Unlock(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if _, err := client.Issues.Unlock(context.Background(), "o", "r", 1); err != nil {
+	ctx := context.Background()
+	if _, err := client.Issues.Unlock(ctx, "o", "r", 1); err != nil {
 		t.Errorf("Issues.Unlock returned error: %v", err)
 	}
+
+	const methodName = "Unlock"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Issues.Unlock(ctx, "\n", "\n", 1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Issues.Unlock(ctx, "o", "r", 1)
+	})
 }
 
 func TestIsPullRequest(t *testing.T) {

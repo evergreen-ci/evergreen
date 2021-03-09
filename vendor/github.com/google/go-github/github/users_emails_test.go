@@ -29,7 +29,8 @@ func TestUsersService_ListEmails(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	emails, _, err := client.Users.ListEmails(context.Background(), opt)
+	ctx := context.Background()
+	emails, _, err := client.Users.ListEmails(ctx, opt)
 	if err != nil {
 		t.Errorf("Users.ListEmails returned error: %v", err)
 	}
@@ -38,6 +39,15 @@ func TestUsersService_ListEmails(t *testing.T) {
 	if !reflect.DeepEqual(emails, want) {
 		t.Errorf("Users.ListEmails returned %+v, want %+v", emails, want)
 	}
+
+	const methodName = "ListEmails"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.ListEmails(ctx, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_AddEmails(t *testing.T) {
@@ -58,7 +68,8 @@ func TestUsersService_AddEmails(t *testing.T) {
 		fmt.Fprint(w, `[{"email":"old@example.com"}, {"email":"new@example.com"}]`)
 	})
 
-	emails, _, err := client.Users.AddEmails(context.Background(), input)
+	ctx := context.Background()
+	emails, _, err := client.Users.AddEmails(ctx, input)
 	if err != nil {
 		t.Errorf("Users.AddEmails returned error: %v", err)
 	}
@@ -70,6 +81,15 @@ func TestUsersService_AddEmails(t *testing.T) {
 	if !reflect.DeepEqual(emails, want) {
 		t.Errorf("Users.AddEmails returned %+v, want %+v", emails, want)
 	}
+
+	const methodName = "AddEmails"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.AddEmails(ctx, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_DeleteEmails(t *testing.T) {
@@ -88,8 +108,14 @@ func TestUsersService_DeleteEmails(t *testing.T) {
 		}
 	})
 
-	_, err := client.Users.DeleteEmails(context.Background(), input)
+	ctx := context.Background()
+	_, err := client.Users.DeleteEmails(ctx, input)
 	if err != nil {
 		t.Errorf("Users.DeleteEmails returned error: %v", err)
 	}
+
+	const methodName = "DeleteEmails"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Users.DeleteEmails(ctx, input)
+	})
 }
