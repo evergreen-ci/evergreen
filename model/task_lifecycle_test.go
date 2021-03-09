@@ -1659,30 +1659,33 @@ func TestDequeueAndRestart(t *testing.T) {
 	v2 := bson.NewObjectId()
 	v3 := bson.NewObjectId()
 	t1 := task.Task{
-		Id:        "1",
-		Version:   v1.Hex(),
-		BuildId:   "1",
-		Project:   "p",
-		Status:    evergreen.TaskSucceeded,
-		Requester: evergreen.MergeTestRequester,
+		Id:               "1",
+		Version:          v1.Hex(),
+		BuildId:          "1",
+		Project:          "p",
+		Status:           evergreen.TaskSucceeded,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, t1.Insert())
 	t2 := task.Task{
-		Id:        "2",
-		Version:   v2.Hex(),
-		BuildId:   "2",
-		Project:   "p",
-		Status:    evergreen.TaskFailed,
-		Requester: evergreen.MergeTestRequester,
+		Id:               "2",
+		Version:          v2.Hex(),
+		BuildId:          "2",
+		Project:          "p",
+		Status:           evergreen.TaskFailed,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, t2.Insert())
 	t3 := task.Task{
-		Id:        "3",
-		Version:   v3.Hex(),
-		BuildId:   "3",
-		Project:   "p",
-		Status:    evergreen.TaskSucceeded,
-		Requester: evergreen.MergeTestRequester,
+		Id:               "3",
+		Version:          v3.Hex(),
+		BuildId:          "3",
+		Project:          "p",
+		Status:           evergreen.TaskSucceeded,
+		Requester:        evergreen.MergeTestRequester,
+		CommitQueueMerge: true,
 	}
 	assert.NoError(t, t3.Insert())
 	b1 := build.Build{
