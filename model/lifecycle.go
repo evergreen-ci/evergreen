@@ -1101,9 +1101,8 @@ func setNumDepsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[strin
 		// Check whether this dependency is included in the tasks we're currently creating
 		depTask, ok := idToTasks[dep.TaskId]
 		if !ok {
-			// it's possible to get in to this block if tasks depend on others outside of the task's
-			// version, such as with commit queue merges. This scenario is currently not handled here
-			// because commit queue merges are all linked lists, and this block would do nothing
+			// TODO: if it becomes possible to depend on tasks outside a task's version in
+			// a workflow other than the commit queue, add handling here
 			continue
 		}
 		if !seen[depTask.Id] {

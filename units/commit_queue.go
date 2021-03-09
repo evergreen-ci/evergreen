@@ -192,7 +192,7 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		if currentItem.Version == "" {
 			return nil
 		}
-		mergeTask, err := task.FindOne(task.ByCommitQueueMergeInVersion(currentItem.Version))
+		mergeTask, err := task.FindMergeTaskForVersion(currentItem.Version)
 		if err != nil {
 			return errors.Wrap(err, "unable to find merge task")
 		}
