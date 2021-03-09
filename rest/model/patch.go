@@ -183,11 +183,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 }
 
 func getDownstreamTasks(p patch.Patch) ([]DownstreamTasks, error) {
-	//return if the patch is a child patch
-	if p.Triggers.ParentPatch != "" {
-		return nil, nil
-	}
-
 	downstreamTasks := []DownstreamTasks{}
 	for _, childPatch := range p.Triggers.ChildPatches {
 		childPatchDoc, err := patch.FindOneId(childPatch)
