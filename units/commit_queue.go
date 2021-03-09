@@ -118,6 +118,16 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("no commit queue found for id %s", j.QueueID))
 		return
 	}
+
+	front, hasItem := cq.Next()
+	grip.InfoWhen(hasItem, message.Fields{
+		"source":       "commit queue",
+		"job_id":       j.ID(),
+		"item_id":      front.Issue,
+		"project_id":   cq.ProjectID,
+		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
+	})
+
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
