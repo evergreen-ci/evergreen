@@ -289,12 +289,15 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	grip.DebugWhen(u != nil, message.Fields{
-		"message":               "got test names",
-		"user":                  u.Username(),
-		"test_names_query_secs": testNamesQueryDuration.Seconds(),
-		"num_test_names":        len(results),
-	})
+
+	if u != nil {
+		grip.Debug(message.Fields{
+			"message":               "got test names",
+			"user":                  u.Username(),
+			"test_names_query_secs": testNamesQueryDuration.Seconds(),
+			"num_test_names":        len(results),
+		})
+	}
 	gimlet.WriteJSON(w, results)
 }
 
