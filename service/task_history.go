@@ -271,8 +271,6 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	taskName := gimlet.GetVars(r)["task_name"]
 
 	projCtx := MustHaveProjectContext(r)
-	u := gimlet.GetUser(r.Context())
-
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -290,14 +288,11 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if u != nil {
-		grip.Debug(message.Fields{
-			"message":               "got test names",
-			"user":                  u.Username(),
-			"test_names_query_secs": testNamesQueryDuration.Seconds(),
-			"num_test_names":        len(results),
-		})
-	}
+	grip.Debug(message.Fields{
+		"message":               "got test names",
+		"test_names_query_secs": testNamesQueryDuration.Seconds(),
+		"num_test_names":        len(results),
+	})
 	gimlet.WriteJSON(w, results)
 }
 
