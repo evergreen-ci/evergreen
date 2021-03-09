@@ -5,10 +5,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -108,4 +110,37 @@ func TestGithubPatch(t *testing.T) {
 	assert.Equal("evergreen", utility.FromStringPtr(a.HeadRepo))
 	assert.Equal("hash", utility.FromStringPtr(a.HeadHash))
 	assert.Equal("octocat", utility.FromStringPtr(a.Author))
+}
+
+func TestDownstreamTasks(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.Clear(patch.Collection))
+	childPatchId := "6047a08d93572d8dd14fb5eb"
+
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     "mci",
+		Tasks:       []string{"t1", "t2"},
+		Activated:   true,
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId},
+		},
+	}
+
+	childPatch := patch.Patch{
+		Id:          mgobson.ObjectIdHex(childPatchId),
+		Description: "test",
+		Project:     "mci",
+		Tasks:       []string{"child_task_1", "child_task_2"},
+		Activated:   true,
+	}
+	assert.NoError(childPatch.Insert())
+
+	a := APIPatch{}
+	err := a.BuildFromService(p)
+	assert.NoError(err)
+	assert.Equal(*a.DownstreamTasks[0].ChildPatchId, childPatch.Id.Hex())
+	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
+	assert.Len(a.DownstreamTasks, 1)
 }
