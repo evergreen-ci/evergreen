@@ -87,9 +87,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		duration := v.End.Sub(v.Start)
 		at.Duration = float64(duration)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.LogURL),
 			LineNum: v.LineNum,
 		}
+
 		// Need to generate a consistent id for test results
 		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.LogURL)
 		at.Id = utility.ToStringPtr(testResultID)
