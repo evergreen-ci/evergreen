@@ -294,12 +294,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
-		return nil, &gqlerror.Error{
-			Message: fmt.Sprintln("Could not find proj", identifier),
-			Extensions: map[string]interface{}{
-				"code": "RESOURCE_NOT_FOUND",
-			},
-		}
+		return nil, ResourceNotFound.Send(fmt.Sprintf("Could not find project: %s",identifier))
 
 	}
 
@@ -307,13 +302,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
-		return nil, &gqlerror.Error{
-			Message: fmt.Sprintln("Error removing project", identifier),
-			Extensions: map[string]interface{}{
-				"code": "INTERNAL_SERVER_ERROR",
-			},
-		}
-	}
+		return nil, InternalServerError.Send(fmt.Sprintf("Error removing project : %s : %s", identifier, err)
 
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(p)
