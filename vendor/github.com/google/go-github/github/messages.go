@@ -30,8 +30,10 @@ const (
 	// sha256Prefix and sha512Prefix are provided for future compatibility.
 	sha256Prefix = "sha256"
 	sha512Prefix = "sha512"
-	// signatureHeader is the GitHub header key used to pass the HMAC hexdigest.
-	signatureHeader = "X-Hub-Signature"
+	// sha1SignatureHeader is the GitHub header key used to pass the HMAC-SHA1 hexdigest.
+	sha1SignatureHeader = "X-Hub-Signature"
+	// sha256SignatureHeader is the GitHub header key used to pass the HMAC-SHA256 hexdigest.
+	sha256SignatureHeader = "X-Hub-Signature-256"
 	// eventTypeHeader is the GitHub header key used to pass the event type.
 	eventTypeHeader = "X-Github-Event"
 	// deliveryIDHeader is the GitHub header key used to pass the unique ID for the webhook event.
@@ -44,6 +46,7 @@ var (
 		"check_run":                      "CheckRunEvent",
 		"check_suite":                    "CheckSuiteEvent",
 		"commit_comment":                 "CommitCommentEvent",
+		"content_reference":              "ContentReferenceEvent",
 		"create":                         "CreateEvent",
 		"delete":                         "DeleteEvent",
 		"deploy_key":                     "DeployKeyEvent",
@@ -85,6 +88,8 @@ var (
 		"team_add":                       "TeamAddEvent",
 		"user":                           "UserEvent",
 		"watch":                          "WatchEvent",
+		"workflow_dispatch":              "WorkflowDispatchEvent",
+		"workflow_run":                   "WorkflowRunEvent",
 	}
 )
 
@@ -187,7 +192,10 @@ func ValidatePayload(r *http.Request, secretToken []byte) (payload []byte, err e
 	// Only validate the signature if a secret token exists. This is intended for
 	// local development only and all webhooks should ideally set up a secret token.
 	if len(secretToken) > 0 {
-		sig := r.Header.Get(signatureHeader)
+		sig := r.Header.Get(sha256SignatureHeader)
+		if sig == "" {
+			sig = r.Header.Get(sha1SignatureHeader)
+		}
 		if err := ValidateSignature(sig, body, secretToken); err != nil {
 			return nil, err
 		}
@@ -215,14 +223,14 @@ func ValidateSignature(signature string, payload, secretToken []byte) error {
 
 // WebHookType returns the event type of webhook request r.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/hooks/#webhook-headers
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/hooks/#webhook-headers
 func WebHookType(r *http.Request) string {
 	return r.Header.Get(eventTypeHeader)
 }
 
 // DeliveryID returns the unique delivery ID of webhook request r.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/hooks/#webhook-headers
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/hooks/#webhook-headers
 func DeliveryID(r *http.Request) string {
 	return r.Header.Get(deliveryIDHeader)
 }

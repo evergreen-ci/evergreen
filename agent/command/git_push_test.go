@@ -78,11 +78,10 @@ func TestGitPush(t *testing.T) {
 
 			commands := []string{
 				"git checkout main",
-				"git rev-parse main@{upstream}",
 				"git push origin main",
 			}
 
-			require.Len(t, manager.Procs, len(commands))
+			assert.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
 				args := proc.(*mock.Process).ProcInfo.Options.Args
 				splitCommand, err = shlex.Split(commands[i])

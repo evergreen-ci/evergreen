@@ -29,7 +29,8 @@ func TestActivityService_ListStargazers(t *testing.T) {
 		fmt.Fprint(w, `[{"starred_at":"2002-02-10T15:30:00Z","user":{"id":1}}]`)
 	})
 
-	stargazers, _, err := client.Activity.ListStargazers(context.Background(), "o", "r", &ListOptions{Page: 2})
+	ctx := context.Background()
+	stargazers, _, err := client.Activity.ListStargazers(ctx, "o", "r", &ListOptions{Page: 2})
 	if err != nil {
 		t.Errorf("Activity.ListStargazers returned error: %v", err)
 	}
@@ -38,6 +39,20 @@ func TestActivityService_ListStargazers(t *testing.T) {
 	if !reflect.DeepEqual(stargazers, want) {
 		t.Errorf("Activity.ListStargazers returned %+v, want %+v", stargazers, want)
 	}
+
+	const methodName = "ListStargazers"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Activity.ListStargazers(ctx, "\n", "\n", &ListOptions{Page: 2})
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Activity.ListStargazers(ctx, "o", "r", &ListOptions{Page: 2})
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActivityService_ListStarred_authenticatedUser(t *testing.T) {
@@ -50,7 +65,8 @@ func TestActivityService_ListStarred_authenticatedUser(t *testing.T) {
 		fmt.Fprint(w, `[{"starred_at":"2002-02-10T15:30:00Z","repo":{"id":1}}]`)
 	})
 
-	repos, _, err := client.Activity.ListStarred(context.Background(), "", nil)
+	ctx := context.Background()
+	repos, _, err := client.Activity.ListStarred(ctx, "", nil)
 	if err != nil {
 		t.Errorf("Activity.ListStarred returned error: %v", err)
 	}
@@ -59,6 +75,20 @@ func TestActivityService_ListStarred_authenticatedUser(t *testing.T) {
 	if !reflect.DeepEqual(repos, want) {
 		t.Errorf("Activity.ListStarred returned %+v, want %+v", repos, want)
 	}
+
+	const methodName = "ListStarred"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Activity.ListStarred(ctx, "\n", nil)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Activity.ListStarred(ctx, "", nil)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActivityService_ListStarred_specifiedUser(t *testing.T) {
@@ -77,7 +107,8 @@ func TestActivityService_ListStarred_specifiedUser(t *testing.T) {
 	})
 
 	opt := &ActivityListStarredOptions{"created", "asc", ListOptions{Page: 2}}
-	repos, _, err := client.Activity.ListStarred(context.Background(), "u", opt)
+	ctx := context.Background()
+	repos, _, err := client.Activity.ListStarred(ctx, "u", opt)
 	if err != nil {
 		t.Errorf("Activity.ListStarred returned error: %v", err)
 	}
@@ -86,13 +117,28 @@ func TestActivityService_ListStarred_specifiedUser(t *testing.T) {
 	if !reflect.DeepEqual(repos, want) {
 		t.Errorf("Activity.ListStarred returned %+v, want %+v", repos, want)
 	}
+
+	const methodName = "ListStarred"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Activity.ListStarred(ctx, "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Activity.ListStarred(ctx, "u", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActivityService_ListStarred_invalidUser(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Activity.ListStarred(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Activity.ListStarred(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -105,13 +151,28 @@ func TestActivityService_IsStarred_hasStar(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	star, _, err := client.Activity.IsStarred(context.Background(), "o", "r")
+	ctx := context.Background()
+	star, _, err := client.Activity.IsStarred(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Activity.IsStarred returned error: %v", err)
 	}
 	if want := true; star != want {
 		t.Errorf("Activity.IsStarred returned %+v, want %+v", star, want)
 	}
+
+	const methodName = "IsStarred"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Activity.IsStarred(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Activity.IsStarred(ctx, "o", "r")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActivityService_IsStarred_noStar(t *testing.T) {
@@ -123,20 +184,36 @@ func TestActivityService_IsStarred_noStar(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	star, _, err := client.Activity.IsStarred(context.Background(), "o", "r")
+	ctx := context.Background()
+	star, _, err := client.Activity.IsStarred(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Activity.IsStarred returned error: %v", err)
 	}
 	if want := false; star != want {
 		t.Errorf("Activity.IsStarred returned %+v, want %+v", star, want)
 	}
+
+	const methodName = "IsStarred"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Activity.IsStarred(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Activity.IsStarred(ctx, "o", "r")
+		if got {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want false", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActivityService_IsStarred_invalidID(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Activity.IsStarred(context.Background(), "%", "%")
+	ctx := context.Background()
+	_, _, err := client.Activity.IsStarred(ctx, "%", "%")
 	testURLParseError(t, err)
 }
 
@@ -148,17 +225,29 @@ func TestActivityService_Star(t *testing.T) {
 		testMethod(t, r, "PUT")
 	})
 
-	_, err := client.Activity.Star(context.Background(), "o", "r")
+	ctx := context.Background()
+	_, err := client.Activity.Star(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Activity.Star returned error: %v", err)
 	}
+
+	const methodName = "Star"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Activity.Star(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Activity.Star(ctx, "o", "r")
+	})
 }
 
 func TestActivityService_Star_invalidID(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Activity.Star(context.Background(), "%", "%")
+	ctx := context.Background()
+	_, err := client.Activity.Star(ctx, "%", "%")
 	testURLParseError(t, err)
 }
 
@@ -170,16 +259,28 @@ func TestActivityService_Unstar(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Activity.Unstar(context.Background(), "o", "r")
+	ctx := context.Background()
+	_, err := client.Activity.Unstar(ctx, "o", "r")
 	if err != nil {
 		t.Errorf("Activity.Unstar returned error: %v", err)
 	}
+
+	const methodName = "Unstar"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Activity.Unstar(ctx, "\n", "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Activity.Unstar(ctx, "o", "r")
+	})
 }
 
 func TestActivityService_Unstar_invalidID(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, err := client.Activity.Unstar(context.Background(), "%", "%")
+	ctx := context.Background()
+	_, err := client.Activity.Unstar(ctx, "%", "%")
 	testURLParseError(t, err)
 }

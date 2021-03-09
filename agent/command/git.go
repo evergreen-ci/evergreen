@@ -271,6 +271,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *internal.TaskConfig, opts clon
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
 	}
+	gitCommands = append(gitCommands, "git log --oneline -n 10")
 
 	return gitCommands, nil
 }

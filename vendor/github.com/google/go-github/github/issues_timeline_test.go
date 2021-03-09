@@ -30,7 +30,8 @@ func TestIssuesService_ListIssueTimeline(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 1, PerPage: 2}
-	events, _, err := client.Issues.ListIssueTimeline(context.Background(), "o", "r", 1, opt)
+	ctx := context.Background()
+	events, _, err := client.Issues.ListIssueTimeline(ctx, "o", "r", 1, opt)
 	if err != nil {
 		t.Errorf("Issues.ListIssueTimeline returned error: %v", err)
 	}
@@ -39,4 +40,18 @@ func TestIssuesService_ListIssueTimeline(t *testing.T) {
 	if !reflect.DeepEqual(events, want) {
 		t.Errorf("Issues.ListIssueTimeline = %+v, want %+v", events, want)
 	}
+
+	const methodName = "ListIssueTimeline"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Issues.ListIssueTimeline(ctx, "\n", "\n", -1, opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Issues.ListIssueTimeline(ctx, "o", "r", 1, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

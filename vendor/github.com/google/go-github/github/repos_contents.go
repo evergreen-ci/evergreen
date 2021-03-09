@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file.
 
 // Repository contents API methods.
-// GitHub API docs: https://developer.github.com/v3/repos/contents/
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/contents/
 
 package github
 
@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 )
 
 // RepositoryContent represents a file or directory in a github repository.
@@ -94,7 +95,7 @@ func (r *RepositoryContent) GetContent() (string, error) {
 
 // GetReadme gets the Readme file for the repository.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-a-repository-readme
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-a-repository-readme
 func (s *RepositoriesService) GetReadme(ctx context.Context, owner, repo string, opts *RepositoryContentGetOptions) (*RepositoryContent, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/readme", owner, repo)
 	u, err := addOptions(u, opts)
@@ -117,26 +118,60 @@ func (s *RepositoriesService) GetReadme(ctx context.Context, owner, repo string,
 // specified file. This function will work with files of any size, as opposed
 // to GetContents which is limited to 1 Mb files. It is the caller's
 // responsibility to close the ReadCloser.
-func (s *RepositoriesService) DownloadContents(ctx context.Context, owner, repo, filepath string, opts *RepositoryContentGetOptions) (io.ReadCloser, error) {
+//
+// It is possible for the download to result in a failed response when the
+// returned error is nil. Callers should check the returned Response status
+// code to verify the content is from a successful response.
+func (s *RepositoriesService) DownloadContents(ctx context.Context, owner, repo, filepath string, opts *RepositoryContentGetOptions) (io.ReadCloser, *Response, error) {
 	dir := path.Dir(filepath)
 	filename := path.Base(filepath)
-	_, dirContents, _, err := s.GetContents(ctx, owner, repo, dir, opts)
+	_, dirContents, resp, err := s.GetContents(ctx, owner, repo, dir, opts)
 	if err != nil {
-		return nil, err
+		return nil, resp, err
 	}
 	for _, contents := range dirContents {
 		if *contents.Name == filename {
 			if contents.DownloadURL == nil || *contents.DownloadURL == "" {
-				return nil, fmt.Errorf("No download link found for %s", filepath)
+				return nil, resp, fmt.Errorf("No download link found for %s", filepath)
 			}
-			resp, err := s.client.client.Get(*contents.DownloadURL)
+			dlResp, err := s.client.client.Get(*contents.DownloadURL)
 			if err != nil {
-				return nil, err
+				return nil, &Response{Response: dlResp}, err
 			}
-			return resp.Body, nil
+			return dlResp.Body, &Response{Response: dlResp}, nil
 		}
 	}
-	return nil, fmt.Errorf("No file named %s found in %s", filename, dir)
+	return nil, resp, fmt.Errorf("No file named %s found in %s", filename, dir)
+}
+
+// DownloadContentsWithMeta is identical to DownloadContents but additionally
+// returns the RepositoryContent of the requested file. This additional data
+// is useful for future operations involving the requested file. For merely
+// reading the content of a file, DownloadContents is perfectly adequate.
+//
+// It is possible for the download to result in a failed response when the
+// returned error is nil. Callers should check the returned Response status
+// code to verify the content is from a successful response.
+func (s *RepositoriesService) DownloadContentsWithMeta(ctx context.Context, owner, repo, filepath string, opts *RepositoryContentGetOptions) (io.ReadCloser, *RepositoryContent, *Response, error) {
+	dir := path.Dir(filepath)
+	filename := path.Base(filepath)
+	_, dirContents, resp, err := s.GetContents(ctx, owner, repo, dir, opts)
+	if err != nil {
+		return nil, nil, resp, err
+	}
+	for _, contents := range dirContents {
+		if *contents.Name == filename {
+			if contents.DownloadURL == nil || *contents.DownloadURL == "" {
+				return nil, contents, resp, fmt.Errorf("No download link found for %s", filepath)
+			}
+			dlResp, err := s.client.client.Get(*contents.DownloadURL)
+			if err != nil {
+				return nil, contents, &Response{Response: dlResp}, err
+			}
+			return dlResp.Body, contents, &Response{Response: dlResp}, nil
+		}
+	}
+	return nil, nil, resp, fmt.Errorf("No file named %s found in %s", filename, dir)
 }
 
 // GetContents can return either the metadata and content of a single file
@@ -146,9 +181,9 @@ func (s *RepositoriesService) DownloadContents(ctx context.Context, owner, repo,
 // as possible, both result types will be returned but only one will contain a
 // value and the other will be nil.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-repository-content
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#get-repository-content
 func (s *RepositoriesService) GetContents(ctx context.Context, owner, repo, path string, opts *RepositoryContentGetOptions) (fileContent *RepositoryContent, directoryContent []*RepositoryContent, resp *Response, err error) {
-	escapedPath := (&url.URL{Path: path}).String()
+	escapedPath := (&url.URL{Path: strings.TrimSuffix(path, "/")}).String()
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, escapedPath)
 	u, err = addOptions(u, opts)
 	if err != nil {
@@ -177,7 +212,7 @@ func (s *RepositoriesService) GetContents(ctx context.Context, owner, repo, path
 // CreateFile creates a new file in a repository at the given path and returns
 // the commit and file metadata.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#create-or-update-file-contents
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#create-or-update-file-contents
 func (s *RepositoriesService) CreateFile(ctx context.Context, owner, repo, path string, opts *RepositoryContentFileOptions) (*RepositoryContentResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := s.client.NewRequest("PUT", u, opts)
@@ -195,7 +230,7 @@ func (s *RepositoriesService) CreateFile(ctx context.Context, owner, repo, path 
 // UpdateFile updates a file in a repository at the given path and returns the
 // commit and file metadata. Requires the blob SHA of the file being updated.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#create-or-update-file-contents
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#create-or-update-file-contents
 func (s *RepositoriesService) UpdateFile(ctx context.Context, owner, repo, path string, opts *RepositoryContentFileOptions) (*RepositoryContentResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := s.client.NewRequest("PUT", u, opts)
@@ -213,7 +248,7 @@ func (s *RepositoriesService) UpdateFile(ctx context.Context, owner, repo, path 
 // DeleteFile deletes a file from a repository and returns the commit.
 // Requires the blob SHA of the file to be deleted.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#delete-a-file
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/#delete-a-file
 func (s *RepositoriesService) DeleteFile(ctx context.Context, owner, repo, path string, opts *RepositoryContentFileOptions) (*RepositoryContentResponse, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path)
 	req, err := s.client.NewRequest("DELETE", u, opts)
@@ -243,7 +278,7 @@ const (
 // repository. The archiveFormat can be specified by either the github.Tarball
 // or github.Zipball constant.
 //
-// GitHub API docs: https://developer.github.com/v3/repos/contents/#get-archive-link
+// GitHub API docs: https://docs.github.com/en/free-pro-team@latest/rest/reference/repos/contents/#get-archive-link
 func (s *RepositoriesService) GetArchiveLink(ctx context.Context, owner, repo string, archiveformat ArchiveFormat, opts *RepositoryContentGetOptions, followRedirects bool) (*url.URL, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/%s", owner, repo, archiveformat)
 	if opts != nil && opts.Ref != "" {

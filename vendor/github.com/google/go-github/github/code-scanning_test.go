@@ -86,7 +86,8 @@ func TestActionsService_ListAlertsForRepo(t *testing.T) {
 	})
 
 	opts := &AlertListOptions{State: "open", Ref: "heads/master"}
-	alerts, _, err := client.CodeScanning.ListAlertsForRepo(context.Background(), "o", "r", opts)
+	ctx := context.Background()
+	alerts, _, err := client.CodeScanning.ListAlertsForRepo(ctx, "o", "r", opts)
 	if err != nil {
 		t.Errorf("CodeScanning.ListAlertsForRepo returned error: %v", err)
 	}
@@ -121,6 +122,20 @@ func TestActionsService_ListAlertsForRepo(t *testing.T) {
 	if !reflect.DeepEqual(alerts, want) {
 		t.Errorf("CodeScanning.ListAlertsForRepo returned %+v, want %+v", alerts, want)
 	}
+
+	const methodName = "ListAlertsForRepo"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.CodeScanning.ListAlertsForRepo(ctx, "\n", "\n", opts)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.CodeScanning.ListAlertsForRepo(ctx, "o", "r", opts)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestActionsService_GetAlert(t *testing.T) {
@@ -141,7 +156,8 @@ func TestActionsService_GetAlert(t *testing.T) {
 				"html_url":"https://github.com/o/r/security/code-scanning/88"}`)
 	})
 
-	alert, _, err := client.CodeScanning.GetAlert(context.Background(), "o", "r", 88)
+	ctx := context.Background()
+	alert, _, err := client.CodeScanning.GetAlert(ctx, "o", "r", 88)
 	if err != nil {
 		t.Errorf("CodeScanning.GetAlert returned error: %v", err)
 	}
@@ -162,4 +178,18 @@ func TestActionsService_GetAlert(t *testing.T) {
 	if !reflect.DeepEqual(alert, want) {
 		t.Errorf("CodeScanning.GetAlert returned %+v, want %+v", alert, want)
 	}
+
+	const methodName = "GetAlert"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.CodeScanning.GetAlert(ctx, "\n", "\n", -88)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.CodeScanning.GetAlert(ctx, "o", "r", 88)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

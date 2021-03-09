@@ -80,18 +80,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Wrapf(err, "can't checkout '%s' branch", conf.ProjectRef.Branch)
 	}
 
-	// fail the merge if HEAD has moved
-	ref := conf.ProjectRef.Branch + "@{upstream}"
-	logger.Execution().Info("Checking " + ref)
-	var headSHA string
-	headSHA, err = c.revParse(ctx, conf, logger, ref)
-	if err != nil {
-		return errors.Wrapf(err, "can't get SHA for %s", ref)
-	}
-	if p.Githash != headSHA {
-		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)
-	}
-
 	// get commit information
 	var projectToken string
 	_, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)

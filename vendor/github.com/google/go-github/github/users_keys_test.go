@@ -25,7 +25,8 @@ func TestUsersService_ListKeys_authenticatedUser(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	keys, _, err := client.Users.ListKeys(context.Background(), "", opt)
+	ctx := context.Background()
+	keys, _, err := client.Users.ListKeys(ctx, "", opt)
 	if err != nil {
 		t.Errorf("Users.ListKeys returned error: %v", err)
 	}
@@ -34,6 +35,20 @@ func TestUsersService_ListKeys_authenticatedUser(t *testing.T) {
 	if !reflect.DeepEqual(keys, want) {
 		t.Errorf("Users.ListKeys returned %+v, want %+v", keys, want)
 	}
+
+	const methodName = "ListKeys"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Users.ListKeys(ctx, "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.ListKeys(ctx, "", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_ListKeys_specifiedUser(t *testing.T) {
@@ -45,7 +60,8 @@ func TestUsersService_ListKeys_specifiedUser(t *testing.T) {
 		fmt.Fprint(w, `[{"id":1}]`)
 	})
 
-	keys, _, err := client.Users.ListKeys(context.Background(), "u", nil)
+	ctx := context.Background()
+	keys, _, err := client.Users.ListKeys(ctx, "u", nil)
 	if err != nil {
 		t.Errorf("Users.ListKeys returned error: %v", err)
 	}
@@ -60,7 +76,8 @@ func TestUsersService_ListKeys_invalidUser(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Users.ListKeys(context.Background(), "%", nil)
+	ctx := context.Background()
+	_, _, err := client.Users.ListKeys(ctx, "%", nil)
 	testURLParseError(t, err)
 }
 
@@ -73,7 +90,8 @@ func TestUsersService_GetKey(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	key, _, err := client.Users.GetKey(context.Background(), 1)
+	ctx := context.Background()
+	key, _, err := client.Users.GetKey(ctx, 1)
 	if err != nil {
 		t.Errorf("Users.GetKey returned error: %v", err)
 	}
@@ -82,6 +100,20 @@ func TestUsersService_GetKey(t *testing.T) {
 	if !reflect.DeepEqual(key, want) {
 		t.Errorf("Users.GetKey returned %+v, want %+v", key, want)
 	}
+
+	const methodName = "GetKey"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Users.GetKey(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.GetKey(ctx, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_CreateKey(t *testing.T) {
@@ -102,7 +134,8 @@ func TestUsersService_CreateKey(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	key, _, err := client.Users.CreateKey(context.Background(), input)
+	ctx := context.Background()
+	key, _, err := client.Users.CreateKey(ctx, input)
 	if err != nil {
 		t.Errorf("Users.GetKey returned error: %v", err)
 	}
@@ -111,6 +144,15 @@ func TestUsersService_CreateKey(t *testing.T) {
 	if !reflect.DeepEqual(key, want) {
 		t.Errorf("Users.GetKey returned %+v, want %+v", key, want)
 	}
+
+	const methodName = "CreateKey"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Users.CreateKey(ctx, input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestUsersService_DeleteKey(t *testing.T) {
@@ -121,8 +163,19 @@ func TestUsersService_DeleteKey(t *testing.T) {
 		testMethod(t, r, "DELETE")
 	})
 
-	_, err := client.Users.DeleteKey(context.Background(), 1)
+	ctx := context.Background()
+	_, err := client.Users.DeleteKey(ctx, 1)
 	if err != nil {
 		t.Errorf("Users.DeleteKey returned error: %v", err)
 	}
+
+	const methodName = "DeleteKey"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Users.DeleteKey(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Users.DeleteKey(ctx, 1)
+	})
 }

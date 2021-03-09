@@ -31,7 +31,8 @@ func TestMigrationService_StartUserMigration(t *testing.T) {
 		ExcludeAttachments: false,
 	}
 
-	got, _, err := client.Migrations.StartUserMigration(context.Background(), []string{"r"}, opt)
+	ctx := context.Background()
+	got, _, err := client.Migrations.StartUserMigration(ctx, []string{"r"}, opt)
 	if err != nil {
 		t.Errorf("StartUserMigration returned error: %v", err)
 	}
@@ -40,6 +41,15 @@ func TestMigrationService_StartUserMigration(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("StartUserMigration = %v, want = %v", got, want)
 	}
+
+	const methodName = "StartUserMigration"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Migrations.StartUserMigration(ctx, []string{"r"}, opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestMigrationService_ListUserMigrations(t *testing.T) {
@@ -54,7 +64,8 @@ func TestMigrationService_ListUserMigrations(t *testing.T) {
 		w.Write([]byte(fmt.Sprintf("[%s]", userMigrationJSON)))
 	})
 
-	got, _, err := client.Migrations.ListUserMigrations(context.Background())
+	ctx := context.Background()
+	got, _, err := client.Migrations.ListUserMigrations(ctx)
 	if err != nil {
 		t.Errorf("ListUserMigrations returned error %v", err)
 	}
@@ -63,6 +74,15 @@ func TestMigrationService_ListUserMigrations(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("ListUserMigrations = %v, want = %v", got, want)
 	}
+
+	const methodName = "ListUserMigrations"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Migrations.ListUserMigrations(ctx)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestMigrationService_UserMigrationStatus(t *testing.T) {
@@ -77,7 +97,8 @@ func TestMigrationService_UserMigrationStatus(t *testing.T) {
 		w.Write(userMigrationJSON)
 	})
 
-	got, _, err := client.Migrations.UserMigrationStatus(context.Background(), 1)
+	ctx := context.Background()
+	got, _, err := client.Migrations.UserMigrationStatus(ctx, 1)
 	if err != nil {
 		t.Errorf("UserMigrationStatus returned error %v", err)
 	}
@@ -86,6 +107,15 @@ func TestMigrationService_UserMigrationStatus(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("UserMigrationStatus = %v, want = %v", got, want)
 	}
+
+	const methodName = "UserMigrationStatus"
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Migrations.UserMigrationStatus(ctx, 1)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestMigrationService_UserMigrationArchiveURL(t *testing.T) {
@@ -105,7 +135,8 @@ func TestMigrationService_UserMigrationArchiveURL(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	got, err := client.Migrations.UserMigrationArchiveURL(context.Background(), 1)
+	ctx := context.Background()
+	got, err := client.Migrations.UserMigrationArchiveURL(ctx, 1)
 	if err != nil {
 		t.Errorf("UserMigrationArchiveURL returned error %v", err)
 	}
@@ -127,7 +158,8 @@ func TestMigrationService_DeleteUserMigration(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	got, err := client.Migrations.DeleteUserMigration(context.Background(), 1)
+	ctx := context.Background()
+	got, err := client.Migrations.DeleteUserMigration(ctx, 1)
 	if err != nil {
 		t.Errorf("DeleteUserMigration returned error %v", err)
 	}
@@ -135,6 +167,16 @@ func TestMigrationService_DeleteUserMigration(t *testing.T) {
 	if got.StatusCode != http.StatusNoContent {
 		t.Errorf("DeleteUserMigration returned status = %v, want = %v", got.StatusCode, http.StatusNoContent)
 	}
+
+	const methodName = "DeleteUserMigration"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Migrations.DeleteUserMigration(ctx, -1)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Migrations.DeleteUserMigration(ctx, 1)
+	})
 }
 
 func TestMigrationService_UnlockUserRepo(t *testing.T) {
@@ -148,7 +190,8 @@ func TestMigrationService_UnlockUserRepo(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	got, err := client.Migrations.UnlockUserRepo(context.Background(), 1, "r")
+	ctx := context.Background()
+	got, err := client.Migrations.UnlockUserRepo(ctx, 1, "r")
 	if err != nil {
 		t.Errorf("UnlockUserRepo returned error %v", err)
 	}
@@ -156,6 +199,16 @@ func TestMigrationService_UnlockUserRepo(t *testing.T) {
 	if got.StatusCode != http.StatusNoContent {
 		t.Errorf("UnlockUserRepo returned status = %v, want = %v", got.StatusCode, http.StatusNoContent)
 	}
+
+	const methodName = "UnlockUserRepo"
+	testBadOptions(t, methodName, func() (err error) {
+		_, err = client.Migrations.UnlockUserRepo(ctx, -1, "\n")
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		return client.Migrations.UnlockUserRepo(ctx, 1, "r")
+	})
 }
 
 var userMigrationJSON = []byte(`{

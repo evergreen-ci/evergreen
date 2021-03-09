@@ -13,6 +13,29 @@ import (
 
 func Float64(v float64) *float64 { return &v }
 
+func TestActionsAllowed_String(t *testing.T) {
+	v := ActionsAllowed{
+		GithubOwnedAllowed: Bool(false),
+		VerifiedAllowed:    Bool(false),
+	}
+	want := `github.ActionsAllowed{GithubOwnedAllowed:false, VerifiedAllowed:false}`
+	if got := v.String(); got != want {
+		t.Errorf("ActionsAllowed.String = %v, want %v", got, want)
+	}
+}
+
+func TestActionsPermissions_String(t *testing.T) {
+	v := ActionsPermissions{
+		EnabledRepositories: String(""),
+		AllowedActions:      String(""),
+		SelectedActionsURL:  String(""),
+	}
+	want := `github.ActionsPermissions{EnabledRepositories:"", AllowedActions:"", SelectedActionsURL:""}`
+	if got := v.String(); got != want {
+		t.Errorf("ActionsPermissions.String = %v, want %v", got, want)
+	}
+}
+
 func TestAdminStats_String(t *testing.T) {
 	v := AdminStats{
 		Issues:     &IssueStats{},
@@ -508,12 +531,17 @@ func TestHeadCommit_String(t *testing.T) {
 
 func TestHook_String(t *testing.T) {
 	v := Hook{
-		URL:    String(""),
-		ID:     Int64(0),
-		Config: nil,
-		Active: Bool(false),
+		URL:          String(""),
+		ID:           Int64(0),
+		Type:         String(""),
+		Name:         String(""),
+		TestURL:      String(""),
+		PingURL:      String(""),
+		LastResponse: nil,
+		Config:       nil,
+		Active:       Bool(false),
 	}
-	want := `github.Hook{URL:"", ID:0, Config:map[], Active:false}`
+	want := `github.Hook{URL:"", ID:0, Type:"", Name:"", TestURL:"", PingURL:"", LastResponse:map[], Config:map[], Active:false}`
 	if got := v.String(); got != want {
 		t.Errorf("Hook.String = %v, want %v", got, want)
 	}
@@ -564,21 +592,26 @@ func TestImport_String(t *testing.T) {
 
 func TestInstallation_String(t *testing.T) {
 	v := Installation{
-		ID:                  Int64(0),
-		AppID:               Int64(0),
-		TargetID:            Int64(0),
-		Account:             &User{},
-		AccessTokensURL:     String(""),
-		RepositoriesURL:     String(""),
-		HTMLURL:             String(""),
-		TargetType:          String(""),
-		SingleFileName:      String(""),
-		RepositorySelection: String(""),
-		Permissions:         &InstallationPermissions{},
-		CreatedAt:           &Timestamp{},
-		UpdatedAt:           &Timestamp{},
+		ID:                     Int64(0),
+		NodeID:                 String(""),
+		AppID:                  Int64(0),
+		AppSlug:                String(""),
+		TargetID:               Int64(0),
+		Account:                &User{},
+		AccessTokensURL:        String(""),
+		RepositoriesURL:        String(""),
+		HTMLURL:                String(""),
+		TargetType:             String(""),
+		SingleFileName:         String(""),
+		RepositorySelection:    String(""),
+		Permissions:            &InstallationPermissions{},
+		CreatedAt:              &Timestamp{},
+		UpdatedAt:              &Timestamp{},
+		HasMultipleSingleFiles: Bool(false),
+		SuspendedBy:            &User{},
+		SuspendedAt:            &Timestamp{},
 	}
-	want := `github.Installation{ID:0, AppID:0, TargetID:0, Account:github.User{}, AccessTokensURL:"", RepositoriesURL:"", HTMLURL:"", TargetType:"", SingleFileName:"", RepositorySelection:"", Permissions:github.InstallationPermissions{}, CreatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}, UpdatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}}`
+	want := `github.Installation{ID:0, NodeID:"", AppID:0, AppSlug:"", TargetID:0, Account:github.User{}, AccessTokensURL:"", RepositoriesURL:"", HTMLURL:"", TargetType:"", SingleFileName:"", RepositorySelection:"", Permissions:github.InstallationPermissions{}, CreatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}, UpdatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}, HasMultipleSingleFiles:false, SuspendedBy:github.User{}, SuspendedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}}`
 	if got := v.String(); got != want {
 		t.Errorf("Installation.String = %v, want %v", got, want)
 	}
@@ -670,9 +703,10 @@ func TestKey_String(t *testing.T) {
 		URL:       String(""),
 		Title:     String(""),
 		ReadOnly:  Bool(false),
+		Verified:  Bool(false),
 		CreatedAt: &Timestamp{},
 	}
-	want := `github.Key{ID:0, Key:"", URL:"", Title:"", ReadOnly:false, CreatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}}`
+	want := `github.Key{ID:0, Key:"", URL:"", Title:"", ReadOnly:false, Verified:false, CreatedAt:github.Timestamp{0001-01-01 00:00:00 +0000 UTC}}`
 	if got := v.String(); got != want {
 		t.Errorf("Key.String = %v, want %v", got, want)
 	}
@@ -883,6 +917,9 @@ func TestOrganization_String(t *testing.T) {
 		MembersCanCreatePrivateRepos:         Bool(false),
 		MembersCanCreateInternalRepos:        Bool(false),
 		MembersAllowedRepositoryCreationType: String(""),
+		MembersCanCreatePages:                Bool(false),
+		MembersCanCreatePublicPages:          Bool(false),
+		MembersCanCreatePrivatePages:         Bool(false),
 		URL:                                  String(""),
 		EventsURL:                            String(""),
 		HooksURL:                             String(""),
@@ -891,7 +928,7 @@ func TestOrganization_String(t *testing.T) {
 		PublicMembersURL:                     String(""),
 		ReposURL:                             String(""),
 	}
-	want := `github.Organization{Login:"", ID:0, NodeID:"", AvatarURL:"", HTMLURL:"", Name:"", Company:"", Blog:"", Location:"", Email:"", TwitterUsername:"", Description:"", PublicRepos:0, PublicGists:0, Followers:0, Following:0, TotalPrivateRepos:0, OwnedPrivateRepos:0, PrivateGists:0, DiskUsage:0, Collaborators:0, BillingEmail:"", Type:"", Plan:github.Plan{}, TwoFactorRequirementEnabled:false, IsVerified:false, HasOrganizationProjects:false, HasRepositoryProjects:false, DefaultRepoPermission:"", DefaultRepoSettings:"", MembersCanCreateRepos:false, MembersCanCreatePublicRepos:false, MembersCanCreatePrivateRepos:false, MembersCanCreateInternalRepos:false, MembersAllowedRepositoryCreationType:"", URL:"", EventsURL:"", HooksURL:"", IssuesURL:"", MembersURL:"", PublicMembersURL:"", ReposURL:""}`
+	want := `github.Organization{Login:"", ID:0, NodeID:"", AvatarURL:"", HTMLURL:"", Name:"", Company:"", Blog:"", Location:"", Email:"", TwitterUsername:"", Description:"", PublicRepos:0, PublicGists:0, Followers:0, Following:0, TotalPrivateRepos:0, OwnedPrivateRepos:0, PrivateGists:0, DiskUsage:0, Collaborators:0, BillingEmail:"", Type:"", Plan:github.Plan{}, TwoFactorRequirementEnabled:false, IsVerified:false, HasOrganizationProjects:false, HasRepositoryProjects:false, DefaultRepoPermission:"", DefaultRepoSettings:"", MembersCanCreateRepos:false, MembersCanCreatePublicRepos:false, MembersCanCreatePrivateRepos:false, MembersCanCreateInternalRepos:false, MembersAllowedRepositoryCreationType:"", MembersCanCreatePages:false, MembersCanCreatePublicPages:false, MembersCanCreatePrivatePages:false, URL:"", EventsURL:"", HooksURL:"", IssuesURL:"", MembersURL:"", PublicMembersURL:"", ReposURL:""}`
 	if got := v.String(); got != want {
 		t.Errorf("Organization.String = %v, want %v", got, want)
 	}
@@ -1780,19 +1817,22 @@ func TestWebHookCommit_String(t *testing.T) {
 
 func TestWebHookPayload_String(t *testing.T) {
 	v := WebHookPayload{
-		After:      String(""),
-		Before:     String(""),
-		Compare:    String(""),
-		Created:    Bool(false),
-		Deleted:    Bool(false),
-		Forced:     Bool(false),
-		HeadCommit: &WebHookCommit{},
-		Pusher:     &User{},
-		Ref:        String(""),
-		Repo:       &Repository{},
-		Sender:     &User{},
+		Action:       String(""),
+		After:        String(""),
+		Before:       String(""),
+		Compare:      String(""),
+		Created:      Bool(false),
+		Deleted:      Bool(false),
+		Forced:       Bool(false),
+		HeadCommit:   &WebHookCommit{},
+		Installation: &Installation{},
+		Organization: &Organization{},
+		Pusher:       &User{},
+		Ref:          String(""),
+		Repo:         &Repository{},
+		Sender:       &User{},
 	}
-	want := `github.WebHookPayload{After:"", Before:"", Compare:"", Created:false, Deleted:false, Forced:false, HeadCommit:github.WebHookCommit{}, Pusher:github.User{}, Ref:"", Repo:github.Repository{}, Sender:github.User{}}`
+	want := `github.WebHookPayload{Action:"", After:"", Before:"", Compare:"", Created:false, Deleted:false, Forced:false, HeadCommit:github.WebHookCommit{}, Installation:github.Installation{}, Organization:github.Organization{}, Pusher:github.User{}, Ref:"", Repo:github.Repository{}, Sender:github.User{}}`
 	if got := v.String(); got != want {
 		t.Errorf("WebHookPayload.String = %v, want %v", got, want)
 	}

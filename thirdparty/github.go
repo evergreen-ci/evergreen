@@ -48,7 +48,7 @@ type GithubPatch struct {
 	Author         string `bson:"author"`
 	AuthorUID      int    `bson:"author_uid"`
 	MergeCommitSHA string `bson:"merge_commit_sha"`
-	CommitTitle    string `bson:"commit_title"`
+	CommitTitle    string `bson:"commit_title"` // named poorly, it's actually the commit message
 }
 
 var (

@@ -67,8 +67,10 @@ func (t *TriggerIntent) NewPatch() *Patch {
 }
 
 func (t *TriggerIntent) ShouldFinalizePatch() bool {
-	// finalize child patches that aren't waiting on a parent to complete
-	return t.ParentStatus == ""
+	// trigger intents are finalized in one of two ways:
+	// if parentStatus = "": in patch_lifecycle when the parent is finalized
+	// if the parentStatus is set: they are scheduled based on the parent patches's outcome
+	return false
 }
 
 func (t *TriggerIntent) ReusePreviousPatchDefinition() bool {

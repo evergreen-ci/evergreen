@@ -25,7 +25,8 @@ func TestRepositoriesService_ListStatuses(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	statuses, _, err := client.Repositories.ListStatuses(context.Background(), "o", "r", "r", opt)
+	ctx := context.Background()
+	statuses, _, err := client.Repositories.ListStatuses(ctx, "o", "r", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.ListStatuses returned error: %v", err)
 	}
@@ -34,13 +35,28 @@ func TestRepositoriesService_ListStatuses(t *testing.T) {
 	if !reflect.DeepEqual(statuses, want) {
 		t.Errorf("Repositories.ListStatuses returned %+v, want %+v", statuses, want)
 	}
+
+	const methodName = "ListStatuses"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.ListStatuses(ctx, "\n", "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.ListStatuses(ctx, "o", "r", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_ListStatuses_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.ListStatuses(context.Background(), "%", "r", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.ListStatuses(ctx, "%", "r", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -61,7 +77,8 @@ func TestRepositoriesService_CreateStatus(t *testing.T) {
 		fmt.Fprint(w, `{"id":1}`)
 	})
 
-	status, _, err := client.Repositories.CreateStatus(context.Background(), "o", "r", "r", input)
+	ctx := context.Background()
+	status, _, err := client.Repositories.CreateStatus(ctx, "o", "r", "r", input)
 	if err != nil {
 		t.Errorf("Repositories.CreateStatus returned error: %v", err)
 	}
@@ -70,13 +87,28 @@ func TestRepositoriesService_CreateStatus(t *testing.T) {
 	if !reflect.DeepEqual(status, want) {
 		t.Errorf("Repositories.CreateStatus returned %+v, want %+v", status, want)
 	}
+
+	const methodName = "CreateStatus"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.CreateStatus(ctx, "\n", "\n", "\n", input)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.CreateStatus(ctx, "o", "r", "r", input)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }
 
 func TestRepositoriesService_CreateStatus_invalidOwner(t *testing.T) {
 	client, _, _, teardown := setup()
 	defer teardown()
 
-	_, _, err := client.Repositories.CreateStatus(context.Background(), "%", "r", "r", nil)
+	ctx := context.Background()
+	_, _, err := client.Repositories.CreateStatus(ctx, "%", "r", "r", nil)
 	testURLParseError(t, err)
 }
 
@@ -91,7 +123,8 @@ func TestRepositoriesService_GetCombinedStatus(t *testing.T) {
 	})
 
 	opt := &ListOptions{Page: 2}
-	status, _, err := client.Repositories.GetCombinedStatus(context.Background(), "o", "r", "r", opt)
+	ctx := context.Background()
+	status, _, err := client.Repositories.GetCombinedStatus(ctx, "o", "r", "r", opt)
 	if err != nil {
 		t.Errorf("Repositories.GetCombinedStatus returned error: %v", err)
 	}
@@ -100,4 +133,18 @@ func TestRepositoriesService_GetCombinedStatus(t *testing.T) {
 	if !reflect.DeepEqual(status, want) {
 		t.Errorf("Repositories.GetCombinedStatus returned %+v, want %+v", status, want)
 	}
+
+	const methodName = "GetCombinedStatus"
+	testBadOptions(t, methodName, func() (err error) {
+		_, _, err = client.Repositories.GetCombinedStatus(ctx, "\n", "\n", "\n", opt)
+		return err
+	})
+
+	testNewRequestAndDoFailure(t, methodName, client, func() (*Response, error) {
+		got, resp, err := client.Repositories.GetCombinedStatus(ctx, "o", "r", "r", opt)
+		if got != nil {
+			t.Errorf("testNewRequestAndDoFailure %v = %#v, want nil", methodName, got)
+		}
+		return resp, err
+	})
 }

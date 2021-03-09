@@ -256,19 +256,11 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 		defer cancel()
 	}
 
-	errOut := util.NewMBCappedWriter()
-	err = addCommands(env.JasperManager().CreateCommand(ctx).
+	err = addCommands(env.JasperManager().CreateCommand(ctx)).
 		Host(h.Host).User(h.User).
 		ExtendRemoteArgs(sshOpts...).
-		SetOutputWriter(output).SetErrorWriter(errOut)).
+		SetCombinedWriter(output).
 		Run(ctx)
-
-	grip.Error(message.WrapError(err, message.Fields{
-		"host_id": h.Id,
-		"distro":  h.Distro.Id,
-		"output":  output.String(),
-		"errout":  errOut.String(),
-	}))
 
 	return output.String(), errors.Wrap(err, "error running SSH command")
 }
