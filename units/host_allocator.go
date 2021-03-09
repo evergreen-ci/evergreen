@@ -227,6 +227,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
+	var totalOverdueInTaskGroups int
+	for _, info := range distroQueueInfo.TaskGroupInfos {
+		if info.Name != "" {
+			totalOverdueInTaskGroups += info.CountWaitOverThreshold
+		}
+	}
+
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",
 		"job_type":                     hostAllocatorJobName,
@@ -237,6 +244,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"pool_info":                    existingHosts.Stats(),
 		"queue":                        eventInfo,
 		"overdue_tasks":                distroQueueInfo.CountWaitOverThreshold,
+		"overdue_tasks_in_groups":      totalOverdueInTaskGroups,
 		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),
 		"runtime_secs":                 distroQueueInfo.ExpectedDuration.Seconds(),
 		"time_to_empty":                timeToEmpty.String(),
