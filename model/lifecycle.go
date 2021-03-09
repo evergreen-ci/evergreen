@@ -1136,7 +1136,7 @@ func RecomputeNumDependents(t task.Task) error {
 	pipelineUp := getAllNodesInDepGraph(t.Id, task.IdKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey))
 	cursor, err = env.DB().Collection(task.Collection).Aggregate(ctx, pipelineUp)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error getting upstream dependencies of node")
 	}
 	depTasks = []task.Task{}
 	err = cursor.All(ctx, &depTasks)
@@ -1149,20 +1149,19 @@ func RecomputeNumDependents(t task.Task) error {
 
 	versionTasks, err := task.FindAll(task.ByVersion(t.Version))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error getting tasks in version")
 	}
 	for i := range versionTasks {
 		taskPtrs = append(taskPtrs, &versionTasks[i])
 	}
 
 	setNumDeps(taskPtrs)
-	errs := grip.NewBasicCatcher()
+	catcher := grip.NewBasicCatcher()
 	for _, t := range taskPtrs {
-		dereferenced := *t
-		errs.Add(dereferenced.SetNumDependents())
+		catcher.Add(t.SetNumDependents())
 	}
 
-	return errors.Wrap(errs.Resolve(), "error setting num dependents")
+	return errors.Wrap(catcher.Resolve(), "error setting num dependents")
 }
 
 func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {

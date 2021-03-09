@@ -2973,16 +2973,19 @@ func (t *Task) SetTaskGroupInfo() error {
 }
 
 func (t *Task) SetNumDependents() error {
-	if t.NumDependents == 0 {
-		return nil
-	}
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	}, bson.M{
+	update := bson.M{
 		"$set": bson.M{
 			NumDepsKey: t.NumDependents,
 		},
-	})
+	}
+	if t.NumDependents == 0 {
+		update = bson.M{"$unset": bson.M{
+			NumDepsKey: "",
+		}}
+	}
+	return UpdateOne(bson.M{
+		IdKey: t.Id,
+	}, update)
 }
 
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
