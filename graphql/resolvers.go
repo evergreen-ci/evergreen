@@ -32,7 +32,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -294,16 +293,15 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(fmt.Sprintf("Could not find project: %s",identifier))
-
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
 	}
 
 	usr := MustHaveUser(ctx)
 
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(fmt.Sprintf("Error removing project : %s : %s", identifier, err))
-
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
+	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(p)
 	if err != nil {
