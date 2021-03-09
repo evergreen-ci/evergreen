@@ -953,7 +953,6 @@ type Annotation {
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
   createdIssues: [IssueLink]
-  userCanModify: Boolean
   webhookConfigured: Boolean!
 }
 
