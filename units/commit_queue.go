@@ -120,15 +120,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	front, hasItem := cq.Next()
-	if hasItem {
-		grip.Info(message.Fields{
-			"source":       "commit queue",
-			"job_id":       j.ID(),
-			"item_id":      front.Issue,
-			"project_id":   cq.ProjectID,
-			"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
-		})
-	}
+	grip.InfoWhen(hasItem, message.Fields{
+		"source":       "commit queue",
+		"job_id":       j.ID(),
+		"item_id":      front.Issue,
+		"project_id":   cq.ProjectID,
+		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
+	})
 
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()
