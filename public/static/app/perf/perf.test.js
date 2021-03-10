@@ -2085,7 +2085,7 @@ describe('loadAllowlist', () => {
       PointsDataService = $injector.get('PointsDataService');
       getOutlierPointsQSpy = spyOn(PointsDataService, 'getOutlierPointsQ').and.returnValue(points);
       AllowlistDataService = $injector.get('AllowlistDataService');
-      getAllowlistQSpy = spyOn(AllowlistDataService, 'getAllowlistQ').and.returnValue(Allowlist);
+      getAllowlistQSpy = spyOn(AllowlistDataService, 'getAllowlistQ').and.returnValue(allowlist);
       allSpy = spyOn($q, 'all').and.returnValue(resp);
       loadAllowlist = $injector.get('loadAllowlist');
     });
