@@ -967,7 +967,7 @@ index edc0c34..8e82862 100644
 		}
 	}
 
-	successMessage := "applied additional changes from patch '555555555555555555555555'"
+	successMessage := "applied changes from previous commit queue patch '555555555555555555555555'"
 	foundSuccessMessage := false
 	for msg, ok := sender.GetMessageSafe(); ok; msg, ok = sender.GetMessageSafe() {
 		if strings.Contains(msg.Message.String(), successMessage) {

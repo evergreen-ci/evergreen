@@ -536,6 +536,10 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
+			err = model.RestartItemsAfterVersion(nil, proj.Id, version.Id, user.Id)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
+			}
 		}
 	case SetPriority:
 		if proj == nil {

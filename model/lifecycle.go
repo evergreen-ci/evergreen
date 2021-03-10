@@ -386,6 +386,21 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 	return nil
 }
 
+func RestartTasksInVersion(versionId string, abortInProgress bool, caller string) error {
+	tasks, err := task.Find(task.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks in version")
+	}
+	if tasks == nil {
+		return errors.New("no tasks found for version")
+	}
+	var taskIds []string
+	for _, task := range tasks {
+		taskIds = append(taskIds, task.Id)
+	}
+	return RestartVersion(versionId, taskIds, true, caller)
+}
+
 // RestartVersion restarts completed tasks associated with a given versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {

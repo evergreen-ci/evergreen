@@ -78,22 +78,7 @@ func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
 // true, it also sets the abort flag on any in-progress tasks. In addition, it
 // updates all builds containing the tasks affected.
 func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) error {
-	// Get a list of all tasks of the given versionId
-	tasks, err := task.Find(task.ByVersion(versionId))
-	if err != nil {
-		return err
-	}
-	if tasks == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", versionId),
-		}
-	}
-	var taskIds []string
-	for _, task := range tasks {
-		taskIds = append(taskIds, task.Id)
-	}
-	return model.RestartVersion(versionId, taskIds, true, caller)
+	return model.RestartTasksInVersion(versionId, true, caller)
 }
 
 func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
