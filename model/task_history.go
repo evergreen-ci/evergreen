@@ -369,7 +369,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 					task.DisplayNameKey: self.TaskName,
 				},
 			},
-			{"$sort": bson.D{{Key: task.RevisionOrderNumberKey, Value: -1}}},
+			{"$sort": bson.D{{Key: task.CreateTimeKey, Value: -1}}},
 			{"$limit": numCommits},
 			{"$lookup": bson.M{
 				"from":         testresult.Collection,
