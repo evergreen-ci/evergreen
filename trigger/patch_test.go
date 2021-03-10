@@ -233,7 +233,7 @@ func (s *patchSuite) TestPatchOutcome() {
 
 	s.data.Status = evergreen.PatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[3])
-	// there is not token set up in settings, but hitting this error
+	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
 	s.Nil(n)
