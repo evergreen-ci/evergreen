@@ -541,29 +541,6 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.Equal("git log --oneline -n 10", cmds[8])
 }
 
-func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
-	conf := s.taskConfig4
-	c := gitFetchProject{
-		Directory: "dir",
-	}
-
-	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-	}
-	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
-	s.NoError(err)
-	s.Require().Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-merge-test-"))
-	s.Equal("git reset --hard abcdef", cmds[7])
-	s.Equal("git log --oneline -n 10", cmds[8])
-}
-
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	conf := s.taskConfig2
 	c := gitFetchProject{
