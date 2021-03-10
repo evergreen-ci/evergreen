@@ -95,6 +95,13 @@ Evergreen Projects
         </div>
       </div>
     </div>
+    <div class="panel panel-danger" ng-show="settingsFormData.use_repo_settings">
+      <div class="panel-heading">
+        <i class="fa fa-exclamation-circle"></i>
+        Cannot modify project that is using repo settings. This page is the read-only merge of the repo and branch project.
+        To modify the branch project with the legacy page, please unattach from the repo using the Spruce UI or the API.
+      </div>
+    </div>
     <div ng-show="trackedProjects.length>0"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
       <fieldset style="display:inline-block;" ng-disabled="permissions.project_settings<20">
@@ -988,10 +995,11 @@ Evergreen Projects
             <label ng-hide="saveMessage">&nbsp;</label>
           </div>
         </div>
+        <label class="icon fa fa-warning project-error" ng-show="settingsFormData.use_repo_settings">Project using repo settings cannot be modified here.</label>
         <div class="row">
           <div class="col-lg-2">&nbsp;</div>
           <div class="col-lg-4">
-            <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
+            <input class="btn btn-primary" input ng-disabled="settingsFormData.use_repo_settings || !isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>
         </div>
       </fieldset>
