@@ -171,7 +171,7 @@ type GithubCheckSubscriber struct {
 
 type ChildPatchSubscriber struct {
 	ParentStatus string `bson:"parent_status"`
-	ChildPatchId string `bson:"parent_patch_id"`
+	ChildPatchId string `bson:"child_patch_id"`
 	Requester    string `bson:"requester"`
 }
 

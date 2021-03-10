@@ -92,6 +92,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
+
 	if sub.Subscriber.Type == event.RunChildPatchSubscriberType {
 		target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
 		if !ok {
@@ -104,11 +105,12 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 
 		successOutcome := (ps == evergreen.PatchSucceeded) && (t.data.Status == evergreen.PatchSucceeded)
-		FailureOutcome := (ps == evergreen.PatchFailed) && (t.data.Status == evergreen.PatchFailed)
-		AnyOutcome := (ps == evergreen.PatchAllOutcomes)
+		failureOutcome := (ps == evergreen.PatchFailed) && (t.data.Status == evergreen.PatchFailed)
+		anyOutcome := (ps == evergreen.PatchAllOutcomes)
 
-		if successOutcome || FailureOutcome || AnyOutcome {
+		if successOutcome || failureOutcome || anyOutcome {
 			err := finalizeChildPatch(sub)
+
 			if err != nil {
 				return nil, errors.Wrap(err, "Failed to finalize child patch")
 			}
@@ -139,14 +141,17 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	if childPatch != nil {
 		return errors.Wrap(err, "child patch not found")
 	}
+	//here
 	conf, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get evergreen configuration")
 	}
+
 	ghToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "can't get Github OAuth token from configuration")
 	}
+
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
 	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ghToken); err != nil {

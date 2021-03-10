@@ -302,14 +302,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = p.SetParametersFromParent(); err != nil {
 			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
 		}
-		parentStatus, err := p.GetParentStatus()
-		if err != nil {
-			return nil, errors.Wrap(err, "problem getting patch intent")
-		}
-		if err = SubscribeOnParentOutcome(parentStatus, p, requester); err != nil {
-			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
-		}
-
 	}
 
 	patchVersion := &Version{
@@ -448,9 +440,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	if p.IsParent() {
-		//finalize all child patches that have a parentStatus = ""
+		//finalize child patches or subscribe on parent outcome based on parentStatus
 		for _, childPatch := range p.Triggers.ChildPatches {
-			err = finalizeChildPatch(ctx, childPatch, requester, githubOauthToken)
+			err = finalizeOrSubscribeChildPatch(ctx, childPatch, p, requester, githubOauthToken)
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to finalize child patch")
 			}
@@ -460,7 +452,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	return patchVersion, nil
 }
 
-func finalizeChildPatch(ctx context.Context, childPatchId string, requester string, githubOauthToken string) error {
+func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string, githubOauthToken string) error {
 	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Errorf("error fetching child patch intent: %s", err)
@@ -472,12 +464,12 @@ func finalizeChildPatch(ctx context.Context, childPatchId string, requester stri
 	if !ok {
 		return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 	}
+	childPatchDoc, err := patch.FindOneId(childPatchId)
+	if err != nil {
+		return errors.Errorf("error fetching child patch: %s", err)
+	}
 	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
 	if triggerIntent.ParentStatus == "" {
-		childPatchDoc, err := patch.FindOneId(childPatchId)
-		if err != nil {
-			return errors.Errorf("error fetching child patch: %s", err)
-		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
@@ -491,26 +483,28 @@ func finalizeChildPatch(ctx context.Context, childPatchId string, requester stri
 			}))
 			return err
 		}
+	} else {
+		//subscribe on parent outcome
+		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchDoc, parentPatch, requester); err != nil {
+			return errors.Wrap(err, "problem getting parameters from parent patch")
+		}
 	}
 	return nil
 }
 
-func SubscribeOnParentOutcome(parentStatus string, p *patch.Patch, requester string) error {
-	parentPatch, err := patch.FindOneId(p.Triggers.ParentPatch)
-	if err != nil {
-		return errors.Wrapf(err, "error finding parent patch '%s'", p.Triggers.ParentPatch)
-	}
-	if parentPatch != nil {
-		return errors.Wrapf(err, "parent patch not found '%s'", p.Triggers.ParentPatch)
-	}
+func SubscribeOnParentOutcome(parentStatus string, childPatch *patch.Patch, parentPatch *patch.Patch, requester string) error {
 	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
 		ParentStatus: parentStatus,
-		ChildPatchId: p.Id.Hex(),
+		ChildPatchId: childPatch.Id.Hex(),
 		Requester:    requester,
 	})
 	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
-	if err = patchSub.Upsert(); err != nil {
-		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", string(p.Id))
+	if err := patchSub.Upsert(); err != nil {
+		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatch.Id.Hex())
+	}
+	err := patchSub.Upsert()
+	if err != nil {
+		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatch.Id.Hex())
 	}
 	return nil
 }
