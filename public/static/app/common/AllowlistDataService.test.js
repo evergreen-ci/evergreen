@@ -1,4 +1,4 @@
-describe('WhitelistDataServiceSpec', function () {
+describe('AllowlistDataServiceSpec', function () {
   beforeEach(module('MCI'));
 
   const project = 'sys-perf';
@@ -6,7 +6,7 @@ describe('WhitelistDataServiceSpec', function () {
   const task = 'bestbuy_agg';
   const test_name = ' distinct_types_no_predicate-useAgg';
   const db_perf = 'perf';
-  const coll_whitelist = 'whitelisted_outlier_tasks';
+  const coll_allowlist = 'whitelisted_outlier_tasks';
   const query = {'project': project, 'variant': variant, 'task': task, 'test': test_name};
   const mongo_filter = {'_id': 1};
   let service;
@@ -40,7 +40,7 @@ describe('WhitelistDataServiceSpec', function () {
     });
   });
 
-  describe('addWhitelist', () => {
+  describe('addAllowlist', () => {
     describe('query handling', () => {
       let $q;
       let deferred;
@@ -70,7 +70,7 @@ describe('WhitelistDataServiceSpec', function () {
           $q = $injector.get('$q');
           deferred = $q.defer();
           spyOn($q, 'all').and.returnValue(deferred.promise);
-          service = $injector.get('WhitelistDataService')
+          service = $injector.get('AllowlistDataService')
         });
 
       });
@@ -79,9 +79,9 @@ describe('WhitelistDataServiceSpec', function () {
         const task_revisions = setUpTaskRevisions();
         const query  = createTaskRevisionQuery();
 
-        service.addWhitelist(task_revisions);
+        service.addAllowlist(task_revisions);
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.updateOne).toHaveBeenCalledWith(query, task_revisions[0], {upsert: true});
       });
 
@@ -90,9 +90,9 @@ describe('WhitelistDataServiceSpec', function () {
         const task_revisions = setUpTaskRevisions(count);
         const queries  = setUpTaskRevisionQueries(count);
 
-        service.addWhitelist(task_revisions);
+        service.addAllowlist(task_revisions);
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.updateOne).toHaveBeenCalledTimes(count);
 
         const calls = _.zip(queries, task_revisions, _.range( count).map(() => ({upsert: true})));
@@ -101,7 +101,7 @@ describe('WhitelistDataServiceSpec', function () {
     });
   });
 
-  describe('removeWhitelist', () => {
+  describe('removeAllowlist', () => {
     describe('query handling', () => {
       beforeEach(() => {
         module($provide => {
@@ -125,17 +125,17 @@ describe('WhitelistDataServiceSpec', function () {
           $provide.value('Stitch', Stitch);
         });
 
-        inject($injector => service = $injector.get('WhitelistDataService'));
+        inject($injector => service = $injector.get('AllowlistDataService'));
       });
 
       it('should process a single task_revisions', function () {
         const task_revisions = setUpTaskRevisions();
         const query  =  {$or: setUpTaskRevisionQueries()};
 
-        service.removeWhitelist(task_revisions);
+        service.removeAllowlist(task_revisions);
 
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.deleteMany).toHaveBeenCalledWith(query);
       });
 
@@ -144,16 +144,16 @@ describe('WhitelistDataServiceSpec', function () {
         const task_revisions = setUpTaskRevisions(count);
         const query  =  {$or: setUpTaskRevisionQueries(count)};
 
-        service.removeWhitelist(task_revisions);
+        service.removeAllowlist(task_revisions);
 
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.deleteMany).toHaveBeenCalledWith(query);
       });
     });
   });
 
-  describe('getWhitelistQ', () => {
+  describe('getAllowlistQ', () => {
     describe('query handling', () => {
       beforeEach(() => {
         module($provide => {
@@ -177,20 +177,20 @@ describe('WhitelistDataServiceSpec', function () {
           $provide.value('Stitch', Stitch);
         });
 
-        inject($injector => service = $injector.get('WhitelistDataService'));
+        inject($injector => service = $injector.get('AllowlistDataService'));
       });
 
       it('should pass on query', function () {
-        service.getWhitelistQ(query);
+        service.getAllowlistQ(query);
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.find).toHaveBeenCalledWith(query, undefined);
       });
 
       it('should pass on projection', function () {
-        service.getWhitelistQ(query, mongo_filter);
+        service.getAllowlistQ(query, mongo_filter);
         expect($db.db).toHaveBeenCalledWith(db_perf);
-        expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
+        expect($db.collection).toHaveBeenCalledWith(coll_allowlist);
         expect($db.find).toHaveBeenCalledWith(query, mongo_filter);
       });
     });
@@ -206,13 +206,13 @@ describe('WhitelistDataServiceSpec', function () {
             $provide.value('Stitch', Stitch);
           });
 
-          inject($injector => service = $injector.get('WhitelistDataService'));
+          inject($injector => service = $injector.get('AllowlistDataService'));
         };
 
         describe('no data', () => {
           it('should return an empty document', () => {
             setUpQueryResults([]);
-            expect(service.getWhitelistQ()).toEqual([]);
+            expect(service.getAllowlistQ()).toEqual([]);
           });
         });
 
@@ -220,7 +220,7 @@ describe('WhitelistDataServiceSpec', function () {
           it('should return uniq task ids', () => {
             const query_results = ['results'];
             setUpQueryResults(query_results);
-            const actual = service.getWhitelistQ();
+            const actual = service.getAllowlistQ();
             expect(actual).toEqual(query_results);
           });
         });
@@ -237,12 +237,12 @@ describe('WhitelistDataServiceSpec', function () {
             $provide.value('Stitch', Stitch);
           });
 
-          inject($injector => service = $injector.get('WhitelistDataService'));
+          inject($injector => service = $injector.get('AllowlistDataService'));
         };
 
         it('should return an empty array', () => {
           setUpErrorResults();
-          expect(service.getWhitelistQ(project)).toEqual([]);
+          expect(service.getAllowlistQ(project)).toEqual([]);
         });
       });
     });
