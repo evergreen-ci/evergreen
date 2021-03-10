@@ -701,6 +701,7 @@ type ComplexityRoot struct {
 		Duration   func(childComplexity int) int
 		EndTime    func(childComplexity int) int
 		ExitCode   func(childComplexity int) int
+		GroupId    func(childComplexity int) int
 		Id         func(childComplexity int) int
 		Logs       func(childComplexity int) int
 		StartTime  func(childComplexity int) int
@@ -4258,6 +4259,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.ExitCode(childComplexity), true
 
+	case "TestResult.groupID":
+		if e.complexity.TestResult.GroupId == nil {
+			break
+		}
+
+		return e.complexity.TestResult.GroupId(childComplexity), true
+
 	case "TestResult.id":
 		if e.complexity.TestResult.Id == nil {
 			break
@@ -5231,6 +5239,7 @@ type TaskTestResult {
 
 type TestResult {
   id: String!
+  groupID: String
   status: String!
   baseStatus: String
   testFile: String!
@@ -21524,6 +21533,37 @@ func (ec *executionContext) _TestResult_id(ctx context.Context, field graphql.Co
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_groupID(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_status(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28884,6 +28924,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "groupID":
+			out.Values[i] = ec._TestResult_groupID(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._TestResult_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

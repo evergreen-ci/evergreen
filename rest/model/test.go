@@ -16,6 +16,7 @@ import (
 type APITest struct {
 	Id         *string    `json:"test_id"`
 	TaskId     *string    `json:"task_id"`
+	GroupId    *string    `json:"group_id"`
 	Status     *string    `json:"status"`
 	BaseStatus *string    `json:"base_status"`
 	TestFile   *string    `json:"test_file"`
@@ -91,8 +92,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		}
 
 		// Need to generate a consistent id for test results
-		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.LogURL)
+		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
 		at.Id = utility.ToStringPtr(testResultID)
+		at.GroupId = utility.ToStringPtr(v.GroupID)
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:
@@ -120,5 +122,6 @@ func (at *APITest) ToService() (interface{}, error) {
 		ExitCode:  at.ExitCode,
 		StartTime: utility.ToPythonTime(start),
 		EndTime:   utility.ToPythonTime(end),
+		GroupID:   utility.FromStringPtr(at.GroupId),
 	}, nil
 }

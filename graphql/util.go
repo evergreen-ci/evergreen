@@ -35,7 +35,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult's and returns a filtered sorted and paginated version of that array
+// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array
 func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
 	for _, testResult := range testResults {
@@ -93,7 +93,7 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 			break
 		}
 	}
-	// Get filtered test count before applying any limits on it
+	// Get filtered test count before applying any limits on it.
 	filteredTestCount := len(filteredAndSortedTestResults)
 	if limitParam != 0 {
 		offset := pageParam * limitParam

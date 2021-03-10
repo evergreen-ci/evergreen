@@ -31,6 +31,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -1174,7 +1175,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		opts.TaskID = taskID
 	}
 
-	cedarTestResults, _ := apimodels.GetCedarTestResults(ctx, opts)
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		grip.Warning(fmt.Sprintf("Did not find cedar test results for task: %s", taskID))
+	}
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1277,7 +1281,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			if buildErr != nil {
 				return nil, InternalServerError.Send(ctx, buildErr.Error())
 			}
-			// Add code to display cedar test logs
+
 			testPointers = append(testPointers, &apiTest)
 		}
 
