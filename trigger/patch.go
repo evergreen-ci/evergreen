@@ -138,10 +138,9 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	if err != nil {
 		return errors.Wrap(err, "Failed to fetch child patch")
 	}
-	if childPatch != nil {
+	if childPatch == nil {
 		return errors.Wrap(err, "child patch not found")
 	}
-	//here
 	conf, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get evergreen configuration")
@@ -154,6 +153,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
+
 	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ghToken); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
