@@ -409,6 +409,7 @@ mciModule.controller('ProjectCtrl', function ($scope, $window, $http, $location,
           files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
           disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
           periodic_builds: data.ProjectRef.periodic_builds,
+          use_repo_settings: $scope.projectRef.use_repo_settings,
         };
 
         // Divide aliases into categories

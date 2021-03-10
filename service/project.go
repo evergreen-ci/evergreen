@@ -88,6 +88,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			})
 		return
 	}
+	if projRef.UseRepoSettings {
+		projRef, err = model.FindMergedProjectRef(projRef.Id)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
 	for i, t := range projRef.PatchTriggerAliases {
@@ -108,7 +115,12 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
 	}
 
-	projVars, err := model.FindOneProjectVars(projRef.Id)
+	var projVars *model.ProjectVars
+	if projRef.UseRepoSettings {
+		projVars, err = model.FindMergedProjectVars(projRef.Id)
+	} else {
+		projVars, err = model.FindOneProjectVars(projRef.Id)
+	}
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -123,6 +135,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
+	}
+	if len(projectAliases) == 0 && projRef.UseRepoSettings {
+		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	matchingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
@@ -220,6 +239,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if projectRef == nil {
 		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+	if projectRef.UseRepoSettings {
+		http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
 		return
 	}
 	id = projectRef.Id
