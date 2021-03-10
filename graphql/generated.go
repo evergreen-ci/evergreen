@@ -77,7 +77,6 @@ type ComplexityRoot struct {
 		SuspectedIssues   func(childComplexity int) int
 		TaskExecution     func(childComplexity int) int
 		TaskId            func(childComplexity int) int
-		UserCanModify     func(childComplexity int) int
 		WebhookConfigured func(childComplexity int) int
 	}
 
@@ -781,7 +780,6 @@ type AnnotationResolver interface {
 	Issues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	SuspectedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
 	CreatedIssues(ctx context.Context, obj *model.APITaskAnnotation) ([]*model.APIIssueLink, error)
-	UserCanModify(ctx context.Context, obj *model.APITaskAnnotation) (*bool, error)
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type HostResolver interface {
@@ -1047,13 +1045,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.TaskId(childComplexity), true
-
-	case "Annotation.userCanModify":
-		if e.complexity.Annotation.UserCanModify == nil {
-			break
-		}
-
-		return e.complexity.Annotation.UserCanModify(childComplexity), true
 
 	case "Annotation.webhookConfigured":
 		if e.complexity.Annotation.WebhookConfigured == nil {
@@ -5604,7 +5595,6 @@ type Annotation {
   issues: [IssueLink]
   suspectedIssues: [IssueLink]
   createdIssues: [IssueLink]
-  userCanModify: Boolean
   webhookConfigured: Boolean!
 }
 
@@ -7380,37 +7370,6 @@ func (ec *executionContext) _Annotation_createdIssues(ctx context.Context, field
 	res := resTmp.([]*model.APIIssueLink)
 	fc.Result = res
 	return ec.marshalOIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Annotation_userCanModify(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Annotation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Annotation().UserCanModify(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Annotation_webhookConfigured(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
@@ -25106,17 +25065,6 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 					}
 				}()
 				res = ec._Annotation_createdIssues(ctx, field, obj)
-				return res
-			})
-		case "userCanModify":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Annotation_userCanModify(ctx, field, obj)
 				return res
 			})
 		case "webhookConfigured":

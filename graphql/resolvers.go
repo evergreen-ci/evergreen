@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -2502,29 +2503,22 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 		Permission:    evergreen.PermissionAnnotations,
 		RequiredLevel: evergreen.AnnotationsModify.Value,
 	}
-	return authUser.HasPermission(permissions), nil
-
-}
-
-// to be removed
-func (r *annotationResolver) UserCanModify(ctx context.Context, obj *restModel.APITaskAnnotation) (*bool, error) {
-	authUser := gimlet.GetUser(ctx)
-	t, err := r.sc.FindTaskById(*obj.TaskId)
-	if err != nil {
-		return utility.FalsePtr(), InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+	if authUser.HasPermission(permissions) {
+		return true, nil
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
+	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
+		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
+		}
+		if p == nil {
+			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
+		}
+		if p.Author == authUser.Username() {
+			return true, nil
+		}
 	}
-	permissions := gimlet.PermissionOpts{
-		Resource:      t.Project,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionAnnotations,
-		RequiredLevel: evergreen.AnnotationsModify.Value,
-	}
-	res := authUser.HasPermission(permissions)
-	return &res, nil
-
+	return false, nil
 }
 
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
