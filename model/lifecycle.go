@@ -392,7 +392,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 		return errors.Wrap(err, "error finding tasks in version")
 	}
 	if tasks == nil {
-		return errors.New("version not found")
+		return errors.New("no tasks found for version")
 	}
 	var taskIds []string
 	for _, task := range tasks {

@@ -667,7 +667,7 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 	}
 
 	foundItem := false
-	errs := grip.NewBasicCatcher()
+	catcher := grip.NewBasicCatcher()
 	for _, item := range cq.Queue {
 		if item.Version == "" {
 			return nil
@@ -676,11 +676,11 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 			foundItem = true
 		} else if foundItem {
 			// this block executes on all items after the given task
-			errs.Add(RestartTasksInVersion(item.Version, true, caller))
+			catcher.Add(RestartTasksInVersion(item.Version, true, caller))
 		}
 	}
 
-	return errs.Resolve()
+	return catcher.Resolve()
 }
 
 func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQueue, caller string) error {

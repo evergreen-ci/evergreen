@@ -231,6 +231,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
 			if err != nil {
