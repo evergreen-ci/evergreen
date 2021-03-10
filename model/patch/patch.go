@@ -668,22 +668,6 @@ func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
 }
 
-func (p *Patch) GetParentStatus() (string, error) {
-	intent, err := FindIntent(p.Id.Hex(), TriggerIntentType)
-	if err != nil {
-		return "", errors.Errorf("error fetching child patch intent: %s", err)
-	}
-	if intent == nil {
-		return "", errors.New("childpatch intent not found")
-	}
-	triggerIntent, ok := intent.(*TriggerIntent)
-	if !ok {
-		return "", errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
-	}
-
-	return triggerIntent.ParentStatus, nil
-}
-
 func (p *Patch) SetParametersFromParent() error {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)

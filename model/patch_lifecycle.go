@@ -464,12 +464,12 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 	if !ok {
 		return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 	}
-	childPatchDoc, err := patch.FindOneId(childPatchId)
-	if err != nil {
-		return errors.Errorf("error fetching child patch: %s", err)
-	}
 	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
 	if triggerIntent.ParentStatus == "" {
+		childPatchDoc, err := patch.FindOneId(childPatchId)
+		if err != nil {
+			return errors.Errorf("error fetching child patch: %s", err)
+		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
@@ -485,26 +485,22 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		}
 	} else {
 		//subscribe on parent outcome
-		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchDoc, parentPatch, requester); err != nil {
+		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
 			return errors.Wrap(err, "problem getting parameters from parent patch")
 		}
 	}
 	return nil
 }
 
-func SubscribeOnParentOutcome(parentStatus string, childPatch *patch.Patch, parentPatch *patch.Patch, requester string) error {
+func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
 	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
 		ParentStatus: parentStatus,
-		ChildPatchId: childPatch.Id.Hex(),
+		ChildPatchId: childPatchId,
 		Requester:    requester,
 	})
 	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
 	if err := patchSub.Upsert(); err != nil {
-		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatch.Id.Hex())
-	}
-	err := patchSub.Upsert()
-	if err != nil {
-		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatch.Id.Hex())
+		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatchId)
 	}
 	return nil
 }
