@@ -32,6 +32,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"gopkg.in/mgo.v2/bson"
@@ -1177,7 +1178,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
 	if err != nil {
-		grip.Warning(fmt.Sprintf("Did not find cedar test results for task: %s", taskID))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id": taskID,
+			"message": "problem getting cedar test results",
+		}))
 	}
 	sortBy := ""
 	if sortCategory != nil {
