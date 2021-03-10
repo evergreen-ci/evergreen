@@ -145,6 +145,13 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["cost"] = cost
 	}
 
+	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		if ok {
+			msg["instance_type"] = instanceType
+		}
+	}
+
 	if !j.task.DependenciesMetTime.IsZero() {
 		msg["dependencies_met_time"] = j.task.DependenciesMetTime
 	}
