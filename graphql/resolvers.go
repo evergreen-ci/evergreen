@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -22,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -2508,7 +2507,7 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 		return true, nil
 	}
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patchmodel.FindOneId(utility.FromStringPtr(obj.Version))
+		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
 		}
