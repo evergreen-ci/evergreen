@@ -2512,6 +2512,9 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
 		}
+		if p == nil {
+			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
+		}
 		if p.Author == authUser.Username() {
 			return true, nil
 		}
