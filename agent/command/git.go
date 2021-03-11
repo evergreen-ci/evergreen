@@ -246,7 +246,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 		var ref, commitToTest, branchName string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// proceed if github has checked if this pr is mergeable. If it hasn't checked, this request
-			// will make it check. If it's not mergeable (ie. conflict), proceed and let the merge fail
+			// will make it check. If it's not mergeable (ie. conflict), proceed and let the merge fail in git.merge_pr
 			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
 			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
 			if err != nil {
@@ -292,7 +292,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo
 		if pr.Mergeable == nil {
 			return true, nil
 		}
-		if *pr.Mergeable {
+		if *pr.Mergeable && pr.MergeCommitSHA != nil {
 			mergeSHA = *pr.MergeCommitSHA
 		} else {
 			return false, errors.New("pull request is not mergeable")
