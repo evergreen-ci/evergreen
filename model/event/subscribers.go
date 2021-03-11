@@ -21,6 +21,7 @@ const (
 	GithubMergeSubscriberType       = "github-merge" //TODO EVG-14087: remove
 	EnqueuePatchSubscriberType      = "enqueue-patch"
 	SubscriberTypeNone              = "none"
+	RunChildPatchSubscriberType     = "run-child-patch"
 )
 
 var SubscriberTypes = []string{
@@ -33,6 +34,7 @@ var SubscriberTypes = []string{
 	SlackSubscriberType,
 	GithubMergeSubscriberType,
 	EnqueuePatchSubscriberType,
+	RunChildPatchSubscriberType,
 }
 
 //nolint: deadcode, megacheck, unused
@@ -77,11 +79,14 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	case JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType:
 		str := ""
 		s.Target = &str
+	case RunChildPatchSubscriberType:
+		s.Target = &ChildPatchSubscriber{}
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
 	case EnqueuePatchSubscriberType:
 		s.Target = nil
 		return nil
+
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
 	}
@@ -164,6 +169,12 @@ type GithubCheckSubscriber struct {
 	Ref   string `bson:"ref"`
 }
 
+type ChildPatchSubscriber struct {
+	ParentStatus string `bson:"parent_status"`
+	ChildPatchId string `bson:"child_patch_id"`
+	Requester    string `bson:"requester"`
+}
+
 func (s *GithubCheckSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
 }
@@ -194,6 +205,13 @@ func NewEnqueuePatchSubscriber() Subscriber {
 	return Subscriber{
 		Type:   EnqueuePatchSubscriberType,
 		Target: nil,
+	}
+}
+
+func NewRunChildPatchSubscriber(s ChildPatchSubscriber) Subscriber {
+	return Subscriber{
+		Type:   RunChildPatchSubscriberType,
+		Target: s,
 	}
 }
 

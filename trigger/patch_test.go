@@ -39,6 +39,8 @@ func (s *patchSuite) SetupTest() {
 
 	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 
+	childPatchId := "5aab4514f27e4f9984646d97"
+
 	s.patch = patch.Patch{
 		Id:         patchID,
 		Project:    "test",
@@ -53,9 +55,29 @@ func (s *patchSuite) SetupTest() {
 			PRNumber:  448,
 			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		},
+		Triggers: patch.TriggerInfo{
+			ChildPatches: []string{childPatchId},
+		},
 	}
 	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
+
+	childPatch := patch.Patch{
+		Id:         mgobson.ObjectIdHex(childPatchId),
+		Project:    "test",
+		Author:     "someone",
+		StartTime:  startTime,
+		FinishTime: startTime.Add(10 * time.Minute),
+		GithubPatchData: thirdparty.GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "tychoish",
+			HeadRepo:  "evergreen",
+			PRNumber:  448,
+			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+		},
+	}
+	s.NoError(childPatch.Insert())
 
 	s.data = &event.PatchEventData{
 		Status: evergreen.PatchCreated,
@@ -179,6 +201,67 @@ func (s *patchSuite) TestPatchOutcome() {
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
+	childPatchId := "5aab4514f27e4f9984646d97"
+	childPatchSubSuccess := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "succeeded",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+	childPatchSubFailure := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "failed",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+
+	childPatchSubAny := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "*",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+	s.subs = []event.Subscription{
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubSuccess),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubFailure),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubAny),
+	}
+
+	for i := range s.subs {
+		s.NoError(s.subs[i].Upsert())
+	}
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err := s.t.patchOutcome(&s.subs[0])
+	// there is no token set up in settings, but hitting this error
+	// means it's trying to finalize the patch
+	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchFailed
+	n, err = s.t.patchOutcome(&s.subs[1])
+	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err = s.t.patchOutcome(&s.subs[2])
+	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchFailed
+	n, err = s.t.patchOutcome(&s.subs[2])
+	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
+	s.Nil(n)
+
 }
 
 func (s *patchSuite) TestPatchStarted() {

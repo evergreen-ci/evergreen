@@ -12,14 +12,15 @@ import (
 const TriggerIntentType = "trigger"
 
 type TriggerIntent struct {
-	Id             string                   `bson:"_id"`
-	Requester      string                   `bson:"requester"`
-	Author         string                   `bson:"author"`
-	ProjectID      string                   `bson:"project_id"`
-	ParentID       string                   `bson:"parent_id"`
-	ParentAsModule string                   `bson:"parent_as_module"`
-	ParentStatus   string                   `bson:"parent_status"`
-	Definitions    []PatchTriggerDefinition `bson:"definitions"`
+	Id             string `bson:"_id"`
+	Requester      string `bson:"requester"`
+	Author         string `bson:"author"`
+	ProjectID      string `bson:"project_id"`
+	ParentID       string `bson:"parent_id"`
+	ParentAsModule string `bson:"parent_as_module"`
+	// the parent status that the child patch should run on
+	ParentStatus string                   `bson:"parent_status"`
+	Definitions  []PatchTriggerDefinition `bson:"definitions"`
 
 	Processed bool `bson:"processed"`
 }
