@@ -85,17 +85,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if !ok {
 		return errors.New("incorrect type when fetching converting patch type")
 	}
-	//if is child:
-	if v.IsChild() {
-		parentPatch, err := patch.FindOneId(v.Triggers.ParentPatch)
-		if err != nil {
-			return errors.Wrap(err, "can't get parent patch")
-		}
-		if parentPatch == nil {
-			return errors.Errorf("parent patch '%s' does not exist", v.Triggers.ParentPatch)
-		}
-		v = *parentPatch
-	}
 	apiPatch.Id = utility.ToStringPtr(v.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(v.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(v.Project)
@@ -203,7 +192,7 @@ func getDownstreamTasks(p patch.Patch) ([]DownstreamTasks, error) {
 			continue
 		}
 		//set the version id to the parent id
-		childPatchDoc.Version = p.Id.Hex()
+		childPatchDoc.Version = p.Version
 
 		tasks := make([]*string, len(childPatchDoc.Tasks))
 		for i, t := range childPatchDoc.Tasks {
