@@ -245,8 +245,8 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	if conf.GithubPatchData.PRNumber != 0 {
 		var ref, commitToTest, branchName string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			// proceed if github has checked if this pr is mergeable. If it hasn't checked, this request
-			// will make it check. If it's not mergeable (ie. conflict), proceed and let the merge fail in git.merge_pr
+			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
+			// will make it check.
 			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
 			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
 			if err != nil {
@@ -292,10 +292,14 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo
 		if pr.Mergeable == nil {
 			return true, nil
 		}
-		if *pr.Mergeable && pr.MergeCommitSHA != nil {
-			mergeSHA = *pr.MergeCommitSHA
+		if *pr.Mergeable {
+			if pr.MergeCommitSHA != nil {
+				mergeSHA = *pr.MergeCommitSHA
+			} else {
+				return false, errors.New("Pull request is mergeable but Github has not created a merge branch")
+			}
 		} else {
-			return false, errors.New("pull request is not mergeable")
+			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
 		}
 		return false, nil
 	}, 10, time.Second, time.Second)
@@ -407,7 +411,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 
 	gitCommands, err := c.buildCloneCommand(ctx, conf, opts)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	stdErr := noopWriteCloser{
