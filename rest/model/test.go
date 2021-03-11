@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -14,6 +16,7 @@ import (
 type APITest struct {
 	Id         *string    `json:"test_id"`
 	TaskId     *string    `json:"task_id"`
+	GroupId    *string    `json:"group_id"`
 	Status     *string    `json:"status"`
 	BaseStatus *string    `json:"base_status"`
 	TestFile   *string    `json:"test_file"`
@@ -77,6 +80,21 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
+	case *apimodels.CedarTestResult:
+		at.Status = utility.ToStringPtr(v.Status)
+		at.TestFile = utility.ToStringPtr(v.TestName)
+		at.StartTime = utility.ToTimePtr(v.Start)
+		at.EndTime = utility.ToTimePtr(v.End)
+		duration := v.End.Sub(v.Start)
+		at.Duration = float64(duration)
+		at.Logs = TestLogs{
+			LineNum: v.LineNum,
+		}
+
+		// Need to generate a consistent id for test results
+		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
+		at.Id = utility.ToStringPtr(testResultID)
+		at.GroupId = utility.ToStringPtr(v.GroupID)
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:
@@ -104,5 +122,6 @@ func (at *APITest) ToService() (interface{}, error) {
 		ExitCode:  at.ExitCode,
 		StartTime: utility.ToPythonTime(start),
 		EndTime:   utility.ToPythonTime(end),
+		GroupID:   utility.FromStringPtr(at.GroupId),
 	}, nil
 }

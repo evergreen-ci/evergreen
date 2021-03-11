@@ -580,6 +580,7 @@ type TaskTestResult {
 
 type TestResult {
   id: String!
+  groupID: String
   status: String!
   baseStatus: String
   testFile: String!
