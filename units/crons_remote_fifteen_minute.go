@@ -48,7 +48,6 @@ func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateCatchupJobs(),
 		PopulateHostStatJobs(30),
 		PopulatePeriodicBuilds(),
 		PopulateReauthorizationJobs(j.env),
