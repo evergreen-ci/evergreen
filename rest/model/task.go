@@ -250,6 +250,10 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 		}
 
+		if v.ParentPatchID != "" {
+			at.Version = utility.ToStringPtr(v.ParentPatchID)
+		}
+
 		if err := at.Details.BuildFromService(v.Details); err != nil {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
 		}
