@@ -367,10 +367,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.IsChild() && !j.intent.ShouldFinalizePatch() {
-		// TODO subscribe on parent patch outcome
-	}
-
 	if catcher.HasErrors() {
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 			"message":     "failed to save subscription, patch will not notify",
@@ -765,7 +761,6 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 			}
 		}
 	}
-
 	return nil
 }
 

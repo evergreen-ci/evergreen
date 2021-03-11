@@ -28,62 +28,6 @@ import (
 
 const TSFormat = "2006-01-02.15-04-05"
 
-func PopulateCatchupJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if flags.RepotrackerDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "repotracker is disabled",
-				"impact":  "catchup jobs disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-		if flags.RepoPollerDisabled {
-			return nil
-		}
-
-		projects, err := model.FindAllMergedProjectRefsWithRepoInfo()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		// run once an hour
-		ts := utility.RoundPartOfDay(0).Format(TSFormat)
-
-		catcher := grip.NewBasicCatcher()
-		for _, proj := range projects {
-			// only do catchup jobs for enabled projects that track push events.
-			if !proj.IsEnabled() || proj.IsRepotrackerDisabled() || !proj.DoesTrackPushEvents() {
-				continue
-			}
-
-			mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(proj.Id))
-			catcher.Add(err)
-			if mostRecentVersion == nil {
-				grip.Warning(message.Fields{
-					"project":   proj.Id,
-					"operation": "repotracker catchup",
-					"message":   "could not find a recent version for project, skipping catchup",
-					"error":     err,
-				})
-				continue
-			}
-
-			if mostRecentVersion.CreateTime.Before(time.Now().Add(-4 * time.Hour)) {
-				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Id)
-				j.SetPriority(-1)
-				catcher.Add(queue.Put(ctx, j))
-			}
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()

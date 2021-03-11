@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -439,9 +440,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	if p.IsParent() {
-		//finalize all child patches that have a parentStatus = ""
+		//finalize child patches or subscribe on parent outcome based on parentStatus
 		for _, childPatch := range p.Triggers.ChildPatches {
-			err = finalizeChildPatch(ctx, childPatch, requester, githubOauthToken)
+			err = finalizeOrSubscribeChildPatch(ctx, childPatch, p, requester, githubOauthToken)
 			if err != nil {
 				return nil, errors.Wrap(err, "unable to finalize child patch")
 			}
@@ -451,7 +452,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	return patchVersion, nil
 }
 
-func finalizeChildPatch(ctx context.Context, childPatchId string, requester string, githubOauthToken string) error {
+func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string, githubOauthToken string) error {
 	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Errorf("error fetching child patch intent: %s", err)
@@ -482,6 +483,24 @@ func finalizeChildPatch(ctx context.Context, childPatchId string, requester stri
 			}))
 			return err
 		}
+	} else {
+		//subscribe on parent outcome
+		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
+			return errors.Wrap(err, "problem getting parameters from parent patch")
+		}
+	}
+	return nil
+}
+
+func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
+	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
+		ParentStatus: parentStatus,
+		ChildPatchId: childPatchId,
+		Requester:    requester,
+	})
+	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
+	if err := patchSub.Upsert(); err != nil {
+		return errors.Wrapf(err, "failed to insert child patch subscription '%s'", childPatchId)
 	}
 	return nil
 }

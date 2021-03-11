@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -70,10 +71,24 @@ type Version struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	// this is only used for aggregations, and is not stored in the DB
+	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
+
+const defaultVersionLimit = 10
+
+type GetVersionsOptions struct {
+	VersionToStartAt string `json:"start_at"`
+	Limit            int    `json:"limit"`
+	Skip             int    `json:"skip"`
+	IncludeBuilds    bool   `json:"include_builds"`
+	IncludeTasks     bool   `json:"include_tasks"`
+	ByBuildVariant   string `json:"by_build_variant"`
+}
 
 func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
@@ -285,6 +300,118 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	}
 
 	return versions, nil
+}
+
+func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Version, error) {
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+	}
+	if opts.ByBuildVariant != "" {
+		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
+	}
+	if opts.VersionToStartAt != "" {
+		v, err := VersionFindOneId(opts.VersionToStartAt)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem finding version '%s'", opts.VersionToStartAt)
+		}
+		if v == nil {
+			return nil, errors.Errorf("version '%s' doesn't exist", opts.VersionToStartAt)
+		}
+		match[VersionCreateTimeKey] = bson.M{"$lte": v.CreateTime}
+	}
+
+	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionCreateTimeKey: -1}})
+	project := bson.M{
+		VersionRevisionKey:            1,
+		VersionErrorsKey:              1,
+		VersionMessageKey:             1,
+		VersionAuthorKey:              1,
+		VersionRevisionOrderNumberKey: 1,
+		VersionCreateTimeKey:          1,
+		VersionStartTimeKey:           1,
+		VersionFinishTimeKey:          1,
+		VersionStatusKey:              1,
+		VersionBuildVariantsKey:       1,
+	}
+
+	if !opts.IncludeBuilds { // add project to the pipeline as is
+		pipeline = append(pipeline, bson.M{"$project": project})
+	} else {
+		if opts.ByBuildVariant != "" {
+			// add a filter so we only have the build variant we want (we already know this exists from the match stage)
+			project[VersionBuildVariantsKey] = bson.M{
+				"$filter": bson.M{
+					"input": "$" + VersionBuildVariantsKey,
+					"as":    "item",
+					"cond": bson.M{
+						"$eq": []string{"$$item.build_variant", opts.ByBuildVariant},
+					},
+				},
+			}
+		}
+
+		pipeline = append(pipeline, bson.M{"$project": project})
+		lookupBuilds := bson.M{
+			"from":         build.Collection,
+			"localField":   bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusBuildIdKey),
+			"foreignField": build.IdKey,
+			"as":           "build_variants",
+		}
+		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
+		// projectWithBuilds is initially the same as the first project but with build_variants instead of build_variants_status.
+		projectWithBuilds := bson.M{
+			VersionRevisionKey:            1,
+			VersionErrorsKey:              1,
+			VersionMessageKey:             1,
+			VersionAuthorKey:              1,
+			VersionRevisionOrderNumberKey: 1,
+			VersionCreateTimeKey:          1,
+			VersionStartTimeKey:           1,
+			VersionFinishTimeKey:          1,
+			VersionStatusKey:              1,
+			"build_variants":              1,
+		}
+		pipeline = append(pipeline, bson.M{"$project": projectWithBuilds})
+	}
+	if opts.Skip != 0 {
+		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
+	}
+	if opts.Limit == 0 {
+		opts.Limit = defaultVersionLimit
+	}
+	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
+	res := []Version{}
+	err := db.Aggregate(VersionCollection, pipeline, &res)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions and builds")
+	}
+
+	// TODO: need to either iterate the query or use a nested lookup in order to use ByTask
+	if opts.IncludeTasks {
+		buildIds := []string{}
+		for _, v := range res {
+			for _, b := range v.Builds {
+				buildIds = append(buildIds, b.Id)
+			}
+		}
+		tasks, err := task.Find(task.ByBuildIds(buildIds).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.BuildIdKey))
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding tasks")
+		}
+		tasksByBuildId := map[string][]task.Task{}
+		for i, t := range tasks {
+			tasksByBuildId[t.BuildId] = append(tasksByBuildId[t.BuildId], tasks[i])
+		}
+		for i, v := range res {
+			for j, b := range v.Builds {
+				res[i].Builds[j].Tasks = CreateTasksCache(tasksByBuildId[b.Id])
+			}
+		}
+	}
+
+	return res, nil
 }
 
 type VersionsByCreateTime []Version

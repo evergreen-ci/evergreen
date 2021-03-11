@@ -198,8 +198,9 @@ type PatchTriggerDefinition struct {
 	Alias          string          `bson:"alias" json:"alias"`
 	ChildProject   string          `bson:"child_project" json:"child_project"`
 	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
-	Status         string          `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string          `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	// the parent status that the child patch should run on: failure, success, or *
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
 }
 
 type TaskSpecifier struct {

@@ -105,10 +105,11 @@ const (
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
 
-	PatchCreated   = "created"
-	PatchStarted   = "started"
-	PatchSucceeded = "succeeded"
-	PatchFailed    = "failed"
+	PatchCreated     = "created"
+	PatchStarted     = "started"
+	PatchSucceeded   = "succeeded"
+	PatchFailed      = "failed"
+	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"

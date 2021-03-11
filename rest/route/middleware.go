@@ -32,7 +32,7 @@ type (
 )
 
 const (
-	// Key value used to map user and project data to request context.
+	// VersionToStartAt value used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
 	RequestContext requestContextKey = 0
 )

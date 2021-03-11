@@ -32,6 +32,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -1152,22 +1154,23 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: *execution,
+	}
+	if len(dbTask.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = taskID
+	} else {
+		opts.TaskID = taskID
+	}
+
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id": taskID,
+			"message": "problem getting cedar test results",
+		}))
 	}
-
-	var taskExecution int
-	taskExecution = dbTask.Execution
-
-	baseTestStatusMap := make(map[string]string)
-	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, taskExecution)
-		for _, t := range baseTestResults {
-			baseTestStatusMap[t.TestFile] = t.Status
-		}
-	}
-
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1211,38 +1214,71 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if statuses != nil {
 		statusesParam = statuses
 	}
-	paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, taskExecution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
 
 	testPointers := []*restModel.APITest{}
-	for _, t := range paginatedFilteredTests {
-		apiTest := restModel.APITest{}
-		buildErr := apiTest.BuildFromService(&t)
-		if buildErr != nil {
-			return nil, InternalServerError.Send(ctx, buildErr.Error())
-		}
-		if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
-			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
-			apiTest.Logs.HTMLDisplayURL = &formattedURL
-		}
-		if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
-			formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
-			apiTest.Logs.RawDisplayURL = &formattedURL
-		}
-		baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
-		apiTest.BaseStatus = &baseTestStatus
-		testPointers = append(testPointers, &apiTest)
-	}
+	var totalTestCount int
+	var filteredTestCount int
 
-	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, taskExecution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
-	}
-	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, taskExecution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
+	if cedarTestResults == nil {
+		baseTask, err := dbTask.FindTaskOnBaseCommit()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
+		}
+
+		var taskExecution int
+		taskExecution = dbTask.Execution
+
+		baseTestStatusMap := make(map[string]string)
+		if baseTask != nil {
+			baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, taskExecution)
+			for _, t := range baseTestResults {
+				baseTestStatusMap[t.TestFile] = t.Status
+			}
+		}
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, taskExecution)
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, t := range paginatedFilteredTests {
+			apiTest := restModel.APITest{}
+			buildErr := apiTest.BuildFromService(&t)
+			if buildErr != nil {
+				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+				apiTest.Logs.HTMLDisplayURL = &formattedURL
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+				apiTest.Logs.RawDisplayURL = &formattedURL
+			}
+			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
+			apiTest.BaseStatus = &baseTestStatus
+			testPointers = append(testPointers, &apiTest)
+		}
+		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, taskExecution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
+		}
+		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, taskExecution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
+		}
+	} else {
+		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
+		for _, t := range filteredTestResults {
+			apiTest := restModel.APITest{}
+			buildErr := apiTest.BuildFromService(&t)
+			if buildErr != nil {
+				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			}
+
+			testPointers = append(testPointers, &apiTest)
+		}
+
+		totalTestCount = len(cedarTestResults)
+		filteredTestCount = testCount
 	}
 
 	taskTestResult := TaskTestResult{

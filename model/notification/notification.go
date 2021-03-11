@@ -84,7 +84,6 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 
 	case event.GithubMergeSubscriberType, event.EnqueuePatchSubscriberType:
 		return evergreen.SenderGeneric, nil
-
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
