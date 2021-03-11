@@ -16,7 +16,6 @@ type ServiceFlags struct {
 	AlertsDisabled                bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled            bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
-	RepoPollerDisabled            bool `bson:"repo_poller_disabled" json:"repo_poller_disabled"`
 	SchedulerDisabled             bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
 	GithubPRTestingDisabled       bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
@@ -77,7 +76,6 @@ func (c *ServiceFlags) Set() error {
 			alertsKey:                        c.AlertsDisabled,
 			agentStartKey:                    c.AgentStartDisabled,
 			repotrackerKey:                   c.RepotrackerDisabled,
-			repoPollerKey:                    c.RepoPollerDisabled,
 			schedulerKey:                     c.SchedulerDisabled,
 			githubPRTestingDisabledKey:       c.GithubPRTestingDisabled,
 			cliUpdatesDisabledKey:            c.CLIUpdatesDisabled,
