@@ -134,7 +134,7 @@ type Task struct {
 	Requester string `bson:"r" json:"r"`
 
 	// tasks that are part of a child patch will store the id of the parent patch
-	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+	ParentPatchID string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 
 	// Status represents the various stages the task could be in
 	Status    string                  `bson:"status" json:"status"`

@@ -66,7 +66,6 @@ type APITask struct {
 	TaskGroupMaxHosts       int                 `json:"task_group_max_hosts,omitempty"`
 	Blocked                 bool                `json:"blocked"`
 	Requester               *string             `json:"requester"`
-	ParentPatchID           *string             `json:"parent_patch_id"`
 	TestResults             []APITest           `json:"test_results"`
 	Aborted                 bool                `json:"aborted"`
 	AbortInfo               APIAbortInfo        `json:"abort_info,omitempty"`
@@ -229,7 +228,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TaskGroupMaxHosts:       v.TaskGroupMaxHosts,
 			Blocked:                 v.Blocked(),
 			Requester:               utility.ToStringPtr(v.Requester),
-			ParentPatchID:           utility.ToStringPtr(v.ParentPatchID),
 			Aborted:                 v.Aborted,
 			CanSync:                 v.CanSync,
 			MustHaveResults:         v.MustHaveResults,
@@ -340,7 +338,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 		GeneratedBy:         ad.GeneratedBy,
 		DisplayOnly:         ad.DisplayOnly,
 		Requester:           utility.FromStringPtr(ad.Requester),
-		ParentPatchID:       utility.FromStringPtr(ad.ParentPatchID),
 		CanSync:             ad.CanSync,
 		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{

@@ -66,7 +66,7 @@ type Build struct {
 	Requester string `bson:"r" json:"r,omitempty"`
 
 	// builds that are part of a child patch will store the id of the parent patch
-	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+	ParentPatchID string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
