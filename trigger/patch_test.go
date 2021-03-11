@@ -97,39 +97,10 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 
-	childPatchSubSuccess := event.Subscriber{
-		Type: event.RunChildPatchSubscriberType,
-		Target: &event.ChildPatchSubscriber{
-			ParentStatus: "succeeded",
-			ChildPatchId: childPatchId,
-			Requester:    evergreen.TriggerRequester,
-		},
-	}
-	childPatchSubFailure := event.Subscriber{
-		Type: event.RunChildPatchSubscriberType,
-		Target: &event.ChildPatchSubscriber{
-			ParentStatus: "failed",
-			ChildPatchId: childPatchId,
-			Requester:    evergreen.TriggerRequester,
-		},
-	}
-
-	childPatchSubAny := event.Subscriber{
-		Type: event.RunChildPatchSubscriberType,
-		Target: &event.ChildPatchSubscriber{
-			ParentStatus: "*",
-			ChildPatchId: childPatchId,
-			Requester:    evergreen.TriggerRequester,
-		},
-	}
-
 	s.subs = []event.Subscription{
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubSuccess),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubFailure),
-		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubAny),
 	}
 
 	for i := range s.subs {
@@ -230,26 +201,64 @@ func (s *patchSuite) TestPatchOutcome() {
 	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
+	childPatchId := "5aab4514f27e4f9984646d97"
+	childPatchSubSuccess := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "succeeded",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+	childPatchSubFailure := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "failed",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+
+	childPatchSubAny := event.Subscriber{
+		Type: event.RunChildPatchSubscriberType,
+		Target: &event.ChildPatchSubscriber{
+			ParentStatus: "*",
+			ChildPatchId: childPatchId,
+			Requester:    evergreen.TriggerRequester,
+		},
+	}
+	s.subs = []event.Subscription{
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubSuccess),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubFailure),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, childPatchSubAny),
+	}
+
+	for i := range s.subs {
+		s.NoError(s.subs[i].Upsert())
+	}
 
 	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchOutcome(&s.subs[3])
+	n, err := s.t.patchOutcome(&s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchOutcome(&s.subs[4])
+	n, err = s.t.patchOutcome(&s.subs[1])
 	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchOutcome(&s.subs[5])
+	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchOutcome(&s.subs[5])
+	n, err = s.t.patchOutcome(&s.subs[2])
 	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no github token in settings", err.Error())
 	s.Nil(n)
 
