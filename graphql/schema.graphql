@@ -10,7 +10,7 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
-  projects: Projects!
+  projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -693,10 +693,6 @@ type BaseTaskInfo {
   status: String
 }
 
-type Projects {
-  favorites: [Project!]!
-  otherProjects: [GroupedProjects!]!
-}
 
 type GroupedProjects {
   name: String!
@@ -707,6 +703,7 @@ type Project {
   displayName: String!
   id: String!
   identifier: String!
+  isFavorite: Boolean!
   owner: String!
   patches(patchesInput: PatchesInput!): Patches!
   repo: String!
