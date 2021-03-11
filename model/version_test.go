@@ -198,6 +198,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	v := Version{
 		Id:         "my_version",
 		Identifier: "my_project",
+		Requester:  evergreen.RepotrackerVersionRequester,
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildId:      "bv1",
@@ -214,11 +215,18 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	v = Version{
 		Id:         "your_version",
 		Identifier: "my_project",
+		Requester:  evergreen.RepotrackerVersionRequester,
 		CreateTime: start.Add(-1 * time.Minute),
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId: "bv_not_activated",
+			},
+		},
 	}
 	assert.NoError(t, v.Insert())
 	v = Version{
 		Id:         "another_version",
+		Requester:  evergreen.RepotrackerVersionRequester,
 		Identifier: "my_project",
 		CreateTime: start.Add(-2 * time.Minute),
 	}
@@ -230,7 +238,16 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Tasks: []build.TaskCache{
 			{Id: "t1"},
 		},
+		Activated: true,
+
 		Status: evergreen.BuildFailed,
+	}
+	assert.NoError(t, bv.Insert())
+	bv = build.Build{
+		Id:           "bv_not_activated",
+		BuildVariant: "my_bv",
+		Activated:    false,
+		Status:       evergreen.BuildFailed,
 	}
 	assert.NoError(t, bv.Insert())
 	bv = build.Build{
@@ -239,7 +256,8 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Tasks: []build.TaskCache{
 			{Id: "t2"},
 		},
-		Status: evergreen.BuildSucceeded,
+		Activated: true,
+		Status:    evergreen.BuildSucceeded,
 	}
 	assert.NoError(t, bv.Insert())
 
@@ -273,6 +291,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	require.Len(t, versions[0].Builds, 1)
 	assert.Equal(t, versions[0].Builds[0].Id, "bv1")
 	assert.Equal(t, versions[0].Builds[0].Status, evergreen.BuildFailed)
+	assert.Equal(t, versions[0].Builds[0].Activated, true)
 	require.Len(t, versions[0].Builds[0].Tasks, 1)
 
 	opts = GetVersionsOptions{Limit: 1}

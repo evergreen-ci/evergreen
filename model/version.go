@@ -305,6 +305,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
 	}
 	if opts.ByBuildVariant != "" {
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
@@ -323,16 +324,15 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionCreateTimeKey: -1}})
 	project := bson.M{
-		VersionRevisionKey:            1,
-		VersionErrorsKey:              1,
-		VersionMessageKey:             1,
-		VersionAuthorKey:              1,
-		VersionRevisionOrderNumberKey: 1,
-		VersionCreateTimeKey:          1,
-		VersionStartTimeKey:           1,
-		VersionFinishTimeKey:          1,
-		VersionStatusKey:              1,
-		VersionBuildVariantsKey:       1,
+		VersionCreateTimeKey:    1,
+		VersionStartTimeKey:     1,
+		VersionFinishTimeKey:    1,
+		VersionRevisionKey:      1,
+		VersionAuthorKey:        1,
+		VersionMessageKey:       1,
+		VersionStatusKey:        1,
+		VersionBuildVariantsKey: 1,
+		VersionErrorsKey:        1,
 	}
 
 	if !opts.IncludeBuilds { // add project to the pipeline as is
@@ -359,6 +359,15 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 			"as":           "build_variants",
 		}
 		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
+
+		if opts.ByBuildVariant != "" {
+			// filter out versions that don't have this variant activated
+			matchBuildVariantActivated := bson.M{
+				"build_variants.activated": true,
+			}
+			pipeline = append(pipeline, bson.M{"$match": matchBuildVariantActivated})
+		}
+
 		// projectWithBuilds is initially the same as the first project but with build_variants instead of build_variants_status.
 		projectWithBuilds := bson.M{
 			VersionRevisionKey:            1,
@@ -372,7 +381,11 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 			VersionStatusKey:              1,
 			"build_variants":              1,
 		}
+		projectWithoutTaskCache := bson.M{
+			"build_variants.tasks": 0,
+		}
 		pipeline = append(pipeline, bson.M{"$project": projectWithBuilds})
+		pipeline = append(pipeline, bson.M{"$project": projectWithoutTaskCache})
 	}
 	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
