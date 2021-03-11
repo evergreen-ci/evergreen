@@ -191,8 +191,6 @@ func getDownstreamTasks(p patch.Patch) ([]DownstreamTasks, error) {
 		if childPatchDoc == nil {
 			continue
 		}
-		//set the version id to the parent id
-		childPatchDoc.Version = p.Version
 
 		tasks := make([]*string, len(childPatchDoc.Tasks))
 		for i, t := range childPatchDoc.Tasks {
