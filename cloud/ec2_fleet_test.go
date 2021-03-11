@@ -203,30 +203,32 @@ func TestFleet(t *testing.T) {
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {
-	cache := instanceTypeSubnetCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
-	client := &awsClientMock{
+	cache := instanceTypeSubnetCache{instanceTypeToSubnets: make(map[instanceRegionPair][]evergreen.Subnet)}
+	defaultRegionclient := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
-				{InstanceType: aws.String("instanceType0")},
-				{InstanceType: aws.String("instanceType1")},
-				{InstanceType: aws.String("instanceType2")},
+				{
+					InstanceType: aws.String("instanceType0"),
+					Location:     aws.String(evergreen.DefaultEBSAvailabilityZone),
+				},
 			},
 		},
 	}
 	settings := &evergreen.Settings{}
-	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"}}
+	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEBSAvailabilityZone}}
 
-	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0", evergreen.DefaultEC2Region)
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionclient, instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Len(t, azsWithInstanceType, 1)
 	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
 
-	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported", evergreen.DefaultEC2Region)
+	// cache is populated
+	subnets, ok := cache.instanceTypeToSubnets[instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}]
+	assert.True(t, ok)
+	assert.Len(t, subnets, 1)
+
+	// unsupported instance type
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionclient, instanceRegionPair{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
-
-	assert.True(t, cache.built)
-	subnet, ok := cache.instanceTypeToSubnets["instanceType0"]
-	assert.True(t, ok)
-	assert.Len(t, subnet, 1)
 }
