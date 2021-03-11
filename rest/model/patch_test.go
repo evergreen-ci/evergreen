@@ -140,7 +140,6 @@ func TestDownstreamTasks(t *testing.T) {
 	a := APIPatch{}
 	err := a.BuildFromService(p)
 	assert.NoError(err)
-	assert.Equal(*a.DownstreamTasks[0].ChildPatchId, childPatch.Id.Hex())
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks, 1)
 }
