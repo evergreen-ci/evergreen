@@ -113,26 +113,26 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-type versionsGetHandler struct {
+type legacyVersionsGetHandler struct {
 	project string
 	limit   int
 	offset  int
 	sc      data.Connector
 }
 
-func makeFetchProjectVersions(sc data.Connector) gimlet.RouteHandler {
-	return &versionsGetHandler{
+func makeFetchProjectVersionsLegacy(sc data.Connector) gimlet.RouteHandler {
+	return &legacyVersionsGetHandler{
 		sc: sc,
 	}
 }
 
-func (h *versionsGetHandler) Factory() gimlet.RouteHandler {
-	return &versionsGetHandler{
+func (h *legacyVersionsGetHandler) Factory() gimlet.RouteHandler {
+	return &legacyVersionsGetHandler{
 		sc: h.sc,
 	}
 }
 
-func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *legacyVersionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.project = gimlet.GetVars(r)["project_id"]
 	var query = r.URL.Query()
@@ -166,7 +166,7 @@ func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	projRefId, err := dbModel.FindIdForProject(h.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -189,6 +189,94 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(versions)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}/versions
+
+const defaultVersionLimit = 10
+
+type versionsGetHandler struct {
+	opts    dbModel.GetVersionsOptions
+	project string
+
+	sc data.Connector
+}
+
+func makeFetchProjectVersions(sc data.Connector) gimlet.RouteHandler {
+	return &versionsGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *versionsGetHandler) Factory() gimlet.RouteHandler {
+	return &versionsGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.project = gimlet.GetVars(r)["project_id"]
+	if err := gimlet.GetJSON(r.Body, &h.opts); err != nil {
+		return errors.Wrap(err, "error parsing request body")
+	}
+	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "can't include tasks without builds",
+		}
+	}
+	if h.opts.Limit == 0 {
+		h.opts.Limit = defaultVersionLimit
+	}
+	h.opts.Limit += 1 // for pagination
+	return nil
+}
+
+func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	pRefId, err := dbModel.FindIdForProject(h.project)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Project not found",
+		})
+	}
+
+	versions, err := h.sc.GetProjectVersionsWithOptions(pRefId, h.opts)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	if len(versions) == h.opts.Limit {
+		paginationVersion := versions[len(versions)-1]
+		versions = versions[:len(versions)-1] // drop the pagination version
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         h.sc.GetURL(),
+				Key:             utility.FromStringPtr(paginationVersion.Id),
+				Limit:           h.opts.Limit - 1,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
+		}
+	}
+	if err = resp.AddData(versions); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	if err = resp.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	return resp
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -10,23 +10,24 @@ import (
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
 type APIVersion struct {
-	Id            *string        `json:"version_id"`
-	CreateTime    *time.Time     `json:"create_time"`
-	StartTime     *time.Time     `json:"start_time"`
-	FinishTime    *time.Time     `json:"finish_time"`
-	Revision      *string        `json:"revision"`
-	Order         int            `json:"order"`
-	Project       *string        `json:"project"`
-	Author        *string        `json:"author"`
-	AuthorEmail   *string        `json:"author_email"`
-	Message       *string        `json:"message"`
-	Status        *string        `json:"status"`
-	Repo          *string        `json:"repo"`
-	Branch        *string        `json:"branch"`
-	Parameters    []APIParameter `json:"parameters"`
-	BuildVariants []buildDetail  `json:"build_variants_status"`
-	Requester     *string        `json:"requester"`
-	Errors        []*string      `json:"errors"`
+	Id                 *string        `json:"version_id"`
+	CreateTime         *time.Time     `json:"create_time"`
+	StartTime          *time.Time     `json:"start_time"`
+	FinishTime         *time.Time     `json:"finish_time"`
+	Revision           *string        `json:"revision"`
+	Order              int            `json:"order"`
+	Project            *string        `json:"project"`
+	Author             *string        `json:"author"`
+	AuthorEmail        *string        `json:"author_email"`
+	Message            *string        `json:"message"`
+	Status             *string        `json:"status"`
+	Repo               *string        `json:"repo"`
+	Branch             *string        `json:"branch"`
+	Parameters         []APIParameter `json:"parameters"`
+	BuildVariantStatus []buildDetail  `json:"build_variants_status"`
+	Builds             []APIBuild     `json:"builds"`
+	Requester          *string        `json:"requester"`
+	Errors             []*string      `json:"errors"`
 }
 
 type buildDetail struct {
@@ -63,18 +64,22 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 			BuildVariant: utility.ToStringPtr(t.BuildVariant),
 			BuildId:      utility.ToStringPtr(t.BuildId),
 		}
-		apiVersion.BuildVariants = append(apiVersion.BuildVariants, bd)
+		apiVersion.BuildVariantStatus = append(apiVersion.BuildVariantStatus, bd)
+	}
+	for _, bv := range v.Builds {
+		apiBuild := APIBuild{}
+		if err := apiBuild.BuildFromService(bv); err != nil {
+			return errors.Wrap(err, "error building build from service")
+		}
+		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}
 
-	params := []APIParameter{}
 	for _, param := range v.Parameters {
-		params = append(params, APIParameter{
+		apiVersion.Parameters = append(apiVersion.Parameters, APIParameter{
 			Key:   utility.ToStringPtr(param.Key),
 			Value: utility.ToStringPtr(param.Value),
 		})
 	}
-	apiVersion.Parameters = params
-
 	return nil
 }
 

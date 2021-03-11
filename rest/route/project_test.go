@@ -484,7 +484,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 }
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
-	getVersions := makeFetchProjectVersions(s.sc)
+	getVersions := makeFetchProjectVersionsLegacy(s.sc)
 	ctx := context.Background()
 
 	// valid request with defaults
