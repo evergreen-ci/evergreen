@@ -363,7 +363,7 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 		if opts.ByBuildVariant != "" {
 			// filter out versions that don't have this variant activated
 			matchBuildVariantActivated := bson.M{
-				"build_variants.activated": true,
+				bsonutil.GetDottedKeyName("build_variants", build.ActivatedKey): true,
 			}
 			pipeline = append(pipeline, bson.M{"$match": matchBuildVariantActivated})
 		}
