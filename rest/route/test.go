@@ -90,7 +90,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	} else if dbTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "not found",
+			Message:    "task not found",
 			StatusCode: http.StatusNotFound,
 		})
 	}
@@ -104,7 +104,27 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		opts.TaskID = tgh.taskID
 	}
 	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
+	if err == nil {
+		startAt, err := strconv.Atoi(tgh.key)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
+		}
+
+		var filteredCount int
+		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(
+			cedarTestResults,
+			tgh.testName,
+			[]string{tgh.testStatus},
+			"",
+			1,
+			startAt,
+			tgh.limit,
+		)
+
+		if startAt*tgh.limit < filteredCount {
+			key = fmt.Sprintf("%d", startAt+1)
+		}
+	} else {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id": tgh.taskID,
 			"message": "problem getting cedar test results",
@@ -128,26 +148,6 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		// Truncate the hosts to just those that will be returned.
 		tests = tests[:lastIndex]
-	} else {
-		startAt, err := strconv.Atoi(tgh.key)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
-		}
-
-		var filteredCount int
-		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(
-			cedarTestResults,
-			tgh.testName,
-			[]string{tgh.testStatus},
-			"",
-			1,
-			startAt,
-			tgh.limit,
-		)
-
-		if startAt*tgh.limit < filteredCount {
-			key = fmt.Sprintf("%d", startAt+1)
-		}
 	}
 
 	return tgh.buildResponse(cedarTestResults, tests, key)

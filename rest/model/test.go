@@ -79,7 +79,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		} else if isEmptyLogID {
 			at.Logs.RawDisplayURL = nil
 		} else {
-			dispString := fmt.Sprintf("/test_log/%s?raw=true", *at.Logs.LogId)
+			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
 	case *apimodels.CedarTestResult:
@@ -90,7 +90,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
 		at.Duration = float64(duration)
-		rawDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&raw=true", v.TaskID, v.Execution, v.TestName, v.GroupID)
+		rawDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, v.TestName, v.GroupID)
 		htmlDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, v.TestName, v.GroupID, v.LineNum)
 		at.Logs = TestLogs{
 			LineNum:        v.LineNum,

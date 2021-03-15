@@ -2776,7 +2776,7 @@
             "testResults": [
               {
                 "logs": {
-                  "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?raw=true"
+                  "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true"
                 },
                 "id": "39ef7a20a7798219e191d00e"
               }
