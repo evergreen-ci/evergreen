@@ -812,19 +812,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone))
 			return catcher.Resolve()
 		}
-		mgrOpts, err := GetManagerOptions(h.Distro)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id))
-			return catcher.Resolve()
-		}
-		mgr, err := GetManager(ctx, m.env, mgrOpts)
-		if err != nil {
-			catcher.Add(err)
-			return catcher.Resolve()
-		}
 		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
-		if err = mgr.AttachVolume(ctx, h, &attachment); err != nil {
-			catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
+		if err = m.AttachVolume(ctx, h, &attachment); err != nil {
+			catcher.Wrapf(err, "attaching volume '%s' to host '%s'", volume.ID, h.Id)
 		}
 	}
 	return catcher.Resolve()

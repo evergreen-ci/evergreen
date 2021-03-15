@@ -681,7 +681,7 @@ func (s *EC2Suite) TestModifyHost() {
 	changes = host.HostModifyOptions{
 		AttachVolume: "thang",
 	}
-	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
 	s.Require().NoError(s.h.Remove())
@@ -703,14 +703,6 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.Equal("public_dns_name", s.h.Host)
 	s.Require().Len(s.h.Volumes, 1)
 	s.Equal("volume_id", s.h.Volumes[0].VolumeID)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-	volumesInput := *mock.DescribeVolumesInput
-	s.Len(volumesInput.VolumeIds, 1)
-	s.Equal("volume_id", *volumesInput.VolumeIds[0])
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	s.h.Id = "instance_id"
