@@ -77,18 +77,4 @@ db.hosts.aggregate([{$match:{
     function(result){print(result._id.month+"/1/"+result._id.year+", "+result.total/(60*60*1000));});
 
 
-// average task time and cost for a git and patch versions per project
-db.tasks.aggregate([{$match:{
-    status: {"$in": ["success", "failed"]},
-    start_time:{$gt:new Date(new Date().getTime() - 1000*60*60*24*7)},
-    finish_time:{$gt: new Date(new Date().getTime() - 1000*60*60*24*7)},
-    cost:{$exists:true}}},
-  {$group: {_id:{v: "$version", p: "$branch", r: "$r"}, cost: {$sum: "$cost"}, time: {$sum: {$subtract: ["$finish_time", "$start_time"]}}}},
-  {$group: {_id: {p: "$_id.p", r: "$_id.r"}, cost: {$avg: "$cost"}, time: {$avg: "$time"}}},
-  {$sort: {"_id.p":1, "_id.r":1}},
-]).forEach(
-  function(result){print(result._id.p+", "+result._id.r+", $"+result.cost+", "+result.time/(60*60*1000));});
-
-
-
 })

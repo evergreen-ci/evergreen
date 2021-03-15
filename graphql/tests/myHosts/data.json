@@ -48,9 +48,6 @@
       "needs_agent": false,
       "needs_agent_monitor": false,
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "90"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -60,7 +57,6 @@
       "running_task_group_order": 0,
       "running_task_project": "mongo-tools",
       "running_task_version": "5f15ad3c3627e07772ab2d01",
-      "total_cost": 0.0011340309722222223,
       "total_idle_time": {
         "$numberLong": "54073000000"
       },
@@ -226,9 +222,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "370"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -277,7 +270,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "vol-2-id",
-      "compute_cost_per_hour": 0.261,
       "volumes": [
         {
           "volume_id": "vol-0b5ec54a106c6e976",
@@ -292,7 +284,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.3028389870061729,
       "total_idle_time": {
         "$numberLong": "50424000000"
       },
@@ -465,9 +456,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "370"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -516,7 +504,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "vol-2-id",
-      "compute_cost_per_hour": 0.261,
       "volumes": [
         {
           "volume_id": "not-real-a-real-volume-id",
@@ -525,7 +512,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.3028389870061729,
       "total_idle_time": {
         "$numberLong": "50424000000"
       },
