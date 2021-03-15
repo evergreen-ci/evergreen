@@ -108,6 +108,7 @@ type Host struct {
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
+	// kim: TODO: delete
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
@@ -117,11 +118,13 @@ type Host struct {
 
 	// ComputeCostPerHour is the compute (not storage) cost of one host for one hour. Cloud
 	// managers can but are not required to cache this price.
+	// kim: TODO: remove
 	ComputeCostPerHour float64 `bson:"compute_cost_per_hour,omitempty" json:"compute_cost_per_hour,omitempty"`
 
 	// incremented by task start and end stats collectors and
 	// should reflect hosts total costs. Only populated for build-hosts
 	// where host providers report costs.
+	// kim: TODO: remove
 	TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
 
 	// accrues the value of idle time.
@@ -1528,11 +1531,13 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:               h.Zone,
-				StartTimeKey:          h.StartTime,
-				VolumeTotalSizeKey:    h.VolumeTotalSize,
-				VolumesKey:            h.Volumes,
-				DNSKey:                h.Host,
+				ZoneKey:      h.Zone,
+				StartTimeKey: h.StartTime,
+				// kim: TODO: delete
+				VolumeTotalSizeKey: h.VolumeTotalSize,
+				VolumesKey:         h.Volumes,
+				DNSKey:             h.Host,
+				// kim: TODO: delete
 				ComputeCostPerHourKey: h.ComputeCostPerHour,
 			},
 		},

@@ -1701,33 +1701,35 @@ func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) e
 	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
 }
 
+// kim: TODO: delete
 // SetCost updates the task's Cost field
-func (t *Task) SetCost(cost float64) error {
-	t.Cost = cost
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				CostKey: cost,
-			},
-		},
-	)
-}
+// func (t *Task) SetCost(cost float64) error {
+//     t.Cost = cost
+//     return UpdateOne(
+//         bson.M{
+//             IdKey: t.Id,
+//         },
+//         bson.M{
+//             "$set": bson.M{
+//                 CostKey: cost,
+//             },
+//         },
+//     )
+// }
 
-func IncSpawnedHostCost(taskID string, cost float64) error {
-	return UpdateOne(
-		bson.M{
-			IdKey: taskID,
-		},
-		bson.M{
-			"$inc": bson.M{
-				SpawnedHostCostKey: cost,
-			},
-		},
-	)
-}
+// kim: TODO: delete
+// func IncSpawnedHostCost(taskID string, cost float64) error {
+//     return UpdateOne(
+//         bson.M{
+//             IdKey: taskID,
+//         },
+//         bson.M{
+//             "$inc": bson.M{
+//                 SpawnedHostCostKey: cost,
+//             },
+//         },
+//     )
+// }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state

@@ -378,6 +378,8 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
 	}
 
+	// kim: TODO: is it safe to remove this for all cloud providers? Or just for
+	// EC2?
 	// get parent cost for time interval
 	calc, ok := parentMgr.(CostCalculator)
 	if !ok {

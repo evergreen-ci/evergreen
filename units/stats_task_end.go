@@ -186,12 +186,13 @@ func (j *collectTaskEndDataJob) recordTaskCost(ctx context.Context) (float64, er
 		return 0, errors.Wrapf(err, "can't get cost for duration")
 	}
 
-	if err = j.task.SetCost(cost); err != nil {
-		return cost, errors.Wrapf(err, "can't set cost for task '%s'", j.task.Id)
-	}
-	if err = j.host.IncCost(cost); err != nil {
-		return cost, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
-	}
+	// kim: TODO: delete
+	// if err = j.task.SetCost(cost); err != nil {
+	//     return cost, errors.Wrapf(err, "can't set cost for task '%s'", j.task.Id)
+	// }
+	// if err = j.host.IncCost(cost); err != nil {
+	//     return cost, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
+	// }
 
 	return cost, nil
 }

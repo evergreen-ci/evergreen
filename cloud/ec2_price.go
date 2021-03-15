@@ -428,46 +428,48 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	return *subnets.Subnets[0].SubnetId, nil
 }
 
-func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
-	cpf.Lock()
-	defer cpf.Unlock()
-	var err error
-	dur := t.end.Sub(t.start)
-	size, err := getVolumeSize(ctx, client, h)
-	if err != nil {
-		return 0, errors.Wrap(err, "error getting volume size")
-	}
-	zone, err := getZone(ctx, client, h)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not get zone for host")
-	}
-	region := AztoRegion(zone)
-	return cpf.ebsCost(region, size, dur)
-}
+// kim: TODO: delete
+// func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
+//     cpf.Lock()
+//     defer cpf.Unlock()
+//     var err error
+//     dur := t.end.Sub(t.start)
+//     size, err := getVolumeSize(ctx, client, h)
+//     if err != nil {
+//         return 0, errors.Wrap(err, "error getting volume size")
+//     }
+//     zone, err := getZone(ctx, client, h)
+//     if err != nil {
+//         return 0, errors.Wrap(err, "could not get zone for host")
+//     }
+//     region := AztoRegion(zone)
+//     return cpf.ebsCost(region, size, dur)
+// }
 
-func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
-	if h.VolumeTotalSize != 0 {
-		return h.VolumeTotalSize, nil
-	}
-
-	volumeIDs, err := client.GetVolumeIDs(ctx, h)
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-	}
-	vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
-		VolumeIds: aws.StringSlice(volumeIDs),
-	})
-	if err != nil {
-		return 0, errors.Wrap(err, "error describing volumes")
-	}
-
-	var totalSize int64
-	for _, v := range vols.Volumes {
-		totalSize += *v.Size
-	}
-
-	return totalSize, nil
-}
+// kim: TODO: delete
+// func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
+//     if h.VolumeTotalSize != 0 {
+//         return h.VolumeTotalSize, nil
+//     }
+//
+//     volumeIDs, err := client.GetVolumeIDs(ctx, h)
+//     if err != nil {
+//         return 0, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+//     }
+//     vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
+//         VolumeIds: aws.StringSlice(volumeIDs),
+//     })
+//     if err != nil {
+//         return 0, errors.Wrap(err, "error describing volumes")
+//     }
+//
+//     var totalSize int64
+//     for _, v := range vols.Volumes {
+//         totalSize += *v.Size
+//     }
+//
+//     return totalSize, nil
+// }
 
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
 // EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
