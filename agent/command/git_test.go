@@ -861,7 +861,7 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	method, token, err = getProjectMethodAndToken("", "", distro.CloneMethodOAuth)
 	s.Error(err)
 	s.Equal("", token)
-	s.Equal("", method)
+	s.Equal(distro.CloneMethodLegacySSH, method)
 
 	method, token, err = getProjectMethodAndToken("", "", distro.CloneMethodLegacySSH)
 	s.NoError(err)
