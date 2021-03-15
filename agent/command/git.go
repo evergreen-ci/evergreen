@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -56,7 +55,6 @@ type gitFetchProject struct {
 	CommitterName  string `mapstructure:"committer_name"`
 	CommitterEmail string `mapstructure:"committer_email"`
 
-	githubClient *github.Client
 	base
 }
 
@@ -228,7 +226,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -245,14 +243,12 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	if conf.GithubPatchData.PRNumber != 0 {
 		var ref, commitToTest, branchName string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
-			// will make it check.
-			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
-			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
-			if err != nil {
-				return nil, err
-			}
+			// GitHub creates a ref at refs/pull/[pr number]/merge
+			// pointing to the test merge commit they generate
+			// See: https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests
+			// and: https://docs.travis-ci.com/user/pull-requests/#my-pull-request-isnt-being-built
 			ref = "merge"
+			commitToTest = conf.GithubPatchData.MergeCommitSHA
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
@@ -261,13 +257,11 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			commitToTest = conf.GithubPatchData.HeadHash
 			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
-		if commitToTest != "" {
-			gitCommands = append(gitCommands, []string{
-				fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
-				fmt.Sprintf(`git checkout "%s"`, branchName),
-				fmt.Sprintf("git reset --hard %s", commitToTest),
-			}...)
-		}
+		gitCommands = append(gitCommands, []string{
+			fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
+			fmt.Sprintf(`git checkout "%s"`, branchName),
+			fmt.Sprintf("git reset --hard %s", commitToTest),
+		}...)
 
 	} else {
 		if opts.shallowClone {
@@ -280,31 +274,6 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	gitCommands = append(gitCommands, "git log --oneline -n 10")
 
 	return gitCommands, nil
-}
-
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo string, prNum int) (string, error) {
-	var mergeSHA string
-	err := util.Retry(ctx, func() (bool, error) {
-		pr, _, err := c.githubClient.PullRequests.Get(ctx, owner, repo, prNum)
-		if err != nil {
-			return false, errors.Wrap(err, "error getting pull request data from Github")
-		}
-		if pr.Mergeable == nil {
-			return true, nil
-		}
-		if *pr.Mergeable {
-			if pr.MergeCommitSHA != nil {
-				mergeSHA = *pr.MergeCommitSHA
-			} else {
-				return false, errors.New("Pull request is mergeable but Github has not created a merge branch")
-			}
-		} else {
-			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
-		}
-		return false, nil
-	}, 10, time.Second, time.Second)
-
-	return mergeSHA, err
 }
 
 func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
@@ -345,15 +314,6 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if c.githubClient == nil {
-		token := c.Token
-		if token == "" {
-			token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-		}
-		httpClient := utility.GetOAuth2HTTPClient(token)
-		defer utility.PutHTTPClient(httpClient)
-		c.githubClient = github.NewClient(httpClient)
-	}
 	err := util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -409,9 +369,9 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		return errors.Wrap(err, "could not validate options for cloning")
 	}
 
-	gitCommands, err := c.buildCloneCommand(ctx, conf, opts)
+	gitCommands, err := c.buildCloneCommand(conf, opts)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	stdErr := noopWriteCloser{
