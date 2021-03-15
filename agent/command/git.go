@@ -345,15 +345,6 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	if c.githubClient == nil {
-		token := c.Token
-		if token == "" {
-			token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-		}
-		httpClient := utility.GetOAuth2HTTPClient(token)
-		defer utility.PutHTTPClient(httpClient)
-		c.githubClient = github.NewClient(httpClient)
-	}
 	err := util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -390,6 +381,11 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
+	}
+	if c.githubClient == nil {
+		httpClient := utility.GetOAuth2HTTPClient(projectToken)
+		defer utility.PutHTTPClient(httpClient)
+		c.githubClient = github.NewClient(httpClient)
 	}
 	opts := cloneOpts{
 		method:             projectMethod,
