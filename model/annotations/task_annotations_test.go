@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetLatestExecutions(t *testing.T) {
@@ -16,26 +17,23 @@ func TestGetLatestExecutions(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	annotations := []TaskAnnotation{
 		{
-			Id:            "1",
 			TaskId:        "t1",
 			TaskExecution: 2,
 			Note:          &Note{Message: "this is a note"},
 		},
 		{
-			Id:            "2",
 			TaskId:        "t1",
 			TaskExecution: 1,
 			Note:          &Note{Message: "another note"},
 		},
 		{
-			Id:            "3",
 			TaskId:        "t2",
 			TaskExecution: 0,
 			Note:          &Note{Message: "this is the wrong task"},
 		},
 	}
 	for _, a := range annotations {
-		assert.NoError(t, a.Insert())
+		assert.NoError(t, a.Upsert())
 	}
 
 	annotations, err := FindByTaskIds([]string{"t1", "t2"})
@@ -72,7 +70,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "not.annie.black"}}
 	assert.NoError(t, db.Clear(Collection))
 	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}}
-	assert.NoError(t, a.Insert())
+	assert.NoError(t, a.Upsert())
 
 	assert.NoError(t, RemoveIssueFromAnnotation("t1", 0, issue1))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
@@ -110,7 +108,7 @@ func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "not.annie.black"}}
 	assert.NoError(t, db.Clear(Collection))
 	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}}
-	assert.NoError(t, a.Insert())
+	assert.NoError(t, a.Upsert())
 
 	assert.NoError(t, RemoveSuspectedIssueFromAnnotation("t1", 0, issue1))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
@@ -125,16 +123,17 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345", Source: &Source{Author: "evergreen user"}}
 	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &Source{Author: "different user"}}
 	assert.NoError(t, db.Clear(Collection))
-	a := TaskAnnotation{Id: "5e4aa5abe3c3317e35201abc", TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue3}}
-	assert.NoError(t, a.Insert())
+	a := TaskAnnotation{TaskId: "t1", Issues: []IssueLink{issue1, issue2}, SuspectedIssues: []IssueLink{issue3}}
+	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, MoveIssueToSuspectedIssue("5e4aa5abe3c3317e35201abc", issue1, "someone new"))
-	annotationFromDB, err := FindByID("5e4aa5abe3c3317e35201abc")
+	assert.NoError(t, MoveIssueToSuspectedIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
+	annotationFromDB, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
+
 	assert.Len(t, annotationFromDB.Issues, 1)
 	assert.Equal(t, "evergreen user", annotationFromDB.Issues[0].Source.Author)
-	assert.Len(t, annotationFromDB.SuspectedIssues, 2)
+	require.Len(t, annotationFromDB.SuspectedIssues, 2)
 	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
 }
@@ -145,16 +144,16 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &Source{Author: "different user"}}
 
 	assert.NoError(t, db.Clear(Collection))
-	a := TaskAnnotation{Id: "5e4aa5abe3c3317e35201abc", TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue3}}
-	assert.NoError(t, a.Insert())
+	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}, Issues: []IssueLink{issue3}}
+	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, MoveSuspectedIssueToIssue("5e4aa5abe3c3317e35201abc", issue1, "someone new"))
+	assert.NoError(t, MoveSuspectedIssueToIssue(a.TaskId, a.TaskExecution, issue1, "someone new"))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.SuspectedIssues, 1)
 	assert.Equal(t, "evergreen user", annotationFromDB.SuspectedIssues[0].Source.Author)
-	assert.Len(t, annotationFromDB.Issues, 2)
+	require.Len(t, annotationFromDB.Issues, 2)
 	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
 }

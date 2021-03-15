@@ -320,7 +320,7 @@ type ComplexityRoot struct {
 		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string, commitMessage *string) int
-		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
+		MoveAnnotationIssue       func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
@@ -805,7 +805,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
-	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
@@ -2134,7 +2134,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
@@ -4734,7 +4734,8 @@ type Mutation {
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    annotationId: String!
+    taskId: String!
+    execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
@@ -5832,29 +5833,37 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["annotationId"]; ok {
+	if tmp, ok := rawArgs["taskId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["annotationId"] = arg0
-	var arg1 model.APIIssueLink
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APIIssueLink
 	if tmp, ok := rawArgs["apiIssue"]; ok {
-		arg1, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		arg2, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["apiIssue"] = arg1
-	var arg2 bool
+	args["apiIssue"] = arg2
+	var arg3 bool
 	if tmp, ok := rawArgs["isIssue"]; ok {
-		arg2, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["isIssue"] = arg2
+	args["isIssue"] = arg3
 	return args, nil
 }
 
@@ -12428,7 +12437,7 @@ func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, f
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
