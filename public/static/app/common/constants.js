@@ -85,7 +85,7 @@ mciModule
       COLL_OUTLIERS: 'outliers',
       COLL_MUTE_OUTLIERS: 'mute_outliers',
       COLL_MARKED_OUTLIERS: 'marked_outliers',
-      COLL_WHITELISTED_OUTLIERS: 'whitelisted_outlier_tasks',
+      COLL_ALLOWLISTED_OUTLIERS: 'whitelisted_outlier_tasks',
     }
   })
 

@@ -16,7 +16,7 @@ mciModule.controller('PerfController', function PerfController(
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
   TestSample, CANARY_EXCLUSION_REGEX, ApiTaskdata,
   loadBuildFailures, loadChangePoints, loadTrendData,
-  trendDataComplete, loadWhitelist, getVisibleRange
+  trendDataComplete, loadAllowlist, getVisibleRange
 ) {
   /* for debugging
   $sce, $compile){
@@ -780,9 +780,9 @@ $http.get(templateUrl).success(function(template) {
     loadTrendData($scope, project, variant, task_name)
       .then((trend_data) => {
         $scope.visibleRange = getVisibleRange(trend_data);
-        return loadWhitelist(project, variant, task_name, $scope.visibleRange.from, $scope.visibleRange.to)
+        return loadAllowlist(project, variant, task_name, $scope.visibleRange.from, $scope.visibleRange.to)
               .then(response => {
-                $scope.whitelist = response.whitelist;
+                $scope.allowlist = response.allowlist;
                 $scope.outliers = response.points;
               })
               .then(() => trendDataComplete($scope, trend_data));
@@ -866,7 +866,7 @@ $http.get(templateUrl).success(function(template) {
     scope.filteredTrendSamples = scope.allTrendSamples;
     if (rejects.length && scope.trendResults.length) {
       rejects = _.filter(rejects, function (doc) {
-        const matched = _.find(scope.whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
+        const matched = _.find(scope.allowlist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
         return _.isUndefined(matched);
       });
       const filtered = _.reject(scope.trendResults, doc => _.contains(rejects, doc.task_id));
@@ -948,19 +948,19 @@ $http.get(templateUrl).success(function(template) {
     }
     return query;
   };
-}).factory('loadWhitelist', function ($q, PointsDataService, WhitelistDataService, limitToVisibleRange) {
-  // Load the outliers and whitelist data.
+}).factory('loadAllowlist', function ($q, PointsDataService, AllowlistDataService, limitToVisibleRange) {
+  // Load the outliers and allowlist data.
   // This data is used to filter out rejected points from the trend charts.
-  // The returned promise resolves when both the white list and outlier data is available.
+  // The returned promise resolves when both the allow list and outlier data is available.
   return function (project, variant, task, from, to) {
     // Get a list of rejected points.
     const query = limitToVisibleRange(from, to, { project, variant, task })
 
     const points = PointsDataService.getOutlierPointsQ(project, variant, task, null, from, to);
-    const whitelist = WhitelistDataService.getWhitelistQ(query);
+    const allowlist = AllowlistDataService.getAllowlistQ(query);
     return $q.all({
       points,
-      whitelist
+      allowlist
     });
   }
 }).factory('loadTrendData', function ($http, $filter, $q, $log, ApiTaskdata) {
@@ -987,7 +987,7 @@ $http.get(templateUrl).success(function(template) {
 }).factory('loadChangePoints', function ($q, loadUnprocessed, loadProcessed) {
   return function (scope, project, variant, task, from, to) {
     // Load the processed and unprocessed change points.
-    // The returned promise resolves when both the white list and history data is available.
+    // The returned promise resolves when both the allow list and history data is available.
     const processed = loadProcessed(project, variant, task, from, to);
     const unprocessed = loadUnprocessed(project, variant, task, from, to);
 

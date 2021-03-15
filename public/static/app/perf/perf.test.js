@@ -1626,11 +1626,11 @@ describe('trendDataComplete', () => {
       expect(scope.metricSelect.value).toBeUndefined();
     });
 
-    it('should not filter whitelisted rejects', () => {
+    it('should not filter allowlisted rejects', () => {
       data = {
         legacy
       };
-      scope.whitelist = [{
+      scope.allowlist = [{
         revision: '780afd77baf061879b05e07b4022a81ab2470af7',
         project: 'sys-perf',
         variant: 'linux-1-node-15gbwtcache',
@@ -1762,11 +1762,11 @@ describe('trendDataComplete', () => {
       expect(scope.metricSelect.value).toBeUndefined();
     });
 
-    it('should not filter whitelisted rejects', () => {
+    it('should not filter allowlisted rejects', () => {
       data = {
         cedar
       };
-      scope.whitelist = [{
+      scope.allowlist = [{
         revision: 'af71c266dae464807509962e6f12d5f2d9a61f73',
         project: 'sys-perf',
         variant: 'linux-1-node-15gbwtcache',
@@ -2063,18 +2063,18 @@ describe('trendDataComplete', () => {
   });
 });
 
-describe('loadWhitelist', () => {
+describe('loadAllowlist', () => {
   beforeEach(module('MCI'));
 
   let PointsDataService;
-  let WhitelistDataService;
-  let loadWhitelist;
+  let AllowlistDataService;
+  let loadAllowlist;
   const points = {};
-  const whitelist = {};
+  const allowlist = {};
   const resp = {};
 
   let getOutlierPointsQSpy;
-  let getWhitelistQSpy;
+  let getAllowlistQSpy;
   let allSpy;
 
   const from_time = '2020-10-28T05:07:39.000Z';
@@ -2084,17 +2084,17 @@ describe('loadWhitelist', () => {
     inject(($injector, $q) => {
       PointsDataService = $injector.get('PointsDataService');
       getOutlierPointsQSpy = spyOn(PointsDataService, 'getOutlierPointsQ').and.returnValue(points);
-      WhitelistDataService = $injector.get('WhitelistDataService');
-      getWhitelistQSpy = spyOn(WhitelistDataService, 'getWhitelistQ').and.returnValue(whitelist);
+      AllowlistDataService = $injector.get('AllowlistDataService');
+      getAllowlistQSpy = spyOn(AllowlistDataService, 'getAllowlistQ').and.returnValue(allowlist);
       allSpy = spyOn($q, 'all').and.returnValue(resp);
-      loadWhitelist = $injector.get('loadWhitelist');
+      loadAllowlist = $injector.get('loadAllowlist');
     });
   });
 
-  it('should get points and whitelist ', () => {
-    expect(loadWhitelist('project', 'variant', 'task', from_time, to_time)).toBe(resp);
+  it('should get points and allowlist ', () => {
+    expect(loadAllowlist('project', 'variant', 'task', from_time, to_time)).toBe(resp);
     expect(getOutlierPointsQSpy).toHaveBeenCalledWith('project', 'variant', 'task', null, from_time, to_time);
-    expect(getWhitelistQSpy).toHaveBeenCalledWith({
+    expect(getAllowlistQSpy).toHaveBeenCalledWith({
       project: 'project',
       variant: 'variant',
       task: 'task',
@@ -2102,7 +2102,7 @@ describe('loadWhitelist', () => {
     });
     expect(allSpy).toHaveBeenCalledWith({
       points,
-      whitelist
+      allowlist
     });
   });
 });

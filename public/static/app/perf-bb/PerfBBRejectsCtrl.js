@@ -1,6 +1,6 @@
 mciModule.controller('PerfBBRejectsCtrl', function (
   $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants, confirmDialogFactory,
-  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, WhitelistDataService, $q, RejectState, Lock
+  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, AllowlistDataService, $q, RejectState, Lock
 ) {
   // Perf Rejects View-Model.
   const vm = this;
@@ -10,12 +10,12 @@ mciModule.controller('PerfBBRejectsCtrl', function (
   vm.lock = new Lock();
 
   $scope.lock = vm.lock;
-  const confirmAdd = confirmDialogFactory('Add whitelisting for');
-  const confirmRemove = confirmDialogFactory('Remove whitelisting for');
-  const  addDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => doc.whitelisted);
-  const  removeDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => !doc.whitelisted);
+  const confirmAdd = confirmDialogFactory('Add allowlisting for');
+  const confirmRemove = confirmDialogFactory('Remove allowlisting for');
+  const  addDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => doc.allowlisted);
+  const  removeDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => !doc.allowlisted);
 
-  const updateToWhitelist = function(items, func, action, mark) {
+  const updateToAllowlist = function(items, func, action, mark) {
     $scope.lock.lock();
     const confirm = (action === 'Add' ? confirmAdd : confirmRemove);
     confirm(items).
@@ -29,7 +29,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
           if (!ok) return;
           _.each(task_revisions, (task_revision) => {
             _.chain(vm.gridOptions.data).where(task_revision).each((doc)=> {
-              doc.whitelisted = mark;
+              doc.allowlisted = mark;
             }).value();
           });
           refreshGridData();
@@ -54,12 +54,12 @@ mciModule.controller('PerfBBRejectsCtrl', function (
   vm.actions = [
     {
       title: ADD,
-      action: items => updateToWhitelist(items, WhitelistDataService.addWhitelist, ADD, "✔"),
+      action: items => updateToAllowlist(items, AllowlistDataService.addAllowlist, ADD, "✔"),
       disabled: addDisabled
     },
     {
       title: REMOVE,
-      action: items => updateToWhitelist(items, WhitelistDataService.removeWhitelist, REMOVE),
+      action: items => updateToAllowlist(items, AllowlistDataService.removeAllowlist, REMOVE),
       disabled: removeDisabled
     },
   ];
@@ -106,7 +106,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
     return EvgUiGridUtil.sortByOrder(a, b, rowA, rowB);
   };
 
-  function hydrateData(docs, whitelist) {
+  function hydrateData(docs, allowlist) {
     return _.each(docs, (doc) => {
       const matcher = _.pick(doc, 'project', 'variant', 'task', 'revision');
       doc._buildId = EvgUtil.generateBuildId({
@@ -115,7 +115,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
         buildVariant: doc.variant,
         createTime: doc.create_time,
       });
-      doc.whitelisted = (whitelist ? _.findWhere(whitelist, matcher) !== undefined : false);
+      doc.allowlisted = (allowlist ? _.findWhere(allowlist, matcher) !== undefined : false);
     });
   }
 
@@ -157,7 +157,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
           .collection(STITCH_CONFIG.PERF.COLL_POINTS)
           .aggregate($scope.getAggChain(vm.state));
       }),
-      whitelist: WhitelistDataService.getWhitelistQ({'project':project})
+      allowlist: AllowlistDataService.getAllowlistQ({'project':project})
     };
     theMostRecentPromise = promises.docs;
     $q.all(promises).then((results) => {
@@ -167,7 +167,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
       }
 
       promises.docs
-        .then((docs) => vm.gridOptions.data = hydrateData(docs, results.whitelist), $log.error)
+        .then((docs) => vm.gridOptions.data = hydrateData(docs, results.allowlist), $log.error)
         .finally(() => $timeout(() => vm.isLoading = false));
 
       // The finally and timeout clear loading on the next event loop iteration so that the Loading indicator
@@ -296,8 +296,8 @@ mciModule.controller('PerfBBRejectsCtrl', function (
         type: 'date',
       },
       {
-        name: 'Whitelisted',
-        field: 'whitelisted',
+        name: 'Allowlisted',
+        field: 'allowlisted',
         type: 'sting',
         enableFiltering: false,
         enableSorting: false,
