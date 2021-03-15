@@ -276,7 +276,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindOneProjectRef(*at.Identifier)
 	if err != nil || p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", *at.Identifier))
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *at.Identifier, err))
 	}
 	usr := MustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *at.Identifier) {
