@@ -202,10 +202,20 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// and the hosts allocated for them,
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
 	// the scheduled tasks in the queue?
+
 	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
 
+	var totalOverdueInTaskGroups, CountDurationOverThresholdInTaskGroups int
+	for _, info := range distroQueueInfo.TaskGroupInfos {
+		if info.Name != "" {
+			totalOverdueInTaskGroups += info.CountWaitOverThreshold
+			CountDurationOverThresholdInTaskGroups += info.CountDurationOverThreshold
+		}
+	}
+	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - CountDurationOverThresholdInTaskGroups
+	hostsAvail := nHostsFree + len(hostsSpawned) - durationOverThreshNoTaskGroups
+
 	var timeToEmpty, timeToEmptyNoSpawns time.Duration
-	hostsAvail := nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold
 	if scheduledDuration <= 0 {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
@@ -226,13 +236,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
-
-	var totalOverdueInTaskGroups int
-	for _, info := range distroQueueInfo.TaskGroupInfos {
-		if info.Name != "" {
-			totalOverdueInTaskGroups += info.CountWaitOverThreshold
-		}
-	}
 
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",
