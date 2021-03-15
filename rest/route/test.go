@@ -21,6 +21,7 @@ import (
 // testGetHandler is the MethodHandler for the GET /tasks/{task_id}/tests route.
 type testGetHandler struct {
 	taskID        string
+	displayTask   bool
 	testStatus    string
 	testName      string
 	testExecution int
@@ -52,6 +53,9 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	tgh.taskID = projCtx.Task.Id
+	if len(projCtx.Task.ExecutionTasks) > 0 {
+		tgh.displayTask = true
+	}
 
 	var err error
 	vals := r.URL.Query()
@@ -85,20 +89,11 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	)
 
 	// Check cedar test results first.
-	dbTask, err := tgh.sc.FindTaskById(tgh.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-	} else if dbTask == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "task not found",
-			StatusCode: http.StatusNotFound,
-		})
-	}
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		Execution: tgh.testExecution,
 	}
-	if len(dbTask.ExecutionTasks) > 0 {
+	if tgh.displayTask {
 		opts.DisplayTaskID = tgh.taskID
 	} else {
 		opts.TaskID = tgh.taskID
