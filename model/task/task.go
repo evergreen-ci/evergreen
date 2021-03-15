@@ -160,10 +160,12 @@ type Task struct {
 	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev,omitempty"`
 	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
-	// an estimate of what the task cost to run, hidden from JSON views for now
-	Cost float64 `bson:"cost,omitempty" json:"-"`
-	// total estimated cost of hosts this task spawned
-	SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
+	// kim: TODO: delete
+	// // an estimate of what the task cost to run, hidden from JSON views for now
+	// Cost float64 `bson:"cost,omitempty" json:"-"`
+	// kim: TODO: delete
+	// // total estimated cost of hosts this task spawned
+	// SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
 
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
@@ -227,24 +229,26 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 }
 
-// VersionCost is service level model for representing cost data related to a version.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
-type VersionCost struct {
-	VersionId        string        `bson:"version_id"`
-	SumTimeTaken     time.Duration `bson:"sum_time_taken"`
-	SumEstimatedCost float64       `bson:"sum_estimated_cost"`
-}
+// kim: TODO: delete
+// // VersionCost is service level model for representing cost data related to a version.
+// // SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
+// type VersionCost struct {
+//     VersionId        string        `bson:"version_id"`
+//     SumTimeTaken     time.Duration `bson:"sum_time_taken"`
+//     SumEstimatedCost float64       `bson:"sum_estimated_cost"`
+// }
 
-// DistroCost is service level model for representing cost data related to a distro.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a distro.
-type DistroCost struct {
-	DistroId         string                 `bson:"distro_id"`
-	SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
-	SumEstimatedCost float64                `bson:"sum_estimated_cost"`
-	Provider         string                 `json:"provider"`
-	ProviderSettings map[string]interface{} `json:"provider_settings"`
-	NumTasks         int                    `bson:"num_tasks"`
-}
+// kim: TODO: delete
+// // DistroCost is service level model for representing cost data related to a distro.
+// // SumTimeTaken is the aggregation of time taken by all tasks associated with a distro.
+// type DistroCost struct {
+//     DistroId         string                 `bson:"distro_id"`
+//     SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
+//     SumEstimatedCost float64                `bson:"sum_estimated_cost"`
+//     Provider         string                 `json:"provider"`
+//     ProviderSettings map[string]interface{} `json:"provider_settings"`
+//     NumTasks         int                    `bson:"num_tasks"`
+// }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
 // The bson keys must match those of the actual task document
@@ -1429,8 +1433,9 @@ func ResetTasks(taskIds []string) error {
 				DetailsKey:           "",
 				HasCedarResultsKey:   "",
 				ResetWhenFinishedKey: "",
-				CostKey:              "",
-				SpawnedHostCostKey:   "",
+				// kim: TODO: delete
+				// CostKey:              "",
+				// SpawnedHostCostKey:   "",
 			},
 		},
 	)

@@ -63,20 +63,22 @@ var (
 	DurationPredictionKey       = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey                 = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey              = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
-	CostKey                     = bsonutil.MustHaveTag(Task{}, "Cost")
-	SpawnedHostCostKey          = bsonutil.MustHaveTag(Task{}, "SpawnedHostCost")
-	ExecutionTasksKey           = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
-	ExecutionTasksFullKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasksFull")
-	DisplayOnlyKey              = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
-	TaskGroupKey                = bsonutil.MustHaveTag(Task{}, "TaskGroup")
-	TaskGroupMaxHostsKey        = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
-	TaskGroupOrderKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
-	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
-	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
-	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
-	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
-	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
+	// kim: TODO: delete
+	// CostKey                     = bsonutil.MustHaveTag(Task{}, "Cost")
+	// kim: TODO: delete
+	// SpawnedHostCostKey          = bsonutil.MustHaveTag(Task{}, "SpawnedHostCost")
+	ExecutionTasksKey     = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
+	ExecutionTasksFullKey = bsonutil.MustHaveTag(Task{}, "ExecutionTasksFull")
+	DisplayOnlyKey        = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
+	TaskGroupKey          = bsonutil.MustHaveTag(Task{}, "TaskGroup")
+	TaskGroupMaxHostsKey  = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
+	TaskGroupOrderKey     = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
+	GenerateTaskKey       = bsonutil.MustHaveTag(Task{}, "GenerateTask")
+	GeneratedTasksKey     = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
+	GeneratedByKey        = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	HasCedarResultsKey    = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
+	IsGithubCheckKey      = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
+	HostCreateDetailsKey  = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey           = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
@@ -677,91 +679,94 @@ func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 	return pipeline
 }
 
-// CostDataByVersionIdPipeline returns an aggregation pipeline for fetching
-// cost data (sum of time taken) from a version by its Id.
-func CostDataByVersionIdPipeline(versionId string) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{VersionKey: versionId}},
-		{"$group": bson.M{
-			"_id":                "$" + VersionKey,
-			"sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
-			"sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
-		}},
-		{"$project": bson.M{
-			"_id":                0,
-			"version_id":         "$_id",
-			"sum_time_taken":     1,
-			"sum_estimated_cost": 1,
-		}},
-	}
+// kim: TODO: delete
+// // CostDataByVersionIdPipeline returns an aggregation pipeline for fetching
+// // cost data (sum of time taken) from a version by its Id.
+// func CostDataByVersionIdPipeline(versionId string) []bson.M {
+//     pipeline := []bson.M{
+//         {"$match": bson.M{VersionKey: versionId}},
+//         {"$group": bson.M{
+//             "_id":                "$" + VersionKey,
+//             "sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
+//             "sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
+//         }},
+//         {"$project": bson.M{
+//             "_id":                0,
+//             "version_id":         "$_id",
+//             "sum_time_taken":     1,
+//             "sum_estimated_cost": 1,
+//         }},
+//     }
+//
+//     return pipeline
+// }
 
-	return pipeline
-}
+// kim: TODO: delete
+// // CostDataByDistroIdPipeline returns an aggregation pipeline for fetching
+// // cost data (sum of time taken) from a distro by its Id.
+// func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration time.Duration) []bson.M {
+//     pipeline := []bson.M{
+//         {"$match": bson.M{
+//             DistroIdKey:   distroId,
+//             FinishTimeKey: bson.M{"$gte": starttime, "$lte": starttime.Add(duration)},
+//         }},
+//         {"$group": bson.M{
+//             "_id":                "$" + DistroIdKey,
+//             "sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
+//             "sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
+//             "num_tasks":          bson.M{"$sum": 1},
+//         }},
+//         {"$project": bson.M{
+//             "_id":                0,
+//             "distro_id":          "$_id",
+//             "sum_time_taken":     1,
+//             "sum_estimated_cost": 1,
+//             "num_tasks":          1,
+//         }},
+//     }
+//
+//     return pipeline
+// }
 
-// CostDataByDistroIdPipeline returns an aggregation pipeline for fetching
-// cost data (sum of time taken) from a distro by its Id.
-func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration time.Duration) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			DistroIdKey:   distroId,
-			FinishTimeKey: bson.M{"$gte": starttime, "$lte": starttime.Add(duration)},
-		}},
-		{"$group": bson.M{
-			"_id":                "$" + DistroIdKey,
-			"sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
-			"sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
-			"num_tasks":          bson.M{"$sum": 1},
-		}},
-		{"$project": bson.M{
-			"_id":                0,
-			"distro_id":          "$_id",
-			"sum_time_taken":     1,
-			"sum_estimated_cost": 1,
-			"num_tasks":          1,
-		}},
-	}
-
-	return pipeline
-}
-
-// FindCostTaskByProject fetches all tasks of a project matching the
-// given time range, starting at task's IdKey in sortDir direction.
-func FindCostTaskByProject(project, taskId string, starttime,
-	endtime time.Time, limit, sortDir int) ([]Task, error) {
-	sortSpec := IdKey // Sort on IdKey
-	filter := bson.M{}
-	filter[ProjectKey] = project
-	filter[FinishTimeKey] = bson.M{"$gte": starttime, "$lte": endtime}
-	if sortDir < 0 {
-		sortSpec = "-" + sortSpec
-		filter[IdKey] = bson.M{"$lt": taskId}
-	} else {
-		filter[IdKey] = bson.M{"$gte": taskId}
-	}
-
-	// Only project the fields relevant for the cost route
-	projection := bson.M{
-		DisplayNameKey:  1,
-		DistroIdKey:     1,
-		BuildVariantKey: 1,
-		FinishTimeKey:   1,
-		TimeTakenKey:    1,
-		RevisionKey:     1,
-		CostKey:         1,
-	}
-
-	tasks := []Task{} // Tasks to be returned
-	err := db.FindAll(
-		Collection,
-		filter,
-		projection,
-		[]string{sortSpec},
-		db.NoSkip,
-		limit,
-		&tasks,
-	)
-	return tasks, err
-}
+// kim: TODO: delete
+// // FindCostTaskByProject fetches all tasks of a project matching the
+// // given time range, starting at task's IdKey in sortDir direction.
+// func FindCostTaskByProject(project, taskId string, starttime,
+//     endtime time.Time, limit, sortDir int) ([]Task, error) {
+//     sortSpec := IdKey // Sort on IdKey
+//     filter := bson.M{}
+//     filter[ProjectKey] = project
+//     filter[FinishTimeKey] = bson.M{"$gte": starttime, "$lte": endtime}
+//     if sortDir < 0 {
+//         sortSpec = "-" + sortSpec
+//         filter[IdKey] = bson.M{"$lt": taskId}
+//     } else {
+//         filter[IdKey] = bson.M{"$gte": taskId}
+//     }
+//
+//     // Only project the fields relevant for the cost route
+//     projection := bson.M{
+//         DisplayNameKey:  1,
+//         DistroIdKey:     1,
+//         BuildVariantKey: 1,
+//         FinishTimeKey:   1,
+//         TimeTakenKey:    1,
+//         RevisionKey:     1,
+//         CostKey:         1,
+//     }
+//
+//     tasks := []Task{} // Tasks to be returned
+//     err := db.FindAll(
+//         Collection,
+//         filter,
+//         projection,
+//         []string{sortSpec},
+//         db.NoSkip,
+//         limit,
+//         &tasks,
+//     )
+//     return tasks, err
+// }
 
 // GetRecentTasks returns the task results used by the recent_tasks endpoints.
 func GetRecentTasks(period time.Duration) ([]Task, error) {

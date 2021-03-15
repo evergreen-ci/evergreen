@@ -113,9 +113,10 @@ func TestHostCosts(t *testing.T) {
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
 	// kim: TODO: delete
 	// assert.InDelta(5, dbHost.TotalCost, 0.01)
-	dbTask, err := task.FindOneId(t1.Id)
-	assert.NoError(err)
-	assert.InDelta(5, dbTask.SpawnedHostCost, 0.01)
+	// kim: TODO: delete
+	// dbTask, err := task.FindOneId(t1.Id)
+	// assert.NoError(err)
+	// assert.InDelta(5, dbTask.SpawnedHostCost, 0.01)
 }
 
 ////////////////////////////////////////////////////////////////////////
