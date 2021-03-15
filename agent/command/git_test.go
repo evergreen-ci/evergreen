@@ -159,7 +159,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildCloneCommand(conf, opts)
+	cmds, _ := c.buildCloneCommand(context.Background(), conf, opts)
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
 
@@ -178,7 +178,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 		token:  "",
 	}
 	s.Require().NoError(opts.setLocation())
-	_, err := c.buildCloneCommand(conf, opts)
+	_, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.Error(err)
 }
 
@@ -197,7 +197,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(conf, opts)
+	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main'", cmds[3])
 }
@@ -215,7 +215,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(conf, opts)
+	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
 }
@@ -485,7 +485,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(conf, opts)
+	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
@@ -502,7 +502,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	s.Require().NoError(err)
-	cmds, err = c.buildCloneCommand(conf, opts)
+	cmds, err = c.buildCloneCommand(context.Background(), conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
 	s.Equal("set -o xtrace", cmds[0])
@@ -532,35 +532,12 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildCloneCommand(conf, opts)
+	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 9)
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
-	s.Equal("git log --oneline -n 10", cmds[8])
-}
-
-func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
-	conf := s.taskConfig4
-	c := gitFetchProject{
-		Directory: "dir",
-	}
-
-	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-	}
-	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(conf, opts)
-	s.NoError(err)
-	s.Require().Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-merge-test-"))
-	s.Equal("git reset --hard abcdef", cmds[7])
 	s.Equal("git log --oneline -n 10", cmds[8])
 }
 
@@ -583,7 +560,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.Require().NoError(opts.setLocation())
 
 	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
-	cmds, err := c.buildCloneCommand(conf, opts)
+	cmds, err := c.buildCloneCommand(context.Background(), conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 9)
 	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
