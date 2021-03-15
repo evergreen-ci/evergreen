@@ -2,13 +2,13 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/graphql"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -85,7 +85,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	)
 
 	// Check cedar test results first.
-	dbTask, err := task.FindByIdExecution(tgh.taskID, &tgh.testExecution)
+	dbTask, err := tgh.sc.FindTaskById(tgh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	} else if dbTask == nil {
@@ -146,7 +146,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		)
 
 		if startAt*tgh.limit < filteredCount {
-			key = string(startAt + 1)
+			key = fmt.Sprintf("%d", startAt+1)
 		}
 	}
 

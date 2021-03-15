@@ -667,6 +667,9 @@ func TestTestPaginator(t *testing.T) {
 	Convey("When paginating with a Connector", t, func() {
 		serviceContext := data.MockConnector{
 			URL: "http://evergreen.example.net/",
+			MockTaskConnector: data.MockTaskConnector{
+				CachedTasks: []task.Task{{Id: "task"}},
+			},
 		}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []testresult.TestResult{}
@@ -697,7 +700,7 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
+						TaskId:    utility.ToStringPtr("task"),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
 							URL:    utility.ToStringPtr(""),
@@ -719,9 +722,10 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					limit: limit,
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
+					taskID: "task",
+					limit:  limit,
+					key:    fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:     &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -741,7 +745,7 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
+						TaskId:    utility.ToStringPtr("task"),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
 							URL:    utility.ToStringPtr(""),
@@ -763,9 +767,10 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					limit: 50,
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
+					taskID: "task",
+					limit:  50,
+					key:    fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:     &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -785,7 +790,7 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
+						TaskId:    utility.ToStringPtr("task"),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
 							URL:    utility.ToStringPtr(""),
@@ -807,9 +812,10 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit: limit,
-					sc:    &serviceContext,
+					taskID: "task",
+					key:    fmt.Sprintf("object_id_%d_", testToStartAt),
+					limit:  limit,
+					sc:     &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -829,7 +835,7 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.ToTimePtr(time.Unix(0, 0)),
 						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
 						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
+						TaskId:    utility.ToStringPtr("task"),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
 							URL:    utility.ToStringPtr(""),
@@ -851,9 +857,10 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
-					limit: limit,
+					taskID: "task",
+					key:    fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:     &serviceContext,
+					limit:  limit,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
