@@ -109,7 +109,7 @@ type Host struct {
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	// kim: TODO: delete
-	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
+	// VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
@@ -1536,9 +1536,10 @@ func (h *Host) CacheHostData() error {
 				ZoneKey:      h.Zone,
 				StartTimeKey: h.StartTime,
 				// kim: QUESTION: delete?
-				VolumeTotalSizeKey: h.VolumeTotalSize,
-				VolumesKey:         h.Volumes,
-				DNSKey:             h.Host,
+				// kim: TODO: delete
+				// VolumeTotalSizeKey: h.VolumeTotalSize,
+				VolumesKey: h.Volumes,
+				DNSKey:     h.Host,
 				// kim: TODO: delete
 				// ComputeCostPerHourKey: h.ComputeCostPerHour,
 			},

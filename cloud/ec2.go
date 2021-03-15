@@ -1223,7 +1223,8 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	}
 
 	// refresh cached values for DNS name, volumes, and launch time
-	h.VolumeTotalSize = 0
+	// kim: TODO: delete
+	// h.VolumeTotalSize = 0
 	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
 		return errors.Wrapf(err, "can't cache host data for instance '%s'", h.Id)
 	}

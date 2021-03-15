@@ -319,7 +319,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Host = *instance.PublicDnsName
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
-	// kiM: TODO: delete
+	// kim: TODO: delete
 	// var err error
 	// if h.ComputeCostPerHour == 0 {
 	//     ec2Settings := &EC2ProviderSettings{}
@@ -335,11 +335,12 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	//     }))
 	// }
 
-	// h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
+	// kim: TODO: delete
+	// h.VolumeTotalSize, err := getVolumeSize(ctx, client, h)
 	// if err != nil {
 	//     return errors.Wrapf(err, "error getting volume size for host %s", h.Id)
 	// }
-	//
+
 	if err := h.CacheHostData(); err != nil {
 		return errors.Wrap(err, "error updating host document in db")
 	}

@@ -1283,7 +1283,8 @@ func (s *EC2Suite) TestCacheHostData() {
 			DeviceName: "device_name",
 		},
 	}, s.h.Volumes)
-	s.Equal(int64(10), s.h.VolumeTotalSize)
+	// kim: TODO: delete
+	// s.Equal(int64(10), s.h.VolumeTotalSize)
 	// kim: TODO: delete
 	// s.Equal(float64(1), s.h.ComputeCostPerHour)
 
@@ -1299,7 +1300,8 @@ func (s *EC2Suite) TestCacheHostData() {
 			DeviceName: "device_name",
 		},
 	}, h.Volumes)
-	s.Equal(int64(10), h.VolumeTotalSize)
+	// kim: TODO: delete
+	// s.Equal(int64(10), h.VolumeTotalSize)
 	// kim: TODO: delete
 	// s.Equal(float64(1), h.ComputeCostPerHour)
 }
