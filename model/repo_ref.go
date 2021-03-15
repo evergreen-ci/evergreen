@@ -205,6 +205,41 @@ func addViewRepoPermissionsToBranchAdmins(repoRefID string, admins []string) err
 	return nil
 }
 
+func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+	if len(toAdd) == 0 && len(toRemove) == 0 {
+		return nil
+	}
+
+	adminRole := GetRepoAdminRole(r.Id)
+	for _, addedUser := range toAdd {
+		adminUser, err := user.FindOneById(addedUser)
+		if err != nil {
+			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+		}
+		if adminUser == nil {
+			return errors.Errorf("no user '%s' found", addedUser)
+		}
+		if err = adminUser.AddRole(adminRole); err != nil {
+			return errors.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+		}
+
+	}
+	for _, removedUser := range toRemove {
+		adminUser, err := user.FindOneById(removedUser)
+		if err != nil {
+			return errors.Wrapf(err, "error finding user %s", removedUser)
+		}
+		if adminUser == nil {
+			continue
+		}
+
+		if err = adminUser.RemoveRole(adminRole); err != nil {
+			return errors.Wrapf(err, "error removing role %s from user %s", adminRole, removedUser)
+		}
+	}
+	return nil
+}
+
 func addAdminToRepo(repoId, admin string) error {
 	return db.UpdateId(
 		RepoRefCollection,
