@@ -788,8 +788,8 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 const defaultVersionLimit = 20
 
 type getProjectVersionsHandler struct {
-	project string
-	opts    dbModel.GetVersionsOptions
+	projectName string
+	opts        dbModel.GetVersionsOptions
 
 	sc data.Connector
 }
@@ -807,7 +807,7 @@ func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.project = gimlet.GetVars(r)["project_id"]
+	h.projectName = gimlet.GetVars(r)["project_id"]
 	params := r.URL.Query()
 
 	// body is optional
@@ -864,7 +864,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := h.sc.GetProjectVersionsWithOptions(h.project, h.opts)
+	versions, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
 
 	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
 	if err != nil {

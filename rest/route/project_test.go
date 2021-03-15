@@ -544,7 +544,7 @@ func getMockProjectsConnector() *data.MockConnector {
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(serviceModel.VersionCollection))
+	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
 		Id:         projectId,
@@ -581,10 +581,12 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(v4.Insert())
 
 	h := getProjectVersionsHandler{
-		project:   "something-else",
-		requester: evergreen.AdHocRequester,
-		sc:        &data.DBConnector{},
-		limit:     20,
+		projectName: "something-else",
+		sc:          &data.DBConnector{},
+		opts: serviceModel.GetVersionsOptions{
+			Requester: evergreen.AdHocRequester,
+			Limit:     20,
+		},
 	}
 
 	resp := h.Run(context.Background())

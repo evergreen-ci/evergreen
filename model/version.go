@@ -79,7 +79,7 @@ type Version struct {
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
-const defaultVersionLimit = 10
+const defaultVersionLimit = 20
 
 type GetVersionsOptions struct {
 	StartAfter     int    `json:"start"`
@@ -303,7 +303,11 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Version, error) {
+func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
+	projectId, err := FindIdForProject(projectName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding id for project '%s'", projectName)
+	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey:  opts.Requester,
@@ -394,8 +398,8 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
-	err := db.Aggregate(VersionCollection, pipeline, &res)
-	if err != nil {
+
+	if err = db.Aggregate(VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrapf(err, "error aggregating versions and builds")
 	}
 
