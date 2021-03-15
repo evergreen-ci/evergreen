@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -291,16 +292,25 @@ func FindProjectForBuild(buildID string) (string, error) {
 
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
+	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
-		if err := SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
-			return errors.WithStack(err)
+		toReset := t.Id
+		if t.IsPartOfDisplay() {
+			toReset = t.DisplayTask.Id
+		}
+		if err := SetCachedTaskActivated(t.BuildId, toReset, true); err != nil {
+			catcher.Add(errors.Wrap(err, "unable to activate task in build cache"))
+			continue
 		}
 
 		// update the cached version of the task, in its build document
-		if err := ResetCachedTask(t.BuildId, t.Id); err != nil {
-			return errors.WithStack(err)
+		if err := ResetCachedTask(t.BuildId, toReset); err != nil {
+			catcher.Add(errors.Wrap(err, "unable to reset task in build cache"))
 		}
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	// reset the build statuses, once per build

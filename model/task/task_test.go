@@ -1520,6 +1520,20 @@ func TestAddDependency(t *testing.T) {
 	updated, err = FindOneId(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
+
+	assert.NoError(t, t1.RemoveDependency("td3"))
+	for _, d := range t1.DependsOn {
+		if d.TaskId == "td3" {
+			assert.Fail(t, "did not remove dependency from in-memory task")
+		}
+	}
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	for _, d := range updated.DependsOn {
+		if d.TaskId == "td3" {
+			assert.Fail(t, "did not remove dependency from db task")
+		}
+	}
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {

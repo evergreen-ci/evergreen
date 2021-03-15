@@ -1686,6 +1686,9 @@ func TestDequeueAndRestart(t *testing.T) {
 		Status:           evergreen.TaskSucceeded,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
+		DependsOn: []task.Dependency{
+			{TaskId: t2.Id, Status: "*"},
+		},
 	}
 	assert.NoError(t, t3.Insert())
 	b1 := build.Build{
@@ -1768,6 +1771,7 @@ func TestDequeueAndRestart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, dbTask3.Execution)
 	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
+	assert.Len(t, dbTask3.DependsOn, 0)
 }
 
 func TestMarkStart(t *testing.T) {
