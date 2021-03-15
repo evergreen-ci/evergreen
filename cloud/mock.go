@@ -470,10 +470,11 @@ func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string
 	return nil
 }
 
+// kim: TODO: delete
 // CostForDuration for the mock returns 1 dollar per minute up
-func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	return end.Sub(start).Minutes(), nil
-}
+// func (m *mockManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
+//     return end.Sub(start).Minutes(), nil
+// }
 
 // Get mock region from ProviderSettingsList
 func getMockManagerOptions(provider string, providerSettingsList []*birch.Document) (ManagerOpts, error) {

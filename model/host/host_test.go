@@ -4444,40 +4444,44 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 	hosts := []Host{
 		{
-			Id:                 "host-1",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "small",
-			ComputeCostPerHour: 20,
-			StartedBy:          "me",
-			UserHost:           true,
-			NoExpiration:       true,
+			Id:           "host-1",
+			Status:       evergreen.HostRunning,
+			InstanceType: "small",
+			// kim: TODO: delete
+			// ComputeCostPerHour: 20,
+			StartedBy:    "me",
+			UserHost:     true,
+			NoExpiration: true,
 		},
 		{
-			Id:                 "host-2",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "small",
-			ComputeCostPerHour: 30,
-			StartedBy:          "me",
-			UserHost:           true,
-			NoExpiration:       false,
+			Id:           "host-2",
+			Status:       evergreen.HostRunning,
+			InstanceType: "small",
+			// kim: TODO: delete
+			// ComputeCostPerHour: 30,
+			StartedBy:    "me",
+			UserHost:     true,
+			NoExpiration: false,
 		},
 		{
-			Id:                 "host-3",
-			Status:             evergreen.HostStopped,
-			InstanceType:       "large",
-			ComputeCostPerHour: 60,
-			StartedBy:          "you",
-			UserHost:           true,
-			NoExpiration:       false,
+			Id:           "host-3",
+			Status:       evergreen.HostStopped,
+			InstanceType: "large",
+			// kim: TODO: delete
+			// ComputeCostPerHour: 60,
+			StartedBy:    "you",
+			UserHost:     true,
+			NoExpiration: false,
 		},
 		{
-			Id:                 "host-4",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "medium",
-			ComputeCostPerHour: 10,
-			StartedBy:          "her",
-			UserHost:           true,
-			NoExpiration:       true,
+			Id:           "host-4",
+			Status:       evergreen.HostRunning,
+			InstanceType: "medium",
+			// kim: TODO: delete
+			// ComputeCostPerHour: 10,
+			StartedBy:    "her",
+			UserHost:     true,
+			NoExpiration: true,
 		},
 		{
 			Id:        "host-5",
@@ -4524,7 +4528,8 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.Equal(t, 4, res.TotalHosts)
 	assert.Equal(t, 1, res.TotalStoppedHosts)
 	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
-	assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
+	// kim: TODO: delete
+	// assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
 	assert.Equal(t, 2, res.NumUsersWithVolumes)
 	assert.Equal(t, 412, res.TotalVolumeSize)
 	assert.Equal(t, 3, res.TotalVolumes)
@@ -4919,19 +4924,22 @@ func TestRemoveAndReplace(t *testing.T) {
 
 	// replacing an existing host works
 	h := Host{
-		Id:                 "bar",
-		Status:             evergreen.HostUninitialized,
-		ComputeCostPerHour: 50,
+		Id:     "bar",
+		Status: evergreen.HostUninitialized,
+		// kim: TODO: delete
+		// ComputeCostPerHour: 50,
 	}
 	assert.NoError(t, h.Insert())
 
-	h.ComputeCostPerHour = 100
+	// kim: TODO: delete
+	// h.ComputeCostPerHour = 100
 	h.DockerOptions.Command = "hello world"
 	assert.NoError(t, h.Replace())
 	dbHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
-	assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
+	// kim: TODO: delete
+	// assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
 	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
 
 	// replacing a nonexisting host will just insert

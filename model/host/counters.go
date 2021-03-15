@@ -111,28 +111,29 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 	return nil
 }
 
-func (h *Host) IncCost(amt float64) error {
-	if amt < 0 {
-		return errors.Errorf("cost must be a positive value [%g]", amt)
-	}
-
-	query := bson.M{IdKey: h.Id}
-
-	change := adb.Change{
-		ReturnNew: true,
-		Update: bson.M{
-			"$inc": bson.M{TotalCostKey: amt},
-		},
-	}
-
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update %s", h.Id)
-	}
-
-	return nil
-}
+// kim: TODO: delete
+// func (h *Host) IncCost(amt float64) error {
+//     if amt < 0 {
+//         return errors.Errorf("cost must be a positive value [%g]", amt)
+//     }
+//
+//     query := bson.M{IdKey: h.Id}
+//
+//     change := adb.Change{
+//         ReturnNew: true,
+//         Update: bson.M{
+//             "$inc": bson.M{TotalCostKey: amt},
+//         },
+//     }
+//
+//     info, err := db.FindAndModify(Collection, query, []string{}, change, h)
+//     if err != nil {
+//         return errors.WithStack(err)
+//     }
+//
+//     if info.Updated != 1 {
+//         return errors.Errorf("could not find host document to update %s", h.Id)
+//     }
+//
+//     return nil
+// }

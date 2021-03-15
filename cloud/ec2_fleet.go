@@ -402,6 +402,7 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }
 
+// kim: TODO: delete
 // func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 //     if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
 //         return 0, errors.New("task timing data is malformed")

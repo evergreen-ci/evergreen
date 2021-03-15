@@ -380,8 +380,9 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 
-	// Compute cost is cached in the host
-	s.Equal(.1, s.h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// // Compute cost is cached in the host
+	// s.Equal(.1, s.h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
@@ -432,8 +433,9 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 
-	// Compute cost is cached in the host
-	s.Equal(.1, h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// // Compute cost is cached in the host
+	// s.Equal(.1, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostClassicSpot() {
@@ -480,8 +482,9 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 
-	// Compute cost is cached
-	s.Equal(1.0, h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// // Compute cost is cached
+	// s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
@@ -528,8 +531,9 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 
-	// Compute cost is cached
-	s.Equal(1.0, h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// // Compute cost is cached
+	// s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
@@ -1280,7 +1284,8 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}, s.h.Volumes)
 	s.Equal(int64(10), s.h.VolumeTotalSize)
-	s.Equal(float64(1), s.h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// s.Equal(float64(1), s.h.ComputeCostPerHour)
 
 	h, err := host.FindOneId("h1")
 	s.Require().NoError(err)
@@ -1295,7 +1300,8 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}, h.Volumes)
 	s.Equal(int64(10), h.VolumeTotalSize)
-	s.Equal(float64(1), h.ComputeCostPerHour)
+	// kim: TODO: delete
+	// s.Equal(float64(1), h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestFromDistroSettings() {

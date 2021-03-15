@@ -85,45 +85,46 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return tilEndBufferTime
 }
 
-// CostForDuration estimates the cost for a span of time on the given host.
-// The method assumes the duration is in the range up to a day, as certain
-// discounts apply when used for sustained periods of time.
+// kim: TODO: delete
+// // CostForDuration estimates the cost for a span of time on the given host.
+// // The method assumes the duration is in the range up to a day, as certain
+// // discounts apply when used for sustained periods of time.
+// //
+// // This is a rough estimate considering number of CPUs and amount of memory,
+// // as there may be other factors to consider such as GPU usage, premium CPU
+// // platforms (e.g. Skylake VMs), premium images (e.g. SUSE), networks, etc.
+// //
+// // Source: https://cloud.google.com/compute/pricing
+// func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+//     // Sanity check.
+//     if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
+//         return 0, errors.New("task timing data is malformed")
+//     }
 //
-// This is a rough estimate considering number of CPUs and amount of memory,
-// as there may be other factors to consider such as GPU usage, premium CPU
-// platforms (e.g. Skylake VMs), premium images (e.g. SUSE), networks, etc.
+//     // Grab and parse instance details.
+//     instance, err := m.client.GetInstance(h)
+//     if err != nil {
+//         return 0, errors.WithStack(err)
+//     }
 //
-// Source: https://cloud.google.com/compute/pricing
-func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
-	// Sanity check.
-	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
-		return 0, errors.New("task timing data is malformed")
-	}
-
-	// Grab and parse instance details.
-	instance, err := m.client.GetInstance(h)
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	duration := end.Sub(start)
-	machine, err := parseMachineType(instance.MachineType)
-	if err != nil {
-		return 0, errors.Wrap(err, "error parsing machine")
-	}
-
-	// Calculate the instance cost.
-	cost, err := instanceCost(machine, duration)
-	if err != nil {
-		return 0, errors.Wrap(err, "error calculating costs")
-	}
-
-	if cost < 0 {
-		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", cost)
-	}
-
-	return cost, nil
-}
+//     duration := end.Sub(start)
+//     machine, err := parseMachineType(instance.MachineType)
+//     if err != nil {
+//         return 0, errors.Wrap(err, "error parsing machine")
+//     }
+//
+//     // Calculate the instance cost.
+//     cost, err := instanceCost(machine, duration)
+//     if err != nil {
+//         return 0, errors.Wrap(err, "error calculating costs")
+//     }
+//
+//     if cost < 0 {
+//         return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", cost)
+//     }
+//
+//     return cost, nil
+// }
 
 // zoneToRegion returns the Google Compute region given a zone.
 // For example, given a zone like us-east1-c, it returns us-east1.

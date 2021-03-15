@@ -121,8 +121,9 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	//
 	// collect data
 
-	cost, err := j.incrementCostForDuration(ctx)
-	j.AddError(err)
+	// kim: TODO: delete
+	// cost, err := j.incrementCostForDuration(ctx)
+	// j.AddError(err)
 
 	if j.TaskID != "" && j.host.Provider != evergreen.ProviderNameStatic {
 		if err = j.host.IncTaskCount(); err != nil {
@@ -140,7 +141,9 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	//
 	// send the messages
 
-	grip.Info(j.getHostStatsMessage(cost, idleTime))
+	// kim: TODO: delete
+	// grip.Info(j.getHostStatsMessage(cost, idleTime))
+	grip.Info(j.getHostStatsMessage(idleTime))
 
 	// post task start data
 	if j.TaskID != "" {
@@ -148,38 +151,39 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (float64, error) {
-	if j.manager == nil {
-		mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-		if err != nil {
-			return 0, errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
-		}
+// kim: TODO: delete
+// func (j *collectHostIdleDataJob) incrementCostForDuration(ctx context.Context) (float64, error) {
+//     if j.manager == nil {
+//         mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
+//         if err != nil {
+//             return 0, errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+//         }
+//
+//         j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
+//         if err != nil {
+//             return 0, errors.Wrapf(err, "can't get manager for '%s'", j.host.Id)
+//         }
+//     }
+//
+//     calc, ok := j.manager.(cloud.CostCalculator)
+//     if !ok {
+//         // return early if we can't get the cost
+//         return 0, nil
+//     }
+//
+//     cost, err := calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+//     if err != nil {
+//         return 0, errors.Wrapf(err, "can't get cost for '%s'", j.host.Id)
+//     }
+//
+//     if err = j.host.IncCost(cost); err != nil {
+//         return 0, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
+//     }
+//
+//     return cost, nil
+// }
 
-		j.manager, err = cloud.GetManager(ctx, j.env, mgrOpts)
-		if err != nil {
-			return 0, errors.Wrapf(err, "can't get manager for '%s'", j.host.Id)
-		}
-	}
-
-	calc, ok := j.manager.(cloud.CostCalculator)
-	if !ok {
-		// return early if we can't get the cost
-		return 0, nil
-	}
-
-	cost, err := calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't get cost for '%s'", j.host.Id)
-	}
-
-	if err = j.host.IncCost(cost); err != nil {
-		return 0, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
-	}
-
-	return cost, nil
-}
-
-func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time.Duration) message.Composer {
+func (j *collectHostIdleDataJob) getHostStatsMessage(idleTime time.Duration) message.Composer {
 	runsTasks := j.host.StartedBy == evergreen.User && !j.host.HasContainers
 
 	// post host idle time message
@@ -199,10 +203,6 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
 		msg["provider"] = "ec2"
-	}
-
-	if cost != 0 {
-		msg["cost"] = cost
 	}
 
 	if j.host.Provider != evergreen.ProviderNameStatic {
