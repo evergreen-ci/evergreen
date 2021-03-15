@@ -121,14 +121,18 @@ func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod strin
 		token, err := parseToken(projectToken)
 		return distro.CloneMethodOAuth, token, err
 	}
+	token, err := parseToken(globalToken)
+	if err != nil {
+		return distro.CloneMethodLegacySSH, "", err
+	}
 
 	switch globalCloneMethod {
 	// No clone method specified is equivalent to using legacy SSH.
 	case "", distro.CloneMethodLegacySSH:
-		return distro.CloneMethodLegacySSH, "", nil
+		return distro.CloneMethodLegacySSH, token, nil
 	case distro.CloneMethodOAuth:
-		if globalToken == "" {
-			return "", "", errors.New("cannot clone using OAuth if global token is empty")
+		if token == "" {
+			return distro.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if global token is empty")
 		}
 		token, err := parseToken(globalToken)
 		return distro.CloneMethodOAuth, token, err
