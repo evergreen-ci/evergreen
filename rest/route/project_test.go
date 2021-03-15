@@ -581,10 +581,10 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.NoError(v4.Insert())
 
 	h := getProjectVersionsHandler{
-		projectName: "something-else",
-		requester:   evergreen.AdHocRequester,
-		sc:          &data.DBConnector{},
-		limit:       20,
+		project:   "something-else",
+		requester: evergreen.AdHocRequester,
+		sc:        &data.DBConnector{},
+		limit:     20,
 	}
 
 	resp := h.Run(context.Background())

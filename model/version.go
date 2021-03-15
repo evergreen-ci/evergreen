@@ -82,12 +82,13 @@ func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, 
 const defaultVersionLimit = 10
 
 type GetVersionsOptions struct {
-	VersionToStartAt string `json:"start_at"`
-	Limit            int    `json:"limit"`
-	Skip             int    `json:"skip"`
-	IncludeBuilds    bool   `json:"include_builds"`
-	IncludeTasks     bool   `json:"include_tasks"`
-	ByBuildVariant   string `json:"by_build_variant"`
+	StartAfter     int    `json:"start"`
+	Requester      string `json:"requester"`
+	Limit          int    `json:"limit"`
+	Skip           int    `json:"skip"`
+	IncludeBuilds  bool   `json:"include_builds"`
+	IncludeTasks   bool   `json:"include_tasks"`
+	ByBuildVariant string `json:"by_build_variant"`
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
@@ -305,34 +306,31 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
-		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
+		VersionRequesterKey:  opts.Requester,
 	}
 	if opts.ByBuildVariant != "" {
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
-	if opts.VersionToStartAt != "" {
-		v, err := VersionFindOneId(opts.VersionToStartAt)
-		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding version '%s'", opts.VersionToStartAt)
-		}
-		if v == nil {
-			return nil, errors.Errorf("version '%s' doesn't exist", opts.VersionToStartAt)
-		}
-		match[VersionCreateTimeKey] = bson.M{"$lte": v.CreateTime}
+
+	if opts.StartAfter > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
 
 	pipeline := []bson.M{bson.M{"$match": match}}
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionCreateTimeKey: -1}})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	project := bson.M{
-		VersionCreateTimeKey:    1,
-		VersionStartTimeKey:     1,
-		VersionFinishTimeKey:    1,
-		VersionRevisionKey:      1,
-		VersionAuthorKey:        1,
-		VersionMessageKey:       1,
-		VersionStatusKey:        1,
-		VersionBuildVariantsKey: 1,
-		VersionErrorsKey:        1,
+		VersionCreateTimeKey:          1,
+		VersionStartTimeKey:           1,
+		VersionFinishTimeKey:          1,
+		VersionRevisionKey:            1,
+		VersionAuthorKey:              1,
+		VersionAuthorEmailKey:         1,
+		VersionMessageKey:             1,
+		VersionStatusKey:              1,
+		VersionBuildVariantsKey:       1,
+		VersionErrorsKey:              1,
+		VersionRevisionOrderNumberKey: 1,
+		VersionRequesterKey:           1,
 	}
 
 	if !opts.IncludeBuilds { // add project to the pipeline as is

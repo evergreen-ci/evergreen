@@ -154,7 +154,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(checkUser, addProject, checkProjectAdmin, viewProjectSettings).RouteHandler(makeFetchProjectEvents(sc))
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makePatchesByProjectRoute(sc))
 	app.AddRoute("/projects/{project_id}/recent_versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectVersionsLegacy(sc))
-	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeFetchProjectVersions(sc))
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTasksByProjectAndCommitHandler(sc))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskReliability(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeGetProjectTaskStats(sc))
