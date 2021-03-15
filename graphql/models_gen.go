@@ -151,11 +151,6 @@ type ProjectBuildVariant struct {
 	Tasks       []string `json:"tasks"`
 }
 
-type Projects struct {
-	Favorites     []*model.APIProjectRef `json:"favorites"`
-	OtherProjects []*GroupedProjects     `json:"otherProjects"`
-}
-
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`

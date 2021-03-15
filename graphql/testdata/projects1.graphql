@@ -1,19 +1,12 @@
 {
   projects {
-    favorites {
+    name
+    projects{
       identifier
       repo
-      owner
+      owner 
       displayName
-    }
-    otherProjects {
-      name
-      projects {
-        identifier
-        repo
-        owner
-        displayName
-      }
+      isFavorite
     }
   }
 }

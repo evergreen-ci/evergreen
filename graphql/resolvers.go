@@ -273,6 +273,17 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 	return dependencies, nil
 }
 
+func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
+	p, err := model.FindOneProjectRef(*at.Identifier)
+	if err != nil || p == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *at.Identifier, err))
+	}
+	usr := MustHaveUser(ctx)
+	if utility.StringSliceContains(usr.FavoriteProjects, *at.Identifier) {
+		return true, nil
+	}
+	return false, nil
+}
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
@@ -1036,15 +1047,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	return allTasks, nil
 }
 
-func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
+func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	usr := MustHaveUser(ctx)
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
-	favorites := []*restModel.APIProjectRef{}
 
 	for _, p := range allProjs {
 		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
@@ -1052,11 +1061,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		if err = apiProjectRef.BuildFromService(p); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 		}
-		// favorite projects are filtered out and appended to their own array
-		if utility.StringSliceContains(usr.FavoriteProjects, p.Identifier) {
-			favorites = append(favorites, &apiProjectRef)
-			continue
-		}
+
 		if projs, ok := groupsMap[groupName]; ok {
 			groupsMap[groupName] = append(projs, &apiProjectRef)
 		} else {
@@ -1078,12 +1083,7 @@ func (r *queryResolver) Projects(ctx context.Context) (*Projects, error) {
 		return groupsArr[i].Name < groupsArr[j].Name
 	})
 
-	pjs := Projects{
-		Favorites:     favorites,
-		OtherProjects: groupsArr,
-	}
-
-	return &pjs, nil
+	return groupsArr, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
