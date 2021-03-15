@@ -123,23 +123,6 @@ func (s *GCESuite) TestInstanceCostStandardMachine() {
 	s.True(cost > 0)
 }
 
-// kim: TODO: delete
-// func (s *GCESuite) TestCostForDuration() {
-//     start := time.Now()
-//     end := time.Now()
-//     h := &host.Host{Id: "id"}
-//
-//     // end before start
-//     cost, err := s.manager.CostForDuration(h, end, start)
-//     s.Error(err)
-//     s.Zero(cost)
-//
-//     // valid input
-//     cost, err = s.manager.CostForDuration(h, start, end)
-//     s.NoError(err)
-//     s.NotZero(cost)
-// }
-
 func (s *GCESuite) TestTimeTilNextPayment() {
 	now := time.Now()
 	smallTask, _ := time.ParseDuration("-5m")

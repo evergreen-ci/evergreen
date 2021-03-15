@@ -150,10 +150,6 @@ func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Contex
 	j.logger.InfoWhen(len(r) > 1, r)
 }
 
-// kim: TODO: figure out why this needs ByGroups. This might require some
-// querying to. If it turns out that it's not that important or can be
-// simplified by just using the group names from the QueueGroup interface
-// instead of maintaining "ByGroups", do that instead.
 func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.Manager) (message.Fields, error) {
 	catcher := grip.NewBasicCatcher()
 	r := message.Fields{

@@ -107,25 +107,11 @@ type Host struct {
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
-	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
-	// kim: TODO: delete
-	// VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
-
-	// kim: TODO: remove
-	// ComputeCostPerHour is the compute (not storage) cost of one host for one hour. Cloud
-	// managers can but are not required to cache this price.
-	// ComputeCostPerHour float64 `bson:"compute_cost_per_hour,omitempty" json:"compute_cost_per_hour,omitempty"`
-
-	// kim: TODO: remove
-	// incremented by task start and end stats collectors and
-	// should reflect hosts total costs. Only populated for build-hosts
-	// where host providers report costs.
-	// TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
@@ -359,8 +345,6 @@ type SpawnHostUsage struct {
 	TotalVolumeSize     int            `bson:"total_volume_size"`
 	NumUsersWithVolumes int            `bson:"num_users_with_volumes"`
 	InstanceTypes       map[string]int `bson:"instance_types"`
-	// kim: TODO: delete
-	// AverageComputeCostPerHour float64        `bson:"average_compute_cost_per_hour"`
 }
 
 const (
@@ -1535,13 +1519,8 @@ func (h *Host) CacheHostData() error {
 			"$set": bson.M{
 				ZoneKey:      h.Zone,
 				StartTimeKey: h.StartTime,
-				// kim: QUESTION: delete?
-				// kim: TODO: delete
-				// VolumeTotalSizeKey: h.VolumeTotalSize,
-				VolumesKey: h.Volumes,
-				DNSKey:     h.Host,
-				// kim: TODO: delete
-				// ComputeCostPerHourKey: h.ComputeCostPerHour,
+				VolumesKey:   h.Volumes,
+				DNSKey:       h.Host,
 			},
 		},
 	)
@@ -2427,8 +2406,6 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"stopped":     bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
 			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
 			"users":       bson.M{"$addToSet": "$" + StartedByKey},
-			// kim: TODO: delete
-			// "cost":        bson.M{"$avg": "$" + ComputeCostPerHourKey},
 		}},
 		{"$project": bson.M{
 			"_id":                     "0",
@@ -2436,8 +2413,6 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"total_stopped_hosts":     "$stopped",
 			"total_unexpirable_hosts": "$unexpirable",
 			"num_users_with_hosts":    bson.M{"$size": "$users"},
-			// kim: TODO: delete
-			// "average_compute_cost_per_hour": "$cost",
 		}},
 	}
 

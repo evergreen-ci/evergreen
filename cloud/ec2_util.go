@@ -319,28 +319,6 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.Host = *instance.PublicDnsName
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
 
-	// kim: TODO: delete
-	// var err error
-	// if h.ComputeCostPerHour == 0 {
-	//     ec2Settings := &EC2ProviderSettings{}
-	//     err = ec2Settings.FromDistroSettings(h.Distro, "")
-	//     if err != nil {
-	//         return errors.Wrapf(err, "error getting EC2 settings for host '%s'", h.Id)
-	//     }
-	//     // suppress error, as this information isn't crucial.
-	//     h.ComputeCostPerHour, _, err = pkgCachingPriceFetcher.getLatestSpotCostForInstance(ctx, client, ec2Settings, getOsName(h), h.Zone)
-	//     grip.Error(message.WrapError(err, message.Fields{
-	//         "message": "problem getting latest ec2 spot price",
-	//         "host":    h.Id,
-	//     }))
-	// }
-
-	// kim: TODO: delete
-	// h.VolumeTotalSize, err := getVolumeSize(ctx, client, h)
-	// if err != nil {
-	//     return errors.Wrapf(err, "error getting volume size for host %s", h.Id)
-	// }
-
 	if err := h.CacheHostData(); err != nil {
 		return errors.Wrap(err, "error updating host document in db")
 	}

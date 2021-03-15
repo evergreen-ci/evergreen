@@ -349,51 +349,6 @@ func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Ho
 	return spaceBytes, nil
 }
 
-// kim: TODO: delete
-// // CostForDuration estimates the cost for a span of time on the given container
-// // host. The method divides the cost of that span on the parent host by an
-// // estimate of the number of containers running during the same interval.
-// func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-//     parent, err := h.GetParent()
-//     if err != nil {
-//         return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
-//     }
-//
-//     numContainers, err := parent.EstimateNumContainersForDuration(start, end)
-//     if err != nil {
-//         return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
-//     }
-//
-//     // prevent division by zero error
-//     if numContainers == 0 {
-//         return 0, nil
-//     }
-//
-//     // get cloud manager for parent
-//     mgrOpts, err := GetManagerOptions(parent.Distro)
-//     if err != nil {
-//         return 0, errors.Wrapf(err, "can't get ManagerOpts for parent '%s'", parent.Id)
-//     }
-//     parentMgr, err := GetManager(ctx, m.env, mgrOpts)
-//     if err != nil {
-//         return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
-//     }
-//
-//     // kim: TODO: is it safe to remove this for all cloud providers? Or just for
-//     // EC2?
-//     // get parent cost for time interval
-//     calc, ok := parentMgr.(CostCalculator)
-//     if !ok {
-//         return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
-//     }
-//     cost, err := calc.CostForDuration(ctx, parent, start, end)
-//     if err != nil {
-//         return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
-//     }
-//
-//     return cost / numContainers, nil
-// }
-
 // GetContainerImage downloads a container image onto given parent, using given Image. If specified, build image with evergreen agent.
 func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error {
 	start := time.Now()

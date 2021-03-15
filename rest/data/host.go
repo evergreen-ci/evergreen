@@ -493,8 +493,6 @@ func (hc *MockHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, err
 	data := host.SpawnHostUsage{}
 	usersWithHosts := map[string]bool{} // set for existing users
 	data.InstanceTypes = map[string]int{}
-	// kim: TODO: delete
-	// totalComputeCost := 0.0
 	for _, h := range hc.CachedHosts {
 		if !h.UserHost {
 			continue
@@ -508,11 +506,7 @@ func (hc *MockHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, err
 		}
 		data.InstanceTypes[h.InstanceType] += 1
 		usersWithHosts[h.StartedBy] = true
-		// kim: TODO: delete
-		// totalComputeCost += h.ComputeCostPerHour
 	}
-	// kim: TODO: delete
-	// data.AverageComputeCostPerHour = totalComputeCost / float64(data.TotalHosts)
 	data.NumUsersWithHosts = len(usersWithHosts)
 
 	usersWithVolumes := map[string]bool{}

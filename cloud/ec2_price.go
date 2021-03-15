@@ -63,15 +63,6 @@ func init() {
 
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	dur := t.end.Sub(t.start)
-	// kim: TODO: delete
-	// if h.ComputeCostPerHour > 0 {
-	//     grip.Debug(message.Fields{
-	//         "message":               "returning cost data cached in host",
-	//         "host_id":               h.Id,
-	//         "compute_cost_per_hour": h.ComputeCostPerHour,
-	//     })
-	//     return h.ComputeCostPerHour * dur.Hours(), nil
-	// }
 	os := getOsName(h)
 	if isHostOnDemand(h) {
 		zone, err := getZone(ctx, client, h)
@@ -362,20 +353,14 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 
 	if h.UserHost || m.provider == onDemandProvider {
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-		// kim: TODO: delete
-		// h.ComputeCostPerHour = onDemandPrice
 		return onDemandProvider, nil
 	}
 	if m.provider == spotProvider {
 		h.Distro.Provider = evergreen.ProviderNameEc2Spot
-		// kim: TODO: delete
-		// h.ComputeCostPerHour = spotPrice
 		return spotProvider, nil
 	}
 	if m.provider == autoProvider {
 		if spotPrice < onDemandPrice {
-			// kim: TODO: delete
-			// h.ComputeCostPerHour = spotPrice
 			ec2settings.BidPrice = onDemandPrice
 			if ec2settings.VpcName != "" {
 				subnetID, err := m.getSubnetForAZ(ctx, az, ec2settings.VpcName)
@@ -387,8 +372,6 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 			h.Distro.Provider = evergreen.ProviderNameEc2Spot
 			return spotProvider, nil
 		}
-		// kim: TODO: delete
-		// h.ComputeCostPerHour = onDemandPrice
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
 	}
@@ -432,49 +415,6 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	}
 	return *subnets.Subnets[0].SubnetId, nil
 }
-
-// kim: TODO: delete
-// func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
-//     cpf.Lock()
-//     defer cpf.Unlock()
-//     var err error
-//     dur := t.end.Sub(t.start)
-//     size, err := getVolumeSize(ctx, client, h)
-//     if err != nil {
-//         return 0, errors.Wrap(err, "error getting volume size")
-//     }
-//     zone, err := getZone(ctx, client, h)
-//     if err != nil {
-//         return 0, errors.Wrap(err, "could not get zone for host")
-//     }
-//     region := AztoRegion(zone)
-//     return cpf.ebsCost(region, size, dur)
-// }
-
-// kim: TODO: delete
-// func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
-//     if h.VolumeTotalSize != 0 {
-//         return h.VolumeTotalSize, nil
-//     }
-//
-//     volumeIDs, err := client.GetVolumeIDs(ctx, h)
-//     if err != nil {
-//         return 0, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-//     }
-//     vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
-//         VolumeIds: aws.StringSlice(volumeIDs),
-//     })
-//     if err != nil {
-//         return 0, errors.Wrap(err, "error describing volumes")
-//     }
-//
-//     var totalSize int64
-//     for _, v := range vols.Volumes {
-//         totalSize += *v.Size
-//     }
-//
-//     return totalSize, nil
-// }
 
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
 // EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.

@@ -1212,9 +1212,6 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "error checking if spawnhost started")
 	}
 
-	// refresh cached values for DNS name, volumes, and launch time
-	// kim: TODO: delete
-	// h.VolumeTotalSize = 0
 	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
 		return errors.Wrapf(err, "can't cache host data for instance '%s'", h.Id)
 	}
@@ -1568,37 +1565,6 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 		return StatusUnknown
 	}
 }
-
-// kim: TODO: delete
-// func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-//     if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
-//         return 0, errors.New("task timing data is malformed")
-//     }
-//     if m.region != evergreen.DefaultEC2Region { // price fetcher not implemented for other regions
-//         return 0, nil
-//     }
-//     if err := m.client.Create(m.credentials, m.region); err != nil {
-//         return 0, errors.Wrap(err, "error creating client")
-//     }
-//     defer m.client.Close()
-//
-//     t := timeRange{start: start, end: end}
-//     ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(ctx, m.client, h, t)
-//     if err != nil {
-//         return 0, errors.Wrap(err, "error fetching ec2 cost")
-//     }
-//     ebsCost, err := pkgCachingPriceFetcher.getEBSCost(ctx, m.client, h, t)
-//     if err != nil {
-//         return 0, errors.Wrap(err, "error fetching ebs cost")
-//     }
-//     total := ec2Cost + ebsCost
-//
-//     if total < 0 {
-//         return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", total)
-//     }
-//
-//     return total, nil
-// }
 
 func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {

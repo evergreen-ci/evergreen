@@ -87,12 +87,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc)) // TODO EVG-14087 remove this
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(checkUser).RouteHandler(makecqMessageForPatch(sc))
-	// kim: TODO: delete
-	// app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
-	// kim: TODO: delete
-	// app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTaskCostByProjectRoute(sc))
-	// kim: TODO: delete
-	// app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeCostByVersionHandler(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/settings").Version(2).Patch().Wrap(createDistro).RouteHandler(makeModifyDistrosSettings(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroByID(sc))

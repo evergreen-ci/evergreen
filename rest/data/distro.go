@@ -121,47 +121,6 @@ func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 	return nil
 }
 
-// kim: TODO: delete
-// // FindCostByDistroId queries the backing database for cost data associated
-// // with the given distroId. This is done by aggregating TimeTaken over all
-// // tasks of the given distro that match the time range.
-// func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
-//     starttime time.Time, duration time.Duration) (*task.DistroCost, error) {
-//     // First look for the distro with the given ID.
-//     // If the find fails, return an error.
-//     d, err := distro.FindOne(distro.ById(distroId))
-//     if err != nil {
-//         return nil, errors.Wrapf(err, "error finding distro with id %s", distroId)
-//     }
-//
-//     // Run aggregation with the aggregation pipeline
-//     pipeline := task.CostDataByDistroIdPipeline(distroId, starttime, duration)
-//     res := []task.DistroCost{}
-//     if err = task.Aggregate(pipeline, &res); err != nil {
-//         return nil, err
-//     }
-//
-//     // Account for possible error cases
-//     if len(res) > 1 {
-//         return nil, errors.Errorf("aggregation query with distro_id %s returned %d results but should only return 1 result", distroId, len(res))
-//     }
-//     // Aggregation ran but no tasks of given time range was found for this distro.
-//     if len(res) == 0 {
-//         return &task.DistroCost{DistroId: distroId}, nil
-//     }
-//
-//     // Add provider and provider settings of the distro to the
-//     // DistroCost model.
-//     dc := res[0]
-//     dc.Provider = d.Provider
-//     dc.ProviderSettings, err = getDefaultProviderSettings(&d)
-//     if err != nil {
-//         return nil, errors.WithStack(err)
-//     }
-//
-//     return &dc, nil
-// }
-
 func getDefaultProviderSettings(d *distro.Distro) (map[string]interface{}, error) {
 	var doc *birch.Document
 	var err error
@@ -248,49 +207,6 @@ func (mdc *MockDistroConnector) CreateDistro(distro *distro.Distro) error {
 	}
 	return nil
 }
-
-// kim: TODO: delete
-// // FindCostByDistroId returns results based on the cached tasks and
-// // cached distros in the MockDistroConnector.
-// func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
-//     starttime time.Time, duration time.Duration) (*task.DistroCost, error) {
-//     dc := task.DistroCost{}
-//     var provider string
-//     var settings map[string]interface{}
-//     var err error
-//
-//     // Find the distro.
-//     for _, d := range mdc.CachedDistros {
-//         if d.Id == distroId {
-//             dc.DistroId = distroId
-//             provider = d.Provider
-//             settings, err = getDefaultProviderSettings(d)
-//             if err != nil {
-//                 return nil, errors.WithStack(err)
-//             }
-//         }
-//     }
-//
-//     // Throw an error when no task with the given distro ID is found.
-//     if dc.DistroId == "" {
-//         return nil, fmt.Errorf("no task with distro_id %s has been found", distroId)
-//     }
-//
-//     // Simulate aggregation
-//     for _, t := range mdc.CachedTasks {
-//         if t.DistroId == distroId && (t.FinishTime.Sub(starttime) >= 0) &&
-//             (starttime.Add(duration).Sub(t.FinishTime) >= 0) {
-//             dc.SumTimeTaken += t.TimeTaken
-//         }
-//     }
-//
-//     if dc.SumTimeTaken != time.Duration(0) {
-//         dc.Provider = provider
-//         dc.ProviderSettings = settings
-//     }
-//
-//     return &dc, nil
-// }
 
 func (mdc *MockDistroConnector) ClearTaskQueue(distroId string) error {
 	return errors.New("ClearTaskQueue unimplemented for mock")

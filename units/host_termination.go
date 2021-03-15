@@ -267,9 +267,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	// kim: TODO: delete
-	// settings := j.env.Settings()
-
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
 	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
 		idleTimeStartsAt = j.host.StartTime
@@ -353,41 +350,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"reason":  j.Reason,
 	})
 
-	// kim: TODO: delete
-	// hostBillingEnds := j.host.TerminationTime
-	//
-	// pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host)
-	// if pad > time.Second {
-	//     hostBillingEnds = hostBillingEnds.Add(pad)
-	// }
-	//
-	// if j.host.Distro.IsEphemeral() {
-	//     idleJob := newHostIdleJobForTermination(j.env, settings, cloudHost.CloudMgr, j.host, idleTimeStartsAt, hostBillingEnds)
-	//     idleJob.Run(ctx)
-	//     j.AddError(idleJob.Error())
-	//
-	//     // kim: TODO: delete
-	//     if j.host.SpawnOptions.SpawnedByTask {
-	//         mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	//         if err != nil {
-	//             j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
-	//             return
-	//         }
-	//         manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	//         if err != nil {
-	//             j.AddError(err)
-	//             return
-	//         }
-	//         if calc, ok := manager.(cloud.CostCalculator); ok {
-	//             cost, err := calc.CostForDuration(ctx, j.host, j.host.StartTime, hostBillingEnds)
-	//             j.AddError(err) // don't return as this isn't crucial
-	//             if err == nil {
-	//                 j.AddError(task.IncSpawnedHostCost(j.host.StartedBy, cost))
-	//             }
-	//         }
-	//     }
-	// }
-
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
 		event.LogProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
@@ -398,8 +360,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
 			"provider":    j.host.Provider,
 			"spawn_host":  j.host.StartedBy != evergreen.User,
-			// kim: TODO: delete
-			// "cost":        j.host.TotalCost,
 		})
 	}
 }

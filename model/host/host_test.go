@@ -4447,8 +4447,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 			Id:           "host-1",
 			Status:       evergreen.HostRunning,
 			InstanceType: "small",
-			// kim: TODO: delete
-			// ComputeCostPerHour: 20,
 			StartedBy:    "me",
 			UserHost:     true,
 			NoExpiration: true,
@@ -4457,8 +4455,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 			Id:           "host-2",
 			Status:       evergreen.HostRunning,
 			InstanceType: "small",
-			// kim: TODO: delete
-			// ComputeCostPerHour: 30,
 			StartedBy:    "me",
 			UserHost:     true,
 			NoExpiration: false,
@@ -4467,8 +4463,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 			Id:           "host-3",
 			Status:       evergreen.HostStopped,
 			InstanceType: "large",
-			// kim: TODO: delete
-			// ComputeCostPerHour: 60,
 			StartedBy:    "you",
 			UserHost:     true,
 			NoExpiration: false,
@@ -4477,8 +4471,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 			Id:           "host-4",
 			Status:       evergreen.HostRunning,
 			InstanceType: "medium",
-			// kim: TODO: delete
-			// ComputeCostPerHour: 10,
 			StartedBy:    "her",
 			UserHost:     true,
 			NoExpiration: true,
@@ -4528,8 +4520,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.Equal(t, 4, res.TotalHosts)
 	assert.Equal(t, 1, res.TotalStoppedHosts)
 	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
-	// kim: TODO: delete
-	// assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
 	assert.Equal(t, 2, res.NumUsersWithVolumes)
 	assert.Equal(t, 412, res.TotalVolumeSize)
 	assert.Equal(t, 3, res.TotalVolumes)
@@ -4926,20 +4916,14 @@ func TestRemoveAndReplace(t *testing.T) {
 	h := Host{
 		Id:     "bar",
 		Status: evergreen.HostUninitialized,
-		// kim: TODO: delete
-		// ComputeCostPerHour: 50,
 	}
 	assert.NoError(t, h.Insert())
 
-	// kim: TODO: delete
-	// h.ComputeCostPerHour = 100
 	h.DockerOptions.Command = "hello world"
 	assert.NoError(t, h.Replace())
 	dbHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
-	// kim: TODO: delete
-	// assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
 	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
 
 	// replacing a nonexisting host will just insert
