@@ -442,7 +442,7 @@ Evergreen Projects
                 <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
                 <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
                 <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
-                <div class="col-lg-2"></div>
+                <div class="col-lg-2"> <label class="control-label">  </label> </div>
             </div>
 
             <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_aliases track by $index">
@@ -472,14 +472,45 @@ Evergreen Projects
                 <div class="col-lg-2">
                   <tag-input klass="form-control" items="github_alias.tags" placeholder="tags (comma-delimited)" />
                 </div>
-                <div class="col-lg-4">
+                <div class="col-lg-2">
                   <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias)" type="button" ng-click="addGithubAlias()">
                     <i class="fa fa-plus"></i>
                   </button>
                 <label class="distro-error">[[invalidGitHubPatchDefinitionMessage]]</label>
                 </div>
+            </div> 
+
+            <!--  Github Trigger Aliases  -->
+            <div id="github-trigger-alias">
+              <div class="h4">Add Github Trigger Alias </div>
+              <div class="muted small">Add previously defined aliases that add tasks from other projects to patches</div>
+              <div class="form-group">
+                <div class="col-lg-5 col-header">
+                  <label class="control-label">Trigger Alias</label>
+                </div>
+              </div>
+              <div class="form-group" ng-repeat="(index, t) in settingsFormData.github_trigger_aliases">
+                <div class="col-lg-4">
+                  <label class="control-label">[[t]]</label>
+                </div>
+                <div class="col-lg-2">
+                  <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubTrigger(index)">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="col-lg-4">
+                  <input class="form-control" type="text" ng-model="added_trigger_aliases" placeholder="trigger alias">
+                </div>
+                <div class="col-lg-2">
+                  <button class="plus-button btn btn-primary" ng-disabled="!validGithubTrigger(added_trigger_aliases)" type="button"
+                    ng-click="addGithubTrigger()">
+                    <i class="fa fa-plus"></i>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
 
           <!--Github Commit Checks-->
           <div class="form-group">
@@ -835,7 +866,7 @@ Evergreen Projects
         </div>
 
         <!-- Patch Trigger Aliases -->
-        <div class="variables" style="display: none;">
+        <div class="variables" >
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static">
               <h3>Patch Trigger Aliases</h3>
