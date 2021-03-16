@@ -57,9 +57,11 @@ var convertSingleTest = function (test, execution) {
     }
   }
   var result = {};
-  var threads
+  var threads = undefined;
   if (test.info && test.info.args && test.info.args.thread_level) {
     threads = test.info.args.thread_level;
+  } else if (test.info && test.info.args && test.info.args.threads) {
+    threads = test.info.args.threads;
   } else {
     _.each(test.rollups.stats, function (stat) {
       if (stat.name === "WorkersMin") {
