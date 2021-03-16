@@ -25,7 +25,7 @@ type APIVersion struct {
 	Branch             *string        `json:"branch"`
 	Parameters         []APIParameter `json:"parameters"`
 	BuildVariantStatus []buildDetail  `json:"build_variants_status"`
-	Builds             []APIBuild     `json:"builds"`
+	Builds             []APIBuild     `json:"builds,omitempty"`
 	Requester          *string        `json:"requester"`
 	Errors             []*string      `json:"errors"`
 }

@@ -302,26 +302,6 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (ac *DBProjectConnector) GetVersionsInProject(identifier, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
-	projectId, err := model.FindIdForProject(identifier)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding project '%s'", identifier)
-	}
-	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(projectId, requester, limit, startOrder))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding versions")
-	}
-	catcher := grip.NewBasicCatcher()
-	out := []restModel.APIVersion{}
-	for _, dbVersion := range versions {
-		restVersion := restModel.APIVersion{}
-		catcher.Add(restVersion.BuildFromService(&dbVersion))
-		out = append(out, restVersion)
-	}
-
-	return out, catcher.Resolve()
-}
-
 func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
 	hook, err := model.FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
@@ -628,10 +608,6 @@ func (pc *MockProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) er
 
 func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string) error {
 	return nil
-}
-
-func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
-	return nil, nil
 }
 
 func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {

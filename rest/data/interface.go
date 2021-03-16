@@ -114,7 +114,6 @@ type Connector interface {
 	GetProjectVersionsWithOptions(string, model.GetVersionsOptions) ([]restModel.APIVersion, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
-	GetVersionsInProject(string, string, int, int) ([]restModel.APIVersion, error)
 
 	// Given a version and a project ID, return the translated project and the intermediate project.
 	LoadProjectForVersion(*model.Version, string) (*model.Project, *model.ParserProject, error)
