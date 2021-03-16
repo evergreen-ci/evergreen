@@ -4,11 +4,13 @@ package cloud
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -269,6 +271,42 @@ func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, e
 	}
 
 	return configs[0].NatIP, nil
+}
+
+const (
+	// gceMinUptime is the minimum time to run a host before shutting it down.
+	gceMinUptime = 30 * time.Minute
+	// gceBufferTime is the time to leave an idle host running after it has completed
+	// a task before shutting it down, given that it has already run for MinUptime.
+	gceBufferTime = 10 * time.Minute
+)
+
+// TimeTilNextPayment returns the time until when the host should be destroyed.
+//
+// In general, TimeTilNextPayment aims to run hosts for a minimum of MinUptime, but
+// leaves a buffer time of at least BufferTime after a task has completed before
+// shutting a host down. We assume the host is currently free (not running a task).
+func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
+	now := time.Now()
+
+	// potential end times given certain milestones in the host lifespan
+	endMinUptime := h.CreationTime.Add(gceMinUptime)
+	endBufferTime := h.LastTaskCompletedTime.Add(gceBufferTime)
+
+	// durations until the potential end times
+	tilEndMinUptime := endMinUptime.Sub(now)
+	tilEndBufferTime := endBufferTime.Sub(now)
+
+	// check that last task completed time is not zero
+	if utility.IsZeroTime(h.LastTaskCompletedTime) {
+		return tilEndMinUptime
+	}
+
+	// return the greater of the two durations
+	if tilEndBufferTime.Minutes() < tilEndMinUptime.Minutes() {
+		return tilEndMinUptime
+	}
+	return tilEndBufferTime
 }
 
 //  TODO: this must be implemented to support adding SSH keys.

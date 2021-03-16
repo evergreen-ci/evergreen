@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -67,50 +66,6 @@ func TestTerminateHosts(t *testing.T) {
 	data, valid := events[0].Data.(*event.HostEventData)
 	assert.True(valid)
 	assert.Equal("foo", data.Logs)
-}
-
-func TestHostCosts(t *testing.T) {
-	assert := assert.New(t)
-
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection), "error clearing host collection")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	hostID := "i-12345"
-	mcp := cloud.GetMockProvider()
-	mcp.Set(hostID, cloud.MockInstance{
-		IsUp:   true,
-		Status: cloud.StatusRunning,
-	})
-	h := &host.Host{
-		Id: hostID,
-		Distro: distro.Distro{
-			Provider: evergreen.ProviderNameMock,
-		},
-		Status:      evergreen.HostRunning,
-		StartedBy:   "t1",
-		Provider:    evergreen.ProviderNameMock,
-		Provisioned: true,
-		StartTime:   time.Now().Add(-5 * time.Minute),
-		SpawnOptions: host.SpawnOptions{
-			SpawnedByTask: true,
-		},
-	}
-	assert.NoError(h.Insert())
-	t1 := task.Task{
-		Id: "t1",
-	}
-	assert.NoError(t1.Insert())
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	j := NewHostTerminationJob(env, h, true, "")
-	j.Run(ctx)
-	assert.NoError(j.Error())
-	dbHost, err := host.FindOne(host.ById(h.Id))
-	assert.NoError(err)
-	assert.NotNil(dbHost)
-	assert.Equal(evergreen.HostTerminated, dbHost.Status)
 }
 
 ////////////////////////////////////////////////////////////////////////

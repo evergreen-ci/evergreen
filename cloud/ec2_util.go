@@ -88,7 +88,7 @@ func regionFullname(region string) (string, error) {
 	case "us-west-2":
 		return "US West (Oregon)", nil
 	}
-	return "", errors.Errorf("region %v not supported for On Demand cost calculation", region)
+	return "", errors.Errorf("region %v not supported", region)
 }
 
 // AztoRegion takes an availability zone and returns the region id.

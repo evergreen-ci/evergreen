@@ -24,10 +24,6 @@ func init() {
 		func() amboy.Job { return newTaskEndJob() })
 }
 
-// collectTaskEndData determines a task's cost based on the host it ran on. Hosts that
-// are unable to calculate their own costs will not set a task's Cost field. Errors
-// are logged but not returned, since any number of API failures could happen and
-// we shouldn't sacrifice a task's status for them.
 type collectTaskEndDataJob struct {
 	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
 	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
@@ -53,12 +49,9 @@ func newTaskEndJob() *collectTaskEndDataJob {
 	return j
 }
 
-// NewCollectTaskEndDataJob determines a task's cost based on the host it ran on. Hosts that
-// are unable to calculate their own costs will not set a task's Cost field. Errors
-// are logged but not returned, since any number of API failures could happen and
-// we shouldn't sacrifice a task's status for them.
-//
-// It also logs historic task timing information.
+// NewCollectTaskEndDataJob logs information a task after it
+// completes. It also logs information about the total runtime and instance
+// type, which can be used to measure the cost of running a task.
 func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
