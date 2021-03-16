@@ -816,5 +816,70 @@ describe('expandedMetricConverter', function () {
       }
     };
     expect(expandedMetricConverter(dataSample)).toEqual(expected);
+  });
+
+  it('should handle thread-levels specified via "threads" arg', function () {
+    const dataSample = [
+      {
+        "name": "876d091b3c827c5439b4110b71d2ef592839133e",
+        "info": {
+          "project": "sys-perf",
+          "version": "sys_perf_dfe2b9dd1744725d9c3cdb6b981a78a9f8a62a7f",
+          "order": 26994,
+          "variant": "linux-1-node-replSet",
+          "task_name": "tpcc",
+          "task_id": "sys_perf_linux_1_node_replSet_tpcc_dfe2b9dd1744725d9c3cdb6b981a78a9f8a62a7f_21_03_08_18_40_55",
+          "execution": 0,
+          "test_name": "canary_client-cpuloop-10x",
+          "trial": 0,
+          "parent": "",
+          "tags": null,
+          "args": {
+            "threads": 16
+          }
+        },
+        "created_at": "2021-03-08T21:05:33.517Z",
+        "completed_at": "2021-03-08T21:08:56.946Z",
+        "artifacts": null,
+        "rollups": {
+          "stats": [
+            {
+              "name": "ops_per_sec",
+              "val": 122747.96,
+              "version": 0,
+              "user": true
+            }
+          ],
+          "processed_at": "2021-03-08T21:10:09.813Z"
+        },
+        "analysis": {
+          "processed_at": "2021-03-16T00:03:26.869Z"
+        }
+      }
+    ]
+
+    const expected = {
+      create_time: "2021-03-08T21:05:33.517Z",
+      order: 26994,
+      version_id: "sys_perf_dfe2b9dd1744725d9c3cdb6b981a78a9f8a62a7f",
+      project_id: 'sys-perf',
+      task_name: 'tpcc',
+      variant: "linux-1-node-replSet",
+      task_id: "sys_perf_linux_1_node_replSet_tpcc_dfe2b9dd1744725d9c3cdb6b981a78a9f8a62a7f_21_03_08_18_40_55",
+      revision: 'dfe2b9dd1744725d9c3cdb6b981a78a9f8a62a7f',
+      "data": {
+        "results": [{
+          "name": "canary_client-cpuloop-10x",
+          "isExpandedMetric": true,
+          "results": {
+            "16": {
+              "ops_per_sec": 122747.96,
+              "ops_per_sec_values": [122747.96],
+            }
+          }
+        }]
+      }
+    };
+    expect(expandedMetricConverter(dataSample)).toEqual(expected);
   })
 })
