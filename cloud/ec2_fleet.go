@@ -54,6 +54,7 @@ func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, se
 }
 
 func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
+	// DescribeInstanceTypeOfferings only returns AZs in the client's region
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
 		Filters: []*ec2.Filter{
