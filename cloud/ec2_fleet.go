@@ -19,23 +19,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type instanceTypeSubnetCache struct {
-	instanceTypeToSubnets map[instanceRegionPair][]evergreen.Subnet
-}
+type instanceTypeSubnetCache map[instanceRegionPair][]evergreen.Subnet
+
 type instanceRegionPair struct {
 	instanceType string
 	region       string
 }
 
-var typeCache *instanceTypeSubnetCache
+var typeCache instanceTypeSubnetCache
 
 func init() {
-	typeCache = &instanceTypeSubnetCache{}
-	typeCache.instanceTypeToSubnets = make(map[instanceRegionPair][]evergreen.Subnet)
+	typeCache = make(map[instanceRegionPair][]evergreen.Subnet)
 }
 
-func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]evergreen.Subnet, error) {
-	if subnets, ok := typeCache.instanceTypeToSubnets[instanceRegion]; ok {
+func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]evergreen.Subnet, error) {
+	if subnets, ok := c[instanceRegion]; ok {
 		return subnets, nil
 	}
 
@@ -50,12 +48,12 @@ func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, s
 			subnets = append(subnets, subnet)
 		}
 	}
-	c.instanceTypeToSubnets[instanceRegion] = subnets
+	c[instanceRegion] = subnets
 
 	return subnets, nil
 }
 
-func (c *instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
+func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
 		Filters: []*ec2.Filter{
@@ -66,7 +64,7 @@ func (c *instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergree
 		return nil, errors.Wrapf(err, "can't get instance types for '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
 	}
 	if output == nil {
-		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for AZ '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
 	}
 	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
 	for _, offering := range output.InstanceTypeOfferings {
