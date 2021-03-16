@@ -865,6 +865,9 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	versions, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
+	}
 
 	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
 	if err != nil {
