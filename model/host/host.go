@@ -340,8 +340,7 @@ type SpawnHostUsage struct {
 	TotalUnexpirableHosts int `bson:"total_unexpirable_hosts"`
 	NumUsersWithHosts     int `bson:"num_users_with_hosts"`
 
-	TotalVolumes int `bson:"total_volumes"`
-	// kim: QUESTION: delete this?
+	TotalVolumes        int            `bson:"total_volumes"`
 	TotalVolumeSize     int            `bson:"total_volume_size"`
 	NumUsersWithVolumes int            `bson:"num_users_with_volumes"`
 	InstanceTypes       map[string]int `bson:"instance_types"`
