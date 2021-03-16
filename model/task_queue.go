@@ -25,6 +25,8 @@ const (
 type TaskGroupInfo struct {
 	Name                       string        `bson:"name" json:"name"`
 	Count                      int           `bson:"count" json:"count"`
+	CountFree                  int           `bson:"count_free" json:"count_free"`
+	CountRequired              int           `bson:"count_required" json:"count_required"`
 	MaxHosts                   int           `bson:"max_hosts" json:"max_hosts"`
 	ExpectedDuration           time.Duration `bson:"expected_duration" json:"expected_duration"`
 	CountDurationOverThreshold int           `bson:"count_over_threshold" json:"count_over_threshold"`

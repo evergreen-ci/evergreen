@@ -101,6 +101,10 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		// add up total number of hosts needed for all groups
 		numNewHostsRequired += n
 		numFreeApprox += free
+		if name != "" {
+			taskGroupData.Info.CountFree = free
+			taskGroupData.Info.CountRequired = n
+		}
 	}
 
 	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?

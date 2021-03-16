@@ -203,24 +203,33 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
 	// the scheduled tasks in the queue?
 
-	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
-
-	var totalOverdueInTaskGroups, CountDurationOverThresholdInTaskGroups int
+	var totalOverdueInTaskGroups, countDurationOverThresholdInTaskGroups, freeInTaskGroups, requiredInTaskGroups int
+	var durationOverThresholdInTaskGroups, expectedDurationInTaskGroups time.Duration
 	for _, info := range distroQueueInfo.TaskGroupInfos {
 		if info.Name != "" {
 			totalOverdueInTaskGroups += info.CountWaitOverThreshold
-			CountDurationOverThresholdInTaskGroups += info.CountDurationOverThreshold
+			countDurationOverThresholdInTaskGroups += info.CountDurationOverThreshold
+			durationOverThresholdInTaskGroups += info.DurationOverThreshold
+			expectedDurationInTaskGroups += info.ExpectedDuration
+			freeInTaskGroups += info.CountFree
+			requiredInTaskGroups += info.CountRequired
 		}
 	}
-	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - CountDurationOverThresholdInTaskGroups
-	hostsAvail := nHostsFree + len(hostsSpawned) - durationOverThreshNoTaskGroups
+
+	correctedExpectedDuration := distroQueueInfo.ExpectedDuration - expectedDurationInTaskGroups
+	correctedDurationOverThreshold := distroQueueInfo.DurationOverThreshold - durationOverThresholdInTaskGroups
+	scheduledDuration := correctedExpectedDuration - correctedDurationOverThreshold
+	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - countDurationOverThresholdInTaskGroups
+
+	correctedHostsSpawned := len(hostsSpawned) - requiredInTaskGroups
+	hostsAvail := (nHostsFree - freeInTaskGroups) + correctedHostsSpawned - durationOverThreshNoTaskGroups
 
 	var timeToEmpty, timeToEmptyNoSpawns time.Duration
 	if scheduledDuration <= 0 {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
-		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
+		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
 		maxHours := 2532000
 		if hostsAvail <= 0 {
 			timeToEmpty = time.Duration(maxHours) * time.Hour
