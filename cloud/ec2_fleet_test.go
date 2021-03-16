@@ -87,7 +87,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
 		},
 		"RequestFleet": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc"}
+			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0"}
 
 			instanceID, err := m.requestFleet(context.Background(), ec2Settings, aws.String("templateID"), aws.Int64(1))
 			assert.NoError(t, err)
@@ -103,7 +103,7 @@ func TestFleet(t *testing.T) {
 			}
 			overrides, err := m.makeOverrides(context.Background(), ec2Settings)
 			assert.NoError(t, err)
-			assert.Len(t, overrides, 1)
+			require.Len(t, overrides, 1)
 			assert.Equal(t, "subnet-654321", *overrides[0].SubnetId)
 
 			ec2Settings = &EC2ProviderSettings{
@@ -170,16 +170,11 @@ func TestFleet(t *testing.T) {
 				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 		}
-
+		typeCache[instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}] = []evergreen.Subnet{{SubnetID: "subnet-654321"}}
+		typeCache[instanceRegionPair{instanceType: "not_supported", region: evergreen.DefaultEC2Region}] = []evergreen.Subnet{}
 		m = &ec2FleetManager{
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client: &awsClientMock{
-					DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
-						InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
-							{InstanceType: aws.String("instanceType0")},
-						},
-					},
-				},
+				client: &awsClientMock{},
 				region: "test-region",
 			},
 			credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
@@ -203,30 +198,33 @@ func TestFleet(t *testing.T) {
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {
-	cache := instanceTypeSubnetCache{instanceTypeToSubnets: make(map[string][]evergreen.Subnet)}
-	client := &awsClientMock{
+	cache := instanceTypeSubnetCache{}
+	defaultRegionClient := &awsClientMock{
 		DescribeInstanceTypeOfferingsOutput: &ec2.DescribeInstanceTypeOfferingsOutput{
 			InstanceTypeOfferings: []*ec2.InstanceTypeOffering{
-				{InstanceType: aws.String("instanceType0")},
-				{InstanceType: aws.String("instanceType1")},
-				{InstanceType: aws.String("instanceType2")},
+				{
+					InstanceType: aws.String("instanceType0"),
+					Location:     aws.String(evergreen.DefaultEBSAvailabilityZone),
+				},
 			},
 		},
 	}
 	settings := &evergreen.Settings{}
-	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"}}
+	settings.Providers.AWS.Subnets = []evergreen.Subnet{{SubnetID: "sn0", AZ: evergreen.DefaultEBSAvailabilityZone}}
 
-	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, client, "instanceType0", evergreen.DefaultEC2Region)
+	azsWithInstanceType, err := cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionClient, instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Len(t, azsWithInstanceType, 1)
 	assert.Equal(t, "sn0", azsWithInstanceType[0].SubnetID)
 
-	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, client, "not_supported", evergreen.DefaultEC2Region)
+	// cache is populated
+	subnets, ok := cache[instanceRegionPair{instanceType: "instanceType0", region: evergreen.DefaultEC2Region}]
+	assert.True(t, ok)
+	assert.Len(t, subnets, 1)
+
+	// unsupported instance type
+	defaultRegionClient.DescribeInstanceTypeOfferingsOutput = &ec2.DescribeInstanceTypeOfferingsOutput{}
+	azsWithInstanceType, err = cache.subnetsWithInstanceType(context.Background(), settings, defaultRegionClient, instanceRegionPair{instanceType: "not_supported", region: evergreen.DefaultEC2Region})
 	assert.NoError(t, err)
 	assert.Empty(t, azsWithInstanceType)
-
-	assert.True(t, cache.built)
-	subnet, ok := cache.instanceTypeToSubnets["instanceType0"]
-	assert.True(t, ok)
-	assert.Len(t, subnet, 1)
 }

@@ -1387,13 +1387,12 @@ func (s *EC2Suite) TestGetEC2Key() {
 
 func (s *EC2Suite) TestSetNextSubnet() {
 	s.Require().NoError(db.Clear(host.Collection))
-	typeCache.built = true
-	typeCache.instanceTypeToSubnets = map[string][]evergreen.Subnet{
-		"instance-type0": {
+	typeCache = map[instanceRegionPair][]evergreen.Subnet{
+		{instanceType: "instance-type0", region: evergreen.DefaultEC2Region}: {
 			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
 			{SubnetID: "sn1", AZ: evergreen.DefaultEC2Region + "b"},
 		},
-		"instance-type1": {
+		{instanceType: "instance-type1", region: evergreen.DefaultEC2Region}: {
 			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
 		},
 	}

@@ -419,7 +419,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "can't get provider settings")
 	}
 
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, h.InstanceType, ec2Settings.getRegion())
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: h.InstanceType, region: ec2Settings.getRegion()})
 	if err != nil {
 		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
 	}
