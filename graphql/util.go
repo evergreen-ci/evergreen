@@ -97,7 +97,14 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 	filteredTestCount := len(filteredAndSortedTestResults)
 	if limitParam != 0 {
 		offset := pageParam * limitParam
-		filteredAndSortedTestResults = filteredAndSortedTestResults[offset : offset+limitParam]
+		end := offset + limitParam
+		if offset > filteredTestCount {
+			offset = filteredTestCount
+		}
+		if end > filteredTestCount {
+			end = filteredTestCount
+		}
+		filteredAndSortedTestResults = filteredAndSortedTestResults[offset:end]
 	}
 
 	return filteredAndSortedTestResults, filteredTestCount

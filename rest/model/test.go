@@ -16,7 +16,8 @@ import (
 type APITest struct {
 	Id         *string    `json:"test_id"`
 	TaskId     *string    `json:"task_id"`
-	GroupId    *string    `json:"group_id"`
+	Execution  int        `json:"execution"`
+	GroupId    *string    `json:"group_id,omitempty"`
 	Status     *string    `json:"status"`
 	BaseStatus *string    `json:"base_status"`
 	TestFile   *string    `json:"test_file"`
@@ -41,6 +42,7 @@ type TestLogs struct {
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
+		at.Execution = v.Execution
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
@@ -77,28 +79,35 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		} else if isEmptyLogID {
 			at.Logs.RawDisplayURL = nil
 		} else {
-			dispString := fmt.Sprintf("/test_log/%s?raw=1", *at.Logs.LogId)
+			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
 	case *apimodels.CedarTestResult:
+		at.Execution = v.Execution
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
 		at.Duration = float64(duration)
+		rawDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, v.TestName, v.GroupID)
+		htmlDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, v.TestName, v.GroupID, v.LineNum)
 		at.Logs = TestLogs{
-			LineNum: v.LineNum,
+			LineNum:        v.LineNum,
+			RawDisplayURL:  &rawDisplayStr,
+			HTMLDisplayURL: &htmlDisplayStr,
 		}
 
 		// Need to generate a consistent id for test results
 		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
 		at.Id = utility.ToStringPtr(testResultID)
-		at.GroupId = utility.ToStringPtr(v.GroupID)
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:
-		return fmt.Errorf("Incorrect type when creating APITest")
+		return fmt.Errorf("incorrect type '%v' when creating APITest", v)
 	}
 	return nil
 }
