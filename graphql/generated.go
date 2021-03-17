@@ -695,12 +695,14 @@ type ComplexityRoot struct {
 		BaseStatus func(childComplexity int) int
 		Duration   func(childComplexity int) int
 		EndTime    func(childComplexity int) int
+		Execution  func(childComplexity int) int
 		ExitCode   func(childComplexity int) int
 		GroupId    func(childComplexity int) int
 		Id         func(childComplexity int) int
 		Logs       func(childComplexity int) int
 		StartTime  func(childComplexity int) int
 		Status     func(childComplexity int) int
+		TaskId     func(childComplexity int) int
 		TestFile   func(childComplexity int) int
 	}
 
@@ -4234,6 +4236,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.EndTime(childComplexity), true
 
+	case "TestResult.execution":
+		if e.complexity.TestResult.Execution == nil {
+			break
+		}
+
+		return e.complexity.TestResult.Execution(childComplexity), true
+
 	case "TestResult.exitCode":
 		if e.complexity.TestResult.ExitCode == nil {
 			break
@@ -4275,6 +4284,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestResult.Status(childComplexity), true
+
+	case "TestResult.taskId":
+		if e.complexity.TestResult.TaskId == nil {
+			break
+		}
+
+		return e.complexity.TestResult.TaskId(childComplexity), true
 
 	case "TestResult.testFile":
 		if e.complexity.TestResult.TestFile == nil {
@@ -5231,6 +5247,8 @@ type TestResult {
   startTime: Time
   duration: Float
   endTime: Time
+  taskId: String
+  execution: Int
 }
 
 type TestLog {
@@ -5334,7 +5352,6 @@ type BaseTaskInfo {
   id: String
   status: String
 }
-
 
 type GroupedProjects {
   name: String!
@@ -21743,6 +21760,68 @@ func (ec *executionContext) _TestResult_endTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_taskId(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_execution(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TicketFields_summary(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28844,6 +28923,10 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_duration(ctx, field, obj)
 		case "endTime":
 			out.Values[i] = ec._TestResult_endTime(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
+		case "execution":
+			out.Values[i] = ec._TestResult_execution(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
