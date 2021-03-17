@@ -294,6 +294,11 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 }
 
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+	// we didn't run setup group yet
+	if !tc.ranSetupGroup {
+		return true
+	}
+
 	// next task has a standalone task or a new build
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
@@ -313,10 +318,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 		}
 		return true
 	}
-	// next task has the same task group, but we didn't run setup group yet
-	if !tc.ranSetupGroup {
-		return true
-	}
+
 	return false
 }
 
