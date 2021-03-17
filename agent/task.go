@@ -107,7 +107,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	if tc.runGroupSetup {
+	if !tc.ranSetupGroup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
 			tc.logger.Execution().Errorf("error creating task directory: %s", err)
@@ -178,7 +178,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
 	opts := runCommandsOptions{}
 
-	if tc.runGroupSetup {
+	if !tc.ranSetupGroup {
 		var ctx2 context.Context
 		var cancel context.CancelFunc
 		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
@@ -204,6 +204,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			}
 			tc.logger.Task().Infof("Finished running setup_group for '%s'.", taskGroup.Name)
 		}
+		tc.ranSetupGroup = true
 	}
 
 	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
