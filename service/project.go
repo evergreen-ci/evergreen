@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,10 +28,19 @@ import (
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
 func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
+	start := time.Now()
 	allProjects, err := model.FindAllMergedProjectRefs()
 	if err != nil {
 		return nil, err
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"func":        "filterViewableProjects",
+		"step":        "FindAllMergedProjectRefs",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 	authorizedProjects := []model.ProjectRef{}
 	// only returns projects for which the user is authorized to see.
 	for _, project := range allProjects {
@@ -38,6 +48,14 @@ func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, 
 			authorizedProjects = append(authorizedProjects, project)
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"func":        "filterViewableProjects",
+		"step":        "hasViewPermission",
+		"len":         len(allProjects),
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
 	return authorizedProjects, nil
 
 }
@@ -69,6 +87,8 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	beginning := start
 	_ = MustHaveProjectContext(r)
 	u := MustHaveUser(r)
 
@@ -95,6 +115,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "start",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
 	for i, t := range projRef.PatchTriggerAliases {
@@ -114,6 +142,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "PatchTriggerAliases",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	var projVars *model.ProjectVars
 	if projRef.UseRepoSettings {
@@ -130,6 +166,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projVars = projVars.RedactPrivateVars()
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "find proj vars",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	projectAliases, err := model.FindAliasesForProject(projRef.Id)
 	if err != nil {
@@ -143,12 +187,28 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "FindAliasesForProject",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	matchingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "FindMergedEnabledProjectRefsByRepoAndBranch",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 	PRConflictingRefs := []string{}
 	CQConflictingRefs := []string{}
 	githubChecksConflictingRefs := []string{}
@@ -163,6 +223,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "find refs",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	var hook *model.GithubHook
 	if projRef.Owner != "" && projRef.Repo != "" {
@@ -172,12 +240,28 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "FindGithubHook",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Id, event.OwnerTypeProject)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "FindSubscriptionsByOwner",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 	apiSubscriptions := make([]restModel.APISubscription, len(subscriptions))
 	for i := range subscriptions {
 		if err = apiSubscriptions[i].BuildFromService(subscriptions[i]); err != nil {
@@ -191,6 +275,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "HighestPermissionsForRoles",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -212,6 +304,21 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "return data",
+		"duration":    time.Since(start),
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"project":     projRef.Id,
+		"step":        "get project data",
+		"duration":    time.Since(beginning),
+		"duration_ns": time.Since(beginning).Nanoseconds(),
+	})
+	start = time.Now()
 }
 
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
