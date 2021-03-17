@@ -834,11 +834,11 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		}
 		h.opts.Limit = limit
 	}
-	if h.opts.Limit < 1 {
-		return errors.New("'limit' must be a positive integer")
-	}
 	if h.opts.Limit == 0 {
 		h.opts.Limit = defaultVersionLimit
+	}
+	if h.opts.Limit < 1 {
+		return errors.New("'limit' must be a positive integer")
 	}
 
 	startStr := params.Get("start")
