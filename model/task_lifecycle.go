@@ -104,6 +104,9 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return errors.Wrap(err, "unable to find patch")
 			}
+			if p == nil {
+				return errors.New("patch not found")
+			}
 			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", caller))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
@@ -655,19 +658,20 @@ func DequeueAndRestart(t *task.Task, caller string) error {
 	}
 
 	// this must be done before dequeuing so that we know which entries to restart
-	err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller)
-	if err != nil {
+	if err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller); err != nil {
 		return errors.Wrap(err, "unable to restart versions")
 	}
 
-	err = tryDequeueAndAbortCommitQueueVersion(t, *cq, caller)
-	if err != nil {
+	if err = tryDequeueAndAbortCommitQueueVersion(t, *cq, caller); err != nil {
 		return err
 	}
 
 	p, err := patch.FindOneId(t.Version)
 	if err != nil {
 		return errors.Wrap(err, "unable to find patch")
+	}
+	if p == nil {
+		return errors.New("patch not found")
 	}
 	err = SendCommitQueueResult(p, message.GithubStateFailure, fmt.Sprintf("deactivated by '%s'", caller))
 	grip.Error(message.WrapError(err, message.Fields{

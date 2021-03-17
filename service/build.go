@@ -186,6 +186,10 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Error finding patch", http.StatusInternalServerError)
 				return
 			}
+			if p == nil {
+				http.Error(w, "Patch not found", http.StatusNotFound)
+				return
+			}
 			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
@@ -248,6 +252,10 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			p, err := patch.FindOneId(projCtx.Build.Version)
 			if err != nil {
 				http.Error(w, "Error finding patch", http.StatusInternalServerError)
+				return
+			}
+			if p == nil {
+				http.Error(w, "Patch not found", http.StatusNotFound)
 				return
 			}
 			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))

@@ -617,6 +617,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "unable to find patch")
 			}
+			if p == nil {
+				return http.StatusNotFound, errors.New("patch not found")
+			}
 			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",

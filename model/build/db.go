@@ -292,12 +292,15 @@ func FindProjectForBuild(buildID string) (string, error) {
 
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
+	tasksRestarted := map[string]bool{}
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		buildIdSet[t.BuildId] = true
 		toReset := t.Id
 		if t.IsPartOfDisplay() {
 			toReset = t.DisplayTask.Id
+		}
+		if tasksRestarted[toReset] {
+			continue
 		}
 		if err := SetCachedTaskActivated(t.BuildId, toReset, true); err != nil {
 			catcher.Add(errors.Wrap(err, "unable to activate task in build cache"))
@@ -308,9 +311,8 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 		if err := ResetCachedTask(t.BuildId, toReset); err != nil {
 			catcher.Add(errors.Wrap(err, "unable to reset task in build cache"))
 		}
-	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
+		tasksRestarted[toReset] = true
+		buildIdSet[t.BuildId] = true
 	}
 
 	// reset the build statuses, once per build
@@ -323,9 +325,8 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": bson.M{StatusKey: evergreen.BuildStarted}},
 	)
-	if err != nil {
-		return errors.Wrapf(err, "error updating builds to started")
-	}
+	catcher.Add(errors.Wrapf(err, "error updating builds to started"))
 	// update activation for all the builds
-	return errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds")
+	catcher.Add(errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds"))
+	return catcher.Resolve()
 }
