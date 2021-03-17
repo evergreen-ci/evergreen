@@ -134,10 +134,10 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 func (c *communicatorImpl) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
+		path:     fmt.Sprintf("tasks/%s/display_task", td.ID),
 		taskData: &td,
 		version:  apiVersion2,
 	}
-	info.setTaskPathSuffix("display_task")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "failed to get display task of task %s: %s", td.ID, err.Error())
