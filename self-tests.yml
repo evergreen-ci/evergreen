@@ -210,7 +210,6 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GO_BIN_PATH: ${gobin}
-        LEGACY_GO_BIN_PATH: ${legacyGobin}
         GOOS: ${goos}
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
@@ -244,7 +243,6 @@ functions:
       type: setup
       params:
         env:
-          gobin: /opt/golang/go1.9/bin/go
           MONGODB_URL: ${mongodb_url}
           DECOMPRESS: ${decompress}
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
@@ -566,7 +564,6 @@ tasks:
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
             GO_BIN_PATH: ${gobin}
-            LEGACY_GO_BIN_PATH: ${legacyGobin}
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
   - name: verify-agent-version-update
@@ -596,9 +593,8 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist-and-upload-clis"
@@ -617,9 +613,8 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
@@ -635,9 +630,8 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -650,9 +644,8 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
     tasks:
       - name: generate-lint
 
@@ -662,9 +655,8 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
@@ -678,9 +670,8 @@ buildvariants:
       - macos-1014
     expansions:
       disable_coverage: yes
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: "dist"
@@ -695,9 +686,8 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/golang/go1.11/bin/go
-      goroot: c:/golang/go1.11
-      legacyGobin: /cygdrive/c/golang/go1.9/bin/go
+      gobin: /cygdrive/c/golang/go1.16/bin/go
+      goroot: c:/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -715,9 +705,8 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      legacyGobin: /opt/golang/go1.9/bin/go
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"

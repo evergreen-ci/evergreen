@@ -11,30 +11,36 @@ packages += rest-client rest-data rest-route rest-model migrations trigger model
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
-EVGHOME := $(shell pwd)
-lobsterTempDir := $(EVGHOME)/$(buildDir)/lobster-temp
+evghome := $(shell pwd)
+ifeq ($(OS),Windows_NT)
+	evghome := $(shell cygpath -m $(evghome))
+endif
+lobsterTempDir := $(buildDir)/lobster-temp
 # end project configuration
 
-
-# override the go binary path if set
+# start go runtime settings
 ifneq (,$(GO_BIN_PATH))
   gobin := $(GO_BIN_PATH)
  else
-  gobin := $(shell if [ -x /opt/golang/go1.13/bin/go ]; then echo /opt/golang/go1.13/bin/go; fi)
+  gobin := $(shell if [ -x /opt/golang/go1.16/bin/go ]; then echo /opt/golang/go1.16/bin/go; fi)
   ifeq (,$(gobin))
     gobin := go
   endif
 endif
 
-ifneq (,$(LEGACY_GO_BIN_PATH))
-  legacyGobin := $(LEGACY_GO_BIN_PATH)
- else
-  legacyGobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
-  ifeq (,$(legacyGobin))
-    legacyGobin := go
-  endif
+gopath := $(GOPATH)
+gocache := $(abspath $(buildDir)/.cache)
+ifeq ($(OS),Windows_NT)
+	ifneq (,$(gopath))
+		gopath := $(shell cygpath -m $(gopath))
+	endif
+	gocache := $(shell cygpath -m $(gocache))
 endif
-# end gibinary settings
+
+export GO111MODULE := off
+export GOPATH=$(gopath)
+export GOCACHE := $(gocache)
+# end go runtime settings
 
 
 # start evergreen specific configuration
@@ -66,13 +72,6 @@ karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 # end evergreen specific configuration
 
-gopath := $(GOPATH)
-ifeq ($(OS),Windows_NT)
-ifneq (,$(gopath))
-gopath := $(shell cygpath -m $(gopath))
-endif
-endif
-
 ######################################################################
 ##
 ## Build rules and instructions for building evergreen binaries and targets.
@@ -89,7 +88,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -legacyGoBinary="$(legacyGobin)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
@@ -191,13 +190,14 @@ go-test-config:$(buildDir)/go-test-config.json
 $(buildDir)/go-test-config.json:$(buildDir)/go-test-config
 	./$(buildDir)/go-test-config
 $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
-	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $<
+	$(gobin) build -o $@ $<
 #end generated config
 
 # generate rest model
 generate-rest-model:$(buildDir)/codegen
-	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
 	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
+$(buildDir)/codegen:
+	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
 #end generate rest model
 
 # parse a host.create file and set expansions
@@ -236,8 +236,6 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 
 # userfacing targets for basic build and development operations
 build:cli
-build-alltests:$(testBin)
-build-all:build-alltests build
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages),test-$(target))
 js-test:$(buildDir)/.npmSetup
@@ -419,7 +417,6 @@ $(buildDir)/run-glide:cmd/revendor/run-glide.go
 	$(gobin) build -o $@ $<
 run-glide:$(buildDir)/run-glide
 	$(buildDir)/run-glide $(if $(VENDOR_REVISION),--revision $(VENDOR_REVISION),) $(if $(VENDOR_PKG),--package $(VENDOR_PKG) ,)
-revendor:
 ifneq ($(VENDOR_REVISION),)
 revendor:run-glide vendor-clean
 else
@@ -430,7 +427,7 @@ endif
 # set to the directory containing your same version (1.9+) of the go binary, goimports
 # will work without this workaround
 get-go-imports:
-	GOPATH=$(gopath) $(gobin) get -u golang.org/x/tools/imports
+	$(gobin) get -u golang.org/x/tools/imports
 	cd $(gopath)/src/golang.org/x/tools && git reset 727c06e3f111405bd52063f6120c7d72c3ba896e --hard
 # end vendoring tooling configuration
 
@@ -457,12 +454,9 @@ lint-%:$(buildDir)/output.%.lint
 testRunDeps := $(name)
 testArgs := -v
 dlvArgs := -test.v
-testRunEnv := EVGHOME=$(EVGHOME) GOPATH=$(gopath)
+testRunEnv := EVGHOME=$(evghome)
 ifeq (,$(GOCONVEY_REPORTER))
 	testRunEnv += GOCONVEY_REPORTER=silent
-endif
-ifeq ($(OS),Windows_NT)
-testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
@@ -518,11 +512,11 @@ clean-lobster:
 	rm -rf $(lobsterTempDir)
 
 update-lobster: clean-lobster
-	EVGHOME=$(EVGHOME) LOBSTER_TEMP_DIR=$(lobsterTempDir) $(EVGHOME)/scripts/update-lobster.sh
+	EVGHOME=$(evghome) LOBSTER_TEMP_DIR=$(lobsterTempDir) scripts/update-lobster.sh
 
 # clean and other utility targets
 clean: clean-lobster
-	rm -rf $(lintDeps) $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
+	rm -rf $(buildDir) $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
 
