@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -177,7 +178,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(numCommits int) ([]string, error)
+	GetDistinctTestNames(env evergreen.Environment, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -351,16 +352,12 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string, error) {
-	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting database session")
-	}
-	defer session.Close()
-
-	session.SetSocketTimeout(time.Minute)
-
-	pipeline := mdb.C(task.Collection).Pipe(
+func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment, numCommits int) ([]string, error) {
+	ctx, cancel := env.Context()
+	defer cancel()
+	opts := options.Aggregate().SetMaxTime(time.Minute)
+	fmt.Println("Using new changes")
+	pipeline, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
 			{
 				"$match": bson.M{
@@ -394,11 +391,17 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
 			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
+		opts,
 	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting pipeline")
+	}
+	if pipeline == nil {
+		return nil, errors.New("nil pipeline returned")
+	}
 
 	var output []bson.M
-
-	if err = pipeline.All(&output); err != nil {
+	if err = pipeline.All(ctx, &output); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
