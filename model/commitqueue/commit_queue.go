@@ -31,11 +31,12 @@ type CommitQueueItem struct {
 	Issue   string `bson:"issue"`
 	PatchId string `bson:"patch_id,omitempty"`
 	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
-	Version         string    `bson:"version,omitempty"`
-	EnqueueTime     time.Time `bson:"enqueue_time"`
-	Modules         []Module  `bson:"modules"`
-	MessageOverride string    `bson:"message_override"`
-	Source          string    `bson:"source"`
+	Version             string    `bson:"version,omitempty"`
+	EnqueueTime         time.Time `bson:"enqueue_time"`
+	ProcessingStartTime time.Time `bson:"process_start_time"`
+	Modules             []Module  `bson:"modules"`
+	MessageOverride     string    `bson:"message_override"`
+	Source              string    `bson:"source"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }
