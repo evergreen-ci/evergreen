@@ -8,7 +8,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type TaskAnnotation struct {
@@ -44,14 +43,6 @@ type Note struct {
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
-func newTaskAnnotation(taskId string, execution int) TaskAnnotation {
-	return TaskAnnotation{
-		Id:            bson.NewObjectId().Hex(),
-		TaskId:        taskId,
-		TaskExecution: execution,
-	}
-}
-
 // GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
 func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	highestExecutionAnnotations := map[string]TaskAnnotation{}
@@ -68,15 +59,14 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	return res
 }
 
-func MoveIssueToSuspectedIssue(annotationId string, issue IssueLink, username string) error {
+func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
+	q := ByTaskIdAndExecution(taskId, taskExecution)
+	q[bsonutil.GetDottedKeyName(IssuesKey, IssueLinkIssueKey)] = issue.IssueKey
 	return db.Update(
 		Collection,
-		bson.M{
-			IdKey: mgobson.ObjectIdHex(annotationId),
-			bsonutil.GetDottedKeyName(IssuesKey, IssueLinkIssueKey): issue.IssueKey,
-		},
+		q,
 		bson.M{
 			"$pull": bson.M{IssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
 			"$push": bson.M{SuspectedIssuesKey: newIssue},
@@ -84,15 +74,14 @@ func MoveIssueToSuspectedIssue(annotationId string, issue IssueLink, username st
 	)
 }
 
-func MoveSuspectedIssueToIssue(annotationId string, issue IssueLink, username string) error {
+func MoveSuspectedIssueToIssue(taskId string, taskExecution int, issue IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &Source{Requester: UIRequester, Author: username, Time: time.Now()}
+	q := ByTaskIdAndExecution(taskId, taskExecution)
+	q[bsonutil.GetDottedKeyName(SuspectedIssuesKey, IssueLinkIssueKey)] = issue.IssueKey
 	return db.Update(
 		Collection,
-		bson.M{
-			IdKey: mgobson.ObjectIdHex(annotationId),
-			bsonutil.GetDottedKeyName(SuspectedIssuesKey, IssueLinkIssueKey): issue.IssueKey,
-		},
+		q,
 		bson.M{
 			"$pull": bson.M{SuspectedIssuesKey: bson.M{IssueLinkIssueKey: issue.IssueKey}},
 			"$push": bson.M{IssuesKey: newIssue},
