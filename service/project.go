@@ -318,7 +318,6 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		"duration":    time.Since(beginning),
 		"duration_ns": time.Since(beginning).Nanoseconds(),
 	})
-	start = time.Now()
 }
 
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
