@@ -76,7 +76,7 @@ func (s *CommandSuite) TestShellExec() {
 
 	taskID := "shellexec"
 	s.tc.task.ID = taskID
-	s.tc.runGroupSetup = true
+	s.tc.ranSetupGroup = false
 
 	s.NoError(s.a.startLogging(ctx, s.tc))
 	defer s.a.removeTaskDirectory(s.tc)

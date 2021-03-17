@@ -67,7 +67,7 @@ func TestCommandFileLogging(t *testing.T) {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		taskConfig: &internal.TaskConfig{
 			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
@@ -203,7 +203,7 @@ func TestStartLoggingErrors(t *testing.T) {
 			ID:     "logging_error",
 			Secret: "secret",
 		},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		taskConfig:    &internal.TaskConfig{},
 		project:       project,
 		taskModel:     &task.Task{},

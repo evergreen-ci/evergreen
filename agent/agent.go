@@ -66,7 +66,7 @@ type taskContext struct {
 	systemMetricsCollector *systemMetricsCollector
 	task                   client.TaskData
 	taskGroup              string
-	runGroupSetup          bool
+	ranSetupGroup          bool
 	taskConfig             *internal.TaskConfig
 	taskDirectory          string
 	logDirectories         map[string]interface{}
@@ -274,10 +274,10 @@ LOOP:
 }
 
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
-	setupGroup := false
+	shouldSetupGroup := false
 	taskDirectory := tc.taskDirectory
-	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
-		setupGroup = true
+	if shouldRunSetupGroup(nextTask, tc) {
+		shouldSetupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
 	}
@@ -287,18 +287,21 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 			Secret: nextTask.TaskSecret,
 		},
 		taskGroup:     nextTask.TaskGroup,
-		runGroupSetup: setupGroup,
+		ranSetupGroup: !shouldSetupGroup,
 		taskDirectory: taskDirectory,
 		oomTracker:    jasper.NewOOMTracker(),
 	}
 }
 
-func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+	// next task has a standalone task or a new build
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
 		return true
 	}
+
+	// next task has a different task group
 	if nextTask.TaskGroup != tc.taskGroup {
 		if tc.logger != nil && nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup {
 			tc.logger.Task().Warning(message.Fields{
@@ -308,6 +311,10 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 				"next_task_task_group":    nextTask.TaskGroup,
 			})
 		}
+		return true
+	}
+	// next task has the same task group, but we didn't run setup group yet
+	if !tc.ranSetupGroup {
 		return true
 	}
 	return false
