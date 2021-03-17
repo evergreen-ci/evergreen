@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/operations/metabuild/model"
@@ -108,8 +109,8 @@ func TestGolangGenerate(t *testing.T) {
 			g.Packages = nil
 			for i := 1; i <= numTasks; i++ {
 				g.Packages = append(g.Packages, model.GolangPackage{
-					Name: "name" + string(i),
-					Path: "path" + string(i),
+					Name: "name" + strconv.Itoa(i),
+					Path: "path" + strconv.Itoa(i),
 					Tags: []string{"tag"},
 				})
 			}

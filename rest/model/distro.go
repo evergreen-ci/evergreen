@@ -453,7 +453,6 @@ type APIDistro struct {
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
 	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
 	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
-	UseLegacyAgent        bool                     `json:"use_legacy_agent"`
 	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
 	IcecreamSettings      APIIcecreamSettings      `json:"icecream_settings"`
 	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
@@ -533,7 +532,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.DispatcherSettings = dispatchSettings
 	apiDistro.DisableShallowClone = d.DisableShallowClone
-	apiDistro.UseLegacyAgent = d.UseLegacyAgent
 	apiDistro.Note = utility.ToStringPtr(d.Note)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	homeVolumeSettings := APIHomeVolumeSettings{}
@@ -637,7 +635,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.DispatcherSettings = dispatchSettings
 	d.DisableShallowClone = apiDistro.DisableShallowClone
-	d.UseLegacyAgent = apiDistro.UseLegacyAgent
 	d.Note = utility.FromStringPtr(apiDistro.Note)
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 	i, err = apiDistro.HomeVolumeSettings.ToService()
