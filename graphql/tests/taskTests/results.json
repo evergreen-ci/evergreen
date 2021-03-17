@@ -38,6 +38,22 @@
           }
         }
       }
+    },
+    {
+      "query_file": "execution-task-group-id.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "execution": 0,
+                "taskId": null,
+                "groupID": null
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
