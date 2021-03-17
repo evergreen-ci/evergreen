@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -578,6 +577,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
+	if t.ResetWhenFinished && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
+		return TryResetTask(t.Id, evergreen.APIServerTaskActivator, "", detail)
+	}
+
 	return nil
 }
 
@@ -725,14 +728,10 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 	}
 
 	issue := p.Id.Hex()
-	if p.IsPRMergePatch() {
-		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
-	}
-
 	err = removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "error removing dependency",
-		"patch":   p.Id.Hex(),
+		"patch":   issue,
 	}))
 
 	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
@@ -763,6 +762,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 	if currentIndex+1 >= len(cq.Queue) {
 		return nil
 	}
+
 	nextItem := cq.Queue[currentIndex+1]
 	if nextItem.Version == "" {
 		return nil
@@ -778,7 +778,29 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 	if err != nil {
 		return errors.Wrap(err, "unable to find current merge task")
 	}
-	return errors.Wrap(nextMerge.RemoveDependency(currentMerge.Id), "unable to remove dependency")
+	if err = nextMerge.RemoveDependency(currentMerge.Id); err != nil {
+		return errors.Wrap(err, "unable to remove dependency")
+	}
+
+	if currentIndex > 0 {
+		prevItem := cq.Queue[currentIndex-1]
+		prevMerge, err := task.FindMergeTaskForVersion(prevItem.Version)
+		if err != nil {
+			return errors.Wrap(err, "unable to find previous merge task")
+		}
+		if prevMerge == nil {
+			return errors.New("no merge task found")
+		}
+		d := task.Dependency{
+			TaskId: prevMerge.Id,
+			Status: AllStatuses,
+		}
+		if err = nextMerge.AddDependency(d); err != nil {
+			return errors.Wrap(err, "unable to add dependency")
+		}
+	}
+
+	return nil
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {

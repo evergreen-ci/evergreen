@@ -128,7 +128,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
 	})
 
-	conf := j.env.Settings()
+	conf, err := evergreen.GetConfig()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "can't get settings"))
+		return
+	}
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
