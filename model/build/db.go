@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -291,16 +292,27 @@ func FindProjectForBuild(buildID string) (string, error) {
 
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
+	tasksRestarted := map[string]bool{}
+	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		buildIdSet[t.BuildId] = true
-		if err := SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
-			return errors.WithStack(err)
+		toReset := t.Id
+		if t.IsPartOfDisplay() {
+			toReset = t.DisplayTask.Id
+		}
+		if tasksRestarted[toReset] {
+			continue
+		}
+		if err := SetCachedTaskActivated(t.BuildId, toReset, true); err != nil {
+			catcher.Add(errors.Wrap(err, "unable to activate task in build cache"))
+			continue
 		}
 
 		// update the cached version of the task, in its build document
-		if err := ResetCachedTask(t.BuildId, t.Id); err != nil {
-			return errors.WithStack(err)
+		if err := ResetCachedTask(t.BuildId, toReset); err != nil {
+			catcher.Add(errors.Wrap(err, "unable to reset task in build cache"))
 		}
+		tasksRestarted[toReset] = true
+		buildIdSet[t.BuildId] = true
 	}
 
 	// reset the build statuses, once per build
@@ -313,9 +325,8 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": bson.M{StatusKey: evergreen.BuildStarted}},
 	)
-	if err != nil {
-		return errors.Wrapf(err, "error updating builds to started")
-	}
+	catcher.Add(errors.Wrapf(err, "error updating builds to started"))
 	// update activation for all the builds
-	return errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds")
+	catcher.Add(errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds"))
+	return catcher.Resolve()
 }

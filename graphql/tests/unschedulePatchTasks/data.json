@@ -7,7 +7,7 @@
       "r": "patch_request"
     },
     {
-      "_id": "7",
+      "_id": "123456789012345678901234",
       "r": "merge_test",
       "identifier": "p1"
     }
@@ -27,7 +27,7 @@
       "build_id": "7",
       "r": "merge_test",
       "commit_queue_merge": true,
-      "version": "7"
+      "version": "123456789012345678901234"
     }
   ],
   "builds": [
@@ -119,6 +119,11 @@
           "message": ""
         }
       ]
+    },
+    {
+      "_id": {
+        "$oid": "123456789012345678901234"
+      }
     }
   ],
   "project_ref": [
@@ -134,7 +139,13 @@
     {
       "_id": "p1",
       "processing": true,
-      "queue": [{ "version": "7", "issue": "7" }]
+      "queue": [
+        {
+          "version": "123456789012345678901234",
+          "issue": "123456789012345678901234",
+          "source": "diff"
+        }
+      ]
     }
   ]
 }
