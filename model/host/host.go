@@ -2260,21 +2260,6 @@ func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
 	return Count(query)
 }
 
-// EstimateNumberContainersForDuration estimates how many containers were running
-// on a given host during the specified time interval by averaging the counts
-// at the start and end. It is more accurate for shorter tasks.
-func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, error) {
-	containersAtStart, err := h.CountContainersRunningAtTime(start)
-	if err != nil {
-		return 0, errors.Wrapf(err, "Error counting containers running at %v", start)
-	}
-	containersAtEnd, err := h.CountContainersRunningAtTime(end)
-	if err != nil {
-		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
-	}
-	return float64(containersAtStart+containersAtEnd) / 2, nil
-}
-
 func (h *Host) addTag(new Tag, hasPermissions bool) {
 	for i, old := range h.InstanceTags {
 		if old.Key == new.Key {
