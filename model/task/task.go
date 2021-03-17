@@ -448,6 +448,31 @@ func (t *Task) AddDependency(d Dependency) error {
 	)
 }
 
+func (t *Task) RemoveDependency(dependencyId string) error {
+	found := false
+	for i := len(t.DependsOn) - 1; i >= 0; i-- {
+		d := t.DependsOn[i]
+		if d.TaskId == dependencyId {
+			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.Errorf("dependency '%s' not found", dependencyId)
+	}
+
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$pull": bson.M{
+			DependsOnKey: bson.M{
+				DependencyTaskIdKey: dependencyId,
+			},
+		},
+	}
+	return db.Update(Collection, query, update)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries

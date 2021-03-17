@@ -37,7 +37,7 @@
       "query_file": "commit-queue-dequeue.graphql",
       "result": {
         "data": {
-          "unschedulePatchTasks": "7"
+          "unschedulePatchTasks": "123456789012345678901234"
         }
       }
     }

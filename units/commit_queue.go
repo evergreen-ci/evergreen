@@ -694,19 +694,13 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	}
 
 	// Merge task depends on all the tasks already in the patch
-	status := ""
-	if source == commitqueue.SourcePullRequest {
-		// for pull requests we need to run the merge task at the end even if something
-		// fails, so that it can tell github something failed
-		status = model.AllStatuses
-	}
 	dependencies := []model.TaskUnitDependency{}
 	for _, vt := range patchDoc.VariantsTasks {
 		for _, t := range vt.Tasks {
 			dependencies = append(dependencies, model.TaskUnitDependency{
 				Name:    t,
 				Variant: vt.Variant,
-				Status:  status,
+				Status:  "",
 			})
 		}
 	}
