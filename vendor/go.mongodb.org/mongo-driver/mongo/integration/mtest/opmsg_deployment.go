@@ -11,10 +11,11 @@ import (
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/address"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
 
@@ -24,7 +25,22 @@ const (
 	maxMessageSize        uint32 = 48000000
 	maxBatchCount         uint32 = 100000
 	sessionTimeoutMinutes uint32 = 30
-	maxWireVersion        int32  = 8
+)
+
+var (
+	// MockDescription is the server description used for the mock deployment. Each mocked connection returns this
+	// value from its Description method.
+	MockDescription = description.Server{
+		CanonicalAddr:         serverAddress,
+		MaxDocumentSize:       maxDocumentSize,
+		MaxMessageSize:        maxMessageSize,
+		MaxBatchCount:         maxBatchCount,
+		SessionTimeoutMinutes: sessionTimeoutMinutes,
+		Kind:                  description.RSPrimary,
+		WireVersion: &description.VersionRange{
+			Max: topology.SupportedWireVersions.Max,
+		},
+	}
 )
 
 // connection implements the driver.Connection interface and responds to wire messages with pre-configured responses.
@@ -59,17 +75,7 @@ func (c *connection) ReadWireMessage(_ context.Context, dst []byte) ([]byte, err
 
 // Description returns a fixed server description for the connection.
 func (c *connection) Description() description.Server {
-	return description.Server{
-		CanonicalAddr:         serverAddress,
-		MaxDocumentSize:       maxDocumentSize,
-		MaxMessageSize:        maxMessageSize,
-		MaxBatchCount:         maxBatchCount,
-		SessionTimeoutMinutes: sessionTimeoutMinutes,
-		Kind:                  description.RSPrimary,
-		WireVersion: &description.VersionRange{
-			Max: maxWireVersion,
-		},
-	}
+	return MockDescription
 }
 
 // Close is a no-op operation.
@@ -85,6 +91,11 @@ func (*connection) ID() string {
 // Address returns a fixed address for the connection.
 func (*connection) Address() address.Address {
 	return serverAddress
+}
+
+// Stale returns if the connection is stale.
+func (*connection) Stale() bool {
+	return false
 }
 
 // mockDeployment wraps a connection and implements the driver.Deployment interface.
@@ -104,12 +115,6 @@ var _ driver.Subscriber = &mockDeployment{}
 // Connection method have a no-op Close method.
 func (md *mockDeployment) SelectServer(context.Context, description.ServerSelector) (driver.Server, error) {
 	return md, nil
-}
-
-// SupportsRetry implements the Deployment interface. It always returns true to allow for testing
-// retryability.
-func (md *mockDeployment) SupportsRetryWrites() bool {
-	return true
 }
 
 // Kind implements the Deployment interface. It always returns description.Single.

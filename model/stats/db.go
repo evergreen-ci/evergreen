@@ -968,10 +968,10 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		buf = append(buf, mongo.NewUpdateOneModel().
+		buf = append(buf, mongo.NewReplaceOneModel().
 			SetUpsert(true).
 			SetFilter(birch.DC.Elements(birch.EC.SubDocument("_id", doc.Lookup("_id").MutableDocument()))).
-			SetUpdate(doc.Copy()))
+			SetReplacement(doc.Copy()))
 
 		if len(buf) >= bulkSize {
 			if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {

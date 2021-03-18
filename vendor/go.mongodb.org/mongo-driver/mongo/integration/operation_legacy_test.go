@@ -15,11 +15,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/drivertest"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
@@ -63,11 +63,12 @@ func TestOperationLegacy(t *testing.T) {
 		}
 		for _, tc := range cases {
 			mt.RunOpts(tc.name, mtest.NewOptions().ClientOptions(testClientOpts), func(mt *mtest.T) {
-				// clear any messages written during test setup
+				// Clear any messages written during test setup. Each message written consumed one of the pre-loaded
+				// replies, so add a fakeOpReply to the ReadResp channel for each one.
 				for len(testConn.Written) > 0 {
 					<-testConn.Written
+					testConn.ReadResp <- fakeOpReply
 				}
-				testConn.ReadResp <- fakeOpReply
 				expectedQuery := tc.cmdFn(mt)
 
 				assert.NotEqual(mt, 0, len(testConn.Written), "no message written to connection")

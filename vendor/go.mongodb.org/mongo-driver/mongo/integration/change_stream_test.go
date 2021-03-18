@@ -12,6 +12,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
@@ -34,9 +35,10 @@ const (
 	database
 	collection
 
-	errorInterrupted        int32 = 11601
-	errorCappedPositionLost int32 = 136
-	errorCursorKilled       int32 = 237
+	errorInterrupted     int32 = 11601
+	errorHostUnreachable int32 = 6
+
+	resumableChangeStreamError = "ResumableChangeStreamError"
 )
 
 func TestChangeStream_Standalone(t *testing.T) {
@@ -129,27 +131,59 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 		assert.False(mt, cs.Next(mtest.Background), "expected Next to return false, got true")
 		assert.NotNil(mt, cs.Err(), "expected error, got nil")
 	})
-	mt.Run("resume once", func(mt *mtest.T) {
+	mt.RunOpts("resume once", mtest.NewOptions().ClientType(mtest.Mock), func(mt *mtest.T) {
 		// ChangeStream will automatically resume one time on a resumable error
+
+		// aggregateRes: create change stream with ID 1 and a batch of size 1 so the resume token will be recorded
+		// failureGetMoreRes: resumable error
+		// killCursorsRes: success
+		// resumedAggregateRes: create new change stream with ID 2 and a batch of size 1 so the resume token will be
+		// updated
+		ns := mt.Coll.Database().Name() + "." + mt.Coll.Name()
+		aggregateRes := mtest.CreateCursorResponse(1, ns, mtest.FirstBatch, bson.D{
+			{"_id", bson.D{{"first", "resume token"}}},
+		})
+		failureGetMoreRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
+			Code:    errorHostUnreachable,
+			Name:    "foo",
+			Message: "bar",
+			Labels:  []string{resumableChangeStreamError},
+		})
+		killCursorsRes := mtest.CreateSuccessResponse()
+		newResumeToken := bson.D{{"second", "resume token"}}
+		resumedAggregateRes := mtest.CreateCursorResponse(2, ns, mtest.FirstBatch, bson.D{
+			{"_id", newResumeToken},
+		})
+		mt.AddMockResponses(
+			aggregateRes,
+			failureGetMoreRes,
+			killCursorsRes,
+			resumedAggregateRes,
+		)
 
 		cs, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
 		assert.Nil(mt, err, "Watch error: %v", err)
 		defer closeStream(cs)
-
-		ensureResumeToken(mt, cs)
-		// kill cursor to force resumable error
-		killChangeStreamCursor(mt, cs)
-		generateEvents(mt, 1)
-
-		mt.ClearEvents()
-		// change stream should resume once and get new change
+		// Consume the first document
 		assert.True(mt, cs.Next(mtest.Background), "expected Next to return true, got false")
+
+		// Clear existing events and expect a resume attempt to happen.
+		mt.ClearEvents()
+		assert.True(mt, cs.Next(mtest.Background), "expected Next to return true, got false")
+
 		// Next should cause getMore, killCursors, and aggregate to run
 		assert.NotNil(mt, mt.GetStartedEvent(), "expected getMore event, got nil")
 		assert.NotNil(mt, mt.GetStartedEvent(), "expected killCursors event, got nil")
 		aggEvent := mt.GetStartedEvent()
 		assert.NotNil(mt, aggEvent, "expected aggregate event, got nil")
 		assert.Equal(mt, "aggregate", aggEvent.CommandName, "expected command name 'aggregate', got '%v'", aggEvent.CommandName)
+
+		// Assert that the change stream has updated it's ID and resume token.
+		assert.Equal(mt, cs.ID(), int64(2), "expected change stream ID to be 2, got %d", cs.ID())
+		newResumeTokenRaw, err := bson.Marshal(newResumeToken)
+		assert.Nil(mt, err, "Marshal error: %v", err)
+		comparisonErr := compareDocs(mt, newResumeTokenRaw, cs.ResumeToken())
+		assert.Nil(mt, comparisonErr, "expected resume token %s, got %s", newResumeTokenRaw, cs.ResumeToken())
 	})
 	mt.RunOpts("no resume for aggregate errors", mtest.NewOptions().ClientType(mtest.Mock), func(mt *mtest.T) {
 		// ChangeStream will not attempt to resume on any error encountered while executing an aggregate command
@@ -157,19 +191,21 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 		// aggregate response: empty batch but valid cursor ID
 		// getMore response: resumable error
 		// killCursors response: success
-		// resumed aggregate response: error
+		// resumed aggregate response: resumable error
 		ns := mt.Coll.Database().Name() + "." + mt.Coll.Name()
 		aggRes := mtest.CreateCursorResponse(1, ns, mtest.FirstBatch)
 		getMoreRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
-			Code:    errorInterrupted + 1,
+			Code:    errorHostUnreachable,
 			Name:    "foo",
 			Message: "bar",
+			Labels:  []string{resumableChangeStreamError},
 		})
 		killCursorsRes := mtest.CreateSuccessResponse()
 		resumedAggRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
-			Code:    1,
+			Code:    errorHostUnreachable,
 			Name:    "foo",
 			Message: "bar",
+			Labels:  []string{resumableChangeStreamError},
 		})
 		mt.AddMockResponses(aggRes, getMoreRes, killCursorsRes, resumedAggRes)
 
@@ -178,46 +214,6 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 		defer closeStream(cs)
 
 		assert.False(mt, cs.Next(mtest.Background), "expected Next to return false, got true")
-	})
-	mt.RunOpts("no resume for non-resumable errors", mtest.NewOptions().CreateClient(false), func(mt *mtest.T) {
-		// ChangeStream will not attempt to resume after encountering error code 11601 (Interrupted),
-		// 136 (CappedPositionLost), or 237 (CursorKilled) while executing a getMore command.
-
-		var testCases = []struct {
-			name    string
-			errCode int32
-		}{
-			{"interrupted", errorInterrupted},
-			{"capped position lost", errorCappedPositionLost},
-			{"cursor killed", errorCursorKilled},
-		}
-
-		mockOpts := mtest.NewOptions().ClientType(mtest.Mock)
-		for _, tc := range testCases {
-			mt.RunOpts(tc.name, mockOpts, func(mt *mtest.T) {
-				// aggregate response: empty batch but valid cursor ID
-				// getMore response: error
-				ns := mt.Coll.Database().Name() + "." + mt.Coll.Name()
-				aggRes := mtest.CreateCursorResponse(1, ns, mtest.FirstBatch)
-				getMoreRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
-					Code:    tc.errCode,
-					Name:    "foo",
-					Message: "bar",
-				})
-				mt.AddMockResponses(aggRes, getMoreRes)
-
-				cs, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
-				assert.Nil(mt, err, "Watch error: %v", err)
-				defer closeStream(cs)
-
-				assert.False(mt, cs.Next(mtest.Background), "expected Next to return false, got true")
-				err = cs.Err()
-				assert.NotNil(mt, err, "expected change stream error, got nil")
-				cmdErr, ok := err.(mongo.CommandError)
-				assert.True(mt, ok, "expected error type %v, got %v", mongo.CommandError{}, err)
-				assert.Equal(mt, tc.errCode, cmdErr.Code, "expected code %v, got %v", tc.errCode, cmdErr.Code)
-			})
-		}
 	})
 	mt.RunOpts("server selection before resume", mtest.NewOptions().CreateClient(false), func(mt *mtest.T) {
 		// ChangeStream will perform server selection before attempting to resume, using initial readPreference
@@ -237,9 +233,10 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 		ns := mt.Coll.Database().Name() + "." + mt.Coll.Name()
 		aggRes := mtest.CreateCursorResponse(1, ns, mtest.FirstBatch)
 		getMoreRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
-			Code:    errorInterrupted + 1,
+			Code:    errorHostUnreachable,
 			Name:    "foo",
 			Message: "bar",
+			Labels:  []string{"ResumableChangeStreamError"},
 		})
 		killCursorsRes := mtest.CreateCommandErrorResponse(mtest.CommandError{
 			Code:    errorInterrupted,
@@ -323,17 +320,6 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 				assert.True(mt, len(res) > 0, "expected non-empty document, got empty")
 			})
 		}
-	})
-	mt.Run("resume error advances cursor", func(mt *mtest.T) {
-		// Underlying cursor is advanced after a resumeable error occurs
-
-		cs, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
-		assert.Nil(mt, err, "Watch error: %v", err)
-		defer closeStream(cs)
-
-		ensureResumeToken(mt, cs)
-		killChangeStreamCursor(mt, cs)
-		ensureResumeToken(mt, cs)
 	})
 	mt.Run("maxAwaitTimeMS", func(mt *mtest.T) {
 		// maxAwaitTimeMS option should be sent as maxTimeMS on getMore
@@ -514,6 +500,114 @@ func TestChangeStream_ReplicaSet(t *testing.T) {
 			defer closeStream(cs)
 			tryNextGetmoreError(mt, cs)
 		})
+	})
+
+	customDeploymentClientOpts := options.Client().
+		SetPoolMonitor(poolMonitor).
+		SetWriteConcern(mtest.MajorityWc).
+		SetReadConcern(mtest.MajorityRc).
+		SetRetryReads(false)
+	customDeploymentOpts := mtest.NewOptions().
+		Topologies(mtest.ReplicaSet). // Avoid complexity of sharded fail points.
+		MinServerVersion("4.0").      // 4.0 is needed to use replica set fail points.
+		ClientOptions(customDeploymentClientOpts).
+		CreateClient(false)
+	mt.RunOpts("custom deployment", customDeploymentOpts, func(mt *mtest.T) {
+		// Tests for the changeStreamDeployment type. These are written as integration tests for ChangeStream rather
+		// than unit/integration tests for changeStreamDeployment to ensure that the deployment is correctly wired
+		// by ChangeStream when executing an aggregate.
+
+		mt.Run("errors are processed for SDAM on initial aggregate", func(mt *mtest.T) {
+			clearPoolChan()
+			mt.SetFailPoint(mtest.FailPoint{
+				ConfigureFailPoint: "failCommand",
+				Mode: mtest.FailPointMode{
+					Times: 1,
+				},
+				Data: mtest.FailPointData{
+					FailCommands:    []string{"aggregate"},
+					CloseConnection: true,
+				},
+			})
+
+			_, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
+			assert.NotNil(mt, err, "expected Watch error, got nil")
+			assert.True(mt, isPoolCleared(), "expected pool to be cleared after non-timeout network error but was not")
+		})
+		mt.Run("errors are processed for SDAM on getMore", func(mt *mtest.T) {
+			clearPoolChan()
+			mt.SetFailPoint(mtest.FailPoint{
+				ConfigureFailPoint: "failCommand",
+				Mode: mtest.FailPointMode{
+					Times: 1,
+				},
+				Data: mtest.FailPointData{
+					FailCommands:    []string{"getMore"},
+					CloseConnection: true,
+				},
+			})
+
+			cs, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
+			assert.Nil(mt, err, "Watch error: %v", err)
+			defer closeStream(cs)
+
+			_, err = mt.Coll.InsertOne(mtest.Background, bson.D{{"x", 1}})
+			assert.Nil(mt, err, "InsertOne error: %v", err)
+
+			assert.True(mt, cs.Next(mtest.Background), "expected Next to return true, got false (iteration error %v)",
+				cs.Err())
+			assert.True(mt, isPoolCleared(), "expected pool to be cleared after non-timeout network error but was not")
+		})
+		retryAggClientOpts := options.Client().SetRetryReads(true).SetPoolMonitor(poolMonitor)
+		retryAggMtOpts := mtest.NewOptions().ClientOptions(retryAggClientOpts)
+		mt.RunOpts("errors are processed for SDAM on retried aggregate", retryAggMtOpts, func(mt *mtest.T) {
+			clearPoolChan()
+
+			mt.SetFailPoint(mtest.FailPoint{
+				ConfigureFailPoint: "failCommand",
+				Mode: mtest.FailPointMode{
+					Times: 2,
+				},
+				Data: mtest.FailPointData{
+					FailCommands:    []string{"aggregate"},
+					CloseConnection: true,
+				},
+			})
+
+			_, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
+			assert.NotNil(mt, err, "expected Watch error, got nil")
+
+			var numClearedEvents int
+			for len(poolChan) > 0 {
+				curr := <-poolChan
+				if curr.Type == event.PoolCleared {
+					numClearedEvents++
+				}
+			}
+			assert.Equal(mt, 2, numClearedEvents, "expected two PoolCleared events, got %d", numClearedEvents)
+		})
+	})
+	// Setting min server version as 4.0 since v3.6 does not send a "dropEvent"
+	mt.RunOpts("call to cursor.Next after cursor closed", mtest.NewOptions().MinServerVersion("4.0"), func(mt *mtest.T) {
+		cs, err := mt.Coll.Watch(mtest.Background, mongo.Pipeline{})
+		assert.Nil(mt, err, "Watch error: %v", err)
+		defer closeStream(cs)
+
+		// Generate insert events
+		generateEvents(mt, 5)
+		// Call Coll.Drop to generate drop and invalidate event
+		err = mt.Coll.Drop(mtest.Background)
+		assert.Nil(mt, err, "Drop error: %v", err)
+
+		// Test that all events were successful
+		for i := 0; i < 7; i++ {
+			assert.True(mt, cs.Next(mtest.Background), "Next returned false at index %d; iteration error: %v", i, cs.Err())
+		}
+
+		operationType := cs.Current.Lookup("operationType").StringValue()
+		assert.Equal(mt, operationType, "invalidate", "expected invalidate event but returned %q event", operationType)
+		// next call to cs.Next should return False since cursor is closed
+		assert.False(mt, cs.Next(mtest.Background), "expected to return false, but returned true")
 	})
 }
 
