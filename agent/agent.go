@@ -394,7 +394,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	var taskConfig *internal.TaskConfig
 	taskConfig, err = a.makeTaskConfig(ctx, tc)
 	if err != nil {
-		grip.Errorf("Error fetching task configuration: %s", err)
+		grip.Errorf("error fetching task configuration: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, "")
@@ -403,7 +403,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {
-		msg := errors.Wrap(err, "Error setting up logger producer").Error()
+		msg := errors.Wrap(err, "error setting up logger producer").Error()
 		grip.Error(msg)
 		grip.Infof("task complete: %s", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
