@@ -51,9 +51,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	cedarTestStats := checkCedarTestStats(settings)
-	allowCORS := gimlet.WrapperMiddleware(allowCORS)
 
-	app.AddMiddleware(allowCORS)
+	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
