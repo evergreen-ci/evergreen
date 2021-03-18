@@ -699,6 +699,7 @@ type ComplexityRoot struct {
 		ExitCode   func(childComplexity int) int
 		GroupId    func(childComplexity int) int
 		Id         func(childComplexity int) int
+		LineNum    func(childComplexity int) int
 		Logs       func(childComplexity int) int
 		StartTime  func(childComplexity int) int
 		Status     func(childComplexity int) int
@@ -4264,6 +4265,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.Id(childComplexity), true
 
+	case "TestResult.lineNum":
+		if e.complexity.TestResult.LineNum == nil {
+			break
+		}
+
+		return e.complexity.TestResult.LineNum(childComplexity), true
+
 	case "TestResult.logs":
 		if e.complexity.TestResult.Logs == nil {
 			break
@@ -5249,6 +5257,7 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
+  lineNum: Int
 }
 
 type TestLog {
@@ -21822,6 +21831,37 @@ func (ec *executionContext) _TestResult_execution(ctx context.Context, field gra
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LineNum, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TicketFields_summary(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28927,6 +28967,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._TestResult_execution(ctx, field, obj)
+		case "lineNum":
+			out.Values[i] = ec._TestResult_lineNum(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
