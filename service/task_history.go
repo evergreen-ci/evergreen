@@ -281,7 +281,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, nil,
 		project.Identifier)
 
-	results, err := taskHistoryIterator.GetDistinctTestNames(uis.env, NumTasksToSearchForTestNames)
+	results, err := taskHistoryIterator.GetDistinctTestNames(uis.env, r.Context(), NumTasksToSearchForTestNames)
 	testNamesQueryDuration := time.Now().Sub(stepTime)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)

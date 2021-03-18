@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -179,7 +180,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(env evergreen.Environment, numCommits int) ([]string, error)
+	GetDistinctTestNames(env evergreen.Environment, ctx context.Context, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -353,9 +354,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment, numCommits int) ([]string, error) {
-	ctx, cancel := env.Context()
-	defer cancel()
+func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment, ctx context.Context, numCommits int) ([]string, error) {
 	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Minute)
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
