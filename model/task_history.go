@@ -19,6 +19,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 const (
@@ -355,9 +356,8 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment, numCommits int) ([]string, error) {
 	ctx, cancel := env.Context()
 	defer cancel()
-	opts := options.Aggregate().SetMaxTime(time.Minute)
-	fmt.Println("Using new changes")
-	pipeline, err := env.DB().Collection(task.Collection).Aggregate(ctx,
+	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Minute)
+	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
 			{
 				"$match": bson.M{
@@ -394,20 +394,32 @@ func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment,
 		opts,
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting pipeline")
+		return nil, errors.Wrapf(err, "error getting cursor")
 	}
-	if pipeline == nil {
-		return nil, errors.New("nil pipeline returned")
-	}
-
-	var output []bson.M
-	if err = pipeline.All(ctx, &output); err != nil {
-		return nil, errors.WithStack(err)
+	if cursor == nil {
+		return nil, errors.New("nil cursor returned")
 	}
 
-	names := make([]string, 0)
-	for _, doc := range output {
-		names = append(names, doc["_id"].(string))
+	names := []string{}
+	for cursor.Next(ctx) {
+		select {
+		case <-ctx.Done():
+			_ = cursor.Close(ctx)
+			return nil, errors.New("context cancelled")
+		default:
+			// The cursor API expects us to _copy_ the current data if we intend to use
+			// it past the current call to Next(), which we definitely will.
+			nextDoc := make(bsoncore.Document, len(cursor.Current))
+			copy(nextDoc, cursor.Current)
+
+			// remove quotes from value
+			val := strings.ReplaceAll(nextDoc.Lookup("_id").String(), "\"", "")
+			names = append(names, val)
+		}
+	}
+	_ = cursor.Close(ctx)
+	if err := cursor.Err(); err != nil {
+		return nil, errors.Wrap(err, "error reading cursor")
 	}
 
 	return names, nil
