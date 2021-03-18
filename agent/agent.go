@@ -227,7 +227,7 @@ LOOP:
 				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
 				if prevLogger != nil {
-					grip.Error(prevLogger.Close())
+					grip.Alert(errors.Wrap(prevLogger.Close(), "problem closing the logger producer"))
 				}
 
 				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
@@ -350,8 +350,9 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
+
 	if tc.logger != nil {
-		grip.Error(tc.logger.Close())
+		grip.Alert(errors.Wrap(tr.logger.Close(), "problem closing the logger producer"))
 	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
@@ -360,6 +361,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
 	}
 	if err != nil {
+		grip.Alert(errors.Wrap(err, "problem making the logger producer"))
 		return err
 	}
 
