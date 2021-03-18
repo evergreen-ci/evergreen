@@ -155,7 +155,7 @@ func makeSingleManager(kind string, settings *evergreen.Settings, config evergre
 		if config.Naive != nil {
 			return makeNaiveManager(config.Naive)
 		}
-	case evergreen.AuthServiceUsersKey:
+	case evergreen.AuthAllowServiceUsersKey:
 		return makeOnlyAPIManager()
 	default:
 		return nil, evergreen.UserManagerInfo{}, errors.Errorf("unrecognized user manager of type '%s'", kind)

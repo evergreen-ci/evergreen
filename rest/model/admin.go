@@ -334,18 +334,19 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name                                  *string `json:"name"`
-	SingleName                            *string `json:"single_name"`
-	DB                                    *string `json:"database"`
-	PoolSizeLocal                         int     `json:"pool_size_local"`
-	PoolSizeRemote                        int     `json:"pool_size_remote"`
-	LocalStorage                          int     `json:"local_storage_size"`
-	GroupDefaultWorkers                   int     `json:"group_default_workers"`
-	GroupBackgroundCreateFrequencyMinutes int     `json:"group_background_create_frequency"`
-	GroupPruneFrequencyMinutes            int     `json:"group_prune_frequency"`
-	GroupTTLMinutes                       int     `json:"group_ttl"`
-	RequireRemotePriority                 bool    `json:"require_remote_priority"`
-	LockTimeoutMinutes                    int     `json:"lock_timeout_minutes"`
+	Name                                  *string             `json:"name"`
+	SingleName                            *string             `json:"single_name"`
+	DB                                    *string             `json:"database"`
+	PoolSizeLocal                         int                 `json:"pool_size_local"`
+	PoolSizeRemote                        int                 `json:"pool_size_remote"`
+	LocalStorage                          int                 `json:"local_storage_size"`
+	GroupDefaultWorkers                   int                 `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int                 `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int                 `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int                 `json:"group_ttl"`
+	RequireRemotePriority                 bool                `json:"require_remote_priority"`
+	LockTimeoutMinutes                    int                 `json:"lock_timeout_minutes"`
+	Retry                                 APIAmboyRetryConfig `json:"retry,omitempty"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -363,6 +364,9 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupTTLMinutes = v.GroupTTLMinutes
 		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
+		if err := a.Retry.BuildFromService(v.Retry); err != nil {
+			return errors.Wrap(err, "building Amboy retry settings from service")
+		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -370,6 +374,14 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
+	i, err := a.Retry.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting Amboy retry settings to service")
+	}
+	retry, ok := i.(evergreen.AmboyRetryConfig)
+	if !ok {
+		return nil, errors.Errorf("expecting AmboyRetryConfig but got %T", i)
+	}
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
@@ -383,6 +395,39 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
+		Retry:                                 retry,
+	}, nil
+}
+
+type APIAmboyRetryConfig struct {
+	NumWorkers          int `json:"num_workers,omitempty"`
+	MaxCapacity         int `json:"max_capacity,omitempty"`
+	MaxRetryAttempts    int `json:"max_retry_attempts,omitempty"`
+	MaxRetryTimeSeconds int `json:"max_retry_time_seconds,omitempty"`
+	RetryBackoffSeconds int `json:"retry_backoff_seconds,omitempty"`
+}
+
+func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.AmboyRetryConfig:
+		a.NumWorkers = v.NumWorkers
+		a.MaxCapacity = v.MaxCapacity
+		a.MaxRetryAttempts = v.MaxRetryAttempts
+		a.MaxRetryTimeSeconds = v.MaxRetryTimeSeconds
+		a.RetryBackoffSeconds = v.RetryBackoffSeconds
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
+	return evergreen.AmboyRetryConfig{
+		NumWorkers:          a.NumWorkers,
+		MaxCapacity:         a.MaxCapacity,
+		MaxRetryAttempts:    a.MaxRetryAttempts,
+		MaxRetryTimeSeconds: a.MaxRetryTimeSeconds,
+		RetryBackoffSeconds: a.RetryBackoffSeconds,
 	}, nil
 }
 

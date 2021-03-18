@@ -114,6 +114,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settings.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Amboy.LockTimeoutMinutes, settings.Amboy.LockTimeoutMinutes)
 	s.EqualValues(testSettings.Amboy.RequireRemotePriority, settings.Amboy.RequireRemotePriority)
+	s.EqualValues(testSettings.Amboy.Retry, settings.Amboy.Retry)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settings.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)

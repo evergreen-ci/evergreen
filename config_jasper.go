@@ -1,10 +1,19 @@
 package evergreen
 
 import (
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+var (
+	hostJasperBinaryNameKey       = bsonutil.MustHaveTag(HostJasperConfig{}, "BinaryName")
+	hostJasperDownloadFileNameKey = bsonutil.MustHaveTag(HostJasperConfig{}, "DownloadFileName")
+	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
+	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
+	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
 )
 
 // HostJasperConfig represents the configuration of the Jasper service running

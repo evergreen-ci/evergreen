@@ -100,6 +100,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Amboy.LockTimeoutMinutes, apiSettings.Amboy.LockTimeoutMinutes)
 	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, apiSettings.Amboy.RequireRemotePriority)
+	assert.EqualValues(testSettings.Amboy.Retry, apiSettings.Amboy.Retry)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, utility.FromStringPtr(apiSettings.AuthConfig.LDAP.URL))
