@@ -352,7 +352,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
 
 	if tc.logger != nil {
-		grip.Alert(errors.Wrap(tr.logger.Close(), "problem closing the logger producer"))
+		grip.Alert(errors.Wrap(tc.logger.Close(), "problem closing the logger producer"))
 	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
