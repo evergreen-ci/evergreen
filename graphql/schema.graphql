@@ -592,6 +592,7 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
+  lineNum: Int
 }
 
 type TestLog {

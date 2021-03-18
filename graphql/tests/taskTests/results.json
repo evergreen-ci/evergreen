@@ -54,6 +54,20 @@
           }
         }
       }
+    },
+    {
+      "query_file": "lineNum.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "lineNum": 22
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

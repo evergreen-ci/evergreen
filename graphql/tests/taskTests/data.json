@@ -10,6 +10,7 @@
       "start": 1582298156,
       "end": 1582298156.01,
       "task_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "line_num": 19,
       "task_execution": 0,
       "branch": "evergreen",
       "build_variant": "ubuntu1604",
