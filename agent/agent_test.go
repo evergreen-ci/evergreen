@@ -214,7 +214,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
 }
@@ -224,7 +224,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	defer cancel()
 
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, "")
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -398,24 +398,28 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.tc.setCurrentCommand(factory())
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
+	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
+	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
+	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(true, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
+	s.Equal("message", detail.Message)
 
 	s.tc.setTimedOut(false, idleTimeout)
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, "message")
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
+	s.Equal("message", detail.Message)
 }
 
 func (s *AgentSuite) TestAbort() {
