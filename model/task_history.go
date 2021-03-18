@@ -354,7 +354,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 }
 
 func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error) {
-	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Minute)
+	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Second * 90)
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
 			{
@@ -397,12 +397,12 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env e
 	if cursor == nil {
 		return nil, errors.New("nil cursor returned")
 	}
+	defer cursor.Close(ctx)
 
 	names := []string{}
 	for cursor.Next(ctx) {
 		select {
 		case <-ctx.Done():
-			_ = cursor.Close(ctx)
 			return nil, errors.New("context cancelled")
 		default:
 			res := bson.M{}
@@ -414,11 +414,10 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env e
 			names = append(names, val)
 		}
 	}
-	_ = cursor.Close(ctx)
 	if err := cursor.Err(); err != nil {
 		return nil, errors.Wrap(err, "error reading cursor")
 	}
-
+	sort.Strings(names)
 	return names, nil
 }
 
