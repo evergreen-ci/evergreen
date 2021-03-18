@@ -20,7 +20,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 const (
@@ -180,7 +179,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(env evergreen.Environment, ctx context.Context, numCommits int) ([]string, error)
+	GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -354,7 +353,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment, ctx context.Context, numCommits int) ([]string, error) {
+func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error) {
 	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Minute)
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
@@ -406,13 +405,12 @@ func (self *taskHistoryIterator) GetDistinctTestNames(env evergreen.Environment,
 			_ = cursor.Close(ctx)
 			return nil, errors.New("context cancelled")
 		default:
-			// The cursor API expects us to _copy_ the current data if we intend to use
-			// it past the current call to Next(), which we definitely will.
-			nextDoc := make(bsoncore.Document, len(cursor.Current))
-			copy(nextDoc, cursor.Current)
-
+			res := bson.M{}
+			if err := cursor.Decode(&res); err != nil {
+				return nil, errors.Wrapf(err, "error decoding result")
+			}
 			// remove quotes from value
-			val := strings.ReplaceAll(nextDoc.Lookup("_id").String(), "\"", "")
+			val := strings.ReplaceAll(res["_id"].(string), "\"", "")
 			names = append(names, val)
 		}
 	}
