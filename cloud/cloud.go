@@ -108,12 +108,6 @@ type ContainerManager interface {
 	GetContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error
 }
 
-// CostCalculator is an interface for cloud providers that can estimate what a span of time on a
-// given host costs.
-type CostCalculator interface {
-	CostForDuration(context.Context, *host.Host, time.Time, time.Time) (float64, error)
-}
-
 // BatchManager is an interface for cloud providers that support batch operations.
 type BatchManager interface {
 	// GetInstanceStatuses gets the status of a slice of instances.

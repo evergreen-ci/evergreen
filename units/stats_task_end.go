@@ -24,10 +24,6 @@ func init() {
 		func() amboy.Job { return newTaskEndJob() })
 }
 
-// collectTaskEndData determines a task's cost based on the host it ran on. Hosts that
-// are unable to calculate their own costs will not set a task's Cost field. Errors
-// are logged but not returned, since any number of API failures could happen and
-// we shouldn't sacrifice a task's status for them.
 type collectTaskEndDataJob struct {
 	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
 	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
@@ -53,12 +49,9 @@ func newTaskEndJob() *collectTaskEndDataJob {
 	return j
 }
 
-// NewCollectTaskEndDataJob determines a task's cost based on the host it ran on. Hosts that
-// are unable to calculate their own costs will not set a task's Cost field. Errors
-// are logged but not returned, since any number of API failures could happen and
-// we shouldn't sacrifice a task's status for them.
-//
-// It also logs historic task timing information.
+// NewCollectTaskEndDataJob logs information a task after it
+// completes. It also logs information about the total runtime and instance
+// type, which can be used to measure the cost of running a task.
 func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
@@ -111,9 +104,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	cost, err := j.recordTaskCost(ctx)
-	j.AddError(err)
-
 	msg := message.Fields{
 		"abort":                j.task.Aborted,
 		"activated_by":         j.task.ActivatedBy,
@@ -141,10 +131,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if cost != 0 {
-		msg["cost"] = cost
-	}
-
 	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
 		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
 		if ok {
@@ -164,34 +150,4 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["average_runtime_secs"] = historicRuntime.Seconds()
 		grip.Info(msg)
 	}
-}
-
-func (j *collectTaskEndDataJob) recordTaskCost(ctx context.Context) (float64, error) {
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
-	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		return 0, errors.Wrapf(err, "Error loading provider for host %s cost calculation", j.host.Id)
-	}
-
-	calc, ok := manager.(cloud.CostCalculator)
-	if !ok {
-		// return early if we can't get the cost
-		return 0, nil
-	}
-	cost, err := calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't get cost for duration")
-	}
-
-	if err = j.task.SetCost(cost); err != nil {
-		return cost, errors.Wrapf(err, "can't set cost for task '%s'", j.task.Id)
-	}
-	if err = j.host.IncCost(cost); err != nil {
-		return cost, errors.Wrapf(err, "can't increment cost for host '%s'", j.host.Id)
-	}
-
-	return cost, nil
 }

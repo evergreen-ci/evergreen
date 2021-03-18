@@ -187,19 +187,6 @@ func (tc *DBTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int,
 	return code, errors.WithStack(err)
 }
 
-// FindCostTaskByProject queries the backing database for tasks of a project
-// that finishes in the given time range.
-func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, starttime,
-	endtime time.Time, limit, sortDir int) ([]task.Task, error) {
-	tasks, err := task.FindCostTaskByProject(project, taskId, starttime,
-		endtime, limit, sortDir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching tasks starting at id %s",
-			taskId)
-	}
-	return tasks, nil
-}
-
 // GetManifestByTask finds the manifest corresponding to the given task.
 func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {
 	t, err := task.FindOneId(taskId)
@@ -373,35 +360,6 @@ func (mtc *MockTaskConnector) ResetTask(taskId, username string) error {
 		}
 	}
 	return mtc.StoredError
-}
-
-func (mtc *MockTaskConnector) FindCostTaskByProject(project, taskId string,
-	starttime, endtime time.Time, limit, sortDir int) ([]task.Task, error) {
-	tasks := []task.Task{}
-
-	if sortDir > 0 {
-		for _, t := range mtc.CachedTasks {
-			if t.Project == project && (t.FinishTime.Sub(starttime) >= 0) &&
-				(endtime.Sub(t.FinishTime) >= 0) && t.Id >= taskId {
-				tasks = append(tasks, t)
-				if len(tasks) == limit {
-					break
-				}
-			}
-		}
-	} else {
-		for i := len(mtc.CachedTasks) - 1; i >= 0; i-- {
-			t := mtc.CachedTasks[i]
-			if t.Project == project && (t.FinishTime.Sub(starttime) >= 0) &&
-				(endtime.Sub(t.FinishTime) >= 0) && t.Id < taskId {
-				tasks = append(tasks, t)
-				if len(tasks) == limit {
-					break
-				}
-			}
-		}
-	}
-	return tasks, nil
 }
 
 func (tc *MockTaskConnector) AbortTask(taskId, user string) error {

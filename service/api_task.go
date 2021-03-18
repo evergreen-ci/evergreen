@@ -255,7 +255,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
+			errors.Wrap(err, "couldn't queue job to update task stats accounting"))
 		return
 	}
 
