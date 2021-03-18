@@ -33,7 +33,7 @@ type CommitQueueItem struct {
 	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
 	Version             string    `bson:"version,omitempty"`
 	EnqueueTime         time.Time `bson:"enqueue_time"`
-	ProcessingStartTime time.Time `bson:"process_start_time"`
+	ProcessingStartTime time.Time `bson:"processing_start_time"`
 	Modules             []Module  `bson:"modules"`
 	MessageOverride     string    `bson:"message_override"`
 	Source              string    `bson:"source"`
