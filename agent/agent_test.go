@@ -63,7 +63,7 @@ func (s *AgentSuite) SetupTest() {
 			Task:    &task.Task{},
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -583,7 +583,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.taskDirectory = "task_directory"
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.True(tc.runGroupSetup, "if the next task is not in a group, runGroupSetup should be true")
+	s.False(tc.ranSetupGroup, "if the next task is not in a group, ranSetupGroup should be false")
 	s.Equal("", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 
@@ -598,8 +598,21 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	s.NoError(err)
 	tc.taskDirectory = "task_directory"
+	tc.ranSetupGroup = false
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(tc.runGroupSetup, "if the next task is in the same group as the previous task, runGroupSetup should be false")
+	s.False(tc.ranSetupGroup, "if the next task is in the same group as the previous task but ranSetupGroup was false, ranSetupGroup should be false")
+	s.Equal("foo", tc.taskGroup)
+	s.Equal("", tc.taskDirectory)
+
+	tc.taskConfig = &internal.TaskConfig{
+		Task: &task.Task{
+			Version: "version_name",
+		},
+	}
+	tc.ranSetupGroup = true
+	tc.taskDirectory = "task_directory"
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	s.True(tc.ranSetupGroup, "if the next task is in the same group as the previous task and we already ran the setup group, ranSetupGroup should be true")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
 
@@ -618,7 +631,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.taskDirectory = "task_directory"
 	tc.taskModel = &task.Task{}
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.True(tc.runGroupSetup, "if the next task in the same version but a different build, runSetupGroup should be true")
+	s.False(tc.ranSetupGroup, "if the next task in the same version but a different build, ranSetupGroup should be false")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 }
@@ -705,7 +718,7 @@ task_groups:
 
 func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
 	s.tc.taskGroup = "task_group_name"
-	s.tc.runGroupSetup = true
+	s.tc.ranSetupGroup = false
 	projYml := `
 task_groups:
 - name: task_group_name
