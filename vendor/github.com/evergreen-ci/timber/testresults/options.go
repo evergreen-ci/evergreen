@@ -68,14 +68,15 @@ func (r Results) export() (*gopb.TestResults, error) {
 
 // Result represents a single test result.
 type Result struct {
-	TestName    string    `bson:"test_name" json:"test_name" yaml:"test_name"`
-	GroupID     string    `bson:"group_id" json:"group_id" yaml:"group_id"`
-	Trial       int32     `bson:"trial" json:"trial" yaml:"trial"`
-	Status      string    `bson:"status" json:"status" yaml:"status"`
-	LineNum     int32     `bson:"line_num" json:"line_num" yaml:"line_num"`
-	TaskCreated time.Time `bson:"task_created" json:"task_created" yaml:"task_created"`
-	TestStarted time.Time `bson:"test_started" json:"test_started" yaml:"test_started"`
-	TestEnded   time.Time `bson:"test_ended" json:"test_ended" yaml:"test_ended"`
+	TestName        string    `bson:"test_name" json:"test_name" yaml:"test_name"`
+	DisplayTestName string    `bson:"display_test_name" json:"display_test_name" yaml:"display_test_name"`
+	GroupID         string    `bson:"group_id" json:"group_id" yaml:"group_id"`
+	Trial           int32     `bson:"trial" json:"trial" yaml:"trial"`
+	Status          string    `bson:"status" json:"status" yaml:"status"`
+	LineNum         int32     `bson:"line_num" json:"line_num" yaml:"line_num"`
+	TaskCreated     time.Time `bson:"task_created" json:"task_created" yaml:"task_created"`
+	TestStarted     time.Time `bson:"test_started" json:"test_started" yaml:"test_started"`
+	TestEnded       time.Time `bson:"test_ended" json:"test_ended" yaml:"test_ended"`
 }
 
 // export converts a Result into the equivalent protobuf TestResult.
@@ -93,13 +94,14 @@ func (r Result) export() (*gopb.TestResult, error) {
 		return nil, errors.Wrap(err, "converting end timestamp")
 	}
 	return &gopb.TestResult{
-		TestName:       r.TestName,
-		GroupId:        r.GroupID,
-		Trial:          r.Trial,
-		Status:         r.Status,
-		LineNum:        r.LineNum,
-		TaskCreateTime: created,
-		TestStartTime:  started,
-		TestEndTime:    ended,
+		TestName:        r.TestName,
+		DisplayTestName: r.DisplayTestName,
+		GroupId:         r.GroupID,
+		Trial:           r.Trial,
+		Status:          r.Status,
+		LineNum:         r.LineNum,
+		TaskCreateTime:  created,
+		TestStartTime:   started,
+		TestEndTime:     ended,
 	}, nil
 }
