@@ -75,7 +75,7 @@ type shellExec struct {
 	// Debug is a temporary and deliberately undocumented feature added in EVG-8017
 	// and should be removed. It writes a file called debug_shell_exec.<id>.yml that
 	// contains the contents of the command and its expansions.
-	Debug bool `map:"debug"`
+	Debug bool `mapstructure:"debug"`
 
 	base
 }
