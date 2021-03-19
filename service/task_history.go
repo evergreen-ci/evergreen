@@ -283,16 +283,17 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 
 	results, err := taskHistoryIterator.GetDistinctTestNames(NumTasksToSearchForTestNames)
 	testNamesQueryDuration := time.Now().Sub(stepTime)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	grip.Debug(message.Fields{
+	msg := message.Fields{
 		"message":               "got test names",
 		"test_names_query_secs": testNamesQueryDuration.Seconds(),
 		"num_test_names":        len(results),
-	})
+	}
+	if err != nil {
+		grip.Debug(message.WrapError(err, msg))
+		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	grip.Debug(msg)
 	gimlet.WriteJSON(w, results)
 }
 
