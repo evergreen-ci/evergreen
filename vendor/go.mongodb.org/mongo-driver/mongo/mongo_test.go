@@ -116,7 +116,7 @@ func TestMongoHelpers(t *testing.T) {
 			got, id, err := transformAndEnsureID(bson.DefaultRegistry, doc)
 			assert.Nil(t, err, "transformAndEnsureID error: %v", err)
 			_, ok := id.(string)
-			assert.True(t, ok, "expected returned id type %T, got %T", string(0), id)
+			assert.True(t, ok, "expected returned id type string, got %T", id)
 			assert.Equal(t, got, want, "expected document %v, got %v", got, want)
 		})
 	})
@@ -271,6 +271,38 @@ func TestMongoHelpers(t *testing.T) {
 				arr, err := transformAggregatePipeline(bson.NewRegistryBuilder().Build(), tc.pipeline)
 				assert.Equal(t, tc.err, err, "expected error %v, got %v", tc.err, err)
 				assert.Equal(t, tc.arr, arr, "expected array %v, got %v", tc.arr, arr)
+			})
+		}
+	})
+	t.Run("transform value", func(t *testing.T) {
+		valueMarshaler := bvMarsh{
+			t:    bsontype.String,
+			data: bsoncore.AppendString(nil, "foo"),
+		}
+		doc := bson.D{{"x", 1}}
+		docBytes, _ := bson.Marshal(doc)
+
+		testCases := []struct {
+			name      string
+			value     interface{}
+			err       error
+			bsonType  bsontype.Type
+			bsonValue []byte
+		}{
+			{"nil document", nil, ErrNilValue, 0, nil},
+			{"value marshaler", valueMarshaler, nil, valueMarshaler.t, valueMarshaler.data},
+			{"document", doc, nil, bsontype.EmbeddedDocument, docBytes},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				res, err := transformValue(nil, tc.value, true, "")
+				if tc.err != nil {
+					assert.Equal(t, tc.err, err, "expected error %v, got %v", tc.err, err)
+					return
+				}
+
+				assert.Equal(t, tc.bsonType, res.Type, "expected BSON type %s, got %s", tc.bsonType, res.Type)
+				assert.Equal(t, tc.bsonValue, res.Data, "expected BSON data %v, got %v", tc.bsonValue, res.Data)
 			})
 		}
 	})

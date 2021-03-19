@@ -104,6 +104,7 @@ func TestResourcePool(t *testing.T) {
 			got := rp.Get()
 			assert.Nil(t, got, "expected nil, got %v", got)
 			assert.Equal(t, uint64(0), rp.size, "expected size 0, got %d", rp.size)
+			assert.Equal(t, uint64(0), rp.totalSize, "expected totalSize 0, got %v", rp.totalSize)
 
 			expiredCalled := ec.getExpiredCalled()
 			assert.Equal(t, int32(1), expiredCalled, "expected expire to be called 1 time, got %v", expiredCalled)
@@ -117,9 +118,11 @@ func TestResourcePool(t *testing.T) {
 				got := rp.Get()
 				assert.NotNil(t, got, "expected resource, got nil")
 				assert.Equal(t, uint64(0), rp.size, "expected size 0, got %v", rp.size)
+				assert.Equal(t, uint64(1), rp.totalSize, "expected totalSize 1, got %v", rp.totalSize)
 
 				rp.Put(got)
 				assert.Equal(t, uint64(1), rp.size, "expected size 1, got %v", rp.size)
+				assert.Equal(t, uint64(1), rp.totalSize, "expected totalSize 1, got %v", rp.totalSize)
 			}
 		})
 	})
@@ -145,11 +148,13 @@ func TestResourcePool(t *testing.T) {
 			rp := initPool(t, 0, ec.expired, ec.close, initRsrc, time.Minute)
 			for i := 0; i < 5; i++ {
 				ret := &rsrc{}
+				assert.True(t, rp.incrementTotal(), "unexpected incrementTotal failure")
 				_ = rp.Put(ret)
 			}
 
 			rp.Maintain()
 			assert.Equal(t, uint64(2), rp.size, "expected size 2, got %v", rp.size)
+			assert.Equal(t, uint64(2), rp.totalSize, "expected totalSize 2, got %v", rp.totalSize)
 
 			expiredCalled := ec.getExpiredCalled()
 			assert.Equal(t, int32(7), expiredCalled, "expected expire to be called 7 times, got %v", expiredCalled)
@@ -182,6 +187,11 @@ func TestResourcePool(t *testing.T) {
 			assert.Equal(t, int32(5), expiredCalled, "expected expire to be called 5 times, got %v", expiredCalled)
 			closeCalled := ec.getCloseCalled()
 			assert.Equal(t, int32(3), closeCalled, "expected close to be called 3 times, got %v", closeCalled)
+			// rp.maintainTimer should be reset after Maintain runs. Stop() returns true if the
+			// timer was set, ensuring that it was correctly reset.
+			rp.Lock()
+			assert.True(t, rp.maintainTimer.Stop(), "expected timer to be reset")
+			rp.Unlock()
 		})
 	})
 }

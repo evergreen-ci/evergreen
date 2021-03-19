@@ -17,9 +17,9 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
 
@@ -62,16 +62,13 @@ func runSeedlistDiscoveryTest(mt *mtest.T, file string) {
 		mt.Skip("skipping to avoid go1.11 problem with multiple strings in one TXT record")
 	}
 
-	cs, err := connstring.Parse(test.URI)
+	cs, err := connstring.ParseAndValidate(test.URI)
 	if test.Error {
 		assert.NotNil(mt, err, "expected URI parsing error, got nil")
 		return
 	}
-	// the resolved connstring may not have valid credentials
-	if err != nil && err.Error() == "error parsing uri: authsource without username is invalid" {
-		err = nil
-	}
-	assert.Nil(mt, err, "Connect error: %v", err)
+
+	assert.Nil(mt, err, "ParseAndValidate error: %v", err)
 	assert.Equal(mt, connstring.SchemeMongoDBSRV, cs.Scheme,
 		"expected scheme %v, got %v", connstring.SchemeMongoDBSRV, cs.Scheme)
 
@@ -121,6 +118,10 @@ func verifyConnstringOptions(mt *mtest.T, expected bson.Raw, cs connstring.ConnS
 		case "authSource":
 			source := opt.StringValue()
 			assert.Equal(mt, source, cs.AuthSource, "expected auth source value %v, got %v", source, cs.AuthSource)
+		case "directConnection":
+			dc := opt.Boolean()
+			assert.True(mt, cs.DirectConnectionSet, "expected cs.DirectConnectionSet to be true, got false")
+			assert.Equal(mt, dc, cs.DirectConnection, "expected cs.DirectConnection to be %v, got %v", dc, cs.DirectConnection)
 		default:
 			mt.Fatalf("unrecognized connstring option %v", key)
 		}

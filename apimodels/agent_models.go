@@ -38,6 +38,7 @@ type HeartbeatResponse struct {
 // API server after each task run.
 type TaskEndDetail struct {
 	Status          string          `bson:"status,omitempty" json:"status,omitempty"`
+	Message         string          `bson:"message,omitempty" json:"message,omitempty"`
 	Type            string          `bson:"type,omitempty" json:"type,omitempty"`
 	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`

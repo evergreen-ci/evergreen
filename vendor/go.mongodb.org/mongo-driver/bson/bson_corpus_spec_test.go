@@ -23,7 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/pretty"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
-	"go.mongodb.org/mongo-driver/bson/bsonrw"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 )
 
 type testCase struct {
@@ -58,7 +59,7 @@ type parseErrorTestCase struct {
 	String      string `json:"string"`
 }
 
-const dataDir = "../data"
+const dataDir = "../data/bson-corpus/"
 
 var dvd bsoncodec.DefaultValueDecoders
 var dve bsoncodec.DefaultValueEncoders
@@ -233,118 +234,141 @@ func runTest(t *testing.T, file string) {
 		var test testCase
 		require.NoError(t, json.Unmarshal(content, &test))
 
-		for _, v := range test.Valid {
-			// get canonical BSON
-			cB, err := hex.DecodeString(v.CanonicalBson)
-			expectNoError(t, err, fmt.Sprintf("%s: reading canonical BSON", v.Description))
+		t.Run("valid", func(t *testing.T) {
+			for _, v := range test.Valid {
+				t.Run(v.Description, func(t *testing.T) {
+					// get canonical BSON
+					cB, err := hex.DecodeString(v.CanonicalBson)
+					expectNoError(t, err, fmt.Sprintf("%s: reading canonical BSON", v.Description))
 
-			// get canonical extended JSON
-			cEJ := unescapeUnicode(string(pretty.Ugly([]byte(v.CanonicalExtJSON))), test.BsonType)
-			if test.BsonType == "0x01" {
-				cEJ = normalizeCanonicalDouble(t, *test.TestKey, cEJ)
+					// get canonical extended JSON
+					cEJ := unescapeUnicode(string(pretty.Ugly([]byte(v.CanonicalExtJSON))), test.BsonType)
+					if test.BsonType == "0x01" {
+						cEJ = normalizeCanonicalDouble(t, *test.TestKey, cEJ)
+					}
+
+					/*** canonical BSON round-trip tests ***/
+					doc := bsonToNative(t, cB, "canonical", v.Description)
+
+					// native_to_bson(bson_to_native(cB)) = cB
+					nativeToBSON(t, cB, doc, v.Description, "canonical", "bson_to_native(cB)")
+
+					// native_to_canonical_extended_json(bson_to_native(cB)) = cEJ
+					nativeToJSON(t, cEJ, doc, v.Description, "canonical", "cEJ", "bson_to_native(cB)")
+
+					// native_to_relaxed_extended_json(bson_to_native(cB)) = rEJ (if rEJ exists)
+					if v.RelaxedExtJSON != nil {
+						rEJ := unescapeUnicode(string(pretty.Ugly([]byte(*v.RelaxedExtJSON))), test.BsonType)
+						if test.BsonType == "0x01" {
+							rEJ = normalizeRelaxedDouble(t, *test.TestKey, rEJ)
+						}
+
+						nativeToJSON(t, rEJ, doc, v.Description, "relaxed", "rEJ", "bson_to_native(cB)")
+
+						/*** relaxed extended JSON round-trip tests (if exists) ***/
+						doc = jsonToNative(t, rEJ, "relaxed", v.Description)
+
+						// native_to_relaxed_extended_json(json_to_native(rEJ)) = rEJ
+						nativeToJSON(t, rEJ, doc, v.Description, "relaxed", "eJR", "json_to_native(rEJ)")
+					}
+
+					/*** canonical extended JSON round-trip tests ***/
+					doc = jsonToNative(t, cEJ, "canonical", v.Description)
+
+					// native_to_canonical_extended_json(json_to_native(cEJ)) = cEJ
+					nativeToJSON(t, cEJ, doc, v.Description, "canonical", "cEJ", "json_to_native(cEJ)")
+
+					// native_to_bson(json_to_native(cEJ)) = cb (unless lossy)
+					if v.Lossy == nil || !*v.Lossy {
+						nativeToBSON(t, cB, doc, v.Description, "canonical", "json_to_native(cEJ)")
+					}
+
+					/*** degenerate BSON round-trip tests (if exists) ***/
+					if v.DegenerateBSON != nil {
+						dB, err := hex.DecodeString(*v.DegenerateBSON)
+						expectNoError(t, err, fmt.Sprintf("%s: reading degenerate BSON", v.Description))
+
+						doc = bsonToNative(t, dB, "degenerate", v.Description)
+
+						// native_to_bson(bson_to_native(dB)) = cB
+						nativeToBSON(t, cB, doc, v.Description, "degenerate", "bson_to_native(dB)")
+					}
+
+					/*** degenerate JSON round-trip tests (if exists) ***/
+					if v.DegenerateExtJSON != nil {
+						dEJ := unescapeUnicode(string(pretty.Ugly([]byte(*v.DegenerateExtJSON))), test.BsonType)
+						if test.BsonType == "0x01" {
+							dEJ = normalizeCanonicalDouble(t, *test.TestKey, dEJ)
+						}
+
+						doc = jsonToNative(t, dEJ, "degenerate canonical", v.Description)
+
+						// native_to_canonical_extended_json(json_to_native(dEJ)) = cEJ
+						nativeToJSON(t, cEJ, doc, v.Description, "degenerate canonical", "cEJ", "json_to_native(dEJ)")
+
+						// native_to_bson(json_to_native(dEJ)) = cB (unless lossy)
+						if v.Lossy == nil || !*v.Lossy {
+							nativeToBSON(t, cB, doc, v.Description, "canonical", "json_to_native(dEJ)")
+						}
+					}
+				})
 			}
+		})
 
-			/*** canonical BSON round-trip tests ***/
-			doc := bsonToNative(t, cB, "canonical", v.Description)
+		t.Run("decode error", func(t *testing.T) {
+			for _, d := range test.DecodeErrors {
+				t.Run(d.Description, func(t *testing.T) {
+					b, err := hex.DecodeString(d.Bson)
+					expectNoError(t, err, d.Description)
 
-			// native_to_bson(bson_to_native(cB)) = cB
-			nativeToBSON(t, cB, doc, v.Description, "canonical", "bson_to_native(cB)")
+					var doc D
+					err = Unmarshal(b, &doc)
 
-			// native_to_canonical_extended_json(bson_to_native(cB)) = cEJ
-			nativeToJSON(t, cEJ, doc, v.Description, "canonical", "cEJ", "bson_to_native(cB)")
+					// The driver unmarshals invalid UTF-8 strings without error. Loop over the unmarshalled elements
+					// and assert that there was no error if any of the string or DBPointer values contain invalid UTF-8
+					// characters.
+					for _, elem := range doc {
+						str, ok := elem.Value.(string)
+						invalidString := ok && !utf8.ValidString(str)
+						dbPtr, ok := elem.Value.(primitive.DBPointer)
+						invalidDBPtr := ok && !utf8.ValidString(dbPtr.DB)
 
-			// native_to_relaxed_extended_json(bson_to_native(cB)) = rEJ (if rEJ exists)
-			if v.RelaxedExtJSON != nil {
-				rEJ := unescapeUnicode(string(pretty.Ugly([]byte(*v.RelaxedExtJSON))), test.BsonType)
-				if test.BsonType == "0x01" {
-					rEJ = normalizeRelaxedDouble(t, *test.TestKey, rEJ)
-				}
+						if invalidString || invalidDBPtr {
+							expectNoError(t, err, d.Description)
+							return
+						}
+					}
 
-				nativeToJSON(t, rEJ, doc, v.Description, "relaxed", "rEJ", "bson_to_native(cB)")
-
-				/*** relaxed extended JSON round-trip tests (if exists) ***/
-				doc = jsonToNative(t, rEJ, "relaxed", v.Description)
-
-				// native_to_relaxed_extended_json(json_to_native(rEJ)) = rEJ
-				nativeToJSON(t, rEJ, doc, v.Description, "relaxed", "eJR", "json_to_native(rEJ)")
+					expectError(t, err, fmt.Sprintf("%s: expected decode error", d.Description))
+				})
 			}
+		})
 
-			/*** canonical extended JSON round-trip tests ***/
-			doc = jsonToNative(t, cEJ, "canonical", v.Description)
+		t.Run("parse error", func(t *testing.T) {
+			for _, p := range test.ParseErrors {
+				t.Run(p.Description, func(t *testing.T) {
+					// skip DBRef tests
+					if strings.Contains(p.Description, "Bad DBRef") {
+						t.Skip("skipping DBRef test")
+					}
 
-			// native_to_canonical_extended_json(json_to_native(cEJ)) = cEJ
-			nativeToJSON(t, cEJ, doc, v.Description, "canonical", "cEJ", "json_to_native(cEJ)")
+					s := unescapeUnicode(p.String, test.BsonType)
+					if test.BsonType == "0x13" {
+						s = fmt.Sprintf(`{"decimal128": {"$numberDecimal": "%s"}}`, s)
+					}
 
-			// native_to_bson(json_to_native(cEJ)) = cb (unless lossy)
-			if v.Lossy == nil || !*v.Lossy {
-				nativeToBSON(t, cB, doc, v.Description, "canonical", "json_to_native(cEJ)")
+					switch test.BsonType {
+					case "0x00", "0x05", "0x13":
+						var doc D
+						err := UnmarshalExtJSON([]byte(s), true, &doc)
+						expectError(t, err, fmt.Sprintf("%s: expected parse error", p.Description))
+					default:
+						t.Errorf("Update test to check for parse errors for type %s", test.BsonType)
+						t.Fail()
+					}
+				})
 			}
-
-			/*** degenerate BSON round-trip tests (if exists) ***/
-			if v.DegenerateBSON != nil {
-				dB, err := hex.DecodeString(*v.DegenerateBSON)
-				expectNoError(t, err, fmt.Sprintf("%s: reading degenerate BSON", v.Description))
-
-				doc = bsonToNative(t, dB, "degenerate", v.Description)
-
-				// native_to_bson(bson_to_native(dB)) = cB
-				nativeToBSON(t, cB, doc, v.Description, "degenerate", "bson_to_native(dB)")
-			}
-
-			/*** degenerate JSON round-trip tests (if exists) ***/
-			if v.DegenerateExtJSON != nil {
-				dEJ := unescapeUnicode(string(pretty.Ugly([]byte(*v.DegenerateExtJSON))), test.BsonType)
-				if test.BsonType == "0x01" {
-					dEJ = normalizeCanonicalDouble(t, *test.TestKey, dEJ)
-				}
-
-				doc = jsonToNative(t, dEJ, "degenerate canonical", v.Description)
-
-				// native_to_canonical_extended_json(json_to_native(dEJ)) = cEJ
-				nativeToJSON(t, cEJ, doc, v.Description, "degenerate canonical", "cEJ", "json_to_native(dEJ)")
-
-				// native_to_bson(json_to_native(dEJ)) = cB (unless lossy)
-				if v.Lossy == nil || !*v.Lossy {
-					nativeToBSON(t, cB, doc, v.Description, "canonical", "json_to_native(dEJ)")
-				}
-			}
-		}
-
-		for _, d := range test.DecodeErrors {
-			b, err := hex.DecodeString(d.Bson)
-			expectNoError(t, err, d.Description)
-
-			var doc D
-			err = Unmarshal(b, &doc)
-			expectError(t, err, fmt.Sprintf("%s: expected decode error", d.Description))
-		}
-
-		for _, p := range test.ParseErrors {
-			// skip DBRef tests
-			if strings.Contains(p.Description, "Bad DBRef") {
-				continue
-			}
-
-			s := unescapeUnicode(p.String, test.BsonType)
-			if test.BsonType == "0x13" {
-				s = fmt.Sprintf(`{"$numberDecimal": "%s"}`, s)
-			}
-
-			switch test.BsonType {
-			case "0x00":
-				var doc D
-				err := UnmarshalExtJSON([]byte(s), true, &doc)
-				expectError(t, err, fmt.Sprintf("%s: expected parse error", p.Description))
-			case "0x13":
-				ejvr, err := bsonrw.NewExtJSONValueReader(strings.NewReader(s), true)
-				expectNoError(t, err, fmt.Sprintf("error creating value reader: %s", err))
-				_, err = ejvr.ReadDecimal128()
-				expectError(t, err, fmt.Sprintf("%s: expected parse error", p.Description))
-			default:
-				t.Errorf("Update test to check for parse errors for type %s", test.BsonType)
-				t.Fail()
-			}
-		}
+		})
 	})
 }
 
@@ -368,4 +392,62 @@ func expectError(t *testing.T, err error, desc string) {
 		t.Errorf("%s: Expected error", desc)
 		t.FailNow()
 	}
+}
+
+func TestRelaxedUUIDValidation(t *testing.T) {
+	testCases := []struct {
+		description       string
+		canonicalExtJSON  string
+		degenerateExtJSON string
+		expectedErr       string
+	}{
+		{
+			"valid uuid",
+			"{\"x\" : { \"$binary\" : {\"base64\" : \"c//SZESzTGmQ6OfR38A11A==\", \"subType\" : \"04\"}}}",
+			"{\"x\" : { \"$uuid\" : \"73ffd264-44b3-4c69-90e8-e7d1dfc035d4\"}}",
+			"",
+		},
+		{
+			"invalid uuid--no hyphens",
+			"",
+			"{\"x\" : { \"$uuid\" : \"73ffd26444b34c6990e8e7d1dfc035d4\"}}",
+			"$uuid value does not follow RFC 4122 format regarding length and hyphens",
+		},
+		{
+			"invalid uuid--trailing hyphens",
+			"",
+			"{\"x\" : { \"$uuid\" : \"73ffd264-44b3-4c69-90e8-e7d1dfc035--\"}}",
+			"$uuid value does not follow RFC 4122 format regarding length and hyphens",
+		},
+		{
+			"invalid uuid--malformed hex",
+			"",
+			"{\"x\" : { \"$uuid\" : \"q3@fd26l-44b3-4c69-90e8-e7d1dfc035d4\"}}",
+			"$uuid value does not follow RFC 4122 format regarding hex bytes: encoding/hex: invalid byte: U+0071 'q'",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			// get canonical extended JSON
+			cEJ := unescapeUnicode(string(pretty.Ugly([]byte(tc.canonicalExtJSON))), "0x05")
+
+			// get degenerate extended JSON
+			dEJ := unescapeUnicode(string(pretty.Ugly([]byte(tc.degenerateExtJSON))), "0x05")
+
+			// convert dEJ to native doc
+			var doc D
+			err := UnmarshalExtJSON([]byte(dEJ), true, &doc)
+
+			if tc.expectedErr != "" {
+				assert.Equal(t, tc.expectedErr, err.Error(), "expected error %v, got %v", tc.expectedErr, err)
+			} else {
+				assert.Nil(t, err, "expected no error, got error: %v", err)
+
+				// Marshal doc into extended JSON and compare with cEJ
+				nativeToJSON(t, cEJ, doc, tc.description, "degenerate canonical", "cEJ", "json_to_native(dEJ)")
+			}
+		})
+	}
+
 }

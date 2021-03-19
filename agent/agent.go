@@ -227,7 +227,7 @@ LOOP:
 				prevLogger := tc.logger
 				tc = a.prepareNextTask(ctx, nextTask, tc)
 				if prevLogger != nil {
-					grip.Error(prevLogger.Close())
+					grip.Error(errors.Wrap(prevLogger.Close(), "problem closing the logger producer"))
 				}
 
 				grip.Error(message.WrapError(a.fetchProjectConfig(ctx, tc), message.Fields{
@@ -350,8 +350,9 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	var err error
+
 	if tc.logger != nil {
-		grip.Error(tc.logger.Close())
+		grip.Error(errors.Wrap(tc.logger.Close(), "problem closing the logger producer"))
 	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
@@ -360,7 +361,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
 	}
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	sender, err := a.GetSender(ctx, a.opts.LogPrefix)
@@ -393,19 +394,20 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	var taskConfig *internal.TaskConfig
 	taskConfig, err = a.makeTaskConfig(ctx, tc)
 	if err != nil {
-		grip.Errorf("Error fetching task configuration: %s", err)
+		grip.Errorf("error fetching task configuration: %s", err)
 		grip.Infof("task complete: %s", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, "")
 	}
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {
-		grip.Errorf("Error setting up logger producer: %s", err)
+		msg := errors.Wrap(err, "error setting up logger producer").Error()
+		grip.Error(msg)
 		grip.Infof("task complete: %s", tc.task.ID)
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
-		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed)
+		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, msg)
 	}
 
 	grip.Info(message.Fields{
@@ -430,11 +432,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
 
-	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete))
+	return a.handleTaskResponse(tskCtx, tc, a.wait(tskCtx, innerCtx, tc, heartbeat, complete), "")
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, status, message)
 	if err != nil {
 		return false, errors.Wrap(err, "error marking task complete")
 	}
@@ -507,8 +509,8 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 }
 
 // finishTask sends the returned EndTaskResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, message string) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -555,7 +557,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
 	var cmdType string
 	if tc.getCurrentCommand() != nil {
@@ -570,6 +572,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		TimeoutDuration: tc.getTimeoutDuration(),
 		OOMTracker:      tc.getOomTrackerInfo(),
 		Status:          status,
+		Message:         message,
 		Logs:            tc.logs,
 	}
 }

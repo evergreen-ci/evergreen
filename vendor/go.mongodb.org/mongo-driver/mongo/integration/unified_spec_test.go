@@ -7,31 +7,41 @@
 package integration
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"path"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/address"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
 
 const (
 	gridFSFiles       = "fs.files"
 	gridFSChunks      = "fs.chunks"
 	cseMaxVersionTest = "operation fails with maxWireVersion < 8"
+)
+
+var (
+	defaultHeartbeatInterval = 50 * time.Millisecond
 )
 
 type testFile struct {
@@ -77,19 +87,25 @@ func decodeTestData(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val refle
 }
 
 type testCase struct {
-	Description         string           `bson:"description"`
-	SkipReason          string           `bson:"skipReason"`
-	FailPoint           *mtest.FailPoint `bson:"failPoint"`
-	ClientOptions       bson.Raw         `bson:"clientOptions"`
-	SessionOptions      bson.Raw         `bson:"sessionOptions"`
-	Operations          []*operation     `bson:"operations"`
-	Expectations        []*expectation   `bson:"expectations"`
-	UseMultipleMongoses bool             `bson:"useMultipleMongoses"`
-	Outcome             *outcome         `bson:"outcome"`
+	Description         string          `bson:"description"`
+	SkipReason          string          `bson:"skipReason"`
+	FailPoint           *bson.Raw       `bson:"failPoint"`
+	ClientOptions       bson.Raw        `bson:"clientOptions"`
+	SessionOptions      bson.Raw        `bson:"sessionOptions"`
+	Operations          []*operation    `bson:"operations"`
+	Expectations        *[]*expectation `bson:"expectations"`
+	UseMultipleMongoses bool            `bson:"useMultipleMongoses"`
+	Outcome             *outcome        `bson:"outcome"`
 
 	// set in code if the test is a GridFS test
 	chunkSize int32
 	bucket    *gridfs.Bucket
+
+	// set in code to track test context
+	testTopology    *topology.Topology
+	recordedPrimary address.Address
+	monitor         *unifiedRunnerEventMonitor
+	routinesMap     sync.Map // maps thread name to *backgroundRoutine
 }
 
 type operation struct {
@@ -100,6 +116,7 @@ type operation struct {
 	Result            interface{} `bson:"result"`
 	Arguments         bson.Raw    `bson:"arguments"`
 	Error             bool        `bson:"error"`
+	CommandName       string      `bson:"command_name"`
 
 	// set in code after determining whether or not result represents an error
 	opError *operationError
@@ -144,12 +161,15 @@ var directories = []string{
 	"crud/v2",
 	"retryable-reads",
 	"sessions",
+	"read-write-concern/operation",
+	"server-discovery-and-monitoring/integration",
+	"atlas-data-lake-testing",
 }
 
 var checkOutcomeOpts = options.Collection().SetReadPreference(readpref.Primary()).SetReadConcern(readconcern.Local())
 var specTestRegistry = bson.NewRegistryBuilder().
 	RegisterTypeMapEntry(bson.TypeEmbeddedDocument, reflect.TypeOf(bson.Raw{})).
-	RegisterDecoder(reflect.TypeOf(testData{}), bsoncodec.ValueDecoderFunc(decodeTestData)).Build()
+	RegisterTypeDecoder(reflect.TypeOf(testData{}), bsoncodec.ValueDecoderFunc(decodeTestData)).Build()
 
 func TestUnifiedSpecs(t *testing.T) {
 	for _, specDir := range directories {
@@ -175,7 +195,13 @@ func runSpecTestFile(t *testing.T, specDir, fileName string) {
 	assert.Nil(t, err, "unable to unmarshal spec test file at %v: %v", filePath, err)
 
 	// create mtest wrapper and skip if needed
-	mt := mtest.New(t, mtest.NewOptions().RunOn(testFile.RunOn...).CreateClient(false))
+	mtOpts := mtest.NewOptions().
+		RunOn(testFile.RunOn...).
+		CreateClient(false)
+	if specDir == "atlas-data-lake-testing" {
+		mtOpts.AtlasDataLake(true)
+	}
+	mt := mtest.New(t, mtOpts)
 	defer mt.Close()
 
 	for _, test := range testFile.Tests {
@@ -183,19 +209,9 @@ func runSpecTestFile(t *testing.T, specDir, fileName string) {
 	}
 }
 
-func getSessionID(mt *mtest.T, sess mongo.Session) bsonx.Doc {
-	mt.Helper()
-	xsess, ok := sess.(mongo.XSession)
-	assert.True(mt, ok, "expected %T to implement mongo.XSession", sess)
-	return xsess.ID()
-}
-
 func runSpecTestCase(mt *mtest.T, test *testCase, testFile testFile) {
-	testClientOpts := createClientOptions(mt, test.ClientOptions)
-	testClientOpts.SetHeartbeatInterval(50 * time.Millisecond)
-
 	opts := mtest.NewOptions().DatabaseName(testFile.DatabaseName).CollectionName(testFile.CollectionName)
-	if mt.TopologyKind() == mtest.Sharded && !test.UseMultipleMongoses {
+	if mtest.ClusterTopologyKind() == mtest.Sharded && !test.UseMultipleMongoses {
 		// pin to a single mongos
 		opts = opts.ClientType(mtest.Pinned)
 	}
@@ -207,12 +223,8 @@ func runSpecTestCase(mt *mtest.T, test *testCase, testFile testFile) {
 			{"validator", validator},
 		})
 	}
-	if test.Description != cseMaxVersionTest {
-		// don't specify client options for the maxWireVersion CSE test because the client cannot
-		// be created successfully. Should be fixed by SPEC-1403.
-		opts.ClientOptions(testClientOpts)
-	}
 
+	// Start the test without setting client options so the setup will be done with a default client.
 	mt.RunOpts(test.Description, opts, func(mt *mtest.T) {
 		if len(test.SkipReason) > 0 {
 			mt.Skip(test.SkipReason)
@@ -225,28 +237,45 @@ func runSpecTestCase(mt *mtest.T, test *testCase, testFile testFile) {
 		}
 
 		// work around for SERVER-39704: run a non-transactional distinct against each shard in a sharded cluster
-		if mt.TopologyKind() == mtest.Sharded && test.Description == "distinct" {
-			opts := options.Client().ApplyURI(mt.ConnString())
-			for _, host := range opts.Hosts {
-				shardClient, err := mongo.Connect(mtest.Background, opts.SetHosts([]string{host}))
-				assert.Nil(mt, err, "Connect error for shard %v: %v", host, err)
-				coll := shardClient.Database(mt.DB.Name()).Collection(mt.Coll.Name())
-				_, err = coll.Distinct(mtest.Background, "x", bson.D{})
-				assert.Nil(mt, err, "Distinct error for shard %v: %v", host, err)
-				_ = shardClient.Disconnect(mtest.Background)
-			}
+		if mtest.ClusterTopologyKind() == mtest.Sharded && test.Description == "distinct" {
+			err := runCommandOnAllServers(mt, func(mongosClient *mongo.Client) error {
+				coll := mongosClient.Database(mt.DB.Name()).Collection(mt.Coll.Name())
+				_, err := coll.Distinct(mtest.Background, "x", bson.D{})
+				return err
+			})
+			assert.Nil(mt, err, "error running distinct against all mongoses: %v", err)
 		}
 
-		// defer killSessions to ensure it runs regardless of the state of the test because the client has already
+		// Defer killSessions to ensure it runs regardless of the state of the test because the client has already
 		// been created and the collection drop in mongotest will hang for transactions to be aborted (60 seconds)
 		// in error cases.
 		defer killSessions(mt)
+
+		// Test setup: create collections that are tracked by mtest, insert test data, and set the failpoint.
 		setupTest(mt, &testFile, test)
+		if test.FailPoint != nil {
+			mt.SetFailPointFromDocument(*test.FailPoint)
+		}
 
-		// create the GridFS bucket after resetting the client so it will be created with a connected client
+		// Reset the client using the client options specified in the test.
+		testClientOpts := createClientOptions(mt, test.ClientOptions)
+		test.monitor = newUnifiedRunnerEventMonitor()
+		testClientOpts.SetPoolMonitor(&event.PoolMonitor{
+			Event: test.monitor.handlePoolEvent,
+		})
+		if testClientOpts.HeartbeatInterval == nil {
+			// If one isn't specified in the test, use a low heartbeat frequency so the Client will quickly recover when
+			// using failpoints that cause SDAM state changes.
+			testClientOpts.SetHeartbeatInterval(defaultHeartbeatInterval)
+		}
+		mt.ResetClient(testClientOpts)
+
+		// Record the underlying topology for the test's Client.
+		test.testTopology = getTopologyFromClient(mt.Client)
+
+		// Create the GridFS bucket and sessions after resetting the client so it will be created with a connected
+		// client.
 		createBucket(mt, testFile, test)
-
-		// create sessions, fail points, and collection
 		sess0, sess1 := setupSessions(mt, test)
 		if sess0 != nil {
 			defer func() {
@@ -254,14 +283,12 @@ func runSpecTestCase(mt *mtest.T, test *testCase, testFile testFile) {
 				sess1.EndSession(mtest.Background)
 			}()
 		}
-		if test.FailPoint != nil {
-			mt.SetFailPoint(*test.FailPoint)
-		}
 
 		// run operations
 		mt.ClearEvents()
-		for _, op := range test.Operations {
-			runOperation(mt, test, op, sess0, sess1)
+		for idx, op := range test.Operations {
+			err := runOperation(mt, test, op, sess0, sess1)
+			assert.Nil(mt, err, "error running operation %q at index %d: %v", op.Name, idx, err)
 		}
 
 		// Needs to be done here (in spite of defer) because some tests
@@ -270,7 +297,7 @@ func runSpecTestCase(mt *mtest.T, test *testCase, testFile testFile) {
 		sess1.EndSession(mtest.Background)
 		mt.ClearFailPoints()
 
-		checkExpectations(mt, test.Expectations, getSessionID(mt, sess0), getSessionID(mt, sess1))
+		checkExpectations(mt, test.Expectations, sess0.ID(), sess1.ID())
 
 		if test.Outcome != nil {
 			verifyTestOutcome(mt, test.Outcome.Collection)
@@ -298,7 +325,7 @@ func createBucket(mt *mtest.T, testFile testFile, testCase *testCase) {
 	assert.Nil(mt, err, "NewBucket error: %v", err)
 }
 
-func runOperation(mt *mtest.T, testCase *testCase, op *operation, sess0, sess1 mongo.Session) {
+func runOperation(mt *mtest.T, testCase *testCase, op *operation, sess0, sess1 mongo.Session) error {
 	if op.Name == "count" {
 		mt.Skip("count has been deprecated")
 	}
@@ -312,17 +339,20 @@ func runOperation(mt *mtest.T, testCase *testCase, op *operation, sess0, sess1 m
 		case "session1":
 			sess = sess1
 		default:
-			mt.Fatalf("unrecognized session identifier: %v", sessStr)
+			return fmt.Errorf("unrecognized session identifier: %v", sessStr)
 		}
 	}
 
 	if op.Object == "testRunner" {
-		executeTestRunnerOperation(mt, op, sess)
-		return
+		return executeTestRunnerOperation(mt, testCase, op, sess)
 	}
 
-	mt.CloneDatabase(createDatabaseOptions(mt, op.DatabaseOptions))
-	mt.CloneCollection(createCollectionOptions(mt, op.CollectionOptions))
+	if op.DatabaseOptions != nil {
+		mt.CloneDatabase(createDatabaseOptions(mt, op.DatabaseOptions))
+	}
+	if op.CollectionOptions != nil {
+		mt.CloneCollection(createCollectionOptions(mt, op.CollectionOptions))
+	}
 
 	// execute the command on the given object
 	var err error
@@ -341,22 +371,17 @@ func runOperation(mt *mtest.T, testCase *testCase, op *operation, sess0, sess1 m
 	case "client":
 		err = executeClientOperation(mt, op, sess)
 	default:
-		mt.Fatalf("unrecognized operation object: %v", op.Object)
+		return fmt.Errorf("unrecognized operation object: %v", op.Object)
 	}
 
-	// ensure error occurred and it's the error we expect
-	if op.Error {
-		assert.NotNil(mt, err, "expected error but got nil")
-	}
-
-	// some tests (e.g. crud/v2) only specify that an error should occur via the op.Error field but do not specify
-	// which error via the op.Result field.
-	if op.Error && op.Result == nil {
-		return
-	}
-	// compute expected error from op.Result and compare that to the actual error
 	op.opError = errorFromResult(mt, op.Result)
-	verifyError(mt, op.opError, err)
+	// Some tests (e.g. crud/v2) only specify that an error should occur via the op.Error field but do not specify
+	// which error via the op.Result field. In this case, pass in an empty non-nil operationError so verifyError will
+	// make the right assertions.
+	if op.Error && op.Result == nil {
+		op.opError = &operationError{}
+	}
+	return verifyError(op.opError, err)
 }
 
 func executeGridFSOperation(mt *mtest.T, bucket *gridfs.Bucket, op *operation) error {
@@ -376,52 +401,168 @@ func executeGridFSOperation(mt *mtest.T, bucket *gridfs.Bucket, op *operation) e
 	return nil
 }
 
-func executeTestRunnerOperation(mt *mtest.T, op *operation, sess mongo.Session) {
+func executeTestRunnerOperation(mt *mtest.T, testCase *testCase, op *operation, sess mongo.Session) error {
 	var clientSession *session.Client
 	if sess != nil {
 		xsess, ok := sess.(mongo.XSession)
-		assert.True(mt, ok, "expected %T to implement mongo.XSession", sess)
+		if !ok {
+			return fmt.Errorf("expected session type %T to implement mongo.XSession", sess)
+		}
 		clientSession = xsess.ClientSession()
 	}
 
 	switch op.Name {
 	case "targetedFailPoint":
-		fpDoc, err := op.Arguments.LookupErr("failPoint")
-		assert.Nil(mt, err, "failPoint not found in arguments")
+		fpDoc := op.Arguments.Lookup("failPoint")
 
 		var fp mtest.FailPoint
-		err = bson.Unmarshal(fpDoc.Document(), &fp)
-		assert.Nil(mt, err, "error creating fail point: %v", err)
+		if err := bson.Unmarshal(fpDoc.Document(), &fp); err != nil {
+			return fmt.Errorf("Unmarshal error: %v", err)
+		}
 
 		targetHost := clientSession.PinnedServer.Addr.String()
-		opts := options.Client().ApplyURI(mt.ConnString()).SetHosts([]string{targetHost})
+		opts := options.Client().ApplyURI(mtest.ClusterURI()).SetHosts([]string{targetHost})
 		client, err := mongo.Connect(mtest.Background, opts)
-		assert.Nil(mt, err, "error creating targeted client: %v", err)
+		if err != nil {
+			return fmt.Errorf("Connect error for targeted client: %v", err)
+		}
 		defer func() { _ = client.Disconnect(mtest.Background) }()
 
-		err = client.Database("admin").RunCommand(mtest.Background, fp).Err()
-		assert.Nil(mt, err, "error setting targeted fail point: %v", err)
+		if err = client.Database("admin").RunCommand(mtest.Background, fp).Err(); err != nil {
+			return fmt.Errorf("error setting targeted fail point: %v", err)
+		}
 		mt.TrackFailPoint(fp.ConfigureFailPoint)
+	case "configureFailPoint":
+		fp, err := op.Arguments.LookupErr("failPoint")
+		assert.Nil(mt, err, "failPoint not found in arguments")
+		mt.SetFailPointFromDocument(fp.Document())
 	case "assertSessionPinned":
-		assert.NotNil(mt, clientSession.PinnedServer, "expected pinned server but got nil")
+		if clientSession.PinnedServer == nil {
+			return errors.New("expected pinned server, got nil")
+		}
 	case "assertSessionUnpinned":
-		assert.Nil(mt, clientSession.PinnedServer,
-			"expected pinned server to be nil but got %v", clientSession.PinnedServer)
+		// We don't use a combined helper for assertSessionPinned and assertSessionUnpinned because the unpinned
+		// case provides the pinned server address in the error msg for debugging.
+		if clientSession.PinnedServer != nil {
+			return fmt.Errorf("expected pinned server to be nil but got %q", clientSession.PinnedServer.Addr)
+		}
 	case "assertSessionDirty":
-		assert.NotNil(mt, clientSession.Server, "expected server session but got nil")
-		assert.True(mt, clientSession.Server.Dirty, "expected server session to be marked dirty but was not")
+		return verifyDirtySessionState(clientSession, true)
 	case "assertSessionNotDirty":
-		assert.NotNil(mt, clientSession.Server, "expected server session but got nil")
-		assert.False(mt, clientSession.Server.Dirty, "expected server session not to be marked dirty but was")
+		return verifyDirtySessionState(clientSession, false)
 	case "assertSameLsidOnLastTwoCommands":
 		first, second := lastTwoIDs(mt)
-		assert.Equal(mt, first, second, "expected last two lsids to be equal but got %v and %v", first, second)
+		if !first.Equal(second) {
+			return fmt.Errorf("expected last two lsids to be equal but got %v and %v", first, second)
+		}
 	case "assertDifferentLsidOnLastTwoCommands":
 		first, second := lastTwoIDs(mt)
-		assert.NotEqual(mt, first, second, "expected last two lsids to be not equal but got %v and %v", first, second)
+		if first.Equal(second) {
+			return fmt.Errorf("expected last two lsids to be not equal but both were %v", first)
+		}
+	case "assertCollectionExists":
+		return verifyCollectionState(mt, op, true)
+	case "assertCollectionNotExists":
+		return verifyCollectionState(mt, op, false)
+	case "assertIndexExists":
+		return verifyIndexState(mt, op, true)
+	case "assertIndexNotExists":
+		return verifyIndexState(mt, op, false)
+	case "wait":
+		time.Sleep(convertValueToMilliseconds(mt, op.Arguments.Lookup("ms")))
+	case "waitForEvent":
+		waitForEvent(mt, testCase, op)
+	case "assertEventCount":
+		assertEventCount(mt, testCase, op)
+	case "recordPrimary":
+		recordPrimary(mt, testCase)
+	case "runAdminCommand":
+		executeAdminCommand(mt, op)
+	case "waitForPrimaryChange":
+		waitForPrimaryChange(mt, testCase, op)
+	case "startThread":
+		startThread(mt, testCase, op)
+	case "runOnThread":
+		runOnThread(mt, testCase, op)
+	case "waitForThread":
+		waitForThread(mt, testCase, op)
 	default:
 		mt.Fatalf("unrecognized testRunner operation %v", op.Name)
 	}
+
+	return nil
+}
+
+func verifyDirtySessionState(clientSession *session.Client, expectedDirty bool) error {
+	if clientSession.Server == nil {
+		return errors.New("expected valid server session, got nil")
+	}
+	if markedDirty := clientSession.Server.Dirty; markedDirty != expectedDirty {
+		return fmt.Errorf("expected server session to be marked dirty: %v, got %v", expectedDirty, markedDirty)
+	}
+	return nil
+}
+
+func verifyIndexState(mt *mtest.T, op *operation, shouldExist bool) error {
+	db := op.Arguments.Lookup("database").StringValue()
+	coll := op.Arguments.Lookup("collection").StringValue()
+	index := op.Arguments.Lookup("index").StringValue()
+
+	exists, err := indexExists(mt, db, coll, index)
+	if err != nil {
+		return err
+	}
+	if exists != shouldExist {
+		return fmt.Errorf("index state mismatch for index %s in namespace %s.%s; should exist: %v, exists: %v",
+			index, db, coll, shouldExist, exists)
+	}
+	return nil
+}
+
+func indexExists(mt *mtest.T, dbName, collName, indexName string) (bool, error) {
+	// Use global client because listIndexes cannot be executed inside a transaction.
+	iv := mtest.GlobalClient().Database(dbName).Collection(collName).Indexes()
+	cursor, err := iv.List(mtest.Background)
+	if err != nil {
+		return false, fmt.Errorf("IndexView.List error: %v", err)
+	}
+	defer cursor.Close(mtest.Background)
+
+	for cursor.Next(mtest.Background) {
+		if cursor.Current.Lookup("name").StringValue() == indexName {
+			return true, nil
+		}
+	}
+	return false, cursor.Err()
+}
+
+func verifyCollectionState(mt *mtest.T, op *operation, shouldExist bool) error {
+	db := op.Arguments.Lookup("database").StringValue()
+	coll := op.Arguments.Lookup("collection").StringValue()
+
+	exists, err := collectionExists(mt, db, coll)
+	if err != nil {
+		return err
+	}
+	if exists != shouldExist {
+		return fmt.Errorf("collection state mismatch for %s.%s; should exist %v, exists: %v", db, coll, shouldExist,
+			exists)
+	}
+	return nil
+}
+
+func collectionExists(mt *mtest.T, dbName, collName string) (bool, error) {
+	filter := bson.D{
+		{"name", collName},
+	}
+
+	// Use global client because listCollections cannot be executed inside a transaction.
+	collections, err := mtest.GlobalClient().Database(dbName).ListCollectionNames(mtest.Background, filter)
+	if err != nil {
+		return false, fmt.Errorf("ListCollectionNames error: %v", err)
+	}
+
+	return len(collections) > 0, nil
 }
 
 func lastTwoIDs(mt *mtest.T) (bson.RawValue, bson.RawValue) {
@@ -577,6 +718,21 @@ func executeCollectionOperation(mt *mtest.T, op *operation, sess mongo.Session) 
 			_ = stream.Close(mtest.Background)
 		}
 		return err
+	case "createIndex":
+		indexName, err := executeCreateIndex(mt, sess, op.Arguments)
+		if op.opError == nil && err == nil {
+			assert.Nil(mt, op.Result, "unexpected result for createIndex: %v", op.Result)
+			assert.True(mt, len(indexName) > 0, "expected valid index name, got empty string")
+			assert.True(mt, len(indexName) > 0, "created index has empty name")
+		}
+		return err
+	case "dropIndex":
+		res, err := executeDropIndex(mt, sess, op.Arguments)
+		if op.opError == nil && err == nil {
+			assert.Nil(mt, op.Result, "unexpected result for dropIndex: %v", op.Result)
+			assert.NotNil(mt, res, "expected result from dropIndex operation, got nil")
+		}
+		return err
 	case "listIndexNames", "mapReduce":
 		mt.Skipf("operation %v not implemented", op.Name)
 	default:
@@ -618,6 +774,18 @@ func executeDatabaseOperation(mt *mtest.T, op *operation, sess mongo.Session) er
 		if op.opError == nil && err == nil {
 			assert.Nil(mt, op.Result, "unexpected result for watch: %v", op.Result)
 			_ = stream.Close(mtest.Background)
+		}
+		return err
+	case "dropCollection":
+		err := executeDropCollection(mt, sess, op.Arguments)
+		if op.opError == nil && err == nil {
+			assert.Nil(mt, op.Result, "unexpected result for dropCollection: %v", op.Result)
+		}
+		return err
+	case "createCollection":
+		err := executeCreateCollection(mt, sess, op.Arguments)
+		if op.opError == nil && err == nil {
+			assert.Nil(mt, op.Result, "unexpected result for createCollection: %v", op.Result)
 		}
 		return err
 	case "listCollectionObjects":
@@ -692,15 +860,11 @@ func insertDocuments(mt *mtest.T, coll *mongo.Collection, rawDocs []bson.Raw) {
 func setupTest(mt *mtest.T, testFile *testFile, testCase *testCase) {
 	mt.Helper()
 
-	// all setup should be done with the global client instead of the test client to prevent any errors created by
-	// client configurations.
-	setupClient := mt.GlobalClient()
 	// key vault data
 	if len(testFile.KeyVaultData) > 0 {
 		keyVaultColl := mt.CreateCollection(mtest.Collection{
-			Name:   "datakeys",
-			DB:     "admin",
-			Client: setupClient,
+			Name: "datakeys",
+			DB:   "keyvault",
 		}, false)
 
 		insertDocuments(mt, keyVaultColl, testFile.KeyVaultData)
@@ -708,8 +872,7 @@ func setupTest(mt *mtest.T, testFile *testFile, testCase *testCase) {
 
 	// regular documents
 	if testFile.Data.Documents != nil {
-		insertColl := setupClient.Database(mt.DB.Name()).Collection(mt.Coll.Name())
-		insertDocuments(mt, insertColl, testFile.Data.Documents)
+		insertDocuments(mt, mt.Coll, testFile.Data.Documents)
 		return
 	}
 
@@ -718,15 +881,13 @@ func setupTest(mt *mtest.T, testFile *testFile, testCase *testCase) {
 
 	if gfsData.Chunks != nil {
 		chunks := mt.CreateCollection(mtest.Collection{
-			Name:   gridFSChunks,
-			Client: setupClient,
+			Name: gridFSChunks,
 		}, false)
 		insertDocuments(mt, chunks, gfsData.Chunks)
 	}
 	if gfsData.Files != nil {
 		files := mt.CreateCollection(mtest.Collection{
-			Name:   gridFSFiles,
-			Client: setupClient,
+			Name: gridFSFiles,
 		}, false)
 		insertDocuments(mt, files, gfsData.Files)
 
@@ -746,13 +907,18 @@ func verifyTestOutcome(mt *mtest.T, outcomeColl *outcomeCollection) {
 	if outcomeColl.Name != "" {
 		collName = outcomeColl.Name
 	}
-	coll := mt.GlobalClient().Database(mt.DB.Name()).Collection(collName)
+	coll := mtest.GlobalClient().Database(mt.DB.Name()).Collection(collName, checkOutcomeOpts)
 
-	var err error
-	coll, err = coll.Clone(checkOutcomeOpts)
-	assert.Nil(mt, err, "Clone error: %v", err)
-
-	cursor, err := coll.Find(mtest.Background, bson.D{})
+	findOpts := options.Find().
+		SetSort(bson.M{"_id": 1})
+	cursor, err := coll.Find(mtest.Background, bson.D{}, findOpts)
 	assert.Nil(mt, err, "Find error: %v", err)
 	verifyCursorResult(mt, cursor, outcomeColl.Data)
+}
+
+func getTopologyFromClient(client *mongo.Client) *topology.Topology {
+	clientElem := reflect.ValueOf(client).Elem()
+	deploymentField := clientElem.FieldByName("deployment")
+	deploymentField = reflect.NewAt(deploymentField.Type(), unsafe.Pointer(deploymentField.UnsafeAddr())).Elem()
+	return deploymentField.Interface().(*topology.Topology)
 }

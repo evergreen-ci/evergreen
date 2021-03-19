@@ -9,15 +9,12 @@ package gridfs // import "go.mongodb.org/mongo-driver/mongo/gridfs"
 import (
 	"bytes"
 	"context"
-
-	"io"
-
 	"errors"
-
+	"fmt"
+	"io"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -35,6 +32,9 @@ const DefaultChunkSize int32 = 255 * 1024 // 255 KiB
 
 // ErrFileNotFound occurs if a user asks to download a file with a file ID that isn't found in the files collection.
 var ErrFileNotFound = errors.New("file with given parameters not found")
+
+// ErrMissingChunkSize occurs when downloading a file if the files collection document is missing the "chunkSize" field.
+var ErrMissingChunkSize = errors.New("files collection document does not contain a 'chunkSize' field")
 
 // Bucket represents a GridFS bucket.
 type Bucket struct {
@@ -137,6 +137,9 @@ func (b *Bucket) OpenUploadStreamWithID(fileID interface{}, filename string, opt
 }
 
 // UploadFromStream creates a fileID and uploads a file given a source stream.
+//
+// If this upload requires a custom write deadline to be set on the bucket, it cannot be done concurrently with other
+// write operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) UploadFromStream(filename string, source io.Reader, opts ...*options.UploadOptions) (primitive.ObjectID, error) {
 	fileID := primitive.NewObjectID()
 	err := b.UploadFromStreamWithID(fileID, filename, source, opts...)
@@ -144,6 +147,9 @@ func (b *Bucket) UploadFromStream(filename string, source io.Reader, opts ...*op
 }
 
 // UploadFromStreamWithID uploads a file given a source stream.
+//
+// If this upload requires a custom write deadline to be set on the bucket, it cannot be done concurrently with other
+// write operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) UploadFromStreamWithID(fileID interface{}, filename string, source io.Reader, opts ...*options.UploadOptions) error {
 	us, err := b.OpenUploadStreamWithID(fileID, filename, opts...)
 	if err != nil {
@@ -191,6 +197,9 @@ func (b *Bucket) OpenDownloadStream(fileID interface{}) (*DownloadStream, error)
 
 // DownloadToStream downloads the file with the specified fileID and writes it to the provided io.Writer.
 // Returns the number of bytes written to the steam and an error, or nil if there was no error.
+//
+// If this download requires a custom read deadline to be set on the bucket, it cannot be done concurrently with other
+// read operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) DownloadToStream(fileID interface{}, stream io.Writer) (int64, error) {
 	ds, err := b.OpenDownloadStream(fileID)
 	if err != nil {
@@ -221,6 +230,9 @@ func (b *Bucket) OpenDownloadStreamByName(filename string, opts ...*options.Name
 }
 
 // DownloadToStreamByName downloads the file with the given name to the given io.Writer.
+//
+// If this download requires a custom read deadline to be set on the bucket, it cannot be done concurrently with other
+// read operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) DownloadToStreamByName(filename string, stream io.Writer, opts ...*options.NameOptions) (int64, error) {
 	ds, err := b.OpenDownloadStreamByName(filename, opts...)
 	if err != nil {
@@ -231,6 +243,9 @@ func (b *Bucket) DownloadToStreamByName(filename string, stream io.Writer, opts 
 }
 
 // Delete deletes all chunks and metadata associated with the file with the given file ID.
+//
+// If this operation requires a custom write deadline to be set on the bucket, it cannot be done concurrently with other
+// write operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) Delete(fileID interface{}) error {
 	// delete document in files collection and then chunks to minimize race conditions
 
@@ -256,6 +271,9 @@ func (b *Bucket) Delete(fileID interface{}) error {
 }
 
 // Find returns the files collection documents that match the given filter.
+//
+// If this download requires a custom read deadline to be set on the bucket, it cannot be done concurrently with other
+// read operations operations on this bucket that also require a custom deadline.
 func (b *Bucket) Find(filter interface{}, opts ...*options.GridFSFindOptions) (*mongo.Cursor, error) {
 	ctx, cancel := deadlineContext(b.readDeadline)
 	if cancel != nil {
@@ -264,6 +282,9 @@ func (b *Bucket) Find(filter interface{}, opts ...*options.GridFSFindOptions) (*
 
 	gfsOpts := options.MergeGridFSFindOptions(opts...)
 	find := options.Find()
+	if gfsOpts.AllowDiskUse != nil {
+		find.SetAllowDiskUse(*gfsOpts.AllowDiskUse)
+	}
 	if gfsOpts.BatchSize != nil {
 		find.SetBatchSize(*gfsOpts.BatchSize)
 	}
@@ -287,6 +308,9 @@ func (b *Bucket) Find(filter interface{}, opts ...*options.GridFSFindOptions) (*
 }
 
 // Rename renames the stored file with the specified file ID.
+//
+// If this operation requires a custom write deadline to be set on the bucket, it cannot be done concurrently with other
+// write operations operations on this bucket that also require a custom deadline
 func (b *Bucket) Rename(fileID interface{}, newFilename string) error {
 	ctx, cancel := deadlineContext(b.writeDeadline)
 	if cancel != nil {
@@ -313,6 +337,9 @@ func (b *Bucket) Rename(fileID interface{}, newFilename string) error {
 }
 
 // Drop drops the files and chunks collections associated with this bucket.
+//
+// If this operation requires a custom write deadline to be set on the bucket, it cannot be done concurrently with other
+// write operations operations on this bucket that also require a custom deadline
 func (b *Bucket) Drop() error {
 	ctx, cancel := deadlineContext(b.writeDeadline)
 	if cancel != nil {
@@ -327,6 +354,16 @@ func (b *Bucket) Drop() error {
 	return b.chunksColl.Drop(ctx)
 }
 
+// GetFilesCollection returns a handle to the collection that stores the file documents for this bucket.
+func (b *Bucket) GetFilesCollection() *mongo.Collection {
+	return b.filesColl
+}
+
+// GetChunksCollection returns a handle to the collection that stores the file chunks for this bucket.
+func (b *Bucket) GetChunksCollection() *mongo.Collection {
+	return b.chunksColl
+}
+
 func (b *Bucket) openDownloadStream(filter interface{}, opts ...*options.FindOptions) (*DownloadStream, error) {
 	ctx, cancel := deadlineContext(b.readDeadline)
 	if cancel != nil {
@@ -338,32 +375,30 @@ func (b *Bucket) openDownloadStream(filter interface{}, opts ...*options.FindOpt
 		return nil, err
 	}
 
-	fileLenElem, err := cursor.Current.LookupErr("length")
+	// Unmarshal the data into a File instance, which can be passed to newDownloadStream. The _id value has to be
+	// parsed out separately because "_id" will not match the File.ID field and we want to avoid exposing BSON tags
+	// in the File type. After parsing it, use RawValue.Unmarshal to ensure File.ID is set to the appropriate value.
+	var foundFile File
+	if err = cursor.Decode(&foundFile); err != nil {
+		return nil, fmt.Errorf("error decoding files collection document: %v", err)
+	}
+
+	if foundFile.Length == 0 {
+		return newDownloadStream(nil, foundFile.ChunkSize, &foundFile), nil
+	}
+
+	// For a file with non-zero length, chunkSize must exist so we know what size to expect when downloading chunks.
+	if _, err := cursor.Current.LookupErr("chunkSize"); err != nil {
+		return nil, ErrMissingChunkSize
+	}
+
+	chunksCursor, err := b.findChunks(ctx, foundFile.ID)
 	if err != nil {
 		return nil, err
 	}
-	fileIDElem, err := cursor.Current.LookupErr("_id")
-	if err != nil {
-		return nil, err
-	}
-
-	var fileLen int64
-	switch fileLenElem.Type {
-	case bsontype.Int32:
-		fileLen = int64(fileLenElem.Int32())
-	default:
-		fileLen = fileLenElem.Int64()
-	}
-
-	if fileLen == 0 {
-		return newDownloadStream(nil, b.chunkSize, 0), nil
-	}
-
-	chunksCursor, err := b.findChunks(ctx, fileIDElem)
-	if err != nil {
-		return nil, err
-	}
-	return newDownloadStream(chunksCursor, b.chunkSize, int64(fileLen)), nil
+	// The chunk size can be overridden for individual files, so the expected chunk size should be the "chunkSize"
+	// field from the files collection document, not the bucket's chunk size.
+	return newDownloadStream(chunksCursor, foundFile.ChunkSize, &foundFile), nil
 }
 
 func deadlineContext(deadline time.Time) (context.Context, context.CancelFunc) {
@@ -428,8 +463,50 @@ func (b *Bucket) findChunks(ctx context.Context, fileID interface{}) (*mongo.Cur
 	return chunksCursor, nil
 }
 
+// returns true if the 2 index documents are equal
+func numericalIndexDocsEqual(expected, actual bsoncore.Document) (bool, error) {
+	if bytes.Equal(expected, actual) {
+		return true, nil
+	}
+
+	actualElems, err := actual.Elements()
+	if err != nil {
+		return false, err
+	}
+	expectedElems, err := expected.Elements()
+	if err != nil {
+		return false, err
+	}
+
+	if len(actualElems) != len(expectedElems) {
+		return false, nil
+	}
+
+	for idx, expectedElem := range expectedElems {
+		actualElem := actualElems[idx]
+		if actualElem.Key() != expectedElem.Key() {
+			return false, nil
+		}
+
+		actualVal := actualElem.Value()
+		expectedVal := expectedElem.Value()
+		actualInt, actualOK := actualVal.AsInt64OK()
+		expectedInt, expectedOK := expectedVal.AsInt64OK()
+
+		//GridFS indexes always have numeric values
+		if !actualOK || !expectedOK {
+			return false, nil
+		}
+
+		if actualInt != expectedInt {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // Create an index if it doesn't already exist
-func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo.IndexModel) error {
+func createNumericalIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo.IndexModel) error {
 	c, err := iv.List(ctx)
 	if err != nil {
 		return err
@@ -438,7 +515,12 @@ func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo
 		_ = c.Close(ctx)
 	}()
 
-	var found bool
+	modelKeysBytes, err := bson.Marshal(model.Keys)
+	if err != nil {
+		return err
+	}
+	modelKeysDoc := bsoncore.Document(modelKeysBytes)
+
 	for c.Next(ctx) {
 		keyElem, err := c.Current.LookupErr("key")
 		if err != nil {
@@ -446,25 +528,18 @@ func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo
 		}
 
 		keyElemDoc := keyElem.Document()
-		modelKeysDoc, err := bson.Marshal(model.Keys)
+
+		found, err := numericalIndexDocsEqual(modelKeysDoc, bsoncore.Document(keyElemDoc))
 		if err != nil {
 			return err
 		}
-
-		if bytes.Equal(modelKeysDoc, keyElemDoc) {
-			found = true
-			break
+		if found {
+			return nil
 		}
 	}
 
-	if !found {
-		_, err = iv.CreateOne(ctx, model)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = iv.CreateOne(ctx, model)
+	return err
 }
 
 // create indexes on the files and chunks collection if needed
@@ -501,10 +576,10 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 		Options: options.Index().SetUnique(true),
 	}
 
-	if err = createIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
+	if err = createNumericalIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
 		return err
 	}
-	if err = createIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
+	if err = createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
 		return err
 	}
 

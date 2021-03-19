@@ -589,6 +589,7 @@ func clearStatsData() error {
 		"old_tasks",
 		"testresults",
 		"daily_stats_status",
+		model.ProjectRefCollection,
 	}
 
 	for _, coll := range collectionsToClear {

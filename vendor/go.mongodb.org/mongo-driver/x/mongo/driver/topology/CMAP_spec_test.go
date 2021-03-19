@@ -12,9 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/event"
 	testHelpers "go.mongodb.org/mongo-driver/internal/testutil/helpers"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
+	"go.mongodb.org/mongo-driver/mongo/address"
 )
 
 type cmapEvent struct {
@@ -68,7 +69,7 @@ type testInfo struct {
 
 const cmapTestDir = "../../../../data/connection-monitoring-and-pooling/"
 
-func TestCMAP(t *testing.T) {
+func TestCMAPSpec(t *testing.T) {
 	for _, testFileName := range testHelpers.FindJSONFilesInDir(t, cmapTestDir) {
 		t.Run(testFileName, func(t *testing.T) {
 			runCMAPTest(t, testFileName)
@@ -101,6 +102,7 @@ func runCMAPTest(t *testing.T, testFileName string) {
 	testHelpers.RequireNil(t, err, "unable to create listener: %v", err)
 
 	s, err := NewServer(address.Address(l.Addr().String()),
+		primitive.NewObjectID(),
 		WithMaxConnections(func(u uint64) uint64 {
 			return uint64(test.PoolOptions.MaxPoolSize)
 		}),
@@ -160,7 +162,7 @@ func runCMAPTest(t *testing.T, testFileName string) {
 			for len(testInfo.backgroundThreadErrors) > 0 {
 				bgErr := <-testInfo.backgroundThreadErrors
 				errs = append(errs, bgErr)
-				if bgErr != nil && strings.ToLower(test.Error.Message) == bgErr.Error() {
+				if bgErr != nil && strings.Contains(bgErr.Error(), strings.ToLower(test.Error.Message)) {
 					erroredCorrectly = true
 					break
 				}

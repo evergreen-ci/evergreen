@@ -18,7 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
@@ -39,16 +38,31 @@ func TestSessionPool(t *testing.T) {
 		firstSess, err := mt.Client.StartSession()
 		assert.Nil(mt, err, "StartSession error: %v", err)
 		defer firstSess.EndSession(mtest.Background)
-		want := getSessionID(mt, bSess)
-		got := getSessionID(mt, firstSess)
+		want := bSess.ID()
+		got := firstSess.ID()
 		assert.True(mt, sessionIDsEqual(mt, want, got), "expected session ID %v, got %v", want, got)
 
 		secondSess, err := mt.Client.StartSession()
 		assert.Nil(mt, err, "StartSession error: %v", err)
 		defer secondSess.EndSession(mtest.Background)
-		want = getSessionID(mt, aSess)
-		got = getSessionID(mt, secondSess)
+		want = aSess.ID()
+		got = secondSess.ID()
 		assert.True(mt, sessionIDsEqual(mt, want, got), "expected session ID %v, got %v", want, got)
+	})
+	mt.Run("last use time updated", func(mt *mtest.T) {
+		sess, err := mt.Client.StartSession()
+		assert.Nil(mt, err, "StartSession error: %v", err)
+		defer sess.EndSession(mtest.Background)
+		initialLastUsedTime := getSessionLastUsedTime(mt, sess)
+
+		err = mongo.WithSession(mtest.Background, sess, func(sc mongo.SessionContext) error {
+			return mt.Client.Ping(sc, readpref.Primary())
+		})
+		assert.Nil(mt, err, "WithSession error: %v", err)
+
+		newLastUsedTime := getSessionLastUsedTime(mt, sess)
+		assert.True(mt, newLastUsedTime.After(initialLastUsedTime),
+			"last used time %s is not after the initial last used time %s", newLastUsedTime, initialLastUsedTime)
 	})
 }
 
@@ -56,8 +70,12 @@ func TestSessions(t *testing.T) {
 	mtOpts := mtest.NewOptions().MinServerVersion("3.6").Topologies(mtest.ReplicaSet, mtest.Sharded).
 		CreateClient(false)
 	mt := mtest.New(t, mtOpts)
+	hosts := options.Client().ApplyURI(mtest.ClusterURI()).Hosts
 
-	clusterTimeOpts := mtest.NewOptions().ClientOptions(options.Client().SetHeartbeatInterval(50 * time.Second)).
+	// Pin to a single mongos so heartbeats/handshakes to other mongoses won't cause errors.
+	clusterTimeOpts := mtest.NewOptions().
+		ClientOptions(options.Client().SetHeartbeatInterval(50 * time.Second)).
+		ClientType(mtest.Pinned).
 		CreateClient(false)
 	mt.RunOpts("cluster time", clusterTimeOpts, func(mt *mtest.T) {
 		// $clusterTime included in commands
@@ -99,6 +117,38 @@ func TestSessions(t *testing.T) {
 			})
 		}
 	})
+
+	clusterTimeHandshakeOpts := options.Client().
+		SetHosts(hosts[:1]). // Prevent handshakes to other hosts from updating the cluster time.
+		SetDirect(true).
+		SetHeartbeatInterval(50 * time.Second) // Prevent extra heartbeats from updating the cluster time.
+	clusterTimeHandshakeMtOpts := mtest.NewOptions().
+		ClientType(mtest.Proxy).
+		ClientOptions(clusterTimeHandshakeOpts).
+		CreateCollection(false).
+		SSL(false) // The proxy dialer doesn't work for SSL connections.
+	mt.RunOpts("cluster time is updated from handshakes", clusterTimeHandshakeMtOpts, func(mt *mtest.T) {
+		err := mt.Client.Ping(mtest.Background, mtest.PrimaryRp)
+		assert.Nil(mt, err, "Ping error: %v", err)
+		msgPairs := mt.GetProxiedMessages()
+		assert.True(mt, len(msgPairs) > 2, "expected more than two messages, got %d", len(msgPairs))
+
+		for idx, pair := range mt.GetProxiedMessages() {
+			// Get the $clusterTime value sent to the server. The first three messages are the handshakes for the
+			// heartbeat, RTT, and application connections. These should not contain $clusterTime because they happen on
+			// connections that don't know the server's wire version and therefore don't know if the server supports
+			// $clusterTime.
+			_, err = pair.Sent.Command.LookupErr("$clusterTime")
+			if idx <= 2 {
+				assert.NotNil(mt, err, "expected no $clusterTime field in command %s", pair.Sent.Command)
+				continue
+			}
+
+			// All messages after the first two should contain $clusterTime.
+			assert.Nil(mt, err, "expected $clusterTime field in command %s", pair.Sent.Command)
+		}
+	})
+
 	mt.RunOpts("explicit implicit session arguments", noClientOpts, func(mt *mtest.T) {
 		// lsid is included in commands with explicit and implicit sessions
 
@@ -112,7 +162,7 @@ func TestSessions(t *testing.T) {
 				mt.ClearEvents()
 
 				_ = sf.execute(mt, sess) // don't check error because we only care about lsid
-				_, wantID := getSessionID(mt, sess).Lookup("id").Binary()
+				_, wantID := sess.ID().Lookup("id").Binary()
 				gotID := extractSentSessionID(mt)
 				assert.True(mt, bytes.Equal(wantID, gotID), "expected session ID %v, got %v", wantID, gotID)
 
@@ -202,44 +252,90 @@ func TestSessions(t *testing.T) {
 		deleteID := extractSentSessionID(mt)
 		assert.Equal(mt, findID, deleteID, "expected session ID %v, got %v", findID, deleteID)
 	})
-	mt.RunOpts("find and getMore use same ID", noClientOpts, func(mt *mtest.T) {
-		testCases := []struct {
-			name  string
-			rp    *readpref.ReadPref
-			topos []mtest.TopologyKind // if nil, all will be used
-		}{
-			{"primary", readpref.Primary(), nil},
-			{"primaryPreferred", readpref.PrimaryPreferred(), nil},
-			{"secondary", readpref.Secondary(), []mtest.TopologyKind{mtest.ReplicaSet}},
-			{"secondaryPreferred", readpref.SecondaryPreferred(), nil},
-			{"nearest", readpref.Nearest(), nil},
+	mt.Run("find and getMore use same ID", func(mt *mtest.T) {
+		var docs []interface{}
+		for i := 0; i < 3; i++ {
+			docs = append(docs, bson.D{{"x", i}})
 		}
-		for _, tc := range testCases {
-			clientOpts := options.Client().SetReadPreference(tc.rp).SetWriteConcern(mtest.MajorityWc)
-			mt.RunOpts(tc.name, mtest.NewOptions().ClientOptions(clientOpts).Topologies(tc.topos...), func(mt *mtest.T) {
-				var docs []interface{}
-				for i := 0; i < 3; i++ {
-					docs = append(docs, bson.D{{"x", i}})
-				}
-				_, err := mt.Coll.InsertMany(mtest.Background, docs)
-				assert.Nil(mt, err, "InsertMany error: %v", err)
+		_, err := mt.Coll.InsertMany(mtest.Background, docs)
+		assert.Nil(mt, err, "InsertMany error: %v", err)
 
-				// run a find that will hold onto an implicit session and record the session ID
-				mt.ClearEvents()
-				cursor, err := mt.Coll.Find(mtest.Background, bson.D{}, options.Find().SetBatchSize(2))
-				assert.Nil(mt, err, "Find error: %v", err)
-				findID := extractSentSessionID(mt)
-				assert.NotNil(mt, findID, "expected session ID for find, got nil")
+		// run a find that will hold onto an implicit session and record the session ID
+		mt.ClearEvents()
+		cursor, err := mt.Coll.Find(mtest.Background, bson.D{}, options.Find().SetBatchSize(2))
+		assert.Nil(mt, err, "Find error: %v", err)
+		findID := extractSentSessionID(mt)
+		assert.NotNil(mt, findID, "expected session ID for find, got nil")
 
-				// iterate over all documents and record the session ID of the getMore
-				for i := 0; i < 3; i++ {
-					assert.True(mt, cursor.Next(mtest.Background), "Next returned false on iteration %v", i)
-				}
-				getMoreID := extractSentSessionID(mt)
-				assert.Equal(mt, findID, getMoreID, "expected session ID %v, got %v", findID, getMoreID)
-			})
+		// iterate over all documents and record the session ID of the getMore
+		for i := 0; i < 3; i++ {
+			assert.True(mt, cursor.Next(mtest.Background), "Next returned false on iteration %v", i)
 		}
+		getMoreID := extractSentSessionID(mt)
+		assert.Equal(mt, findID, getMoreID, "expected session ID %v, got %v", findID, getMoreID)
 	})
+
+	mt.Run("imperative API", func(mt *mtest.T) {
+		mt.Run("round trip Session object", func(mt *mtest.T) {
+			// Rountrip a Session object through NewSessionContext/ContextFromSession and assert that it is correctly
+			// stored/retrieved.
+
+			sess, err := mt.Client.StartSession()
+			assert.Nil(mt, err, "StartSession error: %v", err)
+			defer sess.EndSession(mtest.Background)
+
+			sessCtx := mongo.NewSessionContext(mtest.Background, sess)
+			assert.Equal(mt, sess.ID(), sessCtx.ID(), "expected Session ID %v, got %v", sess.ID(), sessCtx.ID())
+
+			gotSess := mongo.SessionFromContext(sessCtx)
+			assert.NotNil(mt, gotSess, "expected SessionFromContext to return non-nil value, got nil")
+			assert.Equal(mt, sess.ID(), gotSess.ID(), "expected Session ID %v, got %v", sess.ID(), gotSess.ID())
+		})
+
+		txnOpts := mtest.NewOptions().RunOn(
+			mtest.RunOnBlock{Topology: []mtest.TopologyKind{mtest.ReplicaSet}, MinServerVersion: "4.0"},
+			mtest.RunOnBlock{Topology: []mtest.TopologyKind{mtest.Sharded}, MinServerVersion: "4.2"},
+		)
+		mt.RunOpts("run transaction", txnOpts, func(mt *mtest.T) {
+			// Test that the imperative sessions API can be used to run a transaction.
+
+			createSessionContext := func(mt *mtest.T) mongo.SessionContext {
+				sess, err := mt.Client.StartSession()
+				assert.Nil(mt, err, "StartSession error: %v", err)
+
+				return mongo.NewSessionContext(mtest.Background, sess)
+			}
+
+			sessCtx := createSessionContext(mt)
+			sess := mongo.SessionFromContext(sessCtx)
+			assert.NotNil(mt, sess, "expected SessionFromContext to return non-nil value, got nil")
+			defer sess.EndSession(mtest.Background)
+
+			err := sess.StartTransaction()
+			assert.Nil(mt, err, "StartTransaction error: %v", err)
+
+			numDocs := 2
+			for i := 0; i < numDocs; i++ {
+				_, err = mt.Coll.InsertOne(sessCtx, bson.D{{"x", 1}})
+				assert.Nil(mt, err, "InsertOne error at index %d: %v", i, err)
+			}
+
+			// Assert that the collection count is 0 before committing and numDocs after. This tests that the InsertOne
+			// calls were actually executed in the transaction because the pre-commit count does not include them.
+			assertCollectionCount(mt, 0)
+			err = sess.CommitTransaction(sessCtx)
+			assert.Nil(mt, err, "CommitTransaction error: %v", err)
+			assertCollectionCount(mt, int64(numDocs))
+		})
+	})
+}
+
+func assertCollectionCount(mt *mtest.T, expectedCount int64) {
+	mt.Helper()
+
+	count, err := mt.Coll.CountDocuments(mtest.Background, bson.D{})
+	assert.Nil(mt, err, "CountDocuments error: %v", err)
+	assert.Equal(mt, expectedCount, count, "expected CountDocuments result %v, got %v", expectedCount, count)
 }
 
 type sessionFunction struct {
@@ -323,7 +419,7 @@ func createFunctionsSlice() []sessionFunction {
 	}
 }
 
-func sessionIDsEqual(mt *mtest.T, id1, id2 bsonx.Doc) bool {
+func sessionIDsEqual(mt *mtest.T, id1, id2 bson.Raw) bool {
 	first, err := id1.LookupErr("id")
 	assert.Nil(mt, err, "id not found in document %v", id1)
 	second, err := id2.LookupErr("id")
@@ -362,4 +458,10 @@ func extractSentSessionID(mt *mtest.T) []byte {
 
 	_, data := lsid.Document().Lookup("id").Binary()
 	return data
+}
+
+func getSessionLastUsedTime(mt *mtest.T, sess mongo.Session) time.Time {
+	xsess, ok := sess.(mongo.XSession)
+	assert.True(mt, ok, "expected session to implement mongo.XSession, but got %T", sess)
+	return xsess.ClientSession().LastUsed
 }
