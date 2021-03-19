@@ -281,7 +281,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, nil,
 		project.Identifier)
 
-	results, err := taskHistoryIterator.GetDistinctTestNames(NumTasksToSearchForTestNames)
+	results, err := taskHistoryIterator.GetDistinctTestNames(r.Context(), uis.env, NumTasksToSearchForTestNames)
 	testNamesQueryDuration := time.Now().Sub(stepTime)
 	msg := message.Fields{
 		"message":               "got test names",

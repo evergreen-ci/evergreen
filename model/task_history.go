@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -177,7 +179,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(numCommits int) ([]string, error)
+	GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -351,16 +353,9 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string, error) {
-	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting database session")
-	}
-	defer session.Close()
-
-	session.SetSocketTimeout(time.Minute)
-
-	pipeline := mdb.C(task.Collection).Pipe(
+func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error) {
+	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Second * 90)
+	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
 		[]bson.M{
 			{
 				"$match": bson.M{
@@ -394,19 +389,35 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
 			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
+		opts,
 	)
-
-	var output []bson.M
-
-	if err = pipeline.All(&output); err != nil {
-		return nil, errors.WithStack(err)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting cursor")
 	}
-
-	names := make([]string, 0)
-	for _, doc := range output {
-		names = append(names, doc["_id"].(string))
+	if cursor == nil {
+		return nil, errors.New("nil cursor returned")
 	}
+	defer cursor.Close(ctx)
 
+	names := []string{}
+	for cursor.Next(ctx) {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("context cancelled")
+		default:
+			res := bson.M{}
+			if err := cursor.Decode(&res); err != nil {
+				return nil, errors.Wrapf(err, "error decoding result")
+			}
+			// remove quotes from value
+			val := strings.Replace(res["_id"].(string), "\"", "", -1)
+			names = append(names, val)
+		}
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, errors.Wrap(err, "error reading cursor")
+	}
+	sort.Strings(names)
 	return names, nil
 }
 
