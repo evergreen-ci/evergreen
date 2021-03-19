@@ -231,7 +231,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded {
+	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded && !t.Aborted {
 		if err = model.DequeueAndRestart(t, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

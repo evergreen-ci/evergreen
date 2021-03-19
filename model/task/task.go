@@ -2004,9 +2004,6 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
-	if !t.DisplayOnly && !t.IsPartOfSingleHostTaskGroup() {
-		return errors.Errorf("%s is not a display task or in a task group", t.Id)
-	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{

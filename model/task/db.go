@@ -595,6 +595,13 @@ func ByExecutionTasks(ids []string) db.Q {
 	})
 }
 
+func BySubsetAborted(ids []string) db.Q {
+	return db.Query(bson.M{
+		IdKey:      bson.M{"$in": ids},
+		AbortedKey: true,
+	})
+}
+
 var (
 	IsDispatchedOrStarted = db.Query(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
