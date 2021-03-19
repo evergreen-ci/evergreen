@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -17,6 +19,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // shellExec is responsible for running the shell code.
@@ -68,6 +71,11 @@ type shellExec struct {
 	// should cause the task to be marked as failed. Setting this to true
 	// allows following commands to execute even if this shell command fails.
 	ContinueOnError bool `mapstructure:"continue_on_err"`
+
+	// Debug is a temporary and deliberately undocumented feature added in EVG-8017
+	// and should be removed. It writes a file called debug_shell_exec.<id>.yml that
+	// contains the contents of the command and its expansions.
+	Debug bool `mapstructure:"debug"`
 
 	base
 }
@@ -125,6 +133,29 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
 		logger.Execution().Notice(err.Error())
+	}
+
+	var debugString string
+	if c.Debug {
+		debugString = utility.RandomString()
+		logger.Task().Debugf("Starting command %s", debugString)
+		if conf.Expansions != nil {
+			debugExpansions := map[string]string{}
+			expansions := *conf.Expansions
+			for k, v := range expansions {
+				debugExpansions[k] = v
+			}
+			debugExpansions["shell_exec_script"] = c.Script
+			out, err := yaml.Marshal(debugExpansions)
+			if err != nil {
+				logger.Task().Debugf("Problem marshalling debug yaml for %s: %s", debugString, err)
+			}
+
+			fn := filepath.Join(c.WorkingDir, fmt.Sprintf("debug_shell_exec.%s.yml", debugString))
+			if err := ioutil.WriteFile(fn, out, 0644); err != nil {
+				logger.Task().Debugf("Problem writing debug yaml for %s: %s", debugString, err)
+			}
+		}
 	}
 
 	var exp util.Expansions
@@ -213,6 +244,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	err = cmd.Run(ctx)
+
+	if c.Debug {
+		logger.Task().Debugf("Finished command %s", debugString)
+	}
 
 	err = errors.Wrapf(err, "command encountered problem")
 	if ctx.Err() != nil {
