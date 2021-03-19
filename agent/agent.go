@@ -294,24 +294,17 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 }
 
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
-	// we didn't run setup group yet
 	setupGroup := false
 	var msg string
-	if !tc.ranSetupGroup {
+	if !tc.ranSetupGroup { // we didn't run setup group yet
 		msg = "running setup group because we haven't yet"
 		setupGroup = true
-	}
-
-	// next task has a standalone task or a new build
-	if tc.taskConfig == nil ||
+	} else if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
-		nextTask.Build != tc.taskConfig.Task.BuildId {
+		nextTask.Build != tc.taskConfig.Task.BuildId { // next task has a standalone task or a new build
 		msg = "running setup group because we have a new independent task"
 		setupGroup = true
-	}
-
-	// next task has a different task group
-	if nextTask.TaskGroup != tc.taskGroup {
+	} else if nextTask.TaskGroup != tc.taskGroup { // next task has a different task group
 		if tc.logger != nil && nextTask.TaskGroup == tc.taskConfig.Task.TaskGroup {
 			tc.logger.Task().Warning(message.Fields{
 				"message":                 "programmer error: task group in task context doesn't match task",
