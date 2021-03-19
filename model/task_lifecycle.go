@@ -754,6 +754,9 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "Error aborting failed commit queue patch")
 }
 
+// removeNextMergeTaskDependency basically removes the given merge task from a linked list of
+// merge task dependencies. It makes the next merge not depend on the current one and also makes
+// the next merge depend on the previous one, if there is one
 func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue string) error {
 	currentIndex := cq.FindItem(currentIssue)
 	if currentIndex < 0 {
