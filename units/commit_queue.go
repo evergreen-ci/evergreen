@@ -289,16 +289,24 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				"source":  "commit queue",
 				"job_id":  j.ID(),
 			})
-			j.AddError(model.SetActiveState(mergeTask, evergreen.APIServerTaskActivator, true))
 		}
 		if mergeTask.Blocked() {
-			grip.Critical(message.Fields{
+			grip.Error(message.Fields{
 				"message":      "merge task is blocked",
 				"project":      mergeTask.Project,
 				"task":         mergeTask.Id,
 				"dependencies": mergeTask.DependsOn,
 				"source":       "commit queue",
 				"job_id":       j.ID(),
+			})
+		}
+		if mergeTask.Priority < 0 {
+			grip.Error(message.Fields{
+				"message": "merge task is disabled",
+				"project": mergeTask.Project,
+				"task":    mergeTask.Id,
+				"source":  "commit queue",
+				"job_id":  j.ID(),
 			})
 		}
 	}
@@ -541,20 +549,6 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 
 	if err = thirdparty.ValidatePR(pr); err != nil {
 		return nil, true, errors.Wrap(err, "GitHub returned an incomplete PR")
-	}
-
-	if pr.Mergeable == nil {
-		if *pr.Merged {
-			return pr, true, errors.New("PR is already merged")
-		}
-		// GitHub hasn't yet tested if the PR is mergeable.
-		// Check back later
-		// See: https://developer.github.com/v3/pulls/#response-1
-		return pr, false, errors.New("GitHub hasn't yet generated a merge commit")
-	}
-
-	if !*pr.Mergeable {
-		return pr, true, errors.New("PR is not mergeable")
 	}
 
 	return pr, false, nil
