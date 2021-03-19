@@ -51,9 +51,6 @@
       "needs_agent": false,
       "needs_agent_monitor": false,
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "90"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -63,7 +60,6 @@
       "running_task_group_order": 0,
       "running_task_project": "mongo-tools",
       "running_task_version": "5f15ad3c3627e07772ab2d01",
-      "total_cost": 0.0011340309722222223,
       "total_idle_time": {
         "$numberLong": "54073000000"
       },
@@ -231,9 +227,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "370"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -282,7 +275,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
-      "compute_cost_per_hour": 0.261,
       "volumes": [
         {
           "volume_id": "vol-0b5ec54a106c6e976",
@@ -297,7 +289,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.3028389870061729,
       "total_idle_time": {
         "$numberLong": "50424000000"
       },
@@ -476,9 +467,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "90"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -527,7 +515,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
-      "compute_cost_per_hour": 0.063,
       "volumes": [
         {
           "volume_id": "vol-0923f22a2eed4cded",
@@ -542,7 +529,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.32626226055555557,
       "total_idle_time": {
         "$numberLong": "45837000000"
       },
@@ -682,9 +668,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "0"
-      },
       "parent_id": "i-025830c3d17d6c1b2",
       "container_build_attempt": 0,
       "spawn_options": {},
@@ -692,7 +675,6 @@
       "home_volume_size": 0,
       "home_volume_id": "",
       "volumes": null,
-      "total_cost": 0,
       "total_idle_time": {
         "$numberLong": "289503056922"
       }
@@ -859,9 +841,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-debian92-small-20200720180503-7572246267770553771",
       "instance_type": "",
-      "volume_total_size": {
-        "$numberLong": "112"
-      },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -910,7 +889,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
-      "compute_cost_per_hour": 0.0666,
       "volumes": [
         {
           "volume_id": "vol-00e60a128649affd6",
@@ -931,7 +909,6 @@
       "running_task_group_order": 0,
       "running_task_project": "mongodb-mongo-v3.6",
       "running_task_version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
-      "total_cost": 0.00105818637654321,
       "total_idle_time": {
         "$numberLong": "46369000000"
       },
@@ -2072,8 +2049,7 @@
           "detected": false,
           "pids": null
         }
-      },
-      "cost": 0.1271618888580247
+      }
     },
     {
       "_id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
@@ -2246,8 +2222,7 @@
         "agent": null,
         "system": null,
         "task": null
-      },
-      "cost": 0.10187439507407409
+      }
     },
     {
       "_id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",

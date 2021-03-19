@@ -1,11 +1,14 @@
 package options
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"reflect"
@@ -13,13 +16,16 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
 var tClientOptions = reflect.TypeOf(&ClientOptions{})
@@ -76,6 +82,7 @@ func TestClientOptions(t *testing.T) {
 			{"TLSConfig", (*ClientOptions).SetTLSConfig, &tls.Config{}, "TLSConfig", false},
 			{"WriteConcern", (*ClientOptions).SetWriteConcern, writeconcern.New(writeconcern.WMajority()), "WriteConcern", false},
 			{"ZlibLevel", (*ClientOptions).SetZlibLevel, 6, "ZlibLevel", true},
+			{"DisableOCSPEndpointCheck", (*ClientOptions).SetDisableOCSPEndpointCheck, true, "DisableOCSPEndpointCheck", true},
 		}
 
 		opt1, opt2, optResult := Client(), Client(), Client()
@@ -196,7 +203,7 @@ func TestClientOptions(t *testing.T) {
 				"ReadPreference Primary With Options",
 				"mongodb://localhost/?readPreference=Primary&maxStaleness=200",
 				&ClientOptions{
-					err:   errors.New("can not specify tags or max staleness on primary"),
+					err:   errors.New("can not specify tags, max staleness, or hedge with mode primary"),
 					Hosts: []string{"localhost"},
 				},
 			},
@@ -237,13 +244,6 @@ func TestClientOptions(t *testing.T) {
 				}),
 			},
 			{
-				"AuthSourceNoUsername",
-				"mongodb://localhost/?authSource=random-database-example",
-				&ClientOptions{err: internal.WrapErrorf(
-					errors.New("authsource without username is invalid"), "error parsing uri",
-				)},
-			},
-			{
 				"AuthSource",
 				"mongodb://foo@localhost/?authSource=random-database-example",
 				baseClient().SetAuth(Credential{AuthSource: "random-database-example", Username: "foo"}),
@@ -254,11 +254,27 @@ func TestClientOptions(t *testing.T) {
 				baseClient().SetAuth(Credential{AuthSource: "admin", Username: "foo"}),
 			},
 			{
+				"Unescaped slash in username",
+				"mongodb:///:pwd@localhost",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("unescaped slash in username"),
+					"error parsing uri",
+				)},
+			},
+			{
 				"Password",
 				"mongodb://foo:bar@localhost/",
 				baseClient().SetAuth(Credential{
 					AuthSource: "admin", Username: "foo",
 					Password: "bar", PasswordSet: true,
+				}),
+			},
+			{
+				"Single character username and password",
+				"mongodb://f:b@localhost/",
+				baseClient().SetAuth(Credential{
+					AuthSource: "admin", Username: "f",
+					Password: "b", PasswordSet: true,
 				}),
 			},
 			{
@@ -354,7 +370,9 @@ func TestClientOptions(t *testing.T) {
 			{
 				"TLS CACertificate",
 				"mongodb://localhost/?ssl=true&sslCertificateAuthorityFile=testdata/ca.pem",
-				baseClient().SetTLSConfig(&tls.Config{RootCAs: x509.NewCertPool()}),
+				baseClient().SetTLSConfig(&tls.Config{
+					RootCAs: createCertPool(t, "testdata/ca.pem"),
+				}),
 			},
 			{
 				"TLS Insecure",
@@ -404,24 +422,161 @@ func TestClientOptions(t *testing.T) {
 				"mongodb://localhost/?zlibCompressionLevel=4",
 				baseClient().SetZlibLevel(4),
 			},
+			{
+				"TLS tlsCertificateFile and tlsPrivateKeyFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem&tlsPrivateKeyFile=testdata/nopass/key.pem",
+				baseClient().SetTLSConfig(&tls.Config{Certificates: make([]tls.Certificate, 1)}),
+			},
+			{
+				"TLS only tlsCertificateFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the tlsPrivateKeyFile URI option must be provided if the tlsCertificateFile option is specified"),
+					"error validating uri",
+				)},
+			},
+			{
+				"TLS only tlsPrivateKeyFile",
+				"mongodb://localhost/?tlsPrivateKeyFile=testdata/nopass/key.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the tlsCertificateFile URI option must be provided if the tlsPrivateKeyFile option is specified"),
+					"error validating uri",
+				)},
+			},
+			{
+				"TLS tlsCertificateFile and tlsPrivateKeyFile and tlsCertificateKeyFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem&tlsPrivateKeyFile=testdata/nopass/key.pem&tlsCertificateKeyFile=testdata/nopass/certificate.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the sslClientCertificateKeyFile/tlsCertificateKeyFile URI option cannot be provided "+
+						"along with tlsCertificateFile or tlsPrivateKeyFile"),
+					"error validating uri",
+				)},
+			},
+			{
+				"disable OCSP endpoint check",
+				"mongodb://localhost/?tlsDisableOCSPEndpointCheck=true",
+				baseClient().SetDisableOCSPEndpointCheck(true),
+			},
+			{
+				"directConnection",
+				"mongodb://localhost/?directConnection=true",
+				baseClient().SetDirect(true),
+			},
+			{
+				"TLS CA file with multiple certificiates",
+				"mongodb://localhost/?tlsCAFile=testdata/ca-with-intermediates.pem",
+				baseClient().SetTLSConfig(&tls.Config{
+					RootCAs: createCertPool(t, "testdata/ca-with-intermediates-first.pem",
+						"testdata/ca-with-intermediates-second.pem", "testdata/ca-with-intermediates-third.pem"),
+				}),
+			},
+			{
+				"TLS empty CA file",
+				"mongodb://localhost/?tlsCAFile=testdata/empty-ca.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
+			{
+				"TLS CA file with no certificates",
+				"mongodb://localhost/?tlsCAFile=testdata/ca-key.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
+			{
+				"TLS malformed CA file",
+				"mongodb://localhost/?tlsCAFile=testdata/malformed-ca.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				result := Client().ApplyURI(tc.uri)
+
+				// Manually add the URI and ConnString to the test expectations to avoid adding them in each test
+				// definition. The ConnString should only be recorded if there was no error while parsing.
+				tc.result.uri = tc.uri
+				cs, err := connstring.ParseAndValidate(tc.uri)
+				if err == nil {
+					tc.result.cs = &cs
+				}
+
 				if diff := cmp.Diff(
 					tc.result, result,
-					cmp.AllowUnexported(readconcern.ReadConcern{}, writeconcern.WriteConcern{}, readpref.ReadPref{}),
+					cmp.AllowUnexported(ClientOptions{}, readconcern.ReadConcern{}, writeconcern.WriteConcern{}, readpref.ReadPref{}),
 					cmp.Comparer(func(r1, r2 *bsoncodec.Registry) bool { return r1 == r2 }),
 					cmp.Comparer(compareTLSConfig),
 					cmp.Comparer(compareErrors),
-					cmp.AllowUnexported(ClientOptions{}),
+					cmpopts.IgnoreFields(connstring.ConnString{}, "SSLClientCertificateKeyPassword"),
 				); diff != "" {
 					t.Errorf("URI did not apply correctly: (-want +got)\n%s", diff)
 				}
 			})
 		}
 	})
+	t.Run("direct connection validation", func(t *testing.T) {
+		t.Run("multiple hosts", func(t *testing.T) {
+			expectedErr := errors.New("a direct connection cannot be made if multiple hosts are specified")
+
+			testCases := []struct {
+				name string
+				opts *ClientOptions
+			}{
+				{"hosts in URI", Client().ApplyURI("mongodb://localhost,localhost2")},
+				{"hosts in options", Client().SetHosts([]string{"localhost", "localhost2"})},
+			}
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					err := tc.opts.SetDirect(true).Validate()
+					assert.NotNil(t, err, "expected errror, got nil")
+					assert.Equal(t, expectedErr.Error(), err.Error(), "expected error %v, got %v", expectedErr, err)
+				})
+			}
+		})
+		t.Run("srv", func(t *testing.T) {
+			expectedErr := errors.New("a direct connection cannot be made if an SRV URI is used")
+			// Use a non-SRV URI and manually set the scheme because using an SRV URI would force an SRV lookup.
+			opts := Client().ApplyURI("mongodb://localhost:27017")
+			opts.cs.Scheme = connstring.SchemeMongoDBSRV
+
+			err := opts.SetDirect(true).Validate()
+			assert.NotNil(t, err, "expected errror, got nil")
+			assert.Equal(t, expectedErr.Error(), err.Error(), "expected error %v, got %v", expectedErr, err)
+		})
+	})
+}
+
+func createCertPool(t *testing.T, paths ...string) *x509.CertPool {
+	t.Helper()
+
+	pool := x509.NewCertPool()
+	for _, path := range paths {
+		pool.AddCert(loadCert(t, path))
+	}
+	return pool
+}
+
+func loadCert(t *testing.T, file string) *x509.Certificate {
+	t.Helper()
+
+	data := readFile(t, file)
+	block, _ := pem.Decode(data)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	assert.Nil(t, err, "ParseCertificate error for %s: %v", file, err)
+	return cert
+}
+
+func readFile(t *testing.T, path string) []byte {
+	data, err := ioutil.ReadFile(path)
+	assert.Nil(t, err, "ReadFile error for %s: %v", path, err)
+	return data
 }
 
 type testDialer struct {
@@ -443,6 +598,20 @@ func compareTLSConfig(cfg1, cfg2 *tls.Config) bool {
 
 	if (cfg1.RootCAs == nil && cfg1.RootCAs != nil) || (cfg1.RootCAs != nil && cfg1.RootCAs == nil) {
 		return false
+	}
+
+	if cfg1.RootCAs != nil {
+		cfg1Subjects := cfg1.RootCAs.Subjects()
+		cfg2Subjects := cfg2.RootCAs.Subjects()
+		if len(cfg1Subjects) != len(cfg2Subjects) {
+			return false
+		}
+
+		for idx, firstSubject := range cfg1Subjects {
+			if !bytes.Equal(firstSubject, cfg2Subjects[idx]) {
+				return false
+			}
+		}
 	}
 
 	if len(cfg1.Certificates) != len(cfg2.Certificates) {

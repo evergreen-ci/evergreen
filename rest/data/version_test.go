@@ -2,10 +2,7 @@ package data
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -15,55 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-func TestFindCostByVersionId(t *testing.T) {
-	assert := assert.New(t)
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
-
-	sc := &DBConnector{}
-	numTaskSet := 10
-
-	// Add task documents in the database
-	for i := 0; i < numTaskSet; i++ {
-		testTask1 := &task.Task{
-			Id:        fmt.Sprintf("task_%d", i*2),
-			Version:   fmt.Sprintf("%d", i),
-			TimeTaken: time.Duration(i),
-		}
-		assert.Nil(testTask1.Insert())
-
-		testTask2 := &task.Task{
-			Id:        fmt.Sprintf("task_%d", i*2+1),
-			Version:   fmt.Sprintf("%d", i),
-			TimeTaken: time.Duration(i),
-		}
-		assert.Nil(testTask2.Insert())
-	}
-
-	// Finding each version's sum of time taken should succeed
-	for i := 0; i < numTaskSet; i++ {
-		found, err := sc.FindCostByVersionId(fmt.Sprintf("%d", i))
-		assert.Nil(err)
-		assert.Equal(found.SumTimeTaken, time.Duration(i)*2)
-	}
-
-	// Searching for a version that doesn't exist should fail with an APIError
-	found, err := sc.FindCostByVersionId("fake_version")
-	assert.NotNil(err)
-	assert.Nil(found)
-	assert.IsType(err, gimlet.ErrorResponse{})
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	assert.Equal(ok, true)
-	assert.Equal(apiErr.StatusCode, http.StatusNotFound)
-}
-
-////////////////////////////////////////////////////////////////////////////////
 
 type VersionConnectorSuite struct {
 	ctx    Connector

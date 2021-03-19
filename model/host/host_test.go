@@ -3632,59 +3632,6 @@ func TestCountContainersRunningAtTime(t *testing.T) {
 	assert.Equal(2, count3)
 }
 
-func TestEstimateNumContainersForDuration(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	// time variables
-	now := time.Now()
-	startTimeBefore := now.Add(-10 * time.Minute)
-	terminationTimeBefore := now.Add(-5 * time.Minute)
-	startTimeAfter := now.Add(5 * time.Minute)
-	terminationTimeAfter := now.Add(10 * time.Minute)
-
-	parent := &Host{
-		Id:            "parent",
-		HasContainers: true,
-	}
-
-	containers := []Host{
-		{
-			Id:              "container1",
-			ParentID:        "parent",
-			StartTime:       startTimeBefore,
-			TerminationTime: terminationTimeBefore,
-		},
-		{
-			Id:              "container2",
-			ParentID:        "parent",
-			StartTime:       startTimeBefore,
-			TerminationTime: terminationTimeAfter,
-		},
-		{
-			Id:        "container3",
-			ParentID:  "parent",
-			StartTime: startTimeBefore,
-		},
-		{
-			Id:        "container4",
-			ParentID:  "parent",
-			StartTime: startTimeAfter,
-		},
-	}
-	for i := range containers {
-		assert.NoError(containers[i].Insert())
-	}
-
-	estimate1, err := parent.EstimateNumContainersForDuration(now.Add(-15*time.Minute), now)
-	assert.NoError(err)
-	assert.Equal(1.0, estimate1)
-
-	estimate2, err := parent.EstimateNumContainersForDuration(now, now.Add(15*time.Minute))
-	assert.NoError(err)
-	assert.Equal(2.0, estimate2)
-}
-
 func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 	t.Run("QueryExecutesProperly", func(t *testing.T) {
 		hosts, err := FindTerminatedHostsRunningTasks()
@@ -4444,40 +4391,36 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 	hosts := []Host{
 		{
-			Id:                 "host-1",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "small",
-			ComputeCostPerHour: 20,
-			StartedBy:          "me",
-			UserHost:           true,
-			NoExpiration:       true,
+			Id:           "host-1",
+			Status:       evergreen.HostRunning,
+			InstanceType: "small",
+			StartedBy:    "me",
+			UserHost:     true,
+			NoExpiration: true,
 		},
 		{
-			Id:                 "host-2",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "small",
-			ComputeCostPerHour: 30,
-			StartedBy:          "me",
-			UserHost:           true,
-			NoExpiration:       false,
+			Id:           "host-2",
+			Status:       evergreen.HostRunning,
+			InstanceType: "small",
+			StartedBy:    "me",
+			UserHost:     true,
+			NoExpiration: false,
 		},
 		{
-			Id:                 "host-3",
-			Status:             evergreen.HostStopped,
-			InstanceType:       "large",
-			ComputeCostPerHour: 60,
-			StartedBy:          "you",
-			UserHost:           true,
-			NoExpiration:       false,
+			Id:           "host-3",
+			Status:       evergreen.HostStopped,
+			InstanceType: "large",
+			StartedBy:    "you",
+			UserHost:     true,
+			NoExpiration: false,
 		},
 		{
-			Id:                 "host-4",
-			Status:             evergreen.HostRunning,
-			InstanceType:       "medium",
-			ComputeCostPerHour: 10,
-			StartedBy:          "her",
-			UserHost:           true,
-			NoExpiration:       true,
+			Id:           "host-4",
+			Status:       evergreen.HostRunning,
+			InstanceType: "medium",
+			StartedBy:    "her",
+			UserHost:     true,
+			NoExpiration: true,
 		},
 		{
 			Id:        "host-5",
@@ -4524,7 +4467,6 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.Equal(t, 4, res.TotalHosts)
 	assert.Equal(t, 1, res.TotalStoppedHosts)
 	assert.EqualValues(t, 2, res.TotalUnexpirableHosts)
-	assert.Equal(t, 30.0, res.AverageComputeCostPerHour)
 	assert.Equal(t, 2, res.NumUsersWithVolumes)
 	assert.Equal(t, 412, res.TotalVolumeSize)
 	assert.Equal(t, 3, res.TotalVolumes)
@@ -4919,19 +4861,16 @@ func TestRemoveAndReplace(t *testing.T) {
 
 	// replacing an existing host works
 	h := Host{
-		Id:                 "bar",
-		Status:             evergreen.HostUninitialized,
-		ComputeCostPerHour: 50,
+		Id:     "bar",
+		Status: evergreen.HostUninitialized,
 	}
 	assert.NoError(t, h.Insert())
 
-	h.ComputeCostPerHour = 100
 	h.DockerOptions.Command = "hello world"
 	assert.NoError(t, h.Replace())
 	dbHost, err := FindOneId(h.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostUninitialized, dbHost.Status)
-	assert.EqualValues(t, 100, dbHost.ComputeCostPerHour)
 	assert.Equal(t, "hello world", dbHost.DockerOptions.Command)
 
 	// replacing a nonexisting host will just insert

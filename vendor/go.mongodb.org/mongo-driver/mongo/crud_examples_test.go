@@ -58,6 +58,62 @@ func ExampleClient_Watch() {
 
 // Database examples
 
+func ExampleDatabase_CreateCollection() {
+	var db *mongo.Database
+
+	// Create a "users" collection with a JSON schema validator. The validator will ensure that each document in the
+	// collection has "name" and "age" fields.
+	jsonSchema := bson.M{
+		"bsonType": "object",
+		"required": []string{"name", "age"},
+		"properties": bson.M{
+			"name": bson.M{
+				"bsonType":    "string",
+				"description": "the name of the user, which is required and must be a string",
+			},
+			"age": bson.M{
+				"bsonType":    "int",
+				"minimum":     18,
+				"description": "the age of the user, which is required and must be an integer >= 18",
+			},
+		},
+	}
+	validator := bson.M{
+		"$jsonSchema": jsonSchema,
+	}
+	opts := options.CreateCollection().SetValidator(validator)
+
+	if err := db.CreateCollection(context.TODO(), "users", opts); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ExampleDatabase_CreateView() {
+	var db *mongo.Database
+
+	// Create a view on the "users" collection called "usernames". Specify a pipeline that concatenates the "firstName"
+	// and "lastName" fields from each document in "users" and projects the result into the "fullName" field in the
+	// view.
+	projectStage := bson.D{
+		{"$project", bson.D{
+			{"_id", 0},
+			{"fullName", bson.D{
+				{"$concat", []string{"$firstName", " ", "$lastName"}},
+			}},
+		}},
+	}
+	pipeline := mongo.Pipeline{projectStage}
+
+	// Specify the Collation option to set a default collation for the view.
+	opts := options.CreateView().SetCollation(&options.Collation{
+		Locale: "en_US",
+	})
+
+	if err := db.CreateView(context.TODO(), "usernames", "users", pipeline, opts); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func ExampleDatabase_ListCollectionNames() {
 	var db *mongo.Database
 
@@ -470,23 +526,36 @@ func ExampleWithSession() {
 	}
 	defer sess.EndSession(context.TODO())
 
-	// Call WithSession to use the new Session to insert a document and find it.
+	// Call WithSession to start a transaction within the new session.
 	err = mongo.WithSession(context.TODO(), sess, func(sessCtx mongo.SessionContext) error {
 		// Use sessCtx as the Context parameter for InsertOne and FindOne so both operations are run under the new
 		// Session.
 
+		if err := sess.StartTransaction(); err != nil {
+			return err
+		}
+
 		coll := client.Database("db").Collection("coll")
 		res, err := coll.InsertOne(sessCtx, bson.D{{"x", 1}})
 		if err != nil {
+			// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+			// successfully even if the context passed to mongo.WithSession is changed to have a timeout.
+			_ = sess.AbortTransaction(context.Background())
 			return err
 		}
 
 		var result bson.M
 		if err = coll.FindOne(sessCtx, bson.D{{"_id", res.InsertedID}}).Decode(result); err != nil {
+			// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+			// successfully even if the context passed to mongo.WithSession is changed to have a timeout.
+			_ = sess.AbortTransaction(context.Background())
 			return err
 		}
 		fmt.Println(result)
-		return nil
+
+		// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
+		// mongo.WithSession is changed to have a timeout.
+		return sess.CommitTransaction(context.Background())
 	})
 }
 
@@ -502,18 +571,31 @@ func ExampleClient_UseSessionWithOptions() {
 		// Use sessCtx as the Context parameter for InsertOne and FindOne so both operations are run under the new
 		// Session.
 
+		if err := sessCtx.StartTransaction(); err != nil {
+			return err
+		}
+
 		coll := client.Database("db").Collection("coll")
 		res, err := coll.InsertOne(sessCtx, bson.D{{"x", 1}})
 		if err != nil {
+			// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+			// successfully even if the context passed to mongo.WithSession is changed to have a timeout.
+			_ = sessCtx.AbortTransaction(context.Background())
 			return err
 		}
 
 		var result bson.M
 		if err = coll.FindOne(sessCtx, bson.D{{"_id", res.InsertedID}}).Decode(result); err != nil {
+			// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+			// successfully even if the context passed to mongo.WithSession is changed to have a timeout.
+			_ = sessCtx.AbortTransaction(context.Background())
 			return err
 		}
 		fmt.Println(result)
-		return nil
+
+		// Use context.Background() to ensure that the commit can complete successfully even if the context passed to
+		// mongo.WithSession is changed to have a timeout.
+		return sessCtx.CommitTransaction(context.Background())
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -556,6 +638,48 @@ func ExampleClient_StartSession_withTransaction() {
 		log.Fatal(err)
 	}
 	fmt.Printf("result: %v\n", result)
+}
+
+func ExampleNewSessionContext() {
+	var client *mongo.Client
+
+	// Create a new Session and SessionContext.
+	sess, err := client.StartSession()
+	if err != nil {
+		panic(err)
+	}
+	defer sess.EndSession(context.TODO())
+	sessCtx := mongo.NewSessionContext(context.TODO(), sess)
+
+	// Start a transaction and sessCtx as the Context parameter to InsertOne and FindOne so both operations will be
+	// run in the transaction.
+	if err = sess.StartTransaction(); err != nil {
+		panic(err)
+	}
+
+	coll := client.Database("db").Collection("coll")
+	res, err := coll.InsertOne(sessCtx, bson.D{{"x", 1}})
+	if err != nil {
+		// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+		// successfully even if the context passed to NewSessionContext is changed to have a timeout.
+		_ = sess.AbortTransaction(context.Background())
+		panic(err)
+	}
+
+	var result bson.M
+	if err = coll.FindOne(sessCtx, bson.D{{"_id", res.InsertedID}}).Decode(&result); err != nil {
+		// Abort the transaction after an error. Use context.Background() to ensure that the abort can complete
+		// successfully even if the context passed to NewSessionContext is changed to have a timeout.
+		_ = sess.AbortTransaction(context.Background())
+		panic(err)
+	}
+	fmt.Printf("result: %v\n", result)
+
+	// Commit the transaction so the inserted document will be stored. Use context.Background() to ensure that the
+	// commit can complete successfully even if the context passed to NewSessionContext is changed to have a timeout.
+	if err = sess.CommitTransaction(context.Background()); err != nil {
+		panic(err)
+	}
 }
 
 // Cursor examples
@@ -613,6 +737,43 @@ func ExampleCursor_TryNext() {
 		}
 		if cursor.ID() == 0 {
 			break
+		}
+	}
+}
+
+func ExampleCursor_RemainingBatchLength() {
+	// Because we're using a tailable cursor, this must be a handle to a capped collection.
+	var coll *mongo.Collection
+
+	// Create a tailable await cursor. Specify the MaxAwaitTime option so requests to get more data will return if there
+	// are no documents available after two seconds.
+	findOpts := options.Find().
+		SetCursorType(options.TailableAwait).
+		SetMaxAwaitTime(2 * time.Second)
+	cursor, err := coll.Find(context.TODO(), bson.D{}, findOpts)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		// Iterate the cursor using TryNext.
+		if cursor.TryNext(context.TODO()) {
+			fmt.Println(cursor.Current)
+		}
+
+		// Handle cursor errors or the cursor being closed by the server.
+		if err = cursor.Err(); err != nil {
+			panic(err)
+		}
+		if cursor.ID() == 0 {
+			panic("cursor was unexpectedly closed by the server")
+		}
+
+		// Use the RemainingBatchLength function to rate-limit the number of network requests the driver does. If the
+		// current batch is empty, sleep for a short amount of time to let documents build up on the server before
+		// the next TryNext call, which will do a network request.
+		if cursor.RemainingBatchLength() == 0 {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

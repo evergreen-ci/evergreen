@@ -320,7 +320,7 @@ type ComplexityRoot struct {
 		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch              func(childComplexity int, patchID string, commitMessage *string) int
-		MoveAnnotationIssue       func(childComplexity int, annotationID string, apiIssue model.APIIssueLink, isIssue bool) int
+		MoveAnnotationIssue       func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject     func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
@@ -695,12 +695,15 @@ type ComplexityRoot struct {
 		BaseStatus func(childComplexity int) int
 		Duration   func(childComplexity int) int
 		EndTime    func(childComplexity int) int
+		Execution  func(childComplexity int) int
 		ExitCode   func(childComplexity int) int
 		GroupId    func(childComplexity int) int
 		Id         func(childComplexity int) int
+		LineNum    func(childComplexity int) int
 		Logs       func(childComplexity int) int
 		StartTime  func(childComplexity int) int
 		Status     func(childComplexity int) int
+		TaskId     func(childComplexity int) int
 		TestFile   func(childComplexity int) int
 	}
 
@@ -805,7 +808,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error)
-	MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
+	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error)
@@ -2134,7 +2137,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
 
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
@@ -4234,6 +4237,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.EndTime(childComplexity), true
 
+	case "TestResult.execution":
+		if e.complexity.TestResult.Execution == nil {
+			break
+		}
+
+		return e.complexity.TestResult.Execution(childComplexity), true
+
 	case "TestResult.exitCode":
 		if e.complexity.TestResult.ExitCode == nil {
 			break
@@ -4255,6 +4265,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.Id(childComplexity), true
 
+	case "TestResult.lineNum":
+		if e.complexity.TestResult.LineNum == nil {
+			break
+		}
+
+		return e.complexity.TestResult.LineNum(childComplexity), true
+
 	case "TestResult.logs":
 		if e.complexity.TestResult.Logs == nil {
 			break
@@ -4275,6 +4292,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestResult.Status(childComplexity), true
+
+	case "TestResult.taskId":
+		if e.complexity.TestResult.TaskId == nil {
+			break
+		}
+
+		return e.complexity.TestResult.TaskId(childComplexity), true
 
 	case "TestResult.testFile":
 		if e.complexity.TestResult.TestFile == nil {
@@ -4734,7 +4758,8 @@ type Mutation {
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    annotationId: String!
+    taskId: String!
+    execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
@@ -5230,6 +5255,9 @@ type TestResult {
   startTime: Time
   duration: Float
   endTime: Time
+  taskId: String
+  execution: Int
+  lineNum: Int
 }
 
 type TestLog {
@@ -5333,7 +5361,6 @@ type BaseTaskInfo {
   id: String
   status: String
 }
-
 
 type GroupedProjects {
   name: String!
@@ -5832,29 +5859,37 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["annotationId"]; ok {
+	if tmp, ok := rawArgs["taskId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["annotationId"] = arg0
-	var arg1 model.APIIssueLink
+	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["execution"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["execution"] = arg1
+	var arg2 model.APIIssueLink
 	if tmp, ok := rawArgs["apiIssue"]; ok {
-		arg1, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		arg2, err = ec.unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["apiIssue"] = arg1
-	var arg2 bool
+	args["apiIssue"] = arg2
+	var arg3 bool
 	if tmp, ok := rawArgs["isIssue"]; ok {
-		arg2, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["isIssue"] = arg2
+	args["isIssue"] = arg3
 	return args, nil
 }
 
@@ -12428,7 +12463,7 @@ func (ec *executionContext) _Mutation_moveAnnotationIssue(ctx context.Context, f
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["annotationId"].(string), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
+		return ec.resolvers.Mutation().MoveAnnotationIssue(rctx, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21734,6 +21769,99 @@ func (ec *executionContext) _TestResult_endTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_taskId(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_execution(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LineNum, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TicketFields_summary(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28835,6 +28963,12 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_duration(ctx, field, obj)
 		case "endTime":
 			out.Values[i] = ec._TestResult_endTime(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
+		case "execution":
+			out.Values[i] = ec._TestResult_execution(ctx, field, obj)
+		case "lineNum":
+			out.Values[i] = ec._TestResult_lineNum(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -151,13 +151,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	for _, nextItem := range nextItems {
 		// log time waiting in queue
-		timeWaiting := time.Now().Sub(nextItem.EnqueueTime)
 		grip.Info(message.Fields{
 			"source":       "commit queue",
 			"job_id":       j.ID(),
 			"item_id":      nextItem.Issue,
 			"project_id":   cq.ProjectID,
-			"time_waiting": timeWaiting.Seconds(),
+			"time_waiting": time.Now().Sub(nextItem.EnqueueTime).Seconds(),
+			"time_elapsed": time.Now().Sub(nextItem.ProcessingStartTime).Seconds(),
 			"queue_length": len(cq.Queue),
 			"message":      "started testing commit queue item",
 		})
@@ -268,6 +268,35 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
 		}
 		return
+	}
+
+	mergeTask, err := task.FindMergeTaskForVersion(nextItem.Version)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "unable to find merge task for version"))
+	}
+	if mergeTask != nil {
+		// check that the merge task can run. Assume that if we're here the merge task
+		// should in fact run (ie. has not been dequeued due to a task failure)
+		if !mergeTask.Activated {
+			grip.Error(message.Fields{
+				"message": "merge task is inactive",
+				"project": mergeTask.Project,
+				"task":    mergeTask.Id,
+				"source":  "commit queue",
+				"job_id":  j.ID(),
+			})
+			j.AddError(model.SetActiveState(mergeTask, evergreen.APIServerTaskActivator, true))
+		}
+		if mergeTask.Blocked() {
+			grip.Critical(message.Fields{
+				"message":      "merge task is blocked",
+				"project":      mergeTask.Project,
+				"task":         mergeTask.Id,
+				"dependencies": mergeTask.DependsOn,
+				"source":       "commit queue",
+				"job_id":       j.ID(),
+			})
+		}
 	}
 
 	// patch is done
@@ -665,19 +694,13 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	}
 
 	// Merge task depends on all the tasks already in the patch
-	status := ""
-	if source == commitqueue.SourcePullRequest {
-		// for pull requests we need to run the merge task at the end even if something
-		// fails, so that it can tell github something failed
-		status = model.AllStatuses
-	}
 	dependencies := []model.TaskUnitDependency{}
 	for _, vt := range patchDoc.VariantsTasks {
 		for _, t := range vt.Tasks {
 			dependencies = append(dependencies, model.TaskUnitDependency{
 				Name:    t,
 				Variant: vt.Variant,
-				Status:  status,
+				Status:  "",
 			})
 		}
 	}

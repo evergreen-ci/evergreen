@@ -7,13 +7,15 @@
 package primitive
 
 import (
-	"testing"
-
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 )
 
 func TestNew(t *testing.T) {
@@ -42,6 +44,27 @@ func TestFromHex_InvalidHex(t *testing.T) {
 func TestFromHex_WrongLength(t *testing.T) {
 	_, err := ObjectIDFromHex("deadbeef")
 	require.Equal(t, ErrInvalidHex, err)
+}
+
+func TestIsValidObjectID(t *testing.T) {
+	testCases := []struct {
+		givenID  string
+		expected bool
+	}{
+		{
+			givenID:  "5ef7fdd91c19e3222b41b839",
+			expected: true,
+		},
+		{
+			givenID:  "5ef7fdd91c19e3222b41b83",
+			expected: false,
+		},
+	}
+
+	for _, testcase := range testCases {
+		got := IsValidObjectID(testcase.givenID)
+		assert.Equal(t, testcase.expected, got, "expected hex string to be valid ObjectID: %v, got %v", testcase.expected, got)
+	}
 }
 
 func TestTimeStamp(t *testing.T) {
@@ -147,4 +170,34 @@ func TestCounterOverflow(t *testing.T) {
 	objectIDCounter = 0xFFFFFFFF
 	NewObjectID()
 	require.Equal(t, uint32(0), objectIDCounter)
+}
+
+func TestObjectID_UnmarshalJSON(t *testing.T) {
+	oid := NewObjectID()
+
+	hexJSON := fmt.Sprintf(`{"foo": %q}`, oid.Hex())
+	extJSON := fmt.Sprintf(`{"foo": {"$oid": %q}}`, oid.Hex())
+	emptyStringJSON := `{"foo": ""}`
+	nullJSON := `{"foo": null}`
+
+	testCases := []struct {
+		name       string
+		jsonString string
+		expected   ObjectID
+	}{
+		{"hex bytes", hexJSON, oid},
+		{"extended JSON", extJSON, oid},
+		{"empty string", emptyStringJSON, NilObjectID},
+		{"null", nullJSON, NilObjectID},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got map[string]ObjectID
+			err := json.Unmarshal([]byte(tc.jsonString), &got)
+			assert.Nil(t, err, "Unmarshal error: %v", err)
+
+			gotOid := got["foo"]
+			assert.Equal(t, tc.expected, gotOid, "expected ObjectID %s, got %s", tc.expected, gotOid)
+		})
+	}
 }

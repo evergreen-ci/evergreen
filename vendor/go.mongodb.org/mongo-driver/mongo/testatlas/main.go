@@ -9,7 +9,8 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,46 +20,48 @@ import (
 func main() {
 	flag.Parse()
 	uris := flag.Args()
+	ctx := context.Background()
 
-	for _, uri := range uris {
-		ctx := context.Background()
+	for idx, uri := range uris {
+		// Set a low server selection timeout so we fail fast if there are errors.
+		clientOpts := options.Client().
+			ApplyURI(uri).
+			SetServerSelectionTimeout(1 * time.Second)
 
-		client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
-		if err != nil {
-			log.Fatalf("failed creating and connecting to client: %v", err)
+		// Run basic connectivity test.
+		if err := runTest(ctx, clientOpts); err != nil {
+			panic(fmt.Sprintf("error running test with TLS at index %d: %v", idx, err))
 		}
 
-		db := client.Database("test")
-		defer func() {
-			err := db.Drop(ctx)
-			if err != nil {
-				log.Fatalf("failed dropping database: %v", err)
-			}
-
-			err = client.Disconnect(ctx)
-			if err != nil {
-				log.Fatalf("failed disconnecting from client: %v", err)
-			}
-		}()
-
-		coll := db.Collection("test")
-
-		err = db.RunCommand(
-			ctx,
-			bson.D{{"isMaster", 1}},
-		).Err()
-		if err != nil {
-			log.Fatalf("failed executing isMaster command: %v", err)
-		}
-
-		_, err = coll.InsertOne(ctx, bson.D{{"x", 1}})
-		if err != nil {
-			log.Fatalf("failed executing insertOne command: %v", err)
-		}
-
-		res := coll.FindOne(ctx, bson.D{{"x", 1}})
-		if res.Err() != nil {
-			log.Fatalf("failed executing findOne command: %v", res.Err())
+		// Run the connectivity test with InsecureSkipVerify to ensure SNI is done correctly even if verification is
+		// disabled.
+		clientOpts.TLSConfig.InsecureSkipVerify = true
+		if err := runTest(ctx, clientOpts); err != nil {
+			panic(fmt.Sprintf("error running test with tlsInsecure at index %d: %v", idx, err))
 		}
 	}
+}
+
+func runTest(ctx context.Context, clientOpts *options.ClientOptions) error {
+	client, err := mongo.Connect(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("Connect error: %v", err)
+	}
+
+	defer func() {
+		_ = client.Disconnect(ctx)
+	}()
+
+	db := client.Database("test")
+	cmd := bson.D{{"isMaster", 1}}
+	err = db.RunCommand(ctx, cmd).Err()
+	if err != nil {
+		return fmt.Errorf("isMaster error: %v", err)
+	}
+
+	coll := db.Collection("test")
+	if err = coll.FindOne(ctx, bson.D{{"x", 1}}).Err(); err != nil && err != mongo.ErrNoDocuments {
+		return fmt.Errorf("FindOne error: %v", err)
+	}
+	return nil
 }

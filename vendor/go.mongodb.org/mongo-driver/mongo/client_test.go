@@ -9,18 +9,21 @@ package mongo
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/testutil"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/tag"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
@@ -38,10 +41,6 @@ type mockDeployment struct{}
 
 func (md mockDeployment) SelectServer(context.Context, description.ServerSelector) (driver.Server, error) {
 	return nil, nil
-}
-
-func (md mockDeployment) SupportsRetryWrites() bool {
-	return false
 }
 
 func (md mockDeployment) Kind() description.TopologyKind {
@@ -238,5 +237,111 @@ func TestClient(t *testing.T) {
 		wc := writeconcern.New(writeconcern.WMajority())
 		client := setupClient(options.Client().SetWriteConcern(wc))
 		assert.Equal(t, wc, client.writeConcern, "mismatch; expected write concern %v, got %v", wc, client.writeConcern)
+	})
+	t.Run("server monitor", func(t *testing.T) {
+		monitor := &event.ServerMonitor{}
+		client := setupClient(options.Client().SetServerMonitor(monitor))
+		assert.Equal(t, monitor, client.serverMonitor, "expected sdam monitor %v, got %v", monitor, client.serverMonitor)
+	})
+	t.Run("GetURI", func(t *testing.T) {
+		t.Run("ApplyURI not called", func(t *testing.T) {
+			opts := options.Client().SetHosts([]string{"localhost:27017"})
+			uri := opts.GetURI()
+			assert.Equal(t, "", uri, "expected GetURI to return empty string, got %v", uri)
+		})
+		t.Run("ApplyURI called with empty string", func(t *testing.T) {
+			opts := options.Client().ApplyURI("")
+			uri := opts.GetURI()
+			assert.Equal(t, "", uri, "expected GetURI to return empty string, got %v", uri)
+		})
+		t.Run("ApplyURI called with non-empty string", func(t *testing.T) {
+			uri := "mongodb://localhost:27017/foobar"
+			opts := options.Client().ApplyURI(uri)
+			got := opts.GetURI()
+			assert.Equal(t, uri, got, "expected GetURI to return %v, got %v", uri, got)
+		})
+	})
+	t.Run("endSessions", func(t *testing.T) {
+		cs := testutil.ConnString(t)
+		originalBatchSize := endSessionsBatchSize
+		endSessionsBatchSize = 2
+		defer func() {
+			endSessionsBatchSize = originalBatchSize
+		}()
+
+		testCases := []struct {
+			name            string
+			numSessions     int
+			eventBatchSizes []int
+		}{
+			{"number of sessions divides evenly", endSessionsBatchSize * 2, []int{endSessionsBatchSize, endSessionsBatchSize}},
+			{"number of sessions does not divide evenly", endSessionsBatchSize + 1, []int{endSessionsBatchSize, 1}},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				// Setup a client and skip the test based on server version.
+				var started []*event.CommandStartedEvent
+				var failureReasons []string
+				cmdMonitor := &event.CommandMonitor{
+					Started: func(_ context.Context, evt *event.CommandStartedEvent) {
+						if evt.CommandName == "endSessions" {
+							started = append(started, evt)
+						}
+					},
+					Failed: func(_ context.Context, evt *event.CommandFailedEvent) {
+						if evt.CommandName == "endSessions" {
+							failureReasons = append(failureReasons, evt.Failure)
+						}
+					},
+				}
+				clientOpts := options.Client().ApplyURI(cs.Original).SetReadPreference(readpref.Primary()).
+					SetWriteConcern(writeconcern.New(writeconcern.WMajority())).SetMonitor(cmdMonitor)
+				client, err := Connect(bgCtx, clientOpts)
+				assert.Nil(t, err, "Connect error: %v", err)
+				defer func() {
+					_ = client.Disconnect(bgCtx)
+				}()
+
+				serverVersion, err := getServerVersion(client.Database("admin"))
+				assert.Nil(t, err, "getServerVersion error: %v", err)
+				if compareVersions(t, serverVersion, "3.6.0") < 1 {
+					t.Skip("skipping server version < 3.6")
+				}
+
+				coll := client.Database("foo").Collection("bar")
+				defer func() {
+					_ = coll.Drop(bgCtx)
+				}()
+
+				// Do an application operation and create the number of sessions specified by the test.
+				_, err = coll.CountDocuments(bgCtx, bson.D{})
+				assert.Nil(t, err, "CountDocuments error: %v", err)
+				var sessions []Session
+				for i := 0; i < tc.numSessions; i++ {
+					sess, err := client.StartSession()
+					assert.Nil(t, err, "StartSession error at index %d: %v", i, err)
+					sessions = append(sessions, sess)
+				}
+				for _, sess := range sessions {
+					sess.EndSession(bgCtx)
+				}
+
+				client.endSessions(bgCtx)
+				divisionResult := float64(tc.numSessions) / float64(endSessionsBatchSize)
+				numEventsExpected := int(math.Ceil(divisionResult))
+				assert.Equal(t, len(started), numEventsExpected, "expected %d started events, got %d", numEventsExpected,
+					len(started))
+				assert.Equal(t, len(failureReasons), 0, "endSessions errors: %v", failureReasons)
+
+				for i := 0; i < numEventsExpected; i++ {
+					sentArray := started[i].Command.Lookup("endSessions").Array()
+					values, _ := sentArray.Values()
+					expectedNumValues := tc.eventBatchSizes[i]
+					assert.Equal(t, len(values), expectedNumValues,
+						"batch size mismatch at index %d; expected %d sessions in batch, got %d", i, expectedNumValues,
+						len(values))
+				}
+			})
+		}
 	})
 }

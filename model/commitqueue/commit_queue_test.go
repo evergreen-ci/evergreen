@@ -2,6 +2,7 @@ package commitqueue
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -103,6 +104,7 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 
 	item := s.q.Queue[0]
 	item.Version = "my_version"
+	now := time.Now()
 	s.NoError(s.q.UpdateVersion(item))
 
 	dbq, err := FindOneId("mci")
@@ -111,6 +113,7 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 
 	s.Equal(item.Issue, dbq.Queue[0].Issue)
 	s.Equal(item.Version, dbq.Queue[0].Version)
+	s.InDelta(now.Unix(), dbq.Queue[0].ProcessingStartTime.Unix(), float64(1*time.Millisecond))
 }
 
 func (s *CommitQueueSuite) TestNext() {

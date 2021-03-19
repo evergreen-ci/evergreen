@@ -163,11 +163,6 @@ type Task struct {
 	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev,omitempty"`
 	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
-	// an estimate of what the task cost to run, hidden from JSON views for now
-	Cost float64 `bson:"cost,omitempty" json:"-"`
-	// total estimated cost of hosts this task spawned
-	SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
-
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
@@ -228,25 +223,6 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
-}
-
-// VersionCost is service level model for representing cost data related to a version.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
-type VersionCost struct {
-	VersionId        string        `bson:"version_id"`
-	SumTimeTaken     time.Duration `bson:"sum_time_taken"`
-	SumEstimatedCost float64       `bson:"sum_estimated_cost"`
-}
-
-// DistroCost is service level model for representing cost data related to a distro.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a distro.
-type DistroCost struct {
-	DistroId         string                 `bson:"distro_id"`
-	SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
-	SumEstimatedCost float64                `bson:"sum_estimated_cost"`
-	Provider         string                 `json:"provider"`
-	ProviderSettings map[string]interface{} `json:"provider_settings"`
-	NumTasks         int                    `bson:"num_tasks"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -446,6 +422,31 @@ func (t *Task) AddDependency(d Dependency) error {
 			},
 		},
 	)
+}
+
+func (t *Task) RemoveDependency(dependencyId string) error {
+	found := false
+	for i := len(t.DependsOn) - 1; i >= 0; i-- {
+		d := t.DependsOn[i]
+		if d.TaskId == dependencyId {
+			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.Errorf("dependency '%s' not found", dependencyId)
+	}
+
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$pull": bson.M{
+			DependsOnKey: bson.M{
+				DependencyTaskIdKey: dependencyId,
+			},
+		},
+	}
+	return db.Update(Collection, query, update)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -1432,8 +1433,6 @@ func ResetTasks(taskIds []string) error {
 				DetailsKey:           "",
 				HasCedarResultsKey:   "",
 				ResetWhenFinishedKey: "",
-				CostKey:              "",
-				SpawnedHostCostKey:   "",
 			},
 		},
 	)
@@ -1702,34 +1701,6 @@ func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) e
 	}
 
 	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
-}
-
-// SetCost updates the task's Cost field
-func (t *Task) SetCost(cost float64) error {
-	t.Cost = cost
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				CostKey: cost,
-			},
-		},
-	)
-}
-
-func IncSpawnedHostCost(taskID string, cost float64) error {
-	return UpdateOne(
-		bson.M{
-			IdKey: taskID,
-		},
-		bson.M{
-			"$inc": bson.M{
-				SpawnedHostCostKey: cost,
-			},
-		},
-	)
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable

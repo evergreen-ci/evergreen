@@ -2,20 +2,16 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -92,7 +88,6 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	if patchDoc.MergeStatus == evergreen.PatchSucceeded {
 		status = evergreen.PatchSucceeded
 	}
-	c.sendPatchResult(patchDoc.GithubPatchData, conf, status)
 	if status != evergreen.PatchSucceeded {
 		logger.Task().Warning("at least 1 task failed, will not merge pull request")
 		return nil
@@ -113,53 +108,12 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	res, _, err = githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
 		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitTitle, mergeOpts)
 	if err != nil {
-		c.sendMergeFailedStatus(fmt.Sprintf("Github Error: %s", err.Error()), patchDoc.GithubPatchData, conf)
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}
 
 	if !res.GetMerged() {
-		c.sendMergeFailedStatus(res.GetMessage(), patchDoc.GithubPatchData, conf)
 		return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", conf.ProjectRef.Owner, conf.ProjectRef.Repo, patchDoc.GithubPatchData.PRNumber, res.GetMessage())
 	}
 
 	return nil
-}
-
-func (c *gitMergePr) sendMergeFailedStatus(githubMessage string, pr thirdparty.GithubPatch, conf *internal.TaskConfig) {
-	state := message.GithubStateFailure
-	description := fmt.Sprintf("merge failed: %s", githubMessage)
-
-	status := message.GithubStatus{
-		Owner:       conf.ProjectRef.Owner,
-		Repo:        conf.ProjectRef.Repo,
-		Ref:         pr.HeadHash,
-		Context:     GithubContext,
-		State:       state,
-		Description: description,
-	}
-	msg := message.NewGithubStatusMessageWithRepo(level.Notice, status)
-
-	c.statusSender.Send(msg)
-}
-
-func (c *gitMergePr) sendPatchResult(pr thirdparty.GithubPatch, conf *internal.TaskConfig, patchStatus string) {
-	state := message.GithubStateFailure
-	description := "merge test failed"
-	if patchStatus == evergreen.PatchSucceeded {
-		state = message.GithubStateSuccess
-		description = "merge test succeeded"
-	}
-
-	status := message.GithubStatus{
-		Owner:       conf.ProjectRef.Owner,
-		Repo:        conf.ProjectRef.Repo,
-		Ref:         pr.HeadHash,
-		Context:     GithubContext,
-		State:       state,
-		Description: description,
-		URL:         c.URL,
-	}
-	msg := message.NewGithubStatusMessageWithRepo(level.Notice, status)
-
-	c.statusSender.Send(msg)
 }

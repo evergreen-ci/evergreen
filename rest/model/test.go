@@ -26,6 +26,7 @@ type APITest struct {
 	StartTime  *time.Time `json:"start_time"`
 	EndTime    *time.Time `json:"end_time"`
 	Duration   float64    `json:"duration"`
+	LineNum    int        `json:"line_num,omitempty"`
 }
 
 // TestLogs is a struct for storing the information about logs that will
@@ -43,6 +44,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
 		at.Execution = v.Execution
+		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
 		at.ExitCode = v.ExitCode
@@ -84,6 +86,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		}
 	case *apimodels.CedarTestResult:
 		at.Execution = v.Execution
+		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
 		at.StartTime = utility.ToTimePtr(v.Start)
