@@ -671,13 +671,9 @@ mciModule.controller(
     };
 
     $scope.validGithubTrigger = function (trigger_alias) {
-      found = false;
-      $scope.patch_trigger_aliases.forEach((patch_trigger_alias) => {
-        if (patch_trigger_alias.alias == trigger_alias) {
-          found = true;
-        }
-      });
-      return found;
+      return $scope.patch_trigger_aliases
+        .map((patch_trigger_alias) => patch_trigger_alias.alias)
+        .includes(trigger_alias);
     };
 
     $scope.addGithubChecksAlias = function () {
