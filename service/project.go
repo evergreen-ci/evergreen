@@ -401,6 +401,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition        `json:"triggers,omitempty"`
 		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases,omitempty"`
+		GithubTriggerAliases  []string                         `json:"github_trigger_aliases,omitempty"`
 		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache,omitempty"`
 		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
 		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds,omitempty"`
@@ -681,6 +682,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.NotifyOnBuildFailure = &responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.PatchTriggerAliases = responseRef.PatchTriggerAliases
+	projectRef.GithubTriggerAliases = responseRef.GithubTriggerAliases
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}

@@ -658,6 +658,10 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
+	if len(projectRef.GithubTriggerAliases) > 0 {
+		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubTriggerAliases}
+	}
+
 	isMember, err := j.authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
