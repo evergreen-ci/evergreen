@@ -13,15 +13,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/internal/testutil/helpers"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	testhelpers "go.mongodb.org/mongo-driver/internal/testutil/helpers"
 )
 
 // Test case for all server selection rtt spec tests.
 func TestServerSelectionRTTSpec(t *testing.T) {
 
 	type testCase struct {
-		AvgRttMs  json.Number `json:"avg_rtt_ms"`
+		// AvgRttMs is either "NULL" or float
+		AvgRttMs  interface{} `json:"avg_rtt_ms"`
 		NewRttMs  float64     `json:"new_rtt_ms"`
 		NewAvgRtt float64     `json:"new_avg_rtt"`
 	}
@@ -32,27 +33,26 @@ func TestServerSelectionRTTSpec(t *testing.T) {
 		func(t *testing.T, filename string) {
 			filepath := path.Join(testsDir, filename)
 			content, err := ioutil.ReadFile(filepath)
-			require.NoError(t, err)
+			assert.Nil(t, err, "ReadFile error for %s: %v", filepath, err)
 
 			// Remove ".json" from filename.
 			testName := filename[:len(filename)-5]
 
 			t.Run(testName, func(t *testing.T) {
 				var test testCase
-				require.NoError(t, json.Unmarshal(content, &test))
+				err = json.Unmarshal(content, &test)
+				assert.Nil(t, err, "Unmarshal error: %v", err)
 
-				var server Server
-
+				var monitor rttMonitor
 				if test.AvgRttMs != "NULL" {
-					avg, err := test.AvgRttMs.Float64()
-					require.NoError(t, err)
-
-					server.averageRTT = time.Duration(avg * float64(time.Millisecond))
-					server.averageRTTSet = true
+					// If not "NULL", then must be a number, so typecast to float64
+					monitor.addSample(time.Duration(test.AvgRttMs.(float64) * float64(time.Millisecond)))
 				}
 
-				server.updateAverageRTT(time.Duration(test.NewRttMs * float64(time.Millisecond)))
-				require.Equal(t, server.averageRTT, time.Duration(test.NewAvgRtt*float64(time.Millisecond)))
+				monitor.addSample(time.Duration(test.NewRttMs * float64(time.Millisecond)))
+				expectedRTT := time.Duration(test.NewAvgRtt * float64(time.Millisecond))
+				actualRTT := monitor.getRTT()
+				assert.Equal(t, expectedRTT, actualRTT, "expected average RTT %s, got %s", expectedRTT, actualRTT)
 			})
 		}(t, file)
 	}

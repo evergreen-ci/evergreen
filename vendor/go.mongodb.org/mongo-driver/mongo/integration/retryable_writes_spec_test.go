@@ -19,10 +19,9 @@ import (
 const retryableWritesTestDir = "../../data/retryable-writes"
 
 type retryableWritesTestFile struct {
-	Data             []bson.Raw            `bson:"data"`
-	MinServerVersion string                `bson:"minServerVersion"`
-	MaxServerVersion string                `bson:"maxServerVersion"`
-	Tests            []retryableWritesTest `bson:"tests"`
+	RunOn []mtest.RunOnBlock    `bson:"runOn"`
+	Data  []bson.Raw            `bson:"data"`
+	Tests []retryableWritesTest `bson:"tests"`
 }
 
 type retryableWritesTest struct {
@@ -50,9 +49,7 @@ func runRetryableWritesFile(t *testing.T, filePath string) {
 	err = bson.UnmarshalExtJSONWithRegistry(specTestRegistry, content, false, &testFile)
 	assert.Nil(t, err, "UnmarshalExtJSONWithRegistry error: %v", err)
 
-	mtOpts := mtest.NewOptions().MinServerVersion(testFile.MinServerVersion).MaxServerVersion(testFile.MaxServerVersion).
-		Topologies(mtest.ReplicaSet).CreateClient(false)
-	mt := mtest.New(t, mtOpts)
+	mt := mtest.New(t, mtest.NewOptions().RunOn(testFile.RunOn...).CreateClient(false))
 	defer mt.Close()
 
 	for _, test := range testFile.Tests {
@@ -61,9 +58,12 @@ func runRetryableWritesFile(t *testing.T, filePath string) {
 }
 
 func runRetryableWritesTest(mt *mtest.T, test retryableWritesTest, testFile retryableWritesTestFile) {
+	// Use a low heartbeat frequency so the Client will quickly recover when using failpoints that cause SDAM state
+	// changes.
 	testClientOpts := createClientOptions(mt, test.ClientOptions)
+	testClientOpts.SetHeartbeatInterval(defaultHeartbeatInterval)
 	opts := mtest.NewOptions().ClientOptions(testClientOpts)
-	if mt.TopologyKind() == mtest.Sharded && !test.UseMultipleMongoses {
+	if mtest.ClusterTopologyKind() == mtest.Sharded && !test.UseMultipleMongoses {
 		// pin to a single mongos
 		opts = opts.ClientType(mtest.Pinned)
 	}

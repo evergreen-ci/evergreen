@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
@@ -51,7 +50,10 @@ func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().Topologies(mtest.ReplicaSet).CreateClient(false))
 	defer mt.Close()
 
-	clientOpts := options.Client().ApplyURI(mt.ConnString()).SetRetryWrites(false).SetPoolMonitor(poolMonitor)
+	clientOpts := options.Client().
+		ApplyURI(mtest.ClusterURI()).
+		SetRetryWrites(false).
+		SetPoolMonitor(poolMonitor)
 
 	getMoreOpts := mtest.NewOptions().MinServerVersion("4.2").ClientOptions(clientOpts)
 	mt.RunOpts("getMore iteration", getMoreOpts, func(mt *mtest.T) {
@@ -63,16 +65,23 @@ func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 		defer cur.Close(mtest.Background)
 		assert.True(mt, cur.Next(mtest.Background), "expected Next true, got false")
 
-		err = mt.Client.Database("admin").RunCommand(mtest.Background, bson.D{
+		// replSetStepDown can fail with transient errors, so we use executeAdminCommandWithRetry to handle them and
+		// retry until a timeout is hit.
+		stepDownCmd := bson.D{
 			{"replSetStepDown", 5},
 			{"force", true},
-		}, options.RunCmd().SetReadPreference(readpref.Primary())).Err()
-		assert.Nil(mt, err, "replSetStepDown error: %v", err)
+		}
+		stepDownOpts := options.RunCmd().SetReadPreference(mtest.PrimaryRp)
+		executeAdminCommandWithRetry(mt, mt.Client, stepDownCmd, stepDownOpts)
 
 		assert.True(mt, cur.Next(mtest.Background), "expected Next true, got false")
 		assert.False(mt, isPoolCleared(), "expected pool to not be cleared but was")
 	})
 	mt.RunOpts("server errors", noClientOpts, func(mt *mtest.T) {
+		// Use a low heartbeat frequency so the Client will quickly recover when using failpoints that cause SDAM state
+		// changes.
+		clientOpts.SetHeartbeatInterval(defaultHeartbeatInterval)
+
 		testCases := []struct {
 			name                   string
 			minVersion, maxVersion string
@@ -123,25 +132,5 @@ func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 				assert.False(mt, isPoolCleared(), "expected pool to not be cleared but was")
 			})
 		}
-	})
-	mt.RunOpts("network errors", mtest.NewOptions().ClientOptions(clientOpts).MinServerVersion("4.0"), func(mt *mtest.T) {
-		// expect that a server's connection pool will be cleared if a non-timeout network error occurs during an
-		// operation
-
-		clearPoolChan()
-		mt.SetFailPoint(mtest.FailPoint{
-			ConfigureFailPoint: "failCommand",
-			Mode: mtest.FailPointMode{
-				Times: 1,
-			},
-			Data: mtest.FailPointData{
-				FailCommands:    []string{"insert"},
-				CloseConnection: true,
-			},
-		})
-
-		_, err := mt.Coll.InsertOne(mtest.Background, bson.D{{"test", 1}})
-		assert.NotNil(mt, err, "expected InsertOne error, got nil")
-		assert.True(mt, isPoolCleared(), "expected pool to be cleared but was not")
 	})
 }
