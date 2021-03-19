@@ -296,6 +296,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
 	// we didn't run setup group yet
 	if !tc.ranSetupGroup {
+		tc.logger.Task().Debug("running setup group because we haven't yet")
 		return true
 	}
 
@@ -303,6 +304,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	if tc.taskConfig == nil ||
 		nextTask.TaskGroup == "" ||
 		nextTask.Build != tc.taskConfig.Task.BuildId {
+		tc.logger.Task().Debug("running setup group because we have a new independent task")
 		return true
 	}
 
@@ -316,6 +318,7 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 				"next_task_task_group":    nextTask.TaskGroup,
 			})
 		}
+		tc.logger.Task().Debug("running setup group because new task group")
 		return true
 	}
 
