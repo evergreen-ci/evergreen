@@ -410,7 +410,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env e
 				return nil, errors.Wrapf(err, "error decoding result")
 			}
 			// remove quotes from value
-			val := strings.ReplaceAll(res["_id"].(string), "\"", "")
+			val := strings.Replace(res["_id"].(string), "\"", "", -1)
 			names = append(names, val)
 		}
 	}
