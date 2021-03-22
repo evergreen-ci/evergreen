@@ -8,14 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	hostJasperBinaryNameKey       = bsonutil.MustHaveTag(HostJasperConfig{}, "BinaryName")
-	hostJasperDownloadFileNameKey = bsonutil.MustHaveTag(HostJasperConfig{}, "DownloadFileName")
-	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
-	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
-	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
-)
-
 // HostJasperConfig represents the configuration of the Jasper service running
 // on non-legacy hosts.
 type HostJasperConfig struct {
@@ -25,6 +17,14 @@ type HostJasperConfig struct {
 	URL              string `yaml:"url" bson:"url" json:"url"`
 	Version          string `yaml:"version" bson:"version" json:"version"`
 }
+
+var (
+	hostJasperBinaryNameKey       = bsonutil.MustHaveTag(HostJasperConfig{}, "BinaryName")
+	hostJasperDownloadFileNameKey = bsonutil.MustHaveTag(HostJasperConfig{}, "DownloadFileName")
+	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
+	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
+	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
+)
 
 func (c *HostJasperConfig) SectionId() string { return "host_jasper" }
 

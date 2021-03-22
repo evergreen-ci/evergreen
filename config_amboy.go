@@ -28,6 +28,16 @@ type AmboyConfig struct {
 	Retry                                 AmboyRetryConfig `bson:"retry" json:"retry" yaml:"retry"`
 }
 
+// AmboyRetryConfig represents configuration settings for Amboy's retryability
+// feature.
+type AmboyRetryConfig struct {
+	NumWorkers          int `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
+	MaxCapacity         int `bson:"max_capacity" json:"max_capacity" yaml:"max_capacity"`
+	MaxRetryAttempts    int `bson:"max_retry_attempts" json:"max_retry_attempts" yaml:"max_retry_attempts"`
+	MaxRetryTimeSeconds int `bson:"max_retry_time_seconds" json:"max_retry_time_seconds" yaml:"max_retry_time_seconds"`
+	RetryBackoffSeconds int `bson:"retry_backoff_seconds" json:"retry_backoff_seconds" yaml:"retry_backoff_seconds"`
+}
+
 var (
 	amboyNameKey                                  = bsonutil.MustHaveTag(AmboyConfig{}, "Name")
 	amboySingleNameKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SingleName")
@@ -43,16 +53,6 @@ var (
 	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
 	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
 )
-
-// AmboyRetryConfig represents configuration settings for Amboy's retryability
-// feature.
-type AmboyRetryConfig struct {
-	NumWorkers          int `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
-	MaxCapacity         int `bson:"max_capacity" json:"max_capacity" yaml:"max_capacity"`
-	MaxRetryAttempts    int `bson:"max_retry_attempts" json:"max_retry_attempts" yaml:"max_retry_attempts"`
-	MaxRetryTimeSeconds int `bson:"max_retry_time_seconds" json:"max_retry_time_seconds" yaml:"max_retry_time_seconds"`
-	RetryBackoffSeconds int `bson:"retry_backoff_seconds" json:"retry_backoff_seconds" yaml:"retry_backoff_seconds"`
-}
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
 
