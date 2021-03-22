@@ -13,6 +13,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -321,6 +322,9 @@ func (uis *UIServer) getRequestProjectId(r *http.Request) string {
 // This is done by reading in specific variables and inferring other required
 // context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
+	id := utility.RandomString()
+	start := time.Now()
+	begin := start
 	dbUser := gimlet.GetUser(r.Context())
 	if dbUser == nil {
 		dbUser = &user.DBUser{
@@ -333,12 +337,28 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"id":          id,
+		"step":        "GetUser",
+		"func":        "LoadProjectContext",
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
 	err := pc.populateProjectRefs(dbUser != nil, dbUser)
 	if err != nil {
 		return pc, err
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"id":          id,
+		"step":        "populateProjectRefs",
+		"func":        "LoadProjectContext",
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	requestProjectId := uis.getRequestProjectId(r)
 	projectId := ""
@@ -375,6 +395,14 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			}
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"id":          id,
+		"step":        "HasPermission",
+		"func":        "LoadProjectContext",
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	start = time.Now()
 
 	// Build a model.Context using the data available.
 	ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
@@ -383,8 +411,10 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return pc, err
 	}
 
+	tempProject := ""
 	// set the cookie for the next request if a project was found
 	if ctx.ProjectRef != nil {
+		tempProject = ctx.ProjectRef.Id
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
 			Value:   ctx.ProjectRef.Id,
@@ -392,6 +422,22 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})
 	}
+
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"id":          id,
+		"step":        "LoadContext",
+		"func":        "LoadProjectContext",
+		"duration_ns": time.Since(start).Nanoseconds(),
+	})
+	grip.Debug(message.Fields{
+		"ticket":      "EVG-14261",
+		"id":          id,
+		"step":        "total",
+		"project":     tempProject,
+		"func":        "LoadProjectContext",
+		"duration_ns": time.Since(begin).Nanoseconds(),
+	})
 
 	return pc, nil
 }
