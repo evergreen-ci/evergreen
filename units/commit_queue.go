@@ -349,7 +349,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	if nextItem.PatchId == "" {
-		patchDoc, err = patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, nextItem.MessageOverride)
+		patchDoc, err = patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, pr.GetTitle(), nextItem.MessageOverride)
 		if err != nil {
 			j.logError(err, "can't make patch", nextItem)
 			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))

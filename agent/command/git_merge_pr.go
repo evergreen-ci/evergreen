@@ -100,13 +100,14 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 
 	mergeOpts := &github.PullRequestOptions{
 		MergeMethod:        conf.ProjectRef.CommitQueue.MergeMethod,
+		CommitTitle:        patchDoc.GithubPatchData.CommitTitle,
 		DontDefaultIfBlank: true, // note this means that we will never merge with the default message (concatenated commit messages)
 	}
 
 	// do the merge
 	var res *github.PullRequestMergeResult
 	res, _, err = githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
-		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitTitle, mergeOpts)
+		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitMessage, mergeOpts)
 	if err != nil {
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}

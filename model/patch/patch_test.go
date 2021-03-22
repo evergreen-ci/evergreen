@@ -163,11 +163,13 @@ func (s *patchSuite) TestMakeMergePatch() {
 		MergeCommitSHA: github.String("abcdef"),
 	}
 
-	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "")
+	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "title", "message")
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)
 	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
+	s.Equal("title", p.GithubPatchData.CommitTitle)
+	s.Equal("message", p.GithubPatchData.CommitMessage)
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
