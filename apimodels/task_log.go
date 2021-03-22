@@ -103,21 +103,6 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 		Tail:          opts.Tail,
 	}
 
-	// TODO: Remove after EVG-13831 cedar DB migration.
-	switch opts.LogType {
-	case TaskLogPrefix:
-		getOpts.ProcessName = evergreen.LogTypeTask
-	case SystemLogPrefix:
-		getOpts.ProcessName = evergreen.LogTypeSystem
-	case AgentLogPrefix:
-		getOpts.ProcessName = evergreen.LogTypeAgent
-	}
-	logReader, err := buildlogger.GetLogs(ctx, getOpts)
-	if err == nil {
-		return logReader, nil
-	}
-	getOpts.ProcessName = ""
-
 	switch opts.LogType {
 	case TaskLogPrefix:
 		getOpts.Tags = []string{evergreen.LogTypeTask}
