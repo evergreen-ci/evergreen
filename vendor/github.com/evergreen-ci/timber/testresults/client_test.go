@@ -193,12 +193,13 @@ func validResults(id string) Results {
 		ID: id,
 		Results: []Result{
 			{
-				TestName:    "name",
-				GroupID:     "group",
-				Status:      "status",
-				TaskCreated: time.Now().Add(-time.Hour),
-				TestStarted: time.Now().Add(-time.Minute),
-				TestEnded:   time.Now(),
+				TestName:        "name",
+				DisplayTestName: "display",
+				GroupID:         "group",
+				Status:          "status",
+				TaskCreated:     time.Now().Add(-time.Hour),
+				TestStarted:     time.Now().Add(-time.Minute),
+				TestEnded:       time.Now(),
 			},
 		},
 	}

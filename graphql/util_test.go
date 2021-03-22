@@ -24,10 +24,11 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			End:      time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
 		},
 		apimodels.CedarTestResult{
-			TestName: "B test",
-			Status:   "Fail",
-			Start:    time.Date(1996, time.August, 31, 12, 5, 10, 0, time.UTC),
-			End:      time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
+			TestName:        "B test",
+			DisplayTestName: "Display",
+			Status:          "Fail",
+			Start:           time.Date(1996, time.August, 31, 12, 5, 10, 0, time.UTC),
+			End:             time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
 		},
 		apimodels.CedarTestResult{
 			TestName: "C test",
@@ -63,6 +64,12 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			name:            "TestName",
 			testName:        "A test",
 			expectedResults: testResults[0:1],
+			expectedCount:   1,
+		},
+		{
+			name:            "DisplayTestName",
+			testName:        "Display",
+			expectedResults: testResults[1:2],
 			expectedCount:   1,
 		},
 		{

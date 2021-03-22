@@ -44,19 +44,20 @@ func (s *TestResultSuite) SetupTest() {
 	s.tests = []TestResult{}
 	for i := 0; i < 5; i++ {
 		s.tests = append(s.tests, TestResult{
-			ID:        mgobson.NewObjectId(),
-			Status:    "pass",
-			TestFile:  fmt.Sprintf("file-%d", i),
-			GroupID:   fmt.Sprintf("group-%d", i),
-			URL:       fmt.Sprintf("url-%d", i),
-			URLRaw:    fmt.Sprintf("urlraw-%d", i),
-			LogID:     fmt.Sprintf("logid-%d", i),
-			LineNum:   i,
-			ExitCode:  i,
-			StartTime: float64(i),
-			EndTime:   float64(i),
-			TaskID:    fmt.Sprintf("taskid-%d", i),
-			Execution: i,
+			ID:              mgobson.NewObjectId(),
+			Status:          "pass",
+			TestFile:        fmt.Sprintf("file-%d", i),
+			DisplayTestName: fmt.Sprintf("display-%d", i),
+			GroupID:         fmt.Sprintf("group-%d", i),
+			URL:             fmt.Sprintf("url-%d", i),
+			URLRaw:          fmt.Sprintf("urlraw-%d", i),
+			LogID:           fmt.Sprintf("logid-%d", i),
+			LineNum:         i,
+			ExitCode:        i,
+			StartTime:       float64(i),
+			EndTime:         float64(i),
+			TaskID:          fmt.Sprintf("taskid-%d", i),
+			Execution:       i,
 		})
 	}
 
@@ -68,19 +69,20 @@ func (s *TestResultSuite) SetupTest() {
 	additionalTests := []TestResult{}
 	for i := 5; i < 10; i++ {
 		additionalTests = append(additionalTests, TestResult{
-			ID:        mgobson.NewObjectId(),
-			Status:    "pass",
-			TestFile:  fmt.Sprintf("file-%d", i),
-			GroupID:   fmt.Sprintf("group-%d", i),
-			URL:       fmt.Sprintf("url-%d", i),
-			URLRaw:    fmt.Sprintf("urlraw-%d", i),
-			LogID:     fmt.Sprintf("logid-%d", i),
-			LineNum:   i,
-			ExitCode:  i,
-			StartTime: float64(i),
-			EndTime:   float64(i),
-			TaskID:    "taskid-5",
-			Execution: 5,
+			ID:              mgobson.NewObjectId(),
+			Status:          "pass",
+			TestFile:        fmt.Sprintf("file-%d", i),
+			DisplayTestName: fmt.Sprintf("display-%d", i),
+			GroupID:         fmt.Sprintf("group-%d", i),
+			URL:             fmt.Sprintf("url-%d", i),
+			URLRaw:          fmt.Sprintf("urlraw-%d", i),
+			LogID:           fmt.Sprintf("logid-%d", i),
+			LineNum:         i,
+			ExitCode:        i,
+			StartTime:       float64(i),
+			EndTime:         float64(i),
+			TaskID:          "taskid-5",
+			Execution:       5,
 		})
 	}
 
@@ -95,19 +97,20 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 	execution := 3
 	i := 10
 	t := TestResult{
-		ID:        mgobson.NewObjectId(),
-		TaskID:    taskID,
-		Execution: execution,
-		Status:    "pass",
-		GroupID:   fmt.Sprintf("group-%d", i),
-		TestFile:  fmt.Sprintf("file-%d", i),
-		URL:       fmt.Sprintf("url-%d", i),
-		URLRaw:    fmt.Sprintf("urlraw-%d", i),
-		LogID:     fmt.Sprintf("logid-%d", i),
-		LineNum:   i,
-		ExitCode:  i,
-		StartTime: float64(i),
-		EndTime:   float64(i),
+		ID:              mgobson.NewObjectId(),
+		TaskID:          taskID,
+		Execution:       execution,
+		Status:          "pass",
+		TestFile:        fmt.Sprintf("file-%d", i),
+		DisplayTestName: fmt.Sprintf("display-%d", i),
+		GroupID:         fmt.Sprintf("group-%d", i),
+		URL:             fmt.Sprintf("url-%d", i),
+		URLRaw:          fmt.Sprintf("urlraw-%d", i),
+		LogID:           fmt.Sprintf("logid-%d", i),
+		LineNum:         i,
+		ExitCode:        i,
+		StartTime:       float64(i),
+		EndTime:         float64(i),
 	}
 	err := InsertMany([]TestResult{t})
 	s.NoError(err)
@@ -139,19 +142,20 @@ func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 	execution := 3
 	i := 10
 	t := TestResult{
-		ID:        mgobson.NewObjectId(),
-		TaskID:    taskID,
-		Execution: execution,
-		Status:    "pass",
-		TestFile:  fmt.Sprintf("file-%d", i),
-		GroupID:   fmt.Sprintf("group-%d", i),
-		URL:       fmt.Sprintf("url-%d", i),
-		URLRaw:    fmt.Sprintf("urlraw-%d", i),
-		LogID:     fmt.Sprintf("logid-%d", i),
-		LineNum:   i,
-		ExitCode:  i,
-		StartTime: float64(i),
-		EndTime:   float64(i),
+		ID:              mgobson.NewObjectId(),
+		TaskID:          taskID,
+		Execution:       execution,
+		Status:          "pass",
+		TestFile:        fmt.Sprintf("file-%d", i),
+		DisplayTestName: fmt.Sprintf("file-%d", i),
+		GroupID:         fmt.Sprintf("group-%d", i),
+		URL:             fmt.Sprintf("url-%d", i),
+		URLRaw:          fmt.Sprintf("urlraw-%d", i),
+		LogID:           fmt.Sprintf("logid-%d", i),
+		LineNum:         i,
+		ExitCode:        i,
+		StartTime:       float64(i),
+		EndTime:         float64(i),
 	}
 	err := InsertMany([]TestResult{t})
 	s.Error(err)
@@ -168,6 +172,7 @@ func (s *TestResultSuite) TestInsert() {
 		s.NoError(err)
 		s.Equal("pass", test.Status)
 		s.Equal(fmt.Sprintf("file-%d", i), test.TestFile)
+		s.Equal(fmt.Sprintf("display-%d", i), test.DisplayTestName)
 		s.Equal(fmt.Sprintf("group-%d", i), test.GroupID)
 		s.Equal(fmt.Sprintf("url-%d", i), test.URL)
 		s.Equal(fmt.Sprintf("urlraw-%d", i), test.URLRaw)
@@ -194,6 +199,7 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	for i, test := range tests {
 		s.Equal("pass", test.Status)
 		s.Equal(fmt.Sprintf("file-%d", i+5), test.TestFile)
+		s.Equal(fmt.Sprintf("display-%d", i+5), test.DisplayTestName)
 		s.Equal(fmt.Sprintf("group-%d", i+5), test.GroupID)
 		s.Equal(fmt.Sprintf("url-%d", i+5), test.URL)
 		s.Equal(fmt.Sprintf("logid-%d", i+5), test.LogID)

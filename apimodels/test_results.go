@@ -14,14 +14,15 @@ import (
 // CedarTestResult represents the expected test result format returned from
 // cedar.
 type CedarTestResult struct {
-	TaskID    string    `json:"task_id"`
-	Execution int       `json:"execution"`
-	TestName  string    `json:"test_name"`
-	GroupID   string    `json:"group_id"`
-	Status    string    `json:"status"`
-	LineNum   int       `json:"line_num"`
-	Start     time.Time `json:"test_start_time"`
-	End       time.Time `json:"test_end_time"`
+	TaskID          string    `json:"task_id"`
+	Execution       int       `json:"execution"`
+	TestName        string    `json:"test_name"`
+	DisplayTestName string    `json:"display_test_name"`
+	GroupID         string    `json:"group_id"`
+	Status          string    `json:"status"`
+	LineNum         int       `json:"line_num"`
+	Start           time.Time `json:"test_start_time"`
+	End             time.Time `json:"test_end_time"`
 }
 
 // GetCedarTestResultsOptions represents the arguments passed into the

@@ -40,15 +40,15 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
 	for _, testResult := range testResults {
 		match := true
-		if len(testName) > 0 {
-			if !strings.Contains(testResult.TestName, testName) {
+		if testName != "" {
+			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, testName) {
+				match = false
+			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, testName) {
 				match = false
 			}
 		}
-		if len(statuses) > 0 {
-			if !utility.StringSliceContains(statuses, testResult.Status) {
-				match = false
-			}
+		if len(statuses) > 0 && !utility.StringSliceContains(statuses, testResult.Status) {
+			match = false
 		}
 		if match {
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)

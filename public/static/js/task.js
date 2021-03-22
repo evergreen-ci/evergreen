@@ -363,7 +363,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url = prefix + testResult.log_id + lineNum;
       }
     } else if (url == '') {
-      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + testResult.display_name;
+      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + testResult.test_file;
       if (isRaw) {
           url  += raw;
       } else {
@@ -510,7 +510,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       var testResult = t.test_result;
       testResult.time_taken = testResult.end - testResult.start;
       totalTestTime += testResult.time_taken;
-      testResult.display_name = $filter('endOfPath')(testResult.test_file);
+      testResult.display_name = testResult.display_test_name ? testResult.display_test_name: $filter('endOfPath')(testResult.test_file);
     });
     $scope.totalTestTimeNano = totalTestTime * 1000 * 1000 * 1000;
 

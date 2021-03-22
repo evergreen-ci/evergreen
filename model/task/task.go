@@ -277,18 +277,19 @@ type LocalTestResults struct {
 }
 
 type TestResult struct {
-	Status    string  `json:"status" bson:"status"`
-	TestFile  string  `json:"test_file" bson:"test_file"`
-	GroupID   string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
-	URL       string  `json:"url" bson:"url,omitempty"`
-	URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
-	LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode  int     `json:"exit_code" bson:"exit_code"`
-	StartTime float64 `json:"start" bson:"start"`
-	EndTime   float64 `json:"end" bson:"end"`
-	TaskID    string  `json:"task_id" bson:"task_id"`
-	Execution int     `json:"execution" bson:"execution"`
+	Status          string  `json:"status" bson:"status"`
+	TestFile        string  `json:"test_file" bson:"test_file"`
+	DisplayTestName string  `json:"display_test_name" bson:"display_test_name"`
+	GroupID         string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
+	URL             string  `json:"url" bson:"url,omitempty"`
+	URLRaw          string  `json:"url_raw" bson:"url_raw,omitempty"`
+	LogId           string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
+	LineNum         int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
+	ExitCode        int     `json:"exit_code" bson:"exit_code"`
+	StartTime       float64 `json:"start" bson:"start"`
+	EndTime         float64 `json:"end" bson:"end"`
+	TaskID          string  `json:"task_id" bson:"task_id"`
+	Execution       int     `json:"execution" bson:"execution"`
 
 	// LogRaw is not saved in the task
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
@@ -1631,16 +1632,17 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 	}
 	return testresult.TestResult{
 		// copy fields from local test result.
-		Status:    t.Status,
-		TestFile:  t.TestFile,
-		GroupID:   t.GroupID,
-		URL:       t.URL,
-		URLRaw:    t.URLRaw,
-		LogID:     t.LogId,
-		LineNum:   t.LineNum,
-		ExitCode:  t.ExitCode,
-		StartTime: t.StartTime,
-		EndTime:   t.EndTime,
+		Status:          t.Status,
+		TestFile:        t.TestFile,
+		DisplayTestName: t.DisplayTestName,
+		GroupID:         t.GroupID,
+		URL:             t.URL,
+		URLRaw:          t.URLRaw,
+		LogID:           t.LogId,
+		LineNum:         t.LineNum,
+		ExitCode:        t.ExitCode,
+		StartTime:       t.StartTime,
+		EndTime:         t.EndTime,
 
 		// copy field values from enclosing tasks.
 		TaskID:               task.Id,
@@ -1660,19 +1662,20 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 
 func ConvertToOld(in *testresult.TestResult) TestResult {
 	return TestResult{
-		Status:    in.Status,
-		TestFile:  in.TestFile,
-		GroupID:   in.GroupID,
-		URL:       in.URL,
-		URLRaw:    in.URLRaw,
-		LogId:     in.LogID,
-		LineNum:   in.LineNum,
-		ExitCode:  in.ExitCode,
-		StartTime: in.StartTime,
-		EndTime:   in.EndTime,
-		LogRaw:    in.LogRaw,
-		TaskID:    in.TaskID,
-		Execution: in.Execution,
+		Status:          in.Status,
+		TestFile:        in.TestFile,
+		DisplayTestName: in.DisplayTestName,
+		GroupID:         in.GroupID,
+		URL:             in.URL,
+		URLRaw:          in.URLRaw,
+		LogId:           in.LogID,
+		LineNum:         in.LineNum,
+		ExitCode:        in.ExitCode,
+		StartTime:       in.StartTime,
+		EndTime:         in.EndTime,
+		LogRaw:          in.LogRaw,
+		TaskID:          in.TaskID,
+		Execution:       in.Execution,
 	}
 }
 
@@ -1973,16 +1976,17 @@ func (t *Task) MergeNewTestResults() error {
 	}
 	for _, result := range newTestResults {
 		t.LocalTestResults = append(t.LocalTestResults, TestResult{
-			Status:    result.Status,
-			TestFile:  result.TestFile,
-			GroupID:   result.GroupID,
-			URL:       result.URL,
-			URLRaw:    result.URLRaw,
-			LogId:     result.LogID,
-			LineNum:   result.LineNum,
-			ExitCode:  result.ExitCode,
-			StartTime: result.StartTime,
-			EndTime:   result.EndTime,
+			Status:          result.Status,
+			TestFile:        result.TestFile,
+			DisplayTestName: result.DisplayTestName,
+			GroupID:         result.GroupID,
+			URL:             result.URL,
+			URLRaw:          result.URLRaw,
+			LogId:           result.LogID,
+			LineNum:         result.LineNum,
+			ExitCode:        result.ExitCode,
+			StartTime:       result.StartTime,
+			EndTime:         result.EndTime,
 		})
 	}
 	return nil
@@ -2967,13 +2971,14 @@ func (t *Task) SetNumDependents() error {
 // struct.
 func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 	return TestResult{
-		TaskID:    result.TaskID,
-		Execution: result.Execution,
-		TestFile:  result.TestName,
-		GroupID:   result.GroupID,
-		LineNum:   result.LineNum,
-		StartTime: float64(result.Start.Unix()),
-		EndTime:   float64(result.End.Unix()),
-		Status:    result.Status,
+		TaskID:          result.TaskID,
+		Execution:       result.Execution,
+		TestFile:        result.TestName,
+		DisplayTestName: result.DisplayTestName,
+		GroupID:         result.GroupID,
+		LineNum:         result.LineNum,
+		StartTime:       float64(result.Start.Unix()),
+		EndTime:         float64(result.End.Unix()),
+		Status:          result.Status,
 	}
 }

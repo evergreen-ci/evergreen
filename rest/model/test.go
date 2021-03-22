@@ -14,23 +14,24 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	Id         *string    `json:"test_id"`
-	TaskId     *string    `json:"task_id"`
-	Execution  int        `json:"execution"`
-	GroupId    *string    `json:"group_id,omitempty"`
-	Status     *string    `json:"status"`
-	BaseStatus *string    `json:"base_status"`
-	TestFile   *string    `json:"test_file"`
-	Logs       TestLogs   `json:"logs"`
-	ExitCode   int        `json:"exit_code"`
-	StartTime  *time.Time `json:"start_time"`
-	EndTime    *time.Time `json:"end_time"`
-	Duration   float64    `json:"duration"`
-	LineNum    int        `json:"line_num,omitempty"`
+	Id              *string    `json:"test_id"`
+	TaskId          *string    `json:"task_id"`
+	Execution       int        `json:"execution"`
+	GroupId         *string    `json:"group_id,omitempty"`
+	Status          *string    `json:"status"`
+	BaseStatus      *string    `json:"base_status"`
+	TestFile        *string    `json:"test_file"`
+	DisplayTestName *string    `json:"display_test_name,omitempty"`
+	Logs            TestLogs   `json:"logs"`
+	ExitCode        int        `json:"exit_code"`
+	StartTime       *time.Time `json:"start_time"`
+	EndTime         *time.Time `json:"end_time"`
+	Duration        float64    `json:"duration"`
+	LineNum         int        `json:"line_num,omitempty"`
 }
 
-// TestLogs is a struct for storing the information about logs that will
-// be written out as part of an APITest.
+// TestLogs is a struct for storing the information about logs that will be
+// written out as part of an APITest.
 type TestLogs struct {
 	URL            *string `json:"url"`
 	LineNum        int     `json:"line_num"`
@@ -47,6 +48,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
+		if v.DisplayTestName != "" {
+			at.DisplayTestName = utility.ToStringPtr(v.DisplayTestName)
+		}
 		at.ExitCode = v.ExitCode
 		at.Id = utility.ToStringPtr(v.ID.Hex())
 
@@ -89,6 +93,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
+		if v.DisplayTestName != "" {
+			at.DisplayTestName = utility.ToStringPtr(v.DisplayTestName)
+		}
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
@@ -101,7 +108,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			HTMLDisplayURL: &htmlDisplayStr,
 		}
 
-		// Need to generate a consistent id for test results
+		// Need to generate a consistent id for test results.
 		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
 		at.Id = utility.ToStringPtr(testResultID)
 		if v.GroupID != "" {
@@ -125,15 +132,16 @@ func (at *APITest) ToService() (interface{}, error) {
 		return nil, catcher.Resolve()
 	}
 	return &testresult.TestResult{
-		Status:    utility.FromStringPtr(at.Status),
-		TestFile:  utility.FromStringPtr(at.TestFile),
-		URL:       utility.FromStringPtr(at.Logs.URL),
-		URLRaw:    utility.FromStringPtr(at.Logs.URLRaw),
-		LogID:     utility.FromStringPtr(at.Logs.LogId),
-		LineNum:   at.Logs.LineNum,
-		ExitCode:  at.ExitCode,
-		StartTime: utility.ToPythonTime(start),
-		EndTime:   utility.ToPythonTime(end),
-		GroupID:   utility.FromStringPtr(at.GroupId),
+		Status:          utility.FromStringPtr(at.Status),
+		TestFile:        utility.FromStringPtr(at.TestFile),
+		DisplayTestName: utility.FromStringPtr(at.DisplayTestName),
+		URL:             utility.FromStringPtr(at.Logs.URL),
+		URLRaw:          utility.FromStringPtr(at.Logs.URLRaw),
+		LogID:           utility.FromStringPtr(at.Logs.LogId),
+		LineNum:         at.Logs.LineNum,
+		ExitCode:        at.ExitCode,
+		StartTime:       utility.ToPythonTime(start),
+		EndTime:         utility.ToPythonTime(end),
+		GroupID:         utility.FromStringPtr(at.GroupId),
 	}, nil
 }
