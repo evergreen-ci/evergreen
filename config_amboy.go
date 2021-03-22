@@ -12,22 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	amboyNameKey                                  = bsonutil.MustHaveTag(AmboyConfig{}, "Name")
-	amboySingleNameKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SingleName")
-	amboyDBKey                                    = bsonutil.MustHaveTag(AmboyConfig{}, "DB")
-	amboyPoolSizeLocalKey                         = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeLocal")
-	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
-	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
-	amboyGroupDefaultWorkersKey                   = bsonutil.MustHaveTag(AmboyConfig{}, "GroupDefaultWorkers")
-	amboyGroupBackgroundCreateFrequengyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
-	amboyGroupPruneFrequencyMinutesKey            = bsonutil.MustHaveTag(AmboyConfig{}, "GroupPruneFrequencyMinutes")
-	amboyGroupTTLMinutesKey                       = bsonutil.MustHaveTag(AmboyConfig{}, "GroupTTLMinutes")
-	amboyRequireRemotePriorityKey                 = bsonutil.MustHaveTag(AmboyConfig{}, "RequireRemotePriority")
-	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
-	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
-)
-
 type AmboyConfig struct {
 	Name                                  string           `bson:"name" json:"name" yaml:"name"`
 	SingleName                            string           `bson:"single_name" json:"single_name" yaml:"single_name"`
@@ -43,6 +27,22 @@ type AmboyConfig struct {
 	LockTimeoutMinutes                    int              `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
 	Retry                                 AmboyRetryConfig `bson:"retry" json:"retry" yaml:"retry"`
 }
+
+var (
+	amboyNameKey                                  = bsonutil.MustHaveTag(AmboyConfig{}, "Name")
+	amboySingleNameKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SingleName")
+	amboyDBKey                                    = bsonutil.MustHaveTag(AmboyConfig{}, "DB")
+	amboyPoolSizeLocalKey                         = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeLocal")
+	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
+	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
+	amboyGroupDefaultWorkersKey                   = bsonutil.MustHaveTag(AmboyConfig{}, "GroupDefaultWorkers")
+	amboyGroupBackgroundCreateFrequengyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
+	amboyGroupPruneFrequencyMinutesKey            = bsonutil.MustHaveTag(AmboyConfig{}, "GroupPruneFrequencyMinutes")
+	amboyGroupTTLMinutesKey                       = bsonutil.MustHaveTag(AmboyConfig{}, "GroupTTLMinutes")
+	amboyRequireRemotePriorityKey                 = bsonutil.MustHaveTag(AmboyConfig{}, "RequireRemotePriority")
+	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
+	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
+)
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability
 // feature.
