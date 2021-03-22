@@ -55,8 +55,7 @@ mciModule.controller(
       },
       default: "gitter_request",
     };
-    $scope.triggers = [
-      {
+    $scope.triggers = [{
         trigger: "outcome",
         resource_type: "VERSION",
         label: "any version finishes",
@@ -122,8 +121,7 @@ mciModule.controller(
         resource_type: "TASK",
         label: "a previously passing task fails",
         regex_selectors: taskRegexSelectors(),
-        extraFields: [
-          {
+        extraFields: [{
             text: "Re-notify after how many hours",
             key: "renotify-interval",
             validator: validateDuration,
@@ -137,8 +135,7 @@ mciModule.controller(
         resource_type: "TASK",
         label: "a previously passing test in a task fails",
         regex_selectors: taskRegexSelectors(),
-        extraFields: [
-          {
+        extraFields: [{
             text: "Test names matching regex",
             key: "test-regex",
             validator: null,
@@ -157,26 +154,22 @@ mciModule.controller(
         resource_type: "TASK",
         label: "the runtime for a task exceeds some duration",
         regex_selectors: taskRegexSelectors(),
-        extraFields: [
-          {
-            text: "Task duration (seconds)",
-            key: "task-duration-secs",
-            validator: validateDuration,
-          },
-        ],
+        extraFields: [{
+          text: "Task duration (seconds)",
+          key: "task-duration-secs",
+          validator: validateDuration,
+        }, ],
       },
       {
         trigger: "runtime-change",
         resource_type: "TASK",
         label: "the runtime for a successful task changes by some percentage",
         regex_selectors: taskRegexSelectors(),
-        extraFields: [
-          {
-            text: "Percent change",
-            key: "task-percent-change",
-            validator: validatePercentage,
-          },
-        ],
+        extraFields: [{
+          text: "Percent change",
+          key: "task-percent-change",
+          validator: validatePercentage,
+        }, ],
       },
     ];
 
@@ -420,8 +413,7 @@ mciModule.controller(
             restricted_vars: $scope.restrictedVars,
             display_name: $scope.projectRef.display_name,
             default_logger: $scope.projectRef.default_logger,
-            cedar_test_results_enabled:
-              $scope.projectRef.cedar_test_results_enabled,
+            cedar_test_results_enabled: $scope.projectRef.cedar_test_results_enabled,
             remote_path: $scope.projectRef.remote_path,
             spawn_host_script_path: $scope.projectRef.spawn_host_script_path,
             batch_time: parseInt($scope.projectRef.batch_time),
@@ -440,16 +432,12 @@ mciModule.controller(
             alert_config: $scope.projectRef.alert_config || {},
             repotracker_error: $scope.projectRef.repotracker_error || {},
             admins: $scope.projectRef.admins || [],
-            git_tag_authorized_users:
-              $scope.projectRef.git_tag_authorized_users || [],
-            git_tag_authorized_teams:
-              $scope.projectRef.git_tag_authorized_teams || [],
+            git_tag_authorized_users: $scope.projectRef.git_tag_authorized_users || [],
+            git_tag_authorized_teams: $scope.projectRef.git_tag_authorized_teams || [],
             tracks_push_events: data.ProjectRef.tracks_push_events || false,
             pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
-            git_tag_versions_enabled:
-              data.ProjectRef.git_tag_versions_enabled || false,
-            github_checks_enabled:
-              data.ProjectRef.github_checks_enabled || false,
+            git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
+            github_checks_enabled: data.ProjectRef.github_checks_enabled || false,
             commit_queue: data.ProjectRef.commit_queue || {},
             workstation_config: data.ProjectRef.workstation_config || {},
             notify_on_failure: $scope.projectRef.notify_on_failure,
@@ -457,8 +445,7 @@ mciModule.controller(
             delete_aliases: [],
             delete_subscriptions: [],
             files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
-            github_trigger_aliases:
-              data.ProjectRef.github_trigger_aliases || [],
+            github_trigger_aliases: data.ProjectRef.github_trigger_aliases || [],
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             use_repo_settings: $scope.projectRef.use_repo_settings,
@@ -511,9 +498,9 @@ mciModule.controller(
             return v;
           });
 
-          $scope.displayName = $scope.projectRef.display_name
-            ? $scope.projectRef.display_name
-            : $scope.projectRef.identifier;
+          $scope.displayName = $scope.projectRef.display_name ?
+            $scope.projectRef.display_name :
+            $scope.projectRef.identifier;
           $location.hash($scope.projectRef.identifier);
           $scope.$emit(
             "loadProject",
@@ -1392,8 +1379,7 @@ mciModule.controller(
 mciModule.directive("adminNewProject", function () {
   return {
     restrict: "E",
-    template:
-      '<div class="row">' +
+    template: '<div class="row">' +
       '<div class="col-lg-12">' +
       "Enter project name " +
       '<form style="display: inline" ng-submit="addProject()">' +
