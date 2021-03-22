@@ -129,11 +129,6 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-		} else if len(tests) == 0 {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message:    "not found",
-				StatusCode: http.StatusNotFound,
-			})
 		}
 
 		lastIndex := len(tests)
