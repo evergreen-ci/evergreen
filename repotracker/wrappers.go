@@ -67,11 +67,12 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 	return nil
 }
 
-func ActivateBuildsForProject(project model.ProjectRef) error {
+func ActivateBuildsForProject(project model.ProjectRef) (bool, error) {
 	if !project.IsEnabled() {
-		return errors.Errorf("project disabled: %s", project.Id)
+		return false, errors.Errorf("project disabled: %s", project.Id)
 	}
-	if err := model.DoProjectActivation(project.Id); err != nil {
+	ok, err := model.DoProjectActivation(project.Id)
+	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
 			"runner":  RunnerName,
@@ -79,10 +80,10 @@ func ActivateBuildsForProject(project model.ProjectRef) error {
 			"project": project.Id,
 		}))
 
-		return errors.WithStack(err)
+		return false, errors.WithStack(err)
 	}
 
-	return nil
+	return ok, nil
 }
 
 // CheckGithubAPIResources returns true when the github API is ready,

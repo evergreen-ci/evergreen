@@ -77,19 +77,25 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 	}
 
 	count := 0
+	projectsActivated := []string{}
 	for _, ref := range projects {
 		if !ref.IsEnabled() {
 			continue
 		}
-		j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(ref),
+		ok, err := repotracker.ActivateBuildsForProject(ref)
+		j.AddError(errors.Wrapf(err,
 			"problem activating builds for project %s", ref.Id))
+		if ok {
+			projectsActivated = append(projectsActivated, ref.Identifier)
+		}
 		count++
 	}
 
 	grip.Info(message.Fields{
-		"message":  "version activation catch up report",
-		"projects": len(projects),
-		"active":   count,
-		"errors":   j.HasErrors(),
+		"message":            "version activation catch up report",
+		"projects":           len(projects),
+		"projects_activated": projectsActivated,
+		"active":             count,
+		"errors":             j.HasErrors(),
 	})
 }
