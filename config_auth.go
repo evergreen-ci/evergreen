@@ -10,6 +10,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// AuthUser configures a user for our Naive authentication setup.
+type AuthUser struct {
+	Username    string `bson:"username" json:"username" yaml:"username"`
+	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Password    string `bson:"password" json:"password" yaml:"password"`
+	Email       string `bson:"email" json:"email" yaml:"email"`
+}
+
 var (
 	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
 	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
@@ -21,14 +29,6 @@ var (
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 	AuthAllowServiceUsersKey       = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
 )
-
-// AuthUser configures a user for our Naive authentication setup.
-type AuthUser struct {
-	Username    string `bson:"username" json:"username" yaml:"username"`
-	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Password    string `bson:"password" json:"password" yaml:"password"`
-	Email       string `bson:"email" json:"email" yaml:"email"`
-}
 
 // OnlyAPIUser configures a special service user with only access to the API via
 // a key.
