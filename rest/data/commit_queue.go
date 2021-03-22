@@ -59,12 +59,8 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	if err != nil {
 		return "", err
 	}
-	title := ""
-	if pr.Title != nil {
-		title = *pr.Title
-	}
 
-	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, title, messageOverride)
+	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, pr.GetTitle(), messageOverride)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to make commit queue patch")
 	}
