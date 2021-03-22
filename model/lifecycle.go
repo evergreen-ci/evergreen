@@ -398,7 +398,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	for _, task := range tasks {
 		taskIds = append(taskIds, task.Id)
 	}
-	return RestartVersion(versionId, taskIds, true, caller)
+	return RestartVersion(versionId, taskIds, abortInProgress, caller)
 }
 
 // RestartVersion restarts completed tasks associated with a given versionId.
@@ -425,6 +425,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			finishedTasks = append(finishedTasks[:i], finishedTasks[i+1:]...)
 		}
 	}
+
 	// archive all the finished tasks
 	toArchive := []task.Task{}
 	for _, t := range finishedTasks {
@@ -444,11 +445,19 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
 	tasksToRestart := finishedTasks
 	if abortInProgress {
-		tasksToRestart, err = task.Find(task.ByIds(taskIds))
+		aborted, err := task.Find(task.BySubsetAborted(taskIds))
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		catcher := grip.NewBasicCatcher()
+		for _, t := range aborted {
+			catcher.Add(t.SetResetWhenFinished())
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
 	}
+
 	restartIds := []string{}
 	for _, t := range tasksToRestart {
 		if t.IsPartOfSingleHostTaskGroup() {
