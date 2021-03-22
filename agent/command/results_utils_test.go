@@ -26,13 +26,14 @@ func TestSendTestResults(t *testing.T) {
 	results := &task.LocalTestResults{
 		Results: []task.TestResult{
 			{
-				TestFile:  "test",
-				GroupID:   "group",
-				Status:    "status",
-				URL:       "https://url.com",
-				LineNum:   123,
-				StartTime: float64(time.Now().Add(-time.Hour).Unix()),
-				EndTime:   float64(time.Now().Unix()),
+				TestFile:        "test",
+				DisplayTestName: "display",
+				GroupID:         "group",
+				Status:          "status",
+				URL:             "https://url.com",
+				LineNum:         123,
+				StartTime:       float64(time.Now().Add(-time.Hour).Unix()),
+				EndTime:         float64(time.Now().Unix()),
 			},
 		},
 	}
@@ -82,6 +83,7 @@ func TestSendTestResults(t *testing.T) {
 				require.Len(t, res, 1)
 				require.Len(t, res[0].Results, 1)
 				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
+				assert.Equal(t, results.Results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
 				assert.Equal(t, results.Results[0].GroupID, res[0].Results[0].GroupId)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)

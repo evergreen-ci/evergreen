@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1551,18 +1550,16 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, task.Collection, build.Collection, commitqueue.Collection))
 
+	versionId := bson.NewObjectId()
 	v := &Version{
-		Id:     "my-version",
+		Id:     versionId.Hex(),
 		Status: evergreen.VersionStarted,
 	}
 	p := &patch.Patch{
+		Id:      versionId,
 		Version: v.Id,
-		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:       12,
-			MergeCommitSHA: "abcdef",
-		},
-		Alias:  evergreen.CommitQueueAlias,
-		Status: evergreen.PatchStarted,
+		Alias:   evergreen.CommitQueueAlias,
+		Status:  evergreen.PatchStarted,
 	}
 	b := build.Build{
 		Id:      "my-build",
@@ -1608,8 +1605,8 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 		BuildId:          b.Id,
 	}
 	q := []commitqueue.CommitQueueItem{
-		{Issue: "12", Source: commitqueue.SourcePullRequest, Version: v.Id},
-		{Issue: "42", Source: commitqueue.SourcePullRequest},
+		{Issue: v.Id, Source: commitqueue.SourceDiff, Version: v.Id},
+		{Issue: "42", Source: commitqueue.SourceDiff},
 	}
 	cq := &commitqueue.CommitQueue{ProjectID: "my-project", Queue: q}
 	assert.NoError(t, v.Insert())
@@ -1648,7 +1645,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	}
 	assert.Equal(t, 2, aborted)
 	assert.Equal(t, 1, finished)
-	p, err = patch.FindOne(patch.ByVersion("my-version"))
+	p, err = patch.FindOne(patch.ByVersion(versionId.Hex()))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 }
@@ -1683,11 +1680,23 @@ func TestDequeueAndRestart(t *testing.T) {
 		Version:          v3.Hex(),
 		BuildId:          "3",
 		Project:          "p",
-		Status:           evergreen.TaskSucceeded,
+		Status:           evergreen.TaskUndispatched,
 		Requester:        evergreen.MergeTestRequester,
 		CommitQueueMerge: true,
+		DependsOn: []task.Dependency{
+			{TaskId: t2.Id, Status: "*"},
+		},
 	}
 	assert.NoError(t, t3.Insert())
+	t4 := task.Task{
+		Id:        "4",
+		Version:   v3.Hex(),
+		BuildId:   "3",
+		Project:   "p",
+		Status:    evergreen.TaskSucceeded,
+		Requester: evergreen.MergeTestRequester,
+	}
+	assert.NoError(t, t4.Insert())
 	b1 := build.Build{
 		Id:      "1",
 		Version: v1.Hex(),
@@ -1709,6 +1718,7 @@ func TestDequeueAndRestart(t *testing.T) {
 		Version: v3.Hex(),
 		Tasks: []build.TaskCache{
 			{Id: t3.Id},
+			{Id: t4.Id},
 		},
 	}
 	assert.NoError(t, b3.Insert())
@@ -1766,8 +1776,13 @@ func TestDequeueAndRestart(t *testing.T) {
 	assert.Equal(t, 0, dbTask2.Execution)
 	dbTask3, err := task.FindOneId(t3.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, dbTask3.Execution)
+	assert.Equal(t, 0, dbTask3.Execution)
 	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
+	assert.Len(t, dbTask3.DependsOn, 1)
+	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
+	dbTask4, err := task.FindOneId(t4.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, dbTask4.Execution)
 }
 
 func TestMarkStart(t *testing.T) {
@@ -3339,6 +3354,46 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
+}
+
+func TestAbortedTaskDelayedRestart(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), "error clearing collection")
+	task1 := task.Task{
+		Id:                "task1",
+		BuildId:           "b",
+		Version:           "version",
+		Status:            evergreen.TaskStarted,
+		Aborted:           true,
+		ResetWhenFinished: true,
+		Activated:         true,
+	}
+	assert.NoError(t, task1.Insert())
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			{Id: task1.Id, Status: evergreen.TaskStarted, Activated: true},
+		},
+		Version: "version",
+	}
+	assert.NoError(t, b.Insert())
+	v := Version{
+		Id:     "version",
+		Config: `_id: v`,
+	}
+	assert.NoError(t, v.Insert())
+
+	detail := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+	}
+	updates := StatusChanges{}
+	assert.NoError(t, MarkEnd(&task1, "test", time.Now(), detail, false, &updates))
+	newTask, err := task.FindOneId(task1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)
+	assert.Equal(t, 1, newTask.Execution)
+	oldTask, err := task.FindOneOld(task.ById("task1_0"))
+	assert.NoError(t, err)
+	assert.True(t, oldTask.Aborted)
 }
 
 func TestDisplayTaskFailedExecTasks(t *testing.T) {

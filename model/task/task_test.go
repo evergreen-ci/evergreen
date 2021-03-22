@@ -805,14 +805,15 @@ func TestTaskSetResultsFields(t *testing.T) {
 
 	testresults := []TestResult{
 		{
-			Status:    "pass",
-			TestFile:  "job0_fixture_setup",
-			GroupID:   "group",
-			URL:       "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
-			URLRaw:    "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
-			ExitCode:  0,
-			StartTime: StartTime,
-			EndTime:   EndTime,
+			Status:          "pass",
+			TestFile:        "job0_fixture_setup",
+			DisplayTestName: "display",
+			GroupID:         "group",
+			URL:             "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
+			URLRaw:          "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
+			ExitCode:        0,
+			StartTime:       StartTime,
+			EndTime:         EndTime,
 		},
 	}
 
@@ -1520,6 +1521,20 @@ func TestAddDependency(t *testing.T) {
 	updated, err = FindOneId(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, len(depTaskIds)+1, len(updated.DependsOn))
+
+	assert.NoError(t, t1.RemoveDependency("td3"))
+	for _, d := range t1.DependsOn {
+		if d.TaskId == "td3" {
+			assert.Fail(t, "did not remove dependency from in-memory task")
+		}
+	}
+	updated, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	for _, d := range updated.DependsOn {
+		if d.TaskId == "td3" {
+			assert.Fail(t, "did not remove dependency from db task")
+		}
+	}
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {

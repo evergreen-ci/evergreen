@@ -40,15 +40,15 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
 	for _, testResult := range testResults {
 		match := true
-		if len(testName) > 0 {
-			if !strings.Contains(testResult.TestName, testName) {
+		if testName != "" {
+			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, testName) {
+				match = false
+			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, testName) {
 				match = false
 			}
 		}
-		if len(statuses) > 0 {
-			if !utility.StringSliceContains(statuses, testResult.Status) {
-				match = false
-			}
+		if len(statuses) > 0 && !utility.StringSliceContains(statuses, testResult.Status) {
+			match = false
 		}
 		if match {
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
@@ -97,7 +97,14 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 	filteredTestCount := len(filteredAndSortedTestResults)
 	if limitParam != 0 {
 		offset := pageParam * limitParam
-		filteredAndSortedTestResults = filteredAndSortedTestResults[offset : offset+limitParam]
+		end := offset + limitParam
+		if offset > filteredTestCount {
+			offset = filteredTestCount
+		}
+		if end > filteredTestCount {
+			end = filteredTestCount
+		}
+		filteredAndSortedTestResults = filteredAndSortedTestResults[offset:end]
 	}
 
 	return filteredAndSortedTestResults, filteredTestCount
@@ -606,6 +613,18 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
+			p, err := patch.FindOneId(version.Id)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Wrap(err, "unable to find patch")
+			}
+			if p == nil {
+				return http.StatusNotFound, errors.New("patch not found")
+			}
+			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to send github status",
+				"patch":   version.Id,
+			}))
 			err = model.RestartItemsAfterVersion(nil, proj.Id, version.Id, user.Id)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)

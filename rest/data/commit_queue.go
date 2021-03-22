@@ -527,6 +527,17 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	if found == nil {
 		return errors.Errorf("item '%s' did not exist on the queue", item)
 	}
+	githubStatus := message.GithubStateFailure
+	description := "merge test failed"
+	if status == evergreen.MergeTestSucceeded {
+		githubStatus = message.GithubStateSuccess
+		description = "merge test succeeded"
+	}
+	err = model.SendCommitQueueResult(p, githubStatus, description)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "unable to send github status",
+		"patch":   patchID,
+	}))
 	return nil
 }
 

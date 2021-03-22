@@ -38,29 +38,32 @@ import (
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
-	Id                      string                         `bson:"_id" json:"id" yaml:"id"`
-	DisplayName             string                         `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled                 *bool                          `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private                 *bool                          `bson:"private" json:"private" yaml:"private"`
-	Restricted              *bool                          `bson:"restricted" json:"restricted" yaml:"restricted"`
-	Owner                   string                         `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                    string                         `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch                  string                         `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath              string                         `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled        *bool                          `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled     *bool                          `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled     *bool                          `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	PRTestingEnabled        *bool                          `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled     *bool                          `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
-	BatchTime               int                            `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious      *bool                          `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
-	DefaultLogger           string                         `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure    *bool                          `bson:"notify_on_failure" json:"notify_on_failure"`
-	Triggers                []TriggerDefinition            `bson:"triggers" json:"triggers"`
-	PatchTriggerAliases     []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
-	PeriodicBuilds          []PeriodicBuildDefinition      `bson:"periodic_builds" json:"periodic_builds"`
-	CedarTestResultsEnabled *bool                          `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
-	CommitQueue             CommitQueueParams              `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	Id                   string              `bson:"_id" json:"id" yaml:"id"`
+	DisplayName          string              `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Enabled              *bool               `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private              *bool               `bson:"private" json:"private" yaml:"private"`
+	Restricted           *bool               `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Owner                string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                 string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch               string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	RemotePath           string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled     *bool               `bson:"patching_disabled" json:"patching_disabled"`
+	RepotrackerDisabled  *bool               `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
+	DispatchingDisabled  *bool               `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
+	PRTestingEnabled     *bool               `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled  *bool               `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
+	BatchTime            int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious   *bool               `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DefaultLogger        string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure *bool               `bson:"notify_on_failure" json:"notify_on_failure"`
+	Triggers             []TriggerDefinition `bson:"triggers" json:"triggers"`
+	// all aliases defined for the project
+	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
+	// all PatchTriggerAliases applied to github patch intents
+	GithubTriggerAliases    []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
+	CedarTestResultsEnabled *bool                     `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -221,6 +224,7 @@ var (
 	projectRefSpawnHostScriptPathKey     = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey                = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
+	projectRefGithubTriggerAliasesKey    = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 
@@ -1248,6 +1252,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefSpawnHostScriptPathKey:     projectRef.SpawnHostScriptPath,
 				projectRefTriggersKey:                projectRef.Triggers,
 				projectRefPatchTriggerAliasesKey:     projectRef.PatchTriggerAliases,
+				projectRefGithubTriggerAliasesKey:    projectRef.GithubTriggerAliases,
 				projectRefPeriodicBuildsKey:          projectRef.PeriodicBuilds,
 				projectRefWorkstationConfigKey:       projectRef.WorkstationConfig,
 			},

@@ -193,11 +193,18 @@ func TestBuildVariantsStatusUnmarshal(t *testing.T) {
 }
 
 func TestGetVersionsWithOptions(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	assert.NoError(t, p.Insert())
 	v := Version{
-		Id:         "my_version",
-		Identifier: "my_project",
+		Id:                  "my_version",
+		Identifier:          "my_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildId:      "bv1",
@@ -212,15 +219,24 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 	v = Version{
-		Id:         "your_version",
-		Identifier: "my_project",
-		CreateTime: start.Add(-1 * time.Minute),
+		Id:                  "your_version",
+		Identifier:          "my_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(-1 * time.Minute),
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId: "bv_not_activated",
+			},
+		},
 	}
 	assert.NoError(t, v.Insert())
 	v = Version{
-		Id:         "another_version",
-		Identifier: "my_project",
-		CreateTime: start.Add(-2 * time.Minute),
+		Id:                  "another_version",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		Identifier:          "my_project",
+		CreateTime:          start.Add(-2 * time.Minute),
 	}
 	assert.NoError(t, v.Insert())
 
@@ -230,7 +246,16 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Tasks: []build.TaskCache{
 			{Id: "t1"},
 		},
+		Activated: true,
+
 		Status: evergreen.BuildFailed,
+	}
+	assert.NoError(t, bv.Insert())
+	bv = build.Build{
+		Id:           "bv_not_activated",
+		BuildVariant: "my_bv",
+		Activated:    false,
+		Status:       evergreen.BuildFailed,
 	}
 	assert.NoError(t, bv.Insert())
 	bv = build.Build{
@@ -239,7 +264,8 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Tasks: []build.TaskCache{
 			{Id: "t2"},
 		},
-		Status: evergreen.BuildSucceeded,
+		Activated: true,
+		Status:    evergreen.BuildSucceeded,
 	}
 	assert.NoError(t, bv.Insert())
 
@@ -257,8 +283,8 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		BuildId:     "bv2",
 	}
 	assert.NoError(t, t2.Insert())
-	opts := GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true}
-	versions, err := GetVersionsWithOptions("my_project", opts)
+	opts := GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true, Requester: evergreen.RepotrackerVersionRequester}
+	versions, err := GetVersionsWithOptions("my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
 	assert.Equal(t, "my_version", versions[0].Id)
@@ -267,30 +293,31 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	require.Len(t, versions[0].Builds[1].Tasks, 1)
 
 	opts.ByBuildVariant = "my_bv"
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions("my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	require.Len(t, versions[0].Builds, 1)
 	assert.Equal(t, versions[0].Builds[0].Id, "bv1")
 	assert.Equal(t, versions[0].Builds[0].Status, evergreen.BuildFailed)
+	assert.Equal(t, versions[0].Builds[0].Activated, true)
 	require.Len(t, versions[0].Builds[0].Tasks, 1)
 
-	opts = GetVersionsOptions{Limit: 1}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	opts = GetVersionsOptions{Limit: 1, Requester: evergreen.RepotrackerVersionRequester}
+	versions, err = GetVersionsWithOptions("my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, versions[0].Id, "my_version")
 	assert.Len(t, versions[0].Builds, 0)
 	assert.Len(t, versions[0].BuildVariants, 2)
 
-	opts = GetVersionsOptions{Skip: 1}
+	opts = GetVersionsOptions{Skip: 1, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, versions[0].Id, "your_version")
 	assert.Equal(t, versions[1].Id, "another_version")
 
-	opts = GetVersionsOptions{VersionToStartAt: "your_version"}
+	opts = GetVersionsOptions{StartAfter: 10, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)

@@ -52,18 +52,6 @@ func Find(query db.Q) ([]TaskAnnotation, error) {
 	return annotations, err
 }
 
-func FindByID(id string) (*TaskAnnotation, error) {
-	annotation, err := FindOne(ById(id))
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "problem finding task annotation")
-	}
-
-	return annotation, nil
-}
-
 func FindOneByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
 	return FindOne(db.Query(ByTaskIdAndExecution(id, execution)))
 }
@@ -77,8 +65,24 @@ func FindByTaskId(id string) ([]TaskAnnotation, error) {
 }
 
 // Insert writes the task_annotation to the database.
-func (a *TaskAnnotation) Insert() error {
-	return db.Insert(Collection, a)
+func (a *TaskAnnotation) Upsert() error {
+	set := bson.M{
+		NoteKey:            a.Note,
+		IssuesKey:          a.Issues,
+		SuspectedIssuesKey: a.SuspectedIssues,
+		CreatedIssuesKey:   a.CreatedIssues,
+	}
+	if a.Metadata != nil {
+		set[MetadataKey] = a.Metadata
+	}
+	_, err := db.Upsert(
+		Collection,
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
+		bson.M{
+			"$set": set,
+		},
+	)
+	return err
 }
 
 // Update updates one task_annotation.
@@ -89,11 +93,6 @@ func (a *TaskAnnotation) Update() error {
 // Remove removes one task_annotation.
 func Remove(id string) error {
 	return db.Remove(Collection, bson.M{IdKey: id})
-}
-
-// ById returns a query that contains an Id selector on the string, id.
-func ById(id string) db.Q {
-	return db.Query(bson.M{IdKey: id})
 }
 
 // ByTaskId returns the query for a given Task Id

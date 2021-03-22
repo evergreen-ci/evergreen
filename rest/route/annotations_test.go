@@ -88,7 +88,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 		},
 	}
 	for _, a := range annotations {
-		assert.NoError(t, a.Insert())
+		assert.NoError(t, a.Upsert())
 	}
 
 	resp = h.Run(ctx)
@@ -180,7 +180,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 		},
 	}
 	for _, a := range annotations {
-		assert.NoError(t, a.Insert())
+		assert.NoError(t, a.Upsert())
 	}
 
 	resp = h.Run(ctx)
@@ -286,7 +286,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	}
 
 	for _, a := range annotations {
-		assert.NoError(t, a.Insert())
+		assert.NoError(t, a.Upsert())
 	}
 
 	// get the latest execution : 1

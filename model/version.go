@@ -56,6 +56,9 @@ type Version struct {
 	// repository) or it was triggered by a developer
 	// patch request
 	Requester string `bson:"r" json:"requester,omitempty"`
+
+	// child patches will store the id of the parent patch
+	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
 	// this field is omitted in the database
@@ -79,15 +82,16 @@ type Version struct {
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
-const defaultVersionLimit = 10
+const defaultVersionLimit = 20
 
 type GetVersionsOptions struct {
-	VersionToStartAt string `json:"start_at"`
-	Limit            int    `json:"limit"`
-	Skip             int    `json:"skip"`
-	IncludeBuilds    bool   `json:"include_builds"`
-	IncludeTasks     bool   `json:"include_tasks"`
-	ByBuildVariant   string `json:"by_build_variant"`
+	StartAfter     int    `json:"start"`
+	Requester      string `json:"requester"`
+	Limit          int    `json:"limit"`
+	Skip           int    `json:"skip"`
+	IncludeBuilds  bool   `json:"include_builds"`
+	IncludeTasks   bool   `json:"include_tasks"`
+	ByBuildVariant string `json:"by_build_variant"`
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
@@ -302,37 +306,38 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Version, error) {
+func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
+	projectId, err := FindIdForProject(projectName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding id for project '%s'", projectName)
+	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  opts.Requester,
 	}
 	if opts.ByBuildVariant != "" {
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
-	if opts.VersionToStartAt != "" {
-		v, err := VersionFindOneId(opts.VersionToStartAt)
-		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding version '%s'", opts.VersionToStartAt)
-		}
-		if v == nil {
-			return nil, errors.Errorf("version '%s' doesn't exist", opts.VersionToStartAt)
-		}
-		match[VersionCreateTimeKey] = bson.M{"$lte": v.CreateTime}
+
+	if opts.StartAfter > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
 
 	pipeline := []bson.M{bson.M{"$match": match}}
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionCreateTimeKey: -1}})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	project := bson.M{
-		VersionRevisionKey:            1,
-		VersionErrorsKey:              1,
-		VersionMessageKey:             1,
-		VersionAuthorKey:              1,
-		VersionRevisionOrderNumberKey: 1,
 		VersionCreateTimeKey:          1,
 		VersionStartTimeKey:           1,
 		VersionFinishTimeKey:          1,
+		VersionRevisionKey:            1,
+		VersionAuthorKey:              1,
+		VersionAuthorEmailKey:         1,
+		VersionMessageKey:             1,
 		VersionStatusKey:              1,
 		VersionBuildVariantsKey:       1,
+		VersionErrorsKey:              1,
+		VersionRevisionOrderNumberKey: 1,
+		VersionRequesterKey:           1,
 	}
 
 	if !opts.IncludeBuilds { // add project to the pipeline as is
@@ -359,6 +364,15 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 			"as":           "build_variants",
 		}
 		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
+
+		if opts.ByBuildVariant != "" {
+			// filter out versions that don't have this variant activated
+			matchBuildVariantActivated := bson.M{
+				bsonutil.GetDottedKeyName("build_variants", build.ActivatedKey): true,
+			}
+			pipeline = append(pipeline, bson.M{"$match": matchBuildVariantActivated})
+		}
+
 		// projectWithBuilds is initially the same as the first project but with build_variants instead of build_variants_status.
 		projectWithBuilds := bson.M{
 			VersionRevisionKey:            1,
@@ -372,7 +386,11 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 			VersionStatusKey:              1,
 			"build_variants":              1,
 		}
+		projectWithoutTaskCache := bson.M{
+			"build_variants.tasks": 0,
+		}
 		pipeline = append(pipeline, bson.M{"$project": projectWithBuilds})
+		pipeline = append(pipeline, bson.M{"$project": projectWithoutTaskCache})
 	}
 	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
@@ -383,8 +401,8 @@ func GetVersionsWithOptions(projectId string, opts GetVersionsOptions) ([]Versio
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
-	err := db.Aggregate(VersionCollection, pipeline, &res)
-	if err != nil {
+
+	if err = db.Aggregate(VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrapf(err, "error aggregating versions and builds")
 	}
 

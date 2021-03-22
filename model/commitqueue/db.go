@@ -1,6 +1,8 @@
 package commitqueue
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -13,11 +15,12 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey          = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey       = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	IssueKey       = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
-	VersionKey     = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
-	EnqueueTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
+	IdKey                  = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey               = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	IssueKey               = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey             = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	EnqueueTimeKey         = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
+	ProcessingStartTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "ProcessingStartTime")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -99,7 +102,10 @@ func addVersionID(id string, item CommitQueueItem) error {
 			bsonutil.GetDottedKeyName(QueueKey, IssueKey): item.Issue,
 		},
 		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(QueueKey, "$", VersionKey): item.Version},
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(QueueKey, "$", VersionKey):             item.Version,
+				bsonutil.GetDottedKeyName(QueueKey, "$", ProcessingStartTimeKey): time.Now(),
+			},
 		})
 }
 

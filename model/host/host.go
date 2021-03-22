@@ -107,22 +107,11 @@ type Host struct {
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
-	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
-	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
-
-	// ComputeCostPerHour is the compute (not storage) cost of one host for one hour. Cloud
-	// managers can but are not required to cache this price.
-	ComputeCostPerHour float64 `bson:"compute_cost_per_hour,omitempty" json:"compute_cost_per_hour,omitempty"`
-
-	// incremented by task start and end stats collectors and
-	// should reflect hosts total costs. Only populated for build-hosts
-	// where host providers report costs.
-	TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
@@ -351,11 +340,10 @@ type SpawnHostUsage struct {
 	TotalUnexpirableHosts int `bson:"total_unexpirable_hosts"`
 	NumUsersWithHosts     int `bson:"num_users_with_hosts"`
 
-	TotalVolumes              int            `bson:"total_volumes"`
-	TotalVolumeSize           int            `bson:"total_volume_size"`
-	NumUsersWithVolumes       int            `bson:"num_users_with_volumes"`
-	InstanceTypes             map[string]int `bson:"instance_types"`
-	AverageComputeCostPerHour float64        `bson:"average_compute_cost_per_hour"`
+	TotalVolumes        int            `bson:"total_volumes"`
+	TotalVolumeSize     int            `bson:"total_volume_size"`
+	NumUsersWithVolumes int            `bson:"num_users_with_volumes"`
+	InstanceTypes       map[string]int `bson:"instance_types"`
 }
 
 const (
@@ -1528,12 +1516,10 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:               h.Zone,
-				StartTimeKey:          h.StartTime,
-				VolumeTotalSizeKey:    h.VolumeTotalSize,
-				VolumesKey:            h.Volumes,
-				DNSKey:                h.Host,
-				ComputeCostPerHourKey: h.ComputeCostPerHour,
+				ZoneKey:      h.Zone,
+				StartTimeKey: h.StartTime,
+				VolumesKey:   h.Volumes,
+				DNSKey:       h.Host,
 			},
 		},
 	)
@@ -2274,21 +2260,6 @@ func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
 	return Count(query)
 }
 
-// EstimateNumberContainersForDuration estimates how many containers were running
-// on a given host during the specified time interval by averaging the counts
-// at the start and end. It is more accurate for shorter tasks.
-func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, error) {
-	containersAtStart, err := h.CountContainersRunningAtTime(start)
-	if err != nil {
-		return 0, errors.Wrapf(err, "Error counting containers running at %v", start)
-	}
-	containersAtEnd, err := h.CountContainersRunningAtTime(end)
-	if err != nil {
-		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
-	}
-	return float64(containersAtStart+containersAtEnd) / 2, nil
-}
-
 func (h *Host) addTag(new Tag, hasPermissions bool) {
 	for i, old := range h.InstanceTags {
 		if old.Key == new.Key {
@@ -2419,15 +2390,13 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 			"stopped":     bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
 			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
 			"users":       bson.M{"$addToSet": "$" + StartedByKey},
-			"cost":        bson.M{"$avg": "$" + ComputeCostPerHourKey},
 		}},
 		{"$project": bson.M{
-			"_id":                           "0",
-			"total_hosts":                   "$hosts",
-			"total_stopped_hosts":           "$stopped",
-			"total_unexpirable_hosts":       "$unexpirable",
-			"num_users_with_hosts":          bson.M{"$size": "$users"},
-			"average_compute_cost_per_hour": "$cost",
+			"_id":                     "0",
+			"total_hosts":             "$hosts",
+			"total_stopped_hosts":     "$stopped",
+			"total_unexpirable_hosts": "$unexpirable",
+			"num_users_with_hosts":    bson.M{"$size": "$users"},
 		}},
 	}
 

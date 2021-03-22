@@ -133,6 +133,9 @@ type Task struct {
 	// patch request
 	Requester string `bson:"r" json:"r"`
 
+	// tasks that are part of a child patch will store the id of the parent patch
+	ParentPatchID string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
+
 	// Status represents the various stages the task could be in
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
@@ -159,11 +162,6 @@ type Task struct {
 	ExpectedDuration       time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
 	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev,omitempty"`
 	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
-
-	// an estimate of what the task cost to run, hidden from JSON views for now
-	Cost float64 `bson:"cost,omitempty" json:"-"`
-	// total estimated cost of hosts this task spawned
-	SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
 
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
@@ -227,25 +225,6 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 }
 
-// VersionCost is service level model for representing cost data related to a version.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
-type VersionCost struct {
-	VersionId        string        `bson:"version_id"`
-	SumTimeTaken     time.Duration `bson:"sum_time_taken"`
-	SumEstimatedCost float64       `bson:"sum_estimated_cost"`
-}
-
-// DistroCost is service level model for representing cost data related to a distro.
-// SumTimeTaken is the aggregation of time taken by all tasks associated with a distro.
-type DistroCost struct {
-	DistroId         string                 `bson:"distro_id"`
-	SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
-	SumEstimatedCost float64                `bson:"sum_estimated_cost"`
-	Provider         string                 `json:"provider"`
-	ProviderSettings map[string]interface{} `json:"provider_settings"`
-	NumTasks         int                    `bson:"num_tasks"`
-}
-
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
 // The bson keys must match those of the actual task document
 type BaseTaskInfo struct {
@@ -298,18 +277,19 @@ type LocalTestResults struct {
 }
 
 type TestResult struct {
-	Status    string  `json:"status" bson:"status"`
-	TestFile  string  `json:"test_file" bson:"test_file"`
-	GroupID   string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
-	URL       string  `json:"url" bson:"url,omitempty"`
-	URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
-	LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode  int     `json:"exit_code" bson:"exit_code"`
-	StartTime float64 `json:"start" bson:"start"`
-	EndTime   float64 `json:"end" bson:"end"`
-	TaskID    string  `json:"task_id" bson:"task_id"`
-	Execution int     `json:"execution" bson:"execution"`
+	Status          string  `json:"status" bson:"status"`
+	TestFile        string  `json:"test_file" bson:"test_file"`
+	DisplayTestName string  `json:"display_test_name" bson:"display_test_name"`
+	GroupID         string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
+	URL             string  `json:"url" bson:"url,omitempty"`
+	URLRaw          string  `json:"url_raw" bson:"url_raw,omitempty"`
+	LogId           string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
+	LineNum         int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
+	ExitCode        int     `json:"exit_code" bson:"exit_code"`
+	StartTime       float64 `json:"start" bson:"start"`
+	EndTime         float64 `json:"end" bson:"end"`
+	TaskID          string  `json:"task_id" bson:"task_id"`
+	Execution       int     `json:"execution" bson:"execution"`
 
 	// LogRaw is not saved in the task
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
@@ -443,6 +423,31 @@ func (t *Task) AddDependency(d Dependency) error {
 			},
 		},
 	)
+}
+
+func (t *Task) RemoveDependency(dependencyId string) error {
+	found := false
+	for i := len(t.DependsOn) - 1; i >= 0; i-- {
+		d := t.DependsOn[i]
+		if d.TaskId == dependencyId {
+			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.Errorf("dependency '%s' not found", dependencyId)
+	}
+
+	query := bson.M{IdKey: t.Id}
+	update := bson.M{
+		"$pull": bson.M{
+			DependsOnKey: bson.M{
+				DependencyTaskIdKey: dependencyId,
+			},
+		},
+	}
+	return db.Update(Collection, query, update)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -1429,8 +1434,6 @@ func ResetTasks(taskIds []string) error {
 				DetailsKey:           "",
 				HasCedarResultsKey:   "",
 				ResetWhenFinishedKey: "",
-				CostKey:              "",
-				SpawnedHostCostKey:   "",
 			},
 		},
 	)
@@ -1629,16 +1632,17 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 	}
 	return testresult.TestResult{
 		// copy fields from local test result.
-		Status:    t.Status,
-		TestFile:  t.TestFile,
-		GroupID:   t.GroupID,
-		URL:       t.URL,
-		URLRaw:    t.URLRaw,
-		LogID:     t.LogId,
-		LineNum:   t.LineNum,
-		ExitCode:  t.ExitCode,
-		StartTime: t.StartTime,
-		EndTime:   t.EndTime,
+		Status:          t.Status,
+		TestFile:        t.TestFile,
+		DisplayTestName: t.DisplayTestName,
+		GroupID:         t.GroupID,
+		URL:             t.URL,
+		URLRaw:          t.URLRaw,
+		LogID:           t.LogId,
+		LineNum:         t.LineNum,
+		ExitCode:        t.ExitCode,
+		StartTime:       t.StartTime,
+		EndTime:         t.EndTime,
 
 		// copy field values from enclosing tasks.
 		TaskID:               task.Id,
@@ -1658,19 +1662,20 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 
 func ConvertToOld(in *testresult.TestResult) TestResult {
 	return TestResult{
-		Status:    in.Status,
-		TestFile:  in.TestFile,
-		GroupID:   in.GroupID,
-		URL:       in.URL,
-		URLRaw:    in.URLRaw,
-		LogId:     in.LogID,
-		LineNum:   in.LineNum,
-		ExitCode:  in.ExitCode,
-		StartTime: in.StartTime,
-		EndTime:   in.EndTime,
-		LogRaw:    in.LogRaw,
-		TaskID:    in.TaskID,
-		Execution: in.Execution,
+		Status:          in.Status,
+		TestFile:        in.TestFile,
+		DisplayTestName: in.DisplayTestName,
+		GroupID:         in.GroupID,
+		URL:             in.URL,
+		URLRaw:          in.URLRaw,
+		LogId:           in.LogID,
+		LineNum:         in.LineNum,
+		ExitCode:        in.ExitCode,
+		StartTime:       in.StartTime,
+		EndTime:         in.EndTime,
+		LogRaw:          in.LogRaw,
+		TaskID:          in.TaskID,
+		Execution:       in.Execution,
 	}
 }
 
@@ -1699,34 +1704,6 @@ func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) e
 	}
 
 	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
-}
-
-// SetCost updates the task's Cost field
-func (t *Task) SetCost(cost float64) error {
-	t.Cost = cost
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				CostKey: cost,
-			},
-		},
-	)
-}
-
-func IncSpawnedHostCost(taskID string, cost float64) error {
-	return UpdateOne(
-		bson.M{
-			IdKey: taskID,
-		},
-		bson.M{
-			"$inc": bson.M{
-				SpawnedHostCostKey: cost,
-			},
-		},
-	)
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
@@ -1999,16 +1976,17 @@ func (t *Task) MergeNewTestResults() error {
 	}
 	for _, result := range newTestResults {
 		t.LocalTestResults = append(t.LocalTestResults, TestResult{
-			Status:    result.Status,
-			TestFile:  result.TestFile,
-			GroupID:   result.GroupID,
-			URL:       result.URL,
-			URLRaw:    result.URLRaw,
-			LogId:     result.LogID,
-			LineNum:   result.LineNum,
-			ExitCode:  result.ExitCode,
-			StartTime: result.StartTime,
-			EndTime:   result.EndTime,
+			Status:          result.Status,
+			TestFile:        result.TestFile,
+			DisplayTestName: result.DisplayTestName,
+			GroupID:         result.GroupID,
+			URL:             result.URL,
+			URLRaw:          result.URLRaw,
+			LogId:           result.LogID,
+			LineNum:         result.LineNum,
+			ExitCode:        result.ExitCode,
+			StartTime:       result.StartTime,
+			EndTime:         result.EndTime,
 		})
 	}
 	return nil
@@ -2030,9 +2008,6 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
-	if !t.DisplayOnly && !t.IsPartOfSingleHostTaskGroup() {
-		return errors.Errorf("%s is not a display task or in a task group", t.Id)
-	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{
@@ -2996,13 +2971,14 @@ func (t *Task) SetNumDependents() error {
 // struct.
 func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 	return TestResult{
-		TaskID:    result.TaskID,
-		Execution: result.Execution,
-		TestFile:  result.TestName,
-		GroupID:   result.GroupID,
-		LineNum:   result.LineNum,
-		StartTime: float64(result.Start.Unix()),
-		EndTime:   float64(result.End.Unix()),
-		Status:    result.Status,
+		TaskID:          result.TaskID,
+		Execution:       result.Execution,
+		TestFile:        result.TestName,
+		DisplayTestName: result.DisplayTestName,
+		GroupID:         result.GroupID,
+		LineNum:         result.LineNum,
+		StartTime:       float64(result.Start.Unix()),
+		EndTime:         float64(result.End.Unix()),
+		Status:          result.Status,
 	}
 }

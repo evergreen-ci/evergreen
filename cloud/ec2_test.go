@@ -379,9 +379,6 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
-
-	// Compute cost is cached in the host
-	s.Equal(.1, s.h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
@@ -431,9 +428,6 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Nil(runInput.SecurityGroups)
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
-
-	// Compute cost is cached in the host
-	s.Equal(.1, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostClassicSpot() {
@@ -479,9 +473,6 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-
-	// Compute cost is cached
-	s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
@@ -527,9 +518,6 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
-
-	// Compute cost is cached
-	s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
@@ -677,7 +665,7 @@ func (s *EC2Suite) TestModifyHost() {
 	changes = host.HostModifyOptions{
 		AttachVolume: "thang",
 	}
-	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
 	s.Require().NoError(s.h.Remove())
@@ -699,14 +687,6 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.Equal("public_dns_name", s.h.Host)
 	s.Require().Len(s.h.Volumes, 1)
 	s.Equal("volume_id", s.h.Volumes[0].VolumeID)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.True(ok)
-	volumesInput := *mock.DescribeVolumesInput
-	s.Len(volumesInput.VolumeIds, 1)
-	s.Equal("volume_id", *volumesInput.VolumeIds[0])
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	s.h.Id = "instance_id"
@@ -1279,8 +1259,6 @@ func (s *EC2Suite) TestCacheHostData() {
 			DeviceName: "device_name",
 		},
 	}, s.h.Volumes)
-	s.Equal(int64(10), s.h.VolumeTotalSize)
-	s.Equal(float64(1), s.h.ComputeCostPerHour)
 
 	h, err := host.FindOneId("h1")
 	s.Require().NoError(err)
@@ -1294,8 +1272,6 @@ func (s *EC2Suite) TestCacheHostData() {
 			DeviceName: "device_name",
 		},
 	}, h.Volumes)
-	s.Equal(int64(10), h.VolumeTotalSize)
-	s.Equal(float64(1), h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestFromDistroSettings() {
@@ -1387,13 +1363,12 @@ func (s *EC2Suite) TestGetEC2Key() {
 
 func (s *EC2Suite) TestSetNextSubnet() {
 	s.Require().NoError(db.Clear(host.Collection))
-	typeCache.built = true
-	typeCache.instanceTypeToSubnets = map[string][]evergreen.Subnet{
-		"instance-type0": {
+	typeCache = map[instanceRegionPair][]evergreen.Subnet{
+		{instanceType: "instance-type0", region: evergreen.DefaultEC2Region}: {
 			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
 			{SubnetID: "sn1", AZ: evergreen.DefaultEC2Region + "b"},
 		},
-		"instance-type1": {
+		{instanceType: "instance-type1", region: evergreen.DefaultEC2Region}: {
 			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
 		},
 	}

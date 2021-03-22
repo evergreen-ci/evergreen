@@ -70,7 +70,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
@@ -140,7 +140,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
@@ -207,7 +207,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
@@ -274,7 +274,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
@@ -341,7 +341,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when
@@ -408,7 +408,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 			Secret: taskSecret,
 		},
 		taskModel:     &task.Task{},
-		runGroupSetup: true,
+		ranSetupGroup: false,
 		oomTracker:    &mock.OOMTracker{},
 	}
 	// Windows may not have finished deleting task directories when

@@ -13,9 +13,9 @@ import (
 
 	"flag"
 
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("uri flag must have a value")
 	}
 
-	cs, err := connstring.Parse(*uri)
+	cs, err := connstring.ParseAndValidate(*uri)
 	if err != nil {
 		log.Fatal(err)
 	}

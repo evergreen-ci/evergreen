@@ -1913,16 +1913,16 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 
 // MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
 // to Suspected Issues, otherwise vice versa.
-func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, annotationID string, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
+func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := MustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
-		if err := annotations.MoveIssueToSuspectedIssue(annotationID, *issue, usr.Username()); err != nil {
+		if err := annotations.MoveIssueToSuspectedIssue(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
 	} else {
-		if err := annotations.MoveSuspectedIssueToIssue(annotationID, *issue, usr.Username()); err != nil {
+		if err := annotations.MoveSuspectedIssueToIssue(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil

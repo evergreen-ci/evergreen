@@ -193,94 +193,6 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/projects/{project_id}/versions
-
-const defaultVersionLimit = 10
-
-type versionsGetHandler struct {
-	opts    dbModel.GetVersionsOptions
-	project string
-
-	sc data.Connector
-}
-
-func makeFetchProjectVersions(sc data.Connector) gimlet.RouteHandler {
-	return &versionsGetHandler{
-		sc: sc,
-	}
-}
-
-func (h *versionsGetHandler) Factory() gimlet.RouteHandler {
-	return &versionsGetHandler{
-		sc: h.sc,
-	}
-}
-
-func (h *versionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.project = gimlet.GetVars(r)["project_id"]
-	if err := gimlet.GetJSON(r.Body, &h.opts); err != nil {
-		return errors.Wrap(err, "error parsing request body")
-	}
-	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "can't include tasks without builds",
-		}
-	}
-	if h.opts.Limit == 0 {
-		h.opts.Limit = defaultVersionLimit
-	}
-	h.opts.Limit += 1 // for pagination
-	return nil
-}
-
-func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	pRefId, err := dbModel.FindIdForProject(h.project)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Project not found",
-		})
-	}
-
-	versions, err := h.sc.GetProjectVersionsWithOptions(pRefId, h.opts)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-	if len(versions) == h.opts.Limit {
-		paginationVersion := versions[len(versions)-1]
-		versions = versions[:len(versions)-1] // drop the pagination version
-		err = resp.SetPages(&gimlet.ResponsePages{
-			Next: &gimlet.Page{
-				Relation:        "next",
-				LimitQueryParam: "limit",
-				KeyQueryParam:   "start_at",
-				BaseURL:         h.sc.GetURL(),
-				Key:             utility.FromStringPtr(paginationVersion.Id),
-				Limit:           h.opts.Limit - 1,
-			},
-		})
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"problem paginating response"))
-		}
-	}
-	if err = resp.AddData(versions); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-
-	if err = resp.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	return resp
-}
-
-////////////////////////////////////////////////////////////////////////
-//
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
@@ -869,12 +781,17 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(projectModel)
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}/versions
+
+const defaultVersionLimit = 20
+
 type getProjectVersionsHandler struct {
 	projectName string
-	sc          data.Connector
-	startOrder  int
-	limit       int
-	requester   string
+	opts        dbModel.GetVersionsOptions
+
+	sc data.Connector
 }
 
 func makeGetProjectVersionsHandler(sc data.Connector) gimlet.RouteHandler {
@@ -893,45 +810,63 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	params := r.URL.Query()
 
+	// body is optional
+	b, _ := ioutil.ReadAll(r.Body)
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, &h.opts); err != nil {
+			return errors.Wrap(err, "error parsing request body")
+		}
+	}
+
+	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "can't include tasks without builds",
+		}
+	}
+
+	// get some options from the query parameters for legacy usage
 	limitStr := params.Get("limit")
-	if limitStr == "" {
-		h.limit = 20
-	} else {
+	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil {
 			return errors.Wrap(err, "'limit' query parameter must be a valid integer")
 		}
-		if limit < 1 {
-			return errors.New("'limit' must be a positive integer")
-		}
-		h.limit = limit
+		h.opts.Limit = limit
+	}
+	if h.opts.Limit == 0 {
+		h.opts.Limit = defaultVersionLimit
+	}
+	if h.opts.Limit < 1 {
+		return errors.New("'limit' must be a positive integer")
 	}
 
 	startStr := params.Get("start")
-	if startStr == "" {
-		h.startOrder = 0
-	} else {
+	if startStr != "" {
 		startOrder, err := strconv.Atoi(params.Get("start"))
 		if err != nil {
 			return errors.Wrap(err, "'start' query parameter must be a valid integer")
 		}
-		if startOrder < 0 {
-			return errors.New("'start' must be a non-negative integer")
-		}
-		h.startOrder = startOrder
+		h.opts.StartAfter = startOrder
+	}
+	if h.opts.StartAfter < 0 {
+		return errors.New("'start' must be a non-negative integer")
 	}
 
-	h.requester = params.Get("requester")
-	if h.requester == "" {
-		return errors.New("'requester' must be one of patch_request, gitter_request, github_pull_request, merge_test, ad_hoc")
+	requester := params.Get("requester")
+	if requester != "" {
+		h.opts.Requester = requester
+	}
+	if h.opts.Requester == "" {
+		h.opts.Requester = evergreen.RepotrackerVersionRequester
 	}
 	return nil
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := h.sc.GetVersionsInProject(h.projectName, h.requester, h.limit, h.startOrder)
+	versions, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
 	}
 
 	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
@@ -939,7 +874,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error constructing response"))
 	}
 
-	if len(versions) >= h.limit {
+	if len(versions) >= h.opts.Limit {
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
@@ -947,7 +882,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 				KeyQueryParam:   "start",
 				BaseURL:         h.sc.GetURL(),
 				Key:             strconv.Itoa(versions[len(versions)-1].Order),
-				Limit:           h.limit,
+				Limit:           h.opts.Limit,
 			},
 		})
 

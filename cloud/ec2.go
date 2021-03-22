@@ -419,7 +419,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "can't get provider settings")
 	}
 
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, h.InstanceType, ec2Settings.getRegion())
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: h.InstanceType, region: ec2Settings.getRegion()})
 	if err != nil {
 		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
 	}
@@ -812,19 +812,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone))
 			return catcher.Resolve()
 		}
-		mgrOpts, err := GetManagerOptions(h.Distro)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id))
-			return catcher.Resolve()
-		}
-		mgr, err := GetManager(ctx, m.env, mgrOpts)
-		if err != nil {
-			catcher.Add(err)
-			return catcher.Resolve()
-		}
 		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
-		if err = mgr.AttachVolume(ctx, h, &attachment); err != nil {
-			catcher.Add(errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id))
+		if err = m.AttachVolume(ctx, h, &attachment); err != nil {
+			catcher.Wrapf(err, "attaching volume '%s' to host '%s'", volume.ID, h.Id)
 		}
 	}
 	return catcher.Resolve()
@@ -1222,8 +1212,6 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "error checking if spawnhost started")
 	}
 
-	// refresh cached values for DNS name, volumes, and launch time
-	h.VolumeTotalSize = 0
 	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
 		return errors.Wrapf(err, "can't cache host data for instance '%s'", h.Id)
 	}
@@ -1576,36 +1564,6 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 	default:
 		return StatusUnknown
 	}
-}
-
-func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
-		return 0, errors.New("task timing data is malformed")
-	}
-	if m.region != evergreen.DefaultEC2Region { // price fetcher not implemented for other regions
-		return 0, nil
-	}
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return 0, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	t := timeRange{start: start, end: end}
-	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ec2 cost")
-	}
-	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ebs cost")
-	}
-	total := ec2Cost + ebsCost
-
-	if total < 0 {
-		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", total)
-	}
-
-	return total, nil
 }
 
 func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {

@@ -231,7 +231,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded {
+	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded && !t.Aborted {
 		if err = model.DequeueAndRestart(t, APIServerLockTitle); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -255,7 +255,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
+			errors.Wrap(err, "couldn't queue job to update task stats accounting"))
 		return
 	}
 

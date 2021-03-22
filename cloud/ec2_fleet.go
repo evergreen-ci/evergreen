@@ -19,62 +19,62 @@ import (
 	"github.com/pkg/errors"
 )
 
-type instanceTypeSubnetCache struct {
-	instanceTypeToSubnets map[string][]evergreen.Subnet
-	built                 bool
+type instanceTypeSubnetCache map[instanceRegionPair][]evergreen.Subnet
+
+type instanceRegionPair struct {
+	instanceType string
+	region       string
 }
 
-var typeCache *instanceTypeSubnetCache
+var typeCache instanceTypeSubnetCache
 
 func init() {
-	typeCache = &instanceTypeSubnetCache{}
-	typeCache.instanceTypeToSubnets = make(map[string][]evergreen.Subnet)
+	typeCache = make(map[instanceRegionPair][]evergreen.Subnet)
 }
 
-func (c *instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceType, region string) ([]evergreen.Subnet, error) {
-	if !c.built {
-		if err := c.Build(ctx, settings, client); err != nil {
-			return nil, errors.Wrap(err, "can't build AZ cache")
-		}
+func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]evergreen.Subnet, error) {
+	if subnets, ok := c[instanceRegion]; ok {
+		return subnets, nil
 	}
 
-	subnets := make([]evergreen.Subnet, 0, len(c.instanceTypeToSubnets[instanceType]))
-	for _, subnet := range c.instanceTypeToSubnets[instanceType] {
-		if AztoRegion(subnet.AZ) == region {
+	supportingAZs, err := c.getAZs(ctx, settings, client, instanceRegion)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get supporting AZs")
+	}
+
+	subnets := make([]evergreen.Subnet, 0, len(supportingAZs))
+	for _, subnet := range settings.Providers.AWS.Subnets {
+		if utility.StringSliceContains(supportingAZs, subnet.AZ) {
 			subnets = append(subnets, subnet)
 		}
 	}
+	c[instanceRegion] = subnets
+
 	return subnets, nil
 }
 
-func (c *instanceTypeSubnetCache) Build(ctx context.Context, settings *evergreen.Settings, client AWSClient) error {
-	subnets := settings.Providers.AWS.Subnets
-	if len(subnets) == 0 {
-		return errors.New("no AWS subnets were configured")
+func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
+	// DescribeInstanceTypeOfferings only returns AZs in the client's region
+	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
+		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
+		Filters: []*ec2.Filter{
+			{Name: aws.String("instance-type"), Values: []*string{aws.String(instanceRegion.instanceType)}},
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get instance types for '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
 	}
-
-	for _, subnet := range subnets {
-		output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
-			LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
-			Filters: []*ec2.Filter{
-				{Name: aws.String("location"), Values: []*string{aws.String(subnet.AZ)}},
-			},
-		})
-		if err != nil {
-			return errors.Wrapf(err, "can't get instance types for '%s'", subnet.AZ)
-		}
-		if output == nil {
-			return errors.Errorf("DescribeInstanceTypeOfferings returned nil output for AZ '%s'", subnet.AZ)
-		}
-		for _, offering := range output.InstanceTypeOfferings {
-			if offering != nil && offering.InstanceType != nil {
-				c.instanceTypeToSubnets[*offering.InstanceType] = append(c.instanceTypeToSubnets[*offering.InstanceType], subnet)
-			}
+	if output == nil {
+		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+	}
+	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
+	for _, offering := range output.InstanceTypeOfferings {
+		if offering != nil && offering.Location != nil {
+			supportingAZs = append(supportingAZs, *offering.Location)
 		}
 	}
 
-	c.built = true
-	return nil
+	return supportingAZs, nil
 }
 
 type EC2FleetManagerOptions struct {
@@ -402,34 +402,6 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }
 
-func (m *ec2FleetManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
-	if end.Before(start) || utility.IsZeroTime(start) || utility.IsZeroTime(end) {
-		return 0, errors.New("task timing data is malformed")
-	}
-
-	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return 0, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	t := timeRange{start: start, end: end}
-	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ec2 cost")
-	}
-	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(ctx, m.client, h, t)
-	if err != nil {
-		return 0, errors.Wrap(err, "error fetching ebs cost")
-	}
-	total := ec2Cost + ebsCost
-
-	if total < 0 {
-		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", total)
-	}
-
-	return total, nil
-}
-
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	// Cleanup
 	var templateID *string
@@ -566,7 +538,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 		return nil, errors.New("no AWS subnets were configured")
 	}
 
-	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, ec2Settings.InstanceType, ec2Settings.getRegion())
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: ec2Settings.InstanceType, region: ec2Settings.getRegion()})
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}

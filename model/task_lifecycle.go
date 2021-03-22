@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -100,6 +99,18 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return err
 			}
+			p, err := patch.FindOneId(t.Version)
+			if err != nil {
+				return errors.Wrap(err, "unable to find patch")
+			}
+			if p == nil {
+				return errors.New("patch not found")
+			}
+			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", caller))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to send github status",
+				"patch":   t.Version,
+			}))
 			err = RestartItemsAfterVersion(nil, t.Project, t.Version, caller)
 			if err != nil {
 				return errors.Wrap(err, "error restarting later commit queue items")
@@ -566,6 +577,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
+	if t.ResetWhenFinished && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
+		return TryResetTask(t.Id, evergreen.APIServerTaskActivator, "", detail)
+	}
+
 	return nil
 }
 
@@ -646,12 +661,28 @@ func DequeueAndRestart(t *task.Task, caller string) error {
 	}
 
 	// this must be done before dequeuing so that we know which entries to restart
-	err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller)
-	if err != nil {
+	if err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller); err != nil {
 		return errors.Wrap(err, "unable to restart versions")
 	}
 
-	return tryDequeueAndAbortCommitQueueVersion(t, *cq, caller)
+	if err = tryDequeueAndAbortCommitQueueVersion(t, *cq, caller); err != nil {
+		return err
+	}
+
+	p, err := patch.FindOneId(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "unable to find patch")
+	}
+	if p == nil {
+		return errors.New("patch not found")
+	}
+	err = SendCommitQueueResult(p, message.GithubStateFailure, fmt.Sprintf("deactivated by '%s'", caller))
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "unable to send github status",
+		"patch":   t.Version,
+	}))
+
+	return nil
 }
 
 func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
@@ -697,49 +728,82 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 	}
 
 	issue := p.Id.Hex()
-	if p.IsPRMergePatch() {
-		issue = strconv.Itoa(p.GithubPatchData.PRNumber)
-	}
+	err = removeNextMergeTaskDependency(cq, issue)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "error removing dependency",
+		"patch":   issue,
+	}))
 
 	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, t.Project)
 	}
 	if removed == nil {
-		return nil
+		return errors.Errorf("no commit queue entry removed for '%s'", issue)
 	}
+
 	if p.IsPRMergePatch() {
-		env := evergreen.GetEnvironment()
-		sender, err := env.GetSender(evergreen.SenderGithubStatus)
-		if err != nil {
-			grip.Debug(message.WrapError(err, message.Fields{
-				"message":      "error getting environment",
-				"patch_id":     p.Id,
-				"project":      p.Project,
-				"pull_request": issue,
-			}))
-		} else {
-			var url string
-			uiConfig := evergreen.UIConfig{}
-			if err := uiConfig.Get(env); err == nil {
-				url = fmt.Sprintf("%s/version/%s", uiConfig.Url, t.Version)
-			}
-			status := message.GithubStatus{
-				Context:     commitqueue.GithubContext,
-				Description: "merge test failed",
-				State:       message.GithubStateFailure,
-				Owner:       p.GithubPatchData.BaseOwner,
-				Repo:        p.GithubPatchData.BaseRepo,
-				Ref:         p.GithubPatchData.HeadHash,
-				URL:         url,
-			}
-			c := message.MakeGithubStatusMessageWithRepo(status)
-			sender.Send(c)
-		}
+		err = SendCommitQueueResult(p, message.GithubStateFailure, "merge test failed")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error sending github status",
+			"patch":   p.Id.Hex(),
+		}))
 	}
 
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
 	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "Error aborting failed commit queue patch")
+}
+
+// removeNextMergeTaskDependency basically removes the given merge task from a linked list of
+// merge task dependencies. It makes the next merge not depend on the current one and also makes
+// the next merge depend on the previous one, if there is one
+func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue string) error {
+	currentIndex := cq.FindItem(currentIssue)
+	if currentIndex < 0 {
+		return errors.New("commit queue item not found")
+	}
+	if currentIndex+1 >= len(cq.Queue) {
+		return nil
+	}
+
+	nextItem := cq.Queue[currentIndex+1]
+	if nextItem.Version == "" {
+		return nil
+	}
+	nextMerge, err := task.FindMergeTaskForVersion(nextItem.Version)
+	if err != nil {
+		return errors.Wrap(err, "unable to find next merge task")
+	}
+	if nextMerge == nil {
+		return errors.New("no merge task found")
+	}
+	currentMerge, err := task.FindMergeTaskForVersion(cq.Queue[currentIndex].Version)
+	if err != nil {
+		return errors.Wrap(err, "unable to find current merge task")
+	}
+	if err = nextMerge.RemoveDependency(currentMerge.Id); err != nil {
+		return errors.Wrap(err, "unable to remove dependency")
+	}
+
+	if currentIndex > 0 {
+		prevItem := cq.Queue[currentIndex-1]
+		prevMerge, err := task.FindMergeTaskForVersion(prevItem.Version)
+		if err != nil {
+			return errors.Wrap(err, "unable to find previous merge task")
+		}
+		if prevMerge == nil {
+			return errors.New("no merge task found")
+		}
+		d := task.Dependency{
+			TaskId: prevMerge.Id,
+			Status: AllStatuses,
+		}
+		if err = nextMerge.AddDependency(d); err != nil {
+			return errors.Wrap(err, "unable to add dependency")
+		}
+	}
+
+	return nil
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {

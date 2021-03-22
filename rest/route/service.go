@@ -51,9 +51,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	cedarTestStats := checkCedarTestStats(settings)
-	allowCORS := gimlet.WrapperMiddleware(allowCORS)
 
-	app.AddMiddleware(allowCORS)
+	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -87,9 +86,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc)) // TODO EVG-14087 remove this
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(checkUser).RouteHandler(makecqMessageForPatch(sc))
-	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
-	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeTaskCostByProjectRoute(sc))
-	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser, viewTasks).RouteHandler(makeCostByVersionHandler(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/settings").Version(2).Patch().Wrap(createDistro).RouteHandler(makeModifyDistrosSettings(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroByID(sc))

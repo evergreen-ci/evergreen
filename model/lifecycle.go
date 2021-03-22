@@ -398,7 +398,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	for _, task := range tasks {
 		taskIds = append(taskIds, task.Id)
 	}
-	return RestartVersion(versionId, taskIds, true, caller)
+	return RestartVersion(versionId, taskIds, abortInProgress, caller)
 }
 
 // RestartVersion restarts completed tasks associated with a given versionId.
@@ -425,6 +425,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			finishedTasks = append(finishedTasks[:i], finishedTasks[i+1:]...)
 		}
 	}
+
 	// archive all the finished tasks
 	toArchive := []task.Task{}
 	for _, t := range finishedTasks {
@@ -444,11 +445,19 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
 	tasksToRestart := finishedTasks
 	if abortInProgress {
-		tasksToRestart, err = task.Find(task.ByIds(taskIds))
+		aborted, err := task.Find(task.BySubsetAborted(taskIds))
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		catcher := grip.NewBasicCatcher()
+		for _, t := range aborted {
+			catcher.Add(t.SetResetWhenFinished())
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
 	}
+
 	restartIds := []string{}
 	for _, t := range tasksToRestart {
 		if t.IsPartOfSingleHostTaskGroup() {
@@ -783,6 +792,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		DisplayName:         buildVariant.DisplayName,
 		RevisionOrderNumber: args.Version.RevisionOrderNumber,
 		Requester:           args.Version.Requester,
+		ParentPatchID:       args.Version.ParentPatchID,
 		TriggerID:           args.Version.TriggerID,
 		TriggerType:         args.Version.TriggerType,
 		TriggerEvent:        args.Version.TriggerEvent,
@@ -1360,6 +1370,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		ActivatedTime:       activatedTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
+		ParentPatchID:       b.ParentPatchID,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		MustHaveResults:     utility.FromBoolPtr(project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
@@ -1402,6 +1413,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		Revision:            v.Revision,
 		Project:             p.Identifier,
 		Requester:           v.Requester,
+		ParentPatchID:       b.ParentPatchID,
 		DisplayOnly:         true,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,

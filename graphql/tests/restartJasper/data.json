@@ -50,7 +50,6 @@
       "needs_agent": false,
       "needs_agent_monitor": false,
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "90" },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -60,7 +59,6 @@
       "running_task_group_order": 0,
       "running_task_project": "mongo-tools",
       "running_task_version": "5f15ad3c3627e07772ab2d01",
-      "total_cost": 0.0011340309722222223,
       "total_idle_time": { "$numberLong": "54073000000" },
       "prov_time": { "$date": "2020-07-20T14:49:30.784Z" }
     },
@@ -193,7 +191,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "370" },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -242,7 +239,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
-      "compute_cost_per_hour": 0.261,
       "volumes": [
         {
           "volume_id": "vol-0b5ec54a106c6e976",
@@ -257,7 +253,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.3028389870061729,
       "total_idle_time": { "$numberLong": "50424000000" },
       "prov_time": { "$date": "2020-07-20T18:03:00.758Z" },
       "last_bv": "ubuntu1604-debug-ubsan",
@@ -401,7 +396,6 @@
       "needs_agent_monitor": false,
       "jasper_credentials_id": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
       "instance_type": "",
-      "volume_total_size": { "$numberLong": "90" },
       "container_build_attempt": 0,
       "spawn_options": {},
       "docker_options": {},
@@ -450,7 +444,6 @@
       "is_virtual_workstation": false,
       "home_volume_size": 0,
       "home_volume_id": "",
-      "compute_cost_per_hour": 0.063,
       "volumes": [
         {
           "volume_id": "vol-0923f22a2eed4cded",
@@ -465,7 +458,6 @@
           "host_id": ""
         }
       ],
-      "total_cost": 0.32626226055555557,
       "total_idle_time": { "$numberLong": "45837000000" },
       "prov_time": { "$date": "2020-07-20T14:49:00.267Z" },
       "last_bv": "ubuntu1604",

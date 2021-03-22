@@ -12,11 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -179,6 +181,20 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			p, err := patch.FindOneId(projCtx.Build.Version)
+			if err != nil {
+				http.Error(w, "Error finding patch", http.StatusInternalServerError)
+				return
+			}
+			if p == nil {
+				http.Error(w, "Patch not found", http.StatusNotFound)
+				return
+			}
+			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to send github status",
+				"patch":   projCtx.Build.Version,
+			}))
 			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -233,6 +249,20 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			p, err := patch.FindOneId(projCtx.Build.Version)
+			if err != nil {
+				http.Error(w, "Error finding patch", http.StatusInternalServerError)
+				return
+			}
+			if p == nil {
+				http.Error(w, "Patch not found", http.StatusNotFound)
+				return
+			}
+			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to send github status",
+				"patch":   projCtx.Build.Version,
+			}))
 			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

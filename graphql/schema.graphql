@@ -93,7 +93,8 @@ type Mutation {
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    annotationId: String!
+    taskId: String!
+    execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
@@ -589,6 +590,9 @@ type TestResult {
   startTime: Time
   duration: Float
   endTime: Time
+  taskId: String
+  execution: Int
+  lineNum: Int
 }
 
 type TestLog {
@@ -692,7 +696,6 @@ type BaseTaskInfo {
   id: String
   status: String
 }
-
 
 type GroupedProjects {
   name: String!

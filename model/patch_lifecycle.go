@@ -315,6 +315,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		BuildVariants:       []VersionBuildStatus{},
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
+		ParentPatchID:       p.Triggers.ParentPatch,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
@@ -806,5 +807,42 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
 		return errors.Wrap(err, "error enqueuing item")
 	}
+	return nil
+}
+
+func SendCommitQueueResult(p *patch.Patch, status message.GithubState, description string) error {
+	if p.GithubPatchData.PRNumber == 0 {
+		return nil
+	}
+	projectRef, err := FindOneProjectRef(p.Project)
+	if err != nil {
+		return errors.Wrap(err, "unable to find project")
+	}
+	if projectRef == nil {
+		return errors.New("no project found for patch")
+	}
+	url := ""
+	if p.Version != "" {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "unable to get settings")
+		}
+		url = fmt.Sprintf("%s/version/%s", settings.Ui.Url, p.Version)
+	}
+	msg := message.GithubStatus{
+		Owner:       projectRef.Owner,
+		Repo:        projectRef.Repo,
+		Ref:         p.GithubPatchData.HeadHash,
+		Context:     commitqueue.GithubContext,
+		State:       status,
+		Description: description,
+		URL:         url,
+	}
+	sender, err := evergreen.GetEnvironment().GetSender(evergreen.SenderGithubStatus)
+	if err != nil {
+		return errors.Wrap(err, "unable to get github sender")
+	}
+	sender.Send(message.NewGithubStatusMessageWithRepo(level.Notice, msg))
+
 	return nil
 }
