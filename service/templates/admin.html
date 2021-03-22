@@ -1309,34 +1309,52 @@ Admin Settings
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
-
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%">
 										<md-checkbox ng-model="Settings.amboy.remote_require_priority">Remote Require
 											Priority</md-checkbox>
 									</md-input-container>
-
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Group default workers</label>
 										<input type="number" ng-model="Settings.amboy.group_default_workers">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%">
 										<label>Group background create frequency</label>
 										<input type="number"
 											ng-model="Settings.amboy.group_background_create_frequency">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Group prune frequency</label>
 										<input type="number" ng-model="Settings.amboy.group_prune_frequency">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Group TTL</label>
 										<input type="number" ng-model="Settings.amboy.group_ttl">
 									</md-input-container>
-
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Lock timeout (minutes)</label>
 										<input type="number" ng-model="Settings.amboy.lock_timeout_minutes">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Retry Handler Workers</label>
+										<input type="number" ng-model="Settings.amboy.retry.num_workers">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Retry Handler Max Job Capacity</label>
+										<input type="number" ng-model="Settings.amboy.retry.max_capacity">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Retry Handler Attempts per Job</label>
+										<input type="number" ng-model="Settings.amboy.retry.max_retry_attempts">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Max Retry Handler Total Time per Job (Seconds)</label>
+										<input type="number" ng-model="Settings.amboy.retry.max_retry_time_seconds">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Retry Backoff per Job Attempt (Seconds)</label>
+										<input type="number" ng-model="Settings.amboy.retry.retry_backoff_seconds">
+									</md-input-container>
+
 								</md-card-content>
 							</md-card>
 

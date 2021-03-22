@@ -437,21 +437,6 @@ func (k SenderKey) String() string {
 	}
 }
 
-const (
-	defaultLogBufferingDuration                  = 20
-	defaultAmboyPoolSize                         = 2
-	defaultAmboyLocalStorageSize                 = 1024
-	defaultAmboyQueueName                        = "evg.service"
-	defaultSingleAmboyQueueName                  = "evg.single"
-	defaultAmboyDBName                           = "amboy"
-	defaultGroupWorkers                          = 1
-	defaultGroupBackgroundCreateFrequencyMinutes = 10
-	defaultGroupPruneFrequencyMinutes            = 10
-	defaultGroupTTLMinutes                       = 1
-	maxNotificationsPerSecond                    = 100
-	defaultLockTimeoutMinutes                    = 10 // should match value in amboy.LockTimeout
-)
-
 // Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
 const (
 	ArchDarwinAmd64  = "darwin_amd64"

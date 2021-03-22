@@ -105,6 +105,13 @@ func MockConfig() *evergreen.Settings {
 			GroupPruneFrequencyMinutes:            60,
 			GroupTTLMinutes:                       70,
 			LockTimeoutMinutes:                    7,
+			Retry: evergreen.AmboyRetryConfig{
+				NumWorkers:          8,
+				MaxCapacity:         100,
+				MaxRetryAttempts:    50,
+				MaxRetryTimeSeconds: 60,
+				RetryBackoffSeconds: 10,
+			},
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",

@@ -12,7 +12,7 @@ var (
 	ConfigDocID      = "global"
 )
 
-//nolint: megacheck, deadcode, unused
+//nolint: deadcode, unused
 var (
 	idKey                 = bsonutil.MustHaveTag(Settings{}, "Id")
 	bannerKey             = bsonutil.MustHaveTag(Settings{}, "Banner")
@@ -90,30 +90,11 @@ var (
 	backgroundCleanupDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	amboyRemoteManagementDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRemoteManagementDisabled")
 
-	// AuthConfig keys
-	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
-	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
-	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
-	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
-	AuthOnlyAPIKey                 = bsonutil.MustHaveTag(AuthConfig{}, "OnlyAPI")
-	AuthServiceUsersKey            = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
-	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
-	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
-	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
-	AllowServiceUsersKey           = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
-
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
 
 	// ContainerPool keys
 	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
-
-	// HostJasperConfig keys
-	hostJasperBinaryNameKey       = bsonutil.MustHaveTag(HostJasperConfig{}, "BinaryName")
-	hostJasperDownloadFileNameKey = bsonutil.MustHaveTag(HostJasperConfig{}, "DownloadFileName")
-	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
-	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
-	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
 
 	hostInitHostThrottleKey         = bsonutil.MustHaveTag(HostInitConfig{}, "HostThrottle")
 	hostInitProvisioningThrottleKey = bsonutil.MustHaveTag(HostInitConfig{}, "ProvisioningThrottle")

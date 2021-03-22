@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,6 +17,18 @@ type AuthUser struct {
 	Password    string `bson:"password" json:"password" yaml:"password"`
 	Email       string `bson:"email" json:"email" yaml:"email"`
 }
+
+var (
+	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
+	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
+	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
+	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
+	AuthOnlyAPIKey                 = bsonutil.MustHaveTag(AuthConfig{}, "OnlyAPI")
+	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
+	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
+	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
+	AuthAllowServiceUsersKey       = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
+)
 
 // OnlyAPIUser configures a special service user with only access to the API via
 // a key.
@@ -129,7 +142,7 @@ func (c *AuthConfig) Set() error {
 			AuthMultiKey:                   c.Multi,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
-			AllowServiceUsersKey:           c.AllowServiceUsers,
+			AuthAllowServiceUsersKey:       c.AllowServiceUsers,
 		}}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
