@@ -112,6 +112,23 @@ func (s *CommitQueueSuite) TestEnqueueAtFront() {
 	s.Equal("critical2", dbq.Queue[1].Issue)
 }
 
+func (s *CommitQueueSuite) TestEnqueueAtFrontFullQueue() {
+	item := sampleCommitQueueItem
+	item.Version = "abc"
+	_, err := s.q.Enqueue(item)
+	s.Require().NoError(err)
+
+	item = sampleCommitQueueItem
+	item.Issue = "new"
+	pos, err := s.q.EnqueueAtFront(item)
+	s.NoError(err)
+	s.Equal(1, pos)
+	dbq, err := FindOneId("mci")
+	s.NoError(err)
+	s.Len(dbq.Queue, 2)
+	s.Equal("new", dbq.Queue[1].Issue)
+}
+
 func (s *CommitQueueSuite) TestUpdateVersion() {
 	_, err := s.q.Enqueue(sampleCommitQueueItem)
 	s.NoError(err)
