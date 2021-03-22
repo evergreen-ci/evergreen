@@ -117,7 +117,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 			evergreen.LogTypeAgent,
 		}
 	}
-	logReader, err = buildlogger.GetLogs(ctx, getOpts)
+	logReader, err := buildlogger.GetLogs(ctx, getOpts)
 
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
 }
