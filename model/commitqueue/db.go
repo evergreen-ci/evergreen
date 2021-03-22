@@ -75,8 +75,7 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	return err
 }
 
-// assume that the first element in the array is being processed, so move after that
-func addToFront(id string, queue []CommitQueueItem, item CommitQueueItem) error {
+func addAtPosition(id string, queue []CommitQueueItem, item CommitQueueItem, pos int) error {
 	err := updateOne(
 		bson.M{
 			IdKey: id,
@@ -84,7 +83,7 @@ func addToFront(id string, queue []CommitQueueItem, item CommitQueueItem) error 
 		bson.M{"$push": bson.M{
 			QueueKey: bson.M{
 				"$each":     []CommitQueueItem{item},
-				"$position": 1,
+				"$position": pos,
 			},
 		}},
 	)

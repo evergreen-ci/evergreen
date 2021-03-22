@@ -76,14 +76,23 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	return len(q.Queue) - 1, nil
 }
 
+// EnqueueAtFront adds a given item to the front of the _unprocessed_ items in the queue
 func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	position := q.FindItem(item.Issue)
 	if position >= 0 {
 		return position, errors.New("item already in queue")
 	}
 
+	newPos := 0
+	for i, item := range q.Queue {
+		if item.Version != "" {
+			newPos = i + 1
+		} else {
+			break
+		}
+	}
 	item.EnqueueTime = time.Now()
-	if err := addToFront(q.ProjectID, q.Queue, item); err != nil {
+	if err := addAtPosition(q.ProjectID, q.Queue, item, newPos); err != nil {
 		return 0, errors.Wrapf(err, "can't force add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
 
@@ -92,15 +101,15 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 		"item_id":      item.Issue,
 		"project_id":   q.ProjectID,
 		"queue_length": len(q.Queue) + 1,
+		"position":     newPos,
 		"message":      "enqueued commit queue item at front",
-		"force":        true,
 	})
 	if len(q.Queue) == 0 {
 		q.Queue = append(q.Queue, item)
-		return 0, nil
+		return newPos, nil
 	}
-	q.Queue = append([]CommitQueueItem{q.Queue[0], item}, q.Queue[1:]...)
-	return 1, nil
+	q.Queue = append(q.Queue[:newPos], append([]CommitQueueItem{item}, q.Queue[newPos:]...)...)
+	return newPos, nil
 }
 
 func (q *CommitQueue) Next() (CommitQueueItem, bool) {

@@ -87,15 +87,29 @@ func (s *CommitQueueSuite) TestEnqueueAtFront() {
 	s.Require().NoError(err)
 	s.Equal(2, pos)
 
-	item.Issue = "critical"
+	// no processing items in queue - should go at the very front
+	item.Issue = "critical1"
 	pos, err = s.q.EnqueueAtFront(item)
 	s.Require().NoError(err)
-	s.Equal(1, pos)
+	s.Equal(0, pos)
 
 	dbq, err = FindOneId("mci")
 	s.NoError(err)
 	s.Require().Len(dbq.Queue, 4)
-	s.Equal("critical", dbq.Queue[1].Issue)
+	s.Equal("critical1", dbq.Queue[0].Issue)
+
+	// check that it's enqueued at the end of the processing items
+	item.Version = "critical1"
+	s.NoError(dbq.UpdateVersion(item))
+	item = sampleCommitQueueItem
+	item.Issue = "critical2"
+	pos, err = dbq.EnqueueAtFront(item)
+	s.NoError(err)
+	s.Equal(1, pos)
+	dbq, err = FindOneId("mci")
+	s.NoError(err)
+	s.Len(dbq.Queue, 5)
+	s.Equal("critical2", dbq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestUpdateVersion() {
