@@ -181,16 +181,22 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			return errors.WithStack(err)
 		}
 	}
-
-	if err := model.DoProjectActivation(projectIdentifier); err != nil {
+	ok, err := model.DoProjectActivation(projectIdentifier)
+	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
 			"project": projectIdentifier,
 			"runner":  RunnerName,
 			"mode":    "ingestion",
 		}))
-
 		return errors.WithStack(err)
+	}
+	if ok {
+		grip.Debug(message.Fields{
+			"message": "activated recent commit for project",
+			"project": projectIdentifier,
+			"runner":  RunnerName,
+		})
 	}
 
 	return nil

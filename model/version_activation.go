@@ -11,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DoProjectActivation(id string) error {
+func DoProjectActivation(id string) (bool, error) {
 	// fetch the most recent, non-ignored version to activate
 	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id))
 	if err != nil {
-		return errors.WithStack(err)
+		return false, errors.WithStack(err)
 	}
 	if activateVersion == nil {
 		grip.Info(message.Fields{
@@ -23,19 +23,19 @@ func DoProjectActivation(id string) error {
 			"project":   id,
 			"operation": "project-activation",
 		})
-		return nil
+		return false, nil
+	}
+	activated, err := ActivateElapsedBuildsAndTasks(activateVersion)
+	if err != nil {
+		return false, errors.WithStack(err)
 	}
 
-	if err = ActivateElapsedBuildsAndTasks(activateVersion); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
+	return activated, nil
 
 }
 
 // Activates any builds/tasks if their BatchTimes have elapsed.
-func ActivateElapsedBuildsAndTasks(v *Version) error {
+func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	hasActivated := false
 	now := time.Now()
 	for i, bv := range v.BuildVariants {
@@ -57,6 +57,13 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 
 		isElapsedBuild := bv.ShouldActivate(now)
 		if !isElapsedBuild && len(readyTasks) == 0 {
+			grip.Debug(message.Fields{
+				"message":          "not activating build",
+				"ready_tasks":      readyTasks,
+				"ignore_tasks":     ignoreTasks,
+				"is_elapsed_build": isElapsedBuild,
+				"build_variant":    bv.BuildId,
+			})
 			continue
 		}
 		hasActivated = true
@@ -141,8 +148,8 @@ func ActivateElapsedBuildsAndTasks(v *Version) error {
 	// If any variants/tasks were activated, update the stored version so that we don't
 	// attempt to activate them again
 	if hasActivated {
-		return v.UpdateBuildVariants()
+		return true, v.UpdateBuildVariants()
 	}
-	return nil
+	return false, nil
 
 }
