@@ -498,14 +498,16 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 			return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 		}
 
+		job := NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)
 		if triggerIntent.ParentStatus == "" {
-			job := NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)
+			// In order to be able to finalize a patch from the CLI,
+			// we need the child patch intents to exist when the parent patch is finalized.
 			job.Run(ctx)
 			if err := job.Error(); err != nil {
 				return errors.Wrap(err, "problem processing child patch")
 			}
 		} else {
-			if err := j.env.RemoteQueue().Put(ctx, NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)); err != nil {
+			if err := j.env.RemoteQueue().Put(ctx, job); err != nil {
 				return errors.Wrap(err, "problem enqueueing child patch processing")
 			}
 		}
