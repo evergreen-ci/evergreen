@@ -1225,46 +1225,6 @@ func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
 	}
 }
 
-// TryMarkPatchBuildFinished attempts to mark a patch as finished if all
-// the builds for the patch are finished as well
-func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *StatusChanges) error {
-	v, err := VersionFindOne(VersionById(b.Version))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if v == nil {
-		return errors.Errorf("Cannot find version for build %v with version %v", b.Id, b.Version)
-	}
-
-	// ensure all builds for this patch are finished as well
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
-	if err != nil {
-		return err
-	}
-
-	patchCompleted := true
-	status := evergreen.PatchSucceeded
-	for _, build := range builds {
-		if !build.IsFinished() {
-			patchCompleted = false
-		}
-		if build.Status != evergreen.BuildSucceeded {
-			status = evergreen.PatchFailed
-		}
-	}
-
-	// nothing to do if the patch isn't completed
-	if !patchCompleted {
-		return nil
-	}
-	if err := patch.TryMarkFinished(v.Id, finishTime, status); err != nil {
-		return errors.WithStack(err)
-	}
-	updates.PatchNewStatus = status
-
-	return nil
-}
-
 func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {

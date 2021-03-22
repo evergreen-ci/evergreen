@@ -607,13 +607,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		So(v.Insert(), ShouldBeNil)
 		Convey("updating the build for a task should update the build's status and the version's status", func() {
 			var err error
-			updates := StatusChanges{}
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
-			So(updates.PatchNewStatus, ShouldBeEmpty)
-			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
-			So(updates.VersionComplete, ShouldBeTrue)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
-			So(updates.BuildComplete, ShouldBeTrue)
+			So(UpdateBuildAndVersionStatusForTask(&testTask), ShouldBeNil)
 
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -676,8 +670,7 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.NoError(t, testTask.Insert())
 	assert.NoError(t, anotherTask.Insert())
 
-	updates := StatusChanges{}
-	assert.NoError(t, UpdateBuildAndVersionStatusForTask(testTask.Id, &updates))
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
 	dbVersion, err := VersionFindOneId(v.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
@@ -822,42 +815,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 
-		Convey("test failures should update the task cache", func() {
-			reset()
-			err := testTask.SetResults([]task.TestResult{
-				{
-					Status: evergreen.TestFailedStatus,
-				},
-			})
-			updates := StatusChanges{}
-			So(err, ShouldBeNil)
-			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
-			So(updates.PatchNewStatus, ShouldBeEmpty)
-			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
-			So(updates.VersionComplete, ShouldBeTrue)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
-			So(updates.BuildComplete, ShouldBeTrue)
-
-			updates = StatusChanges{}
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
-			So(updates.PatchNewStatus, ShouldBeEmpty)
-			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
-			So(updates.VersionComplete, ShouldBeTrue)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
-			So(updates.BuildComplete, ShouldBeTrue)
-			buildCache, err := build.FindOne(build.ById(b.Id))
-			So(err, ShouldBeNil)
-			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
-
-			var hasFailedTask bool
-			for _, t := range buildCache.Tasks {
-				if t.Status == evergreen.TaskFailed {
-					hasFailedTask = true
-				}
-			}
-			So(hasFailedTask, ShouldBeTrue)
-		})
 		Convey("incomplete versions report updates", func() {
 			reset()
 			b2 := &build.Build{

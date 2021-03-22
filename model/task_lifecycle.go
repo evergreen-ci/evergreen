@@ -204,9 +204,8 @@ func resetTask(taskId, caller string, logIDs bool) error {
 	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
-
-	updates := StatusChanges{}
-	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id, &updates))
+	// TODO replace with actions specific to restarted task
+	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
 // TryResetTask resets a task
@@ -566,16 +565,8 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
-	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status")
-	}
-
-	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
-	if len(updates.BuildNewStatus) != 0 {
-		if updates.BuildComplete || !isBuildCompleteStatus {
-			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
-		}
+	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
+		return errors.Wrap(err, "updating build/version status")
 	}
 
 	return nil
@@ -806,202 +797,187 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 }
 
 // updateMakespans
-func updateMakespans(b *build.Build) error {
-	// find all tasks associated with the build
-	tasks, err := task.Find(task.ByBuildId(b.Id))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	depPath := FindPredictedMakespan(tasks)
-	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
+func updateMakespans(b *build.Build, buildTasks []task.Task) error {
+	depPath := FindPredictedMakespan(buildTasks)
+	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
 }
 
-// UpdateBuildAndVersionStatusForTask finds all the builds for a task and updates the
-// status of the build and version based on the tasks' statuses.
-func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
-	const slowMS = 100 * time.Millisecond
-	// retrieve the task by the task id
-	t, err := task.FindOneNoMerge(task.ById(taskId))
-	if err != nil {
-		return errors.WithStack(err)
+func getBuildStatus(buildTasks []task.Task) string {
+	// not started
+	noStartedTasks := true
+	for _, t := range buildTasks {
+		if !evergreen.IsUnstartedTaskStatus(t.Status) {
+			noStartedTasks = false
+		}
 	}
-	if t == nil {
-		return errors.Errorf("task '%s' not found", taskId)
-	}
-
-	finishTime := time.Now()
-	// get all of the tasks in the same build
-	b, err := build.FindOne(build.ById(t.BuildId))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if b == nil {
-		return errors.Errorf("build '%s' not found", b.Id)
+	if noStartedTasks {
+		return evergreen.BuildCreated
 	}
 
+	// started but not finished
+	for _, t := range buildTasks {
+		if t.Activated && !t.Blocked() && !t.IsFinished() {
+			return evergreen.BuildStarted
+		}
+	}
+
+	// finished but failed
+	for _, t := range buildTasks {
+		if evergreen.IsFailedTaskStatus(t.Status) {
+			return evergreen.BuildFailed
+		}
+	}
+
+	return evergreen.BuildSucceeded
+}
+
+// UpdateBuildStatus updates the status of the build based on its tasks' statuses.
+func UpdateBuildStatus(b *build.Build) error {
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
 
-	githubCheckTasks := map[string]bool{}
-	githubCheckStatus := ""
-	successfulGithubCheckTasks := 0
-	// also check the current status of github checks
-	for _, bt := range buildTasks {
-		if bt.IsGithubCheck {
-			githubCheckTasks[bt.Id] = bt.IsGithubCheck
-		}
+	buildStatus := getBuildStatus(buildTasks)
+
+	if buildStatus == b.Status {
+		return nil
 	}
 
-	failedTask := false
-	finishedTasks := 0
-	blockedTasks := 0
-	unfinishedTasks := 0
+	event.LogBuildStateChangeEvent(b.Id, buildStatus)
 
-	cache := task.NewDisplayTaskCache()
-	// update the build's status based on tasks for this build
-	for _, t := range buildTasks {
-		if !t.IsFinished() {
-			if t.Blocked() {
-				blockedTasks++
-			} else if utility.StringSliceContains(evergreen.UncompletedStatuses, t.Status) {
-				unfinishedTasks++
-			}
-			continue
+	if evergreen.IsFinishedBuildStatus(buildStatus) {
+		if err = b.MarkFinished(buildStatus, time.Now()); err != nil {
+			return errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus)
 		}
-		finishedTasks++
-
-		var displayTask *task.Task
-		displayTask, err = cache.Get(&t)
-		if err != nil {
-			return errors.WithStack(err)
+		if err = updateMakespans(b, buildTasks); err != nil {
+			return errors.Wrapf(err, "updating makespan information for '%s'", b.Id)
 		}
-		if displayTask != nil {
-			t = *displayTask
-		}
-
-		// update the build's status when a test task isn't successful
-		if evergreen.IsFailedTaskStatus(t.Status) {
-			if err = b.UpdateStatus(evergreen.BuildFailed); err != nil {
-				return errors.Wrap(err, "Error updating build status")
-			}
-			if githubCheckTasks[t.Id] {
-				githubCheckStatus = evergreen.BuildFailed
-			}
-			failedTask = true
-		} else if githubCheckTasks[t.Id] {
-			successfulGithubCheckTasks++
+	} else {
+		if err = b.UpdateStatus(buildStatus); err != nil {
+			return errors.Wrap(err, "updating build status")
 		}
 	}
 
-	// we only calculate github check status if the task that finished is a github check task
-	if successfulGithubCheckTasks > 0 && successfulGithubCheckTasks == len(githubCheckTasks) {
-		githubCheckStatus = evergreen.BuildSucceeded
-	}
+	return nil
+}
 
-	if githubCheckStatus != "" && b.GithubCheckStatus == "" {
-		if err = b.UpdateGithubCheckStatus(githubCheckStatus); err != nil {
-			return errors.Wrap(err, "error updating github check status")
+func getVersionStatus(builds []build.Build) string {
+	// not started
+	noStartedBuilds := true
+	for _, b := range builds {
+		if b.Status != evergreen.BuildCreated {
+			noStartedBuilds = false
 		}
-		event.LogBuildGithubCheckFinishedEvent(t.BuildId, githubCheckStatus)
+	}
+	if noStartedBuilds {
+		return evergreen.VersionCreated
 	}
 
-	cachedTasks := buildTasks
+	// started but not finished
+	for _, b := range builds {
+		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) {
+			return evergreen.VersionStarted
+		}
+	}
 
-	// update the display task for the given task
-	var displayTask *task.Task
-	displayTask, err = cache.Get(t)
+	// finished but failed
+	for _, b := range builds {
+		if b.Status == evergreen.BuildFailed {
+			return evergreen.VersionFailed
+		}
+	}
+
+	return evergreen.VersionSucceeded
+}
+
+// Update the status of the version based on its constituent builds
+func UpdateVersionStatus(v *Version) (string, error) {
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey))
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
-	if displayTask != nil {
-		if err = UpdateDisplayTask(displayTask); err != nil {
-			return errors.Wrap(errors.WithStack(err), "error updating display task")
+	versionStatus := getVersionStatus(builds)
+
+	if versionStatus == v.Status {
+		return versionStatus, nil
+	}
+
+	event.LogVersionStateChangeEvent(v.Id, versionStatus)
+
+	if evergreen.IsFinishedVersionStatus(versionStatus) {
+		if err = v.MarkFinished(versionStatus, time.Now()); err != nil {
+			return "", errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
 		}
-		cachedTasks = append(cachedTasks, *displayTask)
+	} else {
+		if err = v.UpdateStatus(versionStatus); err != nil {
+			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
+		}
 	}
 
-	if err = b.UpdateCachedTasks(cachedTasks); err != nil {
-		return err
-	}
+	return versionStatus, nil
+}
 
-	v, err := VersionFindOneId(b.Version)
+func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
+	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
-		return errors.Wrap(err, "error finding version")
-	}
-	if v == nil {
-		return errors.Errorf("version '%s' not found", b.Version)
+		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
 	}
 
-	if b.Status == evergreen.BuildCreated || (unfinishedTasks > 0 && finishedTasks > 0) {
-		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
-			return errors.Wrap(err, "Error updating build status")
-		}
-		if err = v.UpdateStatus(evergreen.VersionStarted); err != nil {
-			return errors.Wrap(err, "unable to update version status")
-		}
-		updates.BuildNewStatus = evergreen.BuildStarted
+	if patchStatus == p.Status {
+		return nil
 	}
 
-	if (finishedTasks + blockedTasks) >= len(buildTasks) {
-		updates.BuildComplete = true
-		updates.BuildNewStatus = evergreen.BuildSucceeded
-		if failedTask {
-			updates.BuildNewStatus = evergreen.BuildFailed
+	event.LogPatchStateChangeEvent(p.Version, patchStatus)
+	if evergreen.IsFinishedPatchStatus(patchStatus) {
+		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
+			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-		if err = b.MarkFinished(updates.BuildNewStatus, finishTime); err != nil {
-			return errors.Wrapf(err, "Error marking build as finished with status '%s'", updates.BuildNewStatus)
-		}
-
-		// update the build's makespan information
-		if err = updateMakespans(b); err != nil {
-			return errors.Wrap(err, "Error updating makespan information")
+	} else {
+		if err = p.UpdateStatus(patchStatus); err != nil {
+			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 		}
 	}
 
-	startPhaseAt := time.Now()
+	return nil
+}
 
-	// These are deliberately out of the buildComplete block to ensure versions
-	// are iterated so version and patch notifications can be sent out
-	if err = markVersionCompleted(b.Version, finishTime, updates, t.IsGithubCheck); err != nil {
-		err = errors.Wrap(err, "Error marking version as finished")
-		grip.Error(err)
-		return err
+func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
+	taskBuild, err := build.FindOneId(t.BuildId)
+	if err != nil {
+		return errors.Wrapf(err, "getting build for task '%s'", t.Id)
 	}
-	if time.Since(startPhaseAt) > slowMS {
-		grip.Debug(message.Fields{
-			"function":      "UpdateBuildAndVersionStatusForTask",
-			"operation":     "b.markVersionCompleted()",
-			"message":       "slow operation",
-			"duration_secs": time.Since(startPhaseAt).Seconds(),
-			"task":          t.Id,
-		})
+	if taskBuild == nil {
+		return errors.Errorf("no build '%s' found for task '%s'", t.BuildId, t.Id)
+	}
+	if err = UpdateBuildStatus(taskBuild); err != nil {
+		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
 
-	if evergreen.IsPatchRequester(b.Requester) {
-		if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
-			return errors.Wrap(err, "error marking patch as finished")
-		}
-		if updates.VersionComplete && len(updates.VersionNewStatus) != 0 {
-			patchStatus := evergreen.PatchFailed
-			if updates.VersionNewStatus == evergreen.VersionSucceeded {
-				patchStatus = evergreen.PatchSucceeded
-			}
-			event.LogPatchStateChangeEvent(t.Version, patchStatus)
-		}
+	taskVersion, err := VersionFindOneId(t.Version)
+	if err != nil {
+		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
+	}
+	if taskVersion == nil {
+		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
 
-	if finishedTasks == 0 {
-		err = b.UpdateStatus(evergreen.BuildCreated)
+	newVersionStatus, err := UpdateVersionStatus(taskVersion)
+	if err != nil {
+		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
+	}
+
+	if evergreen.IsPatchRequester(taskVersion.Requester) {
+		p, err := patch.FindOneId(taskVersion.Id)
 		if err != nil {
-			return errors.Wrap(err, "error updating build status")
+			return errors.Wrapf(err, "getting patch for version '%s'", taskVersion.Id)
 		}
-		if err = v.UpdateStatus(evergreen.VersionCreated); err != nil {
-			return errors.Wrap(err, "unable to update version status")
+		if p == nil {
+			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		updates.BuildNewStatus = evergreen.BuildCreated
+		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+		}
 	}
 
 	return nil
