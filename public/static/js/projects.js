@@ -658,7 +658,7 @@ mciModule.controller(
     };
 
     $scope.validGithubTrigger = function (trigger_alias) {
-      return $scope.patch_trigger_aliases
+      return $scope.patch_trigger_aliases && $scope.patch_trigger_aliases
         .map((patch_trigger_alias) => patch_trigger_alias.alias)
         .includes(trigger_alias);
     };
