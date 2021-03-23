@@ -537,7 +537,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 
 	catcher := grip.NewSimpleCatcher()
 	for i, _ := range patches {
-		if patches[i].Version != "" {
+		if patches[i].Version != "" && patches[i].Alias != evergreen.CommitQueueAlias {
 			if err = CancelPatch(&patches[i], task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",
