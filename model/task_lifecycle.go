@@ -853,7 +853,7 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 func UpdateBuildStatus(b *build.Build) error {
-	buildTasks, err := task.Find(task.ByBuildId(b.Id))
+	buildTasks, err := task.Find(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -938,7 +938,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func UpdateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey))
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
