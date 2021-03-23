@@ -106,11 +106,12 @@ func MockConfig() *evergreen.Settings {
 			GroupTTLMinutes:                       70,
 			LockTimeoutMinutes:                    7,
 			Retry: evergreen.AmboyRetryConfig{
-				NumWorkers:          8,
-				MaxCapacity:         100,
-				MaxRetryAttempts:    50,
-				MaxRetryTimeSeconds: 60,
-				RetryBackoffSeconds: 10,
+				NumWorkers:                          8,
+				MaxCapacity:                         100,
+				MaxRetryAttempts:                    50,
+				MaxRetryTimeSeconds:                 60,
+				RetryBackoffSeconds:                 10,
+				StaleRetryingMonitorIntervalSeconds: 30,
 			},
 		},
 		Api: evergreen.APIConfig{

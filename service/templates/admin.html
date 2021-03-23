@@ -1354,6 +1354,10 @@ Admin Settings
 										<label>Retry Backoff per Job Attempt (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.retry_backoff_seconds">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Frequency of Checking for Stale Retrying Jobs (Seconds)</label>
+										<input type="number" ng-model="Settings.amboy.retry.stale_retrying_monitor_interval_seconds">
+									</md-input-container>
 
 								</md-card-content>
 							</md-card>

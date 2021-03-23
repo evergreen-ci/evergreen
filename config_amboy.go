@@ -31,11 +31,12 @@ type AmboyConfig struct {
 // AmboyRetryConfig represents configuration settings for Amboy's retryability
 // feature.
 type AmboyRetryConfig struct {
-	NumWorkers          int `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
-	MaxCapacity         int `bson:"max_capacity" json:"max_capacity" yaml:"max_capacity"`
-	MaxRetryAttempts    int `bson:"max_retry_attempts" json:"max_retry_attempts" yaml:"max_retry_attempts"`
-	MaxRetryTimeSeconds int `bson:"max_retry_time_seconds" json:"max_retry_time_seconds" yaml:"max_retry_time_seconds"`
-	RetryBackoffSeconds int `bson:"retry_backoff_seconds" json:"retry_backoff_seconds" yaml:"retry_backoff_seconds"`
+	NumWorkers                          int `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
+	MaxCapacity                         int `bson:"max_capacity" json:"max_capacity" yaml:"max_capacity"`
+	MaxRetryAttempts                    int `bson:"max_retry_attempts" json:"max_retry_attempts" yaml:"max_retry_attempts"`
+	MaxRetryTimeSeconds                 int `bson:"max_retry_time_seconds" json:"max_retry_time_seconds" yaml:"max_retry_time_seconds"`
+	RetryBackoffSeconds                 int `bson:"retry_backoff_seconds" json:"retry_backoff_seconds" yaml:"retry_backoff_seconds"`
+	StaleRetryingMonitorIntervalSeconds int `bson:"stale_retrying_monitor_interval_seconds" json:"stale_retrying_monitor_interval_seconds" yaml:"stale_retrying_monitor_interval_seconds"`
 }
 
 var (

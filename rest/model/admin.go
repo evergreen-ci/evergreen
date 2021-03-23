@@ -400,11 +400,12 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyRetryConfig struct {
-	NumWorkers          int `json:"num_workers,omitempty"`
-	MaxCapacity         int `json:"max_capacity,omitempty"`
-	MaxRetryAttempts    int `json:"max_retry_attempts,omitempty"`
-	MaxRetryTimeSeconds int `json:"max_retry_time_seconds,omitempty"`
-	RetryBackoffSeconds int `json:"retry_backoff_seconds,omitempty"`
+	NumWorkers                          int `json:"num_workers,omitempty"`
+	MaxCapacity                         int `json:"max_capacity,omitempty"`
+	MaxRetryAttempts                    int `json:"max_retry_attempts,omitempty"`
+	MaxRetryTimeSeconds                 int `json:"max_retry_time_seconds,omitempty"`
+	RetryBackoffSeconds                 int `json:"retry_backoff_seconds,omitempty"`
+	StaleRetryingMonitorIntervalSeconds int `json:"stale_retrying_monitor_interval_seconds,omitempty"`
 }
 
 func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
@@ -415,6 +416,7 @@ func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
 		a.MaxRetryAttempts = v.MaxRetryAttempts
 		a.MaxRetryTimeSeconds = v.MaxRetryTimeSeconds
 		a.RetryBackoffSeconds = v.RetryBackoffSeconds
+		a.StaleRetryingMonitorIntervalSeconds = v.StaleRetryingMonitorIntervalSeconds
 		return nil
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -423,11 +425,12 @@ func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyRetryConfig{
-		NumWorkers:          a.NumWorkers,
-		MaxCapacity:         a.MaxCapacity,
-		MaxRetryAttempts:    a.MaxRetryAttempts,
-		MaxRetryTimeSeconds: a.MaxRetryTimeSeconds,
-		RetryBackoffSeconds: a.RetryBackoffSeconds,
+		NumWorkers:                          a.NumWorkers,
+		MaxCapacity:                         a.MaxCapacity,
+		MaxRetryAttempts:                    a.MaxRetryAttempts,
+		MaxRetryTimeSeconds:                 a.MaxRetryTimeSeconds,
+		RetryBackoffSeconds:                 a.RetryBackoffSeconds,
+		StaleRetryingMonitorIntervalSeconds: a.StaleRetryingMonitorIntervalSeconds,
 	}, nil
 }
 
