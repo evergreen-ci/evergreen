@@ -879,6 +879,10 @@ func UpdateBuildStatus(b *build.Build) error {
 		}
 	}
 
+	if err = updateBuildGithubStatus(b, buildTasks); err != nil {
+		return errors.Wrap(err, "updating build github status")
+	}
+
 	return nil
 }
 
@@ -1006,7 +1010,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if taskVersion == nil {
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
-
 	newVersionStatus, err := UpdateVersionStatus(taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
