@@ -74,14 +74,11 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	// move to front
 	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
-	s.Equal(1, pos)
+	s.Equal(0, pos)
 	q, err = commitqueue.FindOneId("mci")
 	s.NoError(err)
 	s.Require().Len(q.Queue, 3)
-	s.Equal("1234", q.Queue[0].Issue)
-	s.Equal("important", q.Queue[1].Issue)
-	s.Equal("5678", q.Queue[2].Issue)
-
+	s.Equal("important", q.Queue[0].Issue)
 }
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
