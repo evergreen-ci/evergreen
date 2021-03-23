@@ -11,8 +11,8 @@ import (
 // DeficitBasedHostAllocator decides how many new hosts are needed for a distro by seeing if
 // the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
-func DeficitBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, int, error) {
-	needed, free := deficitNumNewHostsForDistro(ctx, &hostAllocatorData, hostAllocatorData.Distro)
+func DeficitBasedHostAllocator(ctx context.Context, hostAllocatorData *HostAllocatorData) (int, int, error) {
+	needed, free := deficitNumNewHostsForDistro(ctx, hostAllocatorData, hostAllocatorData.Distro)
 	return needed, free, nil
 }
 

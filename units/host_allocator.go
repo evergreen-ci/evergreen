@@ -152,7 +152,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	// nHosts is the number of additional hosts desired.
-	nHosts, nHostsFree, err := hostAllocator(ctx, hostAllocatorData)
+	nHosts, nHostsFree, err := hostAllocator(ctx, &hostAllocatorData)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Error calculating the number of new hosts required for distro id '%s'", j.DistroID))
 		return
@@ -205,7 +205,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	var totalOverdueInTaskGroups, countDurationOverThresholdInTaskGroups, freeInTaskGroups, requiredInTaskGroups int
 	var durationOverThresholdInTaskGroups, expectedDurationInTaskGroups time.Duration
-	for _, info := range distroQueueInfo.TaskGroupInfos {
+	for _, info := range hostAllocatorData.DistroQueueInfo.TaskGroupInfos {
 		if info.Name != "" {
 			totalOverdueInTaskGroups += info.CountWaitOverThreshold
 			countDurationOverThresholdInTaskGroups += info.CountDurationOverThreshold
