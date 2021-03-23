@@ -204,7 +204,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
-	// TODO replace with actions specific to restarted task
+
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
