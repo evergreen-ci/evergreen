@@ -536,17 +536,27 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 	})
 
 	catcher := grip.NewSimpleCatcher()
-	for i, _ := range patches {
-		if patches[i].Version != "" && patches[i].Alias != evergreen.CommitQueueAlias {
-			if err = CancelPatch(&patches[i], task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
+	for _, p := range patches {
+		if p.Version != "" {
+			if p.IsCommitQueuePatch() {
+				mergeTask, err := task.FindMergeTaskForVersion(p.Version)
+				if err != nil {
+					return errors.Wrap(err, "unable to find merge task for version")
+				}
+				if mergeTask == nil {
+					return errors.New("no merge task found")
+				}
+				catcher.Add(DequeueAndRestart(mergeTask, "new push to pull request"))
+			}
+			if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",
 					"created_before": createdBefore.String(),
 					"owner":          owner,
 					"repo":           repo,
 					"message":        "failed to abort patch's version",
-					"patch_id":       patches[i].Id,
-					"version":        patches[i].Version,
+					"patch_id":       p.Id,
+					"version":        p.Version,
 				}))
 
 				catcher.Add(err)
