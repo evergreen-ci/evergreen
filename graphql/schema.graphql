@@ -585,6 +585,7 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
+  displayTestName: String
   logs: TestLog!
   exitCode: Int
   startTime: Time
