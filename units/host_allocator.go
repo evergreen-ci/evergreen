@@ -152,7 +152,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	// nHosts is the number of additional hosts desired.
-	nHosts, nHostsFree, err := hostAllocator(ctx, hostAllocatorData)
+	nHosts, nHostsFree, err := hostAllocator(ctx, &hostAllocatorData)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Error calculating the number of new hosts required for distro id '%s'", j.DistroID))
 		return
@@ -202,15 +202,34 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// and the hosts allocated for them,
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
 	// the scheduled tasks in the queue?
-	scheduledDuration := distroQueueInfo.ExpectedDuration - distroQueueInfo.DurationOverThreshold
+
+	var totalOverdueInTaskGroups, countDurationOverThresholdInTaskGroups, freeInTaskGroups, requiredInTaskGroups int
+	var durationOverThresholdInTaskGroups, expectedDurationInTaskGroups time.Duration
+	for _, info := range hostAllocatorData.DistroQueueInfo.TaskGroupInfos {
+		if info.Name != "" {
+			totalOverdueInTaskGroups += info.CountWaitOverThreshold
+			countDurationOverThresholdInTaskGroups += info.CountDurationOverThreshold
+			durationOverThresholdInTaskGroups += info.DurationOverThreshold
+			expectedDurationInTaskGroups += info.ExpectedDuration
+			freeInTaskGroups += info.CountFree
+			requiredInTaskGroups += info.CountRequired
+		}
+	}
+
+	correctedExpectedDuration := distroQueueInfo.ExpectedDuration - expectedDurationInTaskGroups
+	correctedDurationOverThreshold := distroQueueInfo.DurationOverThreshold - durationOverThresholdInTaskGroups
+	scheduledDuration := correctedExpectedDuration - correctedDurationOverThreshold
+	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - countDurationOverThresholdInTaskGroups
+
+	correctedHostsSpawned := len(hostsSpawned) - requiredInTaskGroups
+	hostsAvail := (nHostsFree - freeInTaskGroups) + correctedHostsSpawned - durationOverThreshNoTaskGroups
 
 	var timeToEmpty, timeToEmptyNoSpawns time.Duration
-	hostsAvail := nHostsFree + len(hostsSpawned) - distroQueueInfo.CountDurationOverThreshold
 	if scheduledDuration <= 0 {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
-		hostsAvailNoSpawns := hostsAvail - len(hostsSpawned)
+		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
 		maxHours := 2532000
 		if hostsAvail <= 0 {
 			timeToEmpty = time.Duration(maxHours) * time.Hour
@@ -226,13 +245,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
-
-	var totalOverdueInTaskGroups int
-	for _, info := range distroQueueInfo.TaskGroupInfos {
-		if info.Name != "" {
-			totalOverdueInTaskGroups += info.CountWaitOverThreshold
-		}
-	}
 
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",

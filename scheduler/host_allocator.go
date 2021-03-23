@@ -11,7 +11,7 @@ import (
 
 // HostAllocator is responsible for determining how many new hosts should be spun up.
 // the first return int is this number, and the second return int is the rough number of free hosts
-type HostAllocator func(context.Context, HostAllocatorData) (int, int, error)
+type HostAllocator func(context.Context, *HostAllocatorData) (int, int, error)
 
 type HostAllocatorData struct {
 	Distro          distro.Distro

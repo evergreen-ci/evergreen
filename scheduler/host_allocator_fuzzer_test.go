@@ -152,7 +152,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 	for i := 0; i < s.settings.numIterations; i++ {
 		s.randomizeData()
-		newHosts, _, err := s.allocator(s.ctx, s.testData)
+		newHosts, _, err := s.allocator(s.ctx, &s.testData)
 		s.NoError(err)
 		distroQueueInfo := s.testData.DistroQueueInfo
 		queueSize := distroQueueInfo.Length

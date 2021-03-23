@@ -23,7 +23,7 @@ type TaskGroupData struct {
 	Info  model.TaskGroupInfo
 }
 
-func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, int, error) {
+func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostAllocatorData) (int, int, error) {
 	distro := hostAllocatorData.Distro
 	numExistingHosts := len(hostAllocatorData.ExistingHosts)
 	minimumHostsThreshold := distro.HostAllocatorSettings.MinimumHosts
@@ -73,6 +73,11 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 
 	numNewHostsRequired := 0
 	numFreeApprox := 0
+	infoSliceIdx := make(map[string]int, len(hostAllocatorData.DistroQueueInfo.TaskGroupInfos))
+	// get map of name:index
+	for idx, info := range hostAllocatorData.DistroQueueInfo.TaskGroupInfos {
+		infoSliceIdx[info.Name] = idx
+	}
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -101,6 +106,10 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		// add up total number of hosts needed for all groups
 		numNewHostsRequired += n
 		numFreeApprox += free
+		if name != "" {
+			hostAllocatorData.DistroQueueInfo.TaskGroupInfos[infoSliceIdx[name]].CountFree = free
+			hostAllocatorData.DistroQueueInfo.TaskGroupInfos[infoSliceIdx[name]].CountRequired = n
+		}
 	}
 
 	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?
