@@ -291,8 +291,9 @@ type TestResult struct {
 	TaskID          string  `json:"task_id" bson:"task_id"`
 	Execution       int     `json:"execution" bson:"execution"`
 
-	// LogRaw is not saved in the task
-	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
+	// LogRaw and LogTestName are not saved in the task
+	LogRaw      string `json:"log_raw" bson:"log_raw,omitempty"`
+	LogTestName string `json:"log_test_name" bson:"log_test_name"`
 }
 
 type DisplayTaskCache struct {
@@ -2976,6 +2977,7 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		TestFile:        result.TestName,
 		DisplayTestName: result.DisplayTestName,
 		GroupID:         result.GroupID,
+		LogTestName:     result.LogTestName,
 		LineNum:         result.LineNum,
 		StartTime:       float64(result.Start.Unix()),
 		EndTime:         float64(result.End.Unix()),
