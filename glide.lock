@@ -137,7 +137,7 @@ imports:
   - name: github.com/evergreen-ci/poplar
     version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
   - name: github.com/evergreen-ci/juniper
-    version: e604ec460d51237c5065ed60c1a866b64b0a1ee9
+    version: 0d90010343e80e57779af9804881062b403ad97e
 
   - name: github.com/evergreen-ci/certdepot
     version: 9456d26c9ecb153ae54a546691e8d9aae859201b
