@@ -281,33 +281,20 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	if mergeTask != nil {
 		// check that the merge task can run. Assume that if we're here the merge task
 		// should in fact run (ie. has not been dequeued due to a task failure)
-		if !mergeTask.Activated {
+		blocked := mergeTask.Blocked()
+		if !mergeTask.Activated || mergeTask.Priority < 0 || blocked {
 			grip.Error(message.Fields{
-				"message": "merge task is inactive",
-				"project": mergeTask.Project,
-				"task":    mergeTask.Id,
-				"source":  "commit queue",
-				"job_id":  j.ID(),
+				"message":  "merge task is not dispatchable",
+				"project":  mergeTask.Project,
+				"task":     mergeTask.Id,
+				"active":   mergeTask.Activated,
+				"priority": mergeTask.Priority,
+				"blocked":  blocked,
+				"source":   "commit queue",
+				"job_id":   j.ID(),
 			})
-		}
-		if mergeTask.Blocked() {
-			grip.Error(message.Fields{
-				"message":      "merge task is blocked",
-				"project":      mergeTask.Project,
-				"task":         mergeTask.Id,
-				"dependencies": mergeTask.DependsOn,
-				"source":       "commit queue",
-				"job_id":       j.ID(),
-			})
-		}
-		if mergeTask.Priority < 0 {
-			grip.Error(message.Fields{
-				"message": "merge task is disabled",
-				"project": mergeTask.Project,
-				"task":    mergeTask.Id,
-				"source":  "commit queue",
-				"job_id":  j.ID(),
-			})
+			j.dequeue(cq, nextItem)
+			event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
 		}
 	}
 
