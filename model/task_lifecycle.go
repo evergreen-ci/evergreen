@@ -705,7 +705,14 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 		}
 		if item.Version == version {
 			foundItem = true
-		} else if foundItem {
+		} else if foundItem && item.Version != "" {
+			grip.Info(message.Fields{
+				"message":            "restarting items due to commit queue failure",
+				"failing_version":    version,
+				"restarting_version": item.Version,
+				"project":            project,
+				"caller":             caller,
+			})
 			// this block executes on all items after the given task
 			catcher.Add(RestartTasksInVersion(item.Version, true, caller))
 		}
