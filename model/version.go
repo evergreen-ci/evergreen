@@ -309,7 +309,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
