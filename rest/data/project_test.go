@@ -242,6 +242,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Id: "projectD", Private: utility.FalsePtr()},
 				{Id: "projectE", Private: utility.FalsePtr()},
 				{Id: "projectF", Private: utility.TruePtr()},
+				{Id: projectId},
 			},
 			CachedEvents: projectEvents,
 			CachedVars: []*model.ProjectVars{

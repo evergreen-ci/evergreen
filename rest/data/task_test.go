@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -271,7 +273,7 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByProjectAndCommitSuite)
 	s.ctx = &DBConnector{}
 
-	assert.NoError(t, db.Clear(task.Collection))
+	assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 
 	s.numCommits = 2
 	s.numProjects = 2
@@ -281,6 +283,10 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 
 	for pix := 0; pix < s.numProjects; pix++ {
 		s.taskIds[pix] = make([][]string, s.numCommits)
+		pRef := model.ProjectRef{
+			Id: fmt.Sprintf("project_%d", pix),
+		}
+		assert.NoError(t, pRef.Insert())
 		for cix := 0; cix < s.numCommits; cix++ {
 			tids := make([]string, s.numTasks)
 			for tix := range tids {

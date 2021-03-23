@@ -119,7 +119,10 @@ func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.T
 func (tc *DBTaskConnector) FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	projectId, err := model.GetIdForProject(project)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		}
 	}
 
 	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
