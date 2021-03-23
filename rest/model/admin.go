@@ -1730,6 +1730,7 @@ type APIServiceFlags struct {
 	BackgroundReauthDisabled      bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled     bool `json:"background_cleanup_disabled"`
 	AmboyRemoteManagementDisabled bool `json:"amboy_remote_management_disabled"`
+	AmboyRetriesDisabled          bool `json:"amboy_retries_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1996,6 +1997,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.AmboyRemoteManagementDisabled = v.AmboyRemoteManagementDisabled
+		as.AmboyRetriesDisabled = v.AmboyRetriesDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -2032,6 +2034,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundCleanupDisabled:     as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:      as.BackgroundReauthDisabled,
 		AmboyRemoteManagementDisabled: as.AmboyRemoteManagementDisabled,
+		AmboyRetriesDisabled:          as.AmboyRetriesDisabled,
 	}, nil
 }
 
