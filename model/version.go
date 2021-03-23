@@ -74,6 +74,8 @@ type Version struct {
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
+	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
+
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
 }
@@ -142,6 +144,17 @@ func (v *Version) UpdateStatus(newStatus string) error {
 	}
 
 	return nil
+}
+
+func (v *Version) UpdateGithubCheckStatus(status string) error {
+	if v.GithubCheckStatus == status {
+		return nil
+	}
+	v.GithubCheckStatus = status
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: v.Id},
+		bson.M{"$set": bson.M{VersionGithubCheckStatusKey: status}},
+	)
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for

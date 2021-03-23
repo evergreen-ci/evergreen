@@ -926,7 +926,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		generatorIsGithubCheck = generateTask.IsGithubCheck
 	}
 
-	// create and insert all of the actual tasks
+	// create all the actual tasks
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
@@ -959,6 +959,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			if len(cmds) != 0 {
 				newTask.CanSync = true
 			}
+		}
+
+		if newTask.IsGithubCheck {
+			b.IsGithubCheck = true
 		}
 
 		taskMap[newTask.Id] = newTask

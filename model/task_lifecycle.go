@@ -831,6 +831,26 @@ func getBuildStatus(buildTasks []task.Task) string {
 	return evergreen.BuildSucceeded
 }
 
+func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
+	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
+	for _, t := range buildTasks {
+		if t.IsGithubCheck {
+			githubStatusTasks = append(githubStatusTasks, t)
+		}
+	}
+	githubBuildStatus := getBuildStatus(githubStatusTasks)
+
+	if githubBuildStatus == b.GithubCheckStatus {
+		return nil
+	}
+
+	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
+		event.LogBuildGithubCheckFinishedEvent(b.Id, githubBuildStatus)
+	}
+
+	return b.UpdateGithubCheckStatus(githubBuildStatus)
+}
+
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 func UpdateBuildStatus(b *build.Build) error {
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
@@ -891,6 +911,27 @@ func getVersionStatus(builds []build.Build) string {
 	return evergreen.VersionSucceeded
 }
 
+func updateVersionGithubStatus(v *Version, builds []build.Build) error {
+	githubStatusBuilds := make([]build.Build, 0, len(builds))
+	for _, b := range builds {
+		if b.IsGithubCheck {
+			b.Status = b.GithubCheckStatus
+			githubStatusBuilds = append(githubStatusBuilds, b)
+		}
+	}
+	githubBuildStatus := getVersionStatus(githubStatusBuilds)
+
+	if githubBuildStatus == v.GithubCheckStatus {
+		return nil
+	}
+
+	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
+		event.LogVersionGithubCheckFinishedEvent(v.Id, githubBuildStatus)
+	}
+
+	return v.UpdateGithubCheckStatus(githubBuildStatus)
+}
+
 // Update the status of the version based on its constituent builds
 func UpdateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey))
@@ -913,6 +954,10 @@ func UpdateVersionStatus(v *Version) (string, error) {
 		if err = v.UpdateStatus(versionStatus); err != nil {
 			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 		}
+	}
+
+	if err = updateVersionGithubStatus(v, builds); err != nil {
+		return "", errors.Wrap(err, "updating version github status")
 	}
 
 	return versionStatus, nil
