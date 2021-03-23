@@ -9,31 +9,44 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
-// SimpleRemoteOrdered queue implements the amboy.Queue interface and
-// uses a driver backend, like the RemoteUnordered queue. However,
-// this implementation evaluates and respects dependencies, unlike the
-// RemoteUnordered implementation which executes all tasks.
+// remoteSimpleOrdered queue implements the amboy.RetryableQueue interface and
+// uses a driver backend, like the remoteUnordered queue. However, this
+// implementation evaluates and respects dependencies, unlike the
+// remoteUnordered implementation, which executes all jobs.
 //
-// The term simple differentiates from a queue that schedules tasks in
-// order based on reported edges, which may be more efficient with
-// more complex dependency graphs. Internally SimpleRemoteOrdered and
-// RemoteUnordred share an implementation *except* for the Next method,
-// which differs in task dispatching strategies.
+// The term simple differentiates from a queue that schedules jobs in order
+// based on reported edges, which may be more efficient with more complex
+// dependency graphs. Internally remoteSimpleOrdered and remoteUnordered share
+// an implementation *except* for the Next method, which differs in job
+// dispatching strategies.
 type remoteSimpleOrdered struct {
 	*remoteBase
 }
 
-// newSimpleRemoteOrdered returns a queue with a configured local
-// runner with the specified number of workers.
-func newSimpleRemoteOrdered(size int) remoteQueue {
-	q := &remoteSimpleOrdered{remoteBase: newRemoteBase()}
-	q.dispatcher = NewDispatcher(q)
-	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
-	grip.Infof("creating new remote job queue with %d workers", size)
+// newRemoteSimpleOrdered returns a queue with a configured local worker pool
+// with the specified number of workers.
+func newRemoteSimpleOrdered(size int) (remoteQueue, error) {
+	return newRemoteSimpleOrderedWithOptions(remoteOptions{numWorkers: size})
+}
 
-	return q
+// newRemoteSimpleOrderedWithOptions returns a remote ordered queue with a
+// configured local runner and the given options.
+func newRemoteSimpleOrderedWithOptions(opts remoteOptions) (remoteQueue, error) {
+	b, err := newRemoteBaseWithOptions(opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing remote base")
+	}
+	q := &remoteSimpleOrdered{remoteBase: b}
+	q.dispatcher = NewDispatcher(q)
+	if err := q.SetRunner(pool.NewLocalWorkers(opts.numWorkers, q)); err != nil {
+		return nil, errors.Wrap(err, "configuring runner")
+	}
+	grip.Infof("creating new remote job queue with %d workers", opts.numWorkers)
+
+	return q, nil
 }
 
 // Next contains the unique implementation details of the

@@ -7,7 +7,7 @@ Overview and Motivation
 
 Amboy works with 4 basic logical objects: jobs, or descriptions of
 tasks; runnners, which are responsible for executing tasks; queues,
-that represent pipelines and offline workflows of tasks (e.g. not real
+that represent pipelines and offline workflows of tasks (i.e. not real
 time, processes that run outside of the primary execution path of a
 program); and dependencies that represent relationships between jobs.
 
@@ -41,9 +41,8 @@ Consider the following example:
       // handle error case
    }
 
-   Wait(queue) // waits for all tasks to finish.
-   queue.Close() // waits for all tasks to finish and releases
-		 // all resources.
+   Wait(queue) // Waits for all jobs to finish.
+   queue.Close() // Waits for all jobs to finish and releases all resources.
 */
 package amboy
 
@@ -78,16 +77,17 @@ simple so there's less useful variation.
 
 Job
 
-Provides several generically useful Job implementations, for executing
-groups of sub-jobs or running shell commands in job
-tasks. Additionally the package also contains tools used in writing
-specific job implementations, including a type used to interchange
-jobs, and a a monotonically increasing JobId generator.
+Provides several generically useful Job implementations, for executing groups of
+sub-jobs or running shell commands in jobs. Additionally the package also
+contains tools used in writing specific job implementations, including a type
+used to interchange jobs, and a a monotonically increasing JobId generator.
 
 Queue
 
-Queue provides implementations of the Queue implementation, which
-provide different task dispatching and distribution strategies.
+Queue provides implementations of the Queue interface, which provide different
+job dispatching and distribution strategies. In addition, it provides
+implementations for queue-adjacent components such as job scope managers and
+retry handlers for retryable queues.
 
 Dependency
 

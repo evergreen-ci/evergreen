@@ -47,6 +47,8 @@ type MongoDBQueueGroupOptions struct {
 	// to each queue, based on the queue ID passed to it.
 	WorkerPoolSize func(string) int
 
+	Retryable RetryableQueueOptions
+
 	// PruneFrequency is how often Prune runs by default.
 	PruneFrequency time.Duration
 
@@ -59,7 +61,7 @@ type MongoDBQueueGroupOptions struct {
 	TTL time.Duration
 }
 
-func (opts *MongoDBQueueGroupOptions) constructor(ctx context.Context, name string) remoteQueue {
+func (opts *MongoDBQueueGroupOptions) constructor(ctx context.Context, name string) (remoteQueue, error) {
 	workers := opts.DefaultWorkers
 	if opts.WorkerPoolSize != nil {
 		workers = opts.WorkerPoolSize(name)
@@ -69,43 +71,41 @@ func (opts *MongoDBQueueGroupOptions) constructor(ctx context.Context, name stri
 	}
 
 	var q remoteQueue
+	var err error
+	qOpts := remoteOptions{
+		numWorkers: workers,
+		retryable:  opts.Retryable,
+	}
 	if opts.Ordered {
-		q = newSimpleRemoteOrdered(workers)
+		if q, err = newRemoteSimpleOrderedWithOptions(qOpts); err != nil {
+			return nil, errors.Wrap(err, "initializing ordered queue")
+		}
 	} else {
-		q = newRemoteUnordered(workers)
+		if q, err = newRemoteUnorderedWithOptions(qOpts); err != nil {
+			return nil, errors.Wrap(err, "initializing unordered queue")
+		}
 	}
 
 	if opts.Abortable {
 		p := pool.NewAbortablePool(workers, q)
-		grip.Debug(q.SetRunner(p))
+		if err = q.SetRunner(p); err != nil {
+			return nil, errors.Wrap(err, "configuring queue with runner")
+		}
 	}
 
-	return q
+	return q, nil
 }
 
 func (opts MongoDBQueueGroupOptions) validate() error {
 	catcher := grip.NewBasicCatcher()
-	if opts.TTL < 0 {
-		catcher.New("ttl must be greater than or equal to 0")
-	}
-	if opts.TTL > 0 && opts.TTL < time.Second {
-		catcher.New("ttl cannot be less than 1 second, unless it is 0")
-	}
-	if opts.PruneFrequency < 0 {
-		catcher.New("prune frequency must be greater than or equal to 0")
-	}
-	if opts.PruneFrequency > 0 && opts.TTL < time.Second {
-		catcher.New("prune frequency cannot be less than 1 second, unless it is 0")
-	}
-	if (opts.TTL == 0 && opts.PruneFrequency != 0) || (opts.TTL != 0 && opts.PruneFrequency == 0) {
-		catcher.New("ttl and prune frequency must both be 0 or both be not 0")
-	}
-	if opts.Prefix == "" {
-		catcher.New("prefix must be set")
-	}
-	if opts.DefaultWorkers == 0 && opts.WorkerPoolSize == nil {
-		catcher.New("must specify either a default worker pool size or a WorkerPoolSize function")
-	}
+	catcher.NewWhen(opts.TTL < 0, "ttl must be greater than or equal to 0")
+	catcher.NewWhen(opts.TTL > 0 && opts.TTL < time.Second, "ttl cannot be less than 1 second, unless it is 0")
+	catcher.NewWhen(opts.PruneFrequency < 0, "prune frequency must be greater than or equal to 0")
+	catcher.NewWhen(opts.PruneFrequency > 0 && opts.TTL < time.Second, "prune frequency cannot be less than 1 second, unless it is 0")
+	catcher.NewWhen((opts.TTL == 0 && opts.PruneFrequency != 0) || (opts.TTL != 0 && opts.PruneFrequency == 0), "ttl and prune frequency must both be 0 or both be not 0")
+	catcher.NewWhen(opts.Prefix == "", "prefix must be set")
+	catcher.NewWhen(opts.DefaultWorkers == 0 && opts.WorkerPoolSize == nil, "must specify either a default worker pool size or a WorkerPoolSize function")
+	catcher.Wrap(opts.Retryable.Validate(), "invalid retryable queue options")
 	return catcher.Resolve()
 }
 
@@ -230,7 +230,10 @@ func (g *remoteMongoQueueGroup) Queues(ctx context.Context) []string {
 
 func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, coll string) (amboy.Queue, error) {
 	coll = trimJobsSuffix(coll)
-	q := g.opts.constructor(ctx, coll)
+	q, err := g.opts.constructor(ctx, coll)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing queue")
+	}
 
 	d, err := openNewMongoDriver(ctx, coll, g.dbOpts, g.client)
 	if err != nil {
@@ -272,16 +275,8 @@ func (g *remoteMongoQueueGroup) getExistingCollections(ctx context.Context, clie
 // that the caller must add a job to the queue within the TTL, or else it may have attempted to add
 // a job to a closed queue.
 func (g *remoteMongoQueueGroup) Get(ctx context.Context, id string) (amboy.Queue, error) {
-	g.mu.RLock()
-	if queue, ok := g.queues[id]; ok {
-		g.ttlMap[id] = time.Now()
-		g.mu.RUnlock()
-		return queue, nil
-	}
-	g.mu.RUnlock()
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	// Check again in case the map was modified after we released the read lock.
 	if queue, ok := g.queues[id]; ok {
 		g.ttlMap[id] = time.Now()
 		return queue, nil
@@ -357,7 +352,13 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 				count, err := c.CountDocuments(ctx, bson.M{
 					"status.completed": true,
 					"status.in_prog":   false,
-					"status.mod_ts":    bson.M{"$gte": time.Now().Add(-g.opts.TTL)},
+					"$or": []bson.M{
+						{"status.mod_ts": bson.M{"$gte": time.Now().Add(-g.opts.TTL)}},
+						{
+							"retry_info.retryable":   true,
+							"retry_info.needs_retry": true,
+						},
+					},
 				})
 				if err != nil {
 					catcher.Add(err)
@@ -375,7 +376,7 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 					return
 				}
 				if queue, ok := g.queues[g.idFromCollection(nextColl)]; ok {
-					queue.Runner().Close(ctx)
+					queue.Close(ctx)
 					select {
 					case <-ctx.Done():
 						return
@@ -396,35 +397,6 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 		delete(g.ttlMap, id)
 	}
 
-	// Another prune may have gotten to the collection first, so we should close the queue.
-	queuesDeleteChan := make(chan string, len(g.queues))
-	wg = &sync.WaitGroup{}
-outer:
-	for id, q := range g.queues {
-		for _, coll := range collsToCheck {
-			if id == g.idFromCollection(coll) {
-				continue outer
-			}
-		}
-		wg.Add(1)
-		go func(queueID string, ch chan string, qu amboy.Queue) {
-			defer recovery.LogStackTraceAndContinue("panic in pruning queues")
-			defer wg.Done()
-			qu.Runner().Close(ctx)
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- queueID:
-				// pass
-			}
-		}(id, queuesDeleteChan, q)
-	}
-	wg.Wait()
-	close(queuesDeleteChan)
-	for id := range queuesDeleteChan {
-		delete(g.queues, id)
-		delete(g.ttlMap, id)
-	}
 	return catcher.Resolve()
 }
 
@@ -442,7 +414,7 @@ func (g *remoteMongoQueueGroup) Close(ctx context.Context) error {
 			go func(queue amboy.Queue) {
 				defer recovery.LogStackTraceAndContinue("panic in remote queue group closer")
 				defer wg.Done()
-				queue.Runner().Close(ctx)
+				queue.Close(ctx)
 			}(queue)
 		}
 		wg.Wait()

@@ -3,6 +3,7 @@ package queue
 import (
 	"sync"
 
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
@@ -10,8 +11,9 @@ import (
 // additional locking semantics for queues that cannot push that into
 // their backing storage.
 type ScopeManager interface {
-	Acquire(string, []string) error
-	Release(string, []string) error
+	Acquire(owner string, scopes []string) error
+	Release(owner string, scopes []string) error
+	ReleaseAndAcquire(ownerToRelease string, scopesToRelease []string, ownerToAcquire string, scopesToAcquire []string) error
 }
 
 type scopeManagerImpl struct {
@@ -46,7 +48,7 @@ func (s *scopeManagerImpl) Acquire(id string, scopes []string) error {
 		if holder == id {
 			continue
 		}
-		return errors.Errorf("could not acquire lock scope '%s' held by '%s' not '%s'", sc, holder, id)
+		return amboy.NewDuplicateJobScopeErrorf("could not acquire lock scope '%s' held by '%s', not '%s'", sc, holder, id)
 	}
 
 	for _, sc := range scopesToAcquire {
@@ -64,6 +66,19 @@ func (s *scopeManagerImpl) Release(id string, scopes []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	toRelease, err := s.getScopesToRelease(id, scopes)
+	if err != nil {
+		return errors.Wrap(err, "getting scopes to release")
+	}
+
+	for _, sc := range toRelease {
+		delete(s.scopes, sc)
+	}
+
+	return nil
+}
+
+func (s *scopeManagerImpl) getScopesToRelease(id string, scopes []string) ([]string, error) {
 	var scopesToRelease []string
 	for _, sc := range scopes {
 		holder, ok := s.scopes[sc]
@@ -74,11 +89,43 @@ func (s *scopeManagerImpl) Release(id string, scopes []string) error {
 			scopesToRelease = append(scopesToRelease, sc)
 			continue
 		}
-		return errors.Errorf("could not release lock scope '%s', held by '%s' not '%s'", sc, holder, id)
+		return nil, errors.Errorf("could not release lock scope '%s', held by '%s' not '%s'", sc, holder, id)
+	}
+	return scopesToRelease, nil
+}
+
+func (s *scopeManagerImpl) ReleaseAndAcquire(ownerToRelease string, scopesToRelease []string, ownerToAcquire string, scopesToAcquire []string) error {
+	if len(scopesToRelease) == 0 && len(scopesToAcquire) == 0 {
+		return nil
 	}
 
-	for _, sc := range scopesToRelease {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	toRelease, err := s.getScopesToRelease(ownerToRelease, scopesToRelease)
+	if err != nil {
+		return errors.Wrap(err, "getting scopes to release")
+	}
+
+	var toAcquire []string
+	for _, sc := range scopesToAcquire {
+		holder, ok := s.scopes[sc]
+		if !ok || holder == ownerToRelease {
+			toAcquire = append(toAcquire, sc)
+			continue
+		}
+		if holder == ownerToAcquire {
+			continue
+		}
+		return amboy.NewDuplicateJobScopeErrorf("could not acquire lock scope '%s' held by '%s', which is neither '%s' nor '%s'", sc, holder, ownerToAcquire, ownerToRelease)
+	}
+
+	for _, sc := range toRelease {
 		delete(s.scopes, sc)
+	}
+
+	for _, sc := range toAcquire {
+		s.scopes[sc] = ownerToAcquire
 	}
 
 	return nil

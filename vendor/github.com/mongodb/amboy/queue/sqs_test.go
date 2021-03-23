@@ -86,8 +86,8 @@ func (s *SQSFifoQueueSuite) TestCompleteMethodChangesStatsAndResults() {
 	defer cancel()
 
 	j := job.NewShellJob("echo true", "")
-	s.NoError(s.queue.Put(ctx, j))
-	s.queue.Complete(context.Background(), j)
+	s.Require().NoError(s.queue.Put(ctx, j))
+	s.Require().NoError(s.queue.Complete(context.Background(), j))
 
 	counter := 0
 	results := s.queue.Results(context.Background())

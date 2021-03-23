@@ -17,13 +17,13 @@ func TestWaitUntil(t *testing.T) {
 	t.Run("PastStartAt", func(t *testing.T) {
 		tsa := time.Now().Round(time.Second)
 		waitUntilInterval(ctx, time.Now().Round(time.Second).Add(-interval), interval)
-		assert.Equal(t, tsa.Add(interval), time.Now().Round(time.Second))
+		assert.WithinDuration(t, tsa.Add(interval), time.Now(), interval)
 		assert.True(t, tsa.Before(time.Now()))
 	})
 	t.Run("FutureStartAt", func(t *testing.T) {
 		tsa := time.Now().Round(time.Second)
 		waitUntilInterval(ctx, time.Now().Round(time.Second).Add(interval), interval)
-		assert.Equal(t, tsa.Add(interval), time.Now().Round(time.Second))
+		assert.WithinDuration(t, tsa.Add(interval), time.Now(), interval)
 		assert.True(t, tsa.Before(time.Now()))
 	})
 	t.Run("Cancelable", func(t *testing.T) {

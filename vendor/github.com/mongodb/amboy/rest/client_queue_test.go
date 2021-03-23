@@ -598,6 +598,3 @@ func (s *QueueClientSuite) TestFetchJobReturnsEquivalentJob() {
 		}
 	}
 }
-
-// TODO: wait
-// TODO: waitAll

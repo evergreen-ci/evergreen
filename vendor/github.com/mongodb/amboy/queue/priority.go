@@ -156,29 +156,25 @@ func (q *priorityLocalQueue) Results(ctx context.Context) <-chan amboy.Job {
 	return output
 }
 
-// JobStats returns a job status for every job stored in the
-// queue. Does not include currently in progress tasks.
-func (q *priorityLocalQueue) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	out := make(chan amboy.JobStatusInfo)
+// JobInfo returns a channel that produces information for all jobs in the
+// queue, excluding in progress jobs. Job information is returned in no
+// particular order.
+func (q *priorityLocalQueue) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
+	infos := make(chan amboy.JobInfo)
 
 	go func() {
-		defer close(out)
-		for job := range q.storage.Contents() {
-			if ctx.Err() != nil {
-				return
-			}
-			stat := job.Status()
-			stat.ID = job.ID()
+		defer close(infos)
+		for j := range q.storage.Contents() {
 			select {
 			case <-ctx.Done():
 				return
-			case out <- stat:
+			case infos <- amboy.NewJobInfo(j):
 			}
 
 		}
 	}()
 
-	return out
+	return infos
 }
 
 // Runner returns the embedded runner instance, which provides and
@@ -220,24 +216,18 @@ func (q *priorityLocalQueue) Stats(ctx context.Context) amboy.QueueStats {
 
 // Complete marks a job complete. The operation is asynchronous in
 // this implementation.
-func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
+func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) error {
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	id := j.ID()
-	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()
 	defer q.counters.Unlock()
 	q.fixed.Push(id)
 
-	grip.Warning(message.WrapError(
-		q.scopes.Release(j.ID(), j.Scopes()),
-		message.Fields{
-			"id":     j.ID(),
-			"scopes": j.Scopes(),
-			"queue":  q.ID(),
-			"op":     "releasing scope lock during completion",
-		}))
+	if err := q.scopes.Release(j.ID(), j.Scopes()); err != nil {
+		return errors.Wrapf(err, "releasing scopes '%s'", j.Scopes())
+	}
 	q.dispatcher.Complete(ctx, j)
 
 	if num := q.fixed.Oversize(); num > 0 {
@@ -247,6 +237,8 @@ func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
 	}
 
 	q.counters.completed++
+
+	return nil
 }
 
 // Start begins the work of the queue. It is a noop, without error, to
@@ -270,4 +262,10 @@ func (q *priorityLocalQueue) Start(ctx context.Context) error {
 	grip.Info("job server running")
 
 	return nil
+}
+
+func (q *priorityLocalQueue) Close(ctx context.Context) {
+	if r := q.Runner(); r != nil {
+		r.Close(ctx)
+	}
 }

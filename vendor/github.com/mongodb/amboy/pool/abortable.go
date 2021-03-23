@@ -7,6 +7,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -134,7 +135,11 @@ func (p *abortablePool) worker(bctx context.Context) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(bctx, job)
+				grip.Error(message.WrapError(p.queue.Complete(bctx, job), message.Fields{
+					"message":  "could not mark job complete",
+					"job_id":   job.ID(),
+					"queue_id": p.queue.ID(),
+				}))
 			}
 
 			// start a replacement worker
@@ -226,17 +231,17 @@ func (p *abortablePool) Abort(ctx context.Context, id string) error {
 		return errors.Errorf("could not find '%s' in the queue", id)
 	}
 
-	p.queue.Complete(ctx, job)
-
-	return nil
+	return errors.Wrap(p.queue.Complete(ctx, job), "marking job complete")
 }
 
-func (p *abortablePool) AbortAll(ctx context.Context) {
+func (p *abortablePool) AbortAll(ctx context.Context) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	catcher := grip.NewBasicCatcher()
 	for id, cancel := range p.jobs {
 		if ctx.Err() != nil {
+			catcher.Add(ctx.Err())
 			break
 		}
 		cancel()
@@ -245,6 +250,8 @@ func (p *abortablePool) AbortAll(ctx context.Context) {
 		if !ok {
 			continue
 		}
-		p.queue.Complete(ctx, job)
+		catcher.Wrapf(p.queue.Complete(ctx, job), "marking job '%s' complete", job.ID())
 	}
+
+	return catcher.Resolve()
 }

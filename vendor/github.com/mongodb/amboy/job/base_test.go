@@ -113,7 +113,7 @@ func (s *BaseCheckSuite) TestDefaultTimeInfoIsUnset() {
 	s.Zero(ti.WaitUntil)
 }
 
-func (s *BaseCheckSuite) TestTimeInfoSetsValues() {
+func (s *BaseCheckSuite) TestUpdateTimeInfoSetsNonzeroValues() {
 	ti := s.base.TimeInfo()
 	ti.Start = time.Now()
 	ti.End = ti.Start.Add(time.Hour)
@@ -144,6 +144,20 @@ func (s *BaseCheckSuite) TestTimeInfoSetsValues() {
 	s.Equal(result.End, last.End)
 }
 
+func (s *BaseCheckSuite) TestSetTimeInfoSetsAllValues() {
+	ti := s.base.TimeInfo()
+	ti.Start = time.Now()
+	ti.End = ti.Start.Add(time.Hour)
+	s.Zero(ti.WaitUntil)
+	s.Equal(time.Hour, ti.Duration())
+
+	s.base.SetTimeInfo(ti)
+	s.Equal(ti, s.base.TimeInfo())
+
+	s.base.SetTimeInfo(amboy.JobTimeInfo{})
+	s.Zero(s.base.TimeInfo())
+}
+
 func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
 	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable: utility.TruePtr(),
@@ -152,29 +166,33 @@ func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
 		Retryable: true,
 	}, s.base.RetryInfo())
 
-	trial := 5
+	attempt := 5
+	maxAttempt := 10
 	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
-		CurrentTrial: utility.ToIntPtr(trial),
+		CurrentAttempt: utility.ToIntPtr(attempt),
+		MaxAttempts:    utility.ToIntPtr(maxAttempt),
 	})
-
 	s.Require().Equal(amboy.JobRetryInfo{
-		Retryable:    true,
-		CurrentTrial: trial,
+		Retryable:      true,
+		CurrentAttempt: attempt,
+		MaxAttempts:    maxAttempt,
 	}, s.base.RetryInfo())
 
 	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable: utility.FalsePtr(),
 	})
 	s.Require().Equal(amboy.JobRetryInfo{
-		CurrentTrial: trial,
+		Retryable:      false,
+		CurrentAttempt: attempt,
+		MaxAttempts:    maxAttempt,
 	}, s.base.RetryInfo())
 
 	s.base.UpdateRetryInfo(amboy.JobRetryOptions{
 		NeedsRetry: utility.TruePtr(),
 	})
-
 	s.Require().Equal(amboy.JobRetryInfo{
-		NeedsRetry:   true,
-		CurrentTrial: trial,
+		NeedsRetry:     true,
+		CurrentAttempt: attempt,
+		MaxAttempts:    maxAttempt,
 	}, s.base.RetryInfo())
 }

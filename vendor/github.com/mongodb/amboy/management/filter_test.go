@@ -8,12 +8,12 @@ import (
 
 func TestFilterValidation(t *testing.T) {
 	t.Run("Counter", func(t *testing.T) {
-		for _, f := range []StatusFilter{InProgress, Pending, Stale} {
+		for _, f := range []StatusFilter{Pending, InProgress, Stale, Completed, Retrying, All} {
 			assert.Nil(t, f.Validate())
 		}
 	})
 	t.Run("Runtime", func(t *testing.T) {
-		for _, f := range []RuntimeFilter{Duration, Latency} {
+		for _, f := range []RuntimeFilter{Duration, Latency, Running} {
 			assert.Nil(t, f.Validate())
 		}
 	})
@@ -29,6 +29,5 @@ func TestFilterValidation(t *testing.T) {
 			assert.Error(t, RuntimeFilter(f).Validate())
 			assert.Error(t, ErrorFilter(f).Validate())
 		}
-
 	})
 }

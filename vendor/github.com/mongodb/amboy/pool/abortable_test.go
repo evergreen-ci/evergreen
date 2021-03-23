@@ -170,7 +170,7 @@ func (s *AbortablePoolSuite) TestAbortAllWorks() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.pool.AbortAll(ctx)
+	s.Require().NoError(s.pool.AbortAll(ctx))
 	s.Len(s.pool.RunningJobs(), 0)
 	seen = 0
 	for _, c := range closers {

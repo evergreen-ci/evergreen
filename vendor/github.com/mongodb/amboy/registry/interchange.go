@@ -11,7 +11,7 @@ import (
 // instances. Interchange is also used internally as part of JobGroup
 // Job type.
 type JobInterchange struct {
-	Name                 string                 `json:"name" bson:"_id" yaml:"name"`
+	Name                 string                 `bson:"_id" json:"name" yaml:"name"`
 	Type                 string                 `json:"type" bson:"type" yaml:"type"`
 	Group                string                 `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
 	Version              int                    `json:"version" bson:"version" yaml:"version"`

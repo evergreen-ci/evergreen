@@ -33,4 +33,9 @@ func TestQueueStats(t *testing.T) {
 	stat.Total++
 	assert.True(stat.IsComplete())
 	assert.Contains(stat.String(), "total='2'")
+
+	stat.Retrying++
+	assert.False(stat.IsComplete())
+	assert.Contains(stat.String(), "retrying='1'")
+
 }

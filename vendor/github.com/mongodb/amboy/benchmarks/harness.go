@@ -166,7 +166,7 @@ func queueBenchmarkSuite() poplar.BenchmarkSuite {
 
 func makeMongoDBQueue(ctx context.Context) (amboy.Queue, closeFunc, error) {
 	mdbOpts := queue.DefaultMongoDBOptions()
-	mdbOpts.DB = "amboy-benchmarks"
+	mdbOpts.DB = "amboy_benchmarks"
 	queueOpts := queue.MongoDBQueueCreationOptions{
 		Size: runtime.NumCPU(),
 		Name: uuid.New().String(),
