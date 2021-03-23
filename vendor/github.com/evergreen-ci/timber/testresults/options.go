@@ -73,6 +73,7 @@ type Result struct {
 	GroupID         string    `bson:"group_id" json:"group_id" yaml:"group_id"`
 	Trial           int32     `bson:"trial" json:"trial" yaml:"trial"`
 	Status          string    `bson:"status" json:"status" yaml:"status"`
+	LogTestName     string    `bson:"log_test_name" json:"log_test_name" yaml:"log_test_name"`
 	LineNum         int32     `bson:"line_num" json:"line_num" yaml:"line_num"`
 	TaskCreated     time.Time `bson:"task_created" json:"task_created" yaml:"task_created"`
 	TestStarted     time.Time `bson:"test_started" json:"test_started" yaml:"test_started"`
@@ -99,6 +100,7 @@ func (r Result) export() (*gopb.TestResult, error) {
 		GroupId:         r.GroupID,
 		Trial:           r.Trial,
 		Status:          r.Status,
+		LogTestName:     r.LogTestName,
 		LineNum:         r.LineNum,
 		TaskCreateTime:  created,
 		TestStartTime:   started,
