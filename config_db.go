@@ -89,6 +89,7 @@ var (
 	backgroundReauthDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	amboyRemoteManagementDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRemoteManagementDisabled")
+	amboyRetriesDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRetriesDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
