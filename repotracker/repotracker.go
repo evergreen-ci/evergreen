@@ -89,7 +89,6 @@ func (p projectConfigError) Error() string {
 func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
-	projectIdentifier := projectRef.String()
 
 	if !projectRef.IsEnabled() || projectRef.IsRepotrackerDisabled() {
 		// this is somewhat belt-and-suspenders, as the
@@ -103,9 +102,9 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		return nil
 	}
 
-	repository, err := model.FindRepository(projectIdentifier)
+	repository, err := model.FindRepository(projectRef.Id)
 	if err != nil {
-		return errors.Wrapf(err, "error finding repository '%v'", projectIdentifier)
+		return errors.Wrapf(err, "error finding repository '%v'", projectRef.Identifier)
 	}
 
 	var revisions []model.Revision
@@ -181,11 +180,11 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			return errors.WithStack(err)
 		}
 	}
-	ok, err := model.DoProjectActivation(projectIdentifier)
+	ok, err := model.DoProjectActivation(projectRef.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
-			"project": projectIdentifier,
+			"project": projectRef.Id,
 			"runner":  RunnerName,
 			"mode":    "ingestion",
 		}))
@@ -194,7 +193,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	if ok {
 		grip.Debug(message.Fields{
 			"message": "activated recent commit for project",
-			"project": projectIdentifier,
+			"project": projectRef.Id,
 			"runner":  RunnerName,
 		})
 	}
@@ -780,7 +779,7 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		PeriodicBuildID:     metadata.PeriodicBuildID,
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
@@ -814,7 +813,7 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 			return nil, errors.Errorf("user '%s' not authorized to create git tag versions for project '%s'",
 				metadata.GitTag.Pusher, ref.Id)
 		}
-		v.Id = makeVersionIdWithTag(ref.String(), metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
+		v.Id = makeVersionIdWithTag(ref.Identifier, metadata.GitTag.Tag, mgobson.NewObjectId().Hex())
 		v.Requester = evergreen.GitTagRequester
 		v.CreateTime = time.Now()
 		v.TriggeredByGitTag = metadata.GitTag
@@ -823,7 +822,7 @@ func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 			v.RemotePath = metadata.RemotePath
 		}
 	} else {
-		v.Id = makeVersionId(ref.String(), metadata.Revision.Revision)
+		v.Id = makeVersionId(ref.Identifier, metadata.Revision.Revision)
 	}
 	if u != nil {
 		v.AuthorID = u.Id

@@ -267,7 +267,17 @@ func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string)
 	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
 }
 
-func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	id, err := model.GetIdForProject(project)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"func":    "GetProjectEventLog",
+			"message": "error getting id for project",
+			"project": project,
+		}))
+		// don't return an error here to preserve existing behavior
+		return nil, nil
+	}
 	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
 		return nil, err

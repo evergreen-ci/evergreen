@@ -342,7 +342,7 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 }
 
 func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
-	id, err := model.FindIdForProject(name)
+	id, err := model.GetIdForProject(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

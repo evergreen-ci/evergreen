@@ -13,7 +13,7 @@ import (
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
 // It fetches the associated tasks and returns them to the user.
 type tasksByProjectHandler struct {
-	projectId  string
+	project    string
 	commitHash string
 	status     string
 	limit      int
@@ -35,20 +35,20 @@ func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 // and loads them into the arguments to be used by the execution.
 func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	tph.projectId = vars["project_id"]
+	tph.project = vars["project_id"]
 	tph.commitHash = vars["commit_hash"]
 	tph.status = r.URL.Query().Get("status")
 
-	if tph.projectId == "" {
+	if tph.project == "" {
 		return gimlet.ErrorResponse{
-			Message:    "ProjectId cannot be empty",
+			Message:    "project_id cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	if tph.commitHash == "" {
 		return gimlet.ErrorResponse{
-			Message:    "Revision cannot be empty",
+			Message:    "commit_hash cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -67,7 +67,7 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := tph.sc.FindTasksByProjectAndCommit(tph.projectId, tph.commitHash, tph.key, tph.status, tph.limit+1)
+	tasks, err := tph.sc.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}

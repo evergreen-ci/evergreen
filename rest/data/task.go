@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -37,8 +40,18 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 
 func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
 	project string, statuses []string) ([]task.Task, error) {
+	id, err := model.GetIdForProject(project)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"func":    "FindTaskWithinTimePeriod",
+			"message": "error getting id for project",
+			"project": project,
+		}))
+		// don't return an error here to preserve existing behavior
+		return nil, nil
+	}
 
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, project, statuses))
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
 
 	if err != nil {
 		return nil, err
@@ -103,11 +116,16 @@ func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.T
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
-	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
-	res := []task.Task{}
+func (tc *DBTaskConnector) FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
+	projectId, err := model.GetIdForProject(project)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
-	err := task.Aggregate(pipeline, &res)
+	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
+
+	res := []task.Task{}
+	err = task.Aggregate(pipeline, &res)
 	if err != nil {
 		return []task.Task{}, err
 	}
