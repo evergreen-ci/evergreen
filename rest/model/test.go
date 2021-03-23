@@ -27,6 +27,7 @@ type APITest struct {
 	StartTime       *time.Time `json:"start_time"`
 	EndTime         *time.Time `json:"end_time"`
 	Duration        float64    `json:"duration"`
+	LogTestName     *string    `json:"log_test_name,omitempty"`
 	LineNum         int        `json:"line_num,omitempty"`
 }
 
@@ -34,7 +35,6 @@ type APITest struct {
 // written out as part of an APITest.
 type TestLogs struct {
 	URL            *string `json:"url"`
-	LogTestName    *string `json:"log_test_name,omitempty"`
 	LineNum        int     `json:"line_num"`
 	URLRaw         *string `json:"url_raw"`
 	LogId          *string `json:"log_id"`
@@ -102,14 +102,16 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		duration := v.End.Sub(v.Start)
 		at.Duration = float64(duration)
 
-		at.Logs = TestLogs{LineNum: v.LineNum}
 		testName := v.TestName
 		if v.LogTestName != "" {
 			testName = v.LogTestName
-			at.Logs.LogTestName = utility.ToStringPtr(v.LogTestName)
+			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
-		at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, testName, v.GroupID))
-		at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, testName, v.GroupID, v.LineNum))
+		at.Logs = TestLogs{
+			LineNum:        v.LineNum,
+			RawDisplayURL:  utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, testName, v.GroupID)),
+			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, testName, v.GroupID, v.LineNum)),
+		}
 
 		// Need to generate a consistent id for test results.
 		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
@@ -122,6 +124,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	default:
 		return fmt.Errorf("incorrect type '%v' when creating APITest", v)
 	}
+
 	return nil
 }
 
