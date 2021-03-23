@@ -692,19 +692,21 @@ type ComplexityRoot struct {
 	}
 
 	TestResult struct {
-		BaseStatus func(childComplexity int) int
-		Duration   func(childComplexity int) int
-		EndTime    func(childComplexity int) int
-		Execution  func(childComplexity int) int
-		ExitCode   func(childComplexity int) int
-		GroupId    func(childComplexity int) int
-		Id         func(childComplexity int) int
-		LineNum    func(childComplexity int) int
-		Logs       func(childComplexity int) int
-		StartTime  func(childComplexity int) int
-		Status     func(childComplexity int) int
-		TaskId     func(childComplexity int) int
-		TestFile   func(childComplexity int) int
+		BaseStatus      func(childComplexity int) int
+		DisplayTestName func(childComplexity int) int
+		Duration        func(childComplexity int) int
+		EndTime         func(childComplexity int) int
+		Execution       func(childComplexity int) int
+		ExitCode        func(childComplexity int) int
+		GroupId         func(childComplexity int) int
+		Id              func(childComplexity int) int
+		LineNum         func(childComplexity int) int
+		LogTestName     func(childComplexity int) int
+		Logs            func(childComplexity int) int
+		StartTime       func(childComplexity int) int
+		Status          func(childComplexity int) int
+		TaskId          func(childComplexity int) int
+		TestFile        func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -4223,6 +4225,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.BaseStatus(childComplexity), true
 
+	case "TestResult.displayTestName":
+		if e.complexity.TestResult.DisplayTestName == nil {
+			break
+		}
+
+		return e.complexity.TestResult.DisplayTestName(childComplexity), true
+
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
 			break
@@ -4271,6 +4280,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestResult.LineNum(childComplexity), true
+
+	case "TestResult.logTestName":
+		if e.complexity.TestResult.LogTestName == nil {
+			break
+		}
+
+		return e.complexity.TestResult.LogTestName(childComplexity), true
 
 	case "TestResult.logs":
 		if e.complexity.TestResult.Logs == nil {
@@ -5250,6 +5266,7 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
+  displayTestName: String
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -5257,6 +5274,7 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
+  logTestName: String
   lineNum: Int
 }
 
@@ -21611,6 +21629,37 @@ func (ec *executionContext) _TestResult_testFile(ctx context.Context, field grap
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_displayTestName(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayTestName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_logs(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21829,6 +21878,37 @@ func (ec *executionContext) _TestResult_execution(ctx context.Context, field gra
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_logTestName(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LogTestName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestResult_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
@@ -28950,6 +29030,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "displayTestName":
+			out.Values[i] = ec._TestResult_displayTestName(ctx, field, obj)
 		case "logs":
 			out.Values[i] = ec._TestResult_logs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28967,6 +29049,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._TestResult_execution(ctx, field, obj)
+		case "logTestName":
+			out.Values[i] = ec._TestResult_logTestName(ctx, field, obj)
 		case "lineNum":
 			out.Values[i] = ec._TestResult_lineNum(ctx, field, obj)
 		default:
