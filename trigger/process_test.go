@@ -300,7 +300,8 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(upstreamVersion.Insert())
 	downstreamProjectRef := model.ProjectRef{
-		Id:         "downstream",
+		Id:         mgobson.NewObjectId().Hex(),
+		Identifier: "downstream",
 		Enabled:    utility.TruePtr(),
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
@@ -312,11 +313,12 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert())
 	uptreamProjectRef := model.ProjectRef{
-		Id:      "upstream",
-		Enabled: utility.TruePtr(),
-		Owner:   "evergreen-ci",
-		Repo:    "sample",
-		Branch:  "main",
+		Id:         mgobson.NewObjectId().Hex(),
+		Identifier: "upstream",
+		Enabled:    utility.TruePtr(),
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		Branch:     "main",
 	}
 	assert.NoError(uptreamProjectRef.Insert())
 	alias := model.ProjectAlias{

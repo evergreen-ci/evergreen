@@ -326,7 +326,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					},
 				}
 				handler := &tasksByProjectHandler{
-					projectId:  projectName,
+					project:    projectName,
 					commitHash: commit,
 					key:        fmt.Sprintf("task_%d", taskToStartAt),
 					sc:         &serviceContext,
@@ -364,7 +364,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					},
 				}
 				handler := &tasksByProjectHandler{
-					projectId:  projectName,
+					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
 					key:        fmt.Sprintf("task_%d", taskToStartAt),
@@ -402,7 +402,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					},
 				}
 				handler := &tasksByProjectHandler{
-					projectId:  projectName,
+					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
 					key:        fmt.Sprintf("task_%d", taskToStartAt),
@@ -441,7 +441,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				}
 
 				handler := &tasksByProjectHandler{
-					projectId:  projectName,
+					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
 					key:        fmt.Sprintf("task_%d", taskToStartAt),

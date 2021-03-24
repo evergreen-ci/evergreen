@@ -307,9 +307,9 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 }
 
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
-	projectId, err := FindIdForProject(projectName)
+	projectId, err := GetIdForProject(projectName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding id for project '%s'", projectName)
+		return nil, err
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,

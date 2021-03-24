@@ -430,10 +430,15 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 //It finds the version associated with the versionId and gitHash and redirects to /version/{version_id}.
 func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	id := vars["project_id"]
+	project := vars["project_id"]
 	revision := vars["revision"]
 	if len(revision) < 5 {
 		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
+		return
+	}
+	id, err := model.GetIdForProject(project)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	foundVersions, err := model.VersionFind(model.VersionByProjectIdAndRevisionPrefix(id, revision).Limit(2))
@@ -442,11 +447,11 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(foundVersions) == 0 {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", project, revision))
 		return
 	}
 	if len(foundVersions) > 1 {
-		gimlet.WriteJSONError(w, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Multiple versions found: %v - %v", project, revision))
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/version/%v", foundVersions[0].Id), http.StatusFound)

@@ -98,7 +98,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 		}
 	}
 	if s.ownerType == string(event.OwnerTypeProject) {
-		id, err := dbModel.FindIdForProject(s.owner)
+		id, err := dbModel.GetIdForProject(s.owner)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,

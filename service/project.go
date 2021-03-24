@@ -948,7 +948,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	MustHaveUser(r)
 
-	id := gimlet.GetVars(r)["project_id"]
+	project := gimlet.GetVars(r)["project_id"]
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -965,19 +965,20 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	projectRef, err := model.FindOneProjectRef(project)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	// update the latest revision to be the revision id
-	err = model.UpdateLastRevision(id, revision)
+	err = model.UpdateLastRevision(projectRef.Id, revision)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	// update the projectRef too
-	projectRef, err := model.FindOneProjectRef(id)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
 	projectRef.RepotrackerError.Exists = false
 	projectRef.RepotrackerError.InvalidRevision = ""
 	projectRef.RepotrackerError.MergeBaseRevision = ""

@@ -483,7 +483,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	}
 	var hasAliases bool
 	var remotePath string
-	hasAliases, remotePath, err = gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.String(), tag.Tag)
+	hasAliases, remotePath, err = gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {
 		return nil, err
 	}

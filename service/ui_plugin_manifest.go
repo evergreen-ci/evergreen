@@ -14,7 +14,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 	project := vars["project_id"]
 	revision := vars["revision"]
 
-	projectId, err := model.FindIdForProject(project)
+	projectId, err := model.GetIdForProject(project)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

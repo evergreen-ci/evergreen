@@ -738,7 +738,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
-func FindIdForProject(identifier string) (string, error) {
+func GetIdForProject(identifier string) (string, error) {
 	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
 		return "", err
@@ -1261,11 +1261,6 @@ func (projectRef *ProjectRef) Upsert() error {
 	return err
 }
 
-// ProjectRef returns a string representation of a ProjectRef
-func (projectRef *ProjectRef) String() string {
-	return projectRef.Id
-}
-
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
 func (p *ProjectRef) getBatchTimeForVariant(variant *BuildVariant) int {
 	val := p.BatchTime
@@ -1713,7 +1708,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.New("a project cannot trigger itself")
 	}
 
-	childProjectId, err := FindIdForProject(definition.ChildProject)
+	childProjectId, err := GetIdForProject(definition.ChildProject)
 	if err != nil {
 		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
 	}

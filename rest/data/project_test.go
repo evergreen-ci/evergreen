@@ -107,6 +107,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			{Id: "projectD", Private: utility.FalsePtr()},
 			{Id: "projectE", Private: utility.FalsePtr()},
 			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: projectId},
 		}
 
 		for _, p := range projects {
@@ -241,6 +242,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Id: "projectD", Private: utility.FalsePtr()},
 				{Id: "projectE", Private: utility.FalsePtr()},
 				{Id: "projectF", Private: utility.TruePtr()},
+				{Id: projectId},
 			},
 			CachedEvents: projectEvents,
 			CachedVars: []*model.ProjectVars{
@@ -272,17 +274,17 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
-	projects, err := s.ctx.FindProjects("", 7, 1)
+	projects, err := s.ctx.FindProjects("", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 6)
+	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
-	projects, err := s.ctx.FindProjects("zzz", 7, -1)
+	projects, err := s.ctx.FindProjects("zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 6)
+	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
