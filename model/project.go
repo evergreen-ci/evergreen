@@ -850,8 +850,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("revision", t.Revision)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
-	expansions.Put("project", projectRef.Id)
-	expansions.Put("project_identifier", projectRef.Identifier)
+	expansions.Put("project", projectRef.Identifier)
+	expansions.Put("project_identifier", projectRef.Identifier) // TODO: depreciate
+	expansions.Put("project_id", projectRef.Id)
 
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)

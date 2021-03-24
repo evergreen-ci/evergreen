@@ -1403,7 +1403,7 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		path:   fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
 	}
 
-	resp, err := c.request(ctx, info, "")
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending request to get versions")
 	}
