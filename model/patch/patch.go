@@ -574,6 +574,19 @@ func (p *Patch) SetActivation(activated bool) error {
 	)
 }
 
+// SetActivated sets the patch status in the db
+func (p *Patch) SetStatus(status string) error {
+	p.Status = status
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: status,
+			},
+		},
+	)
+}
+
 // UpdateModulePatch adds or updates a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// update the in-memory patch

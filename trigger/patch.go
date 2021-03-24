@@ -118,6 +118,49 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 	}
 
+	if t.patch.IsParent() || t.patch.IsChild() {
+		// check that the parent and all children are done. only the last patch to finish should send the notification
+		var childrenOrSiblings []string
+		var collectiveStatus string
+		if t.patch.IsParent() {
+			childrenOrSiblings = t.patch.Triggers.ChildPatches
+		} else {
+			parentPatchId := t.patch.Triggers.ParentPatch
+			parentPatch, err := patch.FindOneId(parentPatchId)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't get parent patch")
+			}
+			if parentPatch == nil {
+				return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+			}
+			if parentPatch.Status != evergreen.PatchSucceeded && parentPatch.Status != evergreen.PatchFailed {
+				// We want to make sure that the children didn't finish before the parent
+				return nil, nil
+			}
+			collectiveStatus = parentPatch.Status
+			childrenOrSiblings = parentPatch.Triggers.ChildPatches
+		}
+		for _, childPatch := range childrenOrSiblings {
+			childPatchDoc, err := patch.FindOneId(childPatch)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
+			}
+			if childPatchDoc == nil {
+				continue
+			}
+			if childPatchDoc.Status != evergreen.PatchSucceeded && childPatchDoc.Status != evergreen.PatchFailed {
+				// if any child is not done yet, we want to return nothing and wait for the patch that is last to complete
+				return nil, nil
+			} else if childPatchDoc.Status == evergreen.PatchFailed {
+				collectiveStatus = evergreen.PatchFailed
+			}
+		}
+		//no unfinished patches left
+		err := t.patch.SetStatus(collectiveStatus)
+		if err != nil {
+			return nil, errors.Wrap(err, "error setting status")
+		}
+	}
 	return t.generate(sub)
 }
 
