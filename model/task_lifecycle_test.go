@@ -770,10 +770,6 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 
 	assert.NoError(t, updateVersionGithubStatus(v, builds))
 
-	v, err := VersionFindOneId(versionID)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.VersionSucceeded, v.GithubCheckStatus)
-
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
