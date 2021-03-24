@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -326,7 +327,7 @@ func getLimit(vals url.Values) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /users/{user_id}/offboard_user
+// POST /users/offboard_user
 
 func makeOffboardUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &offboardUserHandler{
@@ -351,7 +352,22 @@ func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
 }
 
 func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error {
-	ch.user = gimlet.GetVars(r)["user_id"]
+	input := struct {
+		Email string `json:"email" bson:"email"`
+	}{}
+	err := utility.ReadJSON(r.Body, &input)
+	if err != nil {
+		return errors.Wrap(err, "error reading input")
+	}
+	// get the username from the email
+	splitString := strings.Split(input.Email, "@")
+	if len(splitString) == 0 {
+		return gimlet.ErrorResponse{
+			Message:    "email is malformed",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	ch.user = splitString[0]
 	if ch.user == "" {
 		return gimlet.ErrorResponse{
 			Message:    "user cannot be empty",
@@ -463,7 +479,13 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if catcher.HasErrors() {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(catcher.Resolve(), "not all unexpirable hosts/volumes terminated"))
+		err := catcher.Resolve()
+		grip.CriticalWhen(!ch.dryRun, message.WrapError(err, message.Fields{
+			"message": "not all unexpirable hosts/volumes terminated",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "not all unexpirable hosts/volumes terminated"))
 	}
 
 	return gimlet.NewJSONResponse(toTerminate)

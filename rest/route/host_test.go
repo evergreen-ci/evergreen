@@ -851,19 +851,24 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, h1.Insert())
 	assert.NoError(t, h2.Insert())
 	assert.NoError(t, v1.Insert())
+
 	handler := offboardUserHandler{
-		sc:     &data.DBConnector{},
-		dryRun: true,
-		user:   "user0",
+		sc: &data.DBConnector{},
 	}
-	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	json := []byte(`{"email": "user0@mongodb.com"}`)
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"})
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	assert.NoError(t, handler.Parse(ctx, req))
+	assert.Equal(t, "user0", handler.user)
+	assert.True(t, handler.dryRun)
+	resp := handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
 	res, ok := resp.Data().(model.APIOffboardUserResults)
 	assert.True(t, ok)
 	require.Len(t, res.TerminatedHosts, 1)
-	assert.Equal(t, res.TerminatedHosts[0], "h1")
+	assert.Equal(t, "h1", res.TerminatedHosts[0])
 	require.Len(t, res.TerminatedVolumes, 1)
-	assert.Equal(t, res.TerminatedVolumes[0], "v1")
+	assert.Equal(t, "v1", res.TerminatedVolumes[0])
 }
 
 func TestRemoveAdminHandler(t *testing.T) {
