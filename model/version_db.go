@@ -47,7 +47,6 @@ var (
 	VersionTriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
 	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
 	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
-	VersionGithubCheckStatusKey   = bsonutil.MustHaveTag(Version{}, "GithubCheckStatus")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}

@@ -934,15 +934,11 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 	githubBuildStatus := getVersionStatus(githubStatusBuilds)
 
-	if githubBuildStatus == v.GithubCheckStatus {
-		return nil
-	}
-
 	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
 		event.LogVersionGithubCheckFinishedEvent(v.Id, githubBuildStatus)
 	}
 
-	return v.UpdateGithubCheckStatus(githubBuildStatus)
+	return nil
 }
 
 // Update the status of the version based on its constituent builds
