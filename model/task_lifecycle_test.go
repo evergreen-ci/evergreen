@@ -1003,8 +1003,8 @@ func TestMarkEnd(t *testing.T) {
 	}
 	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, false))
 	b, err := build.FindOneId(b.Id)
-	So(err, ShouldBeNil)
-	So(b.Status, ShouldEqual, evergreen.BuildFailed)
+	assert.NoError(err)
+	assert.Equal(evergreen.BuildFailed, b.Status)
 
 	Convey("with a task that is part of a display task", t, func() {
 		p := &Project{
@@ -1038,6 +1038,7 @@ func TestMarkEnd(t *testing.T) {
 			Activated: true,
 			BuildId:   b.Id,
 			Status:    evergreen.TaskStarted,
+			Version:   "version1",
 		}
 		So(t1.Insert(), ShouldBeNil)
 
