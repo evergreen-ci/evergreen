@@ -527,12 +527,7 @@ func (p *Patch) UpdateStatus(newStatus string) error {
 			StatusKey: newStatus,
 		},
 	}
-	err := UpdateOne(bson.M{IdKey: p.Id}, update)
-	if err != nil {
-		return errors.Wrap(err, "updating patch status")
-	}
-
-	return nil
+	return UpdateOne(bson.M{IdKey: p.Id}, update)
 }
 
 func (p *Patch) MarkFinished(status string, finishTime time.Time) error {

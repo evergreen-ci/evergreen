@@ -189,7 +189,7 @@ func (b *Build) UpdateGithubCheckStatus(status string) error {
 	)
 }
 
-func (b *Build) SetGithubIsGithubCheck() error {
+func (b *Build) SetIsGithubCheck() error {
 	b.IsGithubCheck = true
 	return UpdateOne(
 		bson.M{IdKey: b.Id},

@@ -572,7 +572,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 	for _, t := range tasks {
 		if t.IsGithubCheck {
-			if err = b.SetGithubIsGithubCheck(); err != nil {
+			if err = b.SetIsGithubCheck(); err != nil {
 				return nil, nil, errors.Wrapf(err, "setting build '%s' IsGithubCheck", b.Id)
 			}
 			break

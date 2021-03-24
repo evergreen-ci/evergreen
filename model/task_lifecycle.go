@@ -807,6 +807,7 @@ func getBuildStatus(buildTasks []task.Task) string {
 	for _, t := range buildTasks {
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
 			noStartedTasks = false
+			break
 		}
 	}
 	if noStartedTasks {
@@ -895,6 +896,7 @@ func getVersionStatus(builds []build.Build) string {
 	for _, b := range builds {
 		if b.Status != evergreen.BuildCreated {
 			noStartedBuilds = false
+			break
 		}
 	}
 	if noStartedBuilds {
@@ -998,6 +1000,9 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	return nil
 }
 
+// UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
+// and the task's version based on all the builds in the version.
+// Also update build and version Github statuses based on the subset of tasks and builds included in github checks
 func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	taskBuild, err := build.FindOneId(t.BuildId)
 	if err != nil {
