@@ -838,6 +838,10 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 			githubStatusTasks = append(githubStatusTasks, t)
 		}
 	}
+	if len(githubStatusTasks) == 0 {
+		return nil
+	}
+
 	githubBuildStatus := getBuildStatus(githubStatusTasks)
 
 	if githubBuildStatus == b.GithubCheckStatus {
@@ -923,6 +927,10 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 			githubStatusBuilds = append(githubStatusBuilds, b)
 		}
 	}
+	if len(githubStatusBuilds) == 0 {
+		return nil
+	}
+
 	githubBuildStatus := getVersionStatus(githubStatusBuilds)
 
 	if githubBuildStatus == v.GithubCheckStatus {
