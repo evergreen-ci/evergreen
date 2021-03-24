@@ -613,8 +613,9 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
+      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
@@ -627,11 +628,12 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - archlinux-test
-      - archlinux-build
+      - archlinux-small
+      - archlinux-large
     expansions:
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
+      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -641,22 +643,24 @@ buildvariants:
   - name: lint
     display_name: Lint
     run_on:
-      - archlinux-test
-      - archlinux-build
+      - archlinux-small
+      - archlinux-large
     expansions:
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
+      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
     tasks:
       - name: generate-lint
 
   - name: coverage
     display_name: Coverage
     run_on:
-      - archlinux-test
-      - archlinux-build
+      - archlinux-small
+      - archlinux-large
     expansions:
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
+      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
+      gobin: /opt/golang/go1.13/bin/go
+      goroot: /opt/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:

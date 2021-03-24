@@ -201,7 +201,7 @@ generate-rest-model:$(buildDir)/codegen
 	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
 $(buildDir)/codegen:
 	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
-#end generate rest model
+# end generate rest model
 
 # parse a host.create file and set expansions
 parse-host-file:$(buildDir)/parse-host-file
