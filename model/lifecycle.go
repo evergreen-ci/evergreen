@@ -570,9 +570,12 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
-	if b.IsGithubCheck {
-		if err = b.SetGithubIsGithubCheck(); err != nil {
-			return nil, nil, errors.Wrapf(err, "setting build '%s' IsGithubCheck", b.Id)
+	for _, t := range tasks {
+		if t.IsGithubCheck {
+			if err = b.SetGithubIsGithubCheck(); err != nil {
+				return nil, nil, errors.Wrapf(err, "setting build '%s' IsGithubCheck", b.Id)
+			}
+			break
 		}
 	}
 
@@ -715,6 +718,13 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime, args.GithubChecksAliases)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
+	}
+
+	for _, t := range tasksForBuild {
+		if t.IsGithubCheck {
+			b.IsGithubCheck = true
+		}
+		break
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -871,10 +881,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			if len(cmds) != 0 {
 				newTask.CanSync = true
 			}
-		}
-
-		if newTask.IsGithubCheck {
-			b.IsGithubCheck = true
 		}
 
 		taskMap[newTask.Id] = newTask
