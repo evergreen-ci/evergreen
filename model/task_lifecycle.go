@@ -232,19 +232,18 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		} else {
 			grip.Debugln(msg, "marking as failed")
 			if detail != nil {
-				updates := StatusChanges{}
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOne(task.ById(etId))
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
-						if err = MarkEnd(execTask, origin, time.Now(), detail, false, &updates); err != nil {
+						if err = MarkEnd(execTask, origin, time.Now(), detail, false); err != nil {
 							return errors.Wrap(err, "error marking execution task as ended")
 						}
 					}
 				}
-				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
+				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -454,7 +453,7 @@ func doStepback(t *task.Task) error {
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	deactivatePrevious bool, updates *StatusChanges) error {
+	deactivatePrevious bool) error {
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
@@ -1331,7 +1330,6 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
-		updates := StatusChanges{}
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				var execTask *task.Task
@@ -1342,12 +1340,12 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				if execTask == nil {
 					return errors.New("execution task not found")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates); err != nil {
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false, &updates))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
 	if t.IsPartOfDisplay() {
