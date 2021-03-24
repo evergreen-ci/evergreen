@@ -137,15 +137,6 @@ func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
 	})
 }
 
-func hasViewPermission(u gimlet.User, project *model.ProjectRef) bool {
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      project.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsView.Value,
-	})
-}
-
 func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := gimlet.GetUser(r.Context())
