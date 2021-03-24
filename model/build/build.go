@@ -189,6 +189,14 @@ func (b *Build) UpdateGithubCheckStatus(status string) error {
 	)
 }
 
+func (b *Build) SetGithubIsGithubCheck() error {
+	b.IsGithubCheck = true
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{IsGithubCheckKey: true}},
+	)
+}
+
 // UpdateMakespans sets the builds predicted and actual makespans to given durations
 func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration) error {
 	b.PredictedMakespan = predictedMakespan

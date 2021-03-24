@@ -664,6 +664,12 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
+	if b.IsGithubCheck {
+		if err = b.SetGithubIsGithubCheck(); err != nil {
+			return nil, nil, errors.Wrapf(err, "setting build '%s' IsGithubCheck", b.Id)
+		}
+	}
+
 	// update the build to hold the new tasks
 	if err = RefreshTasksCache(b.Id); err != nil {
 		return nil, nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
