@@ -206,30 +206,9 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		githubDescription: "tasks are running",
 	}
 
-	grip.Info(message.Fields{
-		"message":           "ChayaMTesting trigger/patch.go makeData 210",
-		"data":              data,
-		"t":                 t,
-		"t.patch":           t.patch,
-		"t.patch.IsChild()": t.patch.IsChild(),
-	})
-
 	if t.patch.IsChild() {
-		GitHashLastFour := t.patch.Githash[len(t.patch.Githash)-4:]
-		data.githubContext = fmt.Sprintf("evergreen/%s/%s", t.patch.Project, GitHashLastFour)
-
 		lastFourPatchID := t.patch.Id.Hex()[len(t.patch.Id.Hex())-4:]
-		grip.Info(message.Fields{
-			"message":           "ChayaMTesting trigger/patch.go makeData 222",
-			"data":              data,
-			"t":                 t,
-			"t.patch":           t.patch,
-			"t.patch.IsChild()": t.patch.IsChild(),
-			"GitHashLastFour":   GitHashLastFour,
-			"lastFourPatchID":   lastFourPatchID,
-			"t.patch.Project":   t.patch.Project,
-			"contextBeingSet":   fmt.Sprintf("evergreen/%s/%s", t.patch.Project, GitHashLastFour),
-		})
+		data.githubContext = fmt.Sprintf("evergreen/%s/%s", t.patch.Project, lastFourPatchID)
 	} else {
 		data.githubContext = "evergreen"
 	}
