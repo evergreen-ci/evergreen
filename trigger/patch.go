@@ -203,9 +203,16 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
-		githubContext:     "evergreen",
 		githubDescription: "tasks are running",
 	}
+
+	if t.patch.IsChild() {
+		GitHashLastFour := t.patch.Githash[len(t.patch.Githash)-4:]
+		data.githubContext = fmt.Sprintf("evergreen/%s/%s", t.patch.GithubPatchData.BaseBranch, GitHashLastFour)
+	} else {
+		data.githubContext = "evergreen"
+	}
+
 	slackColor := evergreenFailColor
 	finishTime := t.patch.FinishTime
 	if utility.IsZeroTime(finishTime) {

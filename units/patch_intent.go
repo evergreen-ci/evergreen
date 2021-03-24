@@ -359,6 +359,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if err = buildSub.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}
+		if patchDoc.IsParent() {
+			for _, childPatch := range patchDoc.Triggers.ChildPatches {
+				patchSub := event.NewExpiringPatchOutcomeSubscription(childPatch, ghSub)
+				if err = patchSub.Upsert(); err != nil {
+					catcher.Add(errors.Wrap(err, "failed to insert child patch subscription for Github PR"))
+				}
+			}
+		}
 	}
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
