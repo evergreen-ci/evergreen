@@ -118,48 +118,48 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 	}
 
-	if t.patch.IsParent() || t.patch.IsChild() {
-		// check that the parent and all children are done. only the last patch to finish should send the notification
-		var childrenOrSiblings []string
-		var collectiveStatus string
-		if t.patch.IsParent() {
-			childrenOrSiblings = t.patch.Triggers.ChildPatches
-		} else {
-			parentPatchId := t.patch.Triggers.ParentPatch
-			parentPatch, err := patch.FindOneId(parentPatchId)
-			if err != nil {
-				return nil, errors.Wrap(err, "can't get parent patch")
-			}
-			if parentPatch == nil {
-				return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
-			}
-			if parentPatch.Status != evergreen.PatchSucceeded && parentPatch.Status != evergreen.PatchFailed {
-				// We want to make sure that the children didn't finish before the parent
-				return nil, nil
-			}
-			collectiveStatus = parentPatch.Status
-			childrenOrSiblings = parentPatch.Triggers.ChildPatches
-		}
-		for _, childPatch := range childrenOrSiblings {
-			childPatchDoc, err := patch.FindOneId(childPatch)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
-			}
-			if childPatchDoc == nil {
-				continue
-			}
-			if childPatchDoc.Status != evergreen.PatchSucceeded && childPatchDoc.Status != evergreen.PatchFailed {
-				// if any child is not done yet, we want to return nothing and wait for the patch that is last to complete
-				return nil, nil
-			} else if childPatchDoc.Status == evergreen.PatchFailed {
-				collectiveStatus = evergreen.PatchFailed
-			}
-		}
-		//no unfinished patches left
-		err := t.patch.SetStatus(collectiveStatus)
+	if t.patch.IsParent() || (t.patch.IsChild() && sub.Subscriber.Type == event.ParentWaitOnChildSubscriberType) {
+		// get the children or siblings to wait on
+		childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
 		if err != nil {
-			return nil, errors.Wrap(err, "error setting status")
+			return nil, errors.Wrap(err, "error getting child or sibling patches")
 		}
+
+		childrenStatus, unreadyChild, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting child or sibling information")
+		}
+		//make sure the children or siblings are done before sending the notification
+		if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+			parentId := t.patch.Id.Hex()
+			if t.patch.IsChild() {
+				parentId = parentPatch.Id.Hex()
+			}
+			// if there is still a child or sibling that's not done, subscribe on it and don't create the notification
+			err = subscribeOnChild(parentId, unreadyChild.Id.Hex(), sub)
+			if err != nil {
+				return nil, errors.Wrap(err, "error subscribing on child patch")
+			}
+			return nil, nil
+		}
+
+		if childrenStatus == evergreen.PatchFailed {
+			t.data.Status = evergreen.PatchFailed
+		}
+
+		// convert the subscription to the right type
+		if sub.Subscriber.Type == event.ParentWaitOnChildSubscriberType {
+			t.patch = parentPatch
+			target, ok := sub.Subscriber.Target.(*event.ParentWaitOnChildSubscriber)
+			if !ok {
+				return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
+			}
+			target.OriginalSub.LastUpdated = time.Now()
+
+			newSub := event.NewExpiringPatchOutcomeSubscription(parentPatch.Id.Hex(), target.OriginalSub.Subscriber)
+			return t.generate(&newSub)
+		}
+
 	}
 	return t.generate(sub)
 }
@@ -170,6 +170,42 @@ func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Not
 	}
 
 	return t.generate(sub)
+}
+
+func getChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, *patch.Patch, error) {
+	childrenStatus := evergreen.PatchSucceeded
+	for _, childPatch := range childrenOrSiblings {
+		childPatchDoc, err := patch.FindOneId(childPatch)
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
+		}
+		if childPatchDoc == nil {
+			return "", nil, errors.Wrapf(err, "child patch '%s' not found", childPatch)
+		}
+		if childPatchDoc.Status == evergreen.PatchFailed {
+			childrenStatus = evergreen.PatchFailed
+		}
+		if !evergreen.IsFinishedPatchStatus(childPatchDoc.Status) {
+			return childPatchDoc.Status, childPatchDoc, nil
+		}
+	}
+	return childrenStatus, nil, nil
+
+}
+
+func subscribeOnChild(parentId, childPatchId string, sub *event.Subscription) error {
+	waitOnChildSubscriber := event.NewParentWaitOnChildSubscriber(event.ParentWaitOnChildSubscriber{
+		ParentPatchId: parentId,
+		ChildPatchId:  childPatchId,
+		Requester:     "patch_outcome_notification",
+		OriginalSub:   sub,
+	})
+	childPatchSub := event.NewExpiringPatchOutcomeSubscription(childPatchId, waitOnChildSubscriber)
+	err := childPatchSub.Upsert()
+	if err != nil {
+		return errors.Wrapf(err, "failed to insert patch subscription for child patch %s", childPatchId)
+	}
+	return nil
 }
 
 func finalizeChildPatch(sub *event.Subscription) error {
@@ -306,7 +342,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			},
 		},
 	})
-
 	return &data, nil
 }
 
@@ -320,6 +355,5 @@ func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notific
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}
-
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }

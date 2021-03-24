@@ -13,6 +13,7 @@ import (
 const (
 	GithubPullRequestSubscriberType = "github_pull_request"
 	GithubCheckSubscriberType       = "github_check"
+	ParentWaitOnChildSubscriberType = "parent_wait_on_child"
 	JIRAIssueSubscriberType         = "jira-issue"
 	JIRACommentSubscriberType       = "jira-comment"
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
@@ -26,6 +27,7 @@ const (
 var SubscriberTypes = []string{
 	GithubPullRequestSubscriberType,
 	GithubCheckSubscriberType,
+	ParentWaitOnChildSubscriberType,
 	JIRAIssueSubscriberType,
 	JIRACommentSubscriberType,
 	EvergreenWebhookSubscriberType,
@@ -70,6 +72,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &GithubPullRequestSubscriber{}
 	case GithubCheckSubscriberType:
 		s.Target = &GithubCheckSubscriber{}
+	case ParentWaitOnChildSubscriberType:
+		s.Target = &ParentWaitOnChildSubscriber{}
 	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 	case JIRAIssueSubscriberType:
@@ -153,16 +157,24 @@ type GithubPullRequestSubscriber struct {
 	Repo     string `bson:"repo"`
 	PRNumber int    `bson:"pr_number"`
 	Ref      string `bson:"ref"`
+	ChildId  string `bson:"child"`
 }
 
 func (s *GithubPullRequestSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
+	return fmt.Sprintf("%s-%s-%d-%s-%s", s.Owner, s.Repo, s.PRNumber, s.Ref, s.ChildId)
 }
 
 type GithubCheckSubscriber struct {
 	Owner string `bson:"owner"`
 	Repo  string `bson:"repo"`
 	Ref   string `bson:"ref"`
+}
+
+type ParentWaitOnChildSubscriber struct {
+	ParentPatchId string        `bson:"parent_status"`
+	ChildPatchId  string        `bson:"child_patch_id"`
+	Requester     string        `bson:"requester"`
+	OriginalSub   *Subscription `bson:"original_sub"`
 }
 
 type ChildPatchSubscriber struct {
@@ -192,6 +204,13 @@ func NewRunChildPatchSubscriber(s ChildPatchSubscriber) Subscriber {
 func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubPullRequestSubscriberType,
+		Target: s,
+	}
+}
+
+func NewParentWaitOnChildSubscriber(s ParentWaitOnChildSubscriber) Subscriber {
+	return Subscriber{
+		Type:   ParentWaitOnChildSubscriberType,
 		Target: s,
 	}
 }

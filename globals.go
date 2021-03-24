@@ -277,6 +277,10 @@ func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
+func IsFinishedPatchStatus(status string) bool {
+	return status == PatchFailed || status == PatchSucceeded
+}
+
 // evergreen package names
 const (
 	UIPackage      = "EVERGREEN_UI"
