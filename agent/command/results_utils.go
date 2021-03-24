@@ -172,6 +172,7 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 			DisplayTestName: r.DisplayTestName,
 			GroupID:         r.GroupID,
 			Status:          r.Status,
+			LogTestName:     r.LogTestName,
 			LineNum:         int32(r.LineNum),
 			TaskCreated:     t.CreateTime,
 			TestStarted:     time.Unix(int64(r.StartTime), 0),

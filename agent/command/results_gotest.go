@@ -128,7 +128,7 @@ func parseTestOutput(ctx context.Context, conf *internal.TaskConfig, report io.R
 		Lines:         logLines,
 	}
 
-	return testLog, ToModelTestResults(parser.Results()).Results, nil
+	return testLog, ToModelTestResults(parser.Results(), suiteName).Results, nil
 }
 
 // parseTestOutputFiles parses all of the files that are passed in, and returns

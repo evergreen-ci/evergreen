@@ -363,7 +363,8 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url = prefix + testResult.log_id + lineNum;
       }
     } else if (url == '') {
-      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + testResult.test_file;
+      var test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
+      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + test_name;
       if (isRaw) {
           url  += raw;
       } else {

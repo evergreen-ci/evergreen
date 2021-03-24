@@ -1241,9 +1241,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 		for _, t := range paginatedFilteredTests {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
@@ -1269,9 +1271,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 
 			testPointers = append(testPointers, &apiTest)
