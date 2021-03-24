@@ -13,7 +13,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -42,10 +41,6 @@ type projectContext struct {
 
 	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
 	AuthRedirect bool
-
-	// IsAdmin indicates if the user is an admin for at least one of the projects
-	// listed in AllProjects.
-	IsAdmin bool
 
 	PluginNames []string
 }
@@ -260,7 +255,6 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 
 // populateProjectRefs loads all project refs into the context. If includePrivate is true,
 // all available projects will be included, otherwise only public projects will be loaded.
-// Sets IsAdmin to true if the user id is located in a project's admin list.
 func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.User) error {
 	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
@@ -269,16 +263,6 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.U
 	pc.AllProjects = make([]restModel.UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
-		isAdmin := user != nil && user.HasPermission(gimlet.PermissionOpts{
-			Resource:      p.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-		})
-		if includePrivate && isAdmin {
-			pc.IsAdmin = true
-		}
-
 		if !p.IsEnabled() {
 			continue
 		}
@@ -322,9 +306,6 @@ func (uis *UIServer) getRequestProjectId(r *http.Request) string {
 // This is done by reading in specific variables and inferring other required
 // context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
-	id := utility.RandomString()
-	start := time.Now()
-	begin := start
 	dbUser := gimlet.GetUser(r.Context())
 	if dbUser == nil {
 		dbUser = &user.DBUser{
@@ -337,29 +318,12 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"id":          id,
-		"step":        "GetUser",
-		"func":        "LoadProjectContext",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	start = time.Now()
 
 	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
 	err := pc.populateProjectRefs(dbUser != nil, dbUser)
 	if err != nil {
 		return pc, err
 	}
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"id":          id,
-		"step":        "populateProjectRefs",
-		"func":        "LoadProjectContext",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	start = time.Now()
-
 	requestProjectId := uis.getRequestProjectId(r)
 	projectId := ""
 	for _, p := range pc.AllProjects {
@@ -395,14 +359,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			}
 		}
 	}
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"id":          id,
-		"step":        "HasPermission",
-		"func":        "LoadProjectContext",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	start = time.Now()
 
 	// Build a model.Context using the data available.
 	ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
@@ -411,10 +367,8 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return pc, err
 	}
 
-	tempProject := ""
 	// set the cookie for the next request if a project was found
 	if ctx.ProjectRef != nil {
-		tempProject = ctx.ProjectRef.Id
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
 			Value:   ctx.ProjectRef.Id,
@@ -422,22 +376,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"id":          id,
-		"step":        "LoadContext",
-		"func":        "LoadProjectContext",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"id":          id,
-		"step":        "total",
-		"project":     tempProject,
-		"func":        "LoadProjectContext",
-		"duration_ns": time.Since(begin).Nanoseconds(),
-	})
 
 	return pc, nil
 }
