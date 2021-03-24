@@ -2740,15 +2740,15 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(MarkEnd(exeTask1, "", time.Now(), details, false))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
-	assert.Equal(evergreen.VersionSucceeded, v.Status)
+	assert.Equal(evergreen.VersionFailed, v.Status)
 
 	b, err = build.FindOneId(b.Id)
 	assert.NoError(err)
-	assert.Equal(evergreen.BuildSucceeded, b.Status)
+	assert.Equal(evergreen.BuildFailed, b.Status)
 
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
-	assert.Len(e, 10)
+	assert.Len(e, 7)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
@@ -2824,7 +2824,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
-	assert.Equal(evergreen.VersionSucceeded, v.Status)
+	assert.Equal(evergreen.VersionFailed, v.Status)
 
 	b, err = build.FindOneId(b.Id)
 	assert.NoError(err)
@@ -2908,7 +2908,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
-	assert.Equal(evergreen.VersionSucceeded, v.Status)
+	assert.Equal(evergreen.VersionFailed, v.Status)
 
 	b, err = build.FindOneId(b.Id)
 	assert.NoError(err)
@@ -2929,6 +2929,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		BuildId:       "b",
+		Version:       "version",
 	}
 	assert.NoError(runningTask.Insert())
 
