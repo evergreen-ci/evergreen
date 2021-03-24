@@ -923,3 +923,44 @@ func MakeRoleWithPermissions(rm gimlet.RoleManager, resourceType string, resourc
 
 	return &newRole, nil
 }
+
+// FindAllowedResources takes a list of roles and a permission to check in those roles. It returns
+// a list of all resources that the given roles have access to with the given permission check.
+// It answers the question "Given this list of roles (likely from a single user), what resources
+// can they access, given this permission check?"
+func FindAllowedResources(ctx context.Context, rm gimlet.RoleManager, roles []string, resourceType, requiredPermission string, requiredLevel int) ([]string, error) {
+	if resourceType == "" {
+		return nil, errors.New("must specify a resource type")
+	}
+	if requiredPermission == "" {
+		return nil, errors.New("must specify a required permission")
+	}
+	allowedResources := map[string]bool{}
+	roleDocs, err := rm.GetRoles(roles)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting roles")
+	}
+	for _, role := range roleDocs {
+		level := role.Permissions[requiredPermission]
+		if level < requiredLevel {
+			continue
+		}
+		scope, err := rm.GetScope(ctx, role.Scope)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to get scope '%s'", role.Scope)
+		}
+		if scope == nil {
+			return nil, errors.Errorf("scope '%s' not found", role.Scope)
+		}
+		if scope.Type == resourceType {
+			for _, resource := range scope.Resources {
+				allowedResources[resource] = true
+			}
+		}
+	}
+	deduplicatedResources := []string{}
+	for resource := range allowedResources {
+		deduplicatedResources = append(deduplicatedResources, resource)
+	}
+	return deduplicatedResources, nil
+}

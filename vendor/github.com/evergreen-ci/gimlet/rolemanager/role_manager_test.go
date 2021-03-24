@@ -606,3 +606,37 @@ func (s *RoleManagerSuite) TestHasPermission() {
 	s.False(gimlet.HasPermission(s.m, opts, []gimlet.Role{noPermission}))
 	s.True(gimlet.HasPermission(s.m, opts, []gimlet.Role{hasPermission}))
 }
+
+func (s *RoleManagerSuite) TestFindAllowedResources() {
+	roles := []gimlet.Role{
+		{ID: "1", Scope: "1", Permissions: gimlet.Permissions{"read": 10}},
+		{ID: "all", Scope: "root", Permissions: gimlet.Permissions{"read": 10}},
+		{ID: "no_permissions", Scope: "root", Permissions: gimlet.Permissions{}},
+	}
+	for _, role := range roles {
+		s.NoError(s.m.UpdateRole(role))
+	}
+	ctx := context.Background()
+
+	resources, err := FindAllowedResources(ctx, s.m, []string{"1"}, "project", "read", 10)
+	s.NoError(err)
+	s.Len(resources, 2)
+	s.Contains(resources, "resource1")
+	s.Contains(resources, "resource2")
+
+	resources, err = FindAllowedResources(ctx, s.m, []string{"1", "all"}, "project", "read", 10)
+	s.NoError(err)
+	s.Len(resources, 4)
+	s.Contains(resources, "resource1")
+	s.Contains(resources, "resource2")
+	s.Contains(resources, "resource3")
+	s.Contains(resources, "resource4")
+
+	resources, err = FindAllowedResources(ctx, s.m, []string{"no_permissions"}, "project", "read", 10)
+	s.NoError(err)
+	s.Len(resources, 0)
+
+	resources, err = FindAllowedResources(ctx, s.m, []string{}, "project", "read", 10)
+	s.NoError(err)
+	s.Len(resources, 0)
+}

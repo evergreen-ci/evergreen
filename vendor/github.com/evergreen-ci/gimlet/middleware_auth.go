@@ -291,6 +291,7 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 	if ok := rp.checkPermissions(rw, r.Context(), resources); !ok {
 		return
 	}
+
 	next(rw, r)
 }
 

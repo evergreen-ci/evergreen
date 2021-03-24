@@ -27,18 +27,16 @@ import (
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
 func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
-	allProjects, err := model.FindAllMergedProjectRefs()
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	projectIds, err := rolemanager.FindAllowedResources(ctx, env.RoleManager(), u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+
+	projects, err := model.FindProjectRefsByIds(projectIds)
 	if err != nil {
 		return nil, err
 	}
-	authorizedProjects := []model.ProjectRef{}
-	// only returns projects for which the user is authorized to see.
-	for _, project := range allProjects {
-		if hasViewPermission(u, &project) {
-			authorizedProjects = append(authorizedProjects, project)
-		}
-	}
-	return authorizedProjects, nil
+	return projects, nil
 
 }
 
