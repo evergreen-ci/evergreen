@@ -208,7 +208,15 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 
 	if t.patch.IsChild() {
 		lastFourPatchID := t.patch.Id.Hex()[len(t.patch.Id.Hex())-4:]
-		data.githubContext = fmt.Sprintf("evergreen/%s/%s", t.patch.Project, lastFourPatchID)
+		pRef, err := model.FindOneProjectRef(t.patch.Project)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to find project ref")
+		}
+		if pRef == nil {
+			return nil, errors.Errorf("project '%s' not found", t.patch.Project)
+		}
+
+		data.githubContext = fmt.Sprintf("evergreen/%s/%s", pRef.Identifier, lastFourPatchID)
 	} else {
 		data.githubContext = "evergreen"
 	}
