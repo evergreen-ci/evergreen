@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -399,69 +397,24 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		TerminatedHosts:   []string{},
 		TerminatedVolumes: []string{},
 	}
-	mgrCache := map[cloud.ManagerOpts]cloud.Manager{}
-	catcher := grip.NewBasicCatcher()
 
-	// only return errors for unexpirable hosts and volumes
+	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		if !ch.dryRun {
-			// delete hosts here
-			var mgrOpts cloud.ManagerOpts
-			mgrOpts, err = cloud.GetManagerOptions(h.Distro)
-			if err != nil {
-				if h.NoExpiration {
-					catcher.Wrapf(err, "can't get ManagerOpts for unexpirable host '%s'", h.Id)
-				}
-				continue
+		if h.NoExpiration {
+			if !ch.dryRun {
+				catcher.Wrapf(h.MarkShouldExpire(""), "error marking host '%s' expirable", h.Id)
 			}
-			mgr, ok := mgrCache[mgrOpts]
-			if !ok {
-				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
-				if err != nil {
-					if h.NoExpiration {
-						catcher.Wrapf(err, "can't get manager for unexpirable host '%s'", h.Id)
-					}
-					continue
-				}
-				mgrCache[mgrOpts] = mgr
-			}
-			if h.NoExpiration {
-				noExpiration := false
-				err = mgr.ModifyHost(ctx, &h, host.HostModifyOptions{
-					NoExpiration: &noExpiration,
-				})
-				catcher.Wrapf(err, "error terminating unexpirable host '%s'", h.Id)
-				continue
-			}
+			toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 		}
-		toTerminate.TerminatedHosts = append(toTerminate.TerminatedHosts, h.Id)
 	}
 
 	for _, v := range volumes {
-		if !ch.dryRun {
-			mgrOpts := cloud.ManagerOpts{
-				Provider: evergreen.ProviderNameEc2OnDemand,
-				Region:   cloud.AztoRegion(v.AvailabilityZone),
+		if v.NoExpiration {
+			if !ch.dryRun {
+				catcher.Wrapf(v.SetNoExpiration(false), "error marking volume '%s' expirable", v.ID)
 			}
-			mgr, ok := mgrCache[mgrOpts]
-			if !ok {
-				mgr, err = cloud.GetManager(ctx, ch.env, mgrOpts)
-				if err != nil {
-					if v.NoExpiration {
-						catcher.Wrapf(err, "can't get manager for unexpirable volume '%s'", v.ID)
-					}
-					continue
-				}
-				mgrCache[mgrOpts] = mgr
-			}
-			if v.NoExpiration {
-				opts := model.VolumeModifyOptions{NoExpiration: false}
-				err = mgr.ModifyVolume(ctx, &v, &opts)
-				catcher.Wrapf(err, "error terminating unexpirable volume '%s'", v.ID)
-				continue
-			}
+			toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		}
-		toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 	}
 
 	if !ch.dryRun {

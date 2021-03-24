@@ -832,10 +832,19 @@ func TestClearHostsHandler(t *testing.T) {
 		UserHost:     true,
 		Status:       evergreen.HostRunning,
 		CreationTime: time.Now(),
+		NoExpiration: true,
 		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
 	}
 	h2 := host.Host{
 		Id:           "h2",
+		StartedBy:    "user0",
+		UserHost:     true,
+		Status:       evergreen.HostRunning,
+		CreationTime: time.Now(),
+		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+	}
+	h3 := host.Host{
+		Id:           "h3",
 		StartedBy:    "user0",
 		UserHost:     true,
 		Status:       evergreen.HostTerminated,
@@ -850,6 +859,7 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, h0.Insert())
 	assert.NoError(t, h1.Insert())
 	assert.NoError(t, h2.Insert())
+	assert.NoError(t, h3.Insert())
 	assert.NoError(t, v1.Insert())
 
 	handler := offboardUserHandler{
@@ -861,6 +871,7 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, "user0", handler.user)
 	assert.True(t, handler.dryRun)
+
 	resp := handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
 	res, ok := resp.Data().(model.APIOffboardUserResults)
@@ -869,6 +880,10 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.Equal(t, "h1", res.TerminatedHosts[0])
 	require.Len(t, res.TerminatedVolumes, 1)
 	assert.Equal(t, "v1", res.TerminatedVolumes[0])
+	hostFromDB, err := host.FindOneByIdOrTag(h1.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, hostFromDB)
+	assert.True(t, hostFromDB.NoExpiration)
 }
 
 func TestRemoveAdminHandler(t *testing.T) {
