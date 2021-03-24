@@ -31,7 +31,9 @@ func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, 
 	ctx, cancel := env.Context()
 	defer cancel()
 	projectIds, err := rolemanager.FindAllowedResources(ctx, env.RoleManager(), u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
-
+	if err != nil {
+		return nil, err
+	}
 	projects, err := model.FindProjectRefsByIds(projectIds)
 	if err != nil {
 		return nil, err
