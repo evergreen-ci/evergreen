@@ -2334,13 +2334,17 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	var perfPlugin *plugin.PerfPlugin
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
+	if err != nil {
+		return false, err
+	}
 	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
 		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
 		if err != nil {
 			return false, err
 		}
 		for _, projectName := range perfPlugin.Projects {
-			if projectName == *obj.ProjectId {
+			if projectName == pRef.Id || projectName == pRef.Identifier {
 				return true, nil
 			}
 		}
