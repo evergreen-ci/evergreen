@@ -824,10 +824,22 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
 func FindAllMergedProjectRefs() ([]ProjectRef, error) {
+	return FindProjectRefsQ(bson.M{})
+}
+
+func FindProjectRefsByIds(ids []string) ([]ProjectRef, error) {
+	return FindProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+	})
+}
+
+func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
-		bson.M{},
+		filter,
 		db.NoProjection,
 		db.NoSort,
 		db.NoSkip,
