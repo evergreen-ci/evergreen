@@ -555,6 +555,8 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 					"repo":           repo,
 					"message":        "failed to abort patch's version",
 					"patch_id":       p.Id,
+					"pr":             p.GithubPatchData.PRNumber,
+					"project":        p.Project,
 					"version":        p.Version,
 				}))
 
