@@ -1533,8 +1533,8 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		patchId := ""
 		if utility.FromStringPtr(item.Version) != "" {
 			patchId = utility.FromStringPtr(item.Version)
-		} else if utility.FromStringPtr(item.Issue) != "" && utility.FromStringPtr(item.Source) == commitqueue.SourceDiff {
-			patchId = utility.FromStringPtr(item.Issue)
+		} else if utility.FromStringPtr(item.PatchId) != "" {
+			patchId = utility.FromStringPtr(item.PatchId)
 		}
 		if patchId != "" {
 			p, err := r.sc.FindPatchById(patchId)
