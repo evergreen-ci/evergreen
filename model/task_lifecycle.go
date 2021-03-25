@@ -732,6 +732,13 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 	}))
 
 	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
+	grip.Debug(message.Fields{
+		"message": "removing commit queue item",
+		"issue":   issue,
+		"err":     err,
+		"removed": removed,
+		"caller":  caller,
+	})
 	if err != nil {
 		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, t.Project)
 	}
