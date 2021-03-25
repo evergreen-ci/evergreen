@@ -246,6 +246,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
+	// kick off a job to decom hosts if needed
+
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",
 		"job_type":                     hostAllocatorJobName,
