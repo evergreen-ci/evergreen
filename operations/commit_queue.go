@@ -180,7 +180,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag()),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag(), addPatchFinalizeFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -195,6 +195,7 @@ func setModuleCommand() cli.Command {
 				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
+				finalize:    c.Bool(patchFinalizeFlagName),
 			}
 
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -603,6 +604,7 @@ type moduleParams struct {
 	commits     string
 	large       bool
 	skipConfirm bool
+	finalize    bool
 }
 
 func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
@@ -679,7 +681,13 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info("Module updated")
+	grip.Info("Module updated.")
+	if p.finalize {
+		if err = ac.FinalizePatch(p.patchID); err != nil {
+			return err
+		}
+	}
+	grip.Info("Patch finalized.")
 	return nil
 }
 
