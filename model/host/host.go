@@ -2519,7 +2519,9 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 
 	h.NoExpiration = false
 	h.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
-	h.addTag(makeExpireOnTag(expireOnValue), true)
+	if expireOnValue != "" {
+		h.addTag(makeExpireOnTag(expireOnValue), true)
+	}
 	return UpdateOne(bson.M{
 		IdKey: h.Id,
 	},
