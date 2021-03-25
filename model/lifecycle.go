@@ -177,6 +177,100 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 	return err
 }
 
+// markVersionCompleted updates the status of a completed version to reflect its correct state by
+// checking the status of its individual builds.
+func markVersionCompleted(versionId string, finishTime time.Time, updates *StatusChanges, checkGithubStatus bool) error {
+	status := evergreen.VersionSucceeded
+
+	// Find the statuses for all builds in the version so we can figure out the version's status
+	builds, err := build.Find(
+		build.ByVersion(versionId).WithFields(build.ActivatedKey, build.StatusKey),
+	)
+	if err != nil {
+		return err
+	}
+
+	versionStatusFromTasks := evergreen.VersionSucceeded
+	githubCheckStatusFromTasks := ""
+	buildsWithAllActiveTasksComplete := 0
+	buildsWithGithubCheckTasksComplete := 0
+	activeBuilds := 0
+	finished := true
+
+	tasks, err := task.Find(task.ByVersion(versionId).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
+	if err != nil {
+		return errors.Wrapf(err, "problem finding tasks for version %s", versionId)
+	}
+
+	githubCheckTasks := []task.Task{}
+	if checkGithubStatus {
+		for _, t := range tasks {
+			if t.IsGithubCheck {
+				githubCheckTasks = append(githubCheckTasks, t)
+			}
+		}
+		for _, b := range builds {
+			githubCheckTasksComplete, githubCheckStatus, err := b.AllUnblockedTasksFinished(githubCheckTasks)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if githubCheckTasksComplete {
+				buildsWithGithubCheckTasksComplete++
+				if githubCheckStatus != evergreen.BuildSucceeded {
+					githubCheckStatusFromTasks = evergreen.VersionFailed
+				}
+			}
+		}
+	}
+	if buildsWithGithubCheckTasksComplete == len(builds) && githubCheckStatusFromTasks != evergreen.VersionFailed {
+		githubCheckStatusFromTasks = evergreen.VersionSucceeded
+	}
+
+	for _, b := range builds {
+		if b.Activated {
+			activeBuilds++
+		}
+		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasks)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if complete {
+			buildsWithAllActiveTasksComplete++
+			if buildStatus != evergreen.BuildSucceeded {
+				versionStatusFromTasks = evergreen.VersionFailed
+			}
+		}
+		if !b.IsFinished() {
+			finished = false
+			continue
+		}
+		if b.Status != evergreen.BuildSucceeded {
+			status = evergreen.VersionFailed
+		}
+	}
+	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
+		updates.VersionComplete = true
+		updates.VersionNewStatus = versionStatusFromTasks
+		event.LogVersionStateChangeEvent(versionId, status)
+	}
+	if checkGithubStatus && activeBuilds > 0 && buildsWithGithubCheckTasksComplete >= activeBuilds {
+		event.LogVersionGithubCheckFinishedEvent(versionId, githubCheckStatusFromTasks)
+	}
+	if !finished {
+		return nil
+	}
+	if err := VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
+		bson.M{"$set": bson.M{
+			VersionFinishTimeKey: finishTime,
+			VersionStatusKey:     status,
+		}},
+	); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
 	if err != nil {
@@ -579,15 +673,6 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
-	for _, t := range tasks {
-		if t.IsGithubCheck {
-			if err = b.SetIsGithubCheck(); err != nil {
-				return nil, nil, errors.Wrapf(err, "setting build '%s' IsGithubCheck", b.Id)
-			}
-			break
-		}
-	}
-
 	// update the build to hold the new tasks
 	if err = RefreshTasksCache(b.Id); err != nil {
 		return nil, nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
@@ -729,13 +814,6 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		return nil, nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	for _, t := range tasksForBuild {
-		if t.IsGithubCheck {
-			b.IsGithubCheck = true
-		}
-		break
-	}
-
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
 	for _, taskP := range tasksForBuild {
@@ -857,7 +935,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		generatorIsGithubCheck = generateTask.IsGithubCheck
 	}
 
-	// create all the actual tasks
+	// create and insert all of the actual tasks
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
@@ -1154,6 +1232,46 @@ func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
 			},
 		},
 	}
+}
+
+// TryMarkPatchBuildFinished attempts to mark a patch as finished if all
+// the builds for the patch are finished as well
+func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *StatusChanges) error {
+	v, err := VersionFindOne(VersionById(b.Version))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if v == nil {
+		return errors.Errorf("Cannot find version for build %v with version %v", b.Id, b.Version)
+	}
+
+	// ensure all builds for this patch are finished as well
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
+	if err != nil {
+		return err
+	}
+
+	patchCompleted := true
+	status := evergreen.PatchSucceeded
+	for _, build := range builds {
+		if !build.IsFinished() {
+			patchCompleted = false
+		}
+		if build.Status != evergreen.BuildSucceeded {
+			status = evergreen.PatchFailed
+		}
+	}
+
+	// nothing to do if the patch isn't completed
+	if !patchCompleted {
+		return nil
+	}
+	if err := patch.TryMarkFinished(v.Id, finishTime, status); err != nil {
+		return errors.WithStack(err)
+	}
+	updates.PatchNewStatus = status
+
+	return nil
 }
 
 func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {

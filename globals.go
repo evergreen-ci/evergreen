@@ -264,16 +264,6 @@ var TaskFailureStatuses []string = []string{
 	TaskSystemTimedOut,
 }
 
-var TaskUnstartedStatuses []string = []string{
-	TaskInactive,
-	TaskUnstarted,
-	TaskUndispatched,
-}
-
-func IsUnstartedTaskStatus(status string) bool {
-	return utility.StringSliceContains(TaskUnstartedStatuses, status)
-}
-
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskSucceeded ||
 		IsFailedTaskStatus(status) {
@@ -285,33 +275,6 @@ func IsFinishedTaskStatus(status string) bool {
 
 func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
-}
-
-func IsFinishedBuildStatus(status string) bool {
-	return status == BuildFailed || status == BuildSucceeded
-}
-
-func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || status == VersionSucceeded
-}
-
-func VersionStatusToPatchStatus(versionStatus string) (string, error) {
-	switch versionStatus {
-	case VersionCreated:
-		return PatchCreated, nil
-	case VersionStarted:
-		return PatchStarted, nil
-	case VersionFailed:
-		return PatchFailed, nil
-	case VersionSucceeded:
-		return PatchSucceeded, nil
-	default:
-		return "", errors.New("unknown version status")
-	}
-}
-
-func IsFinishedPatchStatus(status string) bool {
-	return status == PatchFailed || status == PatchSucceeded
 }
 
 // evergreen package names
