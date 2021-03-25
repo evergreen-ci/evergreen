@@ -3,8 +3,7 @@
     {
       "_id": "task1",
       "build_id": "build1",
-      "status": "success",
-      "version": "version1"
+      "status": "success"
     },
     {
       "_id": "task2",

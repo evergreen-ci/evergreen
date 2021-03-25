@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -126,11 +127,12 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 }
 
 func (v *Version) UpdateStatus(newStatus string) error {
+	if v == nil {
+		return errors.New("version is nil")
+	}
 	if v.Status == newStatus {
 		return nil
 	}
-
-	v.Status = newStatus
 	update := bson.M{
 		"$set": bson.M{
 			VersionStatusKey: newStatus,
@@ -140,7 +142,8 @@ func (v *Version) UpdateStatus(newStatus string) error {
 	if err != nil {
 		return err
 	}
-
+	v.Status = newStatus
+	event.LogVersionStateChangeEvent(v.Id, newStatus)
 	return nil
 }
 
@@ -157,18 +160,6 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
-}
-
-func (v *Version) MarkFinished(status string, finishTime time.Time) error {
-	v.Status = status
-	v.FinishTime = finishTime
-	return VersionUpdateOne(
-		bson.M{VersionIdKey: v.Id},
-		bson.M{"$set": bson.M{
-			VersionFinishTimeKey: finishTime,
-			VersionStatusKey:     status,
-		}},
-	)
 }
 
 func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {

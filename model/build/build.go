@@ -57,8 +57,6 @@ type Build struct {
 
 	// The status of the subset of the build that's used for github checks
 	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
-	// does the build contain tasks considered for mainline github checks
-	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// build requester - this is used to help tell the
 	// reason this build was created. e.g. it could be
@@ -186,14 +184,6 @@ func (b *Build) UpdateGithubCheckStatus(status string) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{GithubCheckStatusKey: status}},
-	)
-}
-
-func (b *Build) SetIsGithubCheck() error {
-	b.IsGithubCheck = true
-	return UpdateOne(
-		bson.M{IdKey: b.Id},
-		bson.M{"$set": bson.M{IsGithubCheckKey: true}},
 	)
 }
 
