@@ -60,16 +60,38 @@ func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*Tas
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+	start := time.Now()
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	grip.Debug(message.Fields{
+		"step":          "RefreshFindNextTask",
+		"op":            "ensureQueue",
+		"duration":      time.Since(start),
+		"duration_secs": time.Since(start).Seconds(),
+	})
+	start = time.Now()
 
 	if err := distroDispatchService.Refresh(); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	grip.Debug(message.Fields{
+		"step":          "RefreshFindNextTask",
+		"op":            "Refresh",
+		"duration":      time.Since(start),
+		"duration_secs": time.Since(start).Seconds(),
+	})
+	start = time.Now()
 
-	return distroDispatchService.FindNextTask(spec), nil
+	item := distroDispatchService.FindNextTask(spec)
+	grip.Debug(message.Fields{
+		"step":          "RefreshFindNextTask",
+		"op":            "FindNextTask",
+		"duration":      time.Since(start),
+		"duration_secs": time.Since(start).Seconds(),
+	})
+	return item, nil
 }
 
 func (s *taskDispatchService) Refresh(distroID string) error {
@@ -167,7 +189,7 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time
 		ttl:      ttl,
 		typeName: typeName,
 	}
-
+	start := time.Now()
 	if taskQueue.Length() != 0 {
 		d.rebuild(taskQueue.Queue)
 	}
@@ -182,6 +204,8 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time
 		"num_schedulableunits": len(d.units),
 		"num_orders":           len(d.order),
 		"num_taskqueueitems":   taskQueue.Length(),
+		"duration":             time.Since(start),
+		"duration_secs":        time.Since(start).Seconds(),
 	})
 
 	return d
