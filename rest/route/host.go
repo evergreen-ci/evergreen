@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -372,6 +374,20 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+	u, err := ch.sc.FindUserById(ch.user)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "problem finding user",
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	if u.(*user.DBUser) == nil {
+		return gimlet.ErrorResponse{
+			Message:    "user not found",
+			StatusCode: http.StatusNotFound,
+		}
+	}
+
 	vals := r.URL.Query()
 	ch.dryRun = vals.Get("dry_run") == "true"
 

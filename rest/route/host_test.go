@@ -817,7 +817,7 @@ func getMockHostsConnector() *data.MockConnector {
 }
 
 func TestClearHostsHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
 	h0 := host.Host{
 		Id:           "h0",
 		StartedBy:    "user0",
@@ -868,6 +868,11 @@ func TestClearHostsHandler(t *testing.T) {
 	json := []byte(`{"email": "user0@mongodb.com"}`)
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"})
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
+
+	u := user.DBUser{Id: "user0"}
+	assert.NoError(t, u.Insert())
+	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, "user0", handler.user)
 	assert.True(t, handler.dryRun)
