@@ -18,11 +18,12 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(), addPreserveCommitsFlag(
-			cli.BoolFlag{
-				Name:  largeFlagName,
-				Usage: "enable submitting larger patches (>16MB)",
-			})),
+		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(),
+			addPatchFinalizeFlag(), addPreserveCommitsFlag(
+				cli.BoolFlag{
+					Name:  largeFlagName,
+					Usage: "enable submitting larger patches (>16MB)",
+				})),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requirePatchIDFlag,
@@ -38,6 +39,7 @@ func PatchSetModule() cli.Command {
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
+			finalize := c.Bool(patchFinalizeFlagName)
 			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -145,6 +147,12 @@ func PatchSetModule() cli.Command {
 
 			}
 			fmt.Println("Module updated.")
+			if finalize {
+				if err = ac.FinalizePatch(patchID); err != nil {
+					return errors.Wrap(err, "error finalizing patch")
+				}
+				grip.Info("Patch finalized.")
+			}
 			return nil
 		},
 	}

@@ -195,7 +195,6 @@ func setModuleCommand() cli.Command {
 				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
-				finalize:    c.Bool(patchFinalizeFlagName),
 			}
 
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -604,7 +603,6 @@ type moduleParams struct {
 	commits     string
 	large       bool
 	skipConfirm bool
-	finalize    bool
 }
 
 func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
@@ -682,12 +680,6 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.WithStack(err)
 	}
 	grip.Info("Module updated.")
-	if p.finalize {
-		if err = ac.FinalizePatch(p.patchID); err != nil {
-			return err
-		}
-	}
-	grip.Info("Patch finalized.")
 	return nil
 }
 
