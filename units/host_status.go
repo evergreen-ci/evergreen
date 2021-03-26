@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -193,9 +194,13 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
 		}
-		err := j.setNextState(h)
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrapf(j.setNextState(h), "transitioning host state")
+		if h.UserHost && h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewUserDataDoneJob(j.env, h.Id, utility.RoundPartOfMinute(5))), "enqueueing job to check when user data is done")
+		}
 		j.logHostStatusMessage(&h, cloudStatus)
-		return err
+		return catcher.Resolve()
 	}
 
 	grip.Info(message.Fields{
@@ -215,7 +220,7 @@ func (j *cloudHostReadyJob) setNextState(h host.Host) error {
 		// From the app server's perspective, it is done provisioning a user
 		// data host once the instance is running. The user data script will
 		// handle the rest of host provisioning.
-		return errors.Wrapf(h.SetProvisionedNotRunning(), "error marking host %s as provisioned not running", h.Id)
+		return errors.Wrapf(h.SetProvisionedNotRunning(), "marking host %s as provisioned but not yet running", h.Id)
 	case distro.BootstrapMethodNone:
 		// A host created by a task goes through no further provisioning, so we
 		// can just set it as running.

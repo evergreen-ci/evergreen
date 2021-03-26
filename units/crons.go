@@ -1142,10 +1142,16 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
 		}
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(15)
+		ts := utility.RoundPartOfHour(1)
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h.Id, ts)))
+			// kim: TODO: verify that this will return duplicate scope errors
+			// when enqueued but the job is already in the queue.
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewUserDataDoneJob(env, h.Id, ts)))
 		}
+		grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":  "kim: got error when enqueueing job via cron job",
+			"job_type": userDataDoneJobName,
+		}))
 		return catcher.Resolve()
 	}
 }
