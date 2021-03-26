@@ -65,31 +65,38 @@ func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	grip.Debug(message.Fields{
-		"step":          "RefreshFindNextTask",
-		"op":            "ensureQueue",
-		"duration":      time.Since(start),
-		"duration_secs": time.Since(start).Seconds(),
+	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
+		"step":            "RefreshFindNextTask",
+		"distro":          distroID,
+		"dispatcher_type": distroDispatchService.Type(),
+		"op":              "ensureQueue",
+		"duration":        time.Since(start),
+		"duration_secs":   time.Since(start).Seconds(),
 	})
 	start = time.Now()
 
 	if err := distroDispatchService.Refresh(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	grip.Debug(message.Fields{
-		"step":          "RefreshFindNextTask",
-		"op":            "Refresh",
-		"duration":      time.Since(start),
-		"duration_secs": time.Since(start).Seconds(),
+	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
+		"step":            "RefreshFindNextTask",
+		"distro":          distroID,
+		"dispatcher_type": distroDispatchService.Type(),
+		"op":              "Refresh",
+		"duration":        time.Since(start),
+		"duration_secs":   time.Since(start).Seconds(),
 	})
 	start = time.Now()
 
 	item := distroDispatchService.FindNextTask(spec)
-	grip.Debug(message.Fields{
-		"step":          "RefreshFindNextTask",
-		"op":            "FindNextTask",
-		"duration":      time.Since(start),
-		"duration_secs": time.Since(start).Seconds(),
+	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
+		"step":            "RefreshFindNextTask",
+		"distro":          distroID,
+		"dispatcher_type": distroDispatchService.Type(),
+		"item":            item.Id,
+		"op":              "FindNextTask",
+		"duration":        time.Since(start),
+		"duration_secs":   time.Since(start).Seconds(),
 	})
 	return item, nil
 }

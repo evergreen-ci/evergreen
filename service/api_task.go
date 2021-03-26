@@ -420,12 +420,14 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		default:
 			queueItem = taskQueue.FindNextTask(spec)
 		}
-		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
-			"message":       "assignNextAvailableTask performance",
-			"step":          "RefreshFindNextTask",
-			"duration_ns":   time.Now().Sub(stepStart),
-			"duration_secs": time.Now().Sub(stepStart).Seconds(),
-			"run_id":        runId,
+		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor || time.Now().Sub(stepStart).Seconds() > 1, message.Fields{
+			"message":            "assignNextAvailableTask performance",
+			"step":               "RefreshFindNextTask",
+			"duration_ns":        time.Now().Sub(stepStart),
+			"duration_secs":      time.Now().Sub(stepStart).Seconds(),
+			"run_id":             runId,
+			"distro":             currentHost.Distro.Id,
+			"dispatcher_version": d.DispatcherSettings.Version,
 		})
 		stepStart = time.Now()
 		if queueItem == nil {
