@@ -1281,6 +1281,15 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	return allBVTs
 }
 
+func (p *Project) FindAllTasksMap() map[string]ProjectTask {
+	allTasks := map[string]ProjectTask{}
+	for _, task := range p.Tasks {
+		allTasks[task.Name] = task
+	}
+
+	return allTasks
+}
+
 // FindVariantsWithTask returns the name of each variant containing
 // the given task name.
 func (p *Project) FindVariantsWithTask(task string) []string {
