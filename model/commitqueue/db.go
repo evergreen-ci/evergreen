@@ -108,9 +108,11 @@ func addVersionID(id string, item CommitQueueItem) error {
 		})
 }
 
-func remove(id, issue string) error {
+// remove removes a given item from a project's commit queue. Make sure to pass the actual
+// issue identifier and not the patch or version
+func remove(project, issue string) error {
 	return updateOne(
-		bson.M{IdKey: id},
+		bson.M{IdKey: project},
 		bson.M{"$pull": bson.M{QueueKey: bson.M{IssueKey: issue}}},
 	)
 }
