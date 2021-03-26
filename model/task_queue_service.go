@@ -89,15 +89,18 @@ func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec
 	start = time.Now()
 
 	item := distroDispatchService.FindNextTask(spec)
-	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
+	msg := message.Fields{
 		"step":            "RefreshFindNextTask",
 		"distro":          distroID,
 		"dispatcher_type": distroDispatchService.Type(),
-		"item":            item.Id,
 		"op":              "FindNextTask",
 		"duration":        time.Since(start),
 		"duration_secs":   time.Since(start).Seconds(),
-	})
+	}
+	if item != nil {
+		msg["item"] = item.Id
+	}
+	grip.DebugWhen(time.Since(start).Seconds() > 1, msg)
 	return item, nil
 }
 
