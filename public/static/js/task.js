@@ -354,8 +354,6 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   $scope.getURL = function (testResult, isRaw) {
     var url = (isRaw) ? testResult.url_raw : testResult.url;
     let prefix = '/test_log/';
-    var group_id = '?group_id=';
-    group_id += (testResult.group_id) ? testResult.group_id : ""
     let raw = 'text=true';
     let lineNum = '#L' + (testResult.line_num || 0);
     if (url == '' && testResult.log_id) {
@@ -365,6 +363,8 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url = prefix + testResult.log_id + lineNum;
       }
     } else if (url == '') {
+      var group_id = '?group_id='
+      group_id += (testResult.group_id) ? testResult.group_id : ""
       var test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
       url = prefix + testResult.task_id + '/' + testResult.execution + '/' + test_name + group_id
       if (isRaw) {
