@@ -354,7 +354,8 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   $scope.getURL = function (testResult, isRaw) {
     var url = (isRaw) ? testResult.url_raw : testResult.url;
     let prefix = '/test_log/';
-    let group_id = '?group_id=' + testResult.group_id
+    var group_id = '?group_id=';
+    group_id += (testResult.group_id) ? testResult.group_id : ""
     let raw = 'text=true';
     let lineNum = '#L' + (testResult.line_num || 0);
     if (url == '' && testResult.log_id) {
