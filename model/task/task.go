@@ -296,6 +296,14 @@ type TestResult struct {
 	LogTestName string `json:"log_test_name" bson:"log_test_name"`
 }
 
+func (tr *TestResult) TestName() string {
+	if tr.LogTestName != "" {
+		return tr.LogTestName
+	}
+
+	return tr.TestFile
+}
+
 type DisplayTaskCache struct {
 	execToDisplay map[string]*Task
 	displayTasks  []*Task

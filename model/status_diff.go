@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -108,17 +109,24 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 		}
 		diff.Tasks = append(diff.Tasks, newDiff)
 	}
+
 	return diff, nil
 }
 
 // getTestUrl returns the correct relative URL to a test log, given a
 // TestResult structure
 func getTestUrl(tr *task.TestResult) string {
-	// Return url if it exists. If there is no test, return empty string.
-	if tr.URL != "" || tr.LogId == "" { // If LogId is empty, URL must also be empty
+	if tr.URL != "" {
 		return tr.URL
 	}
-	return TestLogPath + tr.LogId
+	if tr.LogId != "" {
+		return TestLogPath + tr.LogId
+	}
+	if tr.TaskID != "" && tr.TestName() != "" {
+		return fmt.Sprintf("%s%s/%d/%s?group_id=%s", TestLogPath, tr.TaskID, tr.Execution, tr.TestName(), tr.GroupID)
+	}
+
+	return ""
 }
 
 // StatusDiffTasks takes two tasks and returns a diff of their results
@@ -161,5 +169,35 @@ func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
 				Patch:    getTestUrl(&test),
 			})
 	}
+
+	return diff
+}
+
+// StatusDiffTests takes two sets of tests and returns a diff of their results
+// for easy comparison and analysis.
+func StatusDiffTests(original, patch []task.TestResult) []TestStatusDiff {
+	diff := []TestStatusDiff{}
+	if len(original) == 0 || len(patch) == 0 {
+		return diff
+	}
+
+	originalMap := make(map[string]task.TestResult)
+	for _, test := range original {
+		originalMap[test.TestName()] = test
+	}
+
+	for _, test := range patch {
+		baseTest := originalMap[test.TestName()]
+
+		// Get the base name for windows/non-windows paths.
+		testName := path.Base(strings.Replace(test.TestName(), "\\", "/", -1))
+		diff = append(diff, TestStatusDiff{
+			Name:     testName,
+			Diff:     StatusDiff{baseTest.Status, test.Status},
+			Original: getTestUrl(&baseTest),
+			Patch:    getTestUrl(&test),
+		})
+	}
+
 	return diff
 }
