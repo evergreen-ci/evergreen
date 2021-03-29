@@ -656,6 +656,7 @@ type Task {
   dispatchTime: Time
   displayName: String!
   displayOnly: Boolean
+  displayTask: Task
   distroId: String!
   estimatedStart: Duration
   execution: Int!

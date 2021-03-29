@@ -564,6 +564,7 @@ type ComplexityRoot struct {
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
 		DisplayOnly             func(childComplexity int) int
+		DisplayTask             func(childComplexity int) int
 		DistroId                func(childComplexity int) int
 		EstimatedStart          func(childComplexity int) int
 		Execution               func(childComplexity int) int
@@ -897,6 +898,8 @@ type TaskResolver interface {
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
+
+	DisplayTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
@@ -3574,6 +3577,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.DisplayOnly(childComplexity), true
 
+	case "Task.displayTask":
+		if e.complexity.Task.DisplayTask == nil {
+			break
+		}
+
+		return e.complexity.Task.DisplayTask(childComplexity), true
+
 	case "Task.distroId":
 		if e.complexity.Task.DistroId == nil {
 			break
@@ -5337,6 +5347,7 @@ type Task {
   dispatchTime: Time
   displayName: String!
   displayOnly: Boolean
+  displayTask: Task
   distroId: String!
   estimatedStart: Duration
   execution: Int!
@@ -18469,6 +18480,37 @@ func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_displayTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().DisplayTask(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_distroId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28293,6 +28335,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
+		case "displayTask":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_displayTask(ctx, field, obj)
+				return res
+			})
 		case "distroId":
 			out.Values[i] = ec._Task_distroId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

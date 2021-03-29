@@ -2204,6 +2204,22 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 
 type taskResolver struct{ *Resolver }
 
+func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	t, err := r.sc.FindTaskById(*obj.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
+	}
+	dt, err := t.GetDisplayTask()
+	if dt == nil || err != nil {
+		return nil, nil
+	}
+	apiTask := &restModel.APITask{}
+	err = apiTask.BuildFromService(dt)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
+	}
+	return apiTask, nil
+}
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
