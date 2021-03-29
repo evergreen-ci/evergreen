@@ -955,18 +955,19 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 	}
 
 	if project.Pre != nil {
-		// validate project pre section
 		errs = append(errs, validateCommands("pre", project, project.Pre.List())...)
 	}
 
 	if project.Post != nil {
-		// validate project post section
 		errs = append(errs, validateCommands("post", project, project.Post.List())...)
 	}
 
 	if project.Timeout != nil {
-		// validate project timeout section
 		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
+	}
+
+	if project.EarlyTermination != nil {
+		errs = append(errs, validateCommands("early termination", project, project.EarlyTermination.List())...)
 	}
 
 	// validate project tasks section

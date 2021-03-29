@@ -68,6 +68,7 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
@@ -592,6 +593,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Parameters:        pp.Parameters,
 		Pre:               pp.Pre,
 		Post:              pp.Post,
+		EarlyTermination:  pp.EarlyTermination,
 		Timeout:           pp.Timeout,
 		CallbackTimeout:   pp.CallbackTimeout,
 		Modules:           pp.Modules,

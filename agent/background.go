@@ -2,12 +2,10 @@ package agent
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -132,19 +130,25 @@ func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (conte
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (a *Agent) startSpotTerminationWatcher(ctx context.Context) {
-	defer recovery.LogStackTraceAndContinue("spot termination watcher")
+func (a *Agent) startEarlyTerminationWatcher(ctx context.Context, tc *taskContext, check func() bool, action func(), doneChan chan<- bool) {
+	defer recovery.LogStackTraceAndContinue("early termination watcher")
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Spot termination watcher canceled")
+			grip.Info("Early termination watcher canceled")
 			return
 		case <-ticker.C:
-			if util.SpotHostWillTerminateSoon() {
-				grip.Info("Spot instance terminating, so agent is exiting")
-				os.Exit(1)
+			if check() {
+				if tc != nil && tc.project != nil && tc.project.EarlyTermination != nil {
+					grip.Error(a.runCommands(ctx, tc, tc.project.EarlyTermination.List(), runCommandsOptions{}))
+				}
+				action()
+				if doneChan != nil {
+					doneChan <- true
+				}
+				return
 			}
 		}
 	}
