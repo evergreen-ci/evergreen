@@ -122,8 +122,8 @@ func getTestUrl(tr *task.TestResult) string {
 	if tr.LogId != "" {
 		return TestLogPath + tr.LogId
 	}
-	if tr.TaskID != "" && tr.TestName() != "" {
-		return fmt.Sprintf("%s%s/%d/%s?group_id=%s", TestLogPath, tr.TaskID, tr.Execution, tr.TestName(), tr.GroupID)
+	if tr.TaskID != "" && tr.GetLogTestName() != "" {
+		return fmt.Sprintf("%s%s/%d/%s?group_id=%s", TestLogPath, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.GroupID)
 	}
 
 	return ""
@@ -183,14 +183,14 @@ func StatusDiffTests(original, patch []task.TestResult) []TestStatusDiff {
 
 	originalMap := make(map[string]task.TestResult)
 	for _, test := range original {
-		originalMap[test.TestName()] = test
+		originalMap[test.GetDisplayTestName()] = test
 	}
 
 	for _, test := range patch {
-		baseTest := originalMap[test.TestName()]
+		baseTest := originalMap[test.GetDisplayTestName()]
 
 		// Get the base name for windows/non-windows paths.
-		testName := path.Base(strings.Replace(test.TestName(), "\\", "/", -1))
+		testName := path.Base(strings.Replace(test.GetDisplayTestName(), "\\", "/", -1))
 		diff = append(diff, TestStatusDiff{
 			Name:     testName,
 			Diff:     StatusDiff{baseTest.Status, test.Status},
