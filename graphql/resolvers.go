@@ -2214,7 +2214,9 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	err = apiTask.BuildFromService(dt)
+	if err = apiTask.BuildFromService(dt); err != nil {
+	  return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
+	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
