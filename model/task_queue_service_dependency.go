@@ -40,7 +40,7 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
 	}
-
+	start := time.Now()
 	if taskQueue.Length() != 0 {
 		if err := d.rebuild(taskQueue.Queue); err != nil {
 			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", taskQueue.Distro)
@@ -57,6 +57,8 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 		"num_task_groups":           len(d.taskGroups),
 		"num_taskqueueitems":        taskQueue.Length(),
 		"sorted_num_taskqueueitems": len(d.sorted),
+		"duration":                  time.Since(start),
+		"duration_secs":             time.Since(start).Seconds(),
 	})
 
 	return d, nil
