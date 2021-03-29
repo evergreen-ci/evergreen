@@ -1156,7 +1156,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: *execution,
+		Execution: dbTask.Execution,
 	}
 	if len(dbTask.ExecutionTasks) > 0 {
 		opts.DisplayTaskID = taskID
