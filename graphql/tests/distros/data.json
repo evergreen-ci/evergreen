@@ -127,7 +127,6 @@
         }
       },
       "disable_shallow_clone": false,
-      "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": false,
       "is_cluster": false,
@@ -254,7 +253,6 @@
         }
       },
       "disable_shallow_clone": false,
-      "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": false,
       "home_volume_settings": {

@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/operations/metabuild/model"
@@ -82,9 +83,9 @@ func TestMakeGenerate(t *testing.T) {
 			m.Tasks = nil
 			for i := 1; i <= numTasks; i++ {
 				m.Tasks = append(m.Tasks, model.MakeTask{
-					Name: "task" + string(i),
+					Name: "task" + strconv.Itoa(i),
 					Targets: []model.MakeTaskTarget{
-						{Name: "target" + string(i)},
+						{Name: "target" + strconv.Itoa(i)},
 					},
 					Tags: []string{"tag"},
 				})
