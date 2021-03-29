@@ -180,7 +180,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag(), addPatchFinalizeFlag()),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
