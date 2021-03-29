@@ -908,12 +908,15 @@ func ShouldDeployAgentMonitor() db.Q {
 // provisioned by the app server but are still being provisioned by user data.
 func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	provisioningCutoff := time.Now().Add(-30 * time.Minute)
 
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
-		StartedByKey:   bson.M{"$ne": evergreen.User},
-		bootstrapKey:   distro.BootstrapMethodUserData,
+		// Ignore hosts that have failed to provision within the cutoff.
+		ProvisionTimeKey: bson.M{"$gte": provisioningCutoff},
+		StartedByKey:     bson.M{"$ne": evergreen.User},
+		bootstrapKey:     distro.BootstrapMethodUserData,
 	}))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
