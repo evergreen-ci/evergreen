@@ -143,6 +143,7 @@ type abortedByDisplay struct {
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
 
 	if r.FormValue("redirect_spruce_users") == "true" {
@@ -180,10 +181,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
-	var execution int
-	var err error
 	if executionStr != "" {
-		execution, err = strconv.Atoi(executionStr)
+		execution, err := strconv.Atoi(executionStr)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
 			return
@@ -209,8 +208,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}
-	} else {
-		execution = projCtx.Task.Execution
 	}
 
 	// Build a struct containing the subset of task data needed for display in the UI
@@ -221,8 +218,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		var mostRecentExecution *task.Task
-		mostRecentExecution, err = task.FindOne(task.ById(tId))
+		mostRecentExecution, err := task.FindOne(task.ById(tId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
@@ -334,8 +330,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	testResults := uis.getTestResults(w, r, projCtx, &uiTask, taskId)
+
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
+		var testResultsOnBaseCommit []task.TestResult
 		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -345,8 +344,16 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		if taskOnBaseCommit != nil {
 			taskPatch.BaseTaskId = taskOnBaseCommit.Id
 			taskPatch.BaseTimeTaken = taskOnBaseCommit.TimeTaken
+
+			testResultsOnBaseCommit = taskOnBaseCommit.LocalTestResults
+			if len(testResultsOnBaseCommit) == 0 {
+				cedarTestResults := uis.getCedarTestResults(ctx, taskOnBaseCommit, taskOnBaseCommit.Id)
+				for _, tr := range cedarTestResults {
+					testResultsOnBaseCommit = append(testResultsOnBaseCommit, task.ConvertCedarTestResult(tr))
+				}
+			}
 		}
-		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
+		taskPatch.StatusDiffs = model.StatusDiffTests(testResultsOnBaseCommit, testResults)
 		uiTask.PatchInfo = taskPatch
 	}
 
@@ -364,9 +371,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.getTestResults(w, r, projCtx, &uiTask, taskId, execution)
-
-	ctx := r.Context()
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
@@ -887,9 +891,10 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string, execution int) {
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string) []task.TestResult {
 	ctx := r.Context()
 	var err error
+	var testResults []task.TestResult
 
 	uiTask.TestResults = []uiTestResult{}
 	execTasks := []task.Task{}
@@ -898,13 +903,13 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if uiTask.Archived {
-				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
+				et, err = task.FindOneOldNoMergeByIdAndExecution(t, projCtx.Task.Execution)
 			} else {
 				et, err = task.FindOneId(t)
 			}
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
+				return nil
 			}
 			if et == nil {
 				grip.Error(message.Fields{
@@ -918,12 +923,14 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			execTaskIDs = append(execTaskIDs, t)
 		}
 
+		execTaskDisplayNameMap := map[string]string{}
 		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+			return nil
 		}
 		for i, execTask := range execTasks {
+			execTaskDisplayNameMap[execTask.Id] = execTask.DisplayName
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
 				Id:        execTaskIDs[i],
 				Name:      execTask.DisplayName,
@@ -932,37 +939,22 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			})
 		}
 
-		allResults := []uiTestResult{}
-		for i, execTask := range execTasks {
-			opts := apimodels.GetCedarTestResultsOptions{
-				BaseURL:   uis.Settings.Cedar.BaseURL,
-				TaskID:    execTask.Id,
-				Execution: execTask.Execution,
-			}
-			testResults, err := apimodels.GetCedarTestResults(ctx, opts)
-			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"task_id":   execTask.Id,
-					"execution": execTask.Execution,
-					"message":   "problem getting cedar test results, using evergreen test results",
-				}))
-				allResults = []uiTestResult{}
-				break
-			}
-
-			for _, tr := range testResults {
-				allResults = append(allResults, uiTestResult{
-					TestResult: task.ConvertCedarTestResult(tr),
-					TaskId:     execTaskIDs[i],
-					TaskName:   execTask.DisplayName,
-				})
-			}
+		// Check cedar first.
+		cedarTestResults := uis.getCedarTestResults(ctx, projCtx.Task, taskId)
+		for _, tr := range cedarTestResults {
+			testResults = append(testResults, task.ConvertCedarTestResult(tr))
+			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+				TestResult: testResults[len(testResults)-1],
+				TaskId:     tr.TaskID,
+				TaskName:   execTaskDisplayNameMap[tr.TaskID],
+			})
 		}
 
-		if len(allResults) > 0 {
-			uiTask.TestResults = append(uiTask.TestResults, allResults...)
-		} else {
+		// Cedar test results not found, fall back to evergreen test
+		// results.
+		if len(cedarTestResults) == 0 {
 			for i, execTask := range execTasks {
+				testResults = append(testResults, execTask.LocalTestResults...)
 				for _, tr := range execTask.LocalTestResults {
 					uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 						TestResult: tr,
@@ -973,36 +965,56 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			}
 		}
 	} else {
-		opts := apimodels.GetCedarTestResultsOptions{
-			BaseURL:   uis.Settings.Cedar.BaseURL,
-			TaskID:    taskId,
-			Execution: projCtx.Task.Execution,
-		}
-		testResults, err := apimodels.GetCedarTestResults(ctx, opts)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"task_id":   taskId,
-				"execution": projCtx.Task.Execution,
-				"message":   "problem getting cedar test results, using evergreen test results",
-			}))
+		// Check cedar first.
+		cedarTestResults := uis.getCedarTestResults(ctx, projCtx.Task, taskId)
+		for _, tr := range cedarTestResults {
+			testResults = append(testResults, task.ConvertCedarTestResult(tr))
+			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
+				TestResult: testResults[len(testResults)-1],
+				TaskId:     taskId,
+			})
 		}
 
-		if len(testResults) > 0 {
-			for _, tr := range testResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
-					TestResult: task.ConvertCedarTestResult(tr),
-				})
-			}
-		} else {
+		// Cedar test results not found, fall back to evergreen
+		// test results.
+		if len(cedarTestResults) == 0 {
 			for _, tr := range projCtx.Context.Task.LocalTestResults {
+				tr.TaskID = taskId
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 					TestResult: tr,
+					TaskId:     taskId,
 				})
 			}
+
+			testResults = projCtx.Task.LocalTestResults
 		}
 
 		if uiTask.PartOfDisplay {
 			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
 		}
 	}
+
+	return testResults
+}
+
+func (uis *UIServer) getCedarTestResults(ctx context.Context, t *task.Task, taskID string) []apimodels.CedarTestResult {
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   uis.Settings.Cedar.BaseURL,
+		Execution: t.Execution,
+	}
+	if t.DisplayOnly {
+		opts.DisplayTaskID = taskID
+	} else {
+		opts.TaskID = taskID
+	}
+	testResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id":   taskID,
+			"execution": t.Execution,
+			"message":   "problem getting cedar test results, using evergreen test results",
+		}))
+	}
+
+	return testResults
 }
