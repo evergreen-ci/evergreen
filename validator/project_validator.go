@@ -1130,6 +1130,12 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. This can cause unexpected behavior in patches", task.Name, dep.Name),
 				})
 			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. This can cause unexpected behavior outside of pushing tags", task.Name, dep.Name),
+				})
+			}
 		}
 	}
 	return errs
