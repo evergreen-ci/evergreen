@@ -1459,6 +1459,14 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
+		"IgnoresSpawnHostsThatProvisionForTooLong": func(t *testing.T, h *Host) {
+			h.ProvisionTime = time.Now().Add(-24 * time.Hour)
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
@@ -1466,10 +1474,11 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := Host{
-				Id:          "host_id",
-				Status:      evergreen.HostStarting,
-				Provisioned: true,
-				StartedBy:   "user",
+				Id:            "host_id",
+				Status:        evergreen.HostStarting,
+				Provisioned:   true,
+				ProvisionTime: time.Now(),
+				StartedBy:     "user",
 				Distro: distro.Distro{
 					Id: "distro_id",
 					BootstrapSettings: distro.BootstrapSettings{
