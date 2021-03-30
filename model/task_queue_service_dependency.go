@@ -78,7 +78,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if !shouldRefreshCached(d.ttl, d.lastUpdated, d.distroID) {
+	if !shouldRefreshCached(d.ttl, d.lastUpdated) {
 		return nil
 	}
 
