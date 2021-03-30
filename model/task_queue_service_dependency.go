@@ -347,16 +347,20 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 
 			if !dependenciesMet {
-				grip.Warning(message.WrapError(checkUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches), message.Fields{
-					"dispatcher": DAGDispatcher,
-					"function":   "FindNextTask",
-					"operation":  "checkUnmarkedBlockingTasks",
-					"message":    "error checking dependencies for task",
-					"outcome":    "skip and continue",
-					"task":       item.Id,
-					"distro_id":  d.distroID,
-				}))
-
+				start := time.Now()
+				err = checkUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches)
+				msg := message.Fields{
+					"dispatcher":    DAGDispatcher,
+					"function":      "FindNextTask",
+					"operation":     "checkUnmarkedBlockingTasks",
+					"outcome":       "skip and continue",
+					"task":          item.Id,
+					"distro_id":     d.distroID,
+					"duration":      time.Since(start),
+					"duration_secs": time.Since(start).Seconds(),
+				}
+				grip.Warning(message.WrapError(err, msg))
+				grip.DebugWhen(err == nil, msg)
 				continue
 			}
 
