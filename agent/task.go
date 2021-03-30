@@ -261,8 +261,12 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 	}
 
 	tc.setIdleTimeout(timeout)
-	tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s",
-		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
+	if tc.currentCommand != nil {
+		tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s",
+			tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
+	} else {
+		tc.logger.Execution().Debugf("Set current idle timeout to %s", tc.getIdleTimeout())
+	}
 }
 
 func (tc *taskContext) getCurrentTimeout() time.Duration {
