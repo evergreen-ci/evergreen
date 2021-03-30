@@ -471,52 +471,6 @@ func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 	}))
 }
 
-// FindByExpiringJasperCredentials finds all hosts whose Jasper service
-// credentials will expire within the given cutoff. These hosts are marked as
-// needing provisioning changes.
-func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
-	deadline := time.Now().Add(cutoff)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	credentialsKey := evergreen.CredentialsCollection
-	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, CertUserTTLKey)
-
-	var hosts []Host
-
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			bootstrapKey: bson.M{"$in": []string{
-				distro.BootstrapMethodSSH,
-				distro.BootstrapMethodUserData,
-			}},
-			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
-			"$or": []bson.M{
-				{NeedsReprovisionKey: bson.M{"$exists": false}},
-				{NeedsReprovisionKey: ReprovisionJasperRestart},
-			},
-			HasContainersKey: bson.M{"$ne": true},
-			ParentIDKey:      bson.M{"$exists": false},
-		}},
-		{"$lookup": bson.M{
-			"from":         evergreen.CredentialsCollection,
-			"localField":   JasperCredentialsIDKey,
-			"foreignField": CertUserIDKey,
-			"as":           credentialsKey,
-		}},
-		{"$match": bson.M{
-			expirationKey: bson.M{"$lte": deadline},
-		}},
-		{"$project": bson.M{
-			credentialsKey: 0,
-		}},
-	}
-
-	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, err
-	}
-
-	return hosts, nil
-}
-
 // FindByShouldConvertProvisioning finds all hosts that are ready and waiting to
 // convert their provisioning type.
 func FindByShouldConvertProvisioning() ([]Host, error) {
