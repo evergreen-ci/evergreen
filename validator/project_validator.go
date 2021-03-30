@@ -420,6 +420,16 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 			if len(task.Distros) == 0 {
 				hasTaskWithoutDistro = true
 				break
+			} else {
+				for _, d := range task.Distros {
+					if d == "" {
+						errs = append(errs,
+							ValidationError{
+								Message: fmt.Sprintf("task '%s' has a blank distro", task.Name),
+							},
+						)
+					}
+				}
 			}
 		}
 		if hasTaskWithoutDistro && len(buildVariant.RunOn) == 0 {
@@ -431,6 +441,15 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 						buildVariant.Name, project.Identifier),
 				},
 			)
+		}
+		for _, runOn := range buildVariant.RunOn {
+			if runOn == "" {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("variant '%s' has a blank run_on distro", buildVariant.Name),
+					},
+				)
+			}
 		}
 	}
 	return errs

@@ -1867,6 +1867,26 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 			So(ensureHasNecessaryBVFields(project),
 				ShouldResemble, ValidationErrors{})
 		})
+		Convey("blank distros should generate errors", func() {
+			project := &model.Project{
+				BuildVariants: model.BuildVariants{
+					{
+						Name:  "bv1",
+						RunOn: []string{""},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "t1",
+								Distros: []string{""}},
+						},
+					},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldResemble, ValidationErrors{
+					{Level: Error, Message: "task 't1' has a blank distro"},
+					{Level: Error, Message: "variant 'bv1' has a blank run_on distro"},
+				})
+		})
 	})
 }
 func TestTaskValidation(t *testing.T) {
