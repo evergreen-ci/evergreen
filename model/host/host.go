@@ -49,9 +49,10 @@ type Host struct {
 
 	// True if the app server has done all necessary host setup work (although
 	// the host may need to do additional provisioning before it is running).
-	Provisioned       bool      `bson:"provisioned" json:"provisioned"`
-	ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
-	ProvisionTime     time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
+	Provisioned bool `bson:"provisioned" json:"provisioned"`
+	// kim: TODO: delete this field
+	// ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
+	ProvisionTime time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
 
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
@@ -560,7 +561,7 @@ func (h *Host) SetStopped(user string) error {
 }
 
 func (h *Host) SetUnprovisioned() error {
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
 			StatusKey: h.Status,
@@ -570,7 +571,13 @@ func (h *Host) SetUnprovisioned() error {
 				StatusKey: evergreen.HostProvisionFailed,
 			},
 		},
-	)
+	); err != nil {
+		return errors.WithStack(err)
+	}
+
+	h.Status = evergreen.HostProvisionFailed
+
+	return nil
 }
 
 func (h *Host) SetQuarantined(user string, logs string) error {
@@ -1428,24 +1435,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		// If adding or removing fields here, make sure that all callers will work
 		// correctly after the change. Any fields defined here but not set by the
 		// caller will insert the zero value into the document
-		DNSKey:               h.Host,
-		UserKey:              h.User,
-		UserHostKey:          h.UserHost,
-		DistroKey:            h.Distro,
-		StartedByKey:         h.StartedBy,
-		ExpirationTimeKey:    h.ExpirationTime,
-		ProviderKey:          h.Provider,
-		TagKey:               h.Tag,
-		InstanceTypeKey:      h.InstanceType,
-		ZoneKey:              h.Zone,
-		ProjectKey:           h.Project,
-		ProvisionedKey:       h.Provisioned,
-		ProvisionAttemptsKey: h.ProvisionAttempts,
-		ProvisionOptionsKey:  h.ProvisionOptions,
-		StatusKey:            h.Status,
-		StartTimeKey:         h.StartTime,
-		HasContainersKey:     h.HasContainers,
-		ContainerImagesKey:   h.ContainerImages,
+		DNSKey:            h.Host,
+		UserKey:           h.User,
+		UserHostKey:       h.UserHost,
+		DistroKey:         h.Distro,
+		StartedByKey:      h.StartedBy,
+		ExpirationTimeKey: h.ExpirationTime,
+		ProviderKey:       h.Provider,
+		TagKey:            h.Tag,
+		InstanceTypeKey:   h.InstanceType,
+		ZoneKey:           h.Zone,
+		ProjectKey:        h.Project,
+		ProvisionedKey:    h.Provisioned,
+		// kim: TODO: delete
+		// ProvisionAttemptsKey: h.ProvisionAttempts,
+		ProvisionOptionsKey: h.ProvisionOptions,
+		StatusKey:           h.Status,
+		StartTimeKey:        h.StartTime,
+		HasContainersKey:    h.HasContainers,
+		ContainerImagesKey:  h.ContainerImages,
 	}
 	unsetFields := bson.M{}
 	if h.NeedsReprovision != ReprovisionNone {

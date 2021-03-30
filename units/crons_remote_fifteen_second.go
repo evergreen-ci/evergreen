@@ -48,7 +48,8 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateHostSetupJobs(j.env),
+		// kim: TODO: delete
+		// PopulateHostSetupJobs(j.env),
 		PopulateSchedulerJobs(j.env),
 		PopulateAliasSchedulerJobs(j.env),
 		PopulateHostAllocatorJobs(j.env),
