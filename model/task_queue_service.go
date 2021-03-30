@@ -238,7 +238,7 @@ func (d *basicCachedDispatcherImpl) Refresh() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if !shouldRefreshCached(d.ttl, d.lastUpdated, d.distroID) {
+	if !shouldRefreshCached(d.ttl, d.lastUpdated) {
 		return nil
 	}
 
@@ -253,7 +253,7 @@ func (d *basicCachedDispatcherImpl) Refresh() error {
 	return nil
 }
 
-func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID string) bool {
+func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 

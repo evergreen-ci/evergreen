@@ -78,7 +78,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if !shouldRefreshCached(d.ttl, d.lastUpdated, d.distroID) {
+	if !shouldRefreshCached(d.ttl, d.lastUpdated) {
 		return nil
 	}
 
@@ -283,8 +283,21 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			"distro_id":                d.distroID,
 		})
 	}
+	var totalDurationCheckingBlockedTasks float64
+	var numCheckBlockedTasks int
+	var numIterated int
+	defer grip.DebugWhen(totalDurationCheckingBlockedTasks > 0, message.Fields{
+		"total_duration_secs": totalDurationCheckingBlockedTasks,
+		"total_operations":    numCheckBlockedTasks,
+		"dispatcher":          DAGDispatcher,
+		"operation":           "checkUnmarkedBlockingTasks",
+		"distro":              d.distroID,
+		"num_iterated":        numIterated,
+		"total_size":          len(d.sorted),
+	})
 	dependencyCaches := make(map[string]task.Task)
 	for i := range d.sorted {
+		numIterated += 1
 		node := d.sorted[i]
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
 
@@ -347,16 +360,19 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 
 			if !dependenciesMet {
+				start := time.Now()
 				grip.Warning(message.WrapError(checkUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches), message.Fields{
-					"dispatcher": DAGDispatcher,
-					"function":   "FindNextTask",
-					"operation":  "checkUnmarkedBlockingTasks",
-					"message":    "error checking dependencies for task",
-					"outcome":    "skip and continue",
-					"task":       item.Id,
-					"distro_id":  d.distroID,
+					"dispatcher":    DAGDispatcher,
+					"function":      "FindNextTask",
+					"operation":     "checkUnmarkedBlockingTasks",
+					"outcome":       "skip and continue",
+					"task":          item.Id,
+					"distro_id":     d.distroID,
+					"duration":      time.Since(start),
+					"duration_secs": time.Since(start).Seconds(),
 				}))
-
+				totalDurationCheckingBlockedTasks += time.Since(start).Seconds()
+				numCheckBlockedTasks += 1
 				continue
 			}
 
