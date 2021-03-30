@@ -137,8 +137,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		tc.logger.Execution().Info("OOM tracker clearing system messages")
 		if err = tc.oomTracker.Clear(innerCtx); err != nil {
 			tc.logger.Execution().Errorf("error clearing system messages: %s", err)
-			complete <- evergreen.TaskFailed
-			return
 		}
 	}
 

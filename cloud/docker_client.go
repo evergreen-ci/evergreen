@@ -366,16 +366,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 			pathToExecutable += ".exe"
 		}
 		// Build Evergreen agent command.
-		agentCmdParts = []string{
-			pathToExecutable,
-			"agent",
-			fmt.Sprintf("--api_server=%s", c.evergreenSettings.ApiUrl),
-			fmt.Sprintf("--host_id=%s", containerHost.Id),
-			fmt.Sprintf("--host_secret=%s", containerHost.Secret),
-			fmt.Sprintf("--log_prefix=%s", filepath.Join(containerHost.Distro.WorkDir, "agent")),
-			fmt.Sprintf("--working_directory=%s", containerHost.Distro.WorkDir),
-			"--cleanup",
-		}
+		agentCmdParts = containerHost.AgentCommand(c.evergreenSettings, pathToExecutable)
 		containerHost.DockerOptions.Command = strings.Join(agentCmdParts, "\n")
 	}
 
