@@ -75,13 +75,12 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 // statusResponse is the structure of the response objects produced by
 // the local status service.
 type statusResponse struct {
-	BuildRevision  string                 `json:"agent_build"`
-	AgentVersion   string                 `json:"agent_version"`
-	AgentPid       int                    `json:"pid"`
-	HostId         string                 `json:"host_id"`
-	SystemInfo     *message.SystemInfo    `json:"sys_info"`
-	ProcessTree    []*message.ProcessInfo `json:"ps_info"`
-	UseLegacyAgent bool                   `json:"use_legacy_agent"`
+	BuildRevision string                 `json:"agent_build"`
+	AgentVersion  string                 `json:"agent_version"`
+	AgentPid      int                    `json:"pid"`
+	HostId        string                 `json:"host_id"`
+	SystemInfo    *message.SystemInfo    `json:"sys_info"`
+	ProcessTree   []*message.ProcessInfo `json:"ps_info"`
 }
 
 // statusHandler is a function that produces the status handler.

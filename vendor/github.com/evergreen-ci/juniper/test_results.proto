@@ -30,10 +30,11 @@ message TestResult {
   string group_id = 3;
   int32 trial = 4;
   string status = 5;
-  int32 line_num = 6;
-  google.protobuf.Timestamp task_create_time = 7;
-  google.protobuf.Timestamp test_start_time = 8;
-  google.protobuf.Timestamp test_end_time = 9;
+  string log_test_name = 6;
+  int32 line_num = 7;
+  google.protobuf.Timestamp task_create_time = 8;
+  google.protobuf.Timestamp test_start_time = 9;
+  google.protobuf.Timestamp test_end_time = 10;
 }
 
 message TestResultsEndInfo {

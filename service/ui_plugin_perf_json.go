@@ -27,7 +27,7 @@ func perfGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 
 func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	project := vars["project_id"]
+	projectName := vars["project_id"]
 	name := vars["name"]
 	skip, err := util.GetIntValue(r, "skip", 0)
 	if err != nil {
@@ -38,8 +38,12 @@ func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "negative skip", http.StatusBadRequest)
 		return
 	}
-
-	data, err := model.PerfGetTasksForLatestVersion(project, name, skip)
+	projectId, err := model.GetIdForProject(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, err := model.PerfGetTasksForLatestVersion(projectId, name, skip)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -62,11 +66,17 @@ func perfGetVersion(w http.ResponseWriter, r *http.Request) {
 func perfGetCommit(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 
-	projectId := vars["project_id"]
+	projectName := vars["project_id"]
 	revision := vars["revision"]
 	variant := vars["variant"]
 	taskName := vars["task_name"]
 	name := vars["name"]
+
+	projectId, err := model.GetIdForProject(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	jsonForTask, err := model.GetTaskJSONCommit(projectId, revision, variant, taskName, name)
 	if err != nil {
 		if !adb.ResultsNotFound(err) {
@@ -179,7 +189,12 @@ func perfGetProjectTags(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "'project_id' param is required", http.StatusBadRequest)
 	}
 
-	data, err := model.GetDistinctTagNames(projectIdVals[0])
+	projectId, err := model.GetIdForProject(projectIdVals[0])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, err := model.GetDistinctTagNames(projectId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -191,12 +206,17 @@ func perfGetProjectTags(w http.ResponseWriter, r *http.Request) {
 
 func perfGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	projectId := vars["project_id"]
+	projectName := vars["project_id"]
 	tag := vars["tag"]
 	variant := vars["variant"]
 	taskName := vars["task_name"]
 	name := vars["name"]
 
+	projectId, err := model.GetIdForProject(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	jsonForTask, err := model.GetTaskJSONByTag(projectId, tag, variant, taskName, name)
 
 	if err != nil {

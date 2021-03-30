@@ -58,7 +58,7 @@ type goTestResult struct {
 
 // ToModelTestResults converts the implementation of LocalTestResults native
 // to the goTest plugin to the implementation used by MCI tasks
-func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
+func ToModelTestResults(results []*goTestResult, suiteName string) task.LocalTestResults {
 	var modelResults []task.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,
@@ -77,12 +77,13 @@ func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
 			status = evergreen.TestFailedStatus
 		}
 		convertedResult := task.TestResult{
-			TestFile:  res.Name,
-			Status:    status,
-			StartTime: start,
-			EndTime:   end,
-			LineNum:   res.StartLine - 1,
-			LogId:     res.LogId,
+			TestFile:    res.Name,
+			Status:      status,
+			StartTime:   start,
+			EndTime:     end,
+			LogTestName: suiteName,
+			LineNum:     res.StartLine - 1,
+			LogId:       res.LogId,
 		}
 		modelResults = append(modelResults, convertedResult)
 	}

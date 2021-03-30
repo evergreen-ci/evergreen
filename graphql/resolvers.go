@@ -1156,7 +1156,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: *execution,
+		Execution: dbTask.Execution,
 	}
 	if len(dbTask.ExecutionTasks) > 0 {
 		opts.DisplayTaskID = taskID
@@ -1241,9 +1241,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 		for _, t := range paginatedFilteredTests {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
@@ -1269,9 +1271,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 
 			testPointers = append(testPointers, &apiTest)
@@ -1529,8 +1533,8 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		patchId := ""
 		if utility.FromStringPtr(item.Version) != "" {
 			patchId = utility.FromStringPtr(item.Version)
-		} else if utility.FromStringPtr(item.Issue) != "" && utility.FromStringPtr(item.Source) == commitqueue.SourceDiff {
-			patchId = utility.FromStringPtr(item.Issue)
+		} else if utility.FromStringPtr(item.PatchId) != "" {
+			patchId = utility.FromStringPtr(item.PatchId)
 		}
 		if patchId != "" {
 			p, err := r.sc.FindPatchById(patchId)
@@ -2200,6 +2204,21 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 
 type taskResolver struct{ *Resolver }
 
+func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	t, err := r.sc.FindTaskById(*obj.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
+	}
+	dt, err := t.GetDisplayTask()
+	if dt == nil || err != nil {
+		return nil, nil
+	}
+	apiTask := &restModel.APITask{}
+	if err = apiTask.BuildFromService(dt); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
+	}
+	return apiTask, nil
+}
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
@@ -2334,13 +2353,17 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	var perfPlugin *plugin.PerfPlugin
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
+	if err != nil {
+		return false, err
+	}
 	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
 		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
 		if err != nil {
 			return false, err
 		}
 		for _, projectName := range perfPlugin.Projects {
-			if projectName == *obj.ProjectId {
+			if projectName == pRef.Id || projectName == pRef.Identifier {
 				return true, nil
 			}
 		}

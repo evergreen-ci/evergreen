@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -100,7 +102,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			require.NoError(t, err, "Error storing repository revisions %s", revisionOne.Revision)
 
-			newestVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(evgProjectRef.String()))
+			newestVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(evgProjectRef.Id))
 			require.NoError(t, err, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(newestVersion.AuthorID, ShouldEqual, "")
@@ -902,7 +904,7 @@ tasks:
 	s.NotNil(pp)
 	//force a duplicate key error with the version
 	v := &model.Version{
-		Id: makeVersionId(s.ref.String(), s.rev.Revision),
+		Id: makeVersionId(s.ref.Identifier, s.rev.Revision),
 	}
 	s.NoError(v.Insert())
 
@@ -1140,7 +1142,8 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		},
 	}
 	pRef := &model.ProjectRef{
-		Id:                    "my-project",
+		Id:                    bson.NewObjectId().Hex(),
+		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}

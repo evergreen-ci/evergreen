@@ -144,7 +144,6 @@
           "acceptable_host_idle_time": { "$numberLong": "0" }
         },
         "disable_shallow_clone": false,
-        "use_legacy_agent": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,
@@ -349,7 +348,6 @@
           "acceptable_host_idle_time": { "$numberLong": "0" }
         },
         "disable_shallow_clone": false,
-        "use_legacy_agent": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,

@@ -62,8 +62,8 @@ func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId 
 }
 
 // GetProjectVersionsWithOptions returns the versions that fit the given constraint, and returns the revision order number for the next batch.
-func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, int, error) {
-	versions, nextKey, err := model.GetVersionsWithOptions(projectId, opts)
+func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, int, error) {
+	versions, nextKey, err := model.GetVersionsWithOptions(projectName, opts)
 	if err != nil {
 		return nil, 0, err
 	}

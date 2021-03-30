@@ -1,0 +1,12 @@
+{
+  executionTask: task(taskId: "execution_task", execution: 1) {
+    displayTask {
+        id
+    }
+  }
+  displayTask: task(taskId: "display_task", execution: 1) {
+      displayTask {
+          id
+      }
+  }
+}

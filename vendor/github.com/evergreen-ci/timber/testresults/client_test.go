@@ -197,6 +197,7 @@ func validResults(id string) Results {
 				DisplayTestName: "display",
 				GroupID:         "group",
 				Status:          "status",
+				LogTestName:     "log_test_name",
 				TaskCreated:     time.Now().Add(-time.Hour),
 				TestStarted:     time.Now().Add(-time.Minute),
 				TestEnded:       time.Now(),

@@ -167,7 +167,7 @@ func (h *legacyVersionsGetHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projRefId, err := dbModel.FindIdForProject(h.project)
+	projRefId, err := dbModel.GetIdForProject(h.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -619,7 +619,7 @@ func (h *projectRepotrackerHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
-	projectId, err := dbModel.FindIdForProject(h.projectName)
+	projectId, err := dbModel.GetIdForProject(h.projectName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", h.projectName))
 	}
@@ -1020,7 +1020,7 @@ func (h *projectParametersGetHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	id, err := dbModel.FindIdForProject(h.projectName)
+	id, err := dbModel.GetIdForProject(h.projectName)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding project '%s'", id))
 	}

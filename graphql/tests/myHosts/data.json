@@ -177,7 +177,6 @@
           }
         },
         "disable_shallow_clone": false,
-        "use_legacy_agent": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,
@@ -411,7 +410,6 @@
           }
         },
         "disable_shallow_clone": false,
-        "use_legacy_agent": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,
@@ -623,7 +621,6 @@
         }
       },
       "disable_shallow_clone": false,
-      "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": true,
       "is_cluster": false,
@@ -739,7 +736,6 @@
         }
       },
       "disable_shallow_clone": false,
-      "use_legacy_agent": false,
       "note": "",
       "is_virtual_workstation": false,
       "is_cluster": false,

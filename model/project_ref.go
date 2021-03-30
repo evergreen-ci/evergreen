@@ -738,7 +738,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
-func FindIdForProject(identifier string) (string, error) {
+func GetIdForProject(identifier string) (string, error) {
 	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
 		return "", err
@@ -824,10 +824,22 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
 func FindAllMergedProjectRefs() ([]ProjectRef, error) {
+	return FindProjectRefsQ(bson.M{})
+}
+
+func FindProjectRefsByIds(ids []string) ([]ProjectRef, error) {
+	return FindProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+	})
+}
+
+func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	err := db.FindAll(
 		ProjectRefCollection,
-		bson.M{},
+		filter,
 		db.NoProjection,
 		db.NoSort,
 		db.NoSkip,
@@ -1259,11 +1271,6 @@ func (projectRef *ProjectRef) Upsert() error {
 		},
 	)
 	return err
-}
-
-// ProjectRef returns a string representation of a ProjectRef
-func (projectRef *ProjectRef) String() string {
-	return projectRef.Id
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
@@ -1713,7 +1720,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.New("a project cannot trigger itself")
 	}
 
-	childProjectId, err := FindIdForProject(definition.ChildProject)
+	childProjectId, err := GetIdForProject(definition.ChildProject)
 	if err != nil {
 		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
 	}

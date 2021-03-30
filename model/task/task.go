@@ -291,8 +291,30 @@ type TestResult struct {
 	TaskID          string  `json:"task_id" bson:"task_id"`
 	Execution       int     `json:"execution" bson:"execution"`
 
-	// LogRaw is not saved in the task
-	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
+	// LogRaw and LogTestName are not saved in the task
+	LogRaw      string `json:"log_raw" bson:"log_raw,omitempty"`
+	LogTestName string `json:"log_test_name" bson:"log_test_name"`
+}
+
+// GetLogTestName returns the name of the test in the logging backend. This is
+// used for test logs in cedar where the name of the test in the logging
+// service may differ from that in the test results service.
+func (tr *TestResult) GetLogTestName() string {
+	if tr.LogTestName != "" {
+		return tr.LogTestName
+	}
+
+	return tr.TestFile
+}
+
+// GetDisplayTestName returns the name of the test that should be displayed in
+// the UI. In most cases, this will just be TestFile.
+func (tr *TestResult) GetDisplayTestName() string {
+	if tr.DisplayTestName != "" {
+		return tr.DisplayTestName
+	}
+
+	return tr.TestFile
 }
 
 type DisplayTaskCache struct {
@@ -2976,6 +2998,7 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		TestFile:        result.TestName,
 		DisplayTestName: result.DisplayTestName,
 		GroupID:         result.GroupID,
+		LogTestName:     result.LogTestName,
 		LineNum:         result.LineNum,
 		StartTime:       float64(result.Start.Unix()),
 		EndTime:         float64(result.End.Unix()),

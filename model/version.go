@@ -311,9 +311,9 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 }
 
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, int, error) {
-	projectId, err := FindIdForProject(projectName)
+	projectId, err := GetIdForProject(projectName)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "error finding id for project '%s'", projectName)
+		return nil, 0, err
 	}
 	if opts.Limit == 0 {
 		opts.Limit = defaultVersionLimit

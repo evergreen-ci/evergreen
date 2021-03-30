@@ -354,18 +354,21 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   $scope.getURL = function (testResult, isRaw) {
     var url = (isRaw) ? testResult.url_raw : testResult.url;
     let prefix = '/test_log/';
-    let raw = '?text=true';
+    let raw = 'text=true';
     let lineNum = '#L' + (testResult.line_num || 0);
     if (url == '' && testResult.log_id) {
       if (isRaw) {
-        url = prefix + testResult.log_id + raw;
+        url = prefix + testResult.log_id + '?' +  raw;
       } else  {
         url = prefix + testResult.log_id + lineNum;
       }
     } else if (url == '') {
-      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + testResult.test_file;
+      var group_id = '?group_id='
+      group_id += (testResult.group_id) ? testResult.group_id : ""
+      var test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
+      url = prefix + testResult.task_id + '/' + testResult.execution + '/' + test_name + group_id
       if (isRaw) {
-          url  += raw;
+          url  += '&' + raw;
       } else {
           url += lineNum;
       }
@@ -510,7 +513,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       var testResult = t.test_result;
       testResult.time_taken = testResult.end - testResult.start;
       totalTestTime += testResult.time_taken;
-      testResult.display_name = testResult.display_test_name ? testResult.display_test_name: $filter('endOfPath')(testResult.test_file);
+      testResult.display_name = testResult.display_test_name ? $filter('endOfPath')(testResult.display_test_name): $filter('endOfPath')(testResult.test_file);
     });
     $scope.totalTestTimeNano = totalTestTime * 1000 * 1000 * 1000;
 

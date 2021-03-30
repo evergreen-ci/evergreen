@@ -31,6 +31,7 @@ func TestSendTestResults(t *testing.T) {
 				GroupID:         "group",
 				Status:          "status",
 				URL:             "https://url.com",
+				LogTestName:     "log_test_name",
 				LineNum:         123,
 				StartTime:       float64(time.Now().Add(-time.Hour).Unix()),
 				EndTime:         float64(time.Now().Unix()),
@@ -86,6 +87,7 @@ func TestSendTestResults(t *testing.T) {
 				assert.Equal(t, results.Results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
 				assert.Equal(t, results.Results[0].GroupID, res[0].Results[0].GroupId)
+				assert.Equal(t, results.Results[0].LogTestName, res[0].Results[0].LogTestName)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
