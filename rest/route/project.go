@@ -864,7 +864,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
+	versions, nextKey, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
 	}
@@ -881,7 +881,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
 				BaseURL:         h.sc.GetURL(),
-				Key:             strconv.Itoa(versions[len(versions)-1].Order),
+				Key:             strconv.Itoa(nextKey),
 				Limit:           h.opts.Limit,
 			},
 		})

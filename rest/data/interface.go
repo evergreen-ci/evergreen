@@ -111,7 +111,9 @@ type Connector interface {
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
-	GetProjectVersionsWithOptions(string, model.GetVersionsOptions) ([]restModel.APIVersion, error)
+	// GetProjectVersionsWithOptions returns the batch of project versions, and the key for the next batch
+	// (this might not be the same as the last versions' revision order number, if versions were filtered out).
+	GetProjectVersionsWithOptions(string, model.GetVersionsOptions) ([]restModel.APIVersion, int, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
 
