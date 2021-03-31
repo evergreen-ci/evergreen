@@ -1883,8 +1883,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 			}
 			So(ensureHasNecessaryBVFields(project),
 				ShouldResemble, ValidationErrors{
-					{Level: Error, Message: "task 't1' has a blank distro"},
-					{Level: Error, Message: "variant 'bv1' has a blank run_on distro"},
+					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify a distro."},
 				})
 		})
 	})
