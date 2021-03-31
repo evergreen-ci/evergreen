@@ -1152,11 +1152,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		if bvt.Name == task {
 			bvt.Variant = variant
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
-				//fmt.Println("BEFORE POPULATING")
-				//pp.Println(bvt)
-				//bvt.Populate(*projectTask) // TODO: i would really like to move this
-				//fmt.Println("AFTER POPULATING")
-				//pp.Println(bvt)
 				return &bvt
 			} else if _, exists := tgMap[task]; exists {
 				return &bvt
