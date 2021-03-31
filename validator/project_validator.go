@@ -417,12 +417,26 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 			)
 		}
 		for _, task := range buildVariant.Tasks {
-			if len(task.Distros) == 0 {
+			taskHasValidDistro := false
+			for _, d := range task.Distros {
+				if d != "" {
+					taskHasValidDistro = true
+					break
+				}
+			}
+			if !taskHasValidDistro {
 				hasTaskWithoutDistro = true
 				break
 			}
 		}
-		if hasTaskWithoutDistro && len(buildVariant.RunOn) == 0 {
+		hasValidRunOn := false
+		for _, runOn := range buildVariant.RunOn {
+			if runOn != "" {
+				hasValidRunOn = true
+				break
+			}
+		}
+		if hasTaskWithoutDistro && !hasValidRunOn {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+

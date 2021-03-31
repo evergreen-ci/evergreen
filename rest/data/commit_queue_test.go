@@ -354,6 +354,8 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 
 func (s *CommitQueueSuite) TestAddMergeTaskAndVariant() {
 	config, err := evergreen.GetConfig()
+	config.CommitQueue.MergeTaskDistro = "d"
+	s.NoError(config.CommitQueue.Set())
 	s.NoError(err)
 	s.NoError(db.ClearCollections(distro.Collection))
 	s.NoError((&distro.Distro{
