@@ -890,11 +890,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, task := range buildVariant.Tasks {
-		// get the task spec out of the project
-		taskSpec := project.GetSpecForTask(task.Name)
 		// sanity check that the config isn't malformed
-		if taskSpec.Name != "" {
-			task.Populate(taskSpec)
+		if task.Name != "" && !task.IsGroup {
 			if task.SkipOnRequester(b.Requester) {
 				continue
 			}

@@ -336,7 +336,6 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 			}
 		}
 		for _, t := range tasksToAdd {
-			t.Populate(p.GetSpecForTask(t.Name))
 			t.Variant = bv.Name
 			node := model.TVPair{
 				Variant:  bv.Name,

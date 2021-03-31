@@ -1611,7 +1611,9 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			{
 				Name:         "bv0",
 				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
-				Tasks:        []BuildVariantTaskUnit{{Name: "t0"}, {Name: "t1"}},
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t0"},
+					{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
 			},
 		},
 		Tasks: []ProjectTask{

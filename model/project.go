@@ -145,6 +145,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
 	}
+	if len(bvt.Distros) == 0 {
+		bvt.Distros = pt.Distros
+	}
 	if bvt.Priority == 0 {
 		bvt.Priority = pt.Priority
 	}
@@ -167,6 +170,7 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
 	}
+
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
@@ -493,6 +497,7 @@ type ProjectTask struct {
 	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Commands        []PluginCommandConf  `yaml:"commands,omitempty" bson:"commands"`
 	Tags            []string             `yaml:"tags,omitempty" bson:"tags"`
+	Distros         []string             `yaml:"distros,omitempty" bson:"distros"`
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
@@ -1147,7 +1152,11 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		if bvt.Name == task {
 			bvt.Variant = variant
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
-				bvt.Populate(*projectTask)
+				//fmt.Println("BEFORE POPULATING")
+				//pp.Println(bvt)
+				//bvt.Populate(*projectTask) // TODO: i would really like to move this
+				//fmt.Println("AFTER POPULATING")
+				//pp.Println(bvt)
 				return &bvt
 			} else if _, exists := tgMap[task]; exists {
 				return &bvt
@@ -1157,6 +1166,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			for _, t := range tg.Tasks {
 				if t == task {
 					bvt.Variant = variant
+					// task group tasks need to be repopulated from the task list
 					bvt.Populate(*p.FindProjectTask(task))
 					return &bvt
 				}
