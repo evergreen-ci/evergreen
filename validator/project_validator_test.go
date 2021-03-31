@@ -174,7 +174,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 			errs := validateTaskDependencies(&p)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
-			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. This can cause unexpected behavior in patches")
+			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
 		})
 	})
 }

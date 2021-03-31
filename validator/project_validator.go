@@ -1118,22 +1118,22 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 			if !exists {
 				continue
 			}
-			if utility.FromBoolPtr(dependent.PatchOnly) {
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
 				errs = append(errs, ValidationError{
 					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. This can cause unexpected behavior in non-patches", task.Name, dep.Name),
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
 				})
 			}
-			if !utility.FromBoolTPtr(dependent.Patchable) {
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
 				errs = append(errs, ValidationError{
 					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. This can cause unexpected behavior in patches", task.Name, dep.Name),
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
 				})
 			}
-			if utility.FromBoolPtr(dependent.GitTagOnly) {
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
 				errs = append(errs, ValidationError{
 					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. This can cause unexpected behavior outside of pushing tags", task.Name, dep.Name),
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
 				})
 			}
 		}
