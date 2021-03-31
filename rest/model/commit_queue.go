@@ -28,11 +28,6 @@ type APICommitQueueItem struct {
 	Source          *string     `json:"source"`
 }
 
-type APIModule struct {
-	Module *string `json:"module"`
-	Issue  *string `json:"issue"`
-}
-
 type APICommitQueuePosition struct {
 	Position int `json:"position"`
 }
@@ -76,10 +71,7 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	item.PatchId = utility.ToStringPtr(cqItemService.PatchId)
 
 	for _, module := range cqItemService.Modules {
-		item.Modules = append(item.Modules, APIModule{
-			Module: utility.ToStringPtr(module.Module),
-			Issue:  utility.ToStringPtr(module.Issue),
-		})
+		item.Modules = append(item.Modules, *APIModuleBuildFromService(module))
 	}
 
 	return nil
@@ -94,11 +86,7 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 		PatchId:         utility.FromStringPtr(item.PatchId),
 	}
 	for _, module := range item.Modules {
-		serviceModule := commitqueue.Module{
-			Module: utility.FromStringPtr(module.Module),
-			Issue:  utility.FromStringPtr(module.Issue),
-		}
-		serviceItem.Modules = append(serviceItem.Modules, serviceModule)
+		serviceItem.Modules = append(serviceItem.Modules, *APIModuleToService(module))
 	}
 	return serviceItem, nil
 }
