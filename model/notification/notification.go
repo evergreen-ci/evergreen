@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -82,7 +81,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.GithubMergeSubscriberType, event.EnqueuePatchSubscriberType:
+	case event.EnqueuePatchSubscriberType:
 		return evergreen.SenderGeneric, nil
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -193,25 +192,6 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.Repo = sub.Repo
 		payload.Ref = sub.Ref
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
-
-	case event.GithubMergeSubscriberType:
-		sub, ok := n.Subscriber.Target.(*event.GithubMergeSubscriber)
-		if !ok {
-			return nil, errors.New("github-merge subscriber is invalid")
-		}
-		payload, ok := n.Payload.(*commitqueue.GithubMergePR)
-		if !ok || payload == nil {
-			return nil, errors.New("github-merge payload is invalid")
-		}
-		payload.PRs = sub.PRs
-		payload.MergeMethod = sub.MergeMethod
-		payload.Item = sub.Item
-
-		if err := payload.Initialize(env); err != nil {
-			return nil, errors.Wrap(err, "problem initializing GithubMergePR")
-		}
-
-		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
 
 	case event.EnqueuePatchSubscriberType:
 		payload, ok := n.Payload.(*model.EnqueuePatch)
