@@ -608,6 +608,7 @@ type ComplexityRoot struct {
 		OOMTracker  func(childComplexity int) int
 		Status      func(childComplexity int) int
 		TimedOut    func(childComplexity int) int
+		TimeoutType func(childComplexity int) int
 		Type        func(childComplexity int) int
 	}
 
@@ -3864,6 +3865,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.TimedOut(childComplexity), true
 
+	case "TaskEndDetail.timeoutType":
+		if e.complexity.TaskEndDetail.TimeoutType == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.TimeoutType(childComplexity), true
+
 	case "TaskEndDetail.type":
 		if e.complexity.TaskEndDetail.Type == nil {
 			break
@@ -5256,6 +5264,7 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  timeoutType: String
   oomTracker: OomTrackerInfo!
 }
 
@@ -19802,6 +19811,37 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskEndDetail_timeoutType(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEndDetail",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeoutType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_oomTracker(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28616,6 +28656,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
 		case "timedOut":
 			out.Values[i] = ec._TaskEndDetail_timedOut(ctx, field, obj)
+		case "timeoutType":
+			out.Values[i] = ec._TaskEndDetail_timeoutType(ctx, field, obj)
 		case "oomTracker":
 			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

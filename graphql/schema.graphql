@@ -565,6 +565,7 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  timeoutType: String
   oomTracker: OomTrackerInfo!
 }
 
