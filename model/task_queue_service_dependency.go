@@ -286,15 +286,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 	var totalDurationCheckingBlockedTasks float64
 	var numCheckBlockedTasks int
 	var numIterated int
-	defer grip.DebugWhen(totalDurationCheckingBlockedTasks > 0, message.Fields{
-		"total_duration_secs": totalDurationCheckingBlockedTasks,
-		"total_operations":    numCheckBlockedTasks,
-		"dispatcher":          DAGDispatcher,
-		"operation":           "checkUnmarkedBlockingTasks",
-		"distro":              d.distroID,
-		"num_iterated":        numIterated,
-		"total_size":          len(d.sorted),
-	})
 	dependencyCaches := make(map[string]task.Task)
 	for i := range d.sorted {
 		numIterated += 1
@@ -375,7 +366,16 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				numCheckBlockedTasks += 1
 				continue
 			}
-
+			grip.Debug(message.Fields{
+				"total_duration_secs": totalDurationCheckingBlockedTasks,
+				"total_operations":    numCheckBlockedTasks,
+				"dispatcher":          DAGDispatcher,
+				"operation":           "checkUnmarkedBlockingTasks",
+				"distro":              d.distroID,
+				"num_iterated":        numIterated,
+				"total_size":          len(d.sorted),
+				"item":                item.Id,
+			})
 			return item
 		}
 
@@ -410,12 +410,31 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 					taskGroupTask := d.getItemByNodeID(node.ID()) // *TaskQueueItem
 					taskGroupTask.IsDispatched = true
 
+					grip.Debug(message.Fields{
+						"total_duration_secs": totalDurationCheckingBlockedTasks,
+						"total_operations":    numCheckBlockedTasks,
+						"dispatcher":          DAGDispatcher,
+						"operation":           "checkUnmarkedBlockingTasks",
+						"distro":              d.distroID,
+						"num_iterated":        numIterated,
+						"total_size":          len(d.sorted),
+						"item":                next.Id,
+					})
 					return next
 				}
 			}
 		}
 	}
-
+	grip.Debug(message.Fields{
+		"total_duration_secs": totalDurationCheckingBlockedTasks,
+		"total_operations":    numCheckBlockedTasks,
+		"dispatcher":          DAGDispatcher,
+		"operation":           "checkUnmarkedBlockingTasks",
+		"distro":              d.distroID,
+		"num_iterated":        numIterated,
+		"total_size":          len(d.sorted),
+		"item":                "none",
+	})
 	return nil
 }
 
