@@ -145,9 +145,11 @@ func (s *commitQueueSuite) TestValidateBranch() {
 }
 
 func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
+	s.NoError(db.ClearCollections(distro.Collection, evergreen.ConfigCollection))
 	config, err := evergreen.GetConfig()
 	s.NoError(err)
-	s.NoError(db.ClearCollections(distro.Collection))
+	config.CommitQueue.MergeTaskDistro = "d"
+	s.NoError(config.CommitQueue.Set())
 	s.NoError((&distro.Distro{
 		Id: config.CommitQueue.MergeTaskDistro,
 	}).Insert())
