@@ -335,11 +335,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	patchDoc, err := patch.FindOneId(nextItem.PatchId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error finding patch '%s'", nextItem.Version))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
 		j.dequeue(cq, nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.AddError(errors.Errorf("patch '%s' not found", nextItem.Version))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -475,6 +477,9 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 }
 
 func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
+	if pr == nil {
+		return nil
+	}
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
 		return errors.Wrap(err, "can't get GitHub status sender")
