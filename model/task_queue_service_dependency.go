@@ -374,7 +374,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				"distro":              d.distroID,
 				"num_iterated":        numIterated,
 				"total_size":          len(d.sorted),
-				"item":                item.Id,
+				"task":                item.Id,
 			})
 			return item
 		}
@@ -418,7 +418,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 						"distro":              d.distroID,
 						"num_iterated":        numIterated,
 						"total_size":          len(d.sorted),
-						"item":                next.Id,
+						"task":                next.Id,
 					})
 					return next
 				}
@@ -433,7 +433,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 		"distro":              d.distroID,
 		"num_iterated":        numIterated,
 		"total_size":          len(d.sorted),
-		"item":                "none",
+		"task":                "none",
 	})
 	return nil
 }
