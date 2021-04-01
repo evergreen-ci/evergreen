@@ -162,6 +162,20 @@ func TestValidateTaskDependencies(t *testing.T) {
 			}
 			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "project '' contains a non-existent task name 'nonexistent' in dependencies for task '3'")
 		})
+		Convey("depending on a non-patchable task should generate a warning", func() {
+			p := model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "t1", DependsOn: []model.TaskUnitDependency{
+						{Name: "t2", Variant: model.AllVariants},
+					}},
+					{Name: "t2", Patchable: utility.FalsePtr()},
+				},
+			}
+			errs := validateTaskDependencies(&p)
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Level, ShouldEqual, Warning)
+			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
+		})
 	})
 }
 

@@ -1079,13 +1079,15 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
+	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
 		depNames := map[model.TVPair]bool{}
 
 		for _, dep := range task.DependsOn {
+			pair := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
 			// make sure the dependency is not specified more than once
-			if depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] {
+			if depNames[pair] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("project '%s' contains a "+
@@ -1094,7 +1096,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					},
 				)
 			}
-			depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] = true
+			depNames[pair] = true
 
 			// check that the status is valid
 			switch dep.Status {
@@ -1124,6 +1126,29 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					Level: Error,
 					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
 						project.Identifier, dep.Variant, task.Name),
+				})
+			}
+
+			dependent, exists := allTasks[dep.Name]
+			if !exists {
+				continue
+			}
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
+				})
+			}
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
+				})
+			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
 				})
 			}
 		}
