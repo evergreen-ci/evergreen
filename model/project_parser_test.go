@@ -1271,7 +1271,7 @@ buildvariants:
 
 	assert.Len(t, proj.BuildVariants, 3)
 	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
-	assert.Nil(t, proj.BuildVariants[0].Tasks[0].AllowForGitTag)
+	assert.True(t, *proj.BuildVariants[0].Tasks[0].AllowForGitTag) // loaded from task
 	assert.False(t, *proj.BuildVariants[0].Tasks[1].AllowForGitTag)
 
 	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
