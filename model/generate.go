@@ -380,7 +380,23 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 			for i, intermediateProjectBV := range intermediateProject.BuildVariants {
 				if intermediateProjectBV.Name == bv.Name {
 					intermediateProject.BuildVariants[i].Tasks = append(intermediateProject.BuildVariants[i].Tasks, bv.Tasks...)
-					intermediateProject.BuildVariants[i].DisplayTasks = append(intermediateProject.BuildVariants[i].DisplayTasks, bv.DisplayTasks...)
+
+					for _, dt := range bv.DisplayTasks {
+						// check if the display task already exists, and if it does add the exec tasks to the existing display task
+						foundExisting := false
+						for j, intermediateProjectDT := range intermediateProjectBV.DisplayTasks {
+							if intermediateProjectDT.Name == dt.Name {
+								foundExisting = true
+								intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks = append(
+									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, dt.ExecutionTasks...)
+								break
+							}
+						}
+						if !foundExisting {
+							intermediateProject.BuildVariants[i].DisplayTasks = append(intermediateProject.BuildVariants[i].DisplayTasks, dt)
+						}
+					}
+
 				}
 			}
 		} else {
