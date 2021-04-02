@@ -85,15 +85,14 @@ func (m *mgoCertDepot) Check(tag *depot.Tag) bool {
 	defer session.Close()
 
 	u := &User{}
-	if err = session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u); errNotNotFound(err) {
-		grip.Warning(message.Fields{
-			"db":   m.databaseName,
-			"coll": m.collectionName,
-			"id":   name,
-			"err":  err,
-			"op":   "check",
-		})
-	}
+	err = session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u)
+	grip.WarningWhen(errNotNotFound(err), message.WrapError(err, message.Fields{
+		"db":   m.databaseName,
+		"coll": m.collectionName,
+		"id":   name,
+		"err":  err,
+		"op":   "check",
+	}))
 
 	switch key {
 	case userCertKey:
@@ -106,6 +105,36 @@ func (m *mgoCertDepot) Check(tag *depot.Tag) bool {
 		return u.CertRevocList != ""
 	default:
 		return false
+	}
+}
+
+// CheckWithError returns whether the user and data specified by the tag exists
+// as well as an error in the case of an internal error.
+func (m *mgoCertDepot) CheckWithError(tag *depot.Tag) (bool, error) {
+	name, key, err := getNameAndKey(tag)
+	if err != nil {
+		return false, errors.Wrap(err, "getting name and key")
+	}
+	session := m.session.Clone()
+	defer session.Close()
+
+	u := &User{}
+
+	if err = session.DB(m.databaseName).C(m.collectionName).FindId(name).One(u); errNotNotFound(err) {
+		return false, errors.Wrap(err, "checking depot tag")
+	}
+
+	switch key {
+	case userCertKey:
+		return u.Cert != "", nil
+	case userPrivateKeyKey:
+		return u.PrivateKey != "", nil
+	case userCertReqKey:
+		return u.CertReq != "", nil
+	case userCertRevocListKey:
+		return u.CertRevocList != "", nil
+	default:
+		return false, nil
 	}
 }
 
