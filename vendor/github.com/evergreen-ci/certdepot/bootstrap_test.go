@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/certstrap/depot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -195,7 +194,7 @@ func TestBootstrapDepot(t *testing.T) {
 	defer cancel()
 	client, err := mongo.Connect(connctx, options.Client().ApplyURI("mongodb://localhost:27017"))
 	require.NoError(t, err)
-	tempDepot, err := depot.NewFileDepot("temp_depot")
+	tempDepot, err := NewFileDepot("temp_depot")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.RemoveAll(depotName))
@@ -208,27 +207,27 @@ func TestBootstrapDepot(t *testing.T) {
 		Expires:    time.Hour,
 	}
 	require.NoError(t, opts.Init(tempDepot))
-	caCert, err := tempDepot.Get(depot.CrtTag(caName))
+	caCert, err := tempDepot.Get(CrtTag(caName))
 	require.NoError(t, err)
-	caKey, err := tempDepot.Get(depot.PrivKeyTag(caName))
+	caKey, err := tempDepot.Get(PrivKeyTag(caName))
 	require.NoError(t, err)
 
 	for _, impl := range []struct {
 		name          string
-		setup         func(*BootstrapDepotConfig) depot.Depot
-		bootstrapFunc func(BootstrapDepotConfig) (depot.Depot, error)
+		setup         func(*BootstrapDepotConfig) Depot
+		bootstrapFunc func(BootstrapDepotConfig) (Depot, error)
 		tearDown      func()
 	}{
 		{
 			name: "FileDepot",
-			setup: func(conf *BootstrapDepotConfig) depot.Depot {
+			setup: func(conf *BootstrapDepotConfig) Depot {
 				conf.FileDepot = depotName
 
-				d, err := depot.NewFileDepot(depotName)
+				d, err := NewFileDepot(depotName)
 				require.NoError(t, err)
 				return d
 			},
-			bootstrapFunc: func(conf BootstrapDepotConfig) (depot.Depot, error) {
+			bootstrapFunc: func(conf BootstrapDepotConfig) (Depot, error) {
 				return BootstrapDepot(ctx, conf)
 			},
 			tearDown: func() {
@@ -237,7 +236,7 @@ func TestBootstrapDepot(t *testing.T) {
 		},
 		{
 			name: "MongoDepot",
-			setup: func(conf *BootstrapDepotConfig) depot.Depot {
+			setup: func(conf *BootstrapDepotConfig) Depot {
 				conf.MongoDepot = &MongoDBOptions{
 					DatabaseName:   databaseName,
 					CollectionName: depotName,
@@ -247,7 +246,7 @@ func TestBootstrapDepot(t *testing.T) {
 				require.NoError(t, err)
 				return d
 			},
-			bootstrapFunc: func(conf BootstrapDepotConfig) (depot.Depot, error) {
+			bootstrapFunc: func(conf BootstrapDepotConfig) (Depot, error) {
 				return BootstrapDepot(ctx, conf)
 			},
 			tearDown: func() {
@@ -256,7 +255,7 @@ func TestBootstrapDepot(t *testing.T) {
 		},
 		{
 			name: "MongoDepotExistingClient",
-			setup: func(conf *BootstrapDepotConfig) depot.Depot {
+			setup: func(conf *BootstrapDepotConfig) Depot {
 				conf.MongoDepot = &MongoDBOptions{
 					DatabaseName:   databaseName,
 					CollectionName: depotName,
@@ -266,7 +265,7 @@ func TestBootstrapDepot(t *testing.T) {
 				require.NoError(t, err)
 				return d
 			},
-			bootstrapFunc: func(conf BootstrapDepotConfig) (depot.Depot, error) {
+			bootstrapFunc: func(conf BootstrapDepotConfig) (Depot, error) {
 				return BootstrapDepotWithMongoClient(ctx, client, conf)
 			},
 			tearDown: func() {
@@ -278,8 +277,8 @@ func TestBootstrapDepot(t *testing.T) {
 			for _, test := range []struct {
 				name   string
 				conf   BootstrapDepotConfig
-				setup  func(depot.Depot)
-				test   func(depot.Depot)
+				setup  func(Depot)
+				test   func(Depot)
 				hasErr bool
 			}{
 				{
@@ -288,23 +287,23 @@ func TestBootstrapDepot(t *testing.T) {
 						CAName:      caName,
 						ServiceName: serviceName,
 					},
-					setup: func(d depot.Depot) {
-						assert.NoError(t, d.Put(depot.CrtTag(caName), []byte("fake ca cert")))
-						assert.NoError(t, d.Put(depot.PrivKeyTag(caName), []byte("fake ca key")))
-						assert.NoError(t, d.Put(depot.CrtTag(serviceName), []byte("fake service cert")))
-						assert.NoError(t, d.Put(depot.PrivKeyTag(serviceName), []byte("fake service key")))
+					setup: func(d Depot) {
+						assert.NoError(t, d.Put(CrtTag(caName), []byte("fake ca cert")))
+						assert.NoError(t, d.Put(PrivKeyTag(caName), []byte("fake ca key")))
+						assert.NoError(t, d.Put(CrtTag(serviceName), []byte("fake service cert")))
+						assert.NoError(t, d.Put(PrivKeyTag(serviceName), []byte("fake service key")))
 					},
-					test: func(d depot.Depot) {
-						data, err := d.Get(depot.CrtTag(caName))
+					test: func(d Depot) {
+						data, err := d.Get(CrtTag(caName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, []byte("fake ca cert"))
-						data, err = d.Get(depot.PrivKeyTag(caName))
+						data, err = d.Get(PrivKeyTag(caName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, []byte("fake ca key"))
-						data, err = d.Get(depot.CrtTag(serviceName))
+						data, err = d.Get(CrtTag(serviceName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, []byte("fake service cert"))
-						data, err = d.Get(depot.PrivKeyTag(serviceName))
+						data, err = d.Get(PrivKeyTag(serviceName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, []byte("fake service key"))
 					},
@@ -323,11 +322,11 @@ func TestBootstrapDepot(t *testing.T) {
 							Expires:    time.Hour,
 						},
 					},
-					test: func(d depot.Depot) {
-						data, err := d.Get(depot.CrtTag(caName))
+					test: func(d Depot) {
+						data, err := d.Get(CrtTag(caName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, caCert)
-						data, err = d.Get(depot.PrivKeyTag(caName))
+						data, err = d.Get(PrivKeyTag(caName))
 						assert.NoError(t, err)
 						assert.Equal(t, data, caKey)
 					},
@@ -388,10 +387,10 @@ func TestBootstrapDepot(t *testing.T) {
 					} else {
 						require.NoError(t, err)
 
-						assert.True(t, bd.Check(depot.CrtTag(caName)))
-						assert.True(t, bd.Check(depot.PrivKeyTag(caName)))
-						assert.True(t, bd.Check(depot.CrtTag(serviceName)))
-						assert.True(t, bd.Check(depot.PrivKeyTag(serviceName)))
+						assert.True(t, bd.Check(CrtTag(caName)))
+						assert.True(t, bd.Check(PrivKeyTag(caName)))
+						assert.True(t, bd.Check(CrtTag(serviceName)))
+						assert.True(t, bd.Check(PrivKeyTag(serviceName)))
 					}
 
 					if test.test != nil {
