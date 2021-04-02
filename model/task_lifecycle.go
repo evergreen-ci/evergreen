@@ -651,7 +651,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	return nil
 }
 
-func DequeueAndRestart(t *task.Task, caller string) error {
+func DequeueAndRestart(t *task.Task, caller, reason string) error {
 	cq, err := commitqueue.FindOneId(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
@@ -676,7 +676,7 @@ func DequeueAndRestart(t *task.Task, caller string) error {
 	if p == nil {
 		return errors.New("patch not found")
 	}
-	err = SendCommitQueueResult(p, message.GithubStateFailure, fmt.Sprintf("deactivated by '%s'", caller))
+	err = SendCommitQueueResult(p, message.GithubStateFailure, reason)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "unable to send github status",
 		"patch":   t.Version,
