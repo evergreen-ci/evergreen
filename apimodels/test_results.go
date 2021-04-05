@@ -53,8 +53,16 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 	}
 
 	testResults := []CedarTestResult{}
-	if err = json.Unmarshal(data, &testResults); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal test results for from cedar")
+	if opts.TestName != "" {
+		testResult := CedarTestResult{}
+		if err = json.Unmarshal(data, &testResult); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal test result for from cedar")
+		}
+		testResults = append(testResults, testResult)
+	} else {
+		if err = json.Unmarshal(data, &testResults); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal test results for from cedar")
+		}
 	}
 
 	return testResults, nil

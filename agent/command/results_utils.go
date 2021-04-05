@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -172,8 +171,11 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 		if r.DisplayTestName == "" {
 			r.DisplayTestName = r.TestFile
 		}
+		if r.LogTestName == "" {
+			r.LogTestName = r.TestFile
+		}
 		rs.Results = append(rs.Results, testresults.Result{
-			TestName:        fmt.Sprintf("%s-%s", r.TestFile, utility.RandomString()),
+			TestName:        utility.RandomString(),
 			DisplayTestName: r.DisplayTestName,
 			GroupID:         r.GroupID,
 			Status:          r.Status,

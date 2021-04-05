@@ -83,11 +83,20 @@ func TestSendTestResults(t *testing.T) {
 				assert.NotEmpty(t, id)
 				require.Len(t, res, 1)
 				require.Len(t, res[0].Results, 1)
-				assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].TestName)
-				assert.Equal(t, results.Results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
+				assert.NotEmpty(t, res[0].Results[0].TestName)
+				assert.NotEqual(t, results.Results[0].TestFile, res[0].Results[0].TestName)
+				if results.Results[0].DisplayTestName != "" {
+					assert.Equal(t, results.Results[0].DisplayTestName, res[0].Results[0].DisplayTestName)
+				} else {
+					assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].DisplayTestName)
+				}
 				assert.Equal(t, results.Results[0].Status, res[0].Results[0].Status)
 				assert.Equal(t, results.Results[0].GroupID, res[0].Results[0].GroupId)
-				assert.Equal(t, results.Results[0].LogTestName, res[0].Results[0].LogTestName)
+				if results.Results[0].LogTestName != "" {
+					assert.Equal(t, results.Results[0].LogTestName, res[0].Results[0].LogTestName)
+				} else {
+					assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].LogTestName)
+				}
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)
@@ -101,6 +110,26 @@ func TestSendTestResults(t *testing.T) {
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
+			},
+			"SucceedsNoDisplayTestName": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				displayTestName := results.Results[0].DisplayTestName
+				results.Results[0].DisplayTestName = ""
+				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
+
+				checkRecord(t, srv)
+				checkResults(t, srv)
+				assert.NotZero(t, srv.Close.TestResultsRecordId)
+				results.Results[0].DisplayTestName = displayTestName
+			},
+			"SucceedsNoLogTestName": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				logTestName := results.Results[0].LogTestName
+				results.Results[0].LogTestName = ""
+				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
+
+				checkRecord(t, srv)
+				checkResults(t, srv)
+				assert.NotZero(t, srv.Close.TestResultsRecordId)
+				results.Results[0].LogTestName = logTestName
 			},
 			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				srv.CreateErr = true
