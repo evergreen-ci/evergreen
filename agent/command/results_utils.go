@@ -167,8 +167,12 @@ func makeCedarTestResultsRecord(t *task.Task, displayTaskInfo *apimodels.Display
 func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResults) testresults.Results {
 	rs := testresults.Results{ID: id}
 	for _, r := range results.Results {
+		uniqueTestName := r.TestFile + ts
+		if r.DisplayTestName == "" {
+			r.DisplayTestName = r.TestFile
+		}
 		rs.Results = append(rs.Results, testresults.Result{
-			TestName:        r.TestFile,
+			TestName:        uniqueTestName,
 			DisplayTestName: r.DisplayTestName,
 			GroupID:         r.GroupID,
 			Status:          r.Status,
