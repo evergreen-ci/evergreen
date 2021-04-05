@@ -105,7 +105,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 
-		if err := queue.Put(ctx, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), http.StatusOK, nil

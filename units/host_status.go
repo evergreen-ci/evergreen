@@ -169,7 +169,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 		if h == nil {
 			continue
 		}
-		catcher.Add(j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, true, "instance ID not found")))
+		catcher.Add(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, h, true, "instance ID not found")))
 	}
 	return catcher.Resolve()
 }
