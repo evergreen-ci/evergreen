@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -32,10 +33,11 @@ func init() {
 }
 
 type createHostJob struct {
-	HostID            string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	CurrentAttempt    int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
-	MaxAttempts       int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
-	BuildImageStarted bool   `bson:"build_image_started" json:"build_image_started" yaml:"build_image_started"`
+	HostID string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	// kim; TODO: delete
+	// CurrentAttempt    int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	// MaxAttempts    int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
+	BuildImageStarted bool `bson:"build_image_started" json:"build_image_started" yaml:"build_image_started"`
 	job.Base          `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	start time.Time
@@ -63,10 +65,30 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, h.Id, id))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", createHostJobName, h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.BuildImageStarted = buildImageStarted
-	j.CurrentAttempt = currentAttempt
-	j.MaxAttempts = j.host.SpawnOptions.Retries
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(time.Now()),
+	})
+	// kim: TODO: delete
+	// j.CurrentAttempt = currentAttempt
+	// j.MaxAttempts = j.host.SpawnOptions.Retries
+	var wait time.Duration
+	var maxAttempts int
+	if h.ParentID != "" {
+		wait = time.Minute
+		maxAttempts = maxPollAttempts
+	} else {
+		wait = 10 * time.Second
+		maxAttempts = j.host.SpawnOptions.Retries
+	}
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(maxAttempts),
+		WaitUntil:   utility.ToTimeDurationPtr(wait),
+	})
 	return j
 }
 
@@ -106,7 +128,9 @@ func (j *createHostJob) Run(ctx context.Context) {
 			grip.Warning(message.Fields{
 				"host_id": j.HostID,
 				"task_id": j.TaskID,
-				"attempt": j.CurrentAttempt,
+				// kim: TODO: delete
+				// "attempt": j.CurrentAttempt,
+				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
 				"message": "could not find host",
 			})
@@ -134,8 +158,10 @@ func (j *createHostJob) Run(ctx context.Context) {
 		removeHostIntent := false
 		if numHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
 			grip.Info(message.Fields{
-				"host_id":   j.HostID,
-				"attempt":   j.CurrentAttempt,
+				"host_id": j.HostID,
+				// kim: TODO: delete
+				// "attempt":   j.CurrentAttempt,
+				"attempt":   j.RetryInfo().CurrentAttempt,
 				"distro":    j.host.Distro.Id,
 				"job":       j.ID(),
 				"provider":  j.host.Provider,
@@ -156,8 +182,10 @@ func (j *createHostJob) Run(ctx context.Context) {
 		if allRunningDynamicHosts > j.env.Settings().HostInit.MaxTotalDynamicHosts && !lowHostNumException {
 
 			grip.Info(message.Fields{
-				"host_id":                 j.HostID,
-				"attempt":                 j.CurrentAttempt,
+				"host_id": j.HostID,
+				// kim: TODO: delete
+				// "attempt":                 j.CurrentAttempt,
+				"attempt":                 j.RetryInfo().CurrentAttempt,
 				"distro":                  j.host.Distro.Id,
 				"job":                     j.ID(),
 				"provider":                j.host.Provider,
@@ -174,8 +202,10 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":  j.HostID,
-				"attempt":  j.CurrentAttempt,
+				"host_id": j.HostID,
+				// kim: TODO: delete
+				// "attempt":  j.CurrentAttempt,
+				"attempt":  j.RetryInfo().CurrentAttempt,
 				"distro":   j.host.Distro.Id,
 				"job":      j.ID(),
 				"provider": j.host.Provider,
@@ -188,8 +218,10 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		if j.selfThrottle() {
 			grip.Debug(message.Fields{
-				"host_id":  j.HostID,
-				"attempt":  j.CurrentAttempt,
+				"host_id": j.HostID,
+				// kim: TODO: delete
+				// "attempt":  j.CurrentAttempt,
+				"attempt":  j.RetryInfo().CurrentAttempt,
 				"distro":   j.host.Distro.Id,
 				"job":      j.ID(),
 				"provider": j.host.Provider,
@@ -200,12 +232,24 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
-		j.UpdateTimeInfo(amboy.JobTimeInfo{
-			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
-		})
-	}
-	j.AddError(j.createHost(ctx))
+	defer func() {
+		if j.RetryInfo().CurrentAttempt+1 >= j.RetryInfo().GetMaxAttempts() &&
+			(j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) &&
+			j.host.SpawnOptions.SpawnedByTask {
+			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.Error()); err != nil {
+				j.AddError(errors.Wrapf(err, "error adding host create error details"))
+			}
+		}
+	}()
+	// kim: TODO: delete and do this during initialization.
+	// if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
+	//     j.UpdateTimeInfo(amboy.JobTimeInfo{
+	//         MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
+	//     })
+	// }
+	// kim: TODO: delete
+	// j.AddError(j.createHost(ctx))
+	j.AddRetryableError(j.createHost(ctx))
 }
 
 func (j *createHostJob) selfThrottle() bool {
@@ -254,13 +298,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "canceling create host because context is canceled")
 	}
-	hostStartTime := j.start
 	grip.Info(message.Fields{
 		"message":      "attempting to start host",
 		"host_id":      j.host.Id,
 		"job":          j.ID(),
-		"attempt":      j.CurrentAttempt,
-		"max_attempts": j.MaxAttempts,
+		"attempt":      j.RetryInfo().CurrentAttempt,
+		"max_attempts": j.RetryInfo().MaxAttempts,
+		// kim: TODO: delete,
+		// "max_attempts": j.MaxAttempts,
 	})
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
@@ -296,14 +341,16 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return nil
 	}
 
-	defer j.tryRequeue(ctx)
+	// kim; TODO: delete and replace j.AddError with j.AddRetryableError.
+	// defer j.tryRequeue(ctx)
 
 	// Containers should wait on image builds, checking to see if the parent
 	// already has the image. If it does not, it should download it and wait
 	// on the job until it is finished downloading.
 	if j.host.ParentID != "" {
 		var ready bool
-		j.MaxAttempts = maxPollAttempts
+		// kim: TODO: delete and set during initialization
+		// j.MaxAttempts = maxPollAttempts
 		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
 			return errors.Wrap(err, "problem building container image")
@@ -398,56 +445,62 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	event.LogHostStartFinished(j.host.Id, true)
 	grip.Info(message.Fields{
-		"message":  "successfully started host",
-		"host_id":  j.host.Id,
-		"distro":   j.host.Distro.Id,
-		"provider": j.host.Provider,
-		"job":      j.ID(),
-		"runtime":  time.Since(hostStartTime),
+		"message":      "successfully started host",
+		"host_id":      j.host.Id,
+		"distro":       j.host.Distro.Id,
+		"provider":     j.host.Provider,
+		"job":          j.ID(),
+		"runtime_secs": time.Since(j.start).Seconds(),
 	})
 
 	return nil
 }
 
-func (j *createHostJob) tryRequeue(ctx context.Context) {
-	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Info().Started {
-		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.BuildImageStarted)
-		wait := time.Minute
-		if j.host.ParentID != "" {
-			wait = 10 * time.Second
-		}
-		maxTime := j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute
-		if maxTime < 0 {
-			maxTime = 0
-		}
-		job.UpdateTimeInfo(amboy.JobTimeInfo{
-			WaitUntil: j.start.Add(wait),
-			MaxTime:   maxTime,
-		})
-		err := j.env.RemoteQueue().Put(ctx, job)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "failed to requeue setup job",
-			"host_id":  j.host.Id,
-			"job":      j.ID(),
-			"distro":   j.host.Distro.Id,
-			"attempts": j.CurrentAttempt,
-		}))
-		j.AddError(err)
-	} else if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding {
-		if j.host.SpawnOptions.SpawnedByTask {
-			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.Error()); err != nil {
-				j.AddError(errors.Wrapf(err, "error adding host create error details"))
-			}
-		}
+// kim: TODO: delete
+// func (j *createHostJob) tryRequeue(ctx context.Context) {
+//     if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Info().Started {
+//         // job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.BuildImageStarted)
+//         job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.BuildImageStarted)
+//         wait := time.Minute
+//         if j.host.ParentID != "" {
+//             wait = 10 * time.Second
+//         }
+//         maxTime := j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute
+//         if maxTime < 0 {
+//             maxTime = 0
+//         }
+//         job.UpdateTimeInfo(amboy.JobTimeInfo{
+//             WaitUntil: j.start.Add(wait),
+//             MaxTime:   maxTime,
+//         })
+//         err := j.env.RemoteQueue().Put(ctx, job)
+//         grip.Error(message.WrapError(err, message.Fields{
+//             "message": "failed to requeue setup job",
+//             "host_id": j.host.Id,
+//             "job":     j.ID(),
+//             "distro":  j.host.Distro.Id,
+//             // kim: TODO: delete
+//             // "attempts": j.CurrentAttempt,
+//             "attempts": j.RetryInfo().CurrentAttempt,
+//         }))
+//         j.AddError(err)
+//     } else if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding {
+//         if j.host.SpawnOptions.SpawnedByTask {
+//             if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.Error()); err != nil {
+//                 j.AddError(errors.Wrapf(err, "error adding host create error details"))
+//             }
+//         }
+//     }
+// }
 
-	}
-}
-
-func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
-	return j.CurrentAttempt < j.MaxAttempts &&
-		(j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) &&
-		ctx.Err() == nil
-}
+// kim: TODO: delete
+// func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
+//     return j.RetryInfo().CurrentAttempt < j.RetryInfo().GetMaxAttempts() &&
+//         (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding)
+//     // return j.CurrentAttempt < j.MaxAttempts &&
+//     //     (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) &&
+//     //     ctx.Err() == nil
+// }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	parent, err := j.host.GetParent()
@@ -468,22 +521,26 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		grip.Info(message.Fields{
-			"message":  "image already exists, will start container",
-			"host_id":  j.host.Id,
-			"image":    j.host.DockerOptions.Image,
-			"attempts": j.CurrentAttempt,
+			"message": "image already exists, will start container",
+			"host_id": j.host.Id,
+			"image":   j.host.DockerOptions.Image,
+			// kim: TODO: delete
+			// "attempts": j.CurrentAttempt,
+			"attempts": j.RetryInfo().CurrentAttempt,
 			"job":      j.ID(),
 		})
 		return true, nil
 	}
 
 	//  If the image is not already present on the parent, run job to build the new image
-	if j.BuildImageStarted == false {
+	if !j.BuildImageStarted {
 		grip.Info(message.Fields{
-			"message":  "image not on host, will import image",
-			"host_id":  j.host.Id,
-			"image":    j.host.DockerOptions.Image,
-			"attempts": j.CurrentAttempt,
+			"message": "image not on host, will import image",
+			"host_id": j.host.Id,
+			"image":   j.host.DockerOptions.Image,
+			// kim: TODO: delete
+			// "attempts": j.CurrentAttempt,
+			"attempts": j.RetryInfo().CurrentAttempt,
 			"job":      j.ID(),
 		})
 		j.BuildImageStarted = true
