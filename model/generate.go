@@ -387,8 +387,10 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 						for j, intermediateProjectDT := range intermediateProjectBV.DisplayTasks {
 							if intermediateProjectDT.Name == dt.Name {
 								foundExisting = true
+								// avoid adding duplicates
+								_, execTasksToAdd := utility.StringSliceSymmetricDifference(intermediateProjectDT.ExecutionTasks, dt.ExecutionTasks)
 								intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks = append(
-									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, dt.ExecutionTasks...)
+									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, execTasksToAdd...)
 								break
 							}
 						}
