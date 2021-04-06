@@ -156,7 +156,8 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 				key = string(tests[tgh.limit].ID)
 				lastIndex = tgh.limit
 			}
-			// Truncate the hosts to just those that will be returned.
+			// Truncate the test results to just those that will be
+			// returned.
 			tests = tests[:lastIndex]
 		}
 	}
