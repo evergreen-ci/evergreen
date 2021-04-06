@@ -23,6 +23,7 @@ type testGetHandler struct {
 	taskID        string
 	displayTask   bool
 	testStatus    string
+	testID        string
 	testName      string
 	testExecution int
 	key           string
@@ -73,6 +74,7 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	tgh.testStatus = vals.Get("status")
 	tgh.key = vals.Get("start_at")
+	tgh.testID = vals.Get("test_id")
 	tgh.testName = vals.Get("test_name")
 	tgh.limit, err = getLimit(vals)
 	if err != nil {
@@ -92,6 +94,9 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		Execution: tgh.testExecution,
+		// When testID is populated, that means the user wants to fetch
+		// a single test by the unique test name stored in cedar.
+		TestName: tgh.testID,
 	}
 	if tgh.displayTask {
 		opts.DisplayTaskID = tgh.taskID
@@ -99,17 +104,24 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		opts.TaskID = tgh.taskID
 	}
 	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err == nil {
-		startAt, err := strconv.Atoi(tgh.key)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
+	if err == nil && tgh.testID == "" {
+		startAt := 0
+		if tgh.key != "" {
+			startAt, err = strconv.Atoi(tgh.key)
+			if err != nil {
+				return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
+			}
+		}
+		testStatuses := []string{}
+		if tgh.testStatus != "" {
+			testStatuses = append(testStatuses, tgh.testStatus)
 		}
 
 		var filteredCount int
 		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(
 			cedarTestResults,
 			tgh.testName,
-			[]string{tgh.testStatus},
+			testStatuses,
 			"",
 			1,
 			startAt,
@@ -119,25 +131,35 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if startAt*tgh.limit < filteredCount {
 			key = fmt.Sprintf("%d", startAt+1)
 		}
-	} else {
+	} else if err != nil {
+		// No cedar test results, fall back to the database.
 		grip.Warning(message.WrapError(err, message.Fields{
 			"task_id": tgh.taskID,
 			"message": "problem getting cedar test results",
 		}))
 
-		// No cedar test results, fall back to the database.
-		tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-		}
+		if tgh.testID != "" {
+			// When testID is populated, search the test results
+			// collection for the given id.
+			tests, err = tgh.sc.FindTestById(tgh.testID)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+			}
+		} else {
+			tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+			}
 
-		lastIndex := len(tests)
-		if lastIndex > tgh.limit {
-			key = string(tests[tgh.limit].ID)
-			lastIndex = tgh.limit
+			lastIndex := len(tests)
+			if lastIndex > tgh.limit {
+				key = string(tests[tgh.limit].ID)
+				lastIndex = tgh.limit
+			}
+			// Truncate the test results to just those that will be
+			// returned.
+			tests = tests[:lastIndex]
 		}
-		// Truncate the hosts to just those that will be returned.
-		tests = tests[:lastIndex]
 	}
 
 	return tgh.buildResponse(cedarTestResults, tests, key)
