@@ -433,7 +433,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("unable to get pull request info, PR number ('%s') may be invalid: %s", itemInt, err),
+				Message:    fmt.Sprintf("unable to get pull request info, PR number ('%d') may be invalid: %s", itemInt, err),
 			}))
 			return
 		}
