@@ -142,6 +142,9 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			// When testID is populated, search the test results
 			// collection for the given id.
 			tests, err = tgh.sc.FindTestById(tgh.testID)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+			}
 		} else {
 			tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
 			if err != nil {
