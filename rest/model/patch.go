@@ -5,9 +5,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -178,11 +177,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
-	identifier, err := model.GetIdentifierForProject(v.Project)
-	if err != nil {
-		return errors.Wrapf(err, "error getting project '%s'", v.Project)
+	if v.Project != "" {
+		identifier, err := model.GetIdentifierForProject(v.Project)
+		if err != nil {
+			return errors.Wrapf(err, "error getting project '%s'", v.Project)
+		}
+		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 	}
-	apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
