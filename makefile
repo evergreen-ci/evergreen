@@ -28,9 +28,6 @@ ifneq (,$(GO_BIN_PATH))
   endif
 endif
 
-foo:
-	@echo $(currDir)
-
 gopath := $(GOPATH)
 gocache := $(abspath $(buildDir)/.cache)
 ifeq ($(OS),Windows_NT)
