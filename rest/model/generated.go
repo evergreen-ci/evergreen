@@ -3,6 +3,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -15,6 +16,10 @@ type APIBaseTaskInfo struct {
 type APIDisplayTask struct {
 	Name           *string  `json:"name"`
 	ExecutionTasks []string `json:"execution_tasks"`
+}
+type APIModule struct {
+	Module *string `json:"module"`
+	Issue  *string `json:"issue"`
 }
 type APIDBUser struct {
 	UserID       *string  `json:"user_id"`
@@ -57,6 +62,24 @@ func APIDisplayTaskToService(m APIDisplayTask) *patch.DisplayTask {
 	out := &patch.DisplayTask{}
 	out.ExecTasks = ArrstringArrstring(m.ExecutionTasks)
 	out.Name = StringPtrString(m.Name)
+	return out
+}
+
+// APIModuleBuildFromService takes the commitqueue.Module DB struct and
+// returns the REST struct *APIModule with the corresponding fields populated
+func APIModuleBuildFromService(t commitqueue.Module) *APIModule {
+	m := APIModule{}
+	m.Module = StringStringPtr(t.Module)
+	m.Issue = StringStringPtr(t.Issue)
+	return &m
+}
+
+// APIModuleToService takes the APIModule REST struct and returns the DB struct
+// *commitqueue.Module with the corresponding fields populated
+func APIModuleToService(m APIModule) *commitqueue.Module {
+	out := &commitqueue.Module{}
+	out.Module = StringPtrString(m.Module)
+	out.Issue = StringPtrString(m.Issue)
 	return out
 }
 

@@ -90,6 +90,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.RawDisplayURL = &dispString
 		}
 	case *apimodels.CedarTestResult:
+		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
@@ -113,9 +114,6 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, testName, v.GroupID, v.LineNum)),
 		}
 
-		// Need to generate a consistent id for test results.
-		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
-		at.Id = utility.ToStringPtr(testResultID)
 		if v.GroupID != "" {
 			at.GroupId = utility.ToStringPtr(v.GroupID)
 		}

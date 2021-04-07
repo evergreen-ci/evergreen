@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/timber/testresults"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -167,8 +168,14 @@ func makeCedarTestResultsRecord(t *task.Task, displayTaskInfo *apimodels.Display
 func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResults) testresults.Results {
 	rs := testresults.Results{ID: id}
 	for _, r := range results.Results {
+		if r.DisplayTestName == "" {
+			r.DisplayTestName = r.TestFile
+		}
+		if r.LogTestName == "" {
+			r.LogTestName = r.TestFile
+		}
 		rs.Results = append(rs.Results, testresults.Result{
-			TestName:        r.TestFile,
+			TestName:        utility.RandomString(),
 			DisplayTestName: r.DisplayTestName,
 			GroupID:         r.GroupID,
 			Status:          r.Status,

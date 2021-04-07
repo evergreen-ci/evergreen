@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -141,6 +142,37 @@ func (s *commitQueueSuite) TestValidateBranch() {
 	branch.Commit.SHA = &sha
 
 	s.NoError(validateBranch(branch))
+}
+
+func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
+	s.NoError(db.ClearCollections(distro.Collection, evergreen.ConfigCollection))
+	config, err := evergreen.GetConfig()
+	s.NoError(err)
+	config.CommitQueue.MergeTaskDistro = "d"
+	s.NoError(config.CommitQueue.Set())
+	s.NoError((&distro.Distro{
+		Id: config.CommitQueue.MergeTaskDistro,
+	}).Insert())
+
+	project := &model.Project{}
+	patchDoc := &patch.Patch{}
+	ref := &model.ProjectRef{}
+
+	s.NoError(AddMergeTaskAndVariant(patchDoc, project, ref, commitqueue.SourceDiff))
+
+	s.Require().Len(patchDoc.BuildVariants, 1)
+	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
+	s.Require().Len(patchDoc.Tasks, 1)
+	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
+
+	s.Require().Len(project.BuildVariants, 1)
+	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
+	s.Require().Len(project.BuildVariants[0].Tasks, 1)
+	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
+	s.Require().Len(project.Tasks, 1)
+	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
+	s.Require().Len(project.TaskGroups, 1)
+	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {

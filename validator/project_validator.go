@@ -416,17 +416,31 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 			)
 		}
 		for _, task := range buildVariant.Tasks {
-			if len(task.RunOn) == 0 {
+			taskHasValidDistro := false
+			for _, d := range task.RunOn {
+				if d != "" {
+					taskHasValidDistro = true
+					break
+				}
+			}
+			if !taskHasValidDistro {
 				hasTaskWithoutDistro = true
 				break
 			}
 		}
-		if hasTaskWithoutDistro && len(buildVariant.RunOn) == 0 {
+		bvHasValidDistro := false
+		for _, runOn := range buildVariant.RunOn {
+			if runOn != "" {
+				bvHasValidDistro = true
+				break
+			}
+		}
+		if hasTaskWithoutDistro && !bvHasValidDistro {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+
 						"must either specify run_on field or have every task "+
-						"specify a distro.",
+						"specify run_on.",
 						buildVariant.Name, project.Identifier),
 				},
 			)
@@ -954,18 +968,19 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 	}
 
 	if project.Pre != nil {
-		// validate project pre section
 		errs = append(errs, validateCommands("pre", project, project.Pre.List())...)
 	}
 
 	if project.Post != nil {
-		// validate project post section
 		errs = append(errs, validateCommands("post", project, project.Post.List())...)
 	}
 
 	if project.Timeout != nil {
-		// validate project timeout section
 		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
+	}
+
+	if project.EarlyTermination != nil {
+		errs = append(errs, validateCommands("early termination", project, project.EarlyTermination.List())...)
 	}
 
 	// validate project tasks section
@@ -1063,13 +1078,15 @@ func validateTaskRuns(project *model.Project) ValidationErrors {
 func validateTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
+	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
 		depNames := map[model.TVPair]bool{}
 
 		for _, dep := range task.DependsOn {
+			pair := model.TVPair{TaskName: dep.Name, Variant: dep.Variant}
 			// make sure the dependency is not specified more than once
-			if depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] {
+			if depNames[pair] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("project '%s' contains a "+
@@ -1078,7 +1095,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					},
 				)
 			}
-			depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] = true
+			depNames[pair] = true
 
 			// check that the status is valid
 			switch dep.Status {
@@ -1108,6 +1125,29 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					Level: Error,
 					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
 						project.Identifier, dep.Variant, task.Name),
+				})
+			}
+
+			dependent, exists := allTasks[dep.Name]
+			if !exists {
+				continue
+			}
+			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
+				})
+			}
+			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
+				})
+			}
+			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
+				errs = append(errs, ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
 				})
 			}
 		}

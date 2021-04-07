@@ -49,6 +49,7 @@ type Project struct {
 	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	EarlyTermination  *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules           ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
 	BuildVariants     BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
@@ -1283,6 +1284,15 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 		}
 	}
 	return allBVTs
+}
+
+func (p *Project) FindAllTasksMap() map[string]ProjectTask {
+	allTasks := map[string]ProjectTask{}
+	for _, task := range p.Tasks {
+		allTasks[task.Name] = task
+	}
+
+	return allTasks
 }
 
 // FindVariantsWithTask returns the name of each variant containing

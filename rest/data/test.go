@@ -4,15 +4,35 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // DBTestConnector is a struct that implements the Test related methods
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
+
+func (tc *DBTestConnector) FindTestById(id string) ([]testresult.TestResult, error) {
+	if !bson.IsObjectIdHex(id) {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("invalid test id %s", id),
+		}
+	}
+	results, err := testresult.Find(db.Query(bson.M{"_id": bson.ObjectIdHex(id)}))
+	if err != nil {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("test result not found %s", err.Error()),
+		}
+	}
+
+	return results, nil
+}
 
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, testName, status string, limit, execution int) ([]testresult.TestResult, error) {
 	t, err := task.FindOneIdNewOrOld(taskId)
@@ -96,6 +116,10 @@ func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, testName 
 type MockTestConnector struct {
 	CachedTests []testresult.TestResult
 	StoredError error
+}
+
+func (mtc *MockTestConnector) FindTestById(id string) ([]testresult.TestResult, error) {
+	return nil, nil
 }
 
 func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, testName, status string, limit, execution int) ([]testresult.TestResult, error) {

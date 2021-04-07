@@ -980,10 +980,14 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	})
 }
 
-// AgentCommand returns the arguments to start the agent.
-func (h *Host) AgentCommand(settings *evergreen.Settings) []string {
+// AgentCommand returns the arguments to start the agent. If executablePath is not specified, it
+// will be assumed to be in the regular place (only pass this for container distros)
+func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string) []string {
+	if executablePath == "" {
+		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
+	}
 	return []string{
-		h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName()),
+		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--host_id=%s", h.Id),
@@ -1002,7 +1006,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	args := append(h.AgentCommand(settings), "monitor")
+	args := append(h.AgentCommand(settings, ""), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
 		fmt.Sprintf("--distro=%s", h.Distro.Id),

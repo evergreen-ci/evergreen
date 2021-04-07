@@ -18,7 +18,6 @@ const (
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
-	GithubMergeSubscriberType       = "github-merge" //TODO EVG-14087: remove
 	EnqueuePatchSubscriberType      = "enqueue-patch"
 	SubscriberTypeNone              = "none"
 	RunChildPatchSubscriberType     = "run-child-patch"
@@ -32,7 +31,6 @@ var SubscriberTypes = []string{
 	EvergreenWebhookSubscriberType,
 	EmailSubscriberType,
 	SlackSubscriberType,
-	GithubMergeSubscriberType,
 	EnqueuePatchSubscriberType,
 	RunChildPatchSubscriberType,
 }
@@ -81,8 +79,6 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &str
 	case RunChildPatchSubscriberType:
 		s.Target = &ChildPatchSubscriber{}
-	case GithubMergeSubscriberType:
-		s.Target = &GithubMergeSubscriber{}
 	case EnqueuePatchSubscriberType:
 		s.Target = nil
 		return nil
@@ -177,28 +173,6 @@ type ChildPatchSubscriber struct {
 
 func (s *GithubCheckSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
-}
-
-type GithubMergeSubscriber struct {
-	PRs         []PRInfo `bson:"prs"`
-	Item        string   `bson:"item"`
-	MergeMethod string   `bson:"merge_method"`
-}
-
-func (s *GithubMergeSubscriber) String() string {
-	if len(s.PRs) == 0 {
-		return "No PRs"
-	}
-
-	return fmt.Sprintf("%s-%s-%d-%s-%s-%s-%s",
-		s.PRs[len(s.PRs)-1].Owner,
-		s.PRs[len(s.PRs)-1].Repo,
-		s.PRs[len(s.PRs)-1].PRNum,
-		s.PRs[len(s.PRs)-1].Ref,
-		s.PRs[len(s.PRs)-1].CommitTitle,
-		s.MergeMethod,
-		s.Item,
-	)
 }
 
 func NewEnqueuePatchSubscriber() Subscriber {

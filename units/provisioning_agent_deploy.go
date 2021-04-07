@@ -286,7 +286,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 // Start the agent process on the specified remote host.
 func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	// build the command to run on the remote machine
-	remoteCmd := strings.Join(j.host.AgentCommand(settings), " ")
+	remoteCmd := strings.Join(j.host.AgentCommand(settings, ""), " ")
 	grip.Info(message.Fields{
 		"message": "starting agent on host",
 		"host_id": j.host.Id,

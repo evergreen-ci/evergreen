@@ -2,6 +2,7 @@ package util
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -23,4 +24,9 @@ func SpotHostWillTerminateSoon() bool {
 		return true
 	}
 	return false
+}
+
+func ExitAgent() {
+	grip.Info("Spot instance terminating, so agent is exiting")
+	os.Exit(1)
 }

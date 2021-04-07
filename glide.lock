@@ -140,7 +140,7 @@ imports:
     version: 0d90010343e80e57779af9804881062b403ad97e
 
   - name: github.com/evergreen-ci/certdepot
-    version: 9456d26c9ecb153ae54a546691e8d9aae859201b
+    version: 2ef4a0af44a3f102d27d5d703fef66f722ca5693
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
