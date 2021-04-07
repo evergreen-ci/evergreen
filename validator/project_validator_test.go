@@ -1922,7 +1922,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name: "silhouettes",
-								Distros: []string{
+								RunOn: []string{
 									"echoes",
 								},
 							},
@@ -2889,7 +2889,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
 				assert.Equal(t, expectedTaskUnit.Priority, taskUnit.Priority)
-				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.Distros, taskUnit.Distros)
+				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.RunOn, taskUnit.RunOn)
 				assert.Empty(t, missingActual)
 				assert.Empty(t, missingExpected)
 				assert.Len(t, taskUnit.DependsOn, len(expectedTaskUnit.DependsOn))

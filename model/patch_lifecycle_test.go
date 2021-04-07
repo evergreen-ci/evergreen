@@ -432,7 +432,6 @@ func TestIncludeDependencies(t *testing.T) {
 
 		Convey("a patch against v2/t3 should add t1,t2, and v1", func() {
 			pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "t3"}}, evergreen.PatchVersionRequester)
-			fmt.Println(pairs)
 			So(len(pairs), ShouldEqual, 3)
 			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
 			So(pairs, shouldContainPair, TVPair{"v1", "t1"})

@@ -852,7 +852,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
-			Distros:          in.Distros,
+			RunOn:            in.RunOn,
 			ExecTimeoutSecs:  in.ExecTimeoutSecs,
 			Stepback:         in.Stepback,
 			CommitQueueMerge: in.CommitQueueMerge,
@@ -1294,7 +1294,7 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project, buildVariant *BuildVariant,
 	b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time, activateTask bool, githubChecksAliases ProjectAliases) (*task.Task, error) {
 
-	buildVarTask.Distros = dat.Expand(buildVarTask.Distros)
+	buildVarTask.RunOn = dat.Expand(buildVarTask.RunOn)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
 
 	var (
@@ -1302,11 +1302,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		distroAliases []string
 	)
 
-	if len(buildVarTask.Distros) > 0 {
-		distroID = buildVarTask.Distros[0]
+	if len(buildVarTask.RunOn) > 0 {
+		distroID = buildVarTask.RunOn[0]
 
-		if len(buildVarTask.Distros) > 1 {
-			distroAliases = append(distroAliases, buildVarTask.Distros[1:]...)
+		if len(buildVarTask.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
 		}
 
 	} else if len(buildVariant.RunOn) > 0 {

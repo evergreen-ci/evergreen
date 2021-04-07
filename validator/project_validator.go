@@ -416,7 +416,7 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 			)
 		}
 		for _, task := range buildVariant.Tasks {
-			if len(task.Distros) == 0 {
+			if len(task.RunOn) == 0 {
 				hasTaskWithoutDistro = true
 				break
 			}
@@ -514,7 +514,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				}
 			}
 			buildVariantTasks[task.Name] = true
-			for _, distro := range task.Distros {
+			for _, distro := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{

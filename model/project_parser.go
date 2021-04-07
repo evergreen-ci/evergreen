@@ -407,12 +407,12 @@ func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) e
 	if copy.Name == "" {
 		return errors.New("buildvariant task selector must have a name")
 	}
-	// logic for aliasing the "run_on" field to "distros"
-	if len(copy.RunOn) > 0 {
-		if len(copy.Distros) > 0 {
+	// logic for aliasing the "distros" field to "run_on"
+	if len(copy.Distros) > 0 {
+		if len(copy.RunOn) > 0 {
 			return errors.New("cannot use both 'run_on' and 'distros' fields")
 		}
-		copy.Distros, copy.RunOn = copy.RunOn, nil
+		copy.RunOn, copy.Distros = copy.Distros, nil
 	}
 	*pbvt = parserBVTaskUnit(copy)
 	return nil
@@ -668,7 +668,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			ExecTimeoutSecs: pt.ExecTimeoutSecs,
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
-			Distros:         pt.RunOn,
+			RunOn:           pt.RunOn,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
 			AllowForGitTag:  pt.AllowForGitTag,
@@ -932,7 +932,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		Priority:         bvt.Priority,
 		ExecTimeoutSecs:  bvt.ExecTimeoutSecs,
 		Stepback:         bvt.Stepback,
-		Distros:          bvt.Distros,
+		RunOn:            bvt.RunOn,
 		CommitQueueMerge: bvt.CommitQueueMerge,
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
@@ -958,8 +958,8 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if res.Stepback == nil {
 		res.Stepback = pt.Stepback
 	}
-	if len(res.Distros) == 0 {
-		res.Distros = pt.RunOn
+	if len(res.RunOn) == 0 {
+		res.RunOn = pt.RunOn
 	}
 	return res
 }

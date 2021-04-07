@@ -226,8 +226,8 @@ buildvariants:
 			p, err := createIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(p.BuildVariants[0].Tasks[0].Distros[0], ShouldEqual, "test")
-			So(p.BuildVariants[0].Tasks[0].RunOn, ShouldBeNil)
+			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
+			So(p.BuildVariants[0].Tasks[0].Distros, ShouldBeNil)
 		})
 		Convey("a file that uses run_on AND distros for BVTasks should not parse", func() {
 			single := `
@@ -277,7 +277,7 @@ func TestTranslateTasks(t *testing.T) {
 				},
 				{
 					Name:            "my_tg",
-					Distros:         []string{"my_distro"}, // RunOn is aliased to Distros during marshalling
+					RunOn:           []string{"my_distro"},
 					ExecTimeoutSecs: 20,
 				},
 			}},
@@ -304,19 +304,19 @@ func TestTranslateTasks(t *testing.T) {
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
-	assert.Contains(t, out.BuildVariants[0].Tasks[1].Distros, "a different distro")
+	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
 
 	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
 	bvt := out.FindTaskForVariant("my_tg", "bv")
 	assert.NotNil(t, bvt)
 	assert.Nil(t, bvt.PatchOnly)
-	assert.Contains(t, bvt.Distros, "my_distro")
+	assert.Contains(t, bvt.RunOn, "my_distro")
 	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
 
 	bvt = out.FindTaskForVariant("tg_task", "bv")
 	assert.NotNil(t, bvt)
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
-	assert.Contains(t, bvt.Distros, "my_distro")
+	assert.Contains(t, bvt.RunOn, "my_distro")
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -490,16 +490,16 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "orange", Distros: []string{"d1"}}})
+					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
 					taskDefs,
 					[]BuildVariantTaskUnit{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: "purple", Distros: []string{"d1"}},
-						{Name: "green", Distros: []string{"d1"}}})
+						{Name: "orange", RunOn: []string{"d1"}},
+						{Name: "purple", RunOn: []string{"d1"}},
+						{Name: "green", RunOn: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{{Name: "*"}},
 					taskDefs,

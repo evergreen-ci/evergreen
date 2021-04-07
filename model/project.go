@@ -93,8 +93,7 @@ type BuildVariantTaskUnit struct {
 	DependsOn      []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
-	Distros []string `yaml:"distros,omitempty" bson:"distros"`
-
+	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -145,8 +144,8 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
 	}
-	if len(bvt.Distros) == 0 {
-		bvt.Distros = pt.Distros
+	if len(bvt.RunOn) == 0 {
+		bvt.RunOn = pt.RunOn
 	}
 	if bvt.Priority == 0 {
 		bvt.Priority = pt.Priority
@@ -497,7 +496,7 @@ type ProjectTask struct {
 	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Commands        []PluginCommandConf  `yaml:"commands,omitempty" bson:"commands"`
 	Tags            []string             `yaml:"tags,omitempty" bson:"tags"`
-	Distros         []string             `yaml:"distros,omitempty" bson:"distros"`
+	RunOn           []string             `yaml:"run_on,omitempty" bson:"run_on"`
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
@@ -1086,8 +1085,8 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 
 	var distro string
 
-	if len(bvt.Distros) > 0 {
-		distro = bvt.Distros[0]
+	if len(bvt.RunOn) > 0 {
+		distro = bvt.RunOn[0]
 	} else if len(bv.RunOn) > 0 {
 		distro = bv.RunOn[0]
 	} else {
