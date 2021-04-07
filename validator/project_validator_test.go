@@ -1963,7 +1963,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 			}
 			So(ensureHasNecessaryBVFields(project),
 				ShouldResemble, ValidationErrors{
-					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify a distro."},
+					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify run_on."},
 				})
 		})
 	})
