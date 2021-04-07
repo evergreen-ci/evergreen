@@ -1955,8 +1955,8 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 						RunOn: []string{""},
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:    "t1",
-								Distros: []string{""}},
+								Name:  "t1",
+								RunOn: []string{""}},
 						},
 					},
 				},
