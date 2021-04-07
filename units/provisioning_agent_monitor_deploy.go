@@ -61,6 +61,13 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentMonitorDeployJobName, j.HostID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),
+		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
+	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", agentMonitorDeployJobName, j.HostID, id))
 
 	return j
@@ -71,7 +78,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 
 	disabled, err := j.agentStartDisabled()
 	if err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 	if disabled {
@@ -85,7 +92,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 
 	if err = j.populateIfUnset(); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
@@ -98,19 +105,10 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	// An atomic update on the needs new agent monitor field will cause
-	// concurrent jobs to fail early here. Updating the last communicated time
-	// prevents PopulateAgentMonitorDeployJobs from immediately running unless
-	// MaxUncommunicativeInterval passes.
-	if err = j.host.SetNeedsNewAgentMonitorAtomically(false); err != nil {
-		grip.Info(message.WrapError(err, message.Fields{
-			"message": "needs new agent monitor flag is already false, not deploying new agent monitor",
-			"distro":  j.host.Distro.Id,
-			"host_id": j.host.Id,
-			"job":     j.ID(),
-		}))
+	if !j.host.NeedsNewAgentMonitor {
 		return
 	}
+
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
@@ -121,45 +119,29 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		if j.HasErrors() {
-			event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
-
-			if j.host.Status != evergreen.HostRunning {
-				return
-			}
-
-			var noRetries bool
-			noRetries, err = j.checkNoRetries()
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "could not check whether host can retry agent monitor deploy",
-					"host_id": j.host.Id,
-					"distro":  j.host.Distro.Id,
-					"job":     j.ID(),
-				}))
-				j.AddError(err)
-			} else if noRetries {
-				var externallyTerminated bool
-				externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-				j.AddError(errors.Wrapf(err, "can't check if host %s was externally terminated", j.host.Id))
-				if externallyTerminated {
-					return
-				}
-
-				if err = j.disableHost(ctx, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); err != nil {
-					j.AddError(errors.Wrapf(err, "error marking host %s for termination", j.host.Id))
-					return
-				}
-			}
-			if err = j.host.SetNeedsNewAgentMonitor(true); err != nil {
-				grip.Info(message.WrapError(err, message.Fields{
-					"message": "problem setting needs new agent monitor flag to true",
-					"distro":  j.host.Distro.Id,
-					"host_id": j.host.Id,
-					"job":     j.ID(),
-				}))
-			}
+		if !j.HasErrors() {
+			return
 		}
+		event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
+		if j.host.Status != evergreen.HostRunning {
+			return
+		}
+		// kim: TODO: add convenience method to check how many attempts are
+		// remaining.
+		if j.RetryInfo().CurrentAttempt+1 < j.RetryInfo().GetMaxAttempts() {
+			return
+		}
+		var externallyTerminated bool
+		externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		if externallyTerminated {
+			return
+		}
+
+		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
+			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
+		}
+		return
 	}()
 
 	settings := j.env.Settings()
@@ -167,7 +149,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	var alive bool
 	alive, err = j.checkAgentMonitor(ctx)
 	if err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 	if alive {
@@ -175,7 +157,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 
 	if err = j.fetchClient(ctx, settings); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
@@ -184,7 +166,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.startAgentMonitor(ctx, settings))
+	j.AddRetryableError(j.startAgentMonitor(ctx, settings))
 }
 
 // hostDown checks if the host is down.
@@ -198,16 +180,17 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "error terminating host %s", j.host.Id)
 }
 
-// checkNoRetries checks if the job has exhausted the maximum allowed attempts
-// to deploy the agent monitor.
-func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
-	stat, err := event.GetRecentAgentMonitorDeployStatuses(j.host.Id, agentMonitorPutRetries)
-	if err != nil {
-		return false, errors.Wrap(err, "could not get recent agent monitor deploy statuses")
-	}
-
-	return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentMonitorPutRetries, nil
-}
+// kim: TODO: delete
+// // checkNoRetries checks if the job has exhausted the maximum allowed attempts
+// // to deploy the agent monitor.
+// func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
+//     stat, err := event.GetRecentAgentMonitorDeployStatuses(j.host.Id, agentMonitorPutRetries)
+//     if err != nil {
+//         return false, errors.Wrap(err, "could not get recent agent monitor deploy statuses")
+//     }
+//
+//     return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentMonitorPutRetries, nil
+// }
 
 // checkAgentMonitor returns whether or not the agent monitor is already
 // running.
@@ -364,7 +347,6 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 func (j *agentMonitorDeployJob) agentStartDisabled() (bool, error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(err)
 		return false, errors.New("could not get service flags")
 	}
 

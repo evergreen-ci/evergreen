@@ -58,6 +58,13 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentDeployJobName, j.HostID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(agentPutRetries),
+		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
+	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", agentDeployJobName, j.HostID, id))
 
 	return j
@@ -68,7 +75,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
@@ -102,65 +109,53 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		return
 	}
 
+	if !j.host.NeedsNewAgent {
+		return
+	}
+
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	settings := j.env.Settings()
 
-	// Occasionally an agent deploy job will be dispatched around the same time that
-	// PopulateAgentDeployJobs creates another job. These jobs can race. An atomic update on the
-	// needs new agent field will cause the job to fail early here. Updating the last
-	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
-	// immediately applying. Instead MaxLCTInterval must pass.
-	if err = j.host.SetNeedsNewAgentAtomically(false); err != nil {
-		grip.Info(message.WrapError(err, message.Fields{
-			"distro":  j.host.Distro,
-			"host_id": j.host.Id,
-			"job":     j.ID(),
-			"message": "needs new agent flag already false, not deploying new agent",
-		}))
-		return
-	}
 	if err = j.host.UpdateLastCommunicated(); err != nil {
-		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+		j.AddRetryableError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
 	}
+
 	defer func() {
-		if j.HasErrors() && j.host.Status == evergreen.HostRunning {
-			var noRetries bool
-			noRetries, err = j.checkNoRetries()
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "could not check whether host can retry agent deploy",
-					"host_id": j.host.Id,
-					"distro":  j.host.Distro.Id,
-					"job":     j.ID(),
-				}))
-				j.AddError(err)
-			} else if noRetries {
-				var externallyTerminated bool
-				externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-				j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
-				if externallyTerminated {
-					return
-				}
-
-				if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
-					j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
-				}
-				return
-			}
-
-			grip.Info(message.WrapError(j.host.SetNeedsNewAgent(true), message.Fields{
-				"message": "problem setting needs agent flag to true",
-				"distro":  j.host.Distro,
-				"host_id": j.host.Id,
-				"job":     j.ID(),
-			}))
+		if !j.HasErrors() {
+			return
 		}
+		if j.host.Status != evergreen.HostRunning {
+			return
+		}
+		// kim: TODO: add convenience method to check how many attempts are
+		// remaining.
+		if j.RetryInfo().CurrentAttempt+1 < j.RetryInfo().GetMaxAttempts() {
+			return
+		}
+
+		var externallyTerminated bool
+		externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		if externallyTerminated {
+			return
+		}
+
+		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
+			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
+		}
+		return
 	}()
 
-	j.AddError(j.startAgentOnHost(ctx, settings))
+	if err := j.startAgentOnHost(ctx, settings); err != nil {
+		if j.host.Status == evergreen.HostRunning {
+			j.AddRetryableError(err)
+		} else {
+			j.AddError(err)
+		}
+	}
 }
 
 func (j *agentDeployJob) getHostMessage() message.Fields {
@@ -208,7 +203,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	// generate the host secret if none exists
 	if j.host.Secret == "" {
 		if err := j.host.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", j.host.Id)
+			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}
 
@@ -307,11 +302,12 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	return logs, nil
 }
 
-func (j *agentDeployJob) checkNoRetries() (bool, error) {
-	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
-	if err != nil {
-		return false, errors.Wrap(err, "could not get recent agent deploy statuses")
-	}
-
-	return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries, nil
-}
+// kim: TODO: delete
+// func (j *agentDeployJob) checkNoRetries() (bool, error) {
+//     stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
+//     if err != nil {
+//         return false, errors.Wrap(err, "could not get recent agent deploy statuses")
+//     }
+//
+//     return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries, nil
+// }
