@@ -812,6 +812,14 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 	return commitQueuePosition, nil
 }
 
+func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restModel.APIPatch) (*string, error) {
+	identifier, err := model.GetIdentifierForProject(*apiPatch.ProjectId)
+	if err != nil {
+		return apiPatch.ProjectId, nil
+	}
+	return utility.ToStringPtr(identifier), nil
+}
+
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -1841,7 +1849,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
 
-	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
+	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}

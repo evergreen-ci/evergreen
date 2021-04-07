@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -19,6 +21,7 @@ type APIPatch struct {
 	Id                      *string           `json:"patch_id"`
 	Description             *string           `json:"description"`
 	ProjectId               *string           `json:"project_id"`
+	ProjectIdentifier       *string           `json:"project_identifier"`
 	Branch                  *string           `json:"branch"`
 	Githash                 *string           `json:"git_hash"`
 	PatchNumber             int               `json:"patch_number"`
@@ -38,7 +41,6 @@ type APIPatch struct {
 	ModuleCodeChanges       []APIModulePatch  `json:"module_code_changes"`
 	Parameters              []APIParameter    `json:"parameters"`
 	PatchedConfig           *string           `json:"patched_config"`
-	Project                 *string           `json:"project"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
 }
 
@@ -170,13 +172,17 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	}
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
-	apiPatch.Project = utility.ToStringPtr(v.Project)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 	downstreamTasks, err := getDownstreamTasks(v)
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
+	identifier, err := model.GetIdentifierForProject(v.Project)
+	if err != nil {
+		return errors.Wrapf(err, "error getting project '%s'", v.Project)
+	}
+	apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
@@ -213,7 +219,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	catcher := grip.NewBasicCatcher()
 	res.Id = bson.ObjectIdHex(utility.FromStringPtr(apiPatch.Id))
 	res.Description = utility.FromStringPtr(apiPatch.Description)
-	res.Project = utility.FromStringPtr(apiPatch.Project)
+	res.Project = utility.FromStringPtr(apiPatch.ProjectId)
 	res.Githash = utility.FromStringPtr(apiPatch.Githash)
 	res.PatchNumber = apiPatch.PatchNumber
 	res.Author = utility.FromStringPtr(apiPatch.Author)
