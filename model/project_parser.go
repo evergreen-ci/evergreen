@@ -961,6 +961,10 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		res.Stepback = pt.Stepback
 	}
 	if len(res.RunOn) == 0 {
+		// first consider that we may be using the legacy "distros" field
+		res.RunOn = bvt.Distros
+	}
+	if len(res.RunOn) == 0 {
 		res.RunOn = pt.RunOn
 	}
 	return res
