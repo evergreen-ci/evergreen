@@ -193,7 +193,7 @@ func TestBuildVariantsStatusUnmarshal(t *testing.T) {
 	assert.True(t, utility.IsZeroTime(bv.BatchTimeTasks[0].ActivateAt))
 }
 
-func TestGetVersionsWithOptionsByTask(t *testing.T) {
+func TestGetVersionsWithTaskOptions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	p := ProjectRef{
 		Id:         "my_project",
@@ -301,6 +301,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 
 	bv := build.Build{
 		Id:           "bv1",
+		Version:      "my_version",
 		BuildVariant: "my_bv",
 		Tasks: []build.TaskCache{
 			{Id: "t1"},
@@ -312,6 +313,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, bv.Insert())
 	bv = build.Build{
 		Id:           "bv_not_activated",
+		Version:      "your_version",
 		BuildVariant: "my_bv",
 		Activated:    false,
 		Status:       evergreen.BuildFailed,
@@ -319,6 +321,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, bv.Insert())
 	bv = build.Build{
 		Id:           "bv2",
+		Version:      "my_version",
 		BuildVariant: "your_bv",
 		Tasks: []build.TaskCache{
 			{Id: "t2"},
@@ -333,6 +336,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		DisplayName: "my_task",
 		Status:      evergreen.TaskSucceeded,
 		BuildId:     "bv1",
+		Activated:   true,
 	}
 	assert.NoError(t, t1.Insert())
 	t2 := task.Task{
@@ -340,6 +344,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		DisplayName: "your_task",
 		Status:      evergreen.TaskFailed,
 		BuildId:     "bv2",
+		Activated:   true,
 	}
 	assert.NoError(t, t2.Insert())
 	opts := GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true, Requester: evergreen.RepotrackerVersionRequester}
@@ -348,8 +353,8 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	require.Len(t, versions, 3)
 	assert.Equal(t, "my_version", versions[0].Id)
 	require.Len(t, versions[0].Builds, 2)
-	require.Len(t, versions[0].Builds[0].Tasks, 1)
-	require.Len(t, versions[0].Builds[1].Tasks, 1)
+	require.Len(t, versions[0].Builds[0].LookupTasks, 1)
+	require.Len(t, versions[0].Builds[1].LookupTasks, 1)
 	assert.Equal(t, versions[len(versions)-1].RevisionOrderNumber, nextKey)
 
 	opts.ByBuildVariant = "my_bv"
