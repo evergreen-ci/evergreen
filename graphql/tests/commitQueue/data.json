@@ -196,6 +196,10 @@
       }
     },
     {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
       "_id": "cli-queue",
       "identifier": "cli-queue",
       "commit_queue": {

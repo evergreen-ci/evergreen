@@ -362,5 +362,23 @@
         "merge_commit_sha": ""
       }
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "logkeeper",
+      "identifier": "logkeeper"
+    },
+    {
+      "_id": "sys-perf",
+      "identifier": "sys-perf"
+    }
   ]
 }

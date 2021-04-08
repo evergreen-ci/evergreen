@@ -447,6 +447,7 @@ type Patch {
   id: ID!
   description: String!
   projectID: String!
+  projectIdentifier: String!
   githash: String!
   patchNumber: Int!
   author: String!

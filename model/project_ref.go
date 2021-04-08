@@ -749,6 +749,17 @@ func GetIdForProject(identifier string) (string, error) {
 	return pRef.Id, nil
 }
 
+func GetIdentifierForProject(id string) (string, error) {
+	pRef, err := findOneProjectRefQ(byId(id).WithFields(ProjectRefIdentifierKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", id)
+	}
+	return pRef.Identifier, nil
+}
+
 func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
