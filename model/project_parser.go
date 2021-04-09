@@ -897,6 +897,10 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				BatchTime:        pt.BatchTime,
 			}
 
+			// for backwards compatibility of EVG-14282
+			if len(pt.Distros) == 0 {
+				t.Distros = pt.RunOn
+			}
 			// Task-level dependencies in the variant override variant-level dependencies
 			// in the variant. If neither is present, then the BuildVariantTaskUnit unit
 			// will contain no dependencies, so dependencies will come from the task

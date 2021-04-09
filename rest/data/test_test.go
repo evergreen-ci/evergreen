@@ -11,8 +11,46 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
+
+func TestFindTestById(t *testing.T) {
+	tests := []testresult.TestResult{
+		testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
+			TaskID:    "task",
+			Execution: 0,
+			Status:    "pass",
+		}, testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("407f191e810c19729de860ea"),
+			TaskID:    "task",
+			Execution: 0,
+			Status:    "pass",
+		}, testresult.TestResult{
+			ID:        mgobson.ObjectIdHex("307f191e810c19729de860ea"),
+			TaskID:    "task",
+			Execution: 0,
+			Status:    "pass",
+		},
+	}
+	for _, test := range tests {
+		require.NoError(t, test.Insert())
+	}
+
+	sc := &DBConnector{}
+	t.Run("Success", func(t *testing.T) {
+		results, err := sc.FindTestById(tests[0].ID.Hex())
+		assert.NoError(t, err)
+		require.NotEmpty(t, results)
+		assert.Equal(t, tests[0], results[0])
+	})
+	t.Run("InvalidID", func(t *testing.T) {
+		results, err := sc.FindTestById("invalid")
+		assert.Error(t, err)
+		assert.Empty(t, results)
+	})
+}
 
 func TestFindTestsByTaskId(t *testing.T) {
 	assert := assert.New(t)

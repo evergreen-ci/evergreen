@@ -78,41 +78,6 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
-func setAllFieldsUpdate(pp *ParserProject) interface{} {
-	return bson.M{
-		"$set": bson.M{
-			ParserProjectEnabledKey:           pp.Enabled,
-			ParserProjectStepbackKey:          pp.Stepback,
-			ParserProjectPreErrorFailsTaskKey: pp.PreErrorFailsTask,
-			ParserProjectBatchTimeKey:         pp.BatchTime,
-			ParserProjectOwnerKey:             pp.Owner,
-			ParserProjectRepoKey:              pp.Repo,
-			ParserProjectRemotePathKey:        pp.RemotePath,
-			ParserProjectBranchKey:            pp.Branch,
-			ParserProjectIdentifierKey:        pp.Identifier,
-			ParserProjectDisplayNameKey:       pp.DisplayName,
-			ParserProjectCommandTypeKey:       pp.CommandType,
-			ParserProjectIgnoreKey:            pp.Ignore,
-			ParserProjectParametersKey:        pp.Parameters,
-			ParserProjectPreKey:               pp.Pre,
-			ParserProjectPostKey:              pp.Post,
-			ParserProjectTimeoutKey:           pp.Timeout,
-			ParserProjectEarlyTerminationKey:  pp.EarlyTermination,
-			ParserProjectCallbackTimeoutKey:   pp.CallbackTimeout,
-			ParserProjectModulesKey:           pp.Modules,
-			ParserProjectBuildVariantsKey:     pp.BuildVariants,
-			ParserProjectFunctionsKey:         pp.Functions,
-			ParserProjectTaskGroupsKey:        pp.TaskGroups,
-			ParserProjectTasksKey:             pp.Tasks,
-			ParserProjectExecTimeoutSecsKey:   pp.ExecTimeoutSecs,
-			ParserProjectLoggersKey:           pp.Loggers,
-			ParserProjectAxesKey:              pp.Axes,
-			ParserProjectConfigNumberKey:      pp.ConfigUpdateNumber,
-			ParserProjectCreateTimeKey:        pp.CreateTime,
-		},
-	}
-}
-
 func checkConfigNumberQuery(id string, configNum int) bson.M {
 	q := bson.M{ParserProjectIdKey: id}
 	if configNum == 0 {
@@ -130,7 +95,7 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 // TryUpsert suppresses the error of inserting if it's a duplicate key error
 // and attempts to upsert if config number matches.
 func (pp *ParserProject) TryUpsert() error {
-	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), setAllFieldsUpdate(pp))
+	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
 	if !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "database error upserting parser project")
 	}
@@ -155,7 +120,7 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	}
 	expectedNum := pp.ConfigUpdateNumber
 	pp.ConfigUpdateNumber = updateNum
-	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), setAllFieldsUpdate(pp)); err != nil {
+	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), pp); err != nil {
 		// expose all errors to check duplicate key errors for a race
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}

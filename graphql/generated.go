@@ -389,6 +389,7 @@ type ComplexityRoot struct {
 		PatchNumber             func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
+		ProjectIdentifier       func(childComplexity int) int
 		Status                  func(childComplexity int) int
 		TaskCount               func(childComplexity int) int
 		TaskStatuses            func(childComplexity int) int
@@ -2630,6 +2631,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.ProjectId(childComplexity), true
+
+	case "Patch.projectIdentifier":
+		if e.complexity.Patch.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.Patch.ProjectIdentifier(childComplexity), true
 
 	case "Patch.status":
 		if e.complexity.Patch.Status == nil {
@@ -5146,6 +5154,7 @@ type Patch {
   id: ID!
   description: String!
   projectID: String!
+  projectIdentifier: String!
   githash: String!
   patchNumber: Int!
   author: String!
@@ -13791,6 +13800,40 @@ func (ec *executionContext) _Patch_projectID(ctx context.Context, field graphql.
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ProjectId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectIdentifier, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26924,6 +26967,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "projectID":
 			out.Values[i] = ec._Patch_projectID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "projectIdentifier":
+			out.Values[i] = ec._Patch_projectIdentifier(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
