@@ -361,13 +361,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		if patchDoc.IsParent() {
 			for _, childPatch := range patchDoc.Triggers.ChildPatches {
-				ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-					Owner:    patchDoc.GithubPatchData.BaseOwner,
-					Repo:     patchDoc.GithubPatchData.BaseRepo,
-					PRNumber: patchDoc.GithubPatchData.PRNumber,
-					Ref:      patchDoc.GithubPatchData.HeadHash,
-					ChildId:  childPatch,
-				})
+				target, ok := ghSub.Target.(*event.GithubPullRequestSubscriber)
+				if !ok {
+					catcher.Add(errors.Errorf("target '%s' didn't not have expected type", ghSub.Target))
+				}
+				target.ChildId = childPatch
 				patchSub := event.NewExpiringPatchOutcomeSubscription(childPatch, ghSub)
 				if err = patchSub.Upsert(); err != nil {
 					catcher.Add(errors.Wrap(err, "failed to insert child patch subscription for Github PR"))
