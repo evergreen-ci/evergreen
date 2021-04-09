@@ -898,7 +898,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 
 			// for backwards compatibility of EVG-14282
-			if len(pt.Distros) < 0 {
+			if len(pt.Distros) == 0 {
 				t.Distros = pt.RunOn
 			}
 			// Task-level dependencies in the variant override variant-level dependencies
