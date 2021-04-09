@@ -411,14 +411,27 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		var queueItem *model.TaskQueueItem
+		var taskIdsToCheckBlocked []string
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
-			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
+			queueItem, taskIdsToCheckBlocked, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem = taskQueue.FindNextTask(spec)
+			queueItem, taskIdsToCheckBlocked = taskQueue.FindNextTask(spec)
+		}
+		if len(taskIdsToCheckBlocked) > 0 {
+			env := evergreen.GetEnvironment()
+			j := units.NewCheckBlockedTasksJob(d.Id, taskIdsToCheckBlocked)
+			if err = env.RemoteQueue().Put(ctx, j); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":                   "problem putting new CheckBlockedTasks job",
+					"distro_id":                 d.Id,
+					"tasks_to_check":            taskIdsToCheckBlocked,
+					"distro_dispatcher_version": d.DispatcherSettings.Version,
+				}))
+			}
 		}
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
