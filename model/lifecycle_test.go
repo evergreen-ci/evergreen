@@ -760,49 +760,45 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
-		buildVar1 := parserBV{
+		buildVar1 := BuildVariant{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
 			RunOn:       []string{"arch"},
-			Tasks: parserBVTaskUnits{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
-			DisplayTasks: []displayTask{
-				displayTask{
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
 					Name: "bv1DisplayTask1",
-					ExecutionTasks: []string{
+					ExecTasks: []string{
 						"taskA",
 						"taskB",
 					},
 				},
-				displayTask{
+				patch.DisplayTask{
 					Name: "bv1DisplayTask2",
-					ExecutionTasks: []string{
+					ExecTasks: []string{
 						"taskC",
 						"taskD",
 					},
 				},
 			},
 		}
-		buildVar2 := parserBV{
+		buildVar2 := BuildVariant{
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
-			Tasks: parserBVTaskUnits{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
-		buildVar3 := parserBV{
+		buildVar3 := BuildVariant{
 			Name:        "buildVar3",
 			DisplayName: "Build Variant 3",
-			Tasks: parserBVTaskUnits{
+			Tasks: []BuildVariantTaskUnit{
 				{
 					// wait for the first BV's taskA to complete
-					Name: "taskA",
-					DependsOn: parserDependencies{
-						{TaskSelector: taskSelector{Name: "taskA",
-							Variant: &variantSelector{StringSelector: "buildVar"}},
-						},
-					},
+					Name:      "taskA",
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 			},
 		}
@@ -816,51 +812,46 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Variant: ".*"}
 		So(alias.Upsert(), ShouldBeNil)
 		mustHaveResults := true
-		parserProject := &ParserProject{
+		project := &Project{
 			Identifier: "projectName",
-			Tasks: []parserTask{
+			Tasks: []ProjectTask{
 				{
 					Name:      "taskA",
 					Priority:  5,
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: nil,
+					DependsOn: []TaskUnitDependency{},
 				},
 				{
-					Name: "taskB",
-					Tags: []string{"tag1", "tag2"},
-					DependsOn: parserDependencies{
-						{TaskSelector: taskSelector{Name: "taskA",
-							Variant: &variantSelector{StringSelector: "buildVar"}},
-						},
-					},
+					Name:      "taskB",
+					Tags:      []string{"tag1", "tag2"},
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 				{
 					Name: "taskC",
 					Tags: []string{"tag1", "tag2", "pull-requests"},
-					DependsOn: parserDependencies{
-						{TaskSelector: taskSelector{Name: "taskA"}},
-						{TaskSelector: taskSelector{Name: "taskB"}},
+					DependsOn: []TaskUnitDependency{
+						{Name: "taskA"},
+						{Name: "taskB"},
 					},
 				},
 				{
-					Name: "taskD",
-					Tags: []string{"tag1", "tag2"},
-					DependsOn: parserDependencies{
-						{TaskSelector: taskSelector{Name: AllDependencies}},
-					},
+					Name:            "taskD",
+					Tags:            []string{"tag1", "tag2"},
+					DependsOn:       []TaskUnitDependency{{Name: AllDependencies}},
 					MustHaveResults: &mustHaveResults,
 				},
 				{
 					Name: "taskE",
 					Tags: []string{"tag1", "tag2"},
-					DependsOn: parserDependencies{
-						{TaskSelector: taskSelector{Name: AllDependencies,
-							Variant: &variantSelector{StringSelector: AllVariants}},
+					DependsOn: []TaskUnitDependency{
+						{
+							Name:    AllDependencies,
+							Variant: AllVariants,
 						},
 					},
 				},
 			},
-			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3},
+			BuildVariants: []BuildVariant{buildVar1, buildVar2, buildVar3},
 		}
 
 		// the mock version we'll be using
@@ -887,9 +878,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 		So(v.Insert(), ShouldBeNil)
 
-		project, err := TranslateProject(parserProject)
-		So(err, ShouldBeNil)
-		So(project, ShouldNotBeNil)
 		table := NewTaskIdTable(project, v, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
@@ -2124,7 +2112,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		GroupName:       "task_group",
 		Priority:        0,
 		DependsOn:       []TaskUnitDependency{{Name: "new_dependency"}},
-		RunOn:           []string{},
+		Distros:         []string{},
 		ExecTimeoutSecs: 0,
 	}
 	p := &Project{

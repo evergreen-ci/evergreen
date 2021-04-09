@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -226,8 +225,8 @@ buildvariants:
 			p, err := createIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
-			So(p.BuildVariants[0].Tasks[0].Distros, ShouldBeNil)
+			So(p.BuildVariants[0].Tasks[0].Distros[0], ShouldEqual, "test")
+			So(p.BuildVariants[0].Tasks[0].RunOn, ShouldBeNil)
 		})
 		Convey("a file that uses run_on AND distros for BVTasks should not parse", func() {
 			single := `
@@ -260,63 +259,6 @@ buildvariants:
 			So(bv.Tasks[0].CommitQueueMerge, ShouldBeTrue)
 		})
 	})
-}
-
-func TestTranslateTasks(t *testing.T) {
-	parserProject := &ParserProject{
-		BuildVariants: []parserBV{{
-			Name: "bv",
-			Tasks: parserBVTaskUnits{
-				{
-					Name:            "my_task",
-					ExecTimeoutSecs: 30,
-				},
-				{
-					Name:       "your_task",
-					GitTagOnly: utility.TruePtr(),
-				},
-				{
-					Name:            "my_tg",
-					RunOn:           []string{"my_distro"},
-					ExecTimeoutSecs: 20,
-				},
-			}},
-		},
-		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
-			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
-			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
-		},
-		TaskGroups: []parserTaskGroup{{
-			Name:  "my_tg",
-			Tasks: []string{"tg_task"},
-		}},
-	}
-	out, err := TranslateProject(parserProject)
-	assert.NoError(t, err)
-	assert.NotNil(t, out)
-	require.Len(t, out.Tasks, 3)
-	require.Len(t, out.BuildVariants, 1)
-	require.Len(t, out.BuildVariants[0].Tasks, 3)
-	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
-	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[0].PatchOnly))
-	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
-	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
-	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
-
-	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
-	bvt := out.FindTaskForVariant("my_tg", "bv")
-	assert.NotNil(t, bvt)
-	assert.Nil(t, bvt.PatchOnly)
-	assert.Contains(t, bvt.RunOn, "my_distro")
-	assert.Equal(t, 20, bvt.ExecTimeoutSecs)
-
-	bvt = out.FindTaskForVariant("tg_task", "bv")
-	assert.NotNil(t, bvt)
-	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
-	assert.Contains(t, bvt.RunOn, "my_distro")
 }
 
 func TestTranslateDependsOn(t *testing.T) {
@@ -428,7 +370,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit) {
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUnits, expected []BuildVariantTaskUnit) {
 	names := []string{}
 	exp := []string{}
 	for _, t := range tasks {
@@ -441,7 +383,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Tasks: tasks}
-		ts, errs := evaluateBVTasks(tse, nil, vse, pbv, taskDefs)
+		ts, errs := evaluateBVTasks(tse, nil, vse, pbv)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -479,30 +421,25 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			Convey("should evaluate valid tasks pointers properly", func() {
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{{Name: "white"}},
-					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "white"}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
-					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
-					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}})
+					[]BuildVariantTaskUnit{{Name: "orange", Distros: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
-					taskDefs,
 					[]BuildVariantTaskUnit{
-						{Name: "orange", RunOn: []string{"d1"}},
-						{Name: "purple", RunOn: []string{"d1"}},
-						{Name: "green", RunOn: []string{"d1"}}})
+						{Name: "orange", Distros: []string{"d1"}},
+						{Name: "purple", Distros: []string{"d1"}},
+						{Name: "green", Distros: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
 					parserBVTaskUnits{{Name: "*"}},
-					taskDefs,
 					[]BuildVariantTaskUnit{
 						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
 						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
@@ -512,7 +449,6 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					parserBVTaskUnits{
 						{Name: "red", Priority: 100},
 						{Name: "!.warm .secondary", Priority: 100}},
-					taskDefs,
 					[]BuildVariantTaskUnit{
 						{Name: "red", Priority: 100},
 						{Name: "purple", Priority: 100},
@@ -1225,7 +1161,7 @@ buildvariants:
 	assert.Len(proj.BuildVariants, 3)
 
 	assert.Len(proj.BuildVariants[0].Tasks, 2)
-	assert.True(*proj.BuildVariants[0].Tasks[0].PatchOnly)
+	assert.Nil(proj.BuildVariants[0].Tasks[0].PatchOnly)
 	assert.False(*proj.BuildVariants[0].Tasks[1].PatchOnly)
 
 	assert.Len(proj.BuildVariants[1].Tasks, 2)
@@ -1271,7 +1207,7 @@ buildvariants:
 
 	assert.Len(t, proj.BuildVariants, 3)
 	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
-	assert.True(t, *proj.BuildVariants[0].Tasks[0].AllowForGitTag) // loaded from task
+	assert.Nil(t, proj.BuildVariants[0].Tasks[0].AllowForGitTag)
 	assert.False(t, *proj.BuildVariants[0].Tasks[1].AllowForGitTag)
 
 	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
@@ -1315,7 +1251,7 @@ buildvariants:
 	assert.Len(t, proj.BuildVariants, 3)
 
 	assert.Len(t, proj.BuildVariants[0].Tasks, 2)
-	assert.True(t, *proj.BuildVariants[0].Tasks[0].GitTagOnly) // loaded from task
+	assert.Nil(t, proj.BuildVariants[0].Tasks[0].GitTagOnly)
 	assert.False(t, *proj.BuildVariants[0].Tasks[1].GitTagOnly)
 
 	assert.Len(t, proj.BuildVariants[1].Tasks, 2)
