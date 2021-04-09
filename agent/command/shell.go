@@ -57,6 +57,10 @@ type shellExec struct {
 	// task logs. This can be used to collect diagnostic data in the background of a running task.
 	SystemLog bool `mapstructure:"system_log"`
 
+	// ExecuteAsString forces the script to do something like `sh -c "<script arg>"`. By default this command
+	// executes sh and passes the script arg to its stdin
+	ExecuteAsString bool `mapstructure:"exec_as_string"`
+
 	// IgnoreStandardOutput and IgnoreStandardError allow users to
 	// elect to ignore either standard out and/or standard output.
 	IgnoreStandardOutput bool `mapstructure:"ignore_standard_out"`
@@ -180,7 +184,11 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		Background(c.Background).Directory(c.WorkingDir).Environment(c.Env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			opts.StandardInput = strings.NewReader(c.Script)
+			if c.ExecuteAsString {
+				opts.Args = append(opts.Args, "-c", c.Script)
+			} else {
+				opts.StandardInput = strings.NewReader(c.Script)
+			}
 
 			var cancel context.CancelFunc
 			var ictx context.Context
