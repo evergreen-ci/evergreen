@@ -201,7 +201,19 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+							{
+								Name:      "compile",
+								DependsOn: []model.TaskUnitDependency{{Name: "testOne"}},
+							},
+							{
+								Name:      "testOne",
+								DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
+							},
+							{
+								Name:      "testTwo",
+								DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
+							},
+						},
 					},
 				},
 			}
@@ -226,7 +238,16 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+							{Name: "compile"},
+							{
+								Name:      "testOne",
+								DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "testTwo"}},
+							},
+							{
+								Name:      "testTwo",
+								DependsOn: []model.TaskUnitDependency{{Name: model.AllDependencies}},
+							},
+						},
 					},
 				},
 			}
@@ -247,8 +268,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
-					},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "hamSteak"}}}}},
 				},
 			}
 			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
@@ -277,11 +298,22 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{
+								Name: "compile",
+							},
+							{
+								Name: "testOne",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: "compile"},
+									{Name: "testSpecial", Variant: "bv2"},
+								},
+							}},
 					},
 					{
-						Name:  "bv2",
-						Tasks: []model.BuildVariantTaskUnit{{Name: "testSpecial"}}},
+						Name: "bv2",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}}}},
+					},
 				},
 			}
 			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
@@ -306,7 +338,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile", DependsOn: []model.TaskUnitDependency{{Name: "testOne"}}},
-							{Name: "testOne"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}},
 						},
 					},
 				},
@@ -346,22 +378,35 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile"},
+								{Name: "testSpecial", Variant: "bv2"},
+							}}},
 					},
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testSpecial"}},
+							{Name: "testSpecial", DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}}},
+						},
 					},
 					{
 						Name: "bv3",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile"},
+								{Name: "testSpecial", Variant: "bv2"},
+							}}},
 					},
 					{
 						Name: "bv4",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile"},
+								{Name: "testSpecial", Variant: "bv2"},
+							}}},
 					},
 				},
 			}
@@ -391,12 +436,37 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{
+								Name: "compile",
+							},
+							{
+								Name: "testOne",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: "compile", Variant: model.AllVariants},
+									{Name: "testTwo"},
+								},
+							}},
 					},
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+							{
+								Name: "compile",
+							},
+							{
+								Name: "testOne",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: "compile", Variant: model.AllVariants},
+									{Name: "testTwo"},
+								},
+							},
+							{
+								Name: "testTwo",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: model.AllDependencies, Variant: model.AllVariants},
+								},
+							},
+						},
 					},
 				},
 			}
@@ -420,8 +490,11 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:  "bv",
-						Tasks: []model.BuildVariantTaskUnit{{Name: "compile"}, {Name: "testOne"}},
+						Name: "bv",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "testOne"}}},
+						},
 					},
 				},
 			}
@@ -457,7 +530,9 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}},
+							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{{Name: "compile"}}}},
 					},
 				},
 			}
@@ -486,12 +561,25 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "testOne"}},
+							{
+								Name: "testOne",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: "compile", Variant: "bv2"},
+								},
+							},
+						},
 					},
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testSpecial"}},
+							{Name: "compile"},
+							{
+								Name: "testSpecial",
+								DependsOn: []model.TaskUnitDependency{
+									{Name: "compile"},
+									{Name: "testOne", Variant: "bv1"}},
+							},
+						},
 					},
 				},
 			}
@@ -518,12 +606,20 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile", Variant: model.AllVariants},
+							}},
+						},
 					},
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testTwo"}},
+							{Name: "compile"},
+							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{
+								{Name: model.AllDependencies},
+							}},
+						},
 					},
 				},
 			}
@@ -550,12 +646,22 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{
 						Name: "bv1",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile", Variant: model.AllVariants},
+							}},
+						},
 					},
 					{
 						Name: "bv2",
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+							{Name: "compile"},
+							{Name: "testOne", DependsOn: []model.TaskUnitDependency{
+								{Name: "compile", Variant: model.AllVariants},
+							}},
+							{Name: "testTwo", DependsOn: []model.TaskUnitDependency{
+								{Name: model.AllDependencies, Variant: model.AllVariants}},
+							}},
 					},
 				},
 			}
@@ -586,94 +692,54 @@ func TestValidateTaskRuns(t *testing.T) {
 	}
 	Convey("When a task is patchable, not patch-only, and not git-tag-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = utility.TruePtr()
-		project.Tasks[0].PatchOnly = utility.FalsePtr()
-		project.Tasks[0].GitTagOnly = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.FalsePtr()
+		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is not patchable, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is patch-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is git-tag-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].GitTagOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is not patchable and not patch-only, no error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = utility.FalsePtr()
-		project.Tasks[0].PatchOnly = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.FalsePtr()
 	})
 	Convey("When a task is not patchable and patch-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = utility.FalsePtr()
-		project.Tasks[0].PatchOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patchable and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].Patchable = utility.TruePtr()
-		project.Tasks[0].GitTagOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].Patchable = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patch-only and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].PatchOnly = utility.TruePtr()
-		project.Tasks[0].GitTagOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
+		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is not allowed for git tags and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
-		project.Tasks[0].AllowForGitTag = utility.FalsePtr()
-		project.Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is not allowed for git tags and the variant is git-tag-only, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].AllowForGitTag = utility.FalsePtr()
-		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is git-tag-only and the variant is not allowed for git tags, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].GitTagOnly = utility.TruePtr()
 		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.FalsePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is patch-only and the build variant task unit is not patchable, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].PatchOnly = utility.TruePtr()
-		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is not patchable and the build variant task unit is patch-only, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].Patchable = utility.FalsePtr()
-		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is patch-only and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].PatchOnly = utility.TruePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
 		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When a task is patchable and the build variant task unit is git-tag-only, an error should be thrown", t, func() {
-		project := makeProject()
-		project.Tasks[0].Patchable = utility.TruePtr()
-		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
-	})
-	Convey("When the build variant task unit is not patchable and patch-only, an error should be thrown", t, func() {
-		project := makeProject()
-		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
-		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 	})
 }
 
@@ -1870,7 +1936,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name: "silhouettes",
-								Distros: []string{
+								RunOn: []string{
 									"echoes",
 								},
 							},
@@ -1889,15 +1955,15 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 						RunOn: []string{""},
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:    "t1",
-								Distros: []string{""}},
+								Name:  "t1",
+								RunOn: []string{""}},
 						},
 					},
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
 				ShouldResemble, ValidationErrors{
-					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify a distro."},
+					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify run_on."},
 				})
 		})
 	})
@@ -2729,13 +2795,27 @@ func TestTVToTaskUnit(t *testing.T) {
 							{
 								Name:             "compile",
 								CommitQueueMerge: true,
+								ExecTimeoutSecs:  10,
+								DependsOn: []model.TaskUnitDependency{
+									{
+										Name:    "setup",
+										Variant: "rhel",
+									},
+								},
 							},
 						},
 					}, {
 						Name: "suse",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name: "compile",
+								Name:            "compile",
+								ExecTimeoutSecs: 10,
+								DependsOn: []model.TaskUnitDependency{
+									{
+										Name:    "setup",
+										Variant: "rhel",
+									},
+								},
 							},
 						},
 					},
@@ -2842,7 +2922,7 @@ func TestTVToTaskUnit(t *testing.T) {
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
 				assert.Equal(t, expectedTaskUnit.Priority, taskUnit.Priority)
-				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.Distros, taskUnit.Distros)
+				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.RunOn, taskUnit.RunOn)
 				assert.Empty(t, missingActual)
 				assert.Empty(t, missingExpected)
 				assert.Len(t, taskUnit.DependsOn, len(expectedTaskUnit.DependsOn))

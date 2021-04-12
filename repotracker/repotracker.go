@@ -1131,7 +1131,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"message": "successfully created version",
 			"version": v.Id,
 			"hash":    v.Revision,
-			"project": v.Branch,
+			"project": v.Identifier,
 			"runner":  RunnerName,
 		})
 		return nil
