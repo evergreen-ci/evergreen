@@ -113,11 +113,12 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 		// sometimes people change a project to track a personal
 		// branch we don't have access to
 		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "patch project",
-			"message": "can't setup webhook",
-			"project": projectRef.Id,
-			"owner":   projectRef.Owner,
-			"repo":    projectRef.Repo,
+			"source":             "patch project",
+			"message":            "can't setup webhook",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
 		}))
 		projectRef.TracksPushEvents = utility.FalsePtr()
 		return false, nil

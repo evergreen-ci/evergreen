@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -23,6 +25,7 @@ const (
 type APITask struct {
 	Id                      *string          `json:"task_id"`
 	ProjectId               *string          `json:"project_id"`
+	ProjectIdentifier       *string          `json:"project_identifier"`
 	CreateTime              *time.Time       `json:"create_time"`
 	DispatchTime            *time.Time       `json:"dispatch_time"`
 	ScheduledTime           *time.Time       `json:"scheduled_time"`
@@ -302,6 +305,13 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				dependsOn[i] = apiDep
 			}
 			at.DependsOn = dependsOn
+		}
+		if v.Project != "" {
+			identifier, err := model.GetIdentifierForProject(v.Project)
+			if err != nil {
+				return errors.Wrapf(err, "error getting project '%s'", v.Project)
+			}
+			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	case string:
 		ll := LogLinks{

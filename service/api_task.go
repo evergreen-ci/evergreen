@@ -519,6 +519,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				"task_id":              nextTask.Id,
 				"host_id":              currentHost.Id,
 				"project":              projectRef.Id,
+				"project_identifier":   projectRef.Identifier,
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))

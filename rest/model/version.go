@@ -17,6 +17,7 @@ type APIVersion struct {
 	Revision           *string        `json:"revision"`
 	Order              int            `json:"order"`
 	Project            *string        `json:"project"`
+	ProjectIdentifier  *string        `json:"project_identifier"`
 	Author             *string        `json:"author"`
 	AuthorEmail        *string        `json:"author_email"`
 	Message            *string        `json:"message"`
@@ -79,6 +80,13 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 			Key:   utility.ToStringPtr(param.Key),
 			Value: utility.ToStringPtr(param.Value),
 		})
+	}
+	if v.Identifier != "" {
+		identifier, err := model.GetIdentifierForProject(v.Identifier)
+		if err != nil {
+			return errors.Wrapf(err, "error getting project '%s'", v.Identifier)
+		}
+		apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 	}
 	return nil
 }
