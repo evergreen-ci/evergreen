@@ -83,10 +83,9 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	}
 	if v.Identifier != "" {
 		identifier, err := model.GetIdentifierForProject(v.Identifier)
-		if err != nil {
-			return errors.Wrapf(err, "error getting project '%s'", v.Identifier)
+		if err == nil {
+			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
-		apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 	}
 	return nil
 }

@@ -308,10 +308,9 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 		if v.Project != "" {
 			identifier, err := model.GetIdentifierForProject(v.Project)
-			if err != nil {
-				return errors.Wrapf(err, "error getting project '%s'", v.Project)
+			if err == nil {
+				at.ProjectIdentifier = utility.ToStringPtr(identifier)
 			}
-			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	case string:
 		ll := LogLinks{

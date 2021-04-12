@@ -96,10 +96,9 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.Origin = utility.ToStringPtr(origin)
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
-		if err != nil {
-			return errors.Wrapf(err, "error getting project '%s'", v.Project)
+		if err == nil {
+			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
-		apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 	}
 	return nil
 }
