@@ -336,7 +336,6 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 			}
 		}
 		for _, t := range tasksToAdd {
-			t.Populate(p.GetSpecForTask(t.Name))
 			t.Variant = bv.Name
 			node := model.TVPair{
 				Variant:  bv.Name,
@@ -418,7 +417,7 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 		}
 		for _, task := range buildVariant.Tasks {
 			taskHasValidDistro := false
-			for _, d := range task.Distros {
+			for _, d := range task.RunOn {
 				if d != "" {
 					taskHasValidDistro = true
 					break
@@ -429,19 +428,19 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 				break
 			}
 		}
-		hasValidRunOn := false
+		bvHasValidDistro := false
 		for _, runOn := range buildVariant.RunOn {
 			if runOn != "" {
-				hasValidRunOn = true
+				bvHasValidDistro = true
 				break
 			}
 		}
-		if hasTaskWithoutDistro && !hasValidRunOn {
+		if hasTaskWithoutDistro && !bvHasValidDistro {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+
 						"must either specify run_on field or have every task "+
-						"specify a distro.",
+						"specify run_on.",
 						buildVariant.Name, project.Identifier),
 				},
 			)
@@ -529,7 +528,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				}
 			}
 			buildVariantTasks[task.Name] = true
-			for _, distro := range task.Distros {
+			for _, distro := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{
