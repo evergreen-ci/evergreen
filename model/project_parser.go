@@ -525,7 +525,9 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 
 	// return project even with errors
 	p, err := TranslateProject(intermediateProject)
-	*project = *p
+	if p != nil {
+		*project = *p
+	}
 	project.Identifier = identifier
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
 }
